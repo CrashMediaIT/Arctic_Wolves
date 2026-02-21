@@ -96,6 +96,22 @@ try {
     $packages = [];
 }
 
+// Fetch camp and multi-week program packages separately
+try {
+    $programsStmt = $pdo->query("
+        SELECT p.*, ag.name as age_group_name, sl.name as skill_level_name
+        FROM packages p
+        LEFT JOIN age_groups ag ON p.age_group_id = ag.id
+        LEFT JOIN skill_levels sl ON p.skill_level_id = sl.id
+        WHERE p.package_type IN ('camp', 'multi_week')
+        ORDER BY p.camp_start_date DESC, p.name
+    ");
+    $programPackages = $programsStmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log("Programs fetch error: " . $e->getMessage());
+    $programPackages = [];
+}
+
 // Fetch age groups for package form
 try {
     $ageGroupsStmt = $pdo->query("SELECT * FROM age_groups ORDER BY display_order, name");
@@ -177,6 +193,7 @@ $packageCount = count(array_filter($packages, function($p) { return !empty($p['i
 $discountCount = count(array_filter($discounts, function($d) { return !empty($d['is_active']); }));
 $merchProductCount = count(array_filter($merchProducts, function($p) { return !empty($p['is_active']); }));
 $avgPackagePrice = $packageCount > 0 ? array_sum(array_column($packages, 'price')) / count($packages) : 0;
+$programCount = count(array_filter($programPackages, function($p) { return !empty($p['is_active']); }));
 
 // Handle tab from URL
 $activeTab = $_GET['tab'] ?? 'sessions';
@@ -298,6 +315,9 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     </button>
     <button type="button" class="page-tab <?= $activeTab === 'merchandise' ? 'active' : '' ?>" data-tab="merchandise" data-action="switch-tab">
         <i class="fas fa-tshirt"></i> Merchandise
+    </button>
+    <button type="button" class="page-tab <?= $activeTab === 'programs_camps' ? 'active' : '' ?>" data-tab="programs_camps" data-action="switch-tab">
+        <i class="fas fa-campground"></i> Programs & Camps
     </button>
 </div>
 
@@ -574,6 +594,76 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                                     <div class="table-actions">
                                         <button class="btn-action" data-action="edit" data-id="<?= $product['id'] ?>" data-type="merch-product" data-modal="edit-merchandise-product-modal" title="Edit"><i class="fas fa-edit"></i></button>
                                         <button class="btn-action danger" data-action="delete" data-id="<?= $product['id'] ?>" data-type="merch-product" title="Delete"><i class="fas fa-trash"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+
+    <!-- Programs & Camps Tab -->
+    <div class="tab-content <?= $activeTab === 'programs_camps' ? 'active' : '' ?>" id="programs_camps-tab">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-campground"></i> Programs & Camps</h3>
+                <a href="dashboard.php?page=products&tab=packages" class="btn btn-primary" onclick="document.querySelector('.page-tab[data-tab=packages]').click(); return false;">
+                    <i class="fas fa-plus"></i> Create Camp/Program Package
+                </a>
+            </div>
+            <div class="card-body">
+                <p style="color: var(--text-dim); margin-bottom: 20px;">
+                    <i class="fas fa-info-circle" style="color: var(--primary);"></i>
+                    Camps and multi-week programs are created in the <strong>Packages</strong> tab using the "Camp" or "Multi-Week" package type. Once active, they appear automatically in the Booking page under the Programs & Camps section.
+                </p>
+                <?php if (empty($programPackages)): ?>
+                <div class="empty-state-card">
+                    <i class="fas fa-campground"></i>
+                    <h4>No Programs or Camps</h4>
+                    <p>Create a package with type "Camp" or "Multi-Week" in the Packages tab to get started.</p>
+                </div>
+                <?php else: ?>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Type</th>
+                                <th>Dates</th>
+                                <th>Price</th>
+                                <th>Age Group</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($programPackages as $prog): ?>
+                            <tr>
+                                <td><strong><?= htmlspecialchars($prog['name']) ?></strong></td>
+                                <td>
+                                    <span class="type-badge <?= $prog['package_type'] ?>">
+                                        <i class="fas fa-<?= $prog['package_type'] === 'camp' ? 'campground' : 'calendar-week' ?>"></i>
+                                        <?= $prog['package_type'] === 'camp' ? 'Camp' : 'Multi-Week' ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <?php if (!empty($prog['camp_start_date']) && !empty($prog['camp_end_date'])): ?>
+                                        <?= date('M j', strtotime($prog['camp_start_date'])) ?> – <?= date('M j, Y', strtotime($prog['camp_end_date'])) ?>
+                                    <?php else: ?>
+                                        <span style="color: var(--text-dim);">Not set</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>$<?= number_format($prog['price'] ?? 0, 2) ?></td>
+                                <td><?= htmlspecialchars($prog['age_group_name'] ?? $prog['age_group'] ?? 'All') ?></td>
+                                <td><span class="status-badge <?= !empty($prog['is_active']) ? 'active' : 'inactive' ?>"><?= !empty($prog['is_active']) ? 'Active' : 'Inactive' ?></span></td>
+                                <td>
+                                    <div class="table-actions">
+                                        <button class="btn-action" data-action="edit" data-id="<?= $prog['id'] ?>" data-type="package" data-modal="edit-package-modal" title="Edit"><i class="fas fa-edit"></i></button>
+                                        <button class="btn-action <?= !empty($prog['is_active']) ? '' : 'active' ?>" data-action="toggle-status" data-id="<?= $prog['id'] ?>" data-type="package" title="<?= !empty($prog['is_active']) ? 'Disable' : 'Enable' ?>"><i class="fas fa-toggle-<?= !empty($prog['is_active']) ? 'on' : 'off' ?>"></i></button>
                                     </div>
                                 </td>
                             </tr>
@@ -1287,6 +1377,8 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                                 <option value="credits">Session Credits (set number of sessions)</option>
                                 <option value="dollar_value">Dollar Value (store credit amount)</option>
                                 <option value="bundled">Bundled Sessions (pick from sessions library)</option>
+                                <option value="camp">Camp (multi-day program with daily schedule)</option>
+                                <option value="multi_week">Multi-Week Program (recurring sessions over weeks)</option>
                             </select>
                         </div>
                     </div>
@@ -1312,6 +1404,49 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                             <div style="background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; padding: 12px;">
                                 <i class="fas fa-info-circle" style="color: #8B5CF6;"></i>
                                 <span style="color: var(--text-dim);">After creating this package, use the <strong style="color: var(--text-white);">Manage Sessions</strong> button to select specific sessions from your sessions library.</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Camp/Program Date Fields -->
+                    <div id="camp-fields-row" style="display: none;">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Start Date *</label>
+                                <input type="date" name="camp_start_date" class="form-input">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">End Date *</label>
+                                <input type="date" name="camp_end_date" class="form-input">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Daily Start Time</label>
+                                <input type="time" name="daily_start_time" class="form-input" value="09:00">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Daily End Time</label>
+                                <input type="time" name="daily_end_time" class="form-input" value="16:00">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label" style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="checkbox" name="enable_child_checkin" value="1"> Enable Child Check-in/Pickup
+                                </label>
+                                <small class="form-help-text" style="color: var(--text-dim);">Generate daily check-in codes for parent pickup.</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="multi-week-fields-row" style="display: none;">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label" style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="checkbox" name="allow_individual_sessions" value="1"> Allow Individual Session Purchase
+                                </label>
+                                <small class="form-help-text" style="color: var(--text-dim);">Allow athletes to buy individual sessions from this program.</small>
                             </div>
                         </div>
                     </div>
@@ -2799,6 +2934,8 @@ function togglePackageTypeFields() {
     var packageType = document.getElementById('package-type-select');
     if (!packageType) return;
     
+    var val = packageType.value;
+    
     var creditsRow = document.getElementById('credits-count-row');
     
     // Simple toggle: for bundled packages, credits are optional
@@ -2806,26 +2943,38 @@ function togglePackageTypeFields() {
     if (creditsRow) {
         var creditsInput = creditsRow.querySelector('input[name="credits"]');
         if (creditsInput) {
-            creditsInput.required = (packageType.value === 'credits');
+            creditsInput.required = (val === 'credits');
         }
         // Show/hide based on package type
-        creditsRow.style.display = (packageType.value === 'credits') ? 'block' : 'none';
+        creditsRow.style.display = (val === 'credits') ? 'block' : 'none';
     }
     
     // Dollar value row
     var dollarValueRow = document.getElementById('dollar-value-row');
     if (dollarValueRow) {
-        dollarValueRow.style.display = (packageType.value === 'dollar_value') ? 'block' : 'none';
+        dollarValueRow.style.display = (val === 'dollar_value') ? 'block' : 'none';
         var storeCreditsInput = dollarValueRow.querySelector('input[name="store_credit"]');
         if (storeCreditsInput) {
-            storeCreditsInput.required = (packageType.value === 'dollar_value');
+            storeCreditsInput.required = (val === 'dollar_value');
         }
     }
     
     // Bundled sessions row
     var bundledSessionsRow = document.getElementById('bundled-sessions-row');
     if (bundledSessionsRow) {
-        bundledSessionsRow.style.display = (packageType.value === 'bundled') ? 'block' : 'none';
+        bundledSessionsRow.style.display = (val === 'bundled') ? 'block' : 'none';
+    }
+    
+    // Camp fields row
+    var campFieldsRow = document.getElementById('camp-fields-row');
+    if (campFieldsRow) {
+        campFieldsRow.style.display = (val === 'camp' || val === 'multi_week') ? 'block' : 'none';
+    }
+    
+    // Multi-week fields row
+    var multiWeekFieldsRow = document.getElementById('multi-week-fields-row');
+    if (multiWeekFieldsRow) {
+        multiWeekFieldsRow.style.display = (val === 'multi_week') ? 'block' : 'none';
     }
 }
 

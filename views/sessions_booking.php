@@ -1,12 +1,45 @@
 <?php
-// Get available packages
+// Get available packages (regular packages only - not camps/programs)
 $packages_query = "
     SELECT p.*
     FROM packages p
     WHERE p.is_active = 1
+      AND (p.package_type IS NULL OR p.package_type NOT IN ('camp', 'multi_week'))
     ORDER BY p.price
 ";
 $packages = $pdo->query($packages_query)->fetchAll();
+
+// Get active camp and multi-week program packages
+$programs_query = "
+    SELECT p.*, ag.name as age_group_name, sl.name as skill_level_name
+    FROM packages p
+    LEFT JOIN age_groups ag ON p.age_group_id = ag.id
+    LEFT JOIN skill_levels sl ON p.skill_level_id = sl.id
+    WHERE p.is_active = 1
+      AND p.package_type IN ('camp', 'multi_week')
+    ORDER BY p.camp_start_date ASC, p.price
+";
+$programs = $pdo->query($programs_query)->fetchAll();
+
+// Fetch daily schedules for camp packages
+$camp_schedules = [];
+$program_dates = [];
+foreach ($programs as $prog) {
+    if ($prog['package_type'] === 'camp') {
+        $sched_stmt = $pdo->prepare("SELECT * FROM camp_daily_schedules WHERE package_id = ? ORDER BY schedule_date");
+        $sched_stmt->execute([$prog['id']]);
+        $camp_schedules[$prog['id']] = $sched_stmt->fetchAll(PDO::FETCH_ASSOC);
+    } elseif ($prog['package_type'] === 'multi_week') {
+        $dates_stmt = $pdo->prepare("SELECT * FROM multiweek_program_dates WHERE package_id = ? ORDER BY session_date");
+        $dates_stmt->execute([$prog['id']]);
+        $program_dates[$prog['id']] = $dates_stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+}
+
+// Get tax settings for programs display
+$tax_settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('tax_rate', 'tax_name')")->fetchAll(PDO::FETCH_KEY_PAIR);
+$booking_tax_rate = floatval($tax_settings['tax_rate'] ?? 13.00);
+$booking_tax_name = $tax_settings['tax_name'] ?? 'HST';
 
 // Get coaches for individual sessions
 $coaches_query = "
@@ -330,6 +363,99 @@ $is_demo_sessions = false;
         </div>
         <?php endif; ?>
     </div>
+
+    <!-- ============================================
+         SECTION 3: PROGRAMS & CAMPS
+         ============================================ -->
+    <?php if (count($programs) > 0): ?>
+    <div class="booking-section programs-section">
+        <div class="section-header-bar">
+            <div class="section-title-group">
+                <h2 class="section-title"><i class="fas fa-campground"></i> Programs & Camps</h2>
+                <p class="section-subtitle">Register for our camps and multi-week training programs</p>
+            </div>
+        </div>
+        
+        <div class="programs-cards-grid">
+            <?php foreach ($programs as $prog): 
+                $is_camp = $prog['package_type'] === 'camp';
+                $schedules = $is_camp ? ($camp_schedules[$prog['id']] ?? []) : ($program_dates[$prog['id']] ?? []);
+                $day_count = count($schedules);
+                $tax_amount = round($prog['price'] * ($booking_tax_rate / 100), 2);
+            ?>
+            <div class="program-card" data-program-id="<?= $prog['id'] ?>">
+                <div class="program-type-badge <?= $is_camp ? 'camp' : 'multi-week' ?>">
+                    <i class="fas fa-<?= $is_camp ? 'campground' : 'calendar-week' ?>"></i>
+                    <?= $is_camp ? 'Camp' : 'Multi-Week Program' ?>
+                </div>
+                <div class="program-card-header">
+                    <h3 class="program-name"><?= htmlspecialchars($prog['name']) ?></h3>
+                    <?php if (!empty($prog['camp_start_date']) && !empty($prog['camp_end_date'])): ?>
+                    <span class="program-dates">
+                        <i class="fas fa-calendar"></i>
+                        <?= date('M j', strtotime($prog['camp_start_date'])) ?> – <?= date('M j, Y', strtotime($prog['camp_end_date'])) ?>
+                    </span>
+                    <?php endif; ?>
+                </div>
+                <div class="program-card-body">
+                    <?php if (!empty($prog['description'])): ?>
+                    <p class="program-description"><?= htmlspecialchars($prog['description']) ?></p>
+                    <?php endif; ?>
+                    <ul class="program-details-list">
+                        <?php if ($day_count > 0): ?>
+                        <li><i class="fas fa-list-ol"></i> <?= $day_count ?> <?= $is_camp ? 'days' : 'sessions' ?></li>
+                        <?php endif; ?>
+                        <?php if (!empty($prog['daily_start_time']) && !empty($prog['daily_end_time'])): ?>
+                        <li><i class="fas fa-clock"></i> <?= date('g:i A', strtotime($prog['daily_start_time'])) ?> – <?= date('g:i A', strtotime($prog['daily_end_time'])) ?></li>
+                        <?php endif; ?>
+                        <?php if (!empty($prog['age_group_name'])): ?>
+                        <li><i class="fas fa-users"></i> <?= htmlspecialchars($prog['age_group_name']) ?></li>
+                        <?php endif; ?>
+                        <?php if (!empty($prog['skill_level_name'])): ?>
+                        <li><i class="fas fa-signal"></i> <?= htmlspecialchars($prog['skill_level_name']) ?></li>
+                        <?php endif; ?>
+                        <?php if (!empty($prog['enable_child_checkin'])): ?>
+                        <li><i class="fas fa-child"></i> Child Pickup Enabled</li>
+                        <?php endif; ?>
+                    </ul>
+                    <?php if ($day_count > 0): ?>
+                    <div class="program-schedule-preview">
+                        <strong>Schedule:</strong>
+                        <div class="schedule-dates">
+                            <?php foreach (array_slice($schedules, 0, 5) as $sched): 
+                                $sched_date = $is_camp ? ($sched['schedule_date'] ?? '') : ($sched['session_date'] ?? '');
+                            ?>
+                            <span class="schedule-date-badge">
+                                <?= !empty($sched_date) ? date('M j', strtotime($sched_date)) : '' ?>
+                                <?php if (!empty($sched['title'])): ?> – <?= htmlspecialchars($sched['title']) ?><?php endif; ?>
+                            </span>
+                            <?php endforeach; ?>
+                            <?php if ($day_count > 5): ?>
+                            <span class="schedule-date-badge more">+<?= $day_count - 5 ?> more</span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                </div>
+                <div class="program-card-footer">
+                    <div class="program-pricing">
+                        <span class="program-price">$<?= number_format($prog['price'], 0) ?></span>
+                        <span class="program-tax">+ $<?= number_format($tax_amount, 2) ?> <?= htmlspecialchars($booking_tax_name) ?></span>
+                    </div>
+                    <form method="POST" action="process_purchase_package.php" style="display:inline;">
+                        <?= csrfTokenInput() ?>
+                        <input type="hidden" name="package_id" value="<?= $prog['id'] ?>">
+                        <button type="submit" class="btn-register-program" data-action="register-program" data-program-id="<?= $prog['id'] ?>">
+                            <i class="fas fa-<?= $is_camp ? 'campground' : 'calendar-plus' ?>"></i>
+                            <?= $is_camp ? 'Register for Camp' : 'Enroll in Program' ?>
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php endif; ?>
 </div>
 
 <style>
@@ -1234,6 +1360,201 @@ $is_demo_sessions = false;
     
     .package-card.featured:hover {
         transform: translateY(-8px);
+    }
+}
+
+/* ============================================
+   PROGRAMS & CAMPS SECTION
+   ============================================ */
+.programs-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 24px;
+}
+
+.program-card {
+    background: var(--bg-main, #0A0A0F);
+    border: 1px solid var(--border, #2D2D3F);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.program-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(107, 70, 193, 0.15);
+    border-color: rgba(107, 70, 193, 0.4);
+}
+
+.program-type-badge {
+    padding: 8px 16px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.program-type-badge.camp {
+    background: rgba(245, 158, 11, 0.15);
+    color: #F59E0B;
+}
+
+.program-type-badge.multi-week {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3B82F6;
+}
+
+.program-card-header {
+    padding: 20px 20px 0;
+}
+
+.program-name {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--text-white, #FFFFFF);
+    margin: 0 0 8px 0;
+}
+
+.program-dates {
+    font-size: 13px;
+    color: var(--text-dim, #A8A8B8);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.program-card-body {
+    padding: 16px 20px;
+    flex: 1;
+}
+
+.program-description {
+    font-size: 14px;
+    color: var(--text-dim, #A8A8B8);
+    margin: 0 0 16px 0;
+    line-height: 1.5;
+}
+
+.program-details-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 16px 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.program-details-list li {
+    font-size: 13px;
+    color: var(--text-dim, #A8A8B8);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(107, 70, 193, 0.08);
+    padding: 4px 10px;
+    border-radius: 6px;
+}
+
+.program-details-list li i {
+    color: var(--primary, #6B46C1);
+    font-size: 12px;
+}
+
+.program-schedule-preview {
+    font-size: 13px;
+    color: var(--text-dim, #A8A8B8);
+}
+
+.program-schedule-preview strong {
+    color: var(--text-white, #FFFFFF);
+    display: block;
+    margin-bottom: 6px;
+}
+
+.schedule-dates {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.schedule-date-badge {
+    font-size: 11px;
+    background: rgba(107, 70, 193, 0.1);
+    border: 1px solid rgba(107, 70, 193, 0.2);
+    padding: 2px 8px;
+    border-radius: 4px;
+    color: var(--text-dim, #A8A8B8);
+}
+
+.schedule-date-badge.more {
+    background: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.2);
+    color: #F59E0B;
+}
+
+.program-card-footer {
+    padding: 16px 20px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--border, #2D2D3F);
+}
+
+.program-pricing {
+    display: flex;
+    flex-direction: column;
+}
+
+.program-price {
+    font-size: 24px;
+    font-weight: 900;
+    color: var(--text-white, #FFFFFF);
+}
+
+.program-tax {
+    font-size: 12px;
+    color: var(--text-dim, #A8A8B8);
+}
+
+.btn-register-program {
+    padding: 10px 20px;
+    background: var(--primary, #6B46C1);
+    color: #FFFFFF;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+}
+
+.btn-register-program:hover {
+    background: var(--primary-dark, #553C9A);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(107, 70, 193, 0.3);
+}
+
+@media (max-width: 768px) {
+    .programs-cards-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .program-card-footer {
+        flex-direction: column;
+        gap: 12px;
+        align-items: stretch;
+    }
+    
+    .btn-register-program {
+        justify-content: center;
     }
 }
 </style>

@@ -88,17 +88,65 @@ Validates the 6 critical SQL column fixes:
 - Travel mileage (settings → system_settings)
 - Reports generation (removed format column)
 
-### 2. Style Guide Compliance
+### 2. Style Guide Compliance (`button-fixes.spec.js`)
 Tests for:
 - Button colors (#6B46C1)
 - Button heights (45px)
 - Icon presence (fa-plus for Add buttons)
 
-### 3. Functionality Tests
-Tests for:
-- No unexpected redirects to home
-- CRUD operations working
-- Form submissions successful
+### 3. Booking Cancellation (`booking-cancellation.spec.js`)
+Tests the booking cancellation (DELETE) operation in process_booking.php.
+
+### 4. Admin Updates Tab (`admin-updates-tab.spec.js`)
+Tests the Feature Importer functionality in System Tools → Updates tab.
+
+### 5. Backup Nextcloud Destination (`backup-nextcloud-destination.spec.js`)
+Verifies Quick Backup and Force Nextcloud Backup use correct destinations.
+
+### 6. Encryption Consolidation (`encryption-consolidation.spec.js`)
+Validates encryptPassword/decryptPassword consolidation into security.php.
+
+### 7. FusionPBX/SIP Integration (`fusionpbx-sip-integration.spec.js`)
+Verifies FusionPBX removal and Company Directory migration.
+
+### 8. Inventory Tracking System (`inventory-tracking-system.spec.js`)
+Tests merchandise inventory tracking schema, shipment/audit modals, and stock history.
+
+### 9. Login History (`login-history.spec.js`)
+Validates login attempt recording and display in Security Center.
+
+### 10. Merchandise Edit Fix (`merchandise-edit-fix.spec.js`)
+Tests the merchandise product edit endpoint correction.
+
+### 11. Merchandise Stock Level (`merchandise-edit-stock-level.spec.js`)
+Tests stock level editing within product edit modals.
+
+### 12. NDI Cameras Tab (`ndi-cameras-tab.spec.js`)
+Tests NDI camera management in System Tools.
+
+### 13. OCR Line Items & Payee (`ocr-line-items-payee.spec.js`)
+Tests OCR line item extraction and payee input enhancement for expenses.
+
+### 14. Paperless-NGX API Versioning (`paperless-ngx-api-versioning.spec.js`)
+Validates Paperless-NGX API versioned Accept header and endpoint fixes.
+
+### 15. Programs & Camps Feature (`programs-camps-feature.spec.js`)
+Tests Programs & Camps feature, email export fix, and registration flow.
+
+### 16. PWA Landing & Scroll (`pwa-landing-and-scroll.spec.js`)
+Validates PWA landing page for non-authenticated users and touch scrolling.
+
+### 17. SIP Phone/Company Directory (`sip-phone-logging.spec.js`)
+Verifies Company Directory view, SIP config removal, and directory search.
+
+### 18. SIP WSS & Setup Migration (`sip-wss-and-setup-migration.spec.js`)
+Tests SIP WSS port configuration and production setup with existing databases.
+
+### 19. Stallion Express Integration (`stallion-express-integration.spec.js`)
+Validates Stallion Express shipping integration schema and fulfillment features.
+
+### 20. Team Seasons Roster (`team-seasons-roster.spec.js`)
+Tests multi-season team support and per-season athlete assignment.
 
 ## Test Results
 

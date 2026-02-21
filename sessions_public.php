@@ -144,7 +144,7 @@ if ($db_connected) {
         $packages = [];
     }
     
-    // Fetch camps and multi-week programs marked for landing page
+    // Fetch camps and multi-week programs (all active ones show on landing page)
     $camps_programs = [];
     try {
         $cpStmt = $pdo->query("
@@ -154,7 +154,7 @@ if ($db_connected) {
             FROM packages p
             LEFT JOIN age_groups ag ON p.age_group_id = ag.id
             LEFT JOIN skill_levels sl ON p.skill_level_id = sl.id
-            WHERE p.is_active = 1 AND p.show_on_landing = 1 AND p.package_type IN ('camp', 'multi_week')
+            WHERE p.is_active = 1 AND p.package_type IN ('camp', 'multi_week')
             ORDER BY p.package_type, p.camp_start_date ASC, p.price ASC
         ");
         $camps_programs = $cpStmt->fetchAll(PDO::FETCH_ASSOC);
@@ -312,6 +312,106 @@ $viewMode = $_GET['view'] ?? 'list';
             color: var(--primary);
             margin-right: 10px;
             width: 20px;
+        }
+        
+        /* Camps & Programs Section */
+        .camps-section {
+            margin-bottom: 60px;
+        }
+        
+        .camps-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+        }
+        
+        .camp-card {
+            background: var(--bg-card);
+            border: 2px solid var(--border);
+            border-radius: 16px;
+            padding: 28px;
+            position: relative;
+            transition: all 0.3s;
+        }
+        
+        .camp-card.camp-type {
+            border-color: rgba(16, 185, 129, 0.4);
+        }
+        
+        .camp-card.program-type {
+            border-color: rgba(245, 158, 11, 0.4);
+        }
+        
+        .camp-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
+        }
+        
+        .camp-card.camp-type:hover {
+            box-shadow: 0 12px 24px rgba(16, 185, 129, 0.2);
+        }
+        
+        .camp-card.program-type:hover {
+            box-shadow: 0 12px 24px rgba(245, 158, 11, 0.2);
+        }
+        
+        .camp-badge {
+            position: absolute;
+            top: -12px;
+            left: 24px;
+            color: #fff;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .camp-name {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #fff;
+            margin: 12px 0 8px;
+        }
+        
+        .camp-price {
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: #10b981;
+            margin-bottom: 16px;
+        }
+        
+        .camp-card.program-type .camp-price {
+            color: #f59e0b;
+        }
+        
+        .camp-details {
+            margin-bottom: 20px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+        
+        .camp-details p {
+            color: var(--text-dim);
+            padding: 6px 0;
+            font-size: 14px;
+        }
+        
+        .camp-details i {
+            color: var(--primary);
+            margin-right: 10px;
+            width: 20px;
+        }
+        
+        .camp-register-btn {
+            background: #10b981 !important;
+        }
+        
+        .camp-card.program-type .camp-register-btn {
+            background: #f59e0b !important;
         }
         
         /* Sessions Section */
@@ -617,23 +717,23 @@ $viewMode = $_GET['view'] ?? 'list';
             
             <?php if (!empty($camps_programs)): ?>
             <!-- Camps & Programs Section -->
-            <div class="packages-section">
+            <div class="camps-section">
                 <h2 class="section-title"><i class="fas fa-campground"></i> Camps & Programs</h2>
-                <div class="packages-grid">
+                <div class="camps-grid">
                     <?php foreach ($camps_programs as $cp): ?>
-                    <div class="package-card">
-                        <div class="package-badge" style="background: <?= $cp['package_type'] === 'camp' ? '#10b981' : '#f59e0b' ?>;">
+                    <div class="camp-card <?= $cp['package_type'] === 'camp' ? 'camp-type' : 'program-type' ?>">
+                        <div class="camp-badge" style="background: <?= $cp['package_type'] === 'camp' ? '#10b981' : '#f59e0b' ?>;">
                             <i class="fas fa-<?= $cp['package_type'] === 'camp' ? 'campground' : 'calendar-alt' ?>"></i>
                             <?= $cp['package_type'] === 'camp' ? 'Camp' : 'Weekly Program' ?>
                         </div>
-                        <h3 class="package-name"><?= htmlspecialchars($cp['name']) ?></h3>
-                        <div class="package-price">$<?= number_format($cp['price'], 2) ?></div>
-                        <div class="package-details">
+                        <h3 class="camp-name"><?= htmlspecialchars($cp['name']) ?></h3>
+                        <div class="camp-price">$<?= number_format($cp['price'], 2) ?></div>
+                        <div class="camp-details">
                             <?php if ($cp['package_type'] === 'camp' && $cp['camp_start_date'] && $cp['camp_end_date']): ?>
-                            <p><i class="fas fa-calendar-day"></i> <?= date('M j', strtotime($cp['camp_start_date'])) ?> - <?= date('M j, Y', strtotime($cp['camp_end_date'])) ?></p>
+                            <p><i class="fas fa-calendar-day"></i> <?= date('M j', strtotime($cp['camp_start_date'])) ?> – <?= date('M j, Y', strtotime($cp['camp_end_date'])) ?></p>
                             <?php endif; ?>
                             <?php if ($cp['daily_start_time'] && $cp['daily_end_time']): ?>
-                            <p><i class="fas fa-clock"></i> <?= date('g:i A', strtotime($cp['daily_start_time'])) ?> - <?= date('g:i A', strtotime($cp['daily_end_time'])) ?></p>
+                            <p><i class="fas fa-clock"></i> <?= date('g:i A', strtotime($cp['daily_start_time'])) ?> – <?= date('g:i A', strtotime($cp['daily_end_time'])) ?></p>
                             <?php endif; ?>
                             <?php if ($cp['package_type'] === 'multi_week'): 
                                 try {
@@ -657,7 +757,7 @@ $viewMode = $_GET['view'] ?? 'list';
                             <p style="color: #8B5CF6;"><i class="fas fa-child"></i> Child pickup enabled</p>
                             <?php endif; ?>
                         </div>
-                        <a href="?register=1&type=package&id=<?= $cp['id'] ?>" class="register-btn">
+                        <a href="?register=1&type=package&id=<?= $cp['id'] ?>" class="register-btn camp-register-btn">
                             <i class="fas fa-user-plus"></i> <?= $cp['package_type'] === 'camp' ? 'Register for Camp' : 'Enroll Now' ?>
                         </a>
                     </div>

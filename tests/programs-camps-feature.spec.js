@@ -40,7 +40,7 @@ test.describe('Email Export - Table Not Found Fix', () => {
 });
 
 // =====================================================
-// 2. Programs & Camps View Tests
+// 2. Programs & Camps Integration Tests
 // =====================================================
 
 test.describe('Programs & Camps View', () => {
@@ -61,13 +61,101 @@ test.describe('Programs & Camps View', () => {
     expect(content).toContain('enable_child_checkin');
   });
 
-  test('Dashboard routing includes programs_camps page', async () => {
+  test('Dashboard routing includes programs_camps page for backward compatibility', async () => {
     const dashboardContent = readFile('dashboard.php');
+    // Route mapping should still exist for backward compatibility
     expect(dashboardContent).toContain("'programs_camps'");
     expect(dashboardContent).toContain('views/programs_camps.php');
-    expect(dashboardContent).toContain('page=programs_camps');
-    expect(dashboardContent).toContain('fa-campground');
-    expect(dashboardContent).toContain('Programs & Camps');
+  });
+
+  test('Programs & Camps is NOT a main navigation item', async () => {
+    const dashboardContent = readFile('dashboard.php');
+    // The nav link should not exist - programs are accessed via booking page and products
+    expect(dashboardContent).not.toContain('<a href="?page=programs_camps"');
+  });
+});
+
+// =====================================================
+// 2b. Booking Page - Programs & Camps Section
+// =====================================================
+
+test.describe('Booking Page - Programs & Camps Section', () => {
+  test('Booking page separates regular packages from camp/program packages', async () => {
+    const content = readFile('views/sessions_booking.php');
+    // Regular packages exclude camps/programs
+    expect(content).toContain("package_type NOT IN ('camp', 'multi_week')");
+    // Camp/program packages fetched separately
+    expect(content).toContain("package_type IN ('camp', 'multi_week')");
+  });
+
+  test('Booking page has Programs & Camps section heading', async () => {
+    const content = readFile('views/sessions_booking.php');
+    expect(content).toContain('Programs & Camps');
+    expect(content).toContain('programs-section');
+    expect(content).toContain('fa-campground');
+    expect(content).toContain('Register for Camp');
+    expect(content).toContain('Enroll in Program');
+  });
+
+  test('Booking page shows camp daily schedules and multi-week dates', async () => {
+    const content = readFile('views/sessions_booking.php');
+    expect(content).toContain('camp_daily_schedules');
+    expect(content).toContain('multiweek_program_dates');
+    expect(content).toContain('program-schedule-preview');
+    expect(content).toContain('schedule-date-badge');
+  });
+
+  test('Booking page shows program details including pricing and tax', async () => {
+    const content = readFile('views/sessions_booking.php');
+    expect(content).toContain('program-pricing');
+    expect(content).toContain('program-price');
+    expect(content).toContain('program-tax');
+    expect(content).toContain('tax_rate');
+    expect(content).toContain('process_purchase_package.php');
+  });
+
+  test('Booking page shows child pickup badge for enabled programs', async () => {
+    const content = readFile('views/sessions_booking.php');
+    expect(content).toContain('enable_child_checkin');
+    expect(content).toContain('Child Pickup Enabled');
+  });
+});
+
+// =====================================================
+// 2c. Products Page - Programs & Camps Tab
+// =====================================================
+
+test.describe('Products Page - Programs & Camps Tab', () => {
+  test('Products page has Programs & Camps tab', async () => {
+    const content = readFile('views/accounting_products.php');
+    expect(content).toContain('programs_camps');
+    expect(content).toContain('fa-campground');
+    expect(content).toContain('Programs & Camps');
+    expect(content).toContain('programs_camps-tab');
+  });
+
+  test('Products page fetches camp/multi_week packages separately', async () => {
+    const content = readFile('views/accounting_products.php');
+    expect(content).toContain("package_type IN ('camp', 'multi_week')");
+    expect(content).toContain('programPackages');
+  });
+
+  test('Products create package modal includes camp and multi_week types', async () => {
+    const content = readFile('views/accounting_products.php');
+    expect(content).toContain("value=\"camp\"");
+    expect(content).toContain("value=\"multi_week\"");
+    expect(content).toContain('camp_start_date');
+    expect(content).toContain('camp_end_date');
+    expect(content).toContain('daily_start_time');
+    expect(content).toContain('daily_end_time');
+    expect(content).toContain('enable_child_checkin');
+    expect(content).toContain('allow_individual_sessions');
+  });
+
+  test('Products page togglePackageTypeFields handles camp and multi_week', async () => {
+    const content = readFile('views/accounting_products.php');
+    expect(content).toContain('camp-fields-row');
+    expect(content).toContain('multi-week-fields-row');
   });
 });
 
@@ -86,6 +174,26 @@ test.describe('Landing Page - Camps & Programs Section', () => {
     expect(content).toContain('Enroll Now');
     expect(content).toContain('Child pickup enabled');
     expect(content).toContain('Individual sessions available');
+  });
+
+  test('Landing page shows all active camps without requiring show_on_landing flag', async () => {
+    const content = readFile('sessions_public.php');
+    // Camps query should NOT require show_on_landing = 1 (all active camps show)
+    const campsQuery = content.substring(content.indexOf('Fetch camps and multi-week programs'));
+    const campsQueryEnd = campsQuery.substring(0, campsQuery.indexOf('fetchAll'));
+    expect(campsQueryEnd).not.toContain('show_on_landing');
+  });
+
+  test('Landing page has distinct camps section with its own CSS classes', async () => {
+    const content = readFile('sessions_public.php');
+    expect(content).toContain('camps-section');
+    expect(content).toContain('camps-grid');
+    expect(content).toContain('camp-card');
+    expect(content).toContain('camp-badge');
+    expect(content).toContain('camp-name');
+    expect(content).toContain('camp-price');
+    expect(content).toContain('camp-details');
+    expect(content).toContain('camp-register-btn');
   });
 });
 
