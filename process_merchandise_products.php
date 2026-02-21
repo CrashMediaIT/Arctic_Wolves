@@ -3,7 +3,7 @@
 session_start();
 require 'db_config.php';
 require 'security.php';
-require 'file_upload_validator.php';
+require_once __DIR__ . '/lib/file_upload_validator.php';
 require_once __DIR__ . '/lib/auditor.php';
 require_once __DIR__ . '/error_logger.php';
 
@@ -163,13 +163,13 @@ function handleProductImageUpload($file) {
     }
     
     // Validate the file
-    $validation = FileUploadValidator::validate($file, 'image');
+    $validation = FileUploadValidator::validateImage($file, 100);
     if (!$validation['valid']) {
-        throw new Exception('Image upload failed: ' . implode(', ', $validation['errors']));
+        throw new Exception('Image upload failed: ' . ($validation['error'] ?? 'Unknown error'));
     }
     
     // Generate safe filename
-    $safeFilename = FileUploadValidator::generateSafeFilename($file['name']);
+    $safeFilename = FileUploadValidator::generateUniqueFilename($file['name']);
     
     // Create upload directory if it doesn't exist
     $uploadDir = __DIR__ . '/uploads/merchandise/products/';
