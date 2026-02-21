@@ -744,9 +744,6 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="?page=sessions" class="nav-link <?= in_array($page, ['sessions','upcoming_sessions','booking'])?'active':'' ?>">
                 <i class="fa-solid fa-calendar-check icon"></i> Sessions
             </a>
-            <a href="?page=programs_camps" class="nav-link <?= $page=='programs_camps'?'active':'' ?>">
-                <i class="fa-solid fa-campground icon"></i> Programs & Camps
-            </a>
             <a href="?page=video" class="nav-link <?= in_array($page, ['video','drill_review','coaches_reviews'])?'active':'' ?>">
                 <i class="fa-solid fa-video icon"></i> Video
             </a>
