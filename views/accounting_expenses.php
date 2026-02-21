@@ -257,12 +257,14 @@ if ($expenseStats['last_month'] > 0) {
                 <div class="form-row two-cols">
                     <div class="form-group">
                         <label class="form-label"><i class="fas fa-user-tie"></i> Payee (Optional)</label>
-                        <select name="payee_id" id="payeeSelect" class="form-input">
+                        <select name="payee_id" id="payeeSelect" class="form-input" onchange="toggleNewPayeeInput()">
                             <option value="">-- No Payee --</option>
+                            <option value="new">+ Add New Payee</option>
                             <?php foreach ($payees as $payee): ?>
                             <option value="<?= $payee['id'] ?>"><?= htmlspecialchars($payee['name']) ?></option>
                             <?php endforeach; ?>
                         </select>
+                        <input type="text" name="new_payee_name" id="newPayeeName" class="form-input" placeholder="Enter payee/store/company name" style="display: none; margin-top: 8px;">
                     </div>
                     <div class="form-group">
                         <label class="form-label"><i class="fas fa-hashtag"></i> Reference #</label>
@@ -659,6 +661,13 @@ if ($expenseStats['last_month'] > 0) {
 .ocr-results-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; background: var(--bg-main); padding: 15px; border-radius: 8px; margin-top: 10px; }
 .ocr-result-item label { display: block; font-size: 11px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 4px; }
 .ocr-result-item span { font-size: 14px; color: var(--text-white); font-weight: 600; }
+.ocr-items-list { background: var(--bg-main); border-radius: 8px; padding: 12px; }
+.ocr-item-row { display: grid; grid-template-columns: 2fr auto auto auto auto; gap: 12px; align-items: center; padding: 8px 4px; border-bottom: 1px solid var(--border); }
+.ocr-item-row:last-child { border-bottom: none; }
+.ocr-item-name { font-size: 13px; color: var(--text-white); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ocr-item-qty { font-size: 12px; color: var(--text-dim); }
+.ocr-item-price { font-size: 13px; color: var(--text-dim); }
+.ocr-item-total { font-size: 13px; color: var(--text-white); font-weight: 600; }
 .checkbox-label { display: flex; align-items: center; gap: 10px; cursor: pointer; }
 .checkbox-label input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); }
 .modal-large { max-width: 800px; }
@@ -673,6 +682,18 @@ if (!csrfToken) {
     console.warn('CSRF token not found - form submissions may fail');
 }
 var ocrData = null;
+
+function toggleNewPayeeInput() {
+    var select = document.getElementById('payeeSelect');
+    var input = document.getElementById('newPayeeName');
+    if (select.value === 'new') {
+        input.style.display = 'block';
+        input.focus();
+    } else {
+        input.style.display = 'none';
+        input.value = '';
+    }
+}
 
 function openAddExpenseModal() { document.getElementById('add-expense-card').style.display = 'block'; document.getElementById('add-expense-card').scrollIntoView({ behavior: 'smooth' }); }
 function openOCRModal() {
@@ -752,6 +773,7 @@ document.getElementById('ocrFileInput').addEventListener('change', function(e) {
                 document.getElementById('ocrSubtotal').textContent = '$' + (ocrData.subtotal || 0).toFixed(2);
                 document.getElementById('ocrTax').textContent = '$' + (ocrData.tax || 0).toFixed(2);
                 document.getElementById('ocrTotal').textContent = '$' + (ocrData.total || 0).toFixed(2);
+                renderOCRItems();
                 document.getElementById('ocrResultsContainer').style.display = 'block';
                 document.getElementById('useOcrDataBtn').style.display = 'inline-block';
             } else { alert('OCR processing failed: ' + (data.message || 'Unknown error')); }
@@ -760,7 +782,94 @@ document.getElementById('ocrFileInput').addEventListener('change', function(e) {
     }
 });
 
-function useOCRData() { if (!ocrData) return; closeModal('ocr-modal'); openAddExpenseModal(); document.getElementById('vendorName').value = ocrData.vendor || ''; document.getElementById('expenseDate').value = ocrData.date || ''; document.getElementById('expenseSubtotal').value = (ocrData.subtotal || 0).toFixed(2); document.getElementById('expenseTax').value = (ocrData.tax || 0).toFixed(2); document.getElementById('expenseTotal').value = (ocrData.total || 0).toFixed(2); }
+function renderOCRItems() {
+    var container = document.getElementById('ocrItemsContainer');
+    container.innerHTML = '';
+    if (!ocrData || !ocrData.items || ocrData.items.length === 0) {
+        container.innerHTML = '<p style="color: var(--text-dim); font-size: 13px; margin-top: 10px;"><i class="fas fa-info-circle"></i> No individual line items detected</p>';
+        return;
+    }
+    var html = '<h4 style="margin-bottom: 10px;"><i class="fas fa-list"></i> Line Items</h4>';
+    html += '<div class="ocr-items-list">';
+    ocrData.items.forEach(function(item, index) {
+        var qty = parseFloat(item.quantity) || 0;
+        var unitPrice = parseFloat(item.unit_price) || 0;
+        var totalPrice = parseFloat(item.total_price) || 0;
+        html += '<div class="ocr-item-row" id="ocrItem' + index + '">';
+        html += '<span class="ocr-item-name">' + escapeHtml(item.name) + '</span>';
+        html += '<span class="ocr-item-qty">x' + escapeHtml(String(qty)) + '</span>';
+        html += '<span class="ocr-item-price">$' + escapeHtml(unitPrice.toFixed(2)) + '</span>';
+        html += '<span class="ocr-item-total">$' + escapeHtml(totalPrice.toFixed(2)) + '</span>';
+        html += '<button type="button" class="btn-icon btn-delete" onclick="removeOCRItem(' + index + ')" title="Remove item"><i class="fas fa-times"></i></button>';
+        html += '</div>';
+    });
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function escapeHtml(text) {
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(text));
+    return div.innerHTML;
+}
+
+function removeOCRItem(index) {
+    if (ocrData && ocrData.items) {
+        ocrData.items.splice(index, 1);
+        renderOCRItems();
+    }
+}
+
+function useOCRData() {
+    if (!ocrData) return;
+    closeModal('ocr-modal');
+    openAddExpenseModal();
+    document.getElementById('vendorName').value = ocrData.vendor || '';
+    document.getElementById('expenseDate').value = ocrData.date || '';
+    document.getElementById('expenseSubtotal').value = (ocrData.subtotal || 0).toFixed(2);
+    document.getElementById('expenseTax').value = (ocrData.tax || 0).toFixed(2);
+    document.getElementById('expenseTotal').value = (ocrData.total || 0).toFixed(2);
+
+    // Set payee from vendor if available
+    if (ocrData.vendor) {
+        var payeeSelect = document.getElementById('payeeSelect');
+        var matched = false;
+        for (var i = 0; i < payeeSelect.options.length; i++) {
+            if (payeeSelect.options[i].text.toLowerCase() === ocrData.vendor.toLowerCase()) {
+                payeeSelect.value = payeeSelect.options[i].value;
+                matched = true;
+                break;
+            }
+        }
+        if (!matched) {
+            payeeSelect.value = 'new';
+            toggleNewPayeeInput();
+            document.getElementById('newPayeeName').value = ocrData.vendor;
+        }
+    }
+
+    // Populate line items from OCR data
+    var container = document.getElementById('lineItemsContainer');
+    container.innerHTML = '';
+    lineItemCount = 0;
+    if (ocrData.items && ocrData.items.length > 0) {
+        ocrData.items.forEach(function(item) {
+            addLineItem();
+            var row = document.getElementById('lineItem' + lineItemCount);
+            if (row) {
+                var nameEl = row.querySelector('.line-item-name');
+                var qtyEl = row.querySelector('.line-item-qty');
+                var priceEl = row.querySelector('.line-item-price');
+                var totalEl = row.querySelector('.line-item-total');
+                if (nameEl) nameEl.value = item.name || '';
+                if (qtyEl) qtyEl.value = item.quantity || 1;
+                if (priceEl) priceEl.value = item.unit_price ? item.unit_price.toFixed(2) : '0.00';
+                if (totalEl) totalEl.value = item.total_price ? item.total_price.toFixed(2) : '0.00';
+            }
+        });
+        updateLineItems();
+    }
+}
 
 function updateExportOptions() { var type = document.getElementById('exportType').value; document.getElementById('monthSelectGroup').style.display = (type === 'month') ? 'block' : 'none'; document.getElementById('quarterSelectGroup').style.display = (type === 'quarter') ? 'block' : 'none'; }
 

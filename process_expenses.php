@@ -356,7 +356,10 @@ function parseOCRText($ocr_text, $ocr_data) {
         }
     }
     
-    // Try to parse line items (look for quantity x price patterns)
+    // Try to parse line items
+    $ocr_data['items'] = [];
+    
+    // Pattern 1: quantity x price (e.g., "Widget 2x$5.00" or "Widget 2 @ $5.00")
     if (preg_match_all('/(.+?)\s+(\d+)\s*[xX@]\s*\$?(\d+[\.,]\d{2})/', $ocr_text, $item_matches, PREG_SET_ORDER)) {
         foreach ($item_matches as $item) {
             $ocr_data['items'][] = [
@@ -368,7 +371,45 @@ function parseOCRText($ocr_text, $ocr_data) {
         }
     }
     
+    // Pattern 2: item name followed by price (e.g., "Coffee          $4.50")
+    // Skip lines that look like totals, subtotals, tax, change, or payment info
+    $skip_keywords = '/^(total|subtotal|sub-total|tax|gst|hst|pst|tvq|tps|balance|change|cash|credit|debit|visa|mastercard|amex|payment|amount|due|paid|tender|card|tip|discount|savings)/i';
+    if (empty($ocr_data['items'])) {
+        foreach ($lines as $line) {
+            if (preg_match('/^(.+?)\s{2,}\$?\s*(\d+[\.,]\d{2})\s*$/', $line, $line_match)) {
+                $item_name = trim($line_match[1]);
+                if (!empty($item_name) && !preg_match($skip_keywords, $item_name) && strlen($item_name) > 1) {
+                    $price = floatval(str_replace(',', '.', $line_match[2]));
+                    if ($price > 0 && $price < ($ocr_data['total'] ?? PHP_INT_MAX)) {
+                        $ocr_data['items'][] = [
+                            'name' => substr($item_name, 0, 100),
+                            'quantity' => 1,
+                            'unit_price' => $price,
+                            'total_price' => $price
+                        ];
+                    }
+                }
+            }
+        }
+    }
+    
     return $ocr_data;
+}
+
+/**
+ * Resolve payee_id from form input, creating a new payee if needed
+ */
+function resolvePayeeId($pdo, $payee_id_input, $new_payee_name_input, $user_id) {
+    if ($payee_id_input === 'new') {
+        $new_payee_name = trim($new_payee_name_input ?? '');
+        if (!empty($new_payee_name)) {
+            $stmt = $pdo->prepare("INSERT INTO payees (name, created_by) VALUES (?, ?)");
+            $stmt->execute([substr($new_payee_name, 0, 255), $user_id]);
+            return intval($pdo->lastInsertId());
+        }
+        return null;
+    }
+    return !empty($payee_id_input) ? intval($payee_id_input) : null;
 }
 
 try {
@@ -385,7 +426,7 @@ try {
             $payment_method = trim($_POST['payment_method'] ?? '');
             $reference_number = trim($_POST['reference_number'] ?? '');
             $currency = trim($_POST['currency'] ?? 'CAD');
-            $payee_id = !empty($_POST['payee_id']) ? intval($_POST['payee_id']) : null;
+            $payee_id = resolvePayeeId($pdo, $_POST['payee_id'] ?? null, $_POST['new_payee_name'] ?? '', $user_id);
             $line_items = isset($_POST['line_items']) ? json_decode($_POST['line_items'], true) : [];
             
             // Validate required fields
@@ -522,7 +563,7 @@ try {
             $payment_method = trim($_POST['payment_method'] ?? '');
             $reference_number = trim($_POST['reference_number'] ?? '');
             $currency = trim($_POST['currency'] ?? 'CAD');
-            $payee_id = !empty($_POST['payee_id']) ? intval($_POST['payee_id']) : null;
+            $payee_id = resolvePayeeId($pdo, $_POST['payee_id'] ?? null, $_POST['new_payee_name'] ?? '', $user_id);
             
             // Handle file upload for update
             $receipt_url = null;
