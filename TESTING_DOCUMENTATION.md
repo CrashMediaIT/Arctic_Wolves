@@ -1902,7 +1902,6 @@ These features are restricted to Administrators for system management.
 - Login attempt log with user, IP address, timestamp, and status
 - Filter by user and success/failure status
 - Paginated results
-- Failed login tracking
 
 **Testing Focus:**
 - Login attempts recorded with correct details
