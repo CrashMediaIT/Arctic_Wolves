@@ -1,7 +1,7 @@
 # Comprehensive Testing Checklist
 
-**Version**: 1.0  
-**Last Updated**: January 21, 2026  
+**Version**: 1.1  
+**Last Updated**: February 2026  
 **Testing Type**: Manual & Automated
 
 ---
@@ -26,12 +26,15 @@ This checklist covers:
 |------|-------|-----------|--------|-------|
 | Home | ?page=home | views/home.php | ⏳ | Test dashboard widgets |
 | Performance Stats | ?page=stats | views/stats.php | ⏳ | Test charts/graphs |
-| ↳ Upcoming Sessions | ?page=upcoming_sessions | views/sessions_upcoming.php | ⏳ | Test session list |
-| ↳ Booking | ?page=booking | views/sessions_booking.php | ⏳ | Test booking form |
+| Messages | ?page=messages | views/messages.php | ⏳ | Test messaging |
+| ↳ Upcoming Sessions | ?page=upcoming_sessions | views/sessions_upcoming.php | ⏳ | Test session list, cancellation |
+| ↳ Booking | ?page=booking | views/sessions_booking.php | ⏳ | Test booking form, packages, programs & camps |
 | ↳ Drill Review | ?page=drill_review | views/video_drill_review.php | ⏳ | Test video player |
 | ↳ Coaches Reviews | ?page=coaches_reviews | views/video_coach_reviews.php | ⏳ | Test upload |
 | ↳ Strength & Conditioning | ?page=strength_conditioning | views/health_workouts.php | ⏳ | Test workout plans |
 | ↳ Nutrition | ?page=nutrition | views/health_nutrition.php | ⏳ | Test meal plans |
+| Shop | ?page=shop | views/shop.php | ⏳ | Test merchandise store |
+| Purchase History | ?page=payment_history | views/payment_history.php | ⏳ | Test transaction history |
 
 ### Team Section (Team Coaches) - 1 Item
 
@@ -39,34 +42,42 @@ This checklist covers:
 |------|-------|-----------|--------|-------|
 | Roster | ?page=team_roster | views/team_roster.php | ⏳ | Team coach only |
 
-### Coaches Corner (Coaches/Health Coaches/Admins) - 7 Items
+### Coaches Corner (Coaches/Admins) - 10 Items
 
 | Link | Route | View File | Status | Notes |
 |------|-------|-----------|--------|-------|
+| Calendar | ?page=coach_calendar | views/coach_calendar.php | ⏳ | Test calendar views |
 | ↳ Drill Library | ?page=drill_library | views/drills_library.php | ⏳ | Test search |
 | ↳ Create a Drill | ?page=create_drill | views/drills_create.php | ⏳ | Test drill designer |
 | ↳ Import a Drill | ?page=import_drill | views/drills_import.php | ⏳ | Test IHS import |
 | ↳ Practice Library | ?page=practice_library | views/practice_library.php | ⏳ | Test search |
 | ↳ Create a Practice | ?page=create_practice | views/practice_create.php | ⏳ | Test practice builder |
 | Roster | ?page=roster | views/coach_roster.php | ⏳ | Test athlete list |
+| Stopwatch | ?page=coach_stopwatch | views/coach_stopwatch.php | ⏳ | Test timing features |
+| Session Evaluations | ?page=coach_session_evaluations | views/coach_session_evaluations.php | ⏳ | Test eval forms |
 | ↳ Mileage | ?page=mileage | views/travel_mileage.php | ⏳ | Test expense tracking |
 
-### Accounting & Reports (Admins) - 7 Items
+### Accounting & Reports (Admins) - 6 Items
 
 | Link | Route | View File | Status | Notes |
 |------|-------|-----------|--------|-------|
-| Accounting Dashboard | ?page=accounting_dashboard | views/accounting_dashboard.php | ⏳ | Test overview |
-| Billing Dashboard | ?page=billing_dashboard | views/accounting_billing.php | ⏳ | Test transactions |
-| Reports | ?page=reports | views/accounting_reports.php | ⏳ | Test report generator |
-| Schedules | ?page=schedules | views/accounting_schedules.php | ⏳ | Test scheduled reports |
+| Finance Dashboard | ?page=finance_dashboard | views/finance_dashboard.php | ⏳ | Test overview, billing, POS, shop orders |
+| Financial Reports | ?page=financial_reports | views/financial_reports.php | ⏳ | Test report generator |
+| User Reports | ?page=reports_user | views/reports_user.php | ⏳ | Test user reports, email export |
 | Credits & Refunds | ?page=credits_refunds | views/accounting_credits.php | ⏳ | Test credit system |
-| Expenses | ?page=expenses | views/accounting_expenses.php | ⏳ | Test receipt upload |
-| Products | ?page=products | views/accounting_products.php | ⏳ | Test package editor |
+| Expenses | ?page=expenses | views/accounting_expenses.php | ⏳ | Test receipt upload, OCR |
+| Products | ?page=products | views/accounting_products.php | ⏳ | Test sessions, packages, discounts, merchandise, programs & camps |
 
-### HR (Admins) - 1 Item
+### HR (Admins) - 7 Items
 
 | Link | Route | View File | Status | Notes |
 |------|-------|-----------|--------|-------|
+| Staff Scheduling | ?page=admin_staff_scheduling | views/admin_staff_scheduling.php | ⏳ | Test schedule builder |
+| Time Tracking | ?page=hr_time_tracking | views/hr_time_tracking.php | ⏳ | Test staff hours |
+| Payroll | ?page=payroll | views/hr_payroll.php | ⏳ | Test pay processing |
+| Onboarding | ?page=onboarding | views/hr_onboarding.php | ⏳ | Test onboarding flow |
+| Contracts | ?page=employee_contracts | views/hr_employee_contracts.php | ⏳ | Test contract management |
+| Complaints | ?page=complaints | views/hr_complaints.php | ⏳ | Test complaint workflow |
 | Termination | ?page=termination | views/hr_termination.php | ⏳ | Test termination flow |
 
 ### Administration (Admins) - 7 Items
@@ -77,18 +88,27 @@ This checklist covers:
 | Categories | ?page=categories | views/admin_categories.php | ⏳ | Test category CRUD |
 | Eval Framework | ?page=eval_framework | views/admin_eval_framework.php | ⏳ | Test eval builder |
 | System Notification | ?page=system_notification | views/admin_notifications.php | ⏳ | Test notifications |
-| Audit Log | ?page=audit_log | views/admin_audit_log.php | ⏳ | Test log viewer |
-| Cron Jobs | ?page=cron_jobs | views/admin_cron_jobs.php | ⏳ | Test job scheduler |
-| System Tools | ?page=system_tools | views/admin_system_tools.php | ⏳ | Test system settings |
+| Security Center | ?page=admin_security | views/admin_security.php | ⏳ | Test login history, audit logs, blocklist |
+| System Tools | ?page=system_tools | views/admin_system_tools.php | ⏳ | Test all settings tabs, NDI cameras, updates |
+| Marketing | ?page=marketing | views/admin_business_cards.php | ⏳ | Test marketing tools |
 
-### User Menu - 2 Items
+### Point of Sale (Admins & Front Desk) - 5 Items
+
+| Link | Route | View File | Status | Notes |
+|------|-------|-----------|--------|-------|
+| POS Terminal | ?page=pos_terminal | views/pos_terminal.php | ⏳ | Test transactions |
+| Online Orders | ?page=pos_online_orders | views/pos_online_orders.php | ⏳ | Test order fulfillment, shipping |
+| Time Tracking | ?page=pos_time_tracking | views/pos_time_tracking.php | ⏳ | Test clock in/out |
+| My Schedule | ?page=pos_schedule | views/pos_schedule.php | ⏳ | Test staff schedule |
+| Company Directory | ?page=sip_settings | views/sip_settings.php | ⏳ | Test staff directory, search |
+
+### User Menu - 1 Item
 
 | Link | Route | View File | Status | Notes |
 |------|-------|-----------|--------|-------|
 | Profile | ?page=profile | views/profile.php | ⏳ | Test profile editor |
-| Settings | ?page=settings | views/settings.php | ⏳ | Test preferences |
 
-**Total Navigation Items**: 33 ✓
+**Total Navigation Items**: 44
 
 ---
 
@@ -113,14 +133,21 @@ For each view file, verify:
 # Test all navigation routes
 
 ROUTES=(
-    "home" "stats" "upcoming_sessions" "booking" 
+    "home" "stats" "messages" "upcoming_sessions" "booking"
     "drill_review" "coaches_reviews" "strength_conditioning" "nutrition"
-    "team_roster" "drill_library" "create_drill" "import_drill"
-    "practice_library" "create_practice" "roster" "mileage"
-    "accounting_dashboard" "billing_dashboard" "reports" "schedules"
-    "credits_refunds" "expenses" "products" "termination"
+    "shop" "payment_history"
+    "team_roster"
+    "coach_calendar" "drill_library" "create_drill" "import_drill"
+    "practice_library" "create_practice" "roster" "coach_stopwatch"
+    "coach_session_evaluations" "mileage"
+    "library_workouts" "library_nutrition"
+    "finance_dashboard" "financial_reports" "reports_user"
+    "credits_refunds" "expenses" "products"
+    "pos_terminal" "pos_online_orders" "pos_time_tracking" "pos_schedule" "sip_settings"
+    "admin_staff_scheduling" "hr_time_tracking" "payroll" "onboarding"
+    "employee_contracts" "complaints" "termination"
     "all_users" "categories" "eval_framework" "system_notification"
-    "audit_log" "cron_jobs" "system_tools" "profile" "settings"
+    "admin_security" "system_tools" "marketing" "profile"
 )
 
 for route in "${ROUTES[@]}"; do
@@ -164,6 +191,13 @@ done
 - [ ] Book session button processes payment
 - [ ] Use credit/token button applies discount
 - [ ] Payment override button works
+- [ ] Programs & Camps display under separate heading
+- [ ] Camp/program registration creates sessions across date range
+
+#### Upcoming Sessions (views/sessions_upcoming.php)
+- [ ] Cancel booking button shows confirmation dialog
+- [ ] Cancellation enforces policy (e.g., time window)
+- [ ] Cancelled session removed from upcoming list
 
 #### Video Upload (views/video_coach_reviews.php)
 - [ ] Upload button opens file dialog
