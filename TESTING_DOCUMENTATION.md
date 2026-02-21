@@ -1,6 +1,6 @@
 # Arctic Wolves Application - Testing Documentation
 
-**Version:** 1.3  
+**Version:** 1.4  
 **Last Updated:** February 2026  
 **Purpose:** This document provides a comprehensive breakdown of all views, tabs, and functionality within the Arctic Wolves hockey training management system. It is designed for testers to understand what each part of the site is designed to do.
 
@@ -19,7 +19,8 @@
 9. [HR Section (Admins Only)](#hr-section-admins-only)
 10. [Administration (Admins Only)](#administration-admins-only)
 11. [Profile & Settings](#profile--settings)
-12. [Key Testing Scenarios](#key-testing-scenarios)
+12. [Automated Browser Test Suite](#automated-browser-test-suite)
+13. [Key Testing Scenarios](#key-testing-scenarios)
 
 ---
 
@@ -172,6 +173,7 @@ These pages are accessible to all authenticated users (Athlete, Parent, Coach, A
 - Filter by date range, session type, or coach
 - Check-in functionality (for current sessions)
 - Cancel booking option (with cancellation policy)
+- Booking cancellation with confirmation dialog and policy enforcement
 
 **What Testers Should Verify:**
 - Sessions display in chronological order
@@ -180,6 +182,9 @@ These pages are accessible to all authenticated users (Athlete, Parent, Coach, A
 - Calendar view matches list view
 - Check-in only available during session time window
 - Cancellation policy is enforced
+- Cancellation dialog appears and enforces cancellation policy
+- Cancelled booking removes session from upcoming list
+- Refund/credit processed per cancellation policy
 
 #### 4.2 Booking
 **Page:** `?page=booking`  
@@ -385,11 +390,39 @@ These pages are accessible to all authenticated users (Athlete, Parent, Coach, A
 
 ---
 
+### 9. Programs & Camps
+**Page:** `?page=programs_camps`  
+**Icon:** Campground  
+**File:** `views/programs_camps.php`
+
+**Purpose:** Browse and register for camps and multi-week training programs.
+
+**Features:**
+- Display camp and multi-week program packages
+- Filter by program type (camps vs multi-week)
+- Age group and skill level filtering
+- Camp details (start/end dates, pricing, capacity)
+- Registration flow with payment processing
+- Tax calculation integration
+- Parent role: select child athlete for registration
+- Direct registration via package_id parameter from landing page
+
+**Testing Focus:**
+- Programs display with correct details (dates, pricing, capacity)
+- Filter tabs switch between camps and multi-week programs
+- Registration flow completes with payment
+- Parent child-selector works for registration
+- Tax calculations are correct
+- Direct registration link from landing page works
+- Empty state shows when no programs available
+
+---
+
 ## Team Section (Team Coaches)
 
 These features are available only to users with the Team Coach role.
 
-### 9. Roster
+### 10. Roster
 **Page:** `?page=team_roster`  
 **Icon:** Users  
 **File:** `views/team_roster.php`
@@ -419,7 +452,7 @@ These features are available only to users with the Team Coach role.
 
 These pages are available to On-ice Coaches and Administrators only (not Health Coaches).
 
-### 10. Calendar
+### 11. Calendar
 **Page:** `?page=coach_calendar`  
 **Icon:** Calendar  
 **File:** `views/coach_calendar.php`
@@ -445,7 +478,7 @@ These pages are available to On-ice Coaches and Administrators only (not Health 
 
 ---
 
-### 11. Drills
+### 12. Drills
 **Page:** `?page=drills`  
 **Icon:** Clipboard List  
 **File:** `views/drills.php` (parent page)
@@ -454,7 +487,7 @@ These pages are available to On-ice Coaches and Administrators only (not Health 
 
 **Tabs:**
 
-#### 11.1 Drill Library
+#### 12.1 Drill Library
 **Page:** `?page=drill_library`  
 **File:** `views/drills_library.php`
 
@@ -479,7 +512,7 @@ These pages are available to On-ice Coaches and Administrators only (not Health 
 - Print format is usable
 - Export works
 
-#### 11.2 Create Drill
+#### 12.2 Create Drill
 **Page:** `?page=create_drill`  
 **File:** `views/drills_create.php`
 
@@ -506,7 +539,7 @@ These pages are available to On-ice Coaches and Administrators only (not Health 
 - Video attachment works
 - Undo/redo functionality
 
-#### 11.3 Import Drill
+#### 12.3 Import Drill
 **Page:** `?page=import_drill`  
 **File:** `views/drills_import.php`
 
@@ -528,7 +561,7 @@ These pages are available to On-ice Coaches and Administrators only (not Health 
 - Category mapping works
 - Bulk import handles multiple items
 
-#### 11.4 Export / Import All
+#### 12.4 Export / Import All
 **Page:** `?page=export_import_drills`  
 **File:** `views/drills_export_import.php`
 
@@ -556,7 +589,7 @@ These pages are available to On-ice Coaches and Administrators only (not Health 
 
 ---
 
-### 12. Practice Plans
+### 13. Practice Plans
 **Page:** `?page=practice`  
 **Icon:** File Lines  
 **File:** `views/practice.php` (parent page)
@@ -565,7 +598,7 @@ These pages are available to On-ice Coaches and Administrators only (not Health 
 
 **Tabs:**
 
-#### 12.1 Practice Library
+#### 13.1 Practice Library
 **Page:** `?page=practice_library`  
 **File:** `views/practice_library.php`
 
@@ -587,7 +620,7 @@ These pages are available to On-ice Coaches and Administrators only (not Health 
 - Copy creates new practice
 - Print is formatted well
 
-#### 12.2 Create Practice
+#### 13.2 Create Practice
 **Page:** `?page=practice_create` or `?page=create_practice`  
 **File:** `views/practice_create.php`
 
@@ -614,7 +647,7 @@ These pages are available to On-ice Coaches and Administrators only (not Health 
 - Team/session assignment works
 - Published plans appear in library
 
-#### 12.3 Import Practice
+#### 13.3 Import Practice
 **Page:** `?page=practice_import`  
 **File:** `views/practice_import.php`
 
@@ -634,7 +667,7 @@ These pages are available to On-ice Coaches and Administrators only (not Health 
 - Import saves to database
 - Edit during import functional
 
-#### 12.4 Export / Import All
+#### 13.4 Export / Import All
 **Page:** `?page=export_import_plans`  
 **File:** `views/practice_export_import.php`
 
@@ -664,7 +697,7 @@ These pages are available to On-ice Coaches and Administrators only (not Health 
 
 ---
 
-### 13. Roster
+### 14. Roster
 **Page:** `?page=roster`  
 **Icon:** Users Gear  
 **File:** `views/coach_roster.php`
@@ -693,7 +726,7 @@ These pages are available to On-ice Coaches and Administrators only (not Health 
 
 ---
 
-### 14. Session Evaluations
+### 15. Session Evaluations
 **Page:** `?page=coach_session_evaluations`  
 **Icon:** Clipboard Check  
 **File:** `views/coach_session_evaluations.php` (parent page)
@@ -702,7 +735,7 @@ These pages are available to On-ice Coaches and Administrators only (not Health 
 
 **Tabs:**
 
-#### 14.1 Evaluations List
+#### 15.1 Evaluations List
 **Main view** - List of sessions needing evaluation
 
 **Features:**
@@ -716,7 +749,7 @@ These pages are available to On-ice Coaches and Administrators only (not Health 
 - Completed evaluations marked
 - Filters work correctly
 
-#### 14.2 Evaluation Form
+#### 15.2 Evaluation Form
 **Page:** `?page=session_evaluation_form`  
 **File:** `views/session_evaluation_form.php`
 
@@ -748,7 +781,7 @@ These pages are available to On-ice Coaches and Administrators only (not Health 
 
 ---
 
-### 14.3 Stopwatch
+### 15.3 Stopwatch
 **Page:** `?page=coach_stopwatch`  
 **Icon:** Stopwatch  
 **File:** `views/coach_stopwatch.php`
@@ -799,7 +832,7 @@ These pages are available to On-ice Coaches and Administrators only (not Health 
 
 ---
 
-### 15. Travel
+### 16. Travel
 **Page:** `?page=travel` or `?page=mileage`  
 **Icon:** Plane  
 **File:** `views/travel_mileage.php`
@@ -833,7 +866,7 @@ These pages are available to On-ice Coaches and Administrators only (not Health 
 
 ---
 
-### 16. Video Recording
+### 17. Video Recording
 **Page:** `?page=record_drill_video`  
 **Icon:** Video  
 **File:** `views/video_record_drill.php`
@@ -860,7 +893,7 @@ These pages are available to On-ice Coaches and Administrators only (not Health 
 
 These pages are available to Health Coaches and Administrators.
 
-### 17. Strength & Conditioning
+### 18. Strength & Conditioning
 **Page:** `?page=library_workouts`  
 **Icon:** Dumbbell  
 **File:** `views/library_workouts.php`
@@ -887,7 +920,7 @@ These pages are available to Health Coaches and Administrators.
 
 ---
 
-### 18. Nutrition
+### 19. Nutrition
 **Page:** `?page=library_nutrition`  
 **Icon:** Utensils  
 **File:** `views/library_nutrition.php`
@@ -915,7 +948,7 @@ These pages are available to Health Coaches and Administrators.
 
 ---
 
-### 19. Roster
+### 20. Roster
 **Page:** `?page=roster` or `?page=health_coach_roster`  
 **Icon:** Users Gear  
 **File:** `views/health_coach_roster.php`
@@ -946,7 +979,7 @@ These pages are available to Health Coaches and Administrators.
 
 These features are restricted to Administrators only.
 
-### 20. Finance Dashboard
+### 21. Finance Dashboard
 **Page:** `?page=finance_dashboard`  
 **Icon:** Chart Pie  
 **File:** `views/finance_dashboard.php` (parent page)
@@ -955,7 +988,7 @@ These features are restricted to Administrators only.
 
 **Tabs:**
 
-#### 20.1 Overview
+#### 21.1 Overview
 **Page:** `?page=finance_dashboard&tab=overview`  
 **File:** `views/finance_overview.php`
 
@@ -980,7 +1013,7 @@ These features are restricted to Administrators only.
 - Data updates in real-time
 - Drill-down to details works
 
-#### 20.2 Billing
+#### 21.2 Billing
 **Page:** `?page=finance_dashboard&tab=billing`  
 **File:** `views/finance_billing.php`
 
@@ -1005,7 +1038,7 @@ These features are restricted to Administrators only.
 - Overdue invoices flagged
 - Partial payments calculated correctly
 
-#### 20.3 POS Transactions
+#### 21.3 POS Transactions
 **Page:** `?page=finance_dashboard&tab=pos_transactions`  
 **File:** `views/pos_transactions.php`
 
@@ -1028,7 +1061,7 @@ These features are restricted to Administrators only.
 - Cash reconciliation accurate
 - Sales reports calculate correctly
 
-#### 20.4 Shop Orders
+#### 21.4 Shop Orders
 **Page:** `?page=finance_dashboard&tab=shop_orders`  
 **File:** `views/shop_orders.php`
 
@@ -1054,7 +1087,7 @@ These features are restricted to Administrators only.
 
 ---
 
-### 21. Financial Reports Hub
+### 22. Financial Reports Hub
 **Page:** `?page=financial_reports` or `?page=reports`  
 **Icon:** Chart Pie  
 **File:** `views/financial_reports.php`
@@ -1089,7 +1122,7 @@ These features are restricted to Administrators only.
 
 ---
 
-### 22. Credits & Refunds
+### 23. Credits & Refunds
 **Page:** `?page=credits_refunds`  
 **Icon:** Money Bill Transfer  
 **File:** `views/accounting_credits.php`
@@ -1118,7 +1151,7 @@ These features are restricted to Administrators only.
 
 ---
 
-### 23. Expenses
+### 24. Expenses
 **Page:** `?page=expenses`  
 **Icon:** Receipt  
 **File:** `views/accounting_expenses.php`
@@ -1153,7 +1186,7 @@ These features are restricted to Administrators only.
 
 ---
 
-### 24. Products
+### 25. Products
 **Page:** `?page=products`  
 **Icon:** Box Open  
 **File:** `views/accounting_products.php` (parent page with tabs)
@@ -1162,7 +1195,7 @@ These features are restricted to Administrators only.
 
 **Tabs:**
 
-#### 24.1 Sessions
+#### 25.1 Sessions
 **Tab:** `sessions`
 
 **Goal:** Configure session types, pricing, and scheduling.
@@ -1184,7 +1217,7 @@ These features are restricted to Administrators only.
 - Coach/location assignments work
 - Restrictions validated during booking
 
-#### 24.2 Packages
+#### 25.2 Packages
 **Tab:** `packages`
 
 **Goal:** Create and manage session package bundles.
@@ -1205,7 +1238,7 @@ These features are restricted to Administrators only.
 - Restrictions apply during booking
 - Usage tracking accurate
 
-#### 24.3 Discounts
+#### 25.3 Discounts
 **Tab:** `discounts`
 
 **Goal:** Manage promotional discounts and coupons.
@@ -1227,7 +1260,7 @@ These features are restricted to Administrators only.
 - Product restrictions work
 - Minimum purchase checked
 
-#### 24.4 Merchandise
+#### 25.4 Merchandise
 **Tab:** `merchandise`
 
 **Goal:** Manage merchandise products and categories.
@@ -1241,6 +1274,10 @@ These features are restricted to Administrators only.
 - Product images
 - Active/inactive status
 - Stock alerts
+- Inventory tracking with stock movements
+- Record shipments with quantity tracking
+- Stock audit with system vs actual comparison
+- Stock movement history and audit logs
 
 **Testing Focus:**
 - Products save with all fields
@@ -1249,6 +1286,9 @@ These features are restricted to Administrators only.
 - Variants create correctly
 - Images upload/display
 - Stock alerts trigger
+- Stock movements recorded on shipment receipt
+- Stock audit adjustments update inventory correctly
+- Stock history shows all movements and audits
 
 ---
 
@@ -1256,7 +1296,7 @@ These features are restricted to Administrators only.
 
 These features are available to Front Desk Staff and Administrators.
 
-### 25. POS Terminal
+### 26. POS Terminal
 **Page:** `?page=pos_terminal`  
 **Icon:** Cash Register  
 **File:** `views/pos_terminal.php`
@@ -1293,7 +1333,33 @@ These features are available to Front Desk Staff and Administrators.
 
 ---
 
-### 26. Time Tracking
+### 27. Online Orders
+**Page:** `?page=pos_online_orders`  
+**Icon:** Shipping Fast  
+**File:** `views/pos_online_orders.php`
+
+**Purpose:** View, fulfill, and ship online merchandise orders.
+
+**Features:**
+- Online order list with status tracking
+- Order fulfillment workflow
+- Stallion Express shipping integration
+- Create and print shipping labels
+- Update order status (processing, shipped, delivered)
+- Shipping tracking information
+- POS IP whitelist access control
+
+**Testing Focus:**
+- Orders display with correct status
+- Status updates save and notify customer
+- Stallion Express label creation works
+- Shipping tracking updates properly
+- IP whitelist enforces POS access restrictions
+- CSRF protection on all actions
+
+---
+
+### 28. Time Tracking
 **Page:** `?page=pos_time_tracking`  
 **Icon:** Clock  
 **File:** `views/pos_time_tracking.php`
@@ -1319,7 +1385,7 @@ These features are available to Front Desk Staff and Administrators.
 
 ---
 
-### 27. My Schedule
+### 29. My Schedule
 **Page:** `?page=pos_schedule`  
 **Icon:** Calendar Alt  
 **File:** `views/pos_schedule.php`
@@ -1343,11 +1409,35 @@ These features are available to Front Desk Staff and Administrators.
 
 ---
 
+### 30. Company Directory
+**Page:** `?page=sip_settings`  
+**Icon:** Address Book  
+**File:** `views/sip_settings.php`
+
+**Purpose:** Staff directory with contact information and SIP phone extensions.
+
+**Features:**
+- Searchable staff directory
+- Shows all verified staff members
+- SIP extension and DID display
+- Admin can add/edit custom directory entries (rooms, shared lines)
+- Phone directory entries table for non-user entries
+- Search by name, department, or extension
+
+**Testing Focus:**
+- Directory shows all verified staff
+- Search filters results correctly
+- Admin can add/edit/delete custom entries
+- SIP extension info displays when available
+- Directory accessible from POS terminal quick actions
+
+---
+
 ## HR Section (Admins Only)
 
 These features are restricted to Administrators for HR management.
 
-### 28. Staff Scheduling
+### 31. Staff Scheduling
 **Page:** `?page=admin_staff_scheduling`  
 **Icon:** Calendar Check  
 **File:** `views/admin_staff_scheduling.php`
@@ -1376,7 +1466,7 @@ These features are restricted to Administrators for HR management.
 
 ---
 
-### 29. Time Tracking
+### 32. Time Tracking
 **Page:** `?page=hr_time_tracking`  
 **Icon:** Clock  
 **File:** `views/hr_time_tracking.php`
@@ -1402,7 +1492,7 @@ These features are restricted to Administrators for HR management.
 
 ---
 
-### 30. Payroll
+### 33. Payroll
 **Page:** `?page=payroll`  
 **Icon:** Money Check Dollar  
 **File:** `views/hr_payroll.php`
@@ -1432,7 +1522,7 @@ These features are restricted to Administrators for HR management.
 
 ---
 
-### 31. Onboarding
+### 34. Onboarding
 **Page:** `?page=onboarding`  
 **Icon:** User Plus  
 **File:** `views/hr_onboarding.php`
@@ -1464,7 +1554,7 @@ These features are restricted to Administrators for HR management.
 
 ---
 
-### 32. Contracts
+### 35. Contracts
 **Page:** `?page=employee_contracts`  
 **Icon:** File Signature  
 **File:** `views/hr_employee_contracts.php`
@@ -1493,7 +1583,7 @@ These features are restricted to Administrators for HR management.
 
 ---
 
-### 33. Complaints
+### 36. Complaints
 **Page:** `?page=complaints`  
 **Icon:** Exclamation Triangle  
 **File:** `views/hr_complaints.php`
@@ -1522,7 +1612,7 @@ These features are restricted to Administrators for HR management.
 
 ---
 
-### 34. Termination
+### 37. Termination
 **Page:** `?page=termination`  
 **Icon:** User Slash  
 **File:** `views/hr_termination.php`
@@ -1556,7 +1646,7 @@ These features are restricted to Administrators for HR management.
 
 These features are restricted to Administrators for system management.
 
-### 35. All Users
+### 38. All Users
 **Page:** `?page=all_users`  
 **Icon:** Users  
 **File:** `views/admin_users.php`
@@ -1592,7 +1682,7 @@ These features are restricted to Administrators for system management.
 
 ---
 
-### 36. Resource Management
+### 39. Resource Management
 **Page:** `?page=categories`  
 **Icon:** Layer Group  
 **File:** `views/admin_categories.php` (parent page with tabs)
@@ -1601,7 +1691,7 @@ These features are restricted to Administrators for system management.
 
 **Tabs:**
 
-#### 36.1 Skills
+#### 39.1 Skills
 **Tab:** `skills`
 
 **Goal:** Manage skill categories for evaluations.
@@ -1618,7 +1708,7 @@ These features are restricted to Administrators for system management.
 - Inactive skills hidden in forms
 - Used skills cannot be deleted
 
-#### 36.2 Drill Types
+#### 39.2 Drill Types
 **Tab:** `drills`
 
 **Goal:** Manage drill categories.
@@ -1633,7 +1723,7 @@ These features are restricted to Administrators for system management.
 - Categories organize drills
 - Icons display in drill library
 
-#### 36.3 Merchandise Categories
+#### 39.3 Merchandise Categories
 **Tab:** `merchandise`
 
 **Goal:** Organize shop products.
@@ -1648,7 +1738,7 @@ These features are restricted to Administrators for system management.
 - Nesting works properly
 - Order displays correctly in shop
 
-#### 36.4 Teams
+#### 39.4 Teams
 **Tab:** `teams`
 
 **Goal:** Manage team information.
@@ -1666,7 +1756,7 @@ These features are restricted to Administrators for system management.
 - Season linking functions
 - Inactive teams hidden from selection
 
-#### 36.5 Locations
+#### 39.5 Locations
 **Tab:** `locations`
 
 **Goal:** Manage training facility locations.
@@ -1683,7 +1773,7 @@ These features are restricted to Administrators for system management.
 - Map integration displays
 - Session booking shows locations correctly
 
-#### 36.6 Skill Levels
+#### 39.6 Skill Levels
 **Tab:** `skill_levels`
 
 **Goal:** Define skill level categories.
@@ -1697,7 +1787,7 @@ These features are restricted to Administrators for system management.
 - Skill levels save
 - Order displays in dropdowns correctly
 
-#### 36.7 Seasons
+#### 39.7 Seasons
 **Tab:** `seasons`
 
 **Goal:** Manage training seasons.
@@ -1713,7 +1803,7 @@ These features are restricted to Administrators for system management.
 - Active season enforced
 - Teams link to seasons
 
-#### 36.8 Age Groups
+#### 39.8 Age Groups
 **Tab:** `age_groups`
 
 **Goal:** Define age categories.
@@ -1730,7 +1820,7 @@ These features are restricted to Administrators for system management.
 
 ---
 
-### 37. Eval Framework
+### 40. Eval Framework
 **Page:** `?page=eval_framework`  
 **Icon:** Clipboard Check  
 **File:** `views/admin_eval_framework.php`
@@ -1761,7 +1851,7 @@ These features are restricted to Administrators for system management.
 
 ---
 
-### 38. System Notification
+### 41. System Notification
 **Page:** `?page=system_notification`  
 **Icon:** Bell  
 **File:** `views/admin_notifications.php`
@@ -1795,38 +1885,100 @@ These features are restricted to Administrators for system management.
 
 ---
 
-### 39. Security
+### 42. Security Center
 **Page:** `?page=admin_security`  
 **Icon:** Shield Halved  
-**File:** `views/admin_security.php`
+**File:** `views/admin_security.php` (parent page with tabs)
 
-**Purpose:** Configure system security settings and view security logs.
+**Purpose:** Configure system security settings, view security logs, and manage access controls.
+
+**Tabs:**
+
+#### 42.1 Login History
+**Tab:** `login_history`  
+**Page:** `?page=admin_security&tab=login_history`
+
+**Goal:** Track all login attempts with user, IP, timestamp, and success/failure status.
 
 **Features:**
-- Password policy configuration
-- Two-factor authentication (2FA) settings
-- Session timeout settings
-- IP whitelist/blacklist
+- Login attempt log with user, IP address, timestamp, and status
+- Filter by user and success/failure status
+- Paginated results
 - Failed login tracking
-- Security audit log
-- Suspicious activity alerts
-- API key management
-- CORS settings
-- Rate limiting
 
 **Testing Focus:**
-- Password policy enforced on user accounts
-- 2FA can be enabled/required
-- Session timeout logs users out
-- IP restrictions block/allow correctly
-- Failed logins tracked and locked out
-- Audit log records all security events
-- Alerts trigger on suspicious activity
-- API keys generate/revoke correctly
+- Login attempts recorded with correct details
+- Filter by user shows only that user's attempts
+- Filter by status (success/failure) works correctly
+- Pagination navigates through results
+- Failed login attempts highlighted
+
+#### 42.2 Audit Logs
+**Tab:** `audit_logs`  
+**Page:** `?page=admin_security&tab=audit_logs`
+
+**Goal:** View all data modification audit logs.
+
+**Features:**
+- Audit log of all data modifications
+- Filter by table, user, and action type
+- Detailed change records
+
+**Testing Focus:**
+- Data modifications logged with correct details
+- Filters narrow results appropriately
+- Action types (insert, update, delete) distinguishable
+
+#### 42.3 Error Logs
+**Tab:** `error_logs`  
+**Page:** `?page=admin_security&tab=error_logs`
+
+**Goal:** View PHP/application error logs.
+
+**Features:**
+- Application error log display
+- Error severity levels
+- Timestamp and context information
+
+**Testing Focus:**
+- Error logs display with correct timestamps
+- Error details include sufficient context for debugging
+
+#### 42.4 Blocklist
+**Tab:** `blocklist`  
+**Page:** `?page=admin_security&tab=blocklist`
+
+**Goal:** Manage registration email blocklist to prevent unwanted signups.
+
+**Features:**
+- Email domain/address blocklist management
+- Add/remove blocked entries
+- Prevent registration from blocked emails
+
+**Testing Focus:**
+- Blocked emails/domains prevent registration
+- Add/remove blocklist entries works
+- Existing users not affected by blocklist changes
+
+#### 42.5 POS Whitelist
+**Tab:** `pos_whitelist`  
+**Page:** `?page=admin_security&tab=pos_whitelist`
+
+**Goal:** Manage allowed IP addresses for POS terminal access.
+
+**Features:**
+- IP address whitelist for POS access
+- Add/remove allowed IPs
+- Access enforcement on POS pages
+
+**Testing Focus:**
+- Only whitelisted IPs can access POS terminal
+- Add/remove IP entries works correctly
+- Non-whitelisted IPs denied access to POS pages
 
 ---
 
-### 40. System Tools
+### 43. System Tools
 **Page:** `?page=system_tools`  
 **Icon:** Screwdriver Wrench  
 **File:** `views/admin_system_tools.php` (parent page with tabs)
@@ -1835,17 +1987,15 @@ These features are restricted to Administrators for system management.
 
 **Tabs:**
 
-#### 40.1 Settings
-**Tab:** `settings`
+#### 43.1 Settings
+**Tab:** `settings`  
+**Page:** `?page=system_tools&tab=settings`
 
 **Goal:** Configure core system settings.
 
 **Features:**
 - Site title and branding
 - Contact information
-- Email settings (SMTP)
-- SMS settings
-- Payment gateway configuration (Stripe)
 - Google Maps API key
 - Timezone
 - Currency
@@ -1854,20 +2004,94 @@ These features are restricted to Administrators for system management.
 - Session duration
 - Notification settings
 - Province/tax settings
-- Mileage rates
 
 **Testing Focus:**
 - Settings save and persist
-- Email settings test button works
-- SMTP configuration connects
-- Stripe test mode functions
 - Google Maps key validates
 - Timezone affects date displays
 - Maintenance mode blocks non-admin access
 - Tax calculations use correct rates
 
-#### 40.2 Theme
-**Tab:** `theme`
+#### 43.2 Mileage
+**Tab:** `mileage`  
+**Page:** `?page=system_tools&tab=mileage`
+
+**Goal:** Configure mileage rate settings.
+
+**Features:**
+- Mileage rate configuration
+- Rate effective dates
+
+**Testing Focus:**
+- Mileage rates save and persist
+- Rates apply correctly to mileage calculations
+
+#### 43.3 SMTP
+**Tab:** `smtp`  
+**Page:** `?page=system_tools&tab=smtp`
+
+**Goal:** Configure email/SMTP settings.
+
+**Features:**
+- SMTP server configuration
+- Email sender settings
+- Test email functionality
+
+**Testing Focus:**
+- SMTP settings save correctly
+- Test email sends successfully
+- Email delivery works after configuration
+
+#### 43.4 Nextcloud
+**Tab:** `nextcloud`  
+**Page:** `?page=system_tools&tab=nextcloud`
+
+**Goal:** Configure Nextcloud integration for backups.
+
+**Features:**
+- Nextcloud server URL and credentials
+- Backup destination folder configuration
+- Connection test
+
+**Testing Focus:**
+- Nextcloud credentials save and connect
+- Backup destination accessible
+- Connection test validates settings
+
+#### 43.5 DocuSeal
+**Tab:** `docuseal`  
+**Page:** `?page=system_tools&tab=docuseal`
+
+**Goal:** Configure e-signature integration settings.
+
+**Features:**
+- DocuSeal API configuration
+- Template management settings
+- Webhook configuration
+
+**Testing Focus:**
+- DocuSeal API key saves and validates
+- E-signature workflows function after configuration
+
+#### 43.6 Payments
+**Tab:** `payments`  
+**Page:** `?page=system_tools&tab=payments`
+
+**Goal:** Configure Stripe payment gateway.
+
+**Features:**
+- Stripe API key configuration
+- Test/live mode toggle
+- Payment settings
+
+**Testing Focus:**
+- Stripe keys save correctly
+- Test mode processes test payments
+- Live mode toggle requires confirmation
+
+#### 43.7 Theme
+**Tab:** `theme`  
+**Page:** `?page=system_tools&tab=theme`
 
 **Goal:** Customize application appearance.
 
@@ -1888,8 +2112,41 @@ These features are restricted to Administrators for system management.
 - Custom CSS applies
 - Changes preview before saving
 
-#### 40.3 Database Tools
-**Tab:** `database`
+#### 43.8 Stallion Express
+**Tab:** `stallion`  
+**Page:** `?page=system_tools&tab=stallion`
+
+**Goal:** Configure Stallion Express shipping integration.
+
+**Features:**
+- Stallion Express API credentials
+- Shipping rate configuration
+- Label printing settings
+
+**Testing Focus:**
+- API credentials save and validate
+- Shipping labels generate correctly
+- Rate calculations work
+
+#### 43.9 Paperless-NGX
+**Tab:** `paperless`  
+**Page:** `?page=system_tools&tab=paperless`
+
+**Goal:** Configure OCR/document management integration.
+
+**Features:**
+- Paperless-NGX server URL and API key
+- Document processing settings
+- API version configuration
+
+**Testing Focus:**
+- Paperless-NGX credentials save and connect
+- Document uploads process through OCR
+- API versioning handled correctly
+
+#### 43.10 Database Tools
+**Tab:** `database`  
+**Page:** `?page=system_tools&tab=database`
 
 **Goal:** Database backup, restore, and maintenance.
 
@@ -1925,10 +2182,39 @@ These features are restricted to Administrators for system management.
 - Storage report accurate
 - Exports complete and downloadable
 
-#### 40.4 System Check
-**Tab:** (sometimes integrated in system_tools)
+#### 43.11 Encryption
+**Tab:** `encryption`  
+**Page:** `?page=system_tools&tab=encryption`
 
-**Goal:** Verify system health and requirements.
+**Goal:** Manage encryption key settings.
+
+**Features:**
+- Encryption key management
+- Key rotation support
+
+**Testing Focus:**
+- Encryption keys save securely
+- Key rotation does not break existing encrypted data
+
+#### 43.12 Landing Page
+**Tab:** `landing`  
+**Page:** `?page=system_tools&tab=landing`
+
+**Goal:** Customize public landing page content.
+
+**Features:**
+- Landing page content editor
+- Hero section configuration
+- Feature highlights management
+
+**Testing Focus:**
+- Landing page content saves and displays publicly
+- Changes reflect immediately on the public page
+
+#### 43.13 System Health
+**Link:** `system_health_validator.php`
+
+**Goal:** Validate overall system health.
 
 **Features:**
 - PHP version check
@@ -1947,9 +2233,72 @@ These features are restricted to Administrators for system management.
 - API tests connect
 - Metrics display current values
 
+#### 43.14 Updates
+**Tab:** `updates`  
+**Page:** `?page=system_tools&tab=updates`
+
+**Goal:** Feature importer and Stripe library updates.
+
+**Features:**
+- Feature import tool
+- Stripe PHP library version management
+- Update status tracking
+
+**Testing Focus:**
+- Feature importer loads and applies updates
+- Stripe library updates without breaking payments
+
+#### 43.15 API Keys
+**Tab:** `api_keys`  
+**Page:** `?page=system_tools&tab=api_keys`
+
+**Goal:** Manage API keys for integrations.
+
+**Features:**
+- API key generation
+- Key listing and revocation
+- Permission scoping
+
+**Testing Focus:**
+- API keys generate with correct permissions
+- Revoked keys no longer authenticate
+- Key list displays all active keys
+
+#### 43.16 NDI Cameras
+**Tab:** `ndi_cameras`  
+**Page:** `?page=system_tools&tab=ndi_cameras`
+
+**Goal:** Manage NDI cameras for video capture.
+
+**Features:**
+- NDI camera discovery and registration
+- Camera configuration settings
+- Video feed testing
+
+**Testing Focus:**
+- Camera entries save correctly
+- Camera settings persist
+- NDI camera tab accessible from System Tools
+
+#### 43.17 Game Plan
+**Tab:** `gameplan`  
+**Page:** `?page=system_tools&tab=gameplan`
+
+**Goal:** Configure Game Plan TV settings.
+
+**Features:**
+- Game Plan display configuration
+- TV pairing settings
+- Content scheduling
+
+**Testing Focus:**
+- Game Plan settings save and persist
+- TV pairing configuration works
+- Settings reflect on Game Plan TV display
+
 ---
 
-### 41. Marketing
+### 44. Marketing
 **Page:** `?page=marketing`  
 **Icon:** Bullhorn  
 **File:** `views/admin_business_cards.php`
@@ -1981,7 +2330,7 @@ These features are restricted to Administrators for system management.
 
 These features are available to all users in the sidebar footer.
 
-### 42. Profile Settings
+### 45. Profile Settings
 **Page:** `?page=profile`  
 **Icon:** User Gear  
 **File:** `views/profile.php`
@@ -2040,6 +2389,50 @@ These features are available to all users in the sidebar footer.
 - Attendance marks save
 - Notes save properly
 - Videos from session accessible
+
+---
+
+## Automated Browser Test Suite
+
+The project includes automated Playwright browser tests in the `tests/` directory. See `tests/README.md` for setup instructions.
+
+**Running Tests:**
+```
+npm test              # Run all tests
+npm run test:headed   # See browser during test
+npm run test:ui       # Interactive mode
+npm run test:debug    # Debug mode
+```
+
+**Test Specs (20 files):**
+
+| # | Test File | Description |
+|---|-----------|-------------|
+| 1 | `admin-updates-tab.spec.js` | Feature Importer in System Tools Updates tab |
+| 2 | `backup-nextcloud-destination.spec.js` | Database backup Nextcloud destination handling |
+| 3 | `booking-cancellation.spec.js` | Booking cancellation CRUD operations |
+| 4 | `button-fixes.spec.js` | UI button styling compliance |
+| 5 | `database-fixes.spec.js` | SQL column fix validation (6 critical fixes) |
+| 6 | `encryption-consolidation.spec.js` | Encryption function consolidation in security.php |
+| 7 | `fusionpbx-sip-integration.spec.js` | FusionPBX removal and Company Directory migration |
+| 8 | `inventory-tracking-system.spec.js` | Merchandise inventory tracking schema and modals |
+| 9 | `login-history.spec.js` | Login attempt recording and display |
+| 10 | `merchandise-edit-fix.spec.js` | Merchandise product edit endpoint fix |
+| 11 | `merchandise-edit-stock-level.spec.js` | Stock level editing in product modals |
+| 12 | `ndi-cameras-tab.spec.js` | NDI camera management tab |
+| 13 | `ocr-line-items-payee.spec.js` | OCR line item extraction and payee input |
+| 14 | `paperless-ngx-api-versioning.spec.js` | Paperless-NGX API versioning fix |
+| 15 | `programs-camps-feature.spec.js` | Programs & Camps feature and email export fix |
+| 16 | `pwa-landing-and-scroll.spec.js` | PWA landing page and scroll behavior |
+| 17 | `sip-phone-logging.spec.js` | Company Directory view validation |
+| 18 | `sip-wss-and-setup-migration.spec.js` | SIP WSS configuration and setup wizard |
+| 19 | `stallion-express-integration.spec.js` | Stallion Express shipping integration |
+| 20 | `team-seasons-roster.spec.js` | Team seasons and roster management |
+
+**Testing Focus:**
+- All 20 specs pass in CI environment
+- Tests validate both schema/database changes and UI behavior
+- Tests cover CRUD operations, integrations, and security features
 
 ---
 
@@ -2102,7 +2495,8 @@ This section provides important test scenarios that span multiple features.
 - Finance Dashboard (Overview/Billing/POS/Shop)
 - Products (Sessions/Packages/Discounts/Merchandise)
 - Categories (Skills/Drills/Merchandise/Teams/Locations/Skill Levels/Seasons/Age Groups)
-- System Tools (Settings/Theme/Database)
+- Security Center (Login History/Audit Logs/Error Logs/Blocklist/POS Whitelist)
+- System Tools (Settings/Mileage/SMTP/Nextcloud/DocuSeal/Payments/Theme/Stallion Express/Paperless-NGX/Database/Encryption/Landing Page/Updates/API Keys/NDI Cameras/Game Plan)
 
 ---
 
@@ -2532,6 +2926,7 @@ This section provides important test scenarios that span multiple features.
 | 1.1 | February 2026 | Added drill/practice plan export/import all tabs (11.4, 12.4), updated database backup/restore testing (40.3, scenario 10), added backup-to-file and force-to-Nextcloud features, added database import for recovery, updated data export section (14) |
 | 1.2 | February 2026 | Added security_logs column fix documentation (40.3, scenario 10), restore page design consistency notes, filter button overflow fix (15, 41), export/import route registration and style guide compliance (11.4, 12.4), business card filter layout fix (41), added Stopwatch feature (14.3), added stopwatch option to skill creation (37) |
 | 1.3 | February 2026 | Added Dual-Camera Trigger Mode to Stopwatch (14.3) — motion-detection-based start/stop using two separate device cameras for precision timing |
+| 1.4 | February 2026 | Added Programs & Camps page (Main Menu), Company Directory page (POS), Online Orders page (POS), updated Security Center with Login History/Audit Logs/Error Logs/Blocklist/POS Whitelist tabs, expanded System Tools with SMTP/Nextcloud/DocuSeal/Payments/Stallion Express/Paperless-NGX/Encryption/Landing Page/Updates/API Keys/NDI Cameras/Game Plan tabs, added booking cancellation documentation, added inventory tracking to Merchandise, added Automated Browser Test Suite reference with 20 test specs |
 
 ---
 
@@ -2550,6 +2945,7 @@ Use this section to track testing completion:
 | Point of Sale |  |  |  |  |
 | HR Section |  |  |  |  |
 | Administration |  |  |  |  |
+| Automated Browser Tests |  |  |  |  |
 | Integration Testing |  |  |  |  |
 | Security Testing |  |  |  |  |
 | Performance Testing |  |  |  |  |
