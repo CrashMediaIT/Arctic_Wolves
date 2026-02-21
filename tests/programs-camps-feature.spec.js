@@ -175,6 +175,26 @@ test.describe('Landing Page - Camps & Programs Section', () => {
     expect(content).toContain('Child pickup enabled');
     expect(content).toContain('Individual sessions available');
   });
+
+  test('Landing page shows all active camps without requiring show_on_landing flag', async () => {
+    const content = readFile('sessions_public.php');
+    // Camps query should NOT require show_on_landing = 1 (all active camps show)
+    const campsQuery = content.substring(content.indexOf('Fetch camps and multi-week programs'));
+    const campsQueryEnd = campsQuery.substring(0, campsQuery.indexOf('fetchAll'));
+    expect(campsQueryEnd).not.toContain('show_on_landing');
+  });
+
+  test('Landing page has distinct camps section with its own CSS classes', async () => {
+    const content = readFile('sessions_public.php');
+    expect(content).toContain('camps-section');
+    expect(content).toContain('camps-grid');
+    expect(content).toContain('camp-card');
+    expect(content).toContain('camp-badge');
+    expect(content).toContain('camp-name');
+    expect(content).toContain('camp-price');
+    expect(content).toContain('camp-details');
+    expect(content).toContain('camp-register-btn');
+  });
 });
 
 // =====================================================
