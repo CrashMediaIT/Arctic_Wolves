@@ -230,23 +230,12 @@ function sendEmail($to, $type, $data) {
         $loginUrl = rtrim($appUrl, '/') . '/login.php';
         $safeLoginUrl = htmlspecialchars($loginUrl, ENT_QUOTES, 'UTF-8');
         
-        // Right-aligned logo header for welcome email
-        $welcomeLogoHtml = '';
-        if (!empty($logoUrl)) {
-            $safeLogo = htmlspecialchars($logoUrl, ENT_QUOTES, 'UTF-8');
-            $welcomeLogoHtml = "<img src='$safeLogo' alt='Arctic Wolves Performance Logo' style='max-height: 60px; max-width: 200px;'>";
-        }
-        $welcomeHeader = "
-        <div style='padding-bottom: 20px; margin-bottom: 20px; border-bottom: 1px solid $borderClr; text-align: right;'>
-            $welcomeLogoHtml
-        </div>";
-        
         $body = "
         <div style='font-family: Arial, sans-serif; background: $bg; color: #fff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto;'>
-            $welcomeHeader
+            $header
             <h2 style='color: $primary; margin-top: 0;'>Welcome to the Team, $name!</h2>
             <p style='color: #ccc;'>Your account has been created. Please login with the details below:</p>
-            <div style='background: $cardBg; border-left: 4px solid $primary; padding: 20px; margin: 20px 0;'>
+            <div style='background: $cardBg; border-left: 4px solid $primary; padding: 20px; margin: 20px 0; border-radius: 6px;'>
                 <p style='margin: 0 0 10px 0;'><strong>Email:</strong> $email</p>
                 <p style='margin: 0;'><strong>Password:</strong> $pass</p>
             </div>
@@ -254,7 +243,7 @@ function sendEmail($to, $type, $data) {
             <p style='margin-top: 20px; text-align: center;'>
                 <a href='$safeLoginUrl' style='display: inline-block; background: $primary; color: #fff; padding: 14px 32px; border-radius: 6px; text-decoration: none; font-weight: bold;'>Log In Now</a>
             </p>
-            <p style='font-size:12px; color:#999;'>You will be asked to change this password on first login.</p>
+            <p style='font-size:12px; color: $textMuted;'>You will be asked to change this password on first login.</p>
             $footer
         </div>";
     }
