@@ -396,6 +396,22 @@ function parseOCRText($ocr_text, $ocr_data) {
     return $ocr_data;
 }
 
+/**
+ * Resolve payee_id from form input, creating a new payee if needed
+ */
+function resolvePayeeId($pdo, $payee_id_input, $new_payee_name_input, $user_id) {
+    if ($payee_id_input === 'new') {
+        $new_payee_name = trim($new_payee_name_input ?? '');
+        if (!empty($new_payee_name)) {
+            $stmt = $pdo->prepare("INSERT INTO payees (name, created_by) VALUES (?, ?)");
+            $stmt->execute([substr($new_payee_name, 0, 255), $user_id]);
+            return intval($pdo->lastInsertId());
+        }
+        return null;
+    }
+    return !empty($payee_id_input) ? intval($payee_id_input) : null;
+}
+
 try {
     switch ($action) {
         case 'create':
@@ -410,22 +426,8 @@ try {
             $payment_method = trim($_POST['payment_method'] ?? '');
             $reference_number = trim($_POST['reference_number'] ?? '');
             $currency = trim($_POST['currency'] ?? 'CAD');
-            $payee_id = !empty($_POST['payee_id']) ? $_POST['payee_id'] : null;
+            $payee_id = resolvePayeeId($pdo, $_POST['payee_id'] ?? null, $_POST['new_payee_name'] ?? '', $user_id);
             $line_items = isset($_POST['line_items']) ? json_decode($_POST['line_items'], true) : [];
-            
-            // Handle new payee creation
-            if ($payee_id === 'new') {
-                $new_payee_name = trim($_POST['new_payee_name'] ?? '');
-                if (!empty($new_payee_name)) {
-                    $stmt = $pdo->prepare("INSERT INTO payees (name, created_by) VALUES (?, ?)");
-                    $stmt->execute([substr($new_payee_name, 0, 255), $user_id]);
-                    $payee_id = intval($pdo->lastInsertId());
-                } else {
-                    $payee_id = null;
-                }
-            } else {
-                $payee_id = $payee_id ? intval($payee_id) : null;
-            }
             
             // Validate required fields
             if (empty($category)) {
@@ -561,21 +563,7 @@ try {
             $payment_method = trim($_POST['payment_method'] ?? '');
             $reference_number = trim($_POST['reference_number'] ?? '');
             $currency = trim($_POST['currency'] ?? 'CAD');
-            $payee_id = !empty($_POST['payee_id']) ? $_POST['payee_id'] : null;
-            
-            // Handle new payee creation
-            if ($payee_id === 'new') {
-                $new_payee_name = trim($_POST['new_payee_name'] ?? '');
-                if (!empty($new_payee_name)) {
-                    $stmt = $pdo->prepare("INSERT INTO payees (name, created_by) VALUES (?, ?)");
-                    $stmt->execute([substr($new_payee_name, 0, 255), $user_id]);
-                    $payee_id = intval($pdo->lastInsertId());
-                } else {
-                    $payee_id = null;
-                }
-            } else {
-                $payee_id = $payee_id ? intval($payee_id) : null;
-            }
+            $payee_id = resolvePayeeId($pdo, $_POST['payee_id'] ?? null, $_POST['new_payee_name'] ?? '', $user_id);
             
             // Handle file upload for update
             $receipt_url = null;

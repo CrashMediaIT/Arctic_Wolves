@@ -40,10 +40,9 @@ test.describe('OCR Line Item Extraction - process_expenses.php', () => {
     expect(content).toContain('total|subtotal|sub-total|tax|gst|hst');
   });
 
-  test('backend should handle new payee creation in create action', () => {
-    // The create action should check for payee_id === 'new'
-    expect(content).toContain("if ($payee_id === 'new')");
-    expect(content).toContain("new_payee_name");
+  test('backend should handle new payee creation via resolvePayeeId', () => {
+    expect(content).toContain("function resolvePayeeId($pdo, $payee_id_input, $new_payee_name_input, $user_id)");
+    expect(content).toContain("'new'");
     expect(content).toContain("INSERT INTO payees (name, created_by) VALUES (?, ?)");
   });
 });

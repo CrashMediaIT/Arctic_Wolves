@@ -792,11 +792,14 @@ function renderOCRItems() {
     var html = '<h4 style="margin-bottom: 10px;"><i class="fas fa-list"></i> Line Items</h4>';
     html += '<div class="ocr-items-list">';
     ocrData.items.forEach(function(item, index) {
+        var qty = parseFloat(item.quantity) || 0;
+        var unitPrice = parseFloat(item.unit_price) || 0;
+        var totalPrice = parseFloat(item.total_price) || 0;
         html += '<div class="ocr-item-row" id="ocrItem' + index + '">';
         html += '<span class="ocr-item-name">' + escapeHtml(item.name) + '</span>';
-        html += '<span class="ocr-item-qty">x' + item.quantity + '</span>';
-        html += '<span class="ocr-item-price">$' + item.unit_price.toFixed(2) + '</span>';
-        html += '<span class="ocr-item-total">$' + item.total_price.toFixed(2) + '</span>';
+        html += '<span class="ocr-item-qty">x' + escapeHtml(String(qty)) + '</span>';
+        html += '<span class="ocr-item-price">$' + escapeHtml(unitPrice.toFixed(2)) + '</span>';
+        html += '<span class="ocr-item-total">$' + escapeHtml(totalPrice.toFixed(2)) + '</span>';
         html += '<button type="button" class="btn-icon btn-delete" onclick="removeOCRItem(' + index + ')" title="Remove item"><i class="fas fa-times"></i></button>';
         html += '</div>';
     });
@@ -853,10 +856,16 @@ function useOCRData() {
         ocrData.items.forEach(function(item) {
             addLineItem();
             var row = document.getElementById('lineItem' + lineItemCount);
-            row.querySelector('.line-item-name').value = item.name || '';
-            row.querySelector('.line-item-qty').value = item.quantity || 1;
-            row.querySelector('.line-item-price').value = item.unit_price ? item.unit_price.toFixed(2) : '0.00';
-            row.querySelector('.line-item-total').value = item.total_price ? item.total_price.toFixed(2) : '0.00';
+            if (row) {
+                var nameEl = row.querySelector('.line-item-name');
+                var qtyEl = row.querySelector('.line-item-qty');
+                var priceEl = row.querySelector('.line-item-price');
+                var totalEl = row.querySelector('.line-item-total');
+                if (nameEl) nameEl.value = item.name || '';
+                if (qtyEl) qtyEl.value = item.quantity || 1;
+                if (priceEl) priceEl.value = item.unit_price ? item.unit_price.toFixed(2) : '0.00';
+                if (totalEl) totalEl.value = item.total_price ? item.total_price.toFixed(2) : '0.00';
+            }
         });
         updateLineItems();
     }
