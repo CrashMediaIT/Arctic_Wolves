@@ -124,13 +124,13 @@ function getThemeSettings() {
     global $pdo;
     $defaults = [
         'logo_url' => '',
-        'primary_color' => '#7000a4',
+        'primary_color' => '#6B46C1',
         'secondary_color' => '#c0c0c0',
-        'background_color' => '#06080b',
-        'card_background_color' => '#0d1117',
+        'background_color' => '#0A0A0F',
+        'card_background_color' => '#16161F',
         'text_color' => '#ffffff',
-        'text_muted_color' => '#94a3b8',
-        'border_color' => '#1e293b',
+        'text_muted_color' => '#A8A8B8',
+        'border_color' => '#2D2D3F',
         'success_color' => '#22c55e',
         'error_color' => '#ef4444',
         'warning_color' => '#f59e0b'
@@ -225,19 +225,28 @@ function sendEmail($to, $type, $data) {
         $email = htmlspecialchars($data['email'] ?? '');
         $pass  = htmlspecialchars($data['password'] ?? '');
         
+        // Build login URL from APP_URL env or fallback
+        $appUrl = getenv('APP_URL') ?: 'https://arcticwolves.ca';
+        $loginUrl = rtrim($appUrl, '/') . '/login.php';
+        $safeLoginUrl = htmlspecialchars($loginUrl, ENT_QUOTES, 'UTF-8');
+        
         $body = "
         <div style='font-family: Arial, sans-serif; background: $bg; color: #fff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto;'>
             $header
             <h2 style='color: $primary; margin-top: 0;'>Welcome to the Team, $name!</h2>
             <p style='color: #ccc;'>Your account has been created. Please login with the details below:</p>
-            <div style='background: $cardBg; border-left: 4px solid $primary; padding: 20px; margin: 20px 0;'>
+            <div style='background: $cardBg; border-left: 4px solid $primary; padding: 20px; margin: 20px 0; border-radius: 6px;'>
                 <p style='margin: 0 0 10px 0;'><strong>Email:</strong> $email</p>
                 <p style='margin: 0;'><strong>Password:</strong> $pass</p>
             </div>
-            <p style='font-size:12px; color:#999;'>You will be asked to change this password on first login.</p>
+            <p style='color: #ccc;'>You can log in at: <a href='$safeLoginUrl' style='color: $primary; text-decoration: underline;'>$safeLoginUrl</a></p>
+            <p style='margin-top: 20px; text-align: center;'>
+                <a href='$safeLoginUrl' style='display: inline-block; background: $primary; color: #fff; padding: 14px 32px; border-radius: 6px; text-decoration: none; font-weight: bold;'>Log In Now</a>
+            </p>
+            <p style='font-size:12px; color: $textMuted;'>You will be asked to change this password on first login.</p>
             $footer
         </div>";
-    } 
+    }
     
     // 3. PAYMENT RECEIPT (Stripe Success)
     elseif ($type == 'payment_receipt') {
