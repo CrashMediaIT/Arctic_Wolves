@@ -23,7 +23,7 @@ try {
         
         // 4. FIND THE PENDING BOOKING
         $stmt = $pdo->prepare("
-            SELECT b.*, s.title, s.date, s.time, u.email, u.first_name 
+            SELECT b.*, s.title, s.session_date, s.session_time, u.email, u.first_name 
             FROM bookings b
             JOIN sessions s ON b.session_id = s.id
             JOIN users u ON b.user_id = u.id
@@ -39,7 +39,7 @@ try {
             $pdo->prepare("UPDATE bookings SET status = 'paid' WHERE id = ?")->execute([$booking['id']]);
 
             // 6. SEND EMAIL RECEIPT
-            $session_date = date('M j, Y', strtotime($booking['date']));
+            $session_date = date('M j, Y', strtotime($booking['session_date']));
             
             sendEmail($booking['email'], 'payment_receipt', [
                 'session_title' => $booking['title'],
