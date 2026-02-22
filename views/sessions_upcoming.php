@@ -39,7 +39,11 @@ if ($user_role === 'athlete') {
             LEFT JOIN session_practice_plans spp ON spp.session_id = s.id
             LEFT JOIN practice_plans pp ON spp.practice_plan_id = pp.id
             LEFT JOIN bookings b ON b.session_id = s.id AND b.user_id = ?
-            WHERE b.user_id IS NOT NULL
+            WHERE (b.user_id IS NOT NULL OR s.id IN (
+                SELECT ps.session_id FROM package_sessions ps
+                INNER JOIN user_packages up ON up.package_id = ps.package_id
+                WHERE up.user_id = ? AND up.payment_status = 'paid' AND ps.session_id IS NOT NULL
+            ))
               AND s.session_date < NOW()
               AND s.status IN ('scheduled', 'completed')
         ";
@@ -62,13 +66,17 @@ if ($user_role === 'athlete') {
             LEFT JOIN session_practice_plans spp ON spp.session_id = s.id
             LEFT JOIN practice_plans pp ON spp.practice_plan_id = pp.id
             LEFT JOIN bookings b ON b.session_id = s.id AND b.user_id = ?
-            WHERE b.user_id IS NOT NULL
+            WHERE (b.user_id IS NOT NULL OR s.id IN (
+                SELECT ps.session_id FROM package_sessions ps
+                INNER JOIN user_packages up ON up.package_id = ps.package_id
+                WHERE up.user_id = ? AND up.payment_status = 'paid' AND ps.session_id IS NOT NULL
+            ))
               AND s.session_date >= NOW()
               AND s.status = 'scheduled'
-              AND b.status != 'cancelled'
+              AND (b.status IS NULL OR b.status != 'cancelled')
         ";
     }
-    $params = [$user_id];
+    $params = [$user_id, $user_id];
 } else {
     if ($show_history) {
         $sessions_query = "

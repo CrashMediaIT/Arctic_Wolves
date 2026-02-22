@@ -361,9 +361,11 @@ CREATE TABLE IF NOT EXISTS `user_packages` (
     `expiry_date` DATE DEFAULT NULL,
     `payment_status` ENUM('pending', 'paid', 'refunded') DEFAULT 'pending',
     `amount_paid` DECIMAL(10,2) DEFAULT 0.00,
+    `stripe_session_id` VARCHAR(255) DEFAULT NULL COMMENT 'Stripe checkout session ID for payment tracking',
     FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`package_id`) REFERENCES `packages`(`id`) ON DELETE CASCADE,
-    INDEX `idx_user` (`user_id`)
+    INDEX `idx_user` (`user_id`),
+    INDEX `idx_stripe_session` (`stripe_session_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Discount codes
@@ -4616,3 +4618,8 @@ CREATE TABLE IF NOT EXISTS `marketing_email_campaigns` (
 -- Add show_on_landing to packages if not exists (for camps/programs landing page display)
 ALTER TABLE `packages`
 ADD COLUMN IF NOT EXISTS `show_on_landing` TINYINT(1) DEFAULT 0 COMMENT 'Whether to show on public landing page';
+
+-- Add stripe_session_id to user_packages for payment tracking and idempotency
+ALTER TABLE `user_packages`
+ADD COLUMN IF NOT EXISTS `stripe_session_id` VARCHAR(255) DEFAULT NULL COMMENT 'Stripe checkout session ID for payment tracking',
+ADD INDEX IF NOT EXISTS `idx_stripe_session` (`stripe_session_id`);
