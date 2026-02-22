@@ -131,11 +131,11 @@ if ($db_connected) {
         // Don't reset $sessions here, keep template sessions if regular fetch fails
     }
     
-    // Fetch packages marked for landing page (credits, bundled, dollar_value)
+    // Fetch active packages for landing page (credits, bundled, dollar_value)
     try {
         $packagesStmt = $pdo->query("
             SELECT * FROM packages 
-            WHERE is_active = 1 AND show_on_landing = 1 AND package_type NOT IN ('camp', 'multi_week')
+            WHERE is_active = 1 AND (package_type IS NULL OR package_type NOT IN ('camp', 'multi_week'))
             ORDER BY price ASC
         ");
         $packages = $packagesStmt->fetchAll(PDO::FETCH_ASSOC);

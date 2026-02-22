@@ -118,11 +118,11 @@ try {
             $stmt->execute([$stripe_sid]);
             $booking = $stmt->fetch();
 
-            // Only process if it hasn't been processed yet
-            if ($booking && $booking['status'] == 'pending') {
+            // Only process if payment hasn't been recorded yet
+            if ($booking && $booking['payment_status'] !== 'paid') {
                 
-                // 5. MARK AS PAID IN DB
-                $pdo->prepare("UPDATE bookings SET status = 'paid' WHERE id = ?")->execute([$booking['id']]);
+                // 5. MARK AS PAID IN DB (update payment_status, not status)
+                $pdo->prepare("UPDATE bookings SET payment_status = 'paid' WHERE id = ?")->execute([$booking['id']]);
 
                 // 6. SEND EMAIL RECEIPT
                 $session_date = date('M j, Y', strtotime($booking['session_date']));

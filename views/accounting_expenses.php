@@ -768,6 +768,8 @@ document.getElementById('ocrFileInput').addEventListener('change', function(e) {
             document.getElementById('ocrLoadingIndicator').style.display = 'none';
             if (data.success && data.ocr_data) {
                 ocrData = data.ocr_data;
+                ocrData._receipt_url = data.receipt_url || null;
+                ocrData._nextcloud_path = data.nextcloud_path || null;
                 document.getElementById('ocrVendor').textContent = ocrData.vendor || '-';
                 document.getElementById('ocrDate').textContent = ocrData.date || '-';
                 document.getElementById('ocrSubtotal').textContent = '$' + (ocrData.subtotal || 0).toFixed(2);

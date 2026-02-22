@@ -365,11 +365,10 @@ if ($action === 'book_private_session') {
         }
         $checkout_session = \Stripe\Checkout\Session::create($stripe_params);
         
-        // Save booking with pending status until payment confirmed
-        // Note: payment_status='pending' until Stripe webhook confirms payment
+        // Save booking with confirmed status, payment_status='pending' until Stripe confirms payment
         $stmt = $pdo->prepare("
             INSERT INTO bookings (session_id, user_id, amount, payment_status, status, notes) 
-            VALUES (?, ?, ?, 'pending', 'pending', ?)
+            VALUES (?, ?, ?, 'pending', 'confirmed', ?)
         ");
         $stmt->execute([$session_id, $user_id, $final_price, $notes]);
         $new_booking_id = $pdo->lastInsertId();
@@ -472,8 +471,8 @@ try {
     }
     $checkout_session = \Stripe\Checkout\Session::create($stripe_params);
 
-    // 7. SAVE PENDING BOOKING IN DB
-    $stmt = $pdo->prepare("INSERT INTO bookings (user_id, session_id, stripe_session_id, amount_paid, original_price, discount_code, status) VALUES (?, ?, ?, ?, ?, ?, 'pending')");
+    // 7. SAVE BOOKING IN DB (status='confirmed', payment_status tracks payment state separately)
+    $stmt = $pdo->prepare("INSERT INTO bookings (user_id, session_id, stripe_session_id, amount_paid, original_price, discount_code, status, payment_status) VALUES (?, ?, ?, ?, ?, ?, 'confirmed', 'pending')");
     $stmt->execute([$user_id, $session_id, $checkout_session->id, $final_price, $original_price, $applied_code]);
     $new_booking_id = $pdo->lastInsertId();
 

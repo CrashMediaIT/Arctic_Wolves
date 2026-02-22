@@ -49,6 +49,14 @@ function connectNextcloud($settings) {
     $username = $settings['nextcloud_username'];
     $password = $settings['nextcloud_password'];
     
+    // Decrypt password if it was stored encrypted
+    if (function_exists('decryptPassword')) {
+        $decrypted = decryptPassword($password);
+        if (!empty($decrypted)) {
+            $password = $decrypted;
+        }
+    }
+    
     return [
         'url' => $url,
         'username' => $username,
