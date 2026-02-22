@@ -32,18 +32,34 @@ try {
         }
     }
     
-    // Get parent categories for dropdown
+    // Get all categories for parent dropdown (supports multi-level nesting)
     $parentCategoriesStmt = $pdo->prepare("
-        SELECT id, name FROM merchandise_categories WHERE parent_id IS NULL OR parent_id = 0 ORDER BY name ASC
+        SELECT id, name, parent_id FROM merchandise_categories ORDER BY display_order ASC, name ASC
     ");
     $parentCategoriesStmt->execute();
     $parentCategories = $parentCategoriesStmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Build hierarchical list with depth for indentation in dropdowns
+    $parentCategoriesFlat = [];
+    function buildCategoryTree($categories, $parentId = null, $depth = 0, &$result = []) {
+        foreach ($categories as $cat) {
+            $catParent = empty($cat['parent_id']) ? null : $cat['parent_id'];
+            if ($catParent == $parentId) {
+                $cat['depth'] = $depth;
+                $result[] = $cat;
+                buildCategoryTree($categories, $cat['id'], $depth + 1, $result);
+            }
+        }
+        return $result;
+    }
+    $parentCategoriesFlat = buildCategoryTree($parentCategories);
     
 } catch (PDOException $e) {
     error_log("Merchandise categories fetch error: " . $e->getMessage());
     $categories = [];
     $subcategories = [];
     $parentCategories = [];
+    $parentCategoriesFlat = [];
     $allCategories = [];
 }
 
@@ -205,8 +221,8 @@ $subcategoryCount = $totalCategories - $parentCount;
                     <label class="form-label">Parent Category</label>
                     <select name="parent_id" class="form-input">
                         <option value="">None (Top-Level Category)</option>
-                        <?php foreach ($parentCategories as $parentCat): ?>
-                            <option value="<?= $parentCat['id'] ?>"><?= htmlspecialchars($parentCat['name']) ?></option>
+                        <?php foreach ($parentCategoriesFlat as $parentCat): ?>
+                            <option value="<?= $parentCat['id'] ?>"><?= str_repeat('— ', $parentCat['depth']) ?><?= htmlspecialchars($parentCat['name']) ?></option>
                         <?php endforeach; ?>
                     </select>
                     <small style="color: var(--text-dim);">Select a parent to make this a subcategory</small>
@@ -275,8 +291,8 @@ $subcategoryCount = $totalCategories - $parentCount;
                     <label class="form-label">Parent Category</label>
                     <select name="parent_id" id="edit-category-parent" class="form-input">
                         <option value="">None (Top-Level Category)</option>
-                        <?php foreach ($parentCategories as $parentCat): ?>
-                            <option value="<?= $parentCat['id'] ?>"><?= htmlspecialchars($parentCat['name']) ?></option>
+                        <?php foreach ($parentCategoriesFlat as $parentCat): ?>
+                            <option value="<?= $parentCat['id'] ?>"><?= str_repeat('— ', $parentCat['depth']) ?><?= htmlspecialchars($parentCat['name']) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -523,14 +539,22 @@ function editCategory(category) {
     document.getElementById('edit-category-parent').value = category.parent_id || '';
     document.getElementById('edit-category-slug').value = category.slug || '';
     
-    // Don't allow selecting self as parent
+    // Don't allow selecting self or descendants as parent (prevent circular references)
+    var allCats = <?= json_encode($parentCategoriesFlat, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+    function getDescendantIds(catId) {
+        var ids = [catId];
+        allCats.forEach(function(c) {
+            if (c.parent_id == catId) {
+                ids = ids.concat(getDescendantIds(c.id));
+            }
+        });
+        return ids;
+    }
+    var disabledIds = getDescendantIds(category.id);
+    
     const parentSelect = document.getElementById('edit-category-parent');
     Array.from(parentSelect.options).forEach(option => {
-        if (option.value == category.id) {
-            option.disabled = true;
-        } else {
-            option.disabled = false;
-        }
+        option.disabled = option.value !== '' && disabledIds.indexOf(parseInt(option.value)) !== -1;
     });
     
     // Show image preview if exists

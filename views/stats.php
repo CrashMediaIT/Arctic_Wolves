@@ -635,12 +635,70 @@ try {
 
         <!-- Athlete Stats by Season -->
         <?php if (count($athleteStats) > 0): ?>
+        <?php
+        // Determine if athlete is a goalie based on their team position or stat data
+        $isGoalie = false;
+        // Check from team rosters
+        foreach ($userTeams as $team) {
+            if (!empty($team['position']) && stripos($team['position'], 'goalie') !== false) {
+                $isGoalie = true;
+                break;
+            }
+        }
+        // Also check if goalie stats exist (saves, gaa, etc.)
+        if (!$isGoalie) {
+            foreach ($athleteStats as $stat) {
+                if ((!empty($stat['saves']) && $stat['saves'] > 0) || (!empty($stat['gaa']) && $stat['gaa'] > 0) || (!empty($stat['save_percentage']) && $stat['save_percentage'] > 0)) {
+                    $isGoalie = true;
+                    break;
+                }
+            }
+        }
+        ?>
         <div class="card">
             <div class="card-header">
                 <h3><i class="fas fa-chart-bar"></i> Season Statistics</h3>
             </div>
             <div class="card-body">
                 <div class="table-wrapper">
+                    <?php if ($isGoalie): ?>
+                    <!-- Goalie Stats Table -->
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Season</th>
+                                <th>GP</th>
+                                <th>W</th>
+                                <th>L</th>
+                                <th>T</th>
+                                <th>SA</th>
+                                <th>GA</th>
+                                <th>SV</th>
+                                <th>SV%</th>
+                                <th>GAA</th>
+                                <th>SO</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($athleteStats as $stat): ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars($stat['season'] ?? 'N/A'); ?></td>
+                                    <td><?php echo htmlspecialchars($stat['games_played'] ?? 0); ?></td>
+                                    <td><?php echo htmlspecialchars($stat['wins'] ?? 0); ?></td>
+                                    <td><?php echo htmlspecialchars($stat['losses'] ?? 0); ?></td>
+                                    <td><?php echo htmlspecialchars($stat['ties'] ?? 0); ?></td>
+                                    <td><?php echo htmlspecialchars($stat['shots_against'] ?? 0); ?></td>
+                                    <td><?php echo htmlspecialchars($stat['goals_against'] ?? 0); ?></td>
+                                    <td><?php echo htmlspecialchars($stat['saves'] ?? 0); ?></td>
+                                    <td><strong><?php echo number_format(($stat['save_percentage'] ?? 0) * 100, 1); ?>%</strong></td>
+                                    <td><strong><?php echo number_format($stat['gaa'] ?? 0, 2); ?></strong></td>
+                                    <td><?php echo htmlspecialchars($stat['shutouts'] ?? 0); ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                    <?php else: ?>
+                    <!-- Player (Skater) Stats Table -->
                     <table class="data-table">
                         <thead>
                             <tr>
@@ -667,6 +725,7 @@ try {
                             <?php endforeach; ?>
                         </tbody>
                     </table>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>

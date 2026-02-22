@@ -129,6 +129,22 @@ try {
                 throw new Exception('Category cannot be its own parent');
             }
             
+            // Prevent circular references - check if parentId is a descendant of this category
+            if ($parentId !== null) {
+                $checkId = $parentId;
+                $visited = [$id];
+                while ($checkId !== null) {
+                    if (in_array($checkId, $visited)) {
+                        throw new Exception('Cannot set parent: would create a circular reference');
+                    }
+                    $visited[] = $checkId;
+                    $ancestorStmt = $pdo->prepare("SELECT parent_id FROM merchandise_categories WHERE id = ?");
+                    $ancestorStmt->execute([$checkId]);
+                    $ancestor = $ancestorStmt->fetch(PDO::FETCH_ASSOC);
+                    $checkId = ($ancestor && !empty($ancestor['parent_id'])) ? intval($ancestor['parent_id']) : null;
+                }
+            }
+            
             // Generate slug if not provided
             if (empty($slug)) {
                 $slug = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '-', $name));
@@ -182,6 +198,15 @@ try {
             
             if ($productCount > 0) {
                 throw new Exception('Cannot delete category with existing products. Please move or delete the products first.');
+            }
+            
+            // Check if category has subcategories
+            $checkSubStmt = $pdo->prepare("SELECT COUNT(*) FROM merchandise_categories WHERE parent_id = ?");
+            $checkSubStmt->execute([$id]);
+            $subCount = $checkSubStmt->fetchColumn();
+            
+            if ($subCount > 0) {
+                throw new Exception('Cannot delete category with subcategories. Please move or delete the subcategories first.');
             }
             
             $stmt = $pdo->prepare("DELETE FROM merchandise_categories WHERE id = ?");

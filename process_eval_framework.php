@@ -73,13 +73,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $category_id = $pdo->lastInsertId();
                 Auditor::log($pdo, $user_id, 'create', 'eval_categories', $category_id, ['action' => 'Created eval category', 'name' => $name]);
                 
-                // If skills were selected from library, assign them to this category
+                // If skills were selected from library, assign them to this category via junction table
                 if (!empty($skill_ids) && is_array($skill_ids)) {
-                    $updateStmt = $pdo->prepare("UPDATE eval_skills SET category_id = ? WHERE id = ?");
+                    $insertJunction = $pdo->prepare("
+                        INSERT IGNORE INTO eval_skill_categories (skill_id, category_id, display_order, created_at)
+                        VALUES (?, ?, ?, NOW())
+                    ");
+                    $order = 0;
                     foreach ($skill_ids as $skill_id) {
                         $skill_id = intval($skill_id);
                         if ($skill_id > 0) {
-                            $updateStmt->execute([$category_id, $skill_id]);
+                            $insertJunction->execute([$skill_id, $category_id, $order++]);
                         }
                     }
                 }
@@ -101,9 +105,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 
                 if ($skill_id > 0) {
-                    // Assign existing skill to this category
-                    $stmt = $pdo->prepare("UPDATE eval_skills SET category_id = ? WHERE id = ?");
-                    $stmt->execute([$category_id, $skill_id]);
+                    // Assign existing skill to this category via junction table
+                    $stmt = $pdo->prepare("
+                        INSERT IGNORE INTO eval_skill_categories (skill_id, category_id, created_at)
+                        VALUES (?, ?, NOW())
+                    ");
+                    $stmt->execute([$skill_id, $category_id]);
                     sendResponse(true, 'Skill added to category successfully');
                 } elseif (!empty($new_skill_name)) {
                     // Create a new skill and assign to this category
@@ -113,7 +120,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         VALUES (?, ?, ?, ?, NOW())
                     ");
                     $stmt->execute([$category_id, $new_skill_name, $new_skill_description, $has_stopwatch]);
-                    sendResponse(true, 'New skill created and added to category', 'admin_eval_framework', ['skill_id' => $pdo->lastInsertId()]);
+                    $newSkillId = $pdo->lastInsertId();
+                    
+                    // Also add to junction table
+                    $pdo->prepare("
+                        INSERT IGNORE INTO eval_skill_categories (skill_id, category_id, created_at)
+                        VALUES (?, ?, NOW())
+                    ")->execute([$newSkillId, $category_id]);
+                    
+                    sendResponse(true, 'New skill created and added to category', 'admin_eval_framework', ['skill_id' => $newSkillId]);
                 } else {
                     throw new Exception('Please select a skill from the library or create a new one');
                 }
@@ -157,11 +172,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'delete_category':
                 $category_id = intval($_POST['category_id']);
                 
-                // Check if category has skills
-                $check = $pdo->prepare("SELECT COUNT(*) as count FROM eval_skills WHERE category_id = ?");
+                // Check if category has skills via junction table
+                $check = $pdo->prepare("SELECT COUNT(*) as count FROM eval_skill_categories WHERE category_id = ?");
                 $check->execute([$category_id]);
                 if ($check->fetch()['count'] > 0) {
-                    throw new Exception('Cannot delete category with existing skills');
+                    throw new Exception('Cannot delete category with existing skills. Remove skills from this category first.');
                 }
                 
                 $stmt = $pdo->prepare("DELETE FROM eval_categories WHERE id = ?");
@@ -220,6 +235,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ");
                 $stmt->execute([$category_id, $name, $description, $has_stopwatch]);
                 $newSkillId = $pdo->lastInsertId();
+                
+                // Also add to junction table
+                $pdo->prepare("
+                    INSERT IGNORE INTO eval_skill_categories (skill_id, category_id, created_at)
+                    VALUES (?, ?, NOW())
+                ")->execute([$newSkillId, $category_id]);
+                
                 Auditor::log($pdo, $user_id, 'create', 'eval_skills', $newSkillId, ['action' => 'Created eval skill', 'name' => $name]);
                 
                 sendResponse(true, 'Skill created successfully', 'admin_eval_framework', ['skill_id' => $newSkillId]);
@@ -230,12 +252,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $category_id = intval($_POST['category_id']);
                 $name = trim($_POST['name']);
                 $description = trim($_POST['description']);
+                $category_ids = $_POST['category_ids'] ?? [];
                 
                 if (empty($name) || empty($description)) {
                     throw new Exception('Skill name and description are required');
                 }
                 
-                // Verify category exists
+                // Verify primary category exists
                 $check = $pdo->prepare("SELECT id FROM eval_categories WHERE id = ?");
                 $check->execute([$category_id]);
                 if (!$check->fetch()) {
@@ -248,6 +271,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     WHERE id = ?
                 ");
                 $stmt->execute([$category_id, $name, $description, $skill_id]);
+                
+                // Update junction table: if category_ids provided, replace all assignments
+                if (!empty($category_ids) && is_array($category_ids)) {
+                    $pdo->prepare("DELETE FROM eval_skill_categories WHERE skill_id = ?")->execute([$skill_id]);
+                    $insertJunction = $pdo->prepare("
+                        INSERT IGNORE INTO eval_skill_categories (skill_id, category_id, created_at)
+                        VALUES (?, ?, NOW())
+                    ");
+                    foreach ($category_ids as $cat_id) {
+                        $cat_id = intval($cat_id);
+                        if ($cat_id > 0) {
+                            $insertJunction->execute([$skill_id, $cat_id]);
+                        }
+                    }
+                } else {
+                    // Ensure at least the primary category is in junction table
+                    $pdo->prepare("
+                        INSERT IGNORE INTO eval_skill_categories (skill_id, category_id, created_at)
+                        VALUES (?, ?, NOW())
+                    ")->execute([$skill_id, $category_id]);
+                }
+                
                 Auditor::log($pdo, $user_id, 'update', 'eval_skills', $skill_id, ['action' => 'Updated eval skill', 'name' => $name]);
                 
                 sendResponse(true, 'Skill updated successfully');
@@ -263,11 +308,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new Exception('Cannot delete skill that has been used in evaluations');
                 }
                 
+                // Remove from junction table first (CASCADE should handle this, but be explicit)
+                $pdo->prepare("DELETE FROM eval_skill_categories WHERE skill_id = ?")->execute([$skill_id]);
+                
                 $stmt = $pdo->prepare("DELETE FROM eval_skills WHERE id = ?");
                 $stmt->execute([$skill_id]);
                 Auditor::log($pdo, $user_id, 'delete', 'eval_skills', $skill_id, ['action' => 'Deleted eval skill']);
                 
                 sendResponse(true, 'Skill deleted successfully');
+                break;
+                
+            case 'remove_skill_from_category':
+                $skill_id = intval($_POST['skill_id']);
+                $category_id = intval($_POST['category_id']);
+                
+                if ($skill_id <= 0 || $category_id <= 0) {
+                    throw new Exception('Invalid skill or category ID');
+                }
+                
+                $pdo->prepare("DELETE FROM eval_skill_categories WHERE skill_id = ? AND category_id = ?")->execute([$skill_id, $category_id]);
+                Auditor::log($pdo, $user_id, 'delete', 'eval_skill_categories', null, ['action' => 'Removed skill from category', 'skill_id' => $skill_id, 'category_id' => $category_id]);
+                
+                sendResponse(true, 'Skill removed from category successfully');
                 break;
                 
             case 'reorder_skills':
@@ -295,8 +357,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new Exception('Invalid category');
                 }
                 
-                // Update display_order for each skill
-                $stmt = $pdo->prepare("UPDATE eval_skills SET display_order = ? WHERE id = ? AND category_id = ?");
+                // Update display_order in junction table
+                $stmt = $pdo->prepare("UPDATE eval_skill_categories SET display_order = ? WHERE skill_id = ? AND category_id = ?");
                 foreach ($order_data as $item) {
                     $stmt->execute([intval($item['display_order']), intval($item['skill_id']), $category_id]);
                 }

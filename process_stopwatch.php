@@ -36,6 +36,7 @@ try {
         case 'save_session':
             $session_name = trim($_POST['session_name'] ?? '');
             $skill_id = !empty($_POST['skill_id']) ? (int) $_POST['skill_id'] : null;
+            $session_athlete_id = !empty($_POST['athlete_id']) ? (int) $_POST['athlete_id'] : null;
             $laps_json = $_POST['laps'] ?? '[]';
 
             if (empty($session_name)) {
@@ -53,6 +54,15 @@ try {
                 $check->execute([$skill_id]);
                 if (!$check->fetch()) {
                     $skill_id = null;
+                }
+            }
+            
+            // Validate session-level athlete_id if provided
+            if ($session_athlete_id) {
+                $check = $pdo->prepare("SELECT id FROM users WHERE id = ? AND is_active = 1");
+                $check->execute([$session_athlete_id]);
+                if (!$check->fetch()) {
+                    $session_athlete_id = null;
                 }
             }
 
@@ -79,7 +89,8 @@ try {
             ");
 
             foreach ($laps as $lap) {
-                $athlete_id = !empty($lap['athleteId']) ? (int) $lap['athleteId'] : null;
+                // Lap-level athlete takes precedence; fall back to session-level assignment
+                $athlete_id = !empty($lap['athleteId']) ? (int) $lap['athleteId'] : $session_athlete_id;
                 $lap_number = (int) ($lap['number'] ?? 0);
                 $lap_time_ms = (int) ($lap['lapTimeMs'] ?? 0);
                 $total_time_ms = (int) ($lap['totalTimeMs'] ?? 0);

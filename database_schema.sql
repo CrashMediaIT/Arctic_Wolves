@@ -760,6 +760,20 @@ CREATE TABLE IF NOT EXISTS `eval_skills` (
     INDEX `idx_active` (`is_active`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Evaluation skill-to-category assignments (many-to-many)
+CREATE TABLE IF NOT EXISTS `eval_skill_categories` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `skill_id` INT NOT NULL,
+    `category_id` INT NOT NULL,
+    `display_order` INT DEFAULT 0,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`skill_id`) REFERENCES `eval_skills`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`category_id`) REFERENCES `eval_categories`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `unique_skill_category` (`skill_id`, `category_id`),
+    INDEX `idx_skill` (`skill_id`),
+    INDEX `idx_category` (`category_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Athlete evaluations
 CREATE TABLE IF NOT EXISTS `athlete_evaluations` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,

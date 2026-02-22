@@ -9,17 +9,29 @@
 <?php
 // Fetch athlete list for coach - improved query to include all athletes the coach has worked with
 try {
-    $stmt = $pdo->prepare("
-        SELECT DISTINCT u.id, u.first_name, u.last_name, u.email, u.date_of_birth
-        FROM users u
-        WHERE u.role = 'athlete' AND u.is_active = 1
-        AND (
-            EXISTS (SELECT 1 FROM managed_athletes ma WHERE ma.athlete_id = u.id AND ma.coach_id = ?)
-            OR EXISTS (SELECT 1 FROM bookings b INNER JOIN sessions s ON b.session_id = s.id WHERE b.user_id = u.id AND s.coach_id = ?)
-        )
-        ORDER BY u.last_name, u.first_name
-    ");
-    $stmt->execute([$user_id, $user_id]);
+    $isAdminUser = ($_SESSION['user_role'] ?? '') === 'admin';
+    if ($isAdminUser) {
+        // Admins can see all athletes
+        $stmt = $pdo->prepare("
+            SELECT DISTINCT u.id, u.first_name, u.last_name, u.email, u.date_of_birth
+            FROM users u
+            WHERE u.role = 'athlete' AND u.is_active = 1
+            ORDER BY u.last_name, u.first_name
+        ");
+        $stmt->execute();
+    } else {
+        $stmt = $pdo->prepare("
+            SELECT DISTINCT u.id, u.first_name, u.last_name, u.email, u.date_of_birth
+            FROM users u
+            WHERE u.role = 'athlete' AND u.is_active = 1
+            AND (
+                EXISTS (SELECT 1 FROM managed_athletes ma WHERE ma.athlete_id = u.id AND ma.coach_id = ?)
+                OR EXISTS (SELECT 1 FROM bookings b INNER JOIN sessions s ON b.session_id = s.id WHERE b.user_id = u.id AND s.coach_id = ?)
+            )
+            ORDER BY u.last_name, u.first_name
+        ");
+        $stmt->execute([$user_id, $user_id]);
+    }
     $athletes = $stmt->fetchAll(PDO::FETCH_ASSOC);
     $athletes = decryptUserRows($athletes);
     
