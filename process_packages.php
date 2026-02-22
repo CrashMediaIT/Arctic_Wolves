@@ -238,7 +238,6 @@ try {
                     
                     $prog_stmt->execute([$package_id, $date_val, $p_start, $p_end, $p_title ?: null, $p_ind_price, $auto_session_id, $p_location ?: null]);
                 }
-                }
             }
             
             $pdo->commit();
