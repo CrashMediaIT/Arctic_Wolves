@@ -1050,7 +1050,7 @@ function editPackage(pkg) {
 }
 
 // Coaches data for per-date assignment
-var pkgCoachesData = <?php echo json_encode(array_map(function($c) { return ['id' => $c['id'], 'name' => $c['first_name'] . ' ' . $c['last_name'], 'role' => $c['role']]; }, $pkg_coaches)); ?>;
+var pkgCoachesData = <?php echo json_encode(array_map(function($c) { return ['id' => $c['id'], 'name' => $c['first_name'] . ' ' . $c['last_name'], 'role' => $c['role']]; }, $pkg_coaches), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_HEX_APOS); ?>;
 
 // Build coach checkboxes HTML for a date entry
 function buildDateCoachCheckboxes(fieldPrefix, idx, selectedCoachIds) {

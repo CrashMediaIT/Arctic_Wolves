@@ -3210,7 +3210,7 @@ function addEditMerchSizeRow() {
 // ===== Arctic Calendar Date Picker =====
 var sessionCalLocations = <?= json_encode($locations) ?>;
 var sessionCalTeams = <?= json_encode($teams) ?>;
-var sessionCalCoaches = <?= json_encode(array_map(function($c) { return ['id' => $c['id'], 'name' => $c['first_name'] . ' ' . $c['last_name'], 'role' => $c['role']]; }, $coaches)) ?>;
+var sessionCalCoaches = <?= json_encode(array_map(function($c) { return ['id' => $c['id'], 'name' => $c['first_name'] . ' ' . $c['last_name'], 'role' => $c['role']]; }, $coaches), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_HEX_APOS) ?>;
 
 // Build per-date coach checkboxes for calendar entries
 function buildCalDateCoachCheckboxes(fieldPrefix, idx, selectedCoachIds) {
