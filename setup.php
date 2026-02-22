@@ -674,6 +674,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $test_pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $test_pdo->query("SELECT 1");
             
+            // Encrypt any plaintext credentials in system_settings
+            // This ensures all sensitive settings are encrypted, including any
+            // that existed before encryption was implemented or were manually inserted
+            require_once __DIR__ . '/security.php';
+            if (function_exists('ensureCredentialsEncrypted')) {
+                $migration_result = ensureCredentialsEncrypted($test_pdo);
+                if (!empty($migration_result['migrated'])) {
+                    error_log("Setup: Encrypted " . count($migration_result['migrated']) . " plaintext credentials: " . implode(', ', $migration_result['migrated']));
+                }
+            }
+            
             // All checks passed - finalize setup
             file_put_contents($setup_complete_file, date('Y-m-d H:i:s'));
             
