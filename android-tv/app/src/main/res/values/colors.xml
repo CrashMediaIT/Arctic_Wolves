@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Arctic Wolves brand palette (matches CSS design tokens) -->
+    <color name="primary">#6B46C1</color>
+    <color name="primary_light">#8B5CF6</color>
+    <color name="bg_main">#0A0A0F</color>
+    <color name="bg_card">#16161F</color>
+    <color name="sidebar">#0D0D14</color>
+    <color name="border">#2D2D3F</color>
+
+    <color name="text_white">#FFFFFF</color>
+    <color name="text_secondary">#C0C0CC</color>
+    <color name="text_muted">#A8A8B8</color>
+
+    <color name="error">#EF4444</color>
+    <color name="error_bg">#1AEF4444</color>
+    <color name="success">#10B981</color>
+    <color name="warning">#F59E0B</color>
+    <color name="warning_bg">#1AF59E0B</color>
+    <color name="info">#3B82F6</color>
+
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+</resources>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  TV banner (320x180 dp) shown on the Android TV home screen.
+  Uses the Arctic Wolves brand colour as background with the app name.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/primary" />
+        </shape>
+    </item>
+</layer-list>
