@@ -106,6 +106,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $sessionsStmt->execute([$packageId]);
             $package['sessions'] = $sessionsStmt->fetchAll(PDO::FETCH_ASSOC);
             
+            // Fetch package coaches
+            try {
+                $coachStmt = $pdo->prepare("SELECT coach_id FROM package_coaches WHERE package_id = ?");
+                $coachStmt->execute([$packageId]);
+                $package['coach_ids_list'] = implode(',', $coachStmt->fetchAll(PDO::FETCH_COLUMN));
+            } catch (PDOException $e) {
+                $package['coach_ids_list'] = '';
+            }
+            
             echo json_encode(['success' => true, 'data' => $package]);
         } catch (Exception $e) {
             http_response_code(400);
@@ -847,6 +856,24 @@ if ($action == 'update_package') {
         ");
         $stmt->execute([$name, $description, $price, $credits, $validDays, $isActive,
                         $ageGroup ?: null, $skillLevel ?: null, $packageType, $storeCredit, $showOnLanding, $enableChildCheckin, $packageId]);
+        
+        // Update package coaches
+        try {
+            $pdo->prepare("DELETE FROM package_coaches WHERE package_id = ?")->execute([$packageId]);
+            if (!empty($_POST['coach_ids']) && is_array($_POST['coach_ids'])) {
+                $coachStmt = $pdo->prepare("INSERT INTO package_coaches (package_id, coach_id) VALUES (?, ?)");
+                foreach ($_POST['coach_ids'] as $cid) {
+                    $cid = intval($cid);
+                    if ($cid > 0) {
+                        $coachStmt->execute([$packageId, $cid]);
+                    }
+                }
+            }
+        } catch (PDOException $e) {
+            // Silently handle if table doesn't exist yet
+            error_log("Package coaches update: " . $e->getMessage());
+        }
+        
         Auditor::logChange($pdo, $user_id, 'update', 'packages', $packageId, ['action' => 'update_package', 'name' => $name, 'price' => $price, 'credits' => $credits, 'is_active' => $isActive]);
         
         if ($isAjax) {
