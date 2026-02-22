@@ -219,6 +219,41 @@ try {
         width: 100%;
         max-width: 180px;
     }
+    .sw-lap-athlete-name {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(107,70,193,0.15);
+        color: var(--primary-light);
+        padding: 3px 10px;
+        border-radius: 10px;
+        font-size: var(--font-size-sm);
+        font-weight: var(--font-weight-semibold);
+        white-space: nowrap;
+    }
+    .sw-lap-athlete-clear {
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        font-size: 16px;
+        padding: 0 2px;
+        line-height: 1;
+    }
+    .sw-lap-athlete-clear:hover {
+        color: var(--error);
+    }
+    #sw-lap-tbody .arctic-typeahead {
+        min-width: 160px;
+    }
+    #sw-lap-tbody .at-input {
+        font-size: 12px;
+        padding: 4px 8px;
+    }
+    #sw-lap-tbody .at-tag {
+        font-size: 11px;
+        padding: 2px 6px;
+    }
     .sw-session-form {
         display: flex;
         gap: var(--space-3);
@@ -425,6 +460,89 @@ try {
         font-size: 13px;
     }
     .sw-cam-remove-btn:hover {
+        background: rgba(239,68,68,0.2);
+    }
+
+    /* Multi-Watch Styles */
+    .mw-watch-item {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: var(--space-4);
+        margin-bottom: var(--space-4);
+        transition: border-color 0.2s;
+    }
+    .mw-watch-item.mw-running {
+        border-color: var(--success);
+        box-shadow: 0 0 10px rgba(16,185,129,0.15);
+    }
+    .mw-watch-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: var(--space-3);
+        gap: var(--space-3);
+        flex-wrap: wrap;
+    }
+    .mw-watch-athlete {
+        flex: 1;
+        min-width: 180px;
+    }
+    .mw-watch-display {
+        font-family: 'Courier New', 'Consolas', monospace;
+        font-size: 32px;
+        font-weight: 900;
+        color: var(--text-white);
+        letter-spacing: 2px;
+        text-align: center;
+        margin: var(--space-2) 0;
+        user-select: none;
+    }
+    .mw-watch-controls {
+        display: flex;
+        gap: var(--space-2);
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    .mw-watch-controls .sw-btn {
+        min-width: 80px;
+        height: 36px;
+        font-size: var(--font-size-sm);
+    }
+    .mw-watch-laps {
+        margin-top: var(--space-3);
+        max-height: 150px;
+        overflow-y: auto;
+        font-size: var(--font-size-sm);
+    }
+    .mw-watch-laps table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .mw-watch-laps th, .mw-watch-laps td {
+        padding: 4px 8px;
+        text-align: left;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .mw-watch-laps th {
+        color: var(--text-muted);
+        font-size: 11px;
+        text-transform: uppercase;
+    }
+    .mw-watch-laps .sw-lap-time {
+        font-family: 'Courier New', monospace;
+        font-weight: bold;
+    }
+    .mw-watch-remove {
+        background: rgba(239,68,68,0.1);
+        color: var(--error);
+        border: none;
+        padding: 6px 10px;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        font-size: 13px;
+    }
+    .mw-watch-remove:hover {
         background: rgba(239,68,68,0.2);
     }
 </style>
@@ -666,6 +784,27 @@ try {
                 <div id="sw-no-laps" class="sw-empty">
                     <i class="fas fa-stopwatch" style="font-size: 24px; margin-bottom: 8px; display: block;"></i>
                     Press <strong>Lap</strong> or <strong>Checkpoint</strong> while the timer is running to record splits
+                </div>
+            </div>
+        </div>
+
+        <!-- Multi-Watch Panel -->
+        <div class="card" id="multi-watch-card">
+            <div class="card-header">
+                <h3><i class="fas fa-users-cog"></i> Multi-Athlete Watches</h3>
+                <button class="btn btn-sm btn-primary" onclick="mwAddWatch()">
+                    <i class="fas fa-plus"></i> Add Watch
+                </button>
+            </div>
+            <div class="card-body">
+                <p style="color:var(--text-muted);font-size:var(--font-size-sm);margin-bottom:var(--space-4);">
+                    Run multiple independent watches — each assigned to an athlete. Lap/checkpoint times are automatically recorded for the assigned athlete.
+                </p>
+                <div id="mw-watches-container">
+                    <div id="mw-empty" class="sw-empty" style="padding:var(--space-5);">
+                        <i class="fas fa-stopwatch" style="font-size:24px;margin-bottom:8px;display:block;"></i>
+                        Click <strong>Add Watch</strong> to create an athlete-specific timer
+                    </div>
                 </div>
             </div>
         </div>
@@ -974,31 +1113,59 @@ function renderLaps() {
             ? '<span style="background:rgba(245,158,11,0.15);color:#f59e0b;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;"><i class="fas fa-map-marker-alt"></i> CP</span>'
             : '<span style="background:rgba(107,70,193,0.15);color:var(--primary-light);padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;"><i class="fas fa-flag"></i> Lap</span>';
 
-        let athleteSelect = '<select class="sw-assign-select" onchange="swAssignAthlete(' + i + ', this.value)">';
-        athleteSelect += '<option value="">-- Assign --</option>';
-        athleteOptions.forEach(a => {
-            const sel = lap.athleteId == a.id ? ' selected' : '';
-            athleteSelect += '<option value="' + a.id + '"' + sel + '>' + a.name + '</option>';
-        });
-        athleteSelect += '</select>';
+        const athleteDisplay = lap.athleteId && lap.athleteName
+            ? '<span class="sw-lap-athlete-name">' + escHtml(lap.athleteName) + ' <button type="button" class="sw-lap-athlete-clear" onclick="swClearLapAthlete(' + i + ')" title="Clear">&times;</button></span>'
+            : '';
+        const inputStyle = lap.athleteId ? ' style="display:none;"' : '';
 
         html += '<tr class="' + cls + '">';
         html += '<td>' + lap.number + '</td>';
         html += '<td>' + typeBadge + '</td>';
         html += '<td class="sw-lap-time">' + Stopwatch.formatTimeMs(lap.lapTimeMs) + '</td>';
         html += '<td class="sw-lap-time">' + Stopwatch.formatTimeMs(lap.totalTimeMs) + '</td>';
-        html += '<td>' + athleteSelect + '</td>';
+        html += '<td>' + athleteDisplay + '<div id="sw-lap-ta-' + i + '"' + inputStyle + '></div></td>';
         html += '</tr>';
     }
     tbody.innerHTML = html;
+
+    // Initialize mini-typeahead on each lap row
+    for (let i = laps.length - 1; i >= 0; i--) {
+        if (!laps[i].athleteId) {
+            swInitLapTypeahead(i);
+        }
+    }
 }
 
-function swAssignAthlete(lapIndex, athleteId) {
+function swInitLapTypeahead(lapIndex) {
+    const container = document.getElementById('sw-lap-ta-' + lapIndex);
+    if (!container) return;
+    new ArcticTypeahead({
+        container: container,
+        name: 'lap_athlete_' + lapIndex,
+        placeholder: 'Search athlete…',
+        roles: '',
+        multiple: false,
+        onSelect: function(item) {
+            swAssignAthlete(lapIndex, item.id, item.name);
+            renderLaps();
+        }
+    });
+}
+
+function swClearLapAthlete(lapIndex) {
+    const laps = stopwatch.getLaps();
+    if (laps[lapIndex]) {
+        laps[lapIndex].athleteId = null;
+        laps[lapIndex].athleteName = '';
+    }
+    renderLaps();
+}
+
+function swAssignAthlete(lapIndex, athleteId, athleteName) {
     const laps = stopwatch.getLaps();
     if (laps[lapIndex]) {
         laps[lapIndex].athleteId = athleteId || null;
-        const athlete = athleteOptions.find(a => a.id == athleteId);
-        laps[lapIndex].athleteName = athlete ? athlete.name : '';
+        laps[lapIndex].athleteName = athleteName || '';
     }
 }
 
@@ -1396,4 +1563,174 @@ function swCamRemoveCheckpoint(idx) {
 document.addEventListener('DOMContentLoaded', function() {
     swCamRefreshSources();
 });
+
+// ==========================================
+// Multi-Athlete Watch System
+// ==========================================
+var mwWatches = []; // Array of {id, stopwatch, athleteId, athleteName, displayEl, laps[]}
+var mwNextId = 1;
+
+function mwAddWatch() {
+    const id = mwNextId++;
+    const watch = {
+        id: id,
+        stopwatch: new Stopwatch(null), // no auto-display
+        athleteId: null,
+        athleteName: '',
+        intervalId: null,
+        laps: []
+    };
+    mwWatches.push(watch);
+    mwRenderWatch(watch);
+    document.getElementById('mw-empty').style.display = 'none';
+}
+
+function mwRenderWatch(watch) {
+    const container = document.getElementById('mw-watches-container');
+    const div = document.createElement('div');
+    div.className = 'mw-watch-item';
+    div.id = 'mw-watch-' + watch.id;
+    div.innerHTML =
+        '<div class="mw-watch-header">' +
+            '<div class="mw-watch-athlete" id="mw-athlete-' + watch.id + '"></div>' +
+            '<button class="mw-watch-remove" onclick="mwRemoveWatch(' + watch.id + ')" title="Remove watch"><i class="fas fa-times"></i></button>' +
+        '</div>' +
+        '<div class="mw-watch-display" id="mw-display-' + watch.id + '">00:00.00</div>' +
+        '<div class="mw-watch-controls">' +
+            '<button class="sw-btn sw-btn-start" id="mw-start-' + watch.id + '" onclick="mwStart(' + watch.id + ')"><i class="fas fa-play"></i> Start</button>' +
+            '<button class="sw-btn sw-btn-stop" id="mw-stop-' + watch.id + '" onclick="mwStop(' + watch.id + ')" disabled><i class="fas fa-pause"></i> Stop</button>' +
+            '<button class="sw-btn sw-btn-lap" id="mw-lap-' + watch.id + '" onclick="mwLap(' + watch.id + ')" disabled><i class="fas fa-flag"></i> Lap</button>' +
+            '<button class="sw-btn sw-btn-checkpoint" id="mw-cp-' + watch.id + '" onclick="mwCheckpoint(' + watch.id + ')" disabled><i class="fas fa-map-marker-alt"></i> CP</button>' +
+            '<button class="sw-btn sw-btn-reset" onclick="mwReset(' + watch.id + ')"><i class="fas fa-redo"></i></button>' +
+        '</div>' +
+        '<div class="mw-watch-laps" id="mw-laps-' + watch.id + '"></div>';
+    container.appendChild(div);
+
+    // Initialize athlete typeahead for this watch
+    new ArcticTypeahead({
+        container: '#mw-athlete-' + watch.id,
+        name: 'mw_athlete_' + watch.id,
+        placeholder: 'Assign athlete to this watch…',
+        roles: '',
+        multiple: false,
+        onSelect: function(item) {
+            watch.athleteId = item.id;
+            watch.athleteName = item.name;
+        },
+        onChange: function(ids) {
+            if (!ids || ids.length === 0) {
+                watch.athleteId = null;
+                watch.athleteName = '';
+            }
+        }
+    });
+}
+
+function mwGetWatch(id) {
+    return mwWatches.find(w => w.id === id);
+}
+
+function mwStart(id) {
+    const watch = mwGetWatch(id);
+    if (!watch) return;
+    watch.stopwatch.start();
+    document.getElementById('mw-start-' + id).disabled = true;
+    document.getElementById('mw-stop-' + id).disabled = false;
+    document.getElementById('mw-lap-' + id).disabled = false;
+    document.getElementById('mw-cp-' + id).disabled = false;
+    document.getElementById('mw-watch-' + id).classList.add('mw-running');
+
+    // Start display update interval
+    if (watch.intervalId) clearInterval(watch.intervalId);
+    watch.intervalId = setInterval(function() {
+        const display = document.getElementById('mw-display-' + id);
+        if (display && watch.stopwatch.running) {
+            display.textContent = Stopwatch.formatTimeMs(watch.stopwatch.getElapsedMs());
+        }
+    }, 31);
+}
+
+function mwStop(id) {
+    const watch = mwGetWatch(id);
+    if (!watch) return;
+    watch.stopwatch.stop();
+    if (watch.intervalId) { clearInterval(watch.intervalId); watch.intervalId = null; }
+    // Final display update
+    document.getElementById('mw-display-' + id).textContent = Stopwatch.formatTimeMs(watch.stopwatch.getElapsedMs());
+    document.getElementById('mw-start-' + id).disabled = false;
+    document.getElementById('mw-stop-' + id).disabled = true;
+    document.getElementById('mw-lap-' + id).disabled = true;
+    document.getElementById('mw-cp-' + id).disabled = true;
+    document.getElementById('mw-watch-' + id).classList.remove('mw-running');
+}
+
+function mwLap(id) {
+    const watch = mwGetWatch(id);
+    if (!watch) return;
+    const lap = watch.stopwatch.lap();
+    if (!lap) return;
+    lap.type = 'lap';
+    lap.athleteId = watch.athleteId;
+    lap.athleteName = watch.athleteName;
+    mwRenderLaps(id);
+}
+
+function mwCheckpoint(id) {
+    const watch = mwGetWatch(id);
+    if (!watch) return;
+    const lap = watch.stopwatch.lap();
+    if (!lap) return;
+    lap.type = 'checkpoint';
+    lap.athleteId = watch.athleteId;
+    lap.athleteName = watch.athleteName;
+    mwRenderLaps(id);
+}
+
+function mwReset(id) {
+    const watch = mwGetWatch(id);
+    if (!watch) return;
+    watch.stopwatch.reset();
+    if (watch.intervalId) { clearInterval(watch.intervalId); watch.intervalId = null; }
+    document.getElementById('mw-display-' + id).textContent = '00:00.00';
+    document.getElementById('mw-start-' + id).disabled = false;
+    document.getElementById('mw-stop-' + id).disabled = true;
+    document.getElementById('mw-lap-' + id).disabled = true;
+    document.getElementById('mw-cp-' + id).disabled = true;
+    document.getElementById('mw-watch-' + id).classList.remove('mw-running');
+    document.getElementById('mw-laps-' + id).innerHTML = '';
+}
+
+function mwRemoveWatch(id) {
+    const watch = mwGetWatch(id);
+    if (!watch) return;
+    if (watch.stopwatch.running) watch.stopwatch.stop();
+    if (watch.intervalId) clearInterval(watch.intervalId);
+    mwWatches = mwWatches.filter(w => w.id !== id);
+    const el = document.getElementById('mw-watch-' + id);
+    if (el) el.remove();
+    if (mwWatches.length === 0) {
+        document.getElementById('mw-empty').style.display = 'block';
+    }
+}
+
+function mwRenderLaps(id) {
+    const watch = mwGetWatch(id);
+    if (!watch) return;
+    const laps = watch.stopwatch.getLaps();
+    const container = document.getElementById('mw-laps-' + id);
+    if (laps.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+    let html = '<table><thead><tr><th>#</th><th>Type</th><th>Split</th><th>Total</th></tr></thead><tbody>';
+    for (let i = laps.length - 1; i >= 0; i--) {
+        const lap = laps[i];
+        const typeLabel = lap.type === 'checkpoint' ? 'CP' : 'Lap';
+        html += '<tr><td>' + lap.number + '</td><td>' + typeLabel + '</td>';
+        html += '<td class="sw-lap-time">' + Stopwatch.formatTimeMs(lap.lapTimeMs) + '</td>';
+        html += '<td class="sw-lap-time">' + Stopwatch.formatTimeMs(lap.totalTimeMs) + '</td></tr>';
+    }
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
 </script>

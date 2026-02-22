@@ -155,6 +155,7 @@ try {
             ");
             $stmt->execute([$session_id]);
             $times = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $times = decryptUserRows($times);
 
             sendJson(true, 'Session loaded', ['session' => $session, 'times' => $times]);
             break;

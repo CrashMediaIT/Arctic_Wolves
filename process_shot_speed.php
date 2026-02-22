@@ -46,12 +46,11 @@ try {
                 exit;
             }
             
-            // Verify athlete exists
+            // Verify athlete exists (any active user can have shot speed recorded)
             $athlete_check = $pdo->prepare("
                 SELECT u.id 
                 FROM users u
-                JOIN user_roles ur ON u.id = ur.user_id
-                WHERE u.id = ? AND ur.role = 'athlete' AND u.is_active = 1
+                WHERE u.id = ? AND u.is_active = 1
             ");
             $athlete_check->execute([$athlete_id]);
             if (!$athlete_check->fetch()) {
