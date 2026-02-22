@@ -54,6 +54,10 @@ if ($user_role === 'parent') {
             <h2><i class="fas fa-campground"></i> Programs & Camps</h2>
             <p class="page-subtitle">Browse and register for our camps and multi-week training programs</p>
         </div>
+        <div class="view-toggle-bar">
+            <button class="view-btn active" onclick="switchCampView('list')" id="camp-list-btn"><i class="fas fa-th-large"></i> Cards</button>
+            <button class="view-btn" onclick="switchCampView('calendar')" id="camp-calendar-btn"><i class="fas fa-calendar"></i> Calendar</button>
+        </div>
     </div>
 
     <!-- Filter tabs -->
@@ -63,6 +67,20 @@ if ($user_role === 'parent') {
         <button class="filter-btn" data-type="multi_week"><i class="fas fa-calendar-alt"></i> Weekly Programs</button>
     </div>
 
+    <!-- Calendar View -->
+    <div id="camp-calendar-view" style="display: none;">
+        <div class="camp-calendar-container">
+            <div class="camp-calendar-header">
+                <button class="btn-icon" onclick="changeCampMonth(-1)"><i class="fas fa-chevron-left"></i></button>
+                <h3 id="camp-current-month"></h3>
+                <button class="btn-icon" onclick="changeCampMonth(1)"><i class="fas fa-chevron-right"></i></button>
+            </div>
+            <div class="camp-calendar-grid" id="camp-calendar-grid"></div>
+        </div>
+    </div>
+
+    <!-- List/Card View -->
+    <div id="camp-list-view">
     <?php if (empty($programs)): ?>
     <div class="empty-state">
         <i class="fas fa-campground"></i>
@@ -278,6 +296,7 @@ if ($user_role === 'parent') {
         <?php endforeach; ?>
     </div>
     <?php endif; ?>
+    </div><!-- end camp-list-view -->
 </div>
 
 <style>
@@ -662,6 +681,141 @@ if ($user_role === 'parent') {
     .program-filter .filter-btn {
         text-align: center;
     }
+    
+    .camp-calendar-grid {
+        font-size: 12px;
+    }
+    
+    .camp-calendar-day {
+        min-height: 80px;
+        padding: 4px;
+    }
+}
+
+.view-toggle-bar {
+    display: flex;
+    gap: 5px;
+    background: #0d1117;
+    border-radius: 8px;
+    padding: 4px;
+}
+
+.view-toggle-bar .view-btn {
+    padding: 8px 16px;
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.3s;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.view-toggle-bar .view-btn:hover {
+    color: #fff;
+    background: #1e293b;
+}
+
+.view-toggle-bar .view-btn.active {
+    background: var(--primary, #7000a4);
+    color: white;
+}
+
+.camp-calendar-container {
+    background: #0d1117;
+    border: 1px solid #1e293b;
+    border-radius: 12px;
+    padding: 20px;
+}
+
+.camp-calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.camp-calendar-header h3 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.camp-calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1px;
+    background: #1e293b;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
+    overflow: hidden;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.camp-calendar-day-header {
+    background: #06080b;
+    padding: 12px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+}
+
+.camp-calendar-day {
+    background: #0d1117;
+    min-height: 100px;
+    padding: 8px;
+    position: relative;
+}
+
+.camp-calendar-day.empty {
+    background: #06080b;
+}
+
+.camp-calendar-day.today {
+    background: rgba(112, 0, 164, 0.1);
+    border: 2px solid var(--primary, #7000a4);
+}
+
+.camp-calendar-day .day-number {
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 8px;
+}
+
+.camp-calendar-day.today .day-number {
+    color: var(--primary, #7000a4);
+}
+
+.camp-event {
+    padding: 4px 6px;
+    margin-bottom: 4px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+}
+
+.camp-event.camp-type {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+}
+
+.camp-event.multi_week-type {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: white;
+}
+
+.camp-event:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
 }
 </style>
 
@@ -700,6 +854,137 @@ function toggleSchedule(packageId) {
     var el = document.getElementById('schedule-' + packageId);
     if (el) {
         el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    }
+}
+
+// Calendar functionality
+var campCalendarDate = new Date();
+var campCalendarEvents = <?php
+    // Build calendar events from camp and program dates
+    $calendarEvents = [];
+    foreach ($programs as $pkg) {
+        if ($pkg['package_type'] === 'camp') {
+            // Get camp daily schedules
+            $campSched = $pdo->prepare("SELECT * FROM camp_daily_schedules WHERE package_id = ? ORDER BY schedule_date");
+            $campSched->execute([$pkg['id']]);
+            $campDays = $campSched->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($campDays as $day) {
+                $calendarEvents[] = [
+                    'date' => $day['schedule_date'],
+                    'title' => $pkg['name'] . ($day['title'] ? ' - ' . $day['title'] : ''),
+                    'type' => 'camp',
+                    'package_id' => $pkg['id']
+                ];
+            }
+            // Also add start/end range if no daily schedules
+            if (empty($campDays) && $pkg['camp_start_date'] && $pkg['camp_end_date']) {
+                $start = new DateTime($pkg['camp_start_date']);
+                $end = new DateTime($pkg['camp_end_date']);
+                $interval = new DateInterval('P1D');
+                $period = new DatePeriod($start, $interval, $end->modify('+1 day'));
+                foreach ($period as $dt) {
+                    $calendarEvents[] = [
+                        'date' => $dt->format('Y-m-d'),
+                        'title' => $pkg['name'],
+                        'type' => 'camp',
+                        'package_id' => $pkg['id']
+                    ];
+                }
+            }
+        } elseif ($pkg['package_type'] === 'multi_week') {
+            $mwDates = $pdo->prepare("SELECT * FROM multiweek_program_dates WHERE package_id = ? ORDER BY session_date");
+            $mwDates->execute([$pkg['id']]);
+            $programDates = $mwDates->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($programDates as $pd) {
+                $calendarEvents[] = [
+                    'date' => $pd['session_date'],
+                    'title' => $pkg['name'] . ($pd['title'] ? ' - ' . $pd['title'] : ''),
+                    'type' => 'multi_week',
+                    'package_id' => $pkg['id']
+                ];
+            }
+        }
+    }
+    echo json_encode($calendarEvents);
+?>;
+
+function switchCampView(view) {
+    document.getElementById('camp-list-view').style.display = view === 'list' ? 'block' : 'none';
+    document.getElementById('camp-calendar-view').style.display = view === 'calendar' ? 'block' : 'none';
+    document.getElementById('camp-list-btn').classList.toggle('active', view === 'list');
+    document.getElementById('camp-calendar-btn').classList.toggle('active', view === 'calendar');
+    if (view === 'calendar') {
+        renderCampCalendar();
+    }
+}
+
+function changeCampMonth(delta) {
+    campCalendarDate.setMonth(campCalendarDate.getMonth() + delta);
+    renderCampCalendar();
+}
+
+function renderCampCalendar() {
+    var grid = document.getElementById('camp-calendar-grid');
+    var monthLabel = document.getElementById('camp-current-month');
+    if (!grid) return;
+    
+    var year = campCalendarDate.getFullYear();
+    var month = campCalendarDate.getMonth();
+    var monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    monthLabel.textContent = monthNames[month] + ' ' + year;
+    
+    var firstDay = new Date(year, month, 1).getDay();
+    var daysInMonth = new Date(year, month + 1, 0).getDate();
+    var today = new Date();
+    today.setHours(0,0,0,0);
+    
+    var html = '';
+    // Day headers
+    var dayHeaders = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    dayHeaders.forEach(function(d) {
+        html += '<div class="camp-calendar-day-header">' + d + '</div>';
+    });
+    
+    // Empty days before start
+    for (var i = 0; i < firstDay; i++) {
+        html += '<div class="camp-calendar-day empty"></div>';
+    }
+    
+    // Days
+    for (var day = 1; day <= daysInMonth; day++) {
+        var dateObj = new Date(year, month, day);
+        var isToday = dateObj.getTime() === today.getTime();
+        var dateStr = year + '-' + String(month+1).padStart(2,'0') + '-' + String(day).padStart(2,'0');
+        
+        var dayEvents = campCalendarEvents.filter(function(e) {
+            return e.date === dateStr;
+        });
+        
+        html += '<div class="camp-calendar-day' + (isToday ? ' today' : '') + '">';
+        html += '<div class="day-number">' + day + '</div>';
+        
+        dayEvents.forEach(function(evt, idx) {
+            if (idx < 3) {
+                html += '<div class="camp-event ' + evt.type + '-type" onclick="scrollToPackage(' + evt.package_id + ')" title="' + evt.title.replace(/"/g, '&quot;') + '">' + evt.title + '</div>';
+            }
+        });
+        if (dayEvents.length > 3) {
+            html += '<div class="camp-event" style="background:#1e293b;color:#94a3b8;cursor:default;">+' + (dayEvents.length - 3) + ' more</div>';
+        }
+        
+        html += '</div>';
+    }
+    
+    grid.innerHTML = html;
+}
+
+function scrollToPackage(packageId) {
+    switchCampView('list');
+    var el = document.getElementById('package-' + packageId);
+    if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('highlighted');
+        setTimeout(function() { el.classList.remove('highlighted'); }, 3000);
     }
 }
 </script>

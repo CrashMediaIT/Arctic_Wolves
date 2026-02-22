@@ -3108,7 +3108,7 @@ CREATE TABLE IF NOT EXISTS `session_registration_intents` (
 -- Add show_on_landing to sessions table if not exists
 ALTER TABLE `sessions`
 ADD COLUMN IF NOT EXISTS `show_on_landing` TINYINT(1) DEFAULT 0 COMMENT 'Whether to show on landing page',
-ADD COLUMN IF NOT EXISTS `session_type_category` ENUM('on_ice', 'off_ice', 'nutrition', 'meeting', 'other') DEFAULT 'on_ice';
+ADD COLUMN IF NOT EXISTS `session_type_category` ENUM('all_players', 'players', 'goalies') DEFAULT 'all_players';
 
 -- =====================================================
 -- ENHANCED EXPENSES SYSTEM TABLES (CRA Best Practices)

@@ -230,7 +230,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new Exception('Invalid evaluation ID');
                 }
                 
-                // If selecting existing user, get their info
+                // Track whether data is already encrypted (from existing user lookup)
+                $already_encrypted = false;
+                
+                // If selecting existing user, get their info (already encrypted in DB)
                 if ($user_athlete_id > 0) {
                     $stmt = $pdo->prepare("SELECT first_name, last_name, email, date_of_birth FROM users WHERE id = ?");
                     $stmt->execute([$user_athlete_id]);
@@ -240,10 +243,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $last_name = $user['last_name'];
                         $email = $user['email'];
                         $date_of_birth = $user['date_of_birth'];
+                        $already_encrypted = true;
                     }
                 }
                 
-                if (empty($first_name) || empty($last_name)) {
+                // For validation, decrypt if needed
+                $plain_fn = $already_encrypted ? FieldEncryption::decrypt($first_name) : $first_name;
+                $plain_ln = $already_encrypted ? FieldEncryption::decrypt($last_name) : $last_name;
+                
+                if (empty($plain_fn) || empty($plain_ln)) {
                     throw new Exception('First name and last name are required');
                 }
                 
@@ -271,7 +279,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $temp_password = bin2hex(random_bytes(8));
                         $enc_fn = FieldEncryption::encrypt($first_name);
                         $enc_ln = FieldEncryption::encrypt($last_name);
-                        $enc_dob = $date_of_birth ? FieldEncryption::encrypt($date_of_birth) : null;
+                        $plain_dob = !empty($date_of_birth) ? $date_of_birth : null;
+                        $enc_dob = $plain_dob ? FieldEncryption::encrypt($plain_dob) : null;
                         $stmt = $pdo->prepare("
                             INSERT INTO users (first_name, last_name, email, password, role, date_of_birth, is_active, created_at)
                             VALUES (?, ?, ?, ?, 'athlete', ?, 1, NOW())
@@ -289,10 +298,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
                 
-                // Add athlete to evaluation (also encrypt PII)
-                $enc_eval_fn = FieldEncryption::encrypt($first_name);
-                $enc_eval_ln = FieldEncryption::encrypt($last_name);
-                $enc_eval_dob = $date_of_birth ? FieldEncryption::encrypt($date_of_birth) : null;
+                // Add athlete to evaluation - encrypt only if not already encrypted
+                if ($already_encrypted) {
+                    $enc_eval_fn = $first_name;
+                    $enc_eval_ln = $last_name;
+                    $enc_eval_dob = $date_of_birth;
+                } else {
+                    $enc_eval_fn = FieldEncryption::encrypt($first_name);
+                    $enc_eval_ln = FieldEncryption::encrypt($last_name);
+                    $enc_eval_dob = !empty($date_of_birth) ? FieldEncryption::encrypt($date_of_birth) : null;
+                }
                 $stmt = $pdo->prepare("
                     INSERT INTO session_evaluation_athletes 
                     (session_evaluation_id, user_id, first_name, last_name, email, date_of_birth, notes, created_at)
@@ -684,7 +699,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
             case 'get_existing_users':
                 // Get all existing users that can be added to evaluations
-                // Include athletes, and optionally filter by role
+                // All users default to being selectable as athletes
                 $role_filter = $_GET['role'] ?? '';
                 $evaluation_id = intval($_GET['evaluation_id'] ?? 0);
                 
@@ -697,16 +712,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($role_filter) {
                     $sql .= " AND role = ?";
                     $params[] = $role_filter;
-                } else {
-                    // By default, get athletes and users who could be evaluated
-                    $sql .= " AND role IN ('athlete', 'parent')";
                 }
+                // No default role filter - show all users so any can be evaluated as athletes
                 
                 $sql .= " ORDER BY last_name, first_name";
                 
                 $stmt = $pdo->prepare($sql);
                 $stmt->execute($params);
                 $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                // Decrypt user PII fields
+                $users = decryptUserRows($users);
                 
                 // If evaluation_id provided, mark users already added
                 if ($evaluation_id > 0) {
