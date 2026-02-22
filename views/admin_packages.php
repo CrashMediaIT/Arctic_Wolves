@@ -177,6 +177,8 @@ $sessions = $pdo->query("
                         <option value="credits">Session Credits (set number of sessions)</option>
                         <option value="dollar_value">Dollar Value (store credit amount)</option>
                         <option value="bundled">Bundled Sessions (pick from sessions library)</option>
+                        <option value="camp">Camp</option>
+                        <option value="multi_week">Multi-Week Program</option>
                     </select>
                 </div>
             </div>

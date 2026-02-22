@@ -316,6 +316,13 @@ test.describe('Admin Package Management - Location Field', () => {
     expect(content).toContain('d.location');
   });
 
+  test('Admin packages desktop dropdown includes camp and multi_week type options', async () => {
+    const content = readFile('views/admin_packages.php');
+    // The package type select must offer camp and multi_week so users can create them on desktop
+    expect(content).toContain('<option value="camp">Camp</option>');
+    expect(content).toContain('<option value="multi_week">Multi-Week Program</option>');
+  });
+
   test('Admin packages uses calendar picker for camp and multi-week dates', async () => {
     const content = readFile('views/admin_packages.php');
     expect(content).toContain('arctic-calendar');
