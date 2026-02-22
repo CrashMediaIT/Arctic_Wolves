@@ -22,9 +22,8 @@ test.describe('OCR Error Handling - process_expenses.php', () => {
   test('performPaperlessOCR should return error array (not null) when upload fails', () => {
     // After the curl upload fails, should return an ocr_data array with error, not null
     expect(content).toContain("'Paperless-NGX upload failed (HTTP '");
-    expect(content).toContain("return $ocr_data;");
-    // The old "return null; // Paperless-NGX not available" after upload should be gone
-    expect(content).not.toContain("return null; // Paperless-NGX not available");
+    // Should set error on $ocr_data and return it instead of returning null for upload failures
+    expect(content).toContain("$ocr_data['error'] = 'Paperless-NGX upload failed");
   });
 
   test('performPaperlessOCR should return error array when task ID is invalid', () => {
@@ -39,14 +38,16 @@ test.describe('OCR Error Handling - process_expenses.php', () => {
     expect(content).toContain("'Paperless-NGX document processing timed out. Try again or check your server.'");
   });
 
-  test('performPaperlessOCR should still return null only for not-configured cases', () => {
-    // The function should return null only for: not configured, OCR disabled, or decryption failure
-    // These are the only cases where the "configure Paperless-NGX" fallback message is appropriate
-    const nullReturns = content.match(/return null;/g);
+  test('performPaperlessOCR should only return null for not-configured or decrypt failure cases', () => {
+    // Extract just the performPaperlessOCR function body to count null returns within it
+    const funcStart = content.indexOf('function performPaperlessOCR(');
+    const funcEnd = content.indexOf('\nfunction ', funcStart + 1);
+    const funcBody = content.substring(funcStart, funcEnd);
+    const nullReturns = funcBody.match(/return null;/g);
     expect(nullReturns).not.toBeNull();
-    // performPaperlessOCR should only return null for: db error, not configured, no decrypt fn, empty token
-    // Other null returns in the file are in different functions (e.g., resolvePayeeId)
-    expect(nullReturns.length).toBeLessThanOrEqual(5);
+    // performPaperlessOCR should only have null returns for:
+    // 1. DB exception, 2. not configured/OCR disabled, 3. decryptPassword not available, 4. empty token
+    expect(nullReturns.length).toBe(4);
   });
 
   test('performReceiptOCR fallback message should only show for truly unconfigured state', () => {
