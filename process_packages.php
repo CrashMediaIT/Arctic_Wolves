@@ -75,6 +75,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     exit();
 }
 
+// Handle GET request for retrieving package coaches (AJAX)
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'get_package_coaches') {
+    $package_id = intval($_GET['package_id'] ?? 0);
+    
+    $stmt = $pdo->prepare("SELECT coach_id FROM package_coaches WHERE package_id = ?");
+    $stmt->execute([$package_id]);
+    $coach_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    
+    header('Content-Type: application/json');
+    echo json_encode($coach_ids);
+    exit();
+}
+
 // Validate CSRF token for POST requests
 checkCsrfToken();
 
@@ -133,11 +146,22 @@ try {
             
             $package_id = $pdo->lastInsertId();
             
+            // Save package-level coaches
+            if (!empty($_POST['coach_ids']) && is_array($_POST['coach_ids'])) {
+                $coach_stmt = $pdo->prepare("INSERT INTO package_coaches (package_id, coach_id) VALUES (?, ?)");
+                foreach ($_POST['coach_ids'] as $cid) {
+                    $cid = intval($cid);
+                    if ($cid > 0) {
+                        $coach_stmt->execute([$package_id, $cid]);
+                    }
+                }
+            }
+            
             // Save camp daily schedules if provided (flat array format from admin_packages)
             if ($package_type === 'camp' && !empty($_POST['schedule_dates'])) {
                 $sched_stmt = $pdo->prepare("
-                    INSERT INTO camp_daily_schedules (package_id, schedule_date, start_time, end_time, title, description, location)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO camp_daily_schedules (package_id, schedule_date, start_time, end_time, title, description, location, coach_ids)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ");
                 foreach ($_POST['schedule_dates'] as $i => $date) {
                     if (empty($date)) continue;
@@ -146,15 +170,16 @@ try {
                     $s_title = $_POST['schedule_titles'][$i] ?? '';
                     $s_desc = $_POST['schedule_descriptions'][$i] ?? '';
                     $s_location = $_POST['schedule_locations'][$i] ?? '';
-                    $sched_stmt->execute([$package_id, $date, $s_start, $s_end, $s_title ?: null, $s_desc ?: null, $s_location ?: null]);
+                    $s_coaches = $_POST['schedule_coach_ids'][$i] ?? '';
+                    $sched_stmt->execute([$package_id, $date, $s_start, $s_end, $s_title ?: null, $s_desc ?: null, $s_location ?: null, $s_coaches ?: null]);
                 }
             }
             
             // Save camp daily schedules from calendar picker (nested array format)
             if ($package_type === 'camp' && !empty($_POST['program_dates'])) {
                 $sched_stmt = $pdo->prepare("
-                    INSERT INTO camp_daily_schedules (package_id, schedule_date, start_time, end_time, title, description, location)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO camp_daily_schedules (package_id, schedule_date, start_time, end_time, title, description, location, coach_ids)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ");
                 $all_camp_dates = [];
                 foreach ($_POST['program_dates'] as $i => $entry) {
@@ -164,7 +189,8 @@ try {
                         $s_start = $entry['start_time'] ?? ($daily_start_time ?: '09:00');
                         $s_end = $entry['end_time'] ?? ($daily_end_time ?: '17:00');
                         $s_location = $entry['location_id'] ?? '';
-                        $sched_stmt->execute([$package_id, $date, $s_start, $s_end, null, null, $s_location ?: null]);
+                        $s_coaches = !empty($entry['coach_ids']) ? (is_array($entry['coach_ids']) ? implode(',', array_map('intval', $entry['coach_ids'])) : $entry['coach_ids']) : null;
+                        $sched_stmt->execute([$package_id, $date, $s_start, $s_end, null, null, $s_location ?: null, $s_coaches]);
                         $all_camp_dates[] = $date;
                     }
                 }
@@ -193,8 +219,8 @@ try {
             // For multi-week programs, save program dates and auto-create sessions
             if ($package_type === 'multi_week' && !empty($_POST['program_dates'])) {
                 $prog_stmt = $pdo->prepare("
-                    INSERT INTO multiweek_program_dates (package_id, session_date, start_time, end_time, title, individual_price, auto_session_id, location)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO multiweek_program_dates (package_id, session_date, start_time, end_time, title, individual_price, auto_session_id, location, coach_ids)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ");
                 $session_stmt = $pdo->prepare("
                     INSERT INTO sessions (title, description, session_date, session_time, duration_minutes, price, age_group, skill_level, status)
@@ -211,6 +237,7 @@ try {
                         $p_title = $pdate['title'] ?? '';
                         $p_ind_price = !empty($pdate['individual_price']) ? floatval($pdate['individual_price']) : null;
                         $p_location = $pdate['location_id'] ?? '';
+                        $p_coaches = !empty($pdate['coach_ids']) ? (is_array($pdate['coach_ids']) ? implode(',', array_map('intval', $pdate['coach_ids'])) : $pdate['coach_ids']) : null;
                     } else {
                         $date_val = $pdate;
                         if (empty($date_val)) continue;
@@ -219,6 +246,7 @@ try {
                         $p_title = $_POST['program_titles'][$i] ?? '';
                         $p_ind_price = !empty($_POST['program_individual_prices'][$i]) ? floatval($_POST['program_individual_prices'][$i]) : null;
                         $p_location = $_POST['program_locations'][$i] ?? '';
+                        $p_coaches = $_POST['program_coach_ids'][$i] ?? null;
                     }
                     
                     $auto_session_id = null;
@@ -234,9 +262,20 @@ try {
                             $age_group ?: null, $skill_level ?: null
                         ]);
                         $auto_session_id = $pdo->lastInsertId();
+                        
+                        // Assign coaches to auto-created session
+                        if (!empty($p_coaches)) {
+                            $sc_stmt = $pdo->prepare("INSERT INTO session_coaches (session_id, coach_id) VALUES (?, ?)");
+                            foreach (explode(',', $p_coaches) as $sc_id) {
+                                $sc_id = intval(trim($sc_id));
+                                if ($sc_id > 0) {
+                                    $sc_stmt->execute([$auto_session_id, $sc_id]);
+                                }
+                            }
+                        }
                     }
                     
-                    $prog_stmt->execute([$package_id, $date_val, $p_start, $p_end, $p_title ?: null, $p_ind_price, $auto_session_id, $p_location ?: null]);
+                    $prog_stmt->execute([$package_id, $date_val, $p_start, $p_end, $p_title ?: null, $p_ind_price, $auto_session_id, $p_location ?: null, $p_coaches]);
                 }
             }
             
@@ -295,6 +334,18 @@ try {
                 $age_group_id, $skill_level_id, $allow_individual_sessions, $package_id
             ]);
             
+            // Update package-level coaches
+            $pdo->prepare("DELETE FROM package_coaches WHERE package_id = ?")->execute([$package_id]);
+            if (!empty($_POST['coach_ids']) && is_array($_POST['coach_ids'])) {
+                $coach_stmt = $pdo->prepare("INSERT INTO package_coaches (package_id, coach_id) VALUES (?, ?)");
+                foreach ($_POST['coach_ids'] as $cid) {
+                    $cid = intval($cid);
+                    if ($cid > 0) {
+                        $coach_stmt->execute([$package_id, $cid]);
+                    }
+                }
+            }
+            
             // Update camp daily schedules
             if ($package_type === 'camp') {
                 // Remove old schedules and re-insert
@@ -302,8 +353,8 @@ try {
                 
                 if (!empty($_POST['schedule_dates'])) {
                     $sched_stmt = $pdo->prepare("
-                        INSERT INTO camp_daily_schedules (package_id, schedule_date, start_time, end_time, title, description, location)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                        INSERT INTO camp_daily_schedules (package_id, schedule_date, start_time, end_time, title, description, location, coach_ids)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     ");
                     foreach ($_POST['schedule_dates'] as $i => $date) {
                         if (empty($date)) continue;
@@ -312,15 +363,16 @@ try {
                         $s_title = $_POST['schedule_titles'][$i] ?? '';
                         $s_desc = $_POST['schedule_descriptions'][$i] ?? '';
                         $s_location = $_POST['schedule_locations'][$i] ?? '';
-                        $sched_stmt->execute([$package_id, $date, $s_start, $s_end, $s_title ?: null, $s_desc ?: null, $s_location ?: null]);
+                        $s_coaches = $_POST['schedule_coach_ids'][$i] ?? '';
+                        $sched_stmt->execute([$package_id, $date, $s_start, $s_end, $s_title ?: null, $s_desc ?: null, $s_location ?: null, $s_coaches ?: null]);
                     }
                 }
                 
                 // Handle calendar picker dates (nested array format)
                 if (!empty($_POST['program_dates'])) {
                     $sched_stmt = $pdo->prepare("
-                        INSERT INTO camp_daily_schedules (package_id, schedule_date, start_time, end_time, title, description, location)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                        INSERT INTO camp_daily_schedules (package_id, schedule_date, start_time, end_time, title, description, location, coach_ids)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     ");
                     $all_camp_dates = [];
                     foreach ($_POST['program_dates'] as $i => $entry) {
@@ -330,7 +382,8 @@ try {
                             $s_start = $entry['start_time'] ?? ($daily_start_time ?: '09:00');
                             $s_end = $entry['end_time'] ?? ($daily_end_time ?: '17:00');
                             $s_location = $entry['location_id'] ?? '';
-                            $sched_stmt->execute([$package_id, $date, $s_start, $s_end, null, null, $s_location ?: null]);
+                            $s_coaches = !empty($entry['coach_ids']) ? (is_array($entry['coach_ids']) ? implode(',', array_map('intval', $entry['coach_ids'])) : $entry['coach_ids']) : null;
+                            $sched_stmt->execute([$package_id, $date, $s_start, $s_end, null, null, $s_location ?: null, $s_coaches]);
                             $all_camp_dates[] = $date;
                         }
                     }
@@ -379,8 +432,8 @@ try {
                 
                 if (!empty($_POST['program_dates'])) {
                     $prog_stmt = $pdo->prepare("
-                        INSERT INTO multiweek_program_dates (package_id, session_date, start_time, end_time, title, individual_price, auto_session_id, location)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        INSERT INTO multiweek_program_dates (package_id, session_date, start_time, end_time, title, individual_price, auto_session_id, location, coach_ids)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ");
                     $session_stmt = $pdo->prepare("
                         INSERT INTO sessions (title, description, session_date, session_time, duration_minutes, price, age_group, skill_level, status)
@@ -397,6 +450,7 @@ try {
                             $p_title = $pdate['title'] ?? '';
                             $p_ind_price = !empty($pdate['individual_price']) ? floatval($pdate['individual_price']) : null;
                             $p_location = $pdate['location_id'] ?? '';
+                            $p_coaches = !empty($pdate['coach_ids']) ? (is_array($pdate['coach_ids']) ? implode(',', array_map('intval', $pdate['coach_ids'])) : $pdate['coach_ids']) : null;
                         } else {
                             $date_val = $pdate;
                             if (empty($date_val)) continue;
@@ -405,6 +459,7 @@ try {
                             $p_title = $_POST['program_titles'][$i] ?? '';
                             $p_ind_price = !empty($_POST['program_individual_prices'][$i]) ? floatval($_POST['program_individual_prices'][$i]) : null;
                             $p_location = $_POST['program_locations'][$i] ?? '';
+                            $p_coaches = $_POST['program_coach_ids'][$i] ?? null;
                         }
                         
                         $auto_session_id = null;
@@ -419,9 +474,20 @@ try {
                                 $age_group ?: null, $skill_level ?: null
                             ]);
                             $auto_session_id = $pdo->lastInsertId();
+                            
+                            // Assign coaches to auto-created session
+                            if (!empty($p_coaches)) {
+                                $sc_stmt = $pdo->prepare("INSERT INTO session_coaches (session_id, coach_id) VALUES (?, ?)");
+                                foreach (explode(',', $p_coaches) as $sc_id) {
+                                    $sc_id = intval(trim($sc_id));
+                                    if ($sc_id > 0) {
+                                        $sc_stmt->execute([$auto_session_id, $sc_id]);
+                                    }
+                                }
+                            }
                         }
                         
-                        $prog_stmt->execute([$package_id, $date_val, $p_start, $p_end, $p_title ?: null, $p_ind_price, $auto_session_id, $p_location ?: null]);
+                        $prog_stmt->execute([$package_id, $date_val, $p_start, $p_end, $p_title ?: null, $p_ind_price, $auto_session_id, $p_location ?: null, $p_coaches]);
                     }
                 }
             }

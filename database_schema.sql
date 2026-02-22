@@ -4168,6 +4168,7 @@ CREATE TABLE IF NOT EXISTS `camp_daily_schedules` (
     `title` VARCHAR(255) DEFAULT NULL COMMENT 'Optional title for this day',
     `description` TEXT DEFAULT NULL COMMENT 'Description of activities',
     `location` VARCHAR(255) DEFAULT NULL COMMENT 'Location/place for this day',
+    `coach_ids` TEXT DEFAULT NULL COMMENT 'Comma-separated coach IDs for this day',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`package_id`) REFERENCES `packages`(`id`) ON DELETE CASCADE,
     INDEX `idx_package_date` (`package_id`, `schedule_date`)
@@ -4225,10 +4226,23 @@ CREATE TABLE IF NOT EXISTS `multiweek_program_dates` (
     `individual_price` DECIMAL(10,2) DEFAULT NULL COMMENT 'Price if purchased individually',
     `auto_session_id` INT DEFAULT NULL COMMENT 'Auto-created session ID',
     `location` VARCHAR(255) DEFAULT NULL COMMENT 'Location/place for this session',
+    `coach_ids` TEXT DEFAULT NULL COMMENT 'Comma-separated coach IDs for this session',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`package_id`) REFERENCES `packages`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`auto_session_id`) REFERENCES `sessions`(`id`) ON DELETE SET NULL,
     INDEX `idx_package_date` (`package_id`, `session_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Package Coaches - Multiple coaches per package (camp/program)
+CREATE TABLE IF NOT EXISTS `package_coaches` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `package_id` INT NOT NULL,
+    `coach_id` INT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`package_id`) REFERENCES `packages`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`coach_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `unique_package_coach` (`package_id`, `coach_id`),
+    INDEX `idx_coach` (`coach_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =========================================================
