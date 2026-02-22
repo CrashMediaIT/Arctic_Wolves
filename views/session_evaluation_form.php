@@ -38,18 +38,38 @@ try {
     $athletes = decryptUserRows($athletes);
     
     // Get categories and skills via junction table
-    $stmt = $pdo->prepare("
-        SELECT 
-            c.id as category_id, c.name as category_name, c.description as category_description,
-            c.display_order as category_order,
-            s.id as skill_id, s.name as skill_name, s.description as skill_description,
-            esc.display_order as skill_order
-        FROM eval_categories c
-        LEFT JOIN eval_skill_categories esc ON c.id = esc.category_id
-        LEFT JOIN eval_skills s ON esc.skill_id = s.id
-        ORDER BY c.display_order ASC, c.id ASC, esc.display_order ASC, s.id ASC
-    ");
-    $stmt->execute();
+    // If evaluation has a template, only show categories assigned to that template
+    $template_id = !empty($evaluation['template_id']) ? intval($evaluation['template_id']) : 0;
+    
+    if ($template_id > 0) {
+        $stmt = $pdo->prepare("
+            SELECT 
+                c.id as category_id, c.name as category_name, c.description as category_description,
+                etc.display_order as category_order,
+                s.id as skill_id, s.name as skill_name, s.description as skill_description,
+                esc.display_order as skill_order
+            FROM evaluation_template_categories etc
+            INNER JOIN eval_categories c ON etc.category_id = c.id
+            LEFT JOIN eval_skill_categories esc ON c.id = esc.category_id
+            LEFT JOIN eval_skills s ON esc.skill_id = s.id
+            WHERE etc.template_id = ?
+            ORDER BY etc.display_order ASC, c.id ASC, esc.display_order ASC, s.id ASC
+        ");
+        $stmt->execute([$template_id]);
+    } else {
+        $stmt = $pdo->prepare("
+            SELECT 
+                c.id as category_id, c.name as category_name, c.description as category_description,
+                c.display_order as category_order,
+                s.id as skill_id, s.name as skill_name, s.description as skill_description,
+                esc.display_order as skill_order
+            FROM eval_categories c
+            LEFT JOIN eval_skill_categories esc ON c.id = esc.category_id
+            LEFT JOIN eval_skills s ON esc.skill_id = s.id
+            ORDER BY c.display_order ASC, c.id ASC, esc.display_order ASC, s.id ASC
+        ");
+        $stmt->execute();
+    }
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Group by category
