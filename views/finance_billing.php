@@ -8,6 +8,10 @@
 // Load Stripe configuration
 $stripeSettingsQuery = "SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('stripe_publishable_key', 'stripe_secret_key', 'currency', 'tax_rate', 'tax_name')";
 $stripeSettings = $pdo->query($stripeSettingsQuery)->fetchAll(PDO::FETCH_KEY_PAIR);
+if (function_exists('decryptCredential')) {
+    if (!empty($stripeSettings['stripe_secret_key'])) $stripeSettings['stripe_secret_key'] = decryptCredential($stripeSettings['stripe_secret_key']);
+    if (!empty($stripeSettings['stripe_publishable_key'])) $stripeSettings['stripe_publishable_key'] = decryptCredential($stripeSettings['stripe_publishable_key']);
+}
 $stripeConfigured = !empty($stripeSettings['stripe_publishable_key']) && !empty($stripeSettings['stripe_secret_key']);
 $currency = $stripeSettings['currency'] ?? 'CAD';
 $taxRate = floatval($stripeSettings['tax_rate'] ?? 13.00);

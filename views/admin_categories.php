@@ -23,6 +23,7 @@ try {
 try {
     $api_key_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'google_maps_api_key'");
     $google_maps_api_key = $api_key_stmt->fetchColumn() ?: '';
+    if (function_exists('decryptCredential') && !empty($google_maps_api_key)) { $google_maps_api_key = decryptCredential($google_maps_api_key); }
 } catch (Exception $e) {
     error_log('Failed to retrieve Google Maps API key: ' . $e->getMessage());
     $google_maps_api_key = '';

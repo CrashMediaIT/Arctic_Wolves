@@ -382,6 +382,9 @@ function getStripeTransactionsData($parameters) {
     
     // Load Stripe settings
     $stripeSettings = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('stripe_secret_key', 'currency')")->fetchAll(PDO::FETCH_KEY_PAIR);
+    if (function_exists('decryptCredential') && !empty($stripeSettings['stripe_secret_key'])) {
+        $stripeSettings['stripe_secret_key'] = decryptCredential($stripeSettings['stripe_secret_key']);
+    }
     
     if (empty($stripeSettings['stripe_secret_key'])) {
         return [

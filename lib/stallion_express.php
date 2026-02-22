@@ -52,6 +52,12 @@ function getStallionSettings($pdo) {
         $settings[$row['setting_key']] = $row['setting_value'];
     }
     
+    // Decrypt sensitive credentials
+    if (function_exists('decryptCredential')) {
+        if (!empty($settings['stallion_api_key'])) $settings['stallion_api_key'] = decryptCredential($settings['stallion_api_key']);
+        if (!empty($settings['stallion_api_secret'])) $settings['stallion_api_secret'] = decryptCredential($settings['stallion_api_secret']);
+    }
+    
     return $settings;
 }
 

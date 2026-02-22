@@ -35,7 +35,8 @@ class GitHubUpdater {
         $stmt = $this->pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'github_token'");
         $stmt->execute();
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        $this->github_token = $result['setting_value'] ?? '';
+        $raw_token = $result['setting_value'] ?? '';
+        $this->github_token = (function_exists('decryptCredential') && !empty($raw_token)) ? decryptCredential($raw_token) : $raw_token;
     }
     
     /**

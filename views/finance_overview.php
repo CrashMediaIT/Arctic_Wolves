@@ -8,6 +8,11 @@
 // Load Stripe configuration
 $stripeSettingsQuery = "SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('stripe_publishable_key', 'stripe_secret_key', 'currency', 'tax_rate', 'tax_name')";
 $stripeSettings = $pdo->query($stripeSettingsQuery)->fetchAll(PDO::FETCH_KEY_PAIR);
+// Decrypt Stripe keys (may be stored encrypted)
+if (function_exists('decryptCredential')) {
+    if (!empty($stripeSettings['stripe_secret_key'])) $stripeSettings['stripe_secret_key'] = decryptCredential($stripeSettings['stripe_secret_key']);
+    if (!empty($stripeSettings['stripe_publishable_key'])) $stripeSettings['stripe_publishable_key'] = decryptCredential($stripeSettings['stripe_publishable_key']);
+}
 $stripeConfigured = !empty($stripeSettings['stripe_publishable_key']) && !empty($stripeSettings['stripe_secret_key']);
 $currency = $stripeSettings['currency'] ?? 'CAD';
 $taxRate = floatval($stripeSettings['tax_rate'] ?? 13.00);
@@ -112,8 +117,30 @@ try {
     $posRevenueData = $stmt->fetch(PDO::FETCH_ASSOC);
     $posRevenue = $posRevenueData['pos_revenue'] ?? 0;
     
-    // Add shop and POS revenue to total
-    $revenue += $shopRevenue + $posRevenue;
+    // Get revenue from session bookings (Stripe payments)
+    $stmt = $pdo->prepare("
+        SELECT COALESCE(SUM(amount_paid), 0) as booking_revenue
+        FROM bookings
+        WHERE payment_status = 'paid'
+        AND DATE(booking_date) BETWEEN ? AND ?
+    ");
+    $stmt->execute([$startDate, $endDate]);
+    $bookingRevenueData = $stmt->fetch(PDO::FETCH_ASSOC);
+    $bookingRevenue = $bookingRevenueData['booking_revenue'] ?? 0;
+    
+    // Get revenue from package purchases (camps, multi-week, credits)
+    $stmt = $pdo->prepare("
+        SELECT COALESCE(SUM(amount_paid), 0) as package_revenue
+        FROM user_packages
+        WHERE payment_status = 'paid'
+        AND DATE(purchase_date) BETWEEN ? AND ?
+    ");
+    $stmt->execute([$startDate, $endDate]);
+    $packageRevenueData = $stmt->fetch(PDO::FETCH_ASSOC);
+    $packageRevenue = $packageRevenueData['package_revenue'] ?? 0;
+    
+    // Add all revenue sources to total
+    $revenue += $shopRevenue + $posRevenue + $bookingRevenue + $packageRevenue;
     
     // Get total expenses
     $stmt = $pdo->prepare("
@@ -195,7 +222,7 @@ try {
     $transactions = array_slice($transactions, 0, 10);
     
     // Get revenue data for chart (based on chart period)
-    // Combines payments, POS transactions (Stripe + cash), and shop orders
+    // Combines payments, POS transactions (Stripe + cash), shop orders, bookings, and package purchases
     $chartDays = intval($chartPeriod);
     $stmt = $pdo->prepare("
         SELECT date, SUM(daily_revenue) as daily_revenue FROM (
@@ -216,11 +243,23 @@ try {
             WHERE payment_status = 'paid'
             AND created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
             GROUP BY DATE(created_at)
+            UNION ALL
+            SELECT DATE(booking_date) as date, SUM(amount_paid) as daily_revenue
+            FROM bookings
+            WHERE payment_status = 'paid'
+            AND booking_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+            GROUP BY DATE(booking_date)
+            UNION ALL
+            SELECT DATE(purchase_date) as date, SUM(amount_paid) as daily_revenue
+            FROM user_packages
+            WHERE payment_status = 'paid'
+            AND purchase_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+            GROUP BY DATE(purchase_date)
         ) AS combined_revenue
         GROUP BY date
         ORDER BY date ASC
     ");
-    $stmt->execute([$chartDays, $chartDays, $chartDays]);
+    $stmt->execute([$chartDays, $chartDays, $chartDays, $chartDays, $chartDays]);
     $revenueChartData = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Get expense data for chart
@@ -235,12 +274,12 @@ try {
     $expenseChartData = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Year-over-year data (current year vs last year monthly)
-    // Combines payments, POS transactions (Stripe + cash), and shop orders
+    // Combines payments, POS transactions (Stripe + cash), shop orders, bookings, and packages
     $currentYear = date('Y');
     $lastYear = $currentYear - 1;
     
-    // Query to get yearly revenue data from all sources (payments, POS, shop orders)
-    // Note: The year parameter must be passed 3 times (once per UNION clause)
+    // Query to get yearly revenue data from all sources
+    // Note: The year parameter must be passed 5 times (once per UNION clause)
     $getYearlyRevenueQuery = "
         SELECT month, SUM(monthly_revenue) as monthly_revenue FROM (
             SELECT MONTH(payment_date) as month, SUM(amount) as monthly_revenue
@@ -260,16 +299,28 @@ try {
             WHERE payment_status = 'paid'
             AND YEAR(created_at) = ?
             GROUP BY MONTH(created_at)
+            UNION ALL
+            SELECT MONTH(booking_date) as month, SUM(amount_paid) as monthly_revenue
+            FROM bookings
+            WHERE payment_status = 'paid'
+            AND YEAR(booking_date) = ?
+            GROUP BY MONTH(booking_date)
+            UNION ALL
+            SELECT MONTH(purchase_date) as month, SUM(amount_paid) as monthly_revenue
+            FROM user_packages
+            WHERE payment_status = 'paid'
+            AND YEAR(purchase_date) = ?
+            GROUP BY MONTH(purchase_date)
         ) AS combined_yearly_revenue
         GROUP BY month
         ORDER BY month ASC
     ";
     
     $stmt = $pdo->prepare($getYearlyRevenueQuery);
-    $stmt->execute([$currentYear, $currentYear, $currentYear]);
+    $stmt->execute([$currentYear, $currentYear, $currentYear, $currentYear, $currentYear]);
     $currentYearData = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
     
-    $stmt->execute([$lastYear, $lastYear, $lastYear]);
+    $stmt->execute([$lastYear, $lastYear, $lastYear, $lastYear, $lastYear]);
     $lastYearData = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
     
     // Calculate projection for remaining months (simple linear projection)

@@ -421,6 +421,7 @@ function calculateDistance($waypoints) {
     // Get API key
     $api_key_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'google_maps_api_key'");
     $api_key = $api_key_stmt->fetchColumn();
+    if (function_exists('decryptCredential') && !empty($api_key)) { $api_key = decryptCredential($api_key); }
     
     if (empty($api_key)) {
         throw new Exception('Google Maps API key not configured');

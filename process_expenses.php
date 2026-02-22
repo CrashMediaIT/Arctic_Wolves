@@ -1028,6 +1028,7 @@ try {
             // Get Stripe secret key
             $stripe_key_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'stripe_secret_key'");
             $stripe_secret = $stripe_key_stmt->fetchColumn();
+            if (function_exists('decryptCredential') && !empty($stripe_secret)) { $stripe_secret = decryptCredential($stripe_secret); }
             
             if (empty($stripe_secret)) {
                 echo json_encode(['success' => false, 'message' => 'Stripe not configured']);
@@ -1166,6 +1167,7 @@ try {
             try {
                 $stripe_key_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'stripe_secret_key'");
                 $stripe_secret = $stripe_key_stmt->fetchColumn();
+                if (function_exists('decryptCredential') && !empty($stripe_secret)) { $stripe_secret = decryptCredential($stripe_secret); }
                 
                 // Check Stripe library exists
                 $stripe_lib_path = __DIR__ . '/stripe-php/init.php';

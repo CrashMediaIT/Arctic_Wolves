@@ -31,6 +31,7 @@ if (file_exists('vendor/autoload.php')) {
 // Load Stripe settings
 $settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 $stripe_secret = $settings['stripe_secret_key'] ?? '';
+if (function_exists('decryptCredential')) { $stripe_secret = decryptCredential($stripe_secret); }
 $currency = $settings['currency'] ?? 'CAD';
 $tax_rate = floatval($settings['tax_rate'] ?? 13.00);
 $tax_name = $settings['tax_name'] ?? 'HST';

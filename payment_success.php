@@ -10,7 +10,8 @@ elseif (file_exists('stripe-php/init.php')) { require 'stripe-php/init.php'; }
 
 // 2. GET KEYS
 $settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
-\Stripe\Stripe::setApiKey($settings['stripe_secret_key']);
+require_once __DIR__ . '/security.php';
+\Stripe\Stripe::setApiKey(function_exists('decryptCredential') ? decryptCredential($settings['stripe_secret_key']) : $settings['stripe_secret_key']);
 
 $stripe_sid = $_GET['session_id'] ?? '';
 if (!$stripe_sid) { header("Location: dashboard.php"); exit(); }

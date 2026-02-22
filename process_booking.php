@@ -29,6 +29,7 @@ if (file_exists('vendor/autoload.php')) {
 // 3. LOAD KEYS FROM DB
 $settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 $stripe_secret = $settings['stripe_secret_key'] ?? '';
+if (function_exists('decryptCredential')) { $stripe_secret = decryptCredential($stripe_secret); }
 $currency = $settings['currency'] ?? 'CAD';
 
 if (empty($stripe_secret)) { die("Stripe is not configured in Admin Settings."); }

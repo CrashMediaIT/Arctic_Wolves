@@ -574,3 +574,28 @@ function decryptPassword($encrypted_data) {
     }
     return '';
 }
+
+/**
+ * Decrypt a credential value, with backward compatibility for plaintext values.
+ * If the value looks encrypted (base64 with :: separator), decrypts it.
+ * If decryption fails or value is plaintext, returns the original value.
+ *
+ * @param string $value The potentially encrypted value from system_settings
+ * @return string The decrypted (or original plaintext) value
+ */
+function decryptCredential($value) {
+    if (empty($value)) {
+        return '';
+    }
+    
+    // Try decryption — if it succeeds, use the decrypted value
+    if (function_exists('decryptPassword')) {
+        $decrypted = decryptPassword($value);
+        if (!empty($decrypted)) {
+            return $decrypted;
+        }
+    }
+    
+    // Decryption returned empty — value is likely plaintext (not yet encrypted)
+    return $value;
+}
