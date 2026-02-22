@@ -25,6 +25,15 @@ $packages = $packages_stmt->fetchAll(PDO::FETCH_ASSOC);
 $age_groups = $pdo->query("SELECT * FROM age_groups ORDER BY display_order")->fetchAll(PDO::FETCH_ASSOC);
 $skill_levels = $pdo->query("SELECT * FROM skill_levels ORDER BY display_order")->fetchAll(PDO::FETCH_ASSOC);
 
+// Get coaches for assignment
+try {
+    $pkg_coaches_stmt = $pdo->query("SELECT id, first_name, last_name, role FROM users WHERE role IN ('coach', 'health_coach', 'admin') AND is_active = 1 ORDER BY last_name, first_name");
+    $pkg_coaches = $pkg_coaches_stmt->fetchAll(PDO::FETCH_ASSOC);
+    if (function_exists('decryptUserRows')) { $pkg_coaches = decryptUserRows($pkg_coaches); }
+} catch (PDOException $e) {
+    $pkg_coaches = [];
+}
+
 // Get available sessions for bundled packages
 $sessions = $pdo->query("
     SELECT id, title, session_type, session_date, session_time, price, arena 
@@ -177,6 +186,8 @@ $sessions = $pdo->query("
                         <option value="credits">Session Credits (set number of sessions)</option>
                         <option value="dollar_value">Dollar Value (store credit amount)</option>
                         <option value="bundled">Bundled Sessions (pick from sessions library)</option>
+                        <option value="camp">Camp (date range with daily schedule)</option>
+                        <option value="multi_week">Multi-Week Program (select specific dates)</option>
                     </select>
                 </div>
             </div>
@@ -343,6 +354,28 @@ $sessions = $pdo->query("
                     <input type="checkbox" name="enable_child_checkin" id="packageChildCheckin" value="1">
                     <span class="toggle-slider"></span>
                 </label>
+            </div>
+            
+            <!-- Package-Level Coach Assignment -->
+            <div id="packageCoachesSection" style="display: none;">
+                <h4 style="color: #e2e8f0; margin-bottom: 16px; border-bottom: 1px solid #334155; padding-bottom: 8px;">
+                    <i class="fas fa-user-tie"></i> Assign Coaches
+                </h4>
+                <p style="color: #94a3b8; font-size: 13px; margin-bottom: 12px;">
+                    Select one or more coaches for this program/camp. You can also assign different coaches to each session date below.
+                </p>
+                <div id="packageCoachCheckboxes" style="max-height: 200px; overflow-y: auto; background: #06080b; border: 1px solid #1e293b; border-radius: 8px; padding: 12px;">
+                    <?php foreach ($pkg_coaches as $coach): ?>
+                    <label style="display: flex; align-items: center; gap: 8px; padding: 6px 4px; cursor: pointer; color: #e2e8f0; font-size: 13px;">
+                        <input type="checkbox" name="coach_ids[]" value="<?php echo $coach['id']; ?>" class="pkg-coach-cb">
+                        <?php echo htmlspecialchars($coach['first_name'] . ' ' . $coach['last_name']); ?>
+                        <span style="color: #94a3b8; font-size: 11px;">(<?php echo ucfirst($coach['role']); ?>)</span>
+                    </label>
+                    <?php endforeach; ?>
+                    <?php if (empty($pkg_coaches)): ?>
+                    <p style="color: #94a3b8; font-size: 13px; text-align: center;">No coaches available</p>
+                    <?php endif; ?>
+                </div>
             </div>
             
             <div class="form-actions">
@@ -950,6 +983,8 @@ function openPackageModal() {
     document.getElementById('packageChildCheckin').checked = false;
     // Clear dynamic sections
     document.getElementById('addOnRows').innerHTML = '';
+    // Clear coach checkboxes
+    document.querySelectorAll('.pkg-coach-cb').forEach(function(cb) { cb.checked = false; });
     // Reset calendar pickers
     campCal.clearAll();
     mwCal.clearAll();
@@ -989,7 +1024,15 @@ function editPackage(pkg) {
     campCal.clearAll();
     mwCal.clearAll();
     
+    // Clear coach checkboxes before loading
+    document.querySelectorAll('.pkg-coach-cb').forEach(function(cb) { cb.checked = false; });
+    
     togglePackageFields();
+    
+    // Load package coaches for camp/multi_week types
+    if (pkg.package_type === 'camp' || pkg.package_type === 'multi_week') {
+        loadPackageCoaches(pkg.id);
+    }
     
     // Load camp schedules into calendar if camp type
     if (pkg.package_type === 'camp') {
@@ -1004,6 +1047,27 @@ function editPackage(pkg) {
     }
     
     document.getElementById('packageModal').style.display = 'block';
+}
+
+// Coaches data for per-date assignment
+var pkgCoachesData = <?php echo json_encode(array_map(function($c) { return ['id' => $c['id'], 'name' => $c['first_name'] . ' ' . $c['last_name'], 'role' => $c['role']]; }, $pkg_coaches)); ?>;
+
+// Build coach checkboxes HTML for a date entry
+function buildDateCoachCheckboxes(fieldPrefix, idx, selectedCoachIds) {
+    var html = '<div class="form-group" style="flex: 1; min-width: 180px;">' +
+        '<label class="form-label" style="font-size:12px;">Coaches</label>' +
+        '<div style="max-height: 100px; overflow-y: auto; background: #0a0e14; border: 1px solid #1e293b; border-radius: 4px; padding: 6px;">';
+    pkgCoachesData.forEach(function(coach) {
+        var checked = selectedCoachIds.indexOf(String(coach.id)) !== -1 ? ' checked' : '';
+        html += '<label style="display: flex; align-items: center; gap: 4px; font-size: 11px; color: #e2e8f0; cursor: pointer; padding: 2px 0;">' +
+            '<input type="checkbox" name="' + fieldPrefix + '[' + idx + '][coach_ids][]" value="' + coach.id + '"' + checked + '>' +
+            escapeHtml(coach.name) + '</label>';
+    });
+    if (pkgCoachesData.length === 0) {
+        html += '<span style="color: #94a3b8; font-size: 11px;">No coaches</span>';
+    }
+    html += '</div></div>';
+    return html;
 }
 
 // ArcticCalendar - Interactive calendar date picker for packages
@@ -1114,6 +1178,7 @@ function ArcticCalendar(config) {
                     '<label class="form-label" style="font-size:12px;">Location</label>' +
                     '<input type="text" name="' + self.fieldPrefix + '[' + idx + '][location_id]" class="form-input" placeholder="Arena / Venue" style="font-size:13px;">' +
                 '</div>' +
+                buildDateCoachCheckboxes(self.fieldPrefix, idx, []) +
             '</div>';
         
         // Insert sorted by date
@@ -1158,10 +1223,12 @@ function ArcticCalendar(config) {
         self.render();
     };
     
-    this.addExistingDate = function(dateStr, startTime, endTime, location) {
+    this.addExistingDate = function(dateStr, startTime, endTime, location, coachIds) {
         self.dateIndex++;
         self.selectedDates[dateStr] = self.dateIndex;
         var container = document.getElementById(self.datesContainerId);
+        
+        var selectedCoaches = coachIds ? String(coachIds).split(',').map(function(id) { return id.trim(); }).filter(function(id) { return id; }) : [];
         
         var entry = document.createElement('div');
         entry.className = 'session-date-entry';
@@ -1182,6 +1249,7 @@ function ArcticCalendar(config) {
                     '<label class="form-label" style="font-size:12px;">Location</label>' +
                     '<input type="text" name="' + self.fieldPrefix + '[' + self.dateIndex + '][location_id]" class="form-input" value="' + escapeHtml(location || '') + '" placeholder="Arena / Venue" style="font-size:13px;">' +
                 '</div>' +
+                buildDateCoachCheckboxes(self.fieldPrefix, self.dateIndex, selectedCoaches) +
             '</div>';
         
         var entries = container.querySelectorAll('.session-date-entry');
@@ -1255,7 +1323,7 @@ function loadCampSchedules(packageId) {
         .then(function(schedules) {
             campCal.clearAll();
             schedules.forEach(function(s) {
-                campCal.addExistingDate(s.schedule_date, s.start_time, s.end_time, s.location || '');
+                campCal.addExistingDate(s.schedule_date, s.start_time, s.end_time, s.location || '', s.coach_ids || '');
             });
         });
 }
@@ -1267,7 +1335,20 @@ function loadProgramDates(packageId) {
         .then(function(dates) {
             mwCal.clearAll();
             dates.forEach(function(d) {
-                mwCal.addExistingDate(d.session_date, d.start_time, d.end_time, d.location || '');
+                mwCal.addExistingDate(d.session_date, d.start_time, d.end_time, d.location || '', d.coach_ids || '');
+            });
+        });
+}
+
+// Load existing package coaches via AJAX
+function loadPackageCoaches(packageId) {
+    fetch('process_packages.php?action=get_package_coaches&package_id=' + packageId)
+        .then(function(r) { return r.json(); })
+        .then(function(coachIds) {
+            document.querySelectorAll('.pkg-coach-cb').forEach(function(cb) { cb.checked = false; });
+            coachIds.forEach(function(id) {
+                var cb = document.querySelector('.pkg-coach-cb[value="' + id + '"]');
+                if (cb) cb.checked = true;
             });
         });
 }
@@ -1322,6 +1403,7 @@ function togglePackageFields() {
     const multiWeekSection = document.getElementById('multiWeekSection');
     const addOnsSection = document.getElementById('addOnsSection');
     const validDaysGroup = document.getElementById('validDaysGroup');
+    const coachesSection = document.getElementById('packageCoachesSection');
     
     // Hide all type-specific sections
     creditsGroup.style.display = 'none';
@@ -1332,6 +1414,7 @@ function togglePackageFields() {
     campDatesSection.style.display = 'none';
     multiWeekSection.style.display = 'none';
     addOnsSection.style.display = 'none';
+    if (coachesSection) coachesSection.style.display = 'none';
     // Show valid_days by default
     if (validDaysGroup) validDaysGroup.style.display = 'block';
     
@@ -1346,12 +1429,14 @@ function togglePackageFields() {
     } else if (type === 'camp') {
         campDatesSection.style.display = 'block';
         addOnsSection.style.display = 'block';
+        if (coachesSection) coachesSection.style.display = 'block';
         // Camps don't need expiry - they have scheduled dates
         if (validDaysGroup) validDaysGroup.style.display = 'none';
         campCal.render();
     } else if (type === 'multi_week') {
         multiWeekSection.style.display = 'block';
         addOnsSection.style.display = 'block';
+        if (coachesSection) coachesSection.style.display = 'block';
         // Programs don't need expiry - they have scheduled dates
         if (validDaysGroup) validDaysGroup.style.display = 'none';
         mwCal.render();
