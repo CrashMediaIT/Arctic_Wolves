@@ -805,6 +805,23 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                 </div>
                 
                 <div class="form-section">
+                    <h4 class="section-title"><i class="fas fa-user-tie"></i> Assign Coaches</h4>
+                    <p class="form-help-text" style="margin-bottom: 8px; color: var(--text-dim); font-size: 13px;">Select one or more coaches for this program/camp. You can also assign different coaches per session date above.</p>
+                    <div style="max-height: 200px; overflow-y: auto; background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 12px;">
+                        <?php foreach ($coaches as $coach): ?>
+                        <label style="display: flex; align-items: center; gap: 8px; padding: 4px 0; cursor: pointer; color: var(--text-white); font-size: 13px;" class="program-coach-label">
+                            <input type="checkbox" name="coach_ids[]" value="<?= $coach['id'] ?>" class="program-coach-cb">
+                            <?= htmlspecialchars($coach['first_name'] . ' ' . $coach['last_name']) ?>
+                            <span style="color: var(--text-dim); font-size: 11px;">(<?= ucfirst($coach['role']) ?>)</span>
+                        </label>
+                        <?php endforeach; ?>
+                        <?php if (empty($coaches)): ?>
+                        <p style="color: var(--text-dim); font-size: 13px; text-align: center;">No coaches available</p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                
+                <div class="form-section">
                     <h4 class="section-title"><i class="fas fa-eye"></i> Display Options</h4>
                     <div class="form-row">
                         <div class="form-group">
@@ -2681,6 +2698,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 '</form>';
             attachFormSubmitHandler(container.querySelector('form'));
         } else if (type === 'package') {
+            // Build coach checkboxes for package-level assignment
+            var pkgCoachCheckboxes = '';
+            var pkgAssignedCoaches = data.coach_ids_list ? String(data.coach_ids_list).split(',').map(function(id) { return id.trim(); }).filter(function(id) { return id; }) : [];
+            editCoaches.forEach(function(coach) {
+                var checked = pkgAssignedCoaches.indexOf(String(coach.id)) !== -1 ? ' checked' : '';
+                pkgCoachCheckboxes += '<label style="display: flex; align-items: center; gap: 6px; padding: 4px 0; cursor: pointer; font-size: 13px; color: var(--text-white);"><input type="checkbox" name="coach_ids[]" value="' + coach.id + '"' + checked + '>' + escapeHtml(coach.name) + ' <span style="color: var(--text-dim); font-size: 11px;">(' + escapeHtml(coach.role) + ')</span></label>';
+            });
+            var isCampOrProgram = data.package_type === 'camp' || data.package_type === 'multi_week';
+            var coachSection = isCampOrProgram && editCoaches.length > 0 ? 
+                '<div class="form-group">' +
+                    '<label class="form-label"><i class="fas fa-user-tie"></i> Assign Coaches</label>' +
+                    '<p style="font-size: 12px; color: var(--text-dim); margin-bottom: 8px;">Select one or more coaches for this program/camp</p>' +
+                    '<div style="max-height: 150px; overflow-y: auto; background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 10px;">' + pkgCoachCheckboxes + '</div>' +
+                '</div>' : '';
+            
             container.innerHTML = 
                 '<form method="POST" action="process_admin_action.php" id="edit-package-form">' +
                 '<input type="hidden" name="csrf_token" value="' + csrfToken + '">' +
@@ -2715,6 +2747,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             '<option value="credits"' + (data.package_type == 'credits' ? ' selected' : '') + '>Credits</option>' +
                             '<option value="bundle"' + (data.package_type == 'bundle' ? ' selected' : '') + '>Bundle</option>' +
                             '<option value="subscription"' + (data.package_type == 'subscription' ? ' selected' : '') + '>Subscription</option>' +
+                            '<option value="camp"' + (data.package_type == 'camp' ? ' selected' : '') + '>Camp</option>' +
+                            '<option value="multi_week"' + (data.package_type == 'multi_week' ? ' selected' : '') + '>Multi-Week Program</option>' +
                         '</select>' +
                     '</div>' +
                 '</div>' +
@@ -2741,6 +2775,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         '</select>' +
                     '</div>' +
                 '</div>' +
+                coachSection +
                 '<div class="form-group">' +
                     '<div class="checklist-grid">' +
                         '<label class="checkbox-option">' +
@@ -3175,6 +3210,25 @@ function addEditMerchSizeRow() {
 // ===== Arctic Calendar Date Picker =====
 var sessionCalLocations = <?= json_encode($locations) ?>;
 var sessionCalTeams = <?= json_encode($teams) ?>;
+var sessionCalCoaches = <?= json_encode(array_map(function($c) { return ['id' => $c['id'], 'name' => $c['first_name'] . ' ' . $c['last_name'], 'role' => $c['role']]; }, $coaches), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_HEX_APOS) ?>;
+
+// Build per-date coach checkboxes for calendar entries
+function buildCalDateCoachCheckboxes(fieldPrefix, idx, selectedCoachIds) {
+    var html = '<div class="form-group" style="flex: 1; min-width: 180px;">' +
+        '<label class="form-label" style="font-size:12px;">Coaches</label>' +
+        '<div style="max-height: 100px; overflow-y: auto; background: var(--bg-main); border: 1px solid var(--border); border-radius: 4px; padding: 6px;">';
+    sessionCalCoaches.forEach(function(coach) {
+        var checked = selectedCoachIds.indexOf(String(coach.id)) !== -1 ? ' checked' : '';
+        html += '<label style="display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-white); cursor: pointer; padding: 2px 0;">' +
+            '<input type="checkbox" name="' + fieldPrefix + '[' + idx + '][coach_ids][]" value="' + coach.id + '"' + checked + '>' +
+            escapeHtml(coach.name) + '</label>';
+    });
+    if (sessionCalCoaches.length === 0) {
+        html += '<span style="color: var(--text-dim); font-size: 11px;">No coaches</span>';
+    }
+    html += '</div></div>';
+    return html;
+}
 
 // Reusable calendar factory
 function ArcticCalendar(config) {
@@ -3184,6 +3238,7 @@ function ArcticCalendar(config) {
     this.titleId = config.titleId;
     this.datesContainerId = config.datesContainerId;
     this.emptyId = config.emptyId;
+    this.showCoaches = config.showCoaches !== false;
     this.fieldPrefix = config.fieldPrefix || 'session_dates';
     this.defaultStartTime = config.defaultStartTime || '09:00';
     this.defaultEndTime = config.defaultEndTime || '10:00';
@@ -3305,6 +3360,7 @@ function ArcticCalendar(config) {
                     '<select name="' + self.fieldPrefix + '[' + idx + '][location_id]" class="form-input" style="font-size:13px;">' + locOptions + '</select>' +
                 '</div>' +
                 teamHtml +
+                (self.showCoaches !== false ? buildCalDateCoachCheckboxes(self.fieldPrefix, idx, []) : '') +
             '</div>';
         
         // Insert sorted by date
@@ -3354,7 +3410,8 @@ var sessionCal = new ArcticCalendar({
     fieldPrefix: 'session_dates',
     defaultStartTime: '09:00',
     defaultEndTime: '10:00',
-    showTeam: true
+    showTeam: true,
+    showCoaches: false
 });
 // Expose for onclick
 window.sessionCal = sessionCal;
