@@ -577,12 +577,13 @@ function decryptPassword($encrypted_data) {
 
 /**
  * Decrypt a credential value. Returns the decrypted value if the credential
- * is properly encrypted, or empty string if decryption fails.
- * All credentials should be encrypted during setup — use ensureCredentialsEncrypted()
- * to migrate any plaintext values.
+ * is properly encrypted. If decryption fails (value may be plaintext/not yet
+ * migrated), logs a warning and returns the original value to avoid breaking
+ * functionality. Run ensureCredentialsEncrypted() during setup to migrate
+ * any plaintext values.
  *
  * @param string $value The encrypted value from system_settings
- * @return string The decrypted value, or empty string on failure
+ * @return string The decrypted value, or original value if decryption fails
  */
 function decryptCredential($value) {
     if (empty($value)) {
@@ -688,7 +689,8 @@ function ensureCredentialsEncrypted($pdo) {
         
         // Check if the value is already encrypted
         if (isValueEncrypted($value)) {
-            // Verify it actually decrypts successfully
+            // Verify it actually decrypts successfully using decryptPassword() directly
+            // (not decryptCredential() which would log warnings during migration)
             $decrypted = decryptPassword($value);
             if (!empty($decrypted)) {
                 $results['already_encrypted'][] = $key;
