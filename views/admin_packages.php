@@ -1229,7 +1229,7 @@ var mwCal = new ArcticCalendar({
 window.mwCal = mwCal;
 function mwCalNav(dir) { mwCal.nav(dir); }
 
-// Legacy function stubs for backward compatibility
+// Deprecated: These stubs maintain backward compatibility after replacing manual date inputs with ArcticCalendar
 function generateCampDays() {}
 function addScheduleRow() {}
 function addProgramDate() {}

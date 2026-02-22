@@ -177,7 +177,7 @@ try {
             <div id="mPkgStatusOnlyRow" style="display:none;">
                 <div class="m-form-group">
                     <label class="m-form-label">Status</label>
-                    <select name="" id="mPkgActive2" class="m-form-select" onchange="document.getElementById('mPkgActive').value=this.value">
+                    <select class="m-form-select" onchange="document.getElementById('mPkgActive').value=this.value">
                         <option value="1">Active</option>
                         <option value="0">Inactive</option>
                     </select>

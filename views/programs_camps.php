@@ -916,14 +916,7 @@ document.addEventListener('DOMContentLoaded', function() {
         btn.addEventListener('click', function() {
             filterButtons.forEach(function(b) { b.classList.remove('active'); });
             this.classList.add('active');
-            
-            var filterType = this.dataset.type;
-            var searchQuery = (document.getElementById('program-search-input').value || '').toLowerCase();
-            programCards.forEach(function(card) {
-                var matchesType = (filterType === 'all' || card.dataset.type === filterType);
-                var matchesSearch = (searchQuery === '' || (card.getAttribute('data-name') || '').indexOf(searchQuery) !== -1);
-                card.style.display = (matchesType && matchesSearch) ? 'block' : 'none';
-            });
+            applyProgramFilters();
         });
     });
     
@@ -936,18 +929,22 @@ document.addEventListener('DOMContentLoaded', function() {
     <?php endif; ?>
 });
 
-// Search/filter program cards by name
-function filterProgramCards() {
-    var query = (document.getElementById('program-search-input').value || '').toLowerCase();
+// Shared filter logic for type + search
+function applyProgramFilters() {
+    var activeBtn = document.querySelector('.program-filter .filter-btn[data-type].active');
+    var filterType = activeBtn ? activeBtn.dataset.type : 'all';
+    var searchQuery = (document.getElementById('program-search-input').value || '').toLowerCase();
     var cards = document.querySelectorAll('.program-card');
     cards.forEach(function(card) {
-        var name = card.getAttribute('data-name') || '';
-        if (query === '' || name.indexOf(query) !== -1) {
-            card.style.display = 'block';
-        } else {
-            card.style.display = 'none';
-        }
+        var matchesType = (filterType === 'all' || card.dataset.type === filterType);
+        var matchesSearch = (searchQuery === '' || (card.getAttribute('data-name') || '').indexOf(searchQuery) !== -1);
+        card.style.display = (matchesType && matchesSearch) ? 'block' : 'none';
     });
+}
+
+// Search/filter program cards by name (called from search input)
+function filterProgramCards() {
+    applyProgramFilters();
 }
 
 function toggleSchedule(packageId) {
