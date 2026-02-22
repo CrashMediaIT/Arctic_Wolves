@@ -788,39 +788,24 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                 <!-- Multi-Week Dates Section -->
                 <div class="form-section" id="programMultiWeekDates" style="display: none;">
                     <h4 class="section-title"><i class="fas fa-calendar-week"></i> Program Dates</h4>
-                    <p class="form-help-text" style="margin-bottom: 12px; color: var(--text-dim); font-size: 13px;">Add individual dates for this multi-week program. Each date can have its own time and location.</p>
+                    <p class="form-help-text" style="margin-bottom: 12px; color: var(--text-dim); font-size: 13px;">Click dates on the calendar to select or deselect them. Each date can have its own time and location.</p>
                     
-                    <div id="program-dates-container">
-                        <div class="program-date-entry" data-index="0">
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label class="form-label">Date *</label>
-                                    <input type="date" name="program_dates[0][date]" class="form-input" required>
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Start Time</label>
-                                    <input type="time" name="program_dates[0][start_time]" class="form-input" value="09:00">
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">End Time</label>
-                                    <input type="time" name="program_dates[0][end_time]" class="form-input" value="17:00">
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Location</label>
-                                    <select name="program_dates[0][location_id]" class="form-input">
-                                        <option value="">Default</option>
-                                        <?php foreach ($locations as $loc): ?>
-                                        <option value="<?= $loc['id'] ?>"><?= htmlspecialchars($loc['name']) ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                                <div class="form-group" style="flex: 0 0 auto; align-self: end;">
-                                    <button type="button" class="btn-action remove-program-date" onclick="removeProgramDate(this)" style="display:none;"><i class="fas fa-trash"></i></button>
-                                </div>
-                            </div>
+                    <!-- Inline Calendar Picker for Programs -->
+                    <div class="arctic-calendar" id="program-calendar">
+                        <div class="arctic-cal-header">
+                            <button type="button" class="arctic-cal-nav" onclick="programCalNav(-1)"><i class="fas fa-chevron-left"></i></button>
+                            <span class="arctic-cal-title" id="program-cal-title"></span>
+                            <button type="button" class="arctic-cal-nav" onclick="programCalNav(1)"><i class="fas fa-chevron-right"></i></button>
                         </div>
+                        <div class="arctic-cal-weekdays">
+                            <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+                        </div>
+                        <div class="arctic-cal-days" id="program-cal-days"></div>
                     </div>
-                    <button type="button" class="btn btn-secondary" onclick="addProgramDate()" style="margin-top: 12px;"><i class="fas fa-plus"></i> Add Another Date</button>
+                    
+                    <!-- Selected Dates List -->
+                    <div id="program-dates-container"></div>
+                    <p id="program-dates-empty" style="color: var(--text-dim); font-size: 13px; text-align: center; padding: 12px; display: block;"><i class="fas fa-mouse-pointer"></i> Click on dates above to add them to this program</p>
                 </div>
                 
                 <div class="form-section">
@@ -846,6 +831,150 @@ $activeTab = $_GET['tab'] ?? 'sessions';
 </div>
 
 <style>
+/* Arctic Calendar Picker */
+.arctic-calendar {
+    background: var(--bg-secondary, #1e293b);
+    border: 1px solid var(--border, #334155);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    max-width: 420px;
+}
+.arctic-cal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+.arctic-cal-title {
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--text-white, #e2e8f0);
+}
+.arctic-cal-nav {
+    background: none;
+    border: 1px solid var(--border, #334155);
+    color: var(--text-primary, #e2e8f0);
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+}
+.arctic-cal-nav:hover {
+    background: var(--primary, #6b46c1);
+    border-color: var(--primary, #6b46c1);
+    color: #fff;
+}
+.arctic-cal-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-dim, #94a3b8);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.arctic-cal-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+}
+.arctic-cal-day {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+    border: none;
+    background: none;
+    color: var(--text-primary, #e2e8f0);
+    transition: all 0.15s;
+    font-weight: 500;
+    position: relative;
+}
+.arctic-cal-day:hover:not(.disabled):not(.empty) {
+    background: rgba(107, 70, 193, 0.15);
+    color: var(--primary-light, #a78bfa);
+}
+.arctic-cal-day.selected {
+    background: var(--primary, #6b46c1);
+    color: #fff;
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(107, 70, 193, 0.35);
+}
+.arctic-cal-day.today:not(.selected) {
+    border: 2px solid var(--primary, #6b46c1);
+}
+.arctic-cal-day.disabled {
+    color: var(--text-dim, #475569);
+    opacity: 0.3;
+    cursor: default;
+}
+.arctic-cal-day.empty {
+    cursor: default;
+}
+
+/* Selected date entries */
+.session-date-entry {
+    background: var(--bg-secondary, #1e293b);
+    border: 1px solid var(--border, #334155);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-top: 8px;
+    position: relative;
+    animation: slideIn 0.2s ease;
+}
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.session-date-entry .date-label {
+    font-weight: 600;
+    color: var(--primary-light, #a78bfa);
+    font-size: 13px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.session-date-entry .date-fields {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: end;
+}
+.session-date-entry .date-fields .form-group {
+    margin-bottom: 0;
+}
+.session-date-entry .remove-date-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border: none;
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    transition: all 0.15s;
+}
+.session-date-entry .remove-date-btn:hover {
+    background: rgba(239, 68, 68, 0.25);
+}
+
 /* Product Stats */
 .product-stats {
     display: grid;
@@ -1441,48 +1570,24 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                 
                 <div class="form-section">
                     <h4 class="section-title"><i class="fas fa-calendar-alt"></i> Session Dates</h4>
-                    <p class="form-help-text" style="margin-bottom: 12px; color: var(--text-dim); font-size: 13px;">Add one or more dates when this session will be held. Each date can have its own time and location.</p>
+                    <p class="form-help-text" style="margin-bottom: 12px; color: var(--text-dim); font-size: 13px;">Click dates on the calendar to select or deselect them. Each selected date can have its own time and location.</p>
                     
-                    <div id="session-dates-container">
-                        <div class="session-date-input" data-index="0">
-                            <div class="form-row" style="flex-wrap: wrap;">
-                                <div class="form-group" style="flex: 1; min-width: 160px;">
-                                    <label class="form-label">Date</label>
-                                    <input type="date" name="session_dates[0][date]" class="form-input">
-                                </div>
-                                <div class="form-group" style="flex: 0 0 120px;">
-                                    <label class="form-label">Start Time</label>
-                                    <input type="time" name="session_dates[0][start_time]" class="form-input" value="09:00">
-                                </div>
-                                <div class="form-group" style="flex: 0 0 120px;">
-                                    <label class="form-label">End Time</label>
-                                    <input type="time" name="session_dates[0][end_time]" class="form-input" value="10:00">
-                                </div>
-                                <div class="form-group" style="flex: 1; min-width: 160px;">
-                                    <label class="form-label">Location</label>
-                                    <select name="session_dates[0][location_id]" class="form-input">
-                                        <option value="">Default Location</option>
-                                        <?php foreach ($locations as $loc): ?>
-                                        <option value="<?= $loc['id'] ?>"><?= htmlspecialchars($loc['name']) ?><?= $loc['city'] ? ' - ' . htmlspecialchars($loc['city']) : '' ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                                <div class="form-group" style="flex: 1; min-width: 140px;">
-                                    <label class="form-label">Team (Optional)</label>
-                                    <select name="session_dates[0][team_id]" class="form-input">
-                                        <option value="">All Athletes</option>
-                                        <?php foreach ($teams as $team): ?>
-                                        <option value="<?= $team['id'] ?>"><?= htmlspecialchars($team['name']) ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                                <div class="form-group" style="flex: 0 0 auto; align-self: end;">
-                                    <button type="button" class="btn-action remove-date" onclick="removeSessionDate(this)" style="display: none;"><i class="fas fa-trash"></i></button>
-                                </div>
-                            </div>
+                    <!-- Inline Calendar Picker -->
+                    <div class="arctic-calendar" id="session-calendar">
+                        <div class="arctic-cal-header">
+                            <button type="button" class="arctic-cal-nav" onclick="sessionCalNav(-1)"><i class="fas fa-chevron-left"></i></button>
+                            <span class="arctic-cal-title" id="session-cal-title"></span>
+                            <button type="button" class="arctic-cal-nav" onclick="sessionCalNav(1)"><i class="fas fa-chevron-right"></i></button>
                         </div>
+                        <div class="arctic-cal-weekdays">
+                            <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+                        </div>
+                        <div class="arctic-cal-days" id="session-cal-days"></div>
                     </div>
-                    <button type="button" class="btn btn-secondary" onclick="addSessionDate()" style="margin-top: 12px;"><i class="fas fa-plus"></i> Add Another Date</button>
+                    
+                    <!-- Selected Dates List -->
+                    <div id="session-dates-container"></div>
+                    <p id="session-dates-empty" style="color: var(--text-dim); font-size: 13px; text-align: center; padding: 12px; display: block;"><i class="fas fa-mouse-pointer"></i> Click on dates above to add them to this session</p>
                 </div>
                 
                 <div class="form-section">
@@ -3062,79 +3167,214 @@ function addEditMerchSizeRow() {
 }
 
 // Session date management
-var sessionDateIndex = 0;
-function addSessionDate() {
-    sessionDateIndex++;
-    var container = document.getElementById('session-dates-container');
-    var teams = <?= json_encode($teams) ?>;
-    var locationsList = <?= json_encode($locations) ?>;
+// ===== Arctic Calendar Date Picker =====
+var sessionCalLocations = <?= json_encode($locations) ?>;
+var sessionCalTeams = <?= json_encode($teams) ?>;
+
+// Reusable calendar factory
+function ArcticCalendar(config) {
+    var self = this;
+    this.containerId = config.containerId;
+    this.daysId = config.daysId;
+    this.titleId = config.titleId;
+    this.datesContainerId = config.datesContainerId;
+    this.emptyId = config.emptyId;
+    this.fieldPrefix = config.fieldPrefix || 'session_dates';
+    this.defaultStartTime = config.defaultStartTime || '09:00';
+    this.defaultEndTime = config.defaultEndTime || '10:00';
+    this.showTeam = config.showTeam !== false;
+    this.selectedDates = {}; // { 'YYYY-MM-DD': index }
+    this.dateIndex = 0;
     
-    var teamOptions = '<option value="">All Athletes</option>';
-    teams.forEach(function(team) {
-        teamOptions += '<option value="' + team.id + '">' + team.name + '</option>';
-    });
+    var now = new Date();
+    this.currentMonth = now.getMonth();
+    this.currentYear = now.getFullYear();
     
-    var locOptions = '<option value="">Default Location</option>';
-    locationsList.forEach(function(loc) {
-        locOptions += '<option value="' + loc.id + '">' + (loc.name || '') + (loc.city ? ' - ' + loc.city : '') + '</option>';
-    });
+    this.render = function() {
+        var titleEl = document.getElementById(self.titleId);
+        var daysEl = document.getElementById(self.daysId);
+        if (!titleEl || !daysEl) return;
+        
+        var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        titleEl.textContent = months[self.currentMonth] + ' ' + self.currentYear;
+        
+        var firstDay = new Date(self.currentYear, self.currentMonth, 1).getDay();
+        var daysInMonth = new Date(self.currentYear, self.currentMonth + 1, 0).getDate();
+        var today = new Date();
+        today.setHours(0,0,0,0);
+        
+        var html = '';
+        // Empty cells before first day
+        for (var e = 0; e < firstDay; e++) {
+            html += '<button type="button" class="arctic-cal-day empty" disabled></button>';
+        }
+        
+        for (var d = 1; d <= daysInMonth; d++) {
+            var dateObj = new Date(self.currentYear, self.currentMonth, d);
+            var dateStr = self.formatDate(dateObj);
+            var isPast = dateObj < today;
+            var isToday = dateObj.getTime() === today.getTime();
+            var isSelected = self.selectedDates.hasOwnProperty(dateStr);
+            
+            var cls = 'arctic-cal-day';
+            if (isPast) cls += ' disabled';
+            if (isToday) cls += ' today';
+            if (isSelected) cls += ' selected';
+            
+            if (isPast) {
+                html += '<button type="button" class="' + cls + '" disabled>' + d + '</button>';
+            } else {
+                html += '<button type="button" class="' + cls + '" data-date="' + dateStr + '" onclick="' + self.containerId + 'Cal.toggleDate(\'' + dateStr + '\')">' + d + '</button>';
+            }
+        }
+        
+        daysEl.innerHTML = html;
+    };
     
-    var newDate = document.createElement('div');
-    newDate.className = 'session-date-input';
-    newDate.setAttribute('data-index', sessionDateIndex);
-    newDate.innerHTML = '<div class="form-row" style="flex-wrap: wrap;">' +
-        '<div class="form-group" style="flex: 1; min-width: 160px;">' +
-            '<label class="form-label">Date</label>' +
-            '<input type="date" name="session_dates[' + sessionDateIndex + '][date]" class="form-input">' +
-        '</div>' +
-        '<div class="form-group" style="flex: 0 0 120px;">' +
-            '<label class="form-label">Start Time</label>' +
-            '<input type="time" name="session_dates[' + sessionDateIndex + '][start_time]" class="form-input" value="09:00">' +
-        '</div>' +
-        '<div class="form-group" style="flex: 0 0 120px;">' +
-            '<label class="form-label">End Time</label>' +
-            '<input type="time" name="session_dates[' + sessionDateIndex + '][end_time]" class="form-input" value="10:00">' +
-        '</div>' +
-        '<div class="form-group" style="flex: 1; min-width: 160px;">' +
-            '<label class="form-label">Location</label>' +
-            '<select name="session_dates[' + sessionDateIndex + '][location_id]" class="form-input">' + locOptions + '</select>' +
-        '</div>' +
-        '<div class="form-group" style="flex: 1; min-width: 140px;">' +
-            '<label class="form-label">Team (Optional)</label>' +
-            '<select name="session_dates[' + sessionDateIndex + '][team_id]" class="form-input">' + teamOptions + '</select>' +
-        '</div>' +
-        '<div class="form-group" style="flex: 0 0 auto; align-self: end;">' +
-            '<button type="button" class="btn-action remove-date" onclick="removeSessionDate(this)"><i class="fas fa-trash"></i></button>' +
-        '</div>' +
-    '</div>';
+    this.formatDate = function(d) {
+        var y = d.getFullYear();
+        var m = String(d.getMonth() + 1).padStart(2, '0');
+        var day = String(d.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + day;
+    };
     
-    container.appendChild(newDate);
+    this.formatDisplayDate = function(dateStr) {
+        var parts = dateStr.split('-');
+        var d = new Date(parts[0], parts[1] - 1, parts[2]);
+        var days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+        var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        return days[d.getDay()] + ', ' + months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+    };
     
-    // Show remove button on first date if there's more than one
-    var firstRemoveBtn = container.querySelector('.session-date-input[data-index="0"] .remove-date');
-    if (firstRemoveBtn && container.querySelectorAll('.session-date-input').length > 1) {
-        firstRemoveBtn.style.display = 'block';
-    }
+    this.toggleDate = function(dateStr) {
+        if (self.selectedDates.hasOwnProperty(dateStr)) {
+            // Deselect
+            self.removeDateEntry(dateStr);
+            delete self.selectedDates[dateStr];
+        } else {
+            // Select
+            self.dateIndex++;
+            self.selectedDates[dateStr] = self.dateIndex;
+            self.addDateEntry(dateStr, self.dateIndex);
+        }
+        self.render();
+        self.updateEmpty();
+    };
+    
+    this.addDateEntry = function(dateStr, idx) {
+        var container = document.getElementById(self.datesContainerId);
+        var locOptions = '<option value="">Default Location</option>';
+        sessionCalLocations.forEach(function(loc) {
+            locOptions += '<option value="' + loc.id + '">' + (loc.name || '') + (loc.city ? ' - ' + loc.city : '') + '</option>';
+        });
+        
+        var teamHtml = '';
+        if (self.showTeam) {
+            var teamOptions = '<option value="">All Athletes</option>';
+            sessionCalTeams.forEach(function(team) {
+                teamOptions += '<option value="' + team.id + '">' + (team.name || '') + '</option>';
+            });
+            teamHtml = '<div class="form-group" style="flex: 1; min-width: 130px;">' +
+                '<label class="form-label" style="font-size:12px;">Team</label>' +
+                '<select name="' + self.fieldPrefix + '[' + idx + '][team_id]" class="form-input" style="font-size:13px;">' + teamOptions + '</select>' +
+            '</div>';
+        }
+        
+        var entry = document.createElement('div');
+        entry.className = 'session-date-entry';
+        entry.setAttribute('data-date', dateStr);
+        entry.innerHTML = '<input type="hidden" name="' + self.fieldPrefix + '[' + idx + '][date]" value="' + dateStr + '">' +
+            '<button type="button" class="remove-date-btn" onclick="' + self.containerId + 'Cal.toggleDate(\'' + dateStr + '\')"><i class="fas fa-times"></i></button>' +
+            '<div class="date-label"><i class="fas fa-calendar-day"></i> ' + self.formatDisplayDate(dateStr) + '</div>' +
+            '<div class="date-fields">' +
+                '<div class="form-group" style="flex: 0 0 110px;">' +
+                    '<label class="form-label" style="font-size:12px;">Start Time</label>' +
+                    '<input type="time" name="' + self.fieldPrefix + '[' + idx + '][start_time]" class="form-input" value="' + self.defaultStartTime + '" style="font-size:13px;">' +
+                '</div>' +
+                '<div class="form-group" style="flex: 0 0 110px;">' +
+                    '<label class="form-label" style="font-size:12px;">End Time</label>' +
+                    '<input type="time" name="' + self.fieldPrefix + '[' + idx + '][end_time]" class="form-input" value="' + self.defaultEndTime + '" style="font-size:13px;">' +
+                '</div>' +
+                '<div class="form-group" style="flex: 1; min-width: 150px;">' +
+                    '<label class="form-label" style="font-size:12px;">Location</label>' +
+                    '<select name="' + self.fieldPrefix + '[' + idx + '][location_id]" class="form-input" style="font-size:13px;">' + locOptions + '</select>' +
+                '</div>' +
+                teamHtml +
+            '</div>';
+        
+        // Insert sorted by date
+        var entries = container.querySelectorAll('.session-date-entry');
+        var inserted = false;
+        for (var i = 0; i < entries.length; i++) {
+            if (entries[i].getAttribute('data-date') > dateStr) {
+                container.insertBefore(entry, entries[i]);
+                inserted = true;
+                break;
+            }
+        }
+        if (!inserted) container.appendChild(entry);
+    };
+    
+    this.removeDateEntry = function(dateStr) {
+        var container = document.getElementById(self.datesContainerId);
+        var entry = container.querySelector('.session-date-entry[data-date="' + dateStr + '"]');
+        if (entry) entry.remove();
+    };
+    
+    this.updateEmpty = function() {
+        var emptyEl = document.getElementById(self.emptyId);
+        if (emptyEl) {
+            emptyEl.style.display = Object.keys(self.selectedDates).length === 0 ? 'block' : 'none';
+        }
+    };
+    
+    this.nav = function(dir) {
+        self.currentMonth += dir;
+        if (self.currentMonth > 11) { self.currentMonth = 0; self.currentYear++; }
+        if (self.currentMonth < 0) { self.currentMonth = 11; self.currentYear--; }
+        self.render();
+    };
+    
+    // Initial render
+    this.render();
 }
 
-function removeSessionDate(button) {
-    var dateInput = button.closest('.session-date-input');
-    var container = document.getElementById('session-dates-container');
-    
-    if (container.querySelectorAll('.session-date-input').length > 1) {
-        dateInput.remove();
-    }
-    
-    // Hide remove button if only one date remains
-    if (container.querySelectorAll('.session-date-input').length === 1) {
-        var remainingRemoveBtn = container.querySelector('.remove-date');
-        if (remainingRemoveBtn) remainingRemoveBtn.style.display = 'none';
-    }
-}
+// Session calendar instance
+var sessionCal = new ArcticCalendar({
+    containerId: 'session',
+    daysId: 'session-cal-days',
+    titleId: 'session-cal-title',
+    datesContainerId: 'session-dates-container',
+    emptyId: 'session-dates-empty',
+    fieldPrefix: 'session_dates',
+    defaultStartTime: '09:00',
+    defaultEndTime: '10:00',
+    showTeam: true
+});
+// Expose for onclick
+window.sessionCal = sessionCal;
+function sessionCalNav(dir) { sessionCal.nav(dir); }
+
+// Program calendar instance (initialized when tab opens)
+var programCal = new ArcticCalendar({
+    containerId: 'program',
+    daysId: 'program-cal-days',
+    titleId: 'program-cal-title',
+    datesContainerId: 'program-dates-container',
+    emptyId: 'program-dates-empty',
+    fieldPrefix: 'program_dates',
+    defaultStartTime: '09:00',
+    defaultEndTime: '17:00',
+    showTeam: false
+});
+window.programCal = programCal;
+function programCalNav(dir) { programCal.nav(dir); }
+
+// Keep old function names for backwards compatibility (no-ops since calendar handles it)
+function addSessionDate() {}
+function removeSessionDate() {}
 
 // Program / Camp modal helpers
-var programDateIndex = 0;
-
 function toggleProgramFields() {
     var typeSelect = document.getElementById('programTypeSelect');
     if (!typeSelect) return;
@@ -3142,51 +3382,14 @@ function toggleProgramFields() {
     var campSection = document.getElementById('programCampDates');
     var multiWeekSection = document.getElementById('programMultiWeekDates');
     if (campSection) campSection.style.display = isCamp ? 'block' : 'none';
-    if (multiWeekSection) multiWeekSection.style.display = isCamp ? 'none' : 'block';
-}
-
-function addProgramDate() {
-    programDateIndex++;
-    var container = document.getElementById('program-dates-container');
-    var locations = <?= json_encode($locations) ?>;
-    
-    var locOptions = '<option value="">Default</option>';
-    locations.forEach(function(loc) {
-        locOptions += '<option value="' + loc.id + '">' + (loc.name || '') + '</option>';
-    });
-    
-    var entry = document.createElement('div');
-    entry.className = 'program-date-entry';
-    entry.setAttribute('data-index', programDateIndex);
-    entry.innerHTML = '<div class="form-row">' +
-        '<div class="form-group"><label class="form-label">Date *</label><input type="date" name="program_dates[' + programDateIndex + '][date]" class="form-input" required></div>' +
-        '<div class="form-group"><label class="form-label">Start Time</label><input type="time" name="program_dates[' + programDateIndex + '][start_time]" class="form-input" value="09:00"></div>' +
-        '<div class="form-group"><label class="form-label">End Time</label><input type="time" name="program_dates[' + programDateIndex + '][end_time]" class="form-input" value="17:00"></div>' +
-        '<div class="form-group"><label class="form-label">Location</label><select name="program_dates[' + programDateIndex + '][location_id]" class="form-input">' + locOptions + '</select></div>' +
-        '<div class="form-group" style="flex:0 0 auto;align-self:end;"><button type="button" class="btn-action remove-program-date" onclick="removeProgramDate(this)"><i class="fas fa-trash"></i></button></div>' +
-    '</div>';
-    
-    container.appendChild(entry);
-    
-    // Show remove button on first entry
-    var firstRemoveBtn = container.querySelector('.program-date-entry[data-index="0"] .remove-program-date');
-    if (firstRemoveBtn && container.querySelectorAll('.program-date-entry').length > 1) {
-        firstRemoveBtn.style.display = 'block';
+    if (multiWeekSection) {
+        multiWeekSection.style.display = isCamp ? 'none' : 'block';
+        if (!isCamp) programCal.render();
     }
 }
 
-function removeProgramDate(button) {
-    var entry = button.closest('.program-date-entry');
-    var container = document.getElementById('program-dates-container');
-    
-    if (container.querySelectorAll('.program-date-entry').length > 1) {
-        entry.remove();
-    }
-    if (container.querySelectorAll('.program-date-entry').length === 1) {
-        var btn = container.querySelector('.remove-program-date');
-        if (btn) btn.style.display = 'none';
-    }
-}
+function addProgramDate() {}
+function removeProgramDate() {}
 
 // Package type toggle
 function togglePackageTypeFields() {
