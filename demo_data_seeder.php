@@ -717,7 +717,14 @@ class DemoDataSeeder {
                 VALUES (?, ?, ?, ?, 1)
             ");
             $stmt->execute(array_merge($skill, [$category_id]));
-            $this->demo_ids['eval_skills'][] = $this->pdo->lastInsertId();
+            $skillId = $this->pdo->lastInsertId();
+            $this->demo_ids['eval_skills'][] = $skillId;
+            
+            // Also insert into junction table for multi-category support
+            $this->pdo->prepare("
+                INSERT IGNORE INTO eval_skill_categories (skill_id, category_id, created_at)
+                VALUES (?, ?, NOW())
+            ")->execute([$skillId, $category_id]);
         }
         
         echo "  ✓ Created " . count($skills) . " demo evaluation skills\n";

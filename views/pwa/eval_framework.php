@@ -17,8 +17,9 @@ try {
         SELECT c.id as category_id, c.name as category_name, c.description as category_description,
                s.id as skill_id, s.name as skill_name, s.description as skill_description
         FROM eval_categories c
-        LEFT JOIN eval_skills s ON c.id = s.category_id
-        ORDER BY c.display_order ASC, c.id ASC, s.display_order ASC, s.id ASC
+        LEFT JOIN eval_skill_categories esc ON c.id = esc.category_id
+        LEFT JOIN eval_skills s ON esc.skill_id = s.id
+        ORDER BY c.display_order ASC, c.id ASC, esc.display_order ASC, s.id ASC
     ");
     $stmt->execute();
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);

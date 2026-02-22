@@ -221,7 +221,9 @@ class SystemValidator {
                 ['table' => 'athlete_evaluations', 'column' => 'created_by', 'references' => 'users(id)'],
                 ['table' => 'evaluation_scores', 'column' => 'evaluation_id', 'references' => 'athlete_evaluations(id)'],
                 ['table' => 'evaluation_scores', 'column' => 'skill_id', 'references' => 'eval_skills(id)'],
-                ['table' => 'eval_skills', 'column' => 'category_id', 'references' => 'eval_categories(id)']
+                ['table' => 'eval_skills', 'column' => 'category_id', 'references' => 'eval_categories(id)'],
+                ['table' => 'eval_skill_categories', 'column' => 'skill_id', 'references' => 'eval_skills(id)'],
+                ['table' => 'eval_skill_categories', 'column' => 'category_id', 'references' => 'eval_categories(id)']
             ];
             
             foreach ($fk_checks as $fk) {

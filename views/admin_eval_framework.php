@@ -4,7 +4,7 @@ $activeTab = $_GET['tab'] ?? 'builder';
 
 // Fetch categories and skills from database
 try {
-    // Get all categories and their skills in a single query to avoid N+1 problem
+    // Get all categories and their skills via junction table to support many-to-many
     $stmt = $pdo->prepare("
         SELECT 
             c.id as category_id,
@@ -14,10 +14,11 @@ try {
             s.id as skill_id,
             s.name as skill_name,
             s.description as skill_description,
-            s.display_order as skill_order
+            esc.display_order as skill_order
         FROM eval_categories c
-        LEFT JOIN eval_skills s ON c.id = s.category_id
-        ORDER BY c.display_order ASC, c.id ASC, s.display_order ASC, s.id ASC
+        LEFT JOIN eval_skill_categories esc ON c.id = esc.category_id
+        LEFT JOIN eval_skills s ON esc.skill_id = s.id
+        ORDER BY c.display_order ASC, c.id ASC, esc.display_order ASC, s.id ASC
     ");
     $stmt->execute();
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -57,12 +58,15 @@ try {
         $total_skills += count($skills);
     }
     
-    // Get all available skills from the Skills Library (Categories view)
-    // Shows all skills with their current category assignment (if any) to allow reassignment
+    // Get all available skills from the Skills Library
+    // Shows all skills with their category assignments to allow multi-category management
     $stmt = $pdo->prepare("
-        SELECT es.id, es.name, es.description, ec.name as current_category
+        SELECT es.id, es.name, es.description,
+               GROUP_CONCAT(ec.name ORDER BY ec.name SEPARATOR ', ') as current_categories
         FROM eval_skills es
-        LEFT JOIN eval_categories ec ON es.category_id = ec.id
+        LEFT JOIN eval_skill_categories esc ON es.id = esc.skill_id
+        LEFT JOIN eval_categories ec ON esc.category_id = ec.id
+        GROUP BY es.id, es.name, es.description
         ORDER BY es.name ASC
     ");
     $stmt->execute();
@@ -748,8 +752,8 @@ try {
                                     <input type="checkbox" name="skill_ids[]" value="<?php echo $skill['id']; ?>" style="width: 18px; height: 18px; accent-color: var(--primary);">
                                     <span>
                                         <strong><?php echo htmlspecialchars($skill['name']); ?></strong>
-                                        <?php if ($skill['current_category']): ?>
-                                            <small style="color: var(--text-dim);"> (in <?php echo htmlspecialchars($skill['current_category']); ?>)</small>
+                                        <?php if (!empty($skill['current_categories'])): ?>
+                                            <small style="color: var(--text-dim);"> (in <?php echo htmlspecialchars($skill['current_categories']); ?>)</small>
                                         <?php endif; ?>
                                     </span>
                                 </label>
@@ -850,8 +854,8 @@ try {
                         <?php foreach ($allSkillsLibrary as $skill): ?>
                             <option value="<?php echo $skill['id']; ?>">
                                 <?php echo htmlspecialchars($skill['name']); ?>
-                                <?php if ($skill['current_category']): ?>
-                                    (in <?php echo htmlspecialchars($skill['current_category']); ?>)
+                                <?php if (!empty($skill['current_categories'])): ?>
+                                    (in <?php echo htmlspecialchars($skill['current_categories']); ?>)
                                 <?php endif; ?>
                             </option>
                         <?php endforeach; ?>
@@ -948,6 +952,21 @@ try {
                 <div class="form-group">
                     <label class="form-label">Description *</label>
                     <textarea name="description" id="edit-skill-description" class="form-textarea" rows="3" required></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Assign to Categories</label>
+                    <p class="form-help-text" style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">
+                        <i class="fas fa-info-circle"></i> Select one or more categories for this skill
+                    </p>
+                    <div class="skills-checkbox-list" id="edit-skill-categories-list" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 12px;">
+                        <?php foreach ($categories as $cat): ?>
+                            <label class="skill-checkbox-item" style="display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 6px; cursor: pointer; transition: background 0.2s;">
+                                <input type="checkbox" name="category_ids[]" value="<?php echo $cat['id']; ?>" style="width: 18px; height: 18px; accent-color: var(--primary);">
+                                <span><strong><?php echo htmlspecialchars($cat['name']); ?></strong></span>
+                            </label>
+                        <?php endforeach; ?>
+                    </div>
                 </div>
             </div>
             
@@ -1151,14 +1170,22 @@ try {
 var categoriesData = <?php echo json_encode(array_values($categories), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
 var skillsData = <?php 
     $allSkills = [];
+    $skillCategoryMap = []; // Track all categories per skill
     foreach ($skillsByCategory as $catId => $skills) {
         foreach ($skills as $skill) {
             $skill['category_id'] = $catId;
             $allSkills[] = $skill;
+            // Build map of skill_id => [category_ids]
+            $sid = $skill['id'];
+            if (!isset($skillCategoryMap[$sid])) {
+                $skillCategoryMap[$sid] = [];
+            }
+            $skillCategoryMap[$sid][] = $catId;
         }
     }
     echo json_encode($allSkills, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
 ?>;
+var skillCategoryMap = <?php echo json_encode($skillCategoryMap, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
 
 document.addEventListener('DOMContentLoaded', function() {
     var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '<?= htmlspecialchars($_SESSION["csrf_token"] ?? "", ENT_QUOTES) ?>';
@@ -1284,6 +1311,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('edit-skill-category-id').value = skill.category_id;
                 document.getElementById('edit-skill-name').value = skill.name;
                 document.getElementById('edit-skill-description').value = skill.description || '';
+                
+                // Check the right category checkboxes based on multi-category assignments
+                var catIds = skillCategoryMap[skillId] || [skill.category_id];
+                var catCheckboxes = document.querySelectorAll('#edit-skill-categories-list input[type="checkbox"]');
+                catCheckboxes.forEach(function(cb) {
+                    cb.checked = catIds.indexOf(parseInt(cb.value)) !== -1 || catIds.indexOf(String(cb.value)) !== -1;
+                });
             }
             
             var modal = document.getElementById('edit-skill-modal');

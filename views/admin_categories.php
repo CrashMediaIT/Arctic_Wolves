@@ -136,9 +136,12 @@ try {
                 <div class="categories-grid">
                     <?php
                     // Fetch all skills from database
-                    $stmt = $pdo->prepare("SELECT es.id, es.name, es.description, ec.name as category_name 
+                    $stmt = $pdo->prepare("SELECT es.id, es.name, es.description,
+                                                  GROUP_CONCAT(ec.name ORDER BY ec.name SEPARATOR ', ') as category_name 
                                           FROM eval_skills es 
-                                          LEFT JOIN eval_categories ec ON es.category_id = ec.id 
+                                          LEFT JOIN eval_skill_categories esc ON es.id = esc.skill_id
+                                          LEFT JOIN eval_categories ec ON esc.category_id = ec.id 
+                                          GROUP BY es.id, es.name, es.description
                                           ORDER BY es.name ASC");
                     $stmt->execute();
                     $skills = $stmt->fetchAll();

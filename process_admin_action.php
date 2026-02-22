@@ -2685,7 +2685,15 @@ if ($action == 'create_skill') {
             trim($_POST['name']),
             trim($_POST['description'] ?? '')
         ]);
-        Auditor::log($pdo, $user_id, 'create', 'skills', $pdo->lastInsertId(), ['action' => 'create_skill']);
+        $newSkillId = $pdo->lastInsertId();
+        
+        // Also insert into junction table for multi-category support
+        $pdo->prepare("
+            INSERT IGNORE INTO eval_skill_categories (skill_id, category_id, created_at)
+            VALUES (?, ?, NOW())
+        ")->execute([$newSkillId, $category_id]);
+        
+        Auditor::log($pdo, $user_id, 'create', 'skills', $newSkillId, ['action' => 'create_skill']);
         
         if ($isAjax) {
             header('Content-Type: application/json');
