@@ -89,6 +89,7 @@ try {
             ");
 
             foreach ($laps as $lap) {
+                // Lap-level athlete takes precedence; fall back to session-level assignment
                 $athlete_id = !empty($lap['athleteId']) ? (int) $lap['athleteId'] : $session_athlete_id;
                 $lap_number = (int) ($lap['number'] ?? 0);
                 $lap_time_ms = (int) ($lap['lapTimeMs'] ?? 0);
