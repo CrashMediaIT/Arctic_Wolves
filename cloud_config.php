@@ -352,7 +352,7 @@ function uploadToNextcloud($connection, $remote_path, $file_content, $content_ty
     if ($parent_dir !== '/' && $parent_dir !== '.') {
         if (!nextcloudFolderExists($connection, $parent_dir)) {
             // Create parent directories recursively
-            $parts = array_filter(explode('/', $parent_dir));
+            $parts = array_filter(explode('/', $parent_dir), function($p) { return $p !== ''; });
             $current = '';
             foreach ($parts as $part) {
                 $current .= '/' . $part;

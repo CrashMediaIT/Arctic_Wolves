@@ -77,7 +77,8 @@ test.describe('Cron backup Nextcloud function collision fix', () => {
     const content = readFile('cron_database_backup.php');
     // Should read file contents for secondary upload
     const secondaryStart = content.indexOf('Upload to secondary Nextcloud');
-    const secondarySection = content.substring(secondaryStart, secondaryStart + 1000);
+    const secondaryEnd = content.indexOf('Upload to SMB', secondaryStart);
+    const secondarySection = content.substring(secondaryStart, secondaryEnd > -1 ? secondaryEnd : secondaryStart + 2000);
     expect(secondarySection).toContain('file_get_contents');
   });
 });
