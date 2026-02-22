@@ -61,3 +61,5 @@ android-tv/local.properties
 android-tv/captures/
 android-tv/.externalNativeBuild/
 android-tv/.cxx/
+android-tv/build-cmdline/
+android-tv/*.idsig

@@ -1,6 +1,7 @@
 package ca.arcticwolves.gameplan.tv
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
@@ -17,7 +18,6 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import android.widget.TextView
-import androidx.fragment.app.FragmentActivity
 import ca.arcticwolves.gameplan.tv.api.ApiClient
 
 /**
@@ -28,7 +28,7 @@ import ca.arcticwolves.gameplan.tv.api.ApiClient
  * The WebView loads the server-rendered pages from gameplan_tv.php. All
  * navigation is driven by the controller device — the TV simply follows.
  */
-class ViewerActivity : FragmentActivity() {
+class ViewerActivity : Activity() {
 
     companion object {
         private const val POLL_INTERVAL_MS = 3000L
@@ -132,7 +132,7 @@ class ViewerActivity : FragmentActivity() {
     // ── Page loading ───────────────────────────────────────
 
     private fun loadPage(page: String) {
-        val baseUrl = BuildConfig.BASE_URL
+        val baseUrl = AppConfig.BASE_URL
         val url = "$baseUrl/gameplan_tv.php"
         webView.loadUrl(url)
         currentPage = page

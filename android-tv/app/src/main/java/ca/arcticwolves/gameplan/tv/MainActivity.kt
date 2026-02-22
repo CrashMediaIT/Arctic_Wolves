@@ -1,9 +1,9 @@
 package ca.arcticwolves.gameplan.tv
 
+import android.app.Activity
 import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
-import androidx.fragment.app.FragmentActivity
 
 /**
  * Main entry-point activity for the Game Plan TV app.
@@ -11,7 +11,7 @@ import androidx.fragment.app.FragmentActivity
  * Checks for a persisted pair session and either launches the
  * [ViewerActivity] (already paired) or [PairActivity] (needs pairing).
  */
-class MainActivity : FragmentActivity() {
+class MainActivity : Activity() {
 
     companion object {
         const val PREFS_NAME = "gameplan_tv_prefs"

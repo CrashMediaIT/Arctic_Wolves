@@ -1,6 +1,6 @@
 package ca.arcticwolves.gameplan.tv.api
 
-import ca.arcticwolves.gameplan.tv.BuildConfig
+import ca.arcticwolves.gameplan.tv.AppConfig
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -13,8 +13,8 @@ import java.util.concurrent.TimeUnit
  *
  * All calls are **synchronous** and must be invoked from a background thread.
  *
- * Base URL comes from [BuildConfig.API_BASE_URL] which is set per build type
- * (debug → localhost emulator, release → production domain).
+ * Base URL comes from [AppConfig.API_BASE_URL] which can be overridden
+ * per build type (debug → localhost emulator, release → production domain).
  */
 object ApiClient {
 
@@ -46,7 +46,7 @@ object ApiClient {
             }.toString().toRequestBody(JSON_MEDIA)
 
             val request = Request.Builder()
-                .url("${BuildConfig.API_BASE_URL}/tv/pair")
+                .url("${AppConfig.API_BASE_URL}/tv/pair")
                 .addHeader("Authorization", "Bearer $apiKey")
                 .post(body)
                 .build()
@@ -83,7 +83,7 @@ object ApiClient {
     fun getPairState(apiKey: String, pairId: Int): PairState {
         return try {
             val request = Request.Builder()
-                .url("${BuildConfig.API_BASE_URL}/tv/pair/$pairId")
+                .url("${AppConfig.API_BASE_URL}/tv/pair/$pairId")
                 .addHeader("Authorization", "Bearer $apiKey")
                 .get()
                 .build()
@@ -109,7 +109,7 @@ object ApiClient {
     fun unpair(apiKey: String, pairId: Int): Boolean {
         return try {
             val request = Request.Builder()
-                .url("${BuildConfig.API_BASE_URL}/tv/pair/$pairId")
+                .url("${AppConfig.API_BASE_URL}/tv/pair/$pairId")
                 .addHeader("Authorization", "Bearer $apiKey")
                 .delete()
                 .build()

@@ -1,5 +1,6 @@
 package ca.arcticwolves.gameplan.tv
 
+import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
@@ -9,7 +10,6 @@ import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
-import androidx.fragment.app.FragmentActivity
 import ca.arcticwolves.gameplan.tv.api.ApiClient
 
 /**
@@ -20,7 +20,7 @@ import ca.arcticwolves.gameplan.tv.api.ApiClient
  * 3. On success, the pair ID and viewer token are saved and the
  *    [ViewerActivity] is launched.
  */
-class PairActivity : FragmentActivity() {
+class PairActivity : Activity() {
 
     companion object {
         private val PAIR_CODE_PATTERN = Regex("^[A-Z0-9]+$")
