@@ -5010,38 +5010,7 @@ function testSmtpConnection() {
     });
 }
 
-// Nextcloud Connection Test
-function testNextcloudConnection() {
-    const btn = event.target;
-    const originalText = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
-    btn.disabled = true;
-    
-    const formData = new FormData(document.getElementById('nextcloud-form'));
-    formData.append('action', 'test_nextcloud');
-    
-    fetch('process_settings.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        btn.innerHTML = originalText;
-        btn.disabled = false;
-        
-        if (data.success) {
-            alert('Success: Nextcloud Connection Successful!\n\nConnected to: ' + data.server_name);
-        } else {
-            alert('Error: Nextcloud Connection Failed\n\n' + (data.message || 'Could not connect to Nextcloud server'));
-        }
-    })
-    .catch(error => {
-        btn.innerHTML = originalText;
-        btn.disabled = false;
-        alert('Error testing Nextcloud connection');
-        console.error('Error:', error);
-    });
-}
+// Note: testNextcloudConnection is defined in the primary script block above (supports both primary and backup)
 
 // Sync Now
 function syncNow() {

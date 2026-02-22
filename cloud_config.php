@@ -215,6 +215,7 @@ function testNextcloudConnection($settings, $server_type = 'primary') {
         $ch = curl_init($root_url);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PROPFIND');
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
         curl_setopt($ch, CURLOPT_USERPWD, $connection['username'] . ':' . $connection['password']);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
@@ -222,9 +223,19 @@ function testNextcloudConnection($settings, $server_type = 'primary') {
             'Content-Type: application/xml'
         ]);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
         $response = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curl_error = curl_error($ch);
         curl_close($ch);
+
+        if (!empty($curl_error)) {
+            return [
+                'success' => false,
+                'message' => "Connection error for $server_label ($server_name): $curl_error",
+                'server_type' => $server_type
+            ];
+        }
 
         if ($http_code === 401 || $http_code === 403) {
             return [
@@ -237,7 +248,7 @@ function testNextcloudConnection($settings, $server_type = 'primary') {
         if ($http_code !== 207) {
             return [
                 'success' => false,
-                'message' => "Failed to connect to $server_label ($server_name). HTTP Code: $http_code",
+                'message' => "Failed to connect to $server_label ($server_name). HTTP Code: $http_code. Verify the Nextcloud URL is correct (e.g. https://cloud.example.com).",
                 'server_type' => $server_type
             ];
         }
@@ -246,16 +257,18 @@ function testNextcloudConnection($settings, $server_type = 'primary') {
         $folder = $settings['nextcloud_receipt_folder'] ?? '/receipts';
         $file_count = 0;
         $folder_note = '';
-        try {
-            $files = listNextcloudFiles($connection, $folder);
-            $file_count = count($files);
-        } catch (Exception $e) {
-            // Folder may not exist yet — try to create it
+        if (!empty($folder)) {
             try {
-                createNextcloudFolder($connection, $folder);
-                $folder_note = " Folder '$folder' was created automatically.";
-            } catch (Exception $e2) {
-                $folder_note = " Note: folder '$folder' does not exist and could not be created.";
+                $files = listNextcloudFiles($connection, $folder);
+                $file_count = count($files);
+            } catch (Exception $e) {
+                // Folder may not exist yet — try to create it
+                try {
+                    createNextcloudFolder($connection, $folder);
+                    $folder_note = " Folder '$folder' was created automatically.";
+                } catch (Exception $e2) {
+                    $folder_note = " Note: folder '$folder' does not exist and could not be created.";
+                }
             }
         }
 
@@ -329,9 +342,27 @@ function nextcloudFolderExists($connection, $folder_path) {
 
 /**
  * Upload a file to Nextcloud via WebDAV PUT
+ * Automatically creates parent directories if they don't exist
  */
 function uploadToNextcloud($connection, $remote_path, $file_content, $content_type = 'application/octet-stream') {
     $remote_path = '/' . trim($remote_path, '/');
+    
+    // Ensure parent directory exists before uploading
+    $parent_dir = dirname($remote_path);
+    if ($parent_dir !== '/' && $parent_dir !== '.') {
+        if (!nextcloudFolderExists($connection, $parent_dir)) {
+            // Create parent directories recursively
+            $parts = array_filter(explode('/', $parent_dir), function($p) { return $p !== ''; });
+            $current = '';
+            foreach ($parts as $part) {
+                $current .= '/' . $part;
+                if (!nextcloudFolderExists($connection, $current)) {
+                    createNextcloudFolder($connection, $current);
+                }
+            }
+        }
+    }
+    
     $webdav_url = $connection['url'] . '/remote.php/dav/files/' . $connection['username'] . $remote_path;
     
     $ch = curl_init($webdav_url);
