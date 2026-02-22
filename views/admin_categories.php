@@ -294,17 +294,38 @@ try {
                 </p>
                 <div class="categories-grid">
                     <?php
-                    // Fetch all merchandise categories from database
-                    $stmt = $pdo->prepare("SELECT id, name, description, is_active FROM merchandise_categories ORDER BY display_order, name ASC");
+                    // Fetch all merchandise categories from database with parent info
+                    $stmt = $pdo->prepare("
+                        SELECT mc.id, mc.name, mc.description, mc.is_active, mc.parent_id,
+                               pc.name as parent_name
+                        FROM merchandise_categories mc
+                        LEFT JOIN merchandise_categories pc ON mc.parent_id = pc.id
+                        ORDER BY COALESCE(mc.parent_id, mc.id), mc.parent_id IS NOT NULL, mc.display_order, mc.name ASC
+                    ");
                     $stmt->execute();
                     $merchandise_categories = $stmt->fetchAll();
+                    
+                    // Build hierarchical list for parent dropdown
+                    $merchParentCatsFlat = [];
+                    function buildMerchCategoryTree($categories, $parentId = null, $depth = 0, &$result = []) {
+                        foreach ($categories as $cat) {
+                            $catParent = empty($cat['parent_id']) ? null : $cat['parent_id'];
+                            if ($catParent == $parentId) {
+                                $cat['depth'] = $depth;
+                                $result[] = $cat;
+                                buildMerchCategoryTree($categories, $cat['id'], $depth + 1, $result);
+                            }
+                        }
+                        return $result;
+                    }
+                    $merchParentCatsFlat = buildMerchCategoryTree($merchandise_categories);
                     
                     if (count($merchandise_categories) > 0):
                         foreach ($merchandise_categories as $merch):
                     ?>
-                    <div class="category-card <?= !$merch['is_active'] ? 'inactive' : '' ?>">
+                    <div class="category-card <?= !$merch['is_active'] ? 'inactive' : '' ?>" style="<?= !empty($merch['parent_id']) ? 'margin-left: 24px; border-left: 3px solid var(--primary);' : '' ?>">
                         <div class="category-card-icon merchandise">
-                            <i class="fas fa-tag"></i>
+                            <i class="fas fa-<?= !empty($merch['parent_id']) ? 'level-up-alt fa-rotate-90' : 'tag' ?>"></i>
                         </div>
                         <div class="category-card-content">
                             <h4>
@@ -313,6 +334,9 @@ try {
                                 <span class="status-badge inactive">Inactive</span>
                                 <?php endif; ?>
                             </h4>
+                            <?php if (!empty($merch['parent_name'])): ?>
+                            <small style="color: var(--text-dim);"><i class="fas fa-folder"></i> <?= htmlspecialchars($merch['parent_name']) ?></small>
+                            <?php endif; ?>
                             <p><?= htmlspecialchars($merch['description'] ?: 'No description') ?></p>
                         </div>
                         <div class="category-card-actions">
@@ -321,7 +345,8 @@ try {
                                     data-id="<?= $merch['id'] ?>" 
                                     data-type="merchandise" 
                                     data-name="<?= htmlspecialchars($merch['name']) ?>"
-                                    data-description="<?= htmlspecialchars($merch['description'] ?? '') ?>">
+                                    data-description="<?= htmlspecialchars($merch['description'] ?? '') ?>"
+                                    data-parent-id="<?= $merch['parent_id'] ?? '' ?>">
                                 <i class="fas fa-edit"></i>
                             </button>
                             <button type="button" class="btn-icon btn-icon-danger" title="Delete" 
@@ -1239,6 +1264,17 @@ try {
                 </div>
                 
                 <div class="form-group">
+                    <label class="form-label">Parent Category</label>
+                    <select name="parent_id" class="form-input">
+                        <option value="">None (Top-Level Category)</option>
+                        <?php foreach ($merchParentCatsFlat as $mpc): ?>
+                            <option value="<?= $mpc['id'] ?>"><?= str_repeat('— ', $mpc['depth']) ?><?= htmlspecialchars($mpc['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <small style="color: var(--text-dim);">Select a parent to make this a subcategory</small>
+                </div>
+                
+                <div class="form-group">
                     <label class="form-label">Description</label>
                     <textarea name="description" class="form-textarea" rows="3" placeholder="Brief description of this category"></textarea>
                 </div>
@@ -1273,6 +1309,17 @@ try {
                 <div class="form-group">
                     <label class="form-label">Category Name *</label>
                     <input type="text" name="name" id="edit-merchandise-name" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Parent Category</label>
+                    <select name="parent_id" id="edit-merchandise-parent" class="form-input">
+                        <option value="">None (Top-Level Category)</option>
+                        <?php foreach ($merchParentCatsFlat as $mpc): ?>
+                            <option value="<?= $mpc['id'] ?>"><?= str_repeat('— ', $mpc['depth']) ?><?= htmlspecialchars($mpc['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <small style="color: var(--text-dim);">Select a parent to nest under another category</small>
                 </div>
                 
                 <div class="form-group">
@@ -1838,6 +1885,29 @@ try {
                 document.getElementById('edit-merchandise-id').value = id;
                 document.getElementById('edit-merchandise-name').value = name;
                 document.getElementById('edit-merchandise-description').value = description;
+                
+                // Set parent dropdown
+                var parentId = this.getAttribute('data-parent-id') || '';
+                var parentSelect = document.getElementById('edit-merchandise-parent');
+                if (parentSelect) {
+                    parentSelect.value = parentId;
+                    // Disable self and descendants to prevent circular references
+                    var merchCats = <?= json_encode($merchParentCatsFlat, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+                    function getMerchDescendantIds(catId) {
+                        var ids = [parseInt(catId)];
+                        merchCats.forEach(function(c) {
+                            if (c.parent_id == catId) {
+                                ids = ids.concat(getMerchDescendantIds(c.id));
+                            }
+                        });
+                        return ids;
+                    }
+                    var disabledIds = getMerchDescendantIds(parseInt(id));
+                    Array.from(parentSelect.options).forEach(function(opt) {
+                        opt.disabled = opt.value !== '' && disabledIds.indexOf(parseInt(opt.value)) !== -1;
+                    });
+                }
+                
                 document.getElementById('edit-merchandise-modal').classList.add('active');
             } else if (type === 'team') {
                 document.getElementById('edit-team-id').value = id;

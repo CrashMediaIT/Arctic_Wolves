@@ -2945,13 +2945,14 @@ if ($action == 'create_merchandise_category') {
     try {
         $name = trim($_POST['name'] ?? '');
         $description = trim($_POST['description'] ?? '');
+        $parentId = !empty($_POST['parent_id']) ? intval($_POST['parent_id']) : null;
         
         if (empty($name)) {
             throw new Exception('Category name is required');
         }
         
-        $stmt = $pdo->prepare("INSERT INTO merchandise_categories (name, description, is_active) VALUES (?, ?, 1)");
-        $stmt->execute([$name, $description]);
+        $stmt = $pdo->prepare("INSERT INTO merchandise_categories (name, description, parent_id, is_active) VALUES (?, ?, ?, 1)");
+        $stmt->execute([$name, $description, $parentId]);
         Auditor::log($pdo, $user_id, 'create', 'merchandise_categories', $pdo->lastInsertId(), ['action' => 'create_merchandise_category']);
         
         if ($isAjax) {
@@ -2979,13 +2980,35 @@ if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'merchandise
         $id = intval($_POST['id'] ?? 0);
         $name = trim($_POST['name'] ?? '');
         $description = trim($_POST['description'] ?? '');
+        $parentId = !empty($_POST['parent_id']) ? intval($_POST['parent_id']) : null;
         
         if ($id <= 0 || empty($name)) {
             throw new Exception('Invalid category data');
         }
         
-        $stmt = $pdo->prepare("UPDATE merchandise_categories SET name = ?, description = ? WHERE id = ?");
-        $stmt->execute([$name, $description, $id]);
+        // Prevent setting self as parent
+        if ($parentId === $id) {
+            throw new Exception('Category cannot be its own parent');
+        }
+        
+        // Prevent circular references
+        if ($parentId !== null) {
+            $checkId = $parentId;
+            $visited = [$id];
+            while ($checkId !== null) {
+                if (in_array($checkId, $visited)) {
+                    throw new Exception('Cannot set parent: would create a circular reference');
+                }
+                $visited[] = $checkId;
+                $ancestorStmt = $pdo->prepare("SELECT parent_id FROM merchandise_categories WHERE id = ?");
+                $ancestorStmt->execute([$checkId]);
+                $ancestor = $ancestorStmt->fetch(PDO::FETCH_ASSOC);
+                $checkId = ($ancestor && !empty($ancestor['parent_id'])) ? intval($ancestor['parent_id']) : null;
+            }
+        }
+        
+        $stmt = $pdo->prepare("UPDATE merchandise_categories SET name = ?, description = ?, parent_id = ? WHERE id = ?");
+        $stmt->execute([$name, $description, $parentId, $id]);
         Auditor::log($pdo, $user_id, 'update', 'merchandise_categories', intval($_POST['id']), ['action' => 'edit_merchandise_category']);
         
         if ($isAjax) {
