@@ -216,7 +216,7 @@ if ($action == 'add_team_from_roster') {
     $is_current = isset($_POST['is_current']) && $_POST['is_current'] == '1' ? 1 : 0;
     
     $parts = explode('|', $combo);
-    if (count($parts) < 2 || empty($position)) {
+    if (count($parts) !== 2 || empty($position)) {
         header("Location: dashboard.php?page=profile&tab=player&error=invalid_selection");
         exit();
     }

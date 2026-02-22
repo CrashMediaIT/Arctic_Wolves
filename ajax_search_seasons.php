@@ -19,7 +19,7 @@ if (!isset($_SESSION['user_id'])) {
 $query = trim($_GET['q'] ?? '');
 $limit = min(intval($_GET['limit'] ?? 15), 50);
 
-if (strlen($query) < 1) {
+if (empty($query)) {
     // Return all active seasons when no query provided
     try {
         $stmt = $pdo->prepare("
