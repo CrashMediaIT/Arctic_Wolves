@@ -22,6 +22,10 @@ import ca.arcticwolves.gameplan.tv.api.ApiClient
  */
 class PairActivity : FragmentActivity() {
 
+    companion object {
+        private val PAIR_CODE_PATTERN = Regex("^[A-Z0-9]+$")
+    }
+
     private lateinit var apiKeyInput: EditText
     private lateinit var pairCodeInput: EditText
     private lateinit var connectButton: Button
@@ -69,7 +73,7 @@ class PairActivity : FragmentActivity() {
             apiKeyInput.requestFocus()
             return
         }
-        if (pairCode.isBlank() || pairCode.length > 10 || !pairCode.matches(Regex("^[A-Z0-9]+$"))) {
+        if (pairCode.isBlank() || pairCode.length > 10 || !pairCode.matches(PAIR_CODE_PATTERN)) {
             showError("Invalid pair code. Enter the code from your controller device.")
             pairCodeInput.requestFocus()
             return
