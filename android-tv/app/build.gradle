@@ -1,0 +1,54 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'ca.arcticwolves.gameplan.tv'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "ca.arcticwolves.gameplan.tv"
+        minSdk 21
+        targetSdk 34
+        versionCode 1
+        versionName "1.0.0"
+
+        // Default server base URL (overridden per build type)
+        buildConfigField "String", "BASE_URL", "\"https://gameplan.arcticwolves.ca\""
+        buildConfigField "String", "API_BASE_URL", "\"https://api.arcticwolves.ca/v1\""
+    }
+
+    buildTypes {
+        debug {
+            buildConfigField "String", "BASE_URL", "\"http://10.0.2.2/Arctic_Wolves\""
+            buildConfigField "String", "API_BASE_URL", "\"http://10.0.2.2/Arctic_Wolves/api/v1\""
+        }
+        release {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    buildFeatures {
+        viewBinding true
+        buildConfig true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+}
+
+dependencies {
+    // OkHttp for REST API calls (available on Maven Central)
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+
+    // Testing
+    testImplementation 'junit:junit:4.13.2'
+}

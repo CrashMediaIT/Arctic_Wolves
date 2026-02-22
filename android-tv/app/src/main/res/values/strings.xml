@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Game Plan TV</string>
+
+    <!-- Pairing screen -->
+    <string name="pair_subtitle">Enter your API key and the pair code from your controller device to connect this display.</string>
+    <string name="api_key_label">API KEY</string>
+    <string name="api_key_hint">Enter API key</string>
+    <string name="pair_code_label">PAIR CODE</string>
+    <string name="pair_code_hint">ABC123</string>
+    <string name="connect_display">Connect Display</string>
+    <string name="connecting">Connecting…</string>
+    <string name="pair_failed">Pairing failed. Please check the code and try again.</string>
+
+    <!-- Instructions -->
+    <string name="step_1">1. Open Game Plan on your phone or laptop</string>
+    <string name="step_2">2. Go to Video Review → Device Pairing</string>
+    <string name="step_3">3. Tap Generate Pair Code and enter it here</string>
+
+    <!-- Viewer -->
+    <string name="frozen_label">❄ Frozen</string>
+    <string name="reconnecting">Reconnecting…</string>
+    <string name="disconnected">Display disconnected</string>
+</resources>

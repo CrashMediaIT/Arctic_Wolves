@@ -71,6 +71,7 @@ if (empty($segments) || (count($segments) === 1 && $segments[0] === '')) {
             'health'         => '/v1/health',
             'shop'           => '/v1/shop',
             'admin'          => '/v1/admin',
+            'tv'             => '/v1/tv',
         ],
     ]);
     exit;
@@ -100,7 +101,7 @@ if (empty($resource)) {
     echo json_encode([
         'success'   => true,
         'version'   => 'v1',
-        'resources' => ['auth', 'users', 'athletes', 'sessions', 'teams', 'bookings', 'drills', 'practice-plans', 'evaluations', 'videos', 'messages', 'notifications', 'dashboard', 'reports', 'finance', 'hr', 'health', 'shop', 'admin'],
+        'resources' => ['auth', 'users', 'athletes', 'sessions', 'teams', 'bookings', 'drills', 'practice-plans', 'evaluations', 'videos', 'messages', 'notifications', 'dashboard', 'reports', 'finance', 'hr', 'health', 'shop', 'admin', 'tv'],
     ]);
     exit;
 }
