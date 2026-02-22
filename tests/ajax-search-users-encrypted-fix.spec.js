@@ -40,12 +40,12 @@ test.describe('AJAX User Search - Encrypted Field Fix', () => {
     expect(content).toContain("strpos($query, '@')");
   });
 
-  test('applies limit after PHP filtering, not in SQL', () => {
+  test('applies limit with early termination during PHP filtering', () => {
     const content = readFile('ajax_search_users.php');
-    // Should use array_slice after filtering
-    expect(content).toContain('array_slice');
+    // Should use early termination (break) when limit reached
+    expect(content).toContain('count($filtered) >= $limit');
+    expect(content).toContain('break;');
     // The SQL query should NOT have LIMIT (it fetches all candidates)
-    // Check that LIMIT is not in the main SQL string
     const sqlSection = content.substring(
       content.indexOf("SELECT u.id, u.first_name"),
       content.indexOf("$stmt = $pdo->prepare")
@@ -62,7 +62,7 @@ test.describe('AJAX User Search - Encrypted Field Fix', () => {
   test('splits search query into words for multi-word matching', () => {
     const content = readFile('ajax_search_users.php');
     expect(content).toContain('preg_split');
-    expect(content).toContain("'/\\s+/'");
+    expect(content).toContain("'/\\s+/u'");
   });
 
   test('matches each word against concatenated first_name + last_name + email', () => {

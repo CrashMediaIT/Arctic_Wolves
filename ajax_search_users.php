@@ -69,23 +69,28 @@ try {
     $users = decryptUserRows($users);
 
     // Filter decrypted users by matching search query words against name and email
-    $words = preg_split('/\s+/', mb_strtolower($query));
-    $words = array_filter($words, function($w) { return strlen($w) >= 1; });
+    $words = preg_split('/\s+/u', mb_strtolower($query));
+    $words = array_filter($words, function($w) { return mb_strlen($w) >= 1; });
 
-    $filtered = array_filter($users, function($u) use ($words) {
+    $filtered = [];
+    foreach ($users as $u) {
         $haystack = mb_strtolower(
             ($u['first_name'] ?? '') . ' ' . ($u['last_name'] ?? '') . ' ' . ($u['email'] ?? '')
         );
+        $match = true;
         foreach ($words as $word) {
             if (mb_strpos($haystack, $word) === false) {
-                return false;
+                $match = false;
+                break;
             }
         }
-        return true;
-    });
-
-    // Apply limit after filtering
-    $filtered = array_slice(array_values($filtered), 0, $limit);
+        if ($match) {
+            $filtered[] = $u;
+            if (count($filtered) >= $limit) {
+                break; // Early termination once limit reached
+            }
+        }
+    }
 
     $results = array_map(function($u) {
         $roleLabel = '';
