@@ -715,10 +715,6 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                             <input type="number" name="price" class="form-input" step="0.01" min="0" required placeholder="0.00">
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Valid for (days)</label>
-                            <input type="number" name="valid_days" class="form-input" value="365" min="1">
-                        </div>
-                        <div class="form-group">
                             <label class="form-label">Max Participants</label>
                             <input type="number" name="max_participants" class="form-input" min="1" placeholder="Leave blank for unlimited">
                         </div>
