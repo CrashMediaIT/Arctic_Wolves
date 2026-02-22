@@ -309,11 +309,11 @@ try {
                     $merchParentCatsFlat = [];
                     function buildMerchCategoryTree($categories, $parentId = null, $depth = 0, &$result = []) {
                         foreach ($categories as $cat) {
-                            $catParent = empty($cat['parent_id']) ? null : $cat['parent_id'];
-                            if ($catParent == $parentId) {
+                            $catParent = empty($cat['parent_id']) ? null : (int)$cat['parent_id'];
+                            if ($catParent === $parentId) {
                                 $cat['depth'] = $depth;
                                 $result[] = $cat;
-                                buildMerchCategoryTree($categories, $cat['id'], $depth + 1, $result);
+                                buildMerchCategoryTree($categories, (int)$cat['id'], $depth + 1, $result);
                             }
                         }
                         return $result;
