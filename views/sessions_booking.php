@@ -88,6 +88,12 @@ $available_sessions_query = "
     LEFT JOIN locations l ON tst.location_id = l.id
     WHERE tst.is_active = 1
       AND tsd.session_date >= NOW()
+      AND NOT EXISTS (
+          SELECT 1 FROM sessions s2 
+          WHERE s2.title = tst.name 
+          AND s2.session_date = DATE(tsd.session_date) 
+          AND s2.status = 'scheduled'
+      )
     
     ORDER BY session_date
     LIMIT 20

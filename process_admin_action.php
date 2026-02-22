@@ -563,9 +563,18 @@ if ($action == 'create_training_session') {
                 VALUES (?, ?, ?, 1)
             ");
             foreach ($sessionDates as $dateData) {
+                // Support both new format (date + start_time) and legacy format (datetime)
+                $sessionDatetime = null;
                 if (!empty($dateData['datetime'])) {
+                    $sessionDatetime = $dateData['datetime'];
+                } elseif (!empty($dateData['date'])) {
+                    $dateStr = $dateData['date'];
+                    $timeStr = !empty($dateData['start_time']) ? $dateData['start_time'] : '00:00';
+                    $sessionDatetime = $dateStr . ' ' . $timeStr . ':00';
+                }
+                if ($sessionDatetime) {
                     $teamId = !empty($dateData['team_id']) ? intval($dateData['team_id']) : null;
-                    $dateStmt->execute([$templateId, $dateData['datetime'], $teamId]);
+                    $dateStmt->execute([$templateId, $sessionDatetime, $teamId]);
                 }
             }
         }

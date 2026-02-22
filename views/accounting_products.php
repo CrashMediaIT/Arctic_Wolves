@@ -611,20 +611,14 @@ $activeTab = $_GET['tab'] ?? 'sessions';
         <div class="card">
             <div class="card-header">
                 <h3><i class="fas fa-campground"></i> Programs & Camps</h3>
-                <a href="dashboard.php?page=products&tab=packages" class="btn btn-primary" onclick="document.querySelector('.page-tab[data-tab=packages]').click(); return false;">
-                    <i class="fas fa-plus"></i> Create Camp/Program Package
-                </a>
+                <button type="button" class="btn btn-primary" data-action="add" data-modal="add-program-modal"><i class="fas fa-plus"></i> Create Program / Camp</button>
             </div>
             <div class="card-body">
-                <p style="color: var(--text-dim); margin-bottom: 20px;">
-                    <i class="fas fa-info-circle" style="color: var(--primary);"></i>
-                    Camps and multi-week programs are created in the <strong>Packages</strong> tab using the "Camp" or "Multi-Week" package type. Once active, they appear automatically in the Booking page under the Programs & Camps section.
-                </p>
                 <?php if (empty($programPackages)): ?>
                 <div class="empty-state-card">
                     <i class="fas fa-campground"></i>
                     <h4>No Programs or Camps</h4>
-                    <p>Create a package with type "Camp" or "Multi-Week" in the Packages tab to get started.</p>
+                    <p>Click "Create Program / Camp" to get started.</p>
                 </div>
                 <?php else: ?>
                 <div class="table-container">
@@ -674,6 +668,180 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                 <?php endif; ?>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- Add Program / Camp Modal -->
+<div id="add-program-modal" class="modal">
+    <div class="modal-content modal-lg">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-campground"></i> Create Program / Camp</h2>
+            <button type="button" class="modal-close" aria-label="Close modal" onclick="closeModal('add-program-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_packages.php" id="add-program-form">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="create">
+            
+            <div class="modal-body">
+                <div class="form-section">
+                    <h4 class="section-title"><i class="fas fa-info-circle"></i> Program Details</h4>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Program Name *</label>
+                            <input type="text" name="name" class="form-input" required placeholder="e.g., Summer Hockey Camp 2026">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Program Type *</label>
+                            <select name="package_type" class="form-input" required id="programTypeSelect" onchange="toggleProgramFields()">
+                                <option value="camp">Camp (date range with daily schedule)</option>
+                                <option value="multi_week">Multi-Week Program (select specific dates)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <textarea name="description" class="form-textarea" rows="3" placeholder="Describe what participants will learn..."></textarea>
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <h4 class="section-title"><i class="fas fa-dollar-sign"></i> Pricing</h4>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Price ($) *</label>
+                            <input type="number" name="price" class="form-input" step="0.01" min="0" required placeholder="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Valid for (days)</label>
+                            <input type="number" name="valid_days" class="form-input" value="365" min="1">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Max Participants</label>
+                            <input type="number" name="max_participants" class="form-input" min="1" placeholder="Leave blank for unlimited">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <h4 class="section-title"><i class="fas fa-users"></i> Target Audience</h4>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Age Group</label>
+                            <select name="age_group_id" class="form-input">
+                                <option value="">All Ages</option>
+                                <?php foreach ($age_groups as $ag): ?>
+                                <option value="<?= $ag['id'] ?>"><?= htmlspecialchars($ag['name']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Skill Level</label>
+                            <select name="skill_level_id" class="form-input">
+                                <option value="">All Levels</option>
+                                <?php foreach ($skill_levels as $sl): ?>
+                                <option value="<?= $sl['id'] ?>"><?= htmlspecialchars($sl['name']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Camp Date Range Section -->
+                <div class="form-section" id="programCampDates">
+                    <h4 class="section-title"><i class="fas fa-calendar-alt"></i> Camp Schedule</h4>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Start Date *</label>
+                            <input type="date" name="camp_start_date" class="form-input" id="programCampStartDate">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">End Date *</label>
+                            <input type="date" name="camp_end_date" class="form-input" id="programCampEndDate">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Default Daily Start Time</label>
+                            <input type="time" name="daily_start_time" class="form-input" value="09:00">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Default Daily End Time</label>
+                            <input type="time" name="daily_end_time" class="form-input" value="17:00">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Location</label>
+                        <select name="location_id" class="form-input">
+                            <option value="">Select Location (Optional)</option>
+                            <?php foreach ($locations as $loc): ?>
+                            <option value="<?= $loc['id'] ?>"><?= htmlspecialchars($loc['name']) ?><?= $loc['city'] ? ' - ' . htmlspecialchars($loc['city']) : '' ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Multi-Week Dates Section -->
+                <div class="form-section" id="programMultiWeekDates" style="display: none;">
+                    <h4 class="section-title"><i class="fas fa-calendar-week"></i> Program Dates</h4>
+                    <p class="form-help-text" style="margin-bottom: 12px; color: var(--text-dim); font-size: 13px;">Add individual dates for this multi-week program. Each date can have its own time and location.</p>
+                    
+                    <div id="program-dates-container">
+                        <div class="program-date-entry" data-index="0">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Date *</label>
+                                    <input type="date" name="program_dates[0][date]" class="form-input" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Start Time</label>
+                                    <input type="time" name="program_dates[0][start_time]" class="form-input" value="09:00">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">End Time</label>
+                                    <input type="time" name="program_dates[0][end_time]" class="form-input" value="17:00">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Location</label>
+                                    <select name="program_dates[0][location_id]" class="form-input">
+                                        <option value="">Default</option>
+                                        <?php foreach ($locations as $loc): ?>
+                                        <option value="<?= $loc['id'] ?>"><?= htmlspecialchars($loc['name']) ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="flex: 0 0 auto; align-self: end;">
+                                    <button type="button" class="btn-action remove-program-date" onclick="removeProgramDate(this)" style="display:none;"><i class="fas fa-trash"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-secondary" onclick="addProgramDate()" style="margin-top: 12px;"><i class="fas fa-plus"></i> Add Another Date</button>
+                </div>
+                
+                <div class="form-section">
+                    <h4 class="section-title"><i class="fas fa-eye"></i> Display Options</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Status</label>
+                            <select name="is_active" class="form-input">
+                                <option value="1">Active</option>
+                                <option value="0">Inactive</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('add-program-modal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Create Program</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -1273,16 +1441,33 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                 
                 <div class="form-section">
                     <h4 class="section-title"><i class="fas fa-calendar-alt"></i> Session Dates</h4>
-                    <p class="form-help-text" style="margin-bottom: 12px; color: var(--text-dim); font-size: 13px;">Add one or more dates when this session will be held</p>
+                    <p class="form-help-text" style="margin-bottom: 12px; color: var(--text-dim); font-size: 13px;">Add one or more dates when this session will be held. Each date can have its own time and location.</p>
                     
                     <div id="session-dates-container">
                         <div class="session-date-input" data-index="0">
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label class="form-label">Date & Time</label>
-                                    <input type="datetime-local" name="session_dates[0][datetime]" class="form-input">
+                            <div class="form-row" style="flex-wrap: wrap;">
+                                <div class="form-group" style="flex: 1; min-width: 160px;">
+                                    <label class="form-label">Date</label>
+                                    <input type="date" name="session_dates[0][date]" class="form-input">
                                 </div>
-                                <div class="form-group">
+                                <div class="form-group" style="flex: 0 0 120px;">
+                                    <label class="form-label">Start Time</label>
+                                    <input type="time" name="session_dates[0][start_time]" class="form-input" value="09:00">
+                                </div>
+                                <div class="form-group" style="flex: 0 0 120px;">
+                                    <label class="form-label">End Time</label>
+                                    <input type="time" name="session_dates[0][end_time]" class="form-input" value="10:00">
+                                </div>
+                                <div class="form-group" style="flex: 1; min-width: 160px;">
+                                    <label class="form-label">Location</label>
+                                    <select name="session_dates[0][location_id]" class="form-input">
+                                        <option value="">Default Location</option>
+                                        <?php foreach ($locations as $loc): ?>
+                                        <option value="<?= $loc['id'] ?>"><?= htmlspecialchars($loc['name']) ?><?= $loc['city'] ? ' - ' . htmlspecialchars($loc['city']) : '' ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="flex: 1; min-width: 140px;">
                                     <label class="form-label">Team (Optional)</label>
                                     <select name="session_dates[0][team_id]" class="form-input">
                                         <option value="">All Athletes</option>
@@ -1377,8 +1562,6 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                                 <option value="credits">Session Credits (set number of sessions)</option>
                                 <option value="dollar_value">Dollar Value (store credit amount)</option>
                                 <option value="bundled">Bundled Sessions (pick from sessions library)</option>
-                                <option value="camp">Camp (multi-day program with daily schedule)</option>
-                                <option value="multi_week">Multi-Week Program (recurring sessions over weeks)</option>
                             </select>
                         </div>
                     </div>
@@ -2745,7 +2928,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (modal) closeModal(modal.id);
                     
                     var currentTab = 'sessions';
-                    if (modal && modal.id.includes('package')) {
+                    if (modal && modal.id.includes('program')) {
+                        currentTab = 'programs_camps';
+                    } else if (modal && modal.id.includes('package')) {
                         currentTab = 'packages';
                     } else if (modal && modal.id.includes('discount')) {
                         currentTab = 'discounts';
@@ -2882,21 +3067,39 @@ function addSessionDate() {
     sessionDateIndex++;
     var container = document.getElementById('session-dates-container');
     var teams = <?= json_encode($teams) ?>;
+    var locationsList = <?= json_encode($locations) ?>;
     
     var teamOptions = '<option value="">All Athletes</option>';
     teams.forEach(function(team) {
         teamOptions += '<option value="' + team.id + '">' + team.name + '</option>';
     });
     
+    var locOptions = '<option value="">Default Location</option>';
+    locationsList.forEach(function(loc) {
+        locOptions += '<option value="' + loc.id + '">' + (loc.name || '') + (loc.city ? ' - ' + loc.city : '') + '</option>';
+    });
+    
     var newDate = document.createElement('div');
     newDate.className = 'session-date-input';
     newDate.setAttribute('data-index', sessionDateIndex);
-    newDate.innerHTML = '<div class="form-row">' +
-        '<div class="form-group">' +
-            '<label class="form-label">Date & Time</label>' +
-            '<input type="datetime-local" name="session_dates[' + sessionDateIndex + '][datetime]" class="form-input">' +
+    newDate.innerHTML = '<div class="form-row" style="flex-wrap: wrap;">' +
+        '<div class="form-group" style="flex: 1; min-width: 160px;">' +
+            '<label class="form-label">Date</label>' +
+            '<input type="date" name="session_dates[' + sessionDateIndex + '][date]" class="form-input">' +
         '</div>' +
-        '<div class="form-group">' +
+        '<div class="form-group" style="flex: 0 0 120px;">' +
+            '<label class="form-label">Start Time</label>' +
+            '<input type="time" name="session_dates[' + sessionDateIndex + '][start_time]" class="form-input" value="09:00">' +
+        '</div>' +
+        '<div class="form-group" style="flex: 0 0 120px;">' +
+            '<label class="form-label">End Time</label>' +
+            '<input type="time" name="session_dates[' + sessionDateIndex + '][end_time]" class="form-input" value="10:00">' +
+        '</div>' +
+        '<div class="form-group" style="flex: 1; min-width: 160px;">' +
+            '<label class="form-label">Location</label>' +
+            '<select name="session_dates[' + sessionDateIndex + '][location_id]" class="form-input">' + locOptions + '</select>' +
+        '</div>' +
+        '<div class="form-group" style="flex: 1; min-width: 140px;">' +
             '<label class="form-label">Team (Optional)</label>' +
             '<select name="session_dates[' + sessionDateIndex + '][team_id]" class="form-input">' + teamOptions + '</select>' +
         '</div>' +
@@ -2926,6 +3129,62 @@ function removeSessionDate(button) {
     if (container.querySelectorAll('.session-date-input').length === 1) {
         var remainingRemoveBtn = container.querySelector('.remove-date');
         if (remainingRemoveBtn) remainingRemoveBtn.style.display = 'none';
+    }
+}
+
+// Program / Camp modal helpers
+var programDateIndex = 0;
+
+function toggleProgramFields() {
+    var typeSelect = document.getElementById('programTypeSelect');
+    if (!typeSelect) return;
+    var isCamp = typeSelect.value === 'camp';
+    var campSection = document.getElementById('programCampDates');
+    var multiWeekSection = document.getElementById('programMultiWeekDates');
+    if (campSection) campSection.style.display = isCamp ? 'block' : 'none';
+    if (multiWeekSection) multiWeekSection.style.display = isCamp ? 'none' : 'block';
+}
+
+function addProgramDate() {
+    programDateIndex++;
+    var container = document.getElementById('program-dates-container');
+    var locations = <?= json_encode($locations) ?>;
+    
+    var locOptions = '<option value="">Default</option>';
+    locations.forEach(function(loc) {
+        locOptions += '<option value="' + loc.id + '">' + (loc.name || '') + '</option>';
+    });
+    
+    var entry = document.createElement('div');
+    entry.className = 'program-date-entry';
+    entry.setAttribute('data-index', programDateIndex);
+    entry.innerHTML = '<div class="form-row">' +
+        '<div class="form-group"><label class="form-label">Date *</label><input type="date" name="program_dates[' + programDateIndex + '][date]" class="form-input" required></div>' +
+        '<div class="form-group"><label class="form-label">Start Time</label><input type="time" name="program_dates[' + programDateIndex + '][start_time]" class="form-input" value="09:00"></div>' +
+        '<div class="form-group"><label class="form-label">End Time</label><input type="time" name="program_dates[' + programDateIndex + '][end_time]" class="form-input" value="17:00"></div>' +
+        '<div class="form-group"><label class="form-label">Location</label><select name="program_dates[' + programDateIndex + '][location_id]" class="form-input">' + locOptions + '</select></div>' +
+        '<div class="form-group" style="flex:0 0 auto;align-self:end;"><button type="button" class="btn-action remove-program-date" onclick="removeProgramDate(this)"><i class="fas fa-trash"></i></button></div>' +
+    '</div>';
+    
+    container.appendChild(entry);
+    
+    // Show remove button on first entry
+    var firstRemoveBtn = container.querySelector('.program-date-entry[data-index="0"] .remove-program-date');
+    if (firstRemoveBtn && container.querySelectorAll('.program-date-entry').length > 1) {
+        firstRemoveBtn.style.display = 'block';
+    }
+}
+
+function removeProgramDate(button) {
+    var entry = button.closest('.program-date-entry');
+    var container = document.getElementById('program-dates-container');
+    
+    if (container.querySelectorAll('.program-date-entry').length > 1) {
+        entry.remove();
+    }
+    if (container.querySelectorAll('.program-date-entry').length === 1) {
+        var btn = container.querySelector('.remove-program-date');
+        if (btn) btn.style.display = 'none';
     }
 }
 
