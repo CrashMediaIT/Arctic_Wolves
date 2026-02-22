@@ -697,10 +697,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($role_filter) {
                     $sql .= " AND role = ?";
                     $params[] = $role_filter;
-                } else {
-                    // By default, get athletes and users who could be evaluated
-                    $sql .= " AND role IN ('athlete', 'parent')";
                 }
+                // Default: all active users (no role restriction)
                 
                 $sql .= " ORDER BY last_name, first_name";
                 

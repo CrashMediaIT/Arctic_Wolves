@@ -225,15 +225,13 @@ $activeView = $_GET['view'] ?? 'list';
             <!-- Add Existing User -->
             <div id="tab-existing" class="athlete-tab-content active">
                 <div class="info-box" style="margin-bottom: 16px;">
-                    <p><i class="fas fa-info-circle"></i> Select from users already registered in the system. Users who are already added to this evaluation will not appear in the list.</p>
+                    <p><i class="fas fa-info-circle"></i> Search for users already registered in the system. Type a name to see matching results.</p>
                 </div>
                 <form id="add-existing-form">
                     <div class="form-group">
-                        <label>Select User from System</label>
-                        <select id="existing-user-select" class="form-select">
-                            <option value="">-- Select User --</option>
-                        </select>
-                        <p class="help-text">Shows athletes and other users registered in the system</p>
+                        <label>Search User by Name</label>
+                        <div id="existing-user-typeahead"></div>
+                        <p class="help-text">Type to search all athletes and users in the system</p>
                     </div>
                     <button type="button" class="btn btn-primary" onclick="addExistingAthlete()">
                         <i class="fas fa-plus"></i> Add to Evaluation
@@ -1091,8 +1089,10 @@ async function manageAthletes(evaluationId) {
     // Load existing athletes
     await loadAthletes(evaluationId);
     
-    // Load available users
-    await loadAvailableUsers();
+    // Reset the typeahead for a clean state
+    if (window._existingUserTypeahead) {
+        window._existingUserTypeahead.clear();
+    }
     
     openModal('athletes-modal');
 }
@@ -1129,36 +1129,13 @@ async function loadAthletes(evaluationId) {
     }
 }
 
-async function loadAvailableUsers() {
-    const evaluationId = document.getElementById('current-evaluation-id').value;
-    try {
-        const response = await fetch(`process_session_evaluations.php?action=get_existing_users&evaluation_id=${evaluationId}`);
-        const data = await response.json();
-        
-        const select = document.getElementById('existing-user-select');
-        select.innerHTML = '<option value="">-- Select User --</option>';
-        
-        if (data.success && data.users) {
-            data.users.forEach(user => {
-                if (!user.already_added) {
-                    const option = document.createElement('option');
-                    option.value = user.id;
-                    option.textContent = `${user.first_name} ${user.last_name}${user.email ? ' (' + user.email + ')' : ''} - ${user.role}`;
-                    select.appendChild(option);
-                }
-            });
-        }
-    } catch (error) {
-        console.error('Error loading users:', error);
-    }
-}
-
 async function addExistingAthlete() {
     const evaluationId = document.getElementById('current-evaluation-id').value;
-    const userId = document.getElementById('existing-user-select').value;
+    const selectedIds = window._existingUserTypeahead ? window._existingUserTypeahead.getSelectedIds() : [];
+    const userId = selectedIds.length > 0 ? selectedIds[0] : null;
     
     if (!userId) {
-        alert('Please select an athlete');
+        alert('Please search for and select a user');
         return;
     }
     
@@ -1171,13 +1148,16 @@ async function addExistingAthlete() {
     try {
         const response = await fetch('process_session_evaluations.php', {
             method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
             body: formData
         });
         const data = await response.json();
         
         if (data.success) {
             await loadAthletes(evaluationId);
-            document.getElementById('existing-user-select').value = '';
+            if (window._existingUserTypeahead) {
+                window._existingUserTypeahead.clear();
+            }
         } else {
             alert(data.message);
         }
@@ -1212,6 +1192,7 @@ async function addManualAthlete() {
     try {
         const response = await fetch('process_session_evaluations.php', {
             method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
             body: formData
         });
         const data = await response.json();
@@ -1254,6 +1235,7 @@ async function importCSV() {
     try {
         const response = await fetch('process_session_evaluations.php', {
             method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
             body: formData
         });
         const data = await response.json();
@@ -1288,6 +1270,7 @@ async function removeAthlete(athleteId) {
     try {
         const response = await fetch('process_session_evaluations.php', {
             method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
             body: formData
         });
         const data = await response.json();
@@ -1303,4 +1286,14 @@ async function removeAthlete(athleteId) {
 }
 
 
+</script>
+<script src="js/typeahead.js"></script>
+<script>
+window._existingUserTypeahead = new ArcticTypeahead({
+    container: '#existing-user-typeahead',
+    name: 'user_id',
+    placeholder: 'Type a name to search all users…',
+    roles: '',  // empty = no role filter; all active users are returned
+    multiple: false
+});
 </script>
