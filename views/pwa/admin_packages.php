@@ -59,6 +59,23 @@ try {
 .m-form-check label { font-size: 14px; color: #fff; }
 .m-btn-submit { width: 100%; padding: 14px; background: #6B46C1; color: #fff; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; min-height: 44px; margin-top: 4px; }
 .m-toast { position: fixed; top: 20px; left: 16px; right: 16px; padding: 14px 16px; border-radius: 10px; color: #fff; font-size: 13px; font-weight: 600; z-index: 2000; display: flex; align-items: center; gap: 8px; }
+.m-arctic-cal { background: #0A0A0F; border: 1px solid #2D2D3F; border-radius: 12px; padding: 12px; margin-bottom: 12px; }
+.m-arctic-cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.m-arctic-cal-title { color: #fff; font-weight: 700; font-size: 14px; }
+.m-arctic-cal-nav { background: transparent; border: 1px solid #2D2D3F; color: #A8A8B8; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.m-arctic-cal-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; margin-bottom: 4px; }
+.m-arctic-cal-weekdays span { color: #6B6B7B; font-size: 10px; font-weight: 600; padding: 2px 0; }
+.m-arctic-cal-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.m-arctic-cal-day { width: 100%; aspect-ratio: 1; border: none; border-radius: 8px; background: transparent; color: #fff; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; min-height: 36px; }
+.m-arctic-cal-day.disabled { color: #2D2D3F; cursor: default; }
+.m-arctic-cal-day.empty { cursor: default; }
+.m-arctic-cal-day.today { border: 1px solid #6B46C1; }
+.m-arctic-cal-day.selected { background: #6B46C1; color: #fff; font-weight: 700; }
+.m-cal-date-entry { background: #0A0A0F; border: 1px solid #2D2D3F; border-radius: 8px; padding: 10px; margin-bottom: 6px; position: relative; }
+.m-cal-date-entry .m-cal-date-label { color: #fff; font-weight: 600; font-size: 13px; margin-bottom: 6px; }
+.m-cal-date-entry .m-cal-date-fields { display: flex; gap: 8px; }
+.m-cal-date-entry .m-cal-date-fields input { flex: 1; }
+.m-cal-date-remove { position: absolute; top: 8px; right: 8px; background: transparent; border: 1px solid #EF4444; color: #EF4444; width: 24px; height: 24px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 11px; }
 </style>
 
 <div class="m-adminpkg">
@@ -89,7 +106,7 @@ try {
                 <?php if (!empty($pkg['credits'])): ?>
                 <span class="m-adminpkg-sessions"><i class="fas fa-calendar-check"></i> <?= (int)$pkg['credits'] ?> credits</span>
                 <?php endif; ?>
-                <?php if (!empty($pkg['valid_days'])): ?>
+                <?php if (!empty($pkg['valid_days']) && !in_array($pkg['package_type'] ?? '', ['camp', 'multi_week'])): ?>
                 <span class="m-adminpkg-sessions"><i class="fas fa-clock"></i> <?= (int)$pkg['valid_days'] ?> days</span>
                 <?php endif; ?>
             </div>
@@ -122,6 +139,8 @@ try {
                     <option value="credits">Session Credits</option>
                     <option value="dollar_value">Dollar Value</option>
                     <option value="bundled">Bundled Sessions</option>
+                    <option value="camp">Camp</option>
+                    <option value="multi_week">Multi-Week Program</option>
                 </select>
             </div>
             <div class="m-form-group">
@@ -142,7 +161,7 @@ try {
                 <label class="m-form-label">Store Credit ($)</label>
                 <input type="number" name="store_credit" id="mPkgStoreCredit" class="m-form-input" step="0.01" min="0">
             </div>
-            <div class="m-form-row">
+            <div class="m-form-row" id="mPkgValidDaysRow">
                 <div class="m-form-group">
                     <label class="m-form-label">Valid Days</label>
                     <input type="number" name="valid_days" id="mPkgDays" class="m-form-input" min="1" value="365">
@@ -154,6 +173,37 @@ try {
                         <option value="0">Inactive</option>
                     </select>
                 </div>
+            </div>
+            <div id="mPkgStatusOnlyRow" style="display:none;">
+                <div class="m-form-group">
+                    <label class="m-form-label">Status</label>
+                    <select name="" id="mPkgActive2" class="m-form-select" onchange="document.getElementById('mPkgActive').value=this.value">
+                        <option value="1">Active</option>
+                        <option value="0">Inactive</option>
+                    </select>
+                </div>
+            </div>
+            <div id="mPkgCalendarSection" style="display:none;">
+                <div class="m-form-group">
+                    <label class="m-form-label">Default Times</label>
+                    <div class="m-form-row">
+                        <input type="time" name="daily_start_time" id="mPkgCalStart" class="m-form-input" value="09:00">
+                        <input type="time" name="daily_end_time" id="mPkgCalEnd" class="m-form-input" value="17:00">
+                    </div>
+                </div>
+                <label class="m-form-label">Select Dates</label>
+                <p style="color:#6B6B7B;font-size:12px;margin:0 0 8px;">Tap dates to select or deselect them</p>
+                <div class="m-arctic-cal" id="m-pkg-calendar">
+                    <div class="m-arctic-cal-header">
+                        <button type="button" class="m-arctic-cal-nav" onclick="mPkgCalNav(-1)"><i class="fas fa-chevron-left"></i></button>
+                        <span class="m-arctic-cal-title" id="m-pkg-cal-title"></span>
+                        <button type="button" class="m-arctic-cal-nav" onclick="mPkgCalNav(1)"><i class="fas fa-chevron-right"></i></button>
+                    </div>
+                    <div class="m-arctic-cal-weekdays"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>
+                    <div class="m-arctic-cal-days" id="m-pkg-cal-days"></div>
+                </div>
+                <div id="mPkgCalDatesContainer"></div>
+                <p id="mPkgCalDatesEmpty" style="color:#6B6B7B;font-size:12px;text-align:center;padding:8px;">Tap calendar dates above to add them</p>
             </div>
             <div class="m-form-check">
                 <input type="checkbox" name="enable_child_checkin" id="mPkgCheckin" value="1">
@@ -170,8 +220,15 @@ try {
 
     window.mTogglePkgFields = function() {
         var type = document.getElementById('mPkgType').value;
+        var isCampOrProgram = (type === 'camp' || type === 'multi_week');
         document.getElementById('mPkgCreditsGroup').style.display = type === 'credits' ? '' : 'none';
         document.getElementById('mPkgStoreCreditGroup').style.display = type === 'dollar_value' ? '' : 'none';
+        document.getElementById('mPkgValidDaysRow').style.display = isCampOrProgram ? 'none' : '';
+        document.getElementById('mPkgStatusOnlyRow').style.display = isCampOrProgram ? '' : 'none';
+        document.getElementById('mPkgCalendarSection').style.display = isCampOrProgram ? '' : 'none';
+        if (isCampOrProgram && window.mPkgCal) {
+            mPkgCal.render();
+        }
     };
 
     window.mOpenPkgSheet = function(mode, card) {
@@ -200,6 +257,7 @@ try {
             document.getElementById('mPkgDays').value = '365';
             document.getElementById('mPkgActive').value = '1';
             document.getElementById('mPkgCheckin').checked = false;
+            if (window.mPkgCal) mPkgCal.clearAll();
         }
         mTogglePkgFields();
         sheet.classList.add('m-active');
@@ -262,5 +320,110 @@ try {
         document.body.appendChild(d);
         setTimeout(function() { if (d.parentElement) d.remove(); }, 4000);
     };
+
+    // Mobile ArcticCalendar for camp/program dates
+    function MobileArcticCalendar(config) {
+        var self = this;
+        this.daysId = config.daysId;
+        this.titleId = config.titleId;
+        this.datesContainerId = config.datesContainerId;
+        this.emptyId = config.emptyId;
+        this.fieldPrefix = config.fieldPrefix || 'program_dates';
+        this.defaultStartTime = config.defaultStartTime || '09:00';
+        this.defaultEndTime = config.defaultEndTime || '17:00';
+        this.selectedDates = {};
+        this.dateIndex = 0;
+        var now = new Date();
+        this.currentMonth = now.getMonth();
+        this.currentYear = now.getFullYear();
+
+        this.render = function() {
+            var titleEl = document.getElementById(self.titleId);
+            var daysEl = document.getElementById(self.daysId);
+            if (!titleEl || !daysEl) return;
+            var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+            titleEl.textContent = months[self.currentMonth] + ' ' + self.currentYear;
+            var firstDay = new Date(self.currentYear, self.currentMonth, 1).getDay();
+            var daysInMonth = new Date(self.currentYear, self.currentMonth + 1, 0).getDate();
+            var today = new Date(); today.setHours(0,0,0,0);
+            var html = '';
+            for (var e = 0; e < firstDay; e++) html += '<button type="button" class="m-arctic-cal-day empty" disabled></button>';
+            for (var d = 1; d <= daysInMonth; d++) {
+                var dateObj = new Date(self.currentYear, self.currentMonth, d);
+                var dateStr = self.formatDate(dateObj);
+                var isPast = dateObj < today;
+                var isSelected = self.selectedDates.hasOwnProperty(dateStr);
+                var cls = 'm-arctic-cal-day';
+                if (isPast) cls += ' disabled';
+                if (dateObj.getTime() === today.getTime()) cls += ' today';
+                if (isSelected) cls += ' selected';
+                if (isPast) { html += '<button type="button" class="' + cls + '" disabled>' + d + '</button>'; }
+                else { html += '<button type="button" class="' + cls + '" data-date="' + dateStr + '" onclick="mPkgCal.toggleDate(\'' + dateStr + '\')">' + d + '</button>'; }
+            }
+            daysEl.innerHTML = html;
+        };
+        this.formatDate = function(d) { return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); };
+        this.formatDisplayDate = function(dateStr) {
+            var p = dateStr.split('-'); var d = new Date(p[0], p[1]-1, p[2]);
+            var days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+            var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            return days[d.getDay()] + ', ' + months[d.getMonth()] + ' ' + d.getDate();
+        };
+        this.toggleDate = function(dateStr) {
+            if (self.selectedDates.hasOwnProperty(dateStr)) { self.removeDateEntry(dateStr); delete self.selectedDates[dateStr]; }
+            else { self.dateIndex++; self.selectedDates[dateStr] = self.dateIndex; self.addDateEntry(dateStr, self.dateIndex); }
+            self.render(); self.updateEmpty();
+        };
+        this.addDateEntry = function(dateStr, idx) {
+            var container = document.getElementById(self.datesContainerId);
+            var defStart = document.getElementById('mPkgCalStart') ? document.getElementById('mPkgCalStart').value : self.defaultStartTime;
+            var defEnd = document.getElementById('mPkgCalEnd') ? document.getElementById('mPkgCalEnd').value : self.defaultEndTime;
+            var entry = document.createElement('div');
+            entry.className = 'm-cal-date-entry'; entry.setAttribute('data-date', dateStr);
+            entry.innerHTML = '<input type="hidden" name="' + self.fieldPrefix + '[' + idx + '][date]" value="' + dateStr + '">' +
+                '<button type="button" class="m-cal-date-remove" onclick="mPkgCal.toggleDate(\'' + dateStr + '\')"><i class="fas fa-times"></i></button>' +
+                '<div class="m-cal-date-label"><i class="fas fa-calendar-day"></i> ' + self.formatDisplayDate(dateStr) + '</div>' +
+                '<div class="m-cal-date-fields">' +
+                    '<input type="time" name="' + self.fieldPrefix + '[' + idx + '][start_time]" class="m-form-input" value="' + defStart + '">' +
+                    '<input type="time" name="' + self.fieldPrefix + '[' + idx + '][end_time]" class="m-form-input" value="' + defEnd + '">' +
+                '</div>';
+            var entries = container.querySelectorAll('.m-cal-date-entry'); var inserted = false;
+            for (var i = 0; i < entries.length; i++) { if (entries[i].getAttribute('data-date') > dateStr) { container.insertBefore(entry, entries[i]); inserted = true; break; } }
+            if (!inserted) container.appendChild(entry);
+        };
+        this.removeDateEntry = function(dateStr) {
+            var container = document.getElementById(self.datesContainerId);
+            var entry = container.querySelector('.m-cal-date-entry[data-date="' + dateStr + '"]');
+            if (entry) entry.remove();
+        };
+        this.updateEmpty = function() {
+            var el = document.getElementById(self.emptyId);
+            if (el) el.style.display = Object.keys(self.selectedDates).length === 0 ? 'block' : 'none';
+        };
+        this.nav = function(dir) {
+            self.currentMonth += dir;
+            if (self.currentMonth > 11) { self.currentMonth = 0; self.currentYear++; }
+            if (self.currentMonth < 0) { self.currentMonth = 11; self.currentYear--; }
+            self.render();
+        };
+        this.clearAll = function() {
+            self.selectedDates = {}; self.dateIndex = 0;
+            var container = document.getElementById(self.datesContainerId);
+            if (container) container.innerHTML = '';
+            self.updateEmpty(); self.render();
+        };
+        this.render();
+    }
+
+    window.mPkgCal = new MobileArcticCalendar({
+        daysId: 'm-pkg-cal-days',
+        titleId: 'm-pkg-cal-title',
+        datesContainerId: 'mPkgCalDatesContainer',
+        emptyId: 'mPkgCalDatesEmpty',
+        fieldPrefix: 'program_dates',
+        defaultStartTime: '09:00',
+        defaultEndTime: '17:00'
+    });
+    window.mPkgCalNav = function(dir) { mPkgCal.nav(dir); };
 })();
 </script>

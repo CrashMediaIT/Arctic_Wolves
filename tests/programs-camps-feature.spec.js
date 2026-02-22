@@ -61,6 +61,23 @@ test.describe('Programs & Camps View', () => {
     expect(content).toContain('enable_child_checkin');
   });
 
+  test('Completed programs are auto-hidden and can be shown/searched', async () => {
+    const content = readFile('views/programs_camps.php');
+    // Auto-hide completed programs
+    expect(content).toContain('last_session_date');
+    expect(content).toContain('completed_programs');
+    expect(content).toContain('show_completed');
+    // Show Completed toggle
+    expect(content).toContain('Show Completed');
+    expect(content).toContain('Hide Completed');
+    // Search functionality
+    expect(content).toContain('program-search-input');
+    expect(content).toContain('filterProgramCards');
+    // Completed badge
+    expect(content).toContain('completed-badge');
+    expect(content).toContain('Completed');
+  });
+
   test('Dashboard routing includes programs_camps page for backward compatibility', async () => {
     const dashboardContent = readFile('dashboard.php');
     // Route mapping should still exist for backward compatibility
@@ -293,11 +310,25 @@ test.describe('Registration Intent Flow', () => {
 test.describe('Admin Package Management - Location Field', () => {
   test('Admin packages view includes location field for camps', async () => {
     const content = readFile('views/admin_packages.php');
-    expect(content).toContain('schedule_locations[]');
+    expect(content).toContain('location_id');
     expect(content).toContain('Arena / Venue');
-    expect(content).toContain('program_locations[]');
     expect(content).toContain('s.location');
     expect(content).toContain('d.location');
+  });
+
+  test('Admin packages uses calendar picker for camp and multi-week dates', async () => {
+    const content = readFile('views/admin_packages.php');
+    expect(content).toContain('arctic-calendar');
+    expect(content).toContain('camp-cal-days');
+    expect(content).toContain('mw-cal-days');
+    expect(content).toContain('ArcticCalendar');
+    expect(content).toContain('campCal.render()');
+    expect(content).toContain('mwCal.render()');
+    // Camp and multi-week should NOT have manual date inputs
+    expect(content).not.toContain('name="camp_start_date"');
+    expect(content).not.toContain('name="camp_end_date"');
+    // Valid days should be hidden for camp and multi_week
+    expect(content).toContain("validDaysGroup.style.display = 'none'");
   });
 
   test('Process packages handles location field', async () => {
