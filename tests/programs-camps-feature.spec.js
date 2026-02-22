@@ -345,7 +345,7 @@ test.describe('Admin Package Management - Location Field', () => {
     const content = readFile('process_packages.php');
     expect(content).toContain('schedule_locations');
     expect(content).toContain('program_locations');
-    expect(content).toContain(', location)');
+    expect(content).toContain(', location,');
   });
 
   test('Process packages handles calendar picker dates for camps', async () => {
