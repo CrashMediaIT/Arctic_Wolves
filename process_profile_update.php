@@ -132,14 +132,32 @@ if ($action == 'change_password') {
 if ($action == 'add_team') {
     $name  = trim($_POST['team_name'] ?? '');
     $league = trim($_POST['league'] ?? '');
+    $season_id = intval($_POST['season_id'] ?? 0);
     $year  = trim($_POST['season_year'] ?? '');
     $type  = trim($_POST['season_type'] ?? '');
     $position = trim($_POST['team_position'] ?? '');
     $is_current = isset($_POST['is_current']) && $_POST['is_current'] == '1' ? 1 : 0;
     
-    // Build season display string, handling empty values properly
-    $season_parts = array_filter([$type, $year], function($v) { return !empty($v); });
-    $season_display = implode(' ', $season_parts);
+    // If a season_id was provided (from typeahead), fetch the season name
+    $season_display = '';
+    if ($season_id > 0) {
+        try {
+            $seasonStmt = $pdo->prepare("SELECT name FROM seasons WHERE id = ?");
+            $seasonStmt->execute([$season_id]);
+            $seasonRow = $seasonStmt->fetch(PDO::FETCH_ASSOC);
+            if ($seasonRow) {
+                $season_display = $seasonRow['name'];
+            }
+        } catch (PDOException $e) {
+            // Fallback to manual fields
+        }
+    }
+    
+    // Fallback to manual fields if no season found from typeahead
+    if (empty($season_display)) {
+        $season_parts = array_filter([$type, $year], function($v) { return !empty($v); });
+        $season_display = implode(' ', $season_parts);
+    }
 
     if (empty($name)) {
         header("Location: dashboard.php?page=profile&tab=player&error=team_name_required");
@@ -198,29 +216,38 @@ if ($action == 'add_team_from_roster') {
     $is_current = isset($_POST['is_current']) && $_POST['is_current'] == '1' ? 1 : 0;
     
     $parts = explode('|', $combo);
-    if (count($parts) !== 2 || empty($position)) {
+    if (count($parts) < 2 || empty($position)) {
         header("Location: dashboard.php?page=profile&tab=player&error=invalid_selection");
         exit();
     }
     
     $team_id = intval($parts[0]);
-    $season_id = intval($parts[1]);
+    $season_id = intval($parts[1] ?? 0);
     
-    if ($team_id <= 0 || $season_id <= 0) {
+    if ($team_id <= 0) {
         header("Location: dashboard.php?page=profile&tab=player&error=invalid_selection");
         exit();
     }
     
     try {
         // Fetch team and season info
-        $info_stmt = $pdo->prepare("
-            SELECT t.name as team_name, s.name as season_name
-            FROM teams t
-            INNER JOIN team_seasons ts ON ts.team_id = t.id
-            INNER JOIN seasons s ON ts.season_id = s.id
-            WHERE t.id = ? AND s.id = ?
-        ");
-        $info_stmt->execute([$team_id, $season_id]);
+        if ($season_id > 0) {
+            $info_stmt = $pdo->prepare("
+                SELECT t.name as team_name, s.name as season_name
+                FROM teams t
+                INNER JOIN team_seasons ts ON ts.team_id = t.id
+                INNER JOIN seasons s ON ts.season_id = s.id
+                WHERE t.id = ? AND s.id = ?
+            ");
+            $info_stmt->execute([$team_id, $season_id]);
+        } else {
+            $info_stmt = $pdo->prepare("
+                SELECT t.name as team_name, '' as season_name
+                FROM teams t
+                WHERE t.id = ?
+            ");
+            $info_stmt->execute([$team_id]);
+        }
         $info = $info_stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$info) {

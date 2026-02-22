@@ -344,9 +344,11 @@ try {
 $athleteStats = [];
 try {
     $statsStmt = $pdo->prepare("
-        SELECT * FROM athlete_stats 
-        WHERE user_id = ? 
-        ORDER BY season DESC
+        SELECT ast.*, COALESCE(NULLIF(ast.season, ''), s.name) as season
+        FROM athlete_stats ast
+        LEFT JOIN seasons s ON ast.season_id = s.id
+        WHERE ast.user_id = ? 
+        ORDER BY ast.season DESC
     ");
     $statsStmt->execute([$viewing_athlete_id]);
     $athleteStats = $statsStmt->fetchAll(PDO::FETCH_ASSOC);

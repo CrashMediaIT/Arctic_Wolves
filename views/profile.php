@@ -569,25 +569,18 @@ $errors = [
                 <?php endif; ?>
                 
                 <!-- Select from Roster -->
-                <?php if (!empty($rosterTeamOptions)): ?>
+                <?php /* Select from Roster - using typeahead search */ ?>
                 <div class="select-roster-section" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">
                     <h4 style="margin-bottom: 16px; color: #fff; font-size: 16px;"><i class="fas fa-list-check"></i> Select from Roster</h4>
-                    <p style="color: var(--text-muted, #94a3b8); font-size: 13px; margin-bottom: 16px;">Pick a team and season from the organization's roster.</p>
+                    <p style="color: var(--text-muted, #94a3b8); font-size: 13px; margin-bottom: 16px;">Search for a team and season from the organization's roster.</p>
                     <form method="POST" action="process_profile_update.php" id="select-roster-team-form">
                         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
                         <input type="hidden" name="action" value="add_team_from_roster">
+                        <input type="hidden" name="roster_team_season" id="roster-team-season-hidden" value="">
                         <div class="form-row" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
                             <div class="form-group">
                                 <label>Team and Season *</label>
-                                <select name="roster_team_season" class="form-select" required>
-                                    <option value="">Select Team and Season</option>
-                                    <?php foreach ($rosterTeamOptions as $opt): ?>
-                                        <option value="<?= $opt['team_id'] ?>|<?= $opt['season_id'] ?>">
-                                            <?= htmlspecialchars($opt['team_name']) ?> — <?= htmlspecialchars($opt['season_name']) ?>
-                                            <?= $opt['season_active'] ? ' (Active)' : '' ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
+                                <div id="roster-team-season-typeahead"></div>
                             </div>
                             <div class="form-group">
                                 <label>Position *</label>
@@ -619,13 +612,35 @@ $errors = [
                             </div>
                         </div>
                         <div class="form-actions" style="margin-top: 16px;">
-                            <button type="submit" class="btn btn-primary">
+                            <button type="submit" class="btn btn-primary" id="roster-select-btn" disabled>
                                 <i class="fas fa-check"></i> Select Team
                             </button>
                         </div>
                     </form>
+                    <script>
+                    (function() {
+                        new ArcticTypeahead({
+                            container: '#roster-team-season-typeahead',
+                            name: 'roster_team_season_ta',
+                            placeholder: 'Search for a team or season…',
+                            searchUrl: 'ajax_search_teams.php',
+                            roles: '',
+                            multiple: false,
+                            required: true,
+                            onSelect: function(item) {
+                                document.getElementById('roster-team-season-hidden').value = item.id;
+                                document.getElementById('roster-select-btn').disabled = false;
+                            },
+                            onChange: function(ids) {
+                                if (!ids || ids.length === 0) {
+                                    document.getElementById('roster-team-season-hidden').value = '';
+                                    document.getElementById('roster-select-btn').disabled = true;
+                                }
+                            }
+                        });
+                    })();
+                    </script>
                 </div>
-                <?php endif; ?>
 
                 <!-- Add New Team Form -->
                 <div class="add-team-section" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">
@@ -665,21 +680,12 @@ $errors = [
                                 <input type="text" name="league" class="form-input" placeholder="e.g., CSSHL">
                             </div>
                             <div class="form-group">
-                                <label>Season Year</label>
-                                <input type="text" name="season_year" class="form-input" placeholder="e.g., 2024-2025">
+                                <label>Season</label>
+                                <input type="hidden" name="season_id" id="add-team-season-id" value="">
+                                <div id="add-team-season-typeahead"></div>
                             </div>
                         </div>
                         <div class="form-row" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 16px;">
-                            <div class="form-group">
-                                <label>Season Type</label>
-                                <select name="season_type" class="form-select">
-                                    <option value="">Select Type</option>
-                                    <option value="Fall">Fall</option>
-                                    <option value="Winter">Winter</option>
-                                    <option value="Spring">Spring</option>
-                                    <option value="Summer">Summer</option>
-                                </select>
-                            </div>
                             <div class="form-group" style="display: flex; align-items: flex-end;">
                                 <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
                                     <input type="checkbox" name="is_current" value="1">
@@ -693,6 +699,26 @@ $errors = [
                             </button>
                         </div>
                     </form>
+                    <script>
+                    (function() {
+                        new ArcticTypeahead({
+                            container: '#add-team-season-typeahead',
+                            name: 'season_name_ta',
+                            placeholder: 'Search for a season…',
+                            searchUrl: 'ajax_search_seasons.php',
+                            roles: '',
+                            multiple: false,
+                            onSelect: function(item) {
+                                document.getElementById('add-team-season-id').value = item.id;
+                            },
+                            onChange: function(ids) {
+                                if (!ids || ids.length === 0) {
+                                    document.getElementById('add-team-season-id').value = '';
+                                }
+                            }
+                        });
+                    })();
+                    </script>
                 </div>
             </div>
         </div>
