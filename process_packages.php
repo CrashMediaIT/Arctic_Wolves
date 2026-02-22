@@ -109,8 +109,8 @@ try {
                 throw new Exception('Invalid package data: name is required and price must be positive');
             }
             
-            // Validate camp dates
-            if ($package_type === 'camp' && (!$camp_start_date || !$camp_end_date)) {
+            // Validate camp dates - allow calendar-selected dates (program_dates) as alternative
+            if ($package_type === 'camp' && (!$camp_start_date || !$camp_end_date) && empty($_POST['program_dates'])) {
                 throw new Exception('Camp packages require start and end dates');
             }
             
@@ -133,7 +133,7 @@ try {
             
             $package_id = $pdo->lastInsertId();
             
-            // Save camp daily schedules if provided
+            // Save camp daily schedules if provided (flat array format from admin_packages)
             if ($package_type === 'camp' && !empty($_POST['schedule_dates'])) {
                 $sched_stmt = $pdo->prepare("
                     INSERT INTO camp_daily_schedules (package_id, schedule_date, start_time, end_time, title, description, location)
@@ -147,6 +147,32 @@ try {
                     $s_desc = $_POST['schedule_descriptions'][$i] ?? '';
                     $s_location = $_POST['schedule_locations'][$i] ?? '';
                     $sched_stmt->execute([$package_id, $date, $s_start, $s_end, $s_title ?: null, $s_desc ?: null, $s_location ?: null]);
+                }
+            }
+            
+            // Save camp daily schedules from calendar picker (nested array format)
+            if ($package_type === 'camp' && !empty($_POST['program_dates'])) {
+                $sched_stmt = $pdo->prepare("
+                    INSERT INTO camp_daily_schedules (package_id, schedule_date, start_time, end_time, title, description, location)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ");
+                $all_camp_dates = [];
+                foreach ($_POST['program_dates'] as $i => $entry) {
+                    if (is_array($entry)) {
+                        $date = $entry['date'] ?? '';
+                        if (empty($date)) continue;
+                        $s_start = $entry['start_time'] ?? ($daily_start_time ?: '09:00');
+                        $s_end = $entry['end_time'] ?? ($daily_end_time ?: '17:00');
+                        $s_location = $entry['location_id'] ?? '';
+                        $sched_stmt->execute([$package_id, $date, $s_start, $s_end, null, null, $s_location ?: null]);
+                        $all_camp_dates[] = $date;
+                    }
+                }
+                // Auto-derive camp_start_date and camp_end_date from selected dates
+                if (!empty($all_camp_dates)) {
+                    sort($all_camp_dates);
+                    $pdo->prepare("UPDATE packages SET camp_start_date = ?, camp_end_date = ? WHERE id = ?")
+                        ->execute([reset($all_camp_dates), end($all_camp_dates), $package_id]);
                 }
             }
             
@@ -177,29 +203,42 @@ try {
                 ");
                 
                 foreach ($_POST['program_dates'] as $i => $pdate) {
-                    if (empty($pdate)) continue;
-                    $p_start = $_POST['program_start_times'][$i] ?? ($daily_start_time ?: '09:00');
-                    $p_end = $_POST['program_end_times'][$i] ?? ($daily_end_time ?: '10:00');
-                    $p_title = $_POST['program_titles'][$i] ?? '';
-                    $p_ind_price = !empty($_POST['program_individual_prices'][$i]) ? floatval($_POST['program_individual_prices'][$i]) : null;
-                    $p_location = $_POST['program_locations'][$i] ?? '';
+                    // Handle both nested array format (from ArcticCalendar) and flat format (from admin_packages)
+                    if (is_array($pdate)) {
+                        $date_val = $pdate['date'] ?? '';
+                        if (empty($date_val)) continue;
+                        $p_start = $pdate['start_time'] ?? ($daily_start_time ?: '09:00');
+                        $p_end = $pdate['end_time'] ?? ($daily_end_time ?: '10:00');
+                        $p_title = $pdate['title'] ?? '';
+                        $p_ind_price = !empty($pdate['individual_price']) ? floatval($pdate['individual_price']) : null;
+                        $p_location = $pdate['location_id'] ?? '';
+                    } else {
+                        $date_val = $pdate;
+                        if (empty($date_val)) continue;
+                        $p_start = $_POST['program_start_times'][$i] ?? ($daily_start_time ?: '09:00');
+                        $p_end = $_POST['program_end_times'][$i] ?? ($daily_end_time ?: '10:00');
+                        $p_title = $_POST['program_titles'][$i] ?? '';
+                        $p_ind_price = !empty($_POST['program_individual_prices'][$i]) ? floatval($_POST['program_individual_prices'][$i]) : null;
+                        $p_location = $_POST['program_locations'][$i] ?? '';
+                    }
                     
                     $auto_session_id = null;
                     // Auto-create individual sessions if individual purchase is allowed
                     if ($allow_individual_sessions && $p_ind_price !== null) {
-                        $session_title = !empty($p_title) ? $p_title : ($name . ' - ' . date('M j, Y', strtotime($pdate)));
-                        $start_dt = new DateTime($pdate . ' ' . $p_start);
-                        $end_dt = new DateTime($pdate . ' ' . $p_end);
+                        $session_title = !empty($p_title) ? $p_title : ($name . ' - ' . date('M j, Y', strtotime($date_val)));
+                        $start_dt = new DateTime($date_val . ' ' . $p_start);
+                        $end_dt = new DateTime($date_val . ' ' . $p_end);
                         $duration = ($end_dt->getTimestamp() - $start_dt->getTimestamp()) / 60;
                         $session_stmt->execute([
-                            $session_title, $description, $pdate, $p_start,
+                            $session_title, $description, $date_val, $p_start,
                             max(1, intval($duration)), $p_ind_price,
                             $age_group ?: null, $skill_level ?: null
                         ]);
                         $auto_session_id = $pdo->lastInsertId();
                     }
                     
-                    $prog_stmt->execute([$package_id, $pdate, $p_start, $p_end, $p_title ?: null, $p_ind_price, $auto_session_id, $p_location ?: null]);
+                    $prog_stmt->execute([$package_id, $date_val, $p_start, $p_end, $p_title ?: null, $p_ind_price, $auto_session_id, $p_location ?: null]);
+                }
                 }
             }
             
@@ -278,6 +317,32 @@ try {
                         $sched_stmt->execute([$package_id, $date, $s_start, $s_end, $s_title ?: null, $s_desc ?: null, $s_location ?: null]);
                     }
                 }
+                
+                // Handle calendar picker dates (nested array format)
+                if (!empty($_POST['program_dates'])) {
+                    $sched_stmt = $pdo->prepare("
+                        INSERT INTO camp_daily_schedules (package_id, schedule_date, start_time, end_time, title, description, location)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ");
+                    $all_camp_dates = [];
+                    foreach ($_POST['program_dates'] as $i => $entry) {
+                        if (is_array($entry)) {
+                            $date = $entry['date'] ?? '';
+                            if (empty($date)) continue;
+                            $s_start = $entry['start_time'] ?? ($daily_start_time ?: '09:00');
+                            $s_end = $entry['end_time'] ?? ($daily_end_time ?: '17:00');
+                            $s_location = $entry['location_id'] ?? '';
+                            $sched_stmt->execute([$package_id, $date, $s_start, $s_end, null, null, $s_location ?: null]);
+                            $all_camp_dates[] = $date;
+                        }
+                    }
+                    // Auto-derive camp_start_date and camp_end_date from selected dates
+                    if (!empty($all_camp_dates)) {
+                        sort($all_camp_dates);
+                        $pdo->prepare("UPDATE packages SET camp_start_date = ?, camp_end_date = ? WHERE id = ?")
+                            ->execute([reset($all_camp_dates), end($all_camp_dates), $package_id]);
+                    }
+                }
             }
             
             // Update add-ons (for camp and multi-week)
@@ -326,28 +391,40 @@ try {
                     ");
                     
                     foreach ($_POST['program_dates'] as $i => $pdate) {
-                        if (empty($pdate)) continue;
-                        $p_start = $_POST['program_start_times'][$i] ?? ($daily_start_time ?: '09:00');
-                        $p_end = $_POST['program_end_times'][$i] ?? ($daily_end_time ?: '10:00');
-                        $p_title = $_POST['program_titles'][$i] ?? '';
-                        $p_ind_price = !empty($_POST['program_individual_prices'][$i]) ? floatval($_POST['program_individual_prices'][$i]) : null;
-                        $p_location = $_POST['program_locations'][$i] ?? '';
+                        // Handle both nested array format (from ArcticCalendar) and flat format (from admin_packages)
+                        if (is_array($pdate)) {
+                            $date_val = $pdate['date'] ?? '';
+                            if (empty($date_val)) continue;
+                            $p_start = $pdate['start_time'] ?? ($daily_start_time ?: '09:00');
+                            $p_end = $pdate['end_time'] ?? ($daily_end_time ?: '10:00');
+                            $p_title = $pdate['title'] ?? '';
+                            $p_ind_price = !empty($pdate['individual_price']) ? floatval($pdate['individual_price']) : null;
+                            $p_location = $pdate['location_id'] ?? '';
+                        } else {
+                            $date_val = $pdate;
+                            if (empty($date_val)) continue;
+                            $p_start = $_POST['program_start_times'][$i] ?? ($daily_start_time ?: '09:00');
+                            $p_end = $_POST['program_end_times'][$i] ?? ($daily_end_time ?: '10:00');
+                            $p_title = $_POST['program_titles'][$i] ?? '';
+                            $p_ind_price = !empty($_POST['program_individual_prices'][$i]) ? floatval($_POST['program_individual_prices'][$i]) : null;
+                            $p_location = $_POST['program_locations'][$i] ?? '';
+                        }
                         
                         $auto_session_id = null;
                         if ($allow_individual_sessions && $p_ind_price !== null) {
-                            $session_title = !empty($p_title) ? $p_title : ($name . ' - ' . date('M j, Y', strtotime($pdate)));
-                            $start_dt = new DateTime($pdate . ' ' . $p_start);
-                            $end_dt = new DateTime($pdate . ' ' . $p_end);
+                            $session_title = !empty($p_title) ? $p_title : ($name . ' - ' . date('M j, Y', strtotime($date_val)));
+                            $start_dt = new DateTime($date_val . ' ' . $p_start);
+                            $end_dt = new DateTime($date_val . ' ' . $p_end);
                             $duration = ($end_dt->getTimestamp() - $start_dt->getTimestamp()) / 60;
                             $session_stmt->execute([
-                                $session_title, $description, $pdate, $p_start,
+                                $session_title, $description, $date_val, $p_start,
                                 max(1, intval($duration)), $p_ind_price,
                                 $age_group ?: null, $skill_level ?: null
                             ]);
                             $auto_session_id = $pdo->lastInsertId();
                         }
                         
-                        $prog_stmt->execute([$package_id, $pdate, $p_start, $p_end, $p_title ?: null, $p_ind_price, $auto_session_id, $p_location ?: null]);
+                        $prog_stmt->execute([$package_id, $date_val, $p_start, $p_end, $p_title ?: null, $p_ind_price, $auto_session_id, $p_location ?: null]);
                     }
                 }
             }

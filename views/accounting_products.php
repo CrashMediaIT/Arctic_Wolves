@@ -3390,10 +3390,12 @@ function toggleProgramFields() {
     var isCamp = typeSelect.value === 'camp';
     var campSection = document.getElementById('programCampDates');
     var multiWeekSection = document.getElementById('programMultiWeekDates');
-    if (campSection) campSection.style.display = isCamp ? 'block' : 'none';
+    // Hide old camp date range - calendar picker is used for both types
+    if (campSection) campSection.style.display = 'none';
+    // Show calendar for both camp and multi_week types
     if (multiWeekSection) {
-        multiWeekSection.style.display = isCamp ? 'none' : 'block';
-        if (!isCamp) programCal.render();
+        multiWeekSection.style.display = 'block';
+        programCal.render();
     }
 }
 

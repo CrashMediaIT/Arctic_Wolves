@@ -152,6 +152,19 @@ test.describe('Products Page - Programs & Camps Tab', () => {
     expect(content).toContain('allow_individual_sessions');
   });
 
+  test('Camp modal uses calendar picker instead of start/end date range', async () => {
+    const content = readFile('views/accounting_products.php');
+    // toggleProgramFields should hide old camp dates section and show calendar for both types
+    expect(content).toContain("campSection.style.display = 'none'");
+    expect(content).toContain("multiWeekSection.style.display = 'block'");
+    // Calendar should always render when toggling
+    expect(content).toContain('programCal.render()');
+    // Calendar picker should exist in the modal
+    expect(content).toContain('program-calendar');
+    expect(content).toContain('program-cal-days');
+    expect(content).toContain('arctic-calendar');
+  });
+
   test('Products page togglePackageTypeFields handles camp and multi_week', async () => {
     const content = readFile('views/accounting_products.php');
     expect(content).toContain('camp-fields-row');
@@ -292,5 +305,24 @@ test.describe('Admin Package Management - Location Field', () => {
     expect(content).toContain('schedule_locations');
     expect(content).toContain('program_locations');
     expect(content).toContain(', location)');
+  });
+
+  test('Process packages handles calendar picker dates for camps', async () => {
+    const content = readFile('process_packages.php');
+    // Camp type should accept program_dates from calendar picker
+    expect(content).toContain("package_type === 'camp' && !empty(\$_POST['program_dates'])");
+    // Should handle nested array format from ArcticCalendar
+    expect(content).toContain('is_array($entry)');
+    // Should auto-derive camp_start_date and camp_end_date
+    expect(content).toContain('Auto-derive camp_start_date and camp_end_date');
+    // Validation should allow program_dates as alternative to manual dates
+    expect(content).toContain("empty(\$_POST['program_dates'])");
+  });
+
+  test('Process packages handles nested array format for multi_week dates', async () => {
+    const content = readFile('process_packages.php');
+    // Multi_week should handle both nested (ArcticCalendar) and flat (admin_packages) formats
+    expect(content).toContain('is_array($pdate)');
+    expect(content).toContain("date_val = \$pdate['date']");
   });
 });
