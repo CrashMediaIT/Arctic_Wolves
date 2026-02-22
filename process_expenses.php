@@ -201,7 +201,8 @@ function performPaperlessOCR($file_path) {
     
     if (!empty($curl_error) || $http_code < 200 || $http_code >= 300) {
         error_log('Paperless-NGX upload failed: HTTP ' . $http_code . ' - ' . ($curl_error ?: $response));
-        return null; // Paperless-NGX not available
+        $ocr_data['error'] = 'Paperless-NGX upload failed (HTTP ' . $http_code . '). Check your Paperless-NGX server.';
+        return $ocr_data;
     }
     
     // Paperless-NGX returns a task ID — we need to poll for the result
@@ -209,7 +210,8 @@ function performPaperlessOCR($file_path) {
     // Validate task ID is a UUID or alphanumeric string
     if (empty($task_id) || !preg_match('/^[a-zA-Z0-9\-]+$/', $task_id)) {
         error_log('Paperless-NGX: Invalid or empty task ID returned');
-        return null;
+        $ocr_data['error'] = 'Paperless-NGX returned an invalid task ID. Check your Paperless-NGX server.';
+        return $ocr_data;
     }
     
     // Poll for task completion (up to 30 seconds)
@@ -247,13 +249,15 @@ function performPaperlessOCR($file_path) {
             break;
         } elseif (isset($task['status']) && $task['status'] === 'FAILURE') {
             error_log('Paperless-NGX OCR task failed: ' . ($task['result'] ?? 'unknown error'));
-            return null;
+            $ocr_data['error'] = 'Paperless-NGX OCR processing failed: ' . ($task['result'] ?? 'unknown error');
+            return $ocr_data;
         }
     }
     
     if (empty($document_id)) {
         error_log('Paperless-NGX: Document processing timed out or failed');
-        return null;
+        $ocr_data['error'] = 'Paperless-NGX document processing timed out. Try again or check your server.';
+        return $ocr_data;
     }
     
     // Fetch the document content (OCR text)
