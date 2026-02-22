@@ -336,8 +336,13 @@ if ($action === 'book_private_session') {
         $original_price = $session_type['price'];
         $final_price = $original_price;
         
+        // Get user email for Stripe checkout pre-fill
+        $email_stmt = $pdo->prepare("SELECT email FROM users WHERE id = ?");
+        $email_stmt->execute([$user_id]);
+        $customer_email = $email_stmt->fetchColumn();
+        
         // Create Stripe checkout session
-        $checkout_session = \Stripe\Checkout\Session::create([
+        $stripe_params = [
             'payment_method_types' => ['card'],
             'line_items' => [[
                 'price_data' => [
@@ -354,7 +359,11 @@ if ($action === 'book_private_session') {
             'success_url' => $domain . '/payment_success.php?session_id={CHECKOUT_SESSION_ID}',
             'cancel_url'  => $domain . '/dashboard.php?page=booking&error=cancelled',
             'client_reference_id' => $user_id,
-        ]);
+        ];
+        if (!empty($customer_email)) {
+            $stripe_params['customer_email'] = $customer_email;
+        }
+        $checkout_session = \Stripe\Checkout\Session::create($stripe_params);
         
         // Save booking with pending status until payment confirmed
         // Note: payment_status='pending' until Stripe webhook confirms payment
@@ -435,7 +444,12 @@ if (!empty($user_code)) {
 
 // 6. CREATE STRIPE SESSION
 try {
-    $checkout_session = \Stripe\Checkout\Session::create([
+    // Get user email for Stripe checkout pre-fill
+    $email_stmt = $pdo->prepare("SELECT email FROM users WHERE id = ?");
+    $email_stmt->execute([$user_id]);
+    $customer_email = $email_stmt->fetchColumn();
+    
+    $stripe_params = [
         'payment_method_types' => ['card'],
         'line_items' => [[
             'price_data' => [
@@ -452,7 +466,11 @@ try {
         'success_url' => $domain . '/payment_success.php?session_id={CHECKOUT_SESSION_ID}',
         'cancel_url'  => $domain . '/dashboard.php?page=schedule&error=cancelled',
         'client_reference_id' => $user_id,
-    ]);
+    ];
+    if (!empty($customer_email)) {
+        $stripe_params['customer_email'] = $customer_email;
+    }
+    $checkout_session = \Stripe\Checkout\Session::create($stripe_params);
 
     // 7. SAVE PENDING BOOKING IN DB
     $stmt = $pdo->prepare("INSERT INTO bookings (user_id, session_id, stripe_session_id, amount_paid, original_price, discount_code, status) VALUES (?, ?, ?, ?, ?, ?, 'pending')");
