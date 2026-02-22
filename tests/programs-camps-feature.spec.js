@@ -182,6 +182,16 @@ test.describe('Products Page - Programs & Camps Tab', () => {
     expect(content).toContain('arctic-calendar');
   });
 
+  test('Old camp date inputs are hidden by default and Arctic Calendar is visible by default', async () => {
+    const content = readFile('views/accounting_products.php');
+    // The old camp date range section must be hidden by default so the Arctic Calendar is used
+    expect(content).toContain('id="programCampDates" style="display: none;"');
+    // The Arctic Calendar section must NOT be hidden by default
+    const calendarSectionMatch = content.match(/id="programMultiWeekDates"[^>]*/);
+    expect(calendarSectionMatch).not.toBeNull();
+    expect(calendarSectionMatch[0]).not.toContain('display: none');
+  });
+
   test('Products page togglePackageTypeFields handles camp and multi_week', async () => {
     const content = readFile('views/accounting_products.php');
     expect(content).toContain('camp-fields-row');

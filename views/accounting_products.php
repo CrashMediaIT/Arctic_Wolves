@@ -746,8 +746,8 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                     </div>
                 </div>
                 
-                <!-- Camp Date Range Section -->
-                <div class="form-section" id="programCampDates">
+                <!-- Camp Date Range Section (hidden - replaced by Arctic Calendar below) -->
+                <div class="form-section" id="programCampDates" style="display: none;">
                     <h4 class="section-title"><i class="fas fa-calendar-alt"></i> Camp Schedule</h4>
                     
                     <div class="form-row">
@@ -781,8 +781,8 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                     </div>
                 </div>
                 
-                <!-- Multi-Week Dates Section -->
-                <div class="form-section" id="programMultiWeekDates" style="display: none;">
+                <!-- Arctic Calendar Date Picker Section (used for both camp and multi-week) -->
+                <div class="form-section" id="programMultiWeekDates">
                     <h4 class="section-title"><i class="fas fa-calendar-week"></i> Program Dates</h4>
                     <p class="form-help-text" style="margin-bottom: 12px; color: var(--text-dim); font-size: 13px;">Click dates on the calendar to select or deselect them. Each date can have its own time and location.</p>
                     
