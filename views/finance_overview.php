@@ -88,7 +88,7 @@ try {
     $stmt = $pdo->prepare("
         SELECT COALESCE(SUM(amount), 0) as total_revenue
         FROM payments
-        WHERE (payment_status = 'completed' OR status = 'completed')
+        WHERE payment_status = 'completed'
         AND DATE(payment_date) BETWEEN ? AND ?
     ");
     $stmt->execute([$startDate, $endDate]);
@@ -156,7 +156,7 @@ try {
     $stmt = $pdo->prepare("
         SELECT COUNT(*) as count, COALESCE(SUM(total_amount), 0) as total
         FROM invoices
-        WHERE status IN ('sent', 'pending', 'overdue')
+        WHERE status IN ('sent', 'draft', 'overdue')
     ");
     $stmt->execute();
     $outstandingData = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -169,7 +169,7 @@ try {
                u.first_name, u.last_name, p.payment_method
         FROM payments p
         LEFT JOIN users u ON p.user_id = u.id
-        WHERE (p.payment_status = 'completed' OR p.status = 'completed')
+        WHERE p.payment_status = 'completed'
         ORDER BY p.payment_date DESC
         LIMIT 5
     ");
@@ -228,7 +228,7 @@ try {
         SELECT date, SUM(daily_revenue) as daily_revenue FROM (
             SELECT DATE(payment_date) as date, SUM(amount) as daily_revenue
             FROM payments
-            WHERE (payment_status = 'completed' OR status = 'completed')
+            WHERE payment_status = 'completed'
             AND payment_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
             GROUP BY DATE(payment_date)
             UNION ALL
@@ -284,7 +284,7 @@ try {
         SELECT month, SUM(monthly_revenue) as monthly_revenue FROM (
             SELECT MONTH(payment_date) as month, SUM(amount) as monthly_revenue
             FROM payments
-            WHERE (payment_status = 'completed' OR status = 'completed')
+            WHERE payment_status = 'completed'
             AND YEAR(payment_date) = ?
             GROUP BY MONTH(payment_date)
             UNION ALL

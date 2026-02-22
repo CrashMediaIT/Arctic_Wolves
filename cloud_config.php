@@ -207,21 +207,69 @@ function listNextcloudFilesRecursive($connection, $folder, &$allFiles = []) {
 function testNextcloudConnection($settings, $server_type = 'primary') {
     try {
         $connection = connectNextcloud($settings);
-        $folder = $settings['nextcloud_receipt_folder'] ?? '/receipts';
-        $files = listNextcloudFiles($connection, $folder);
         $server_name = parse_url($connection['url'], PHP_URL_HOST) ?: $connection['url'];
         $server_label = ($server_type === 'backup') ? 'Backup Server' : 'Primary Server';
+
+        // First, verify basic WebDAV connectivity by checking the user's root folder
+        $root_url = $connection['url'] . '/remote.php/dav/files/' . $connection['username'] . '/';
+        $ch = curl_init($root_url);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PROPFIND');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+        curl_setopt($ch, CURLOPT_USERPWD, $connection['username'] . ':' . $connection['password']);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Depth: 0',
+            'Content-Type: application/xml'
+        ]);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($http_code === 401 || $http_code === 403) {
+            return [
+                'success' => false,
+                'message' => "Authentication failed for $server_label ($server_name). Check username and password.",
+                'server_type' => $server_type
+            ];
+        }
+
+        if ($http_code !== 207) {
+            return [
+                'success' => false,
+                'message' => "Failed to connect to $server_label ($server_name). HTTP Code: $http_code",
+                'server_type' => $server_type
+            ];
+        }
+
+        // Connection works — now try the specific folder
+        $folder = $settings['nextcloud_receipt_folder'] ?? '/receipts';
+        $file_count = 0;
+        $folder_note = '';
+        try {
+            $files = listNextcloudFiles($connection, $folder);
+            $file_count = count($files);
+        } catch (Exception $e) {
+            // Folder may not exist yet — try to create it
+            try {
+                createNextcloudFolder($connection, $folder);
+                $folder_note = " Folder '$folder' was created automatically.";
+            } catch (Exception $e2) {
+                $folder_note = " Note: folder '$folder' does not exist and could not be created.";
+            }
+        }
+
         return [
-            'success' => true, 
-            'message' => "Connection successful to $server_label: $server_name", 
-            'file_count' => count($files), 
+            'success' => true,
+            'message' => "Connection successful to $server_label: $server_name" . $folder_note,
+            'file_count' => $file_count,
             'server_name' => $server_name,
             'server_type' => $server_type
         ];
     } catch (Exception $e) {
         $server_label = ($server_type === 'backup') ? 'Backup Server' : 'Primary Server';
         return [
-            'success' => false, 
+            'success' => false,
             'message' => "Failed to connect to $server_label: " . $e->getMessage(),
             'server_type' => $server_type
         ];

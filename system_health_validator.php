@@ -86,7 +86,6 @@ class SystemHealthValidator {
             'db_config.php',
             'dashboard.php',
             'setup.php',
-            'demo_data_seeder.php',
             'process_admin_action.php',
             'security.php',
             'csrf_protection.php',

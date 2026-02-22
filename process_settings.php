@@ -702,10 +702,20 @@ try {
             exit;
             
         case 'test_nextcloud_backup':
+            $backup_password = trim($_POST['nextcloud_backup_password'] ?? '');
+            // If no password provided, use the stored encrypted password from database
+            if (empty($backup_password)) {
+                $stored_pass_stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'nextcloud_backup_password'");
+                $stored_pass_stmt->execute();
+                $encrypted_pass = $stored_pass_stmt->fetchColumn();
+                if (!empty($encrypted_pass)) {
+                    $backup_password = decryptPassword($encrypted_pass);
+                }
+            }
             $settings = [
                 'nextcloud_url' => trim($_POST['nextcloud_backup_url'] ?? ''),
                 'nextcloud_username' => trim($_POST['nextcloud_backup_username'] ?? ''),
-                'nextcloud_password' => trim($_POST['nextcloud_backup_password'] ?? ''),
+                'nextcloud_password' => $backup_password,
                 'nextcloud_receipt_folder' => '/Arctic_Wolves',
                 'nextcloud_webdav_path' => ''
             ];
