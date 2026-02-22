@@ -87,11 +87,11 @@ function handleFinanceOverview($auth) {
         if ($stripeConfigured) {
             try {
                 $stripeLibLoaded = false;
-                if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
-                    require_once __DIR__ . '/../vendor/autoload.php';
+                if (file_exists(__DIR__ . '/../../vendor/autoload.php')) {
+                    require_once __DIR__ . '/../../vendor/autoload.php';
                     $stripeLibLoaded = true;
-                } elseif (file_exists(__DIR__ . '/../stripe-php/init.php')) {
-                    require_once __DIR__ . '/../stripe-php/init.php';
+                } elseif (file_exists(__DIR__ . '/../../stripe-php/init.php')) {
+                    require_once __DIR__ . '/../../stripe-php/init.php';
                     $stripeLibLoaded = true;
                 }
 

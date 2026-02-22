@@ -464,7 +464,7 @@ try {
                                 <span class="pending-txn-available">Available: <?= $ptxnAvailable ?></span>
                             </div>
                             <div class="pending-txn-amounts">
-                                <span class="pending-txn-gross"><?= $ptxnCurrency ?> $<?= number_format($ptxnAmount, 2) ?></span>
+                                <span class="pending-txn-gross">$<?= number_format($ptxnAmount, 2) ?> <small><?= $ptxnCurrency ?></small></span>
                                 <?php if ($ptxnFee > 0): ?>
                                     <span class="pending-txn-fee">Fee: $<?= number_format($ptxnFee, 2) ?></span>
                                 <?php endif; ?>
