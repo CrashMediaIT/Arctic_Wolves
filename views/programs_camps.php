@@ -865,7 +865,7 @@ var campCalendarEvents = <?php
     foreach ($programs as $pkg) {
         if ($pkg['package_type'] === 'camp') {
             // Get camp daily schedules
-            $campSched = $pdo->prepare("SELECT * FROM camp_daily_schedules WHERE package_id = ? ORDER BY schedule_date");
+            $campSched = $pdo->prepare("SELECT schedule_date, title FROM camp_daily_schedules WHERE package_id = ? ORDER BY schedule_date");
             $campSched->execute([$pkg['id']]);
             $campDays = $campSched->fetchAll(PDO::FETCH_ASSOC);
             foreach ($campDays as $day) {
@@ -892,7 +892,7 @@ var campCalendarEvents = <?php
                 }
             }
         } elseif ($pkg['package_type'] === 'multi_week') {
-            $mwDates = $pdo->prepare("SELECT * FROM multiweek_program_dates WHERE package_id = ? ORDER BY session_date");
+            $mwDates = $pdo->prepare("SELECT session_date, title FROM multiweek_program_dates WHERE package_id = ? ORDER BY session_date");
             $mwDates->execute([$pkg['id']]);
             $programDates = $mwDates->fetchAll(PDO::FETCH_ASSOC);
             foreach ($programDates as $pd) {
@@ -965,7 +965,8 @@ function renderCampCalendar() {
         
         dayEvents.forEach(function(evt, idx) {
             if (idx < 3) {
-                html += '<div class="camp-event ' + evt.type + '-type" onclick="scrollToPackage(' + evt.package_id + ')" title="' + evt.title.replace(/"/g, '&quot;') + '">' + evt.title + '</div>';
+                var safeTitle = evt.title.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+                html += '<div class="camp-event ' + (evt.type === 'camp' ? 'camp' : 'multi_week') + '-type" onclick="scrollToPackage(' + parseInt(evt.package_id) + ')" title="' + safeTitle + '">' + safeTitle + '</div>';
             }
         });
         if (dayEvents.length > 3) {

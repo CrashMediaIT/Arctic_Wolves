@@ -712,6 +712,9 @@ button:disabled {
     border: 1px solid var(--border);
     border-radius: var(--radius-xl);
     padding: var(--space-5);
+    overflow: hidden;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .calendar-header {
@@ -773,6 +776,9 @@ button:disabled {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     gap: 4px;
+    overflow: hidden;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .calendar-day {
