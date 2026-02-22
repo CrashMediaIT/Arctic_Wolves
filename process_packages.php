@@ -170,9 +170,8 @@ try {
                 }
                 // Auto-derive camp_start_date and camp_end_date from selected dates
                 if (!empty($all_camp_dates)) {
-                    sort($all_camp_dates);
                     $pdo->prepare("UPDATE packages SET camp_start_date = ?, camp_end_date = ? WHERE id = ?")
-                        ->execute([reset($all_camp_dates), end($all_camp_dates), $package_id]);
+                        ->execute([min($all_camp_dates), max($all_camp_dates), $package_id]);
                 }
             }
             
@@ -338,9 +337,8 @@ try {
                     }
                     // Auto-derive camp_start_date and camp_end_date from selected dates
                     if (!empty($all_camp_dates)) {
-                        sort($all_camp_dates);
                         $pdo->prepare("UPDATE packages SET camp_start_date = ?, camp_end_date = ? WHERE id = ?")
-                            ->execute([reset($all_camp_dates), end($all_camp_dates), $package_id]);
+                            ->execute([min($all_camp_dates), max($all_camp_dates), $package_id]);
                     }
                 }
             }
