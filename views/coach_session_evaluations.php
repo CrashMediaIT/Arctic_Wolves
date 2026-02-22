@@ -1215,6 +1215,7 @@ async function addExistingAthlete() {
     try {
         const response = await fetch('process_session_evaluations.php', {
             method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
             body: formData
         });
         const data = await response.json();
@@ -1258,6 +1259,7 @@ async function addManualAthlete() {
     try {
         const response = await fetch('process_session_evaluations.php', {
             method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
             body: formData
         });
         const data = await response.json();
@@ -1300,6 +1302,7 @@ async function importCSV() {
     try {
         const response = await fetch('process_session_evaluations.php', {
             method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
             body: formData
         });
         const data = await response.json();
@@ -1334,6 +1337,7 @@ async function removeAthlete(athleteId) {
     try {
         const response = await fetch('process_session_evaluations.php', {
             method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
             body: formData
         });
         const data = await response.json();
