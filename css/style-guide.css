@@ -794,6 +794,9 @@ button:disabled {
     transition: all var(--transition-normal);
     position: relative;
     min-height: 60px;
+    min-width: 0;
+    overflow: hidden;
+    box-sizing: border-box;
 }
 
 .calendar-day:hover {

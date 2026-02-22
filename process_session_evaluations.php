@@ -274,6 +274,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     if ($existing) {
                         $new_user_id = $existing['id'];
+                        
+                        // Check if this user is already added to the evaluation
+                        $stmt = $pdo->prepare("SELECT id FROM session_evaluation_athletes WHERE session_evaluation_id = ? AND user_id = ?");
+                        $stmt->execute([$evaluation_id, $new_user_id]);
+                        if ($stmt->fetch()) {
+                            throw new Exception('This athlete is already added to the evaluation');
+                        }
                     } else {
                         // Create new user as athlete
                         $temp_password = bin2hex(random_bytes(8));
@@ -663,6 +670,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 break;
                 
             case 'get_athlete_scores':
+                header('Content-Type: application/json');
                 $evaluation_id = intval($_GET['evaluation_id'] ?? 0);
                 $athlete_id = intval($_GET['athlete_id'] ?? 0);
                 
@@ -685,7 +693,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 
                 echo json_encode(['success' => true, 'scores' => $scores_indexed]);
-                break;
+                exit;
                 
             case 'download_csv_template':
                 header('Content-Type: text/csv');

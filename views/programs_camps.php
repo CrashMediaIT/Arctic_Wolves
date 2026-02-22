@@ -172,10 +172,40 @@ if ($user_role === 'parent') {
                         $mw_dates = $pdo->prepare("SELECT * FROM multiweek_program_dates WHERE package_id = ? ORDER BY session_date");
                         $mw_dates->execute([$pkg['id']]);
                         $program_dates = $mw_dates->fetchAll(PDO::FETCH_ASSOC);
+                        
+                        // Group dates into consecutive ranges for smart display
+                        $date_ranges = [];
+                        if (!empty($program_dates)) {
+                            $range_start = $program_dates[0]['session_date'];
+                            $range_end = $range_start;
+                            for ($di = 1; $di < count($program_dates); $di++) {
+                                $prev = strtotime($range_end);
+                                $curr = strtotime($program_dates[$di]['session_date']);
+                                // Check if consecutive (within 1 day)
+                                if (($curr - $prev) <= 86400) {
+                                    $range_end = $program_dates[$di]['session_date'];
+                                } else {
+                                    $date_ranges[] = ['start' => $range_start, 'end' => $range_end];
+                                    $range_start = $program_dates[$di]['session_date'];
+                                    $range_end = $range_start;
+                                }
+                            }
+                            $date_ranges[] = ['start' => $range_start, 'end' => $range_end];
+                        }
                         ?>
                         <div class="detail-item">
                             <i class="fas fa-calendar-alt"></i>
-                            <span><?php echo count($program_dates); ?> sessions over multiple weeks</span>
+                            <?php if (count($date_ranges) === 1): ?>
+                                <?php if ($date_ranges[0]['start'] === $date_ranges[0]['end']): ?>
+                                    <span><?php echo date('M j, Y', strtotime($date_ranges[0]['start'])); ?></span>
+                                <?php else: ?>
+                                    <span><?php echo date('M j', strtotime($date_ranges[0]['start'])); ?> - <?php echo date('M j, Y', strtotime($date_ranges[0]['end'])); ?></span>
+                                <?php endif; ?>
+                            <?php elseif (count($date_ranges) > 1): ?>
+                                <span><?php echo count($program_dates); ?> sessions across <?php echo count($date_ranges); ?> weeks (<?php echo date('M j', strtotime($program_dates[0]['session_date'])); ?> - <?php echo date('M j, Y', strtotime(end($program_dates)['session_date'])); ?>)</span>
+                            <?php else: ?>
+                                <span><?php echo count($program_dates); ?> sessions over multiple weeks</span>
+                            <?php endif; ?>
                         </div>
                         <?php if (!empty($program_dates)): ?>
                         <div class="detail-item">
@@ -769,6 +799,9 @@ if ($user_role === 'parent') {
     min-height: 100px;
     padding: 8px;
     position: relative;
+    min-width: 0;
+    overflow: hidden;
+    box-sizing: border-box;
 }
 
 .camp-calendar-day.empty {

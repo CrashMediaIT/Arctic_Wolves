@@ -629,6 +629,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 sendResponse(true, 'Evaluation assigned to session successfully');
                 break;
                 
+            case 'remove_from_session':
+                $session_eval_id = intval($_POST['session_eval_id'] ?? 0);
+                
+                if ($session_eval_id <= 0) {
+                    throw new Exception('Invalid session evaluation ID');
+                }
+                
+                // Verify it exists
+                $check = $pdo->prepare("SELECT id, session_id, template_id FROM session_evaluations WHERE id = ?");
+                $check->execute([$session_eval_id]);
+                $session_eval = $check->fetch(PDO::FETCH_ASSOC);
+                if (!$session_eval) {
+                    throw new Exception('Session evaluation not found');
+                }
+                
+                // Delete the session evaluation assignment
+                $stmt = $pdo->prepare("DELETE FROM session_evaluations WHERE id = ?");
+                $stmt->execute([$session_eval_id]);
+                
+                Auditor::log($pdo, $user_id, 'delete', 'session_evaluations', $session_eval_id, [
+                    'action' => 'Removed evaluation from session',
+                    'session_id' => $session_eval['session_id'],
+                    'template_id' => $session_eval['template_id']
+                ]);
+                
+                sendResponse(true, 'Evaluation removed from session successfully');
+                break;
+                
             default:
                 throw new Exception('Invalid action');
         }
@@ -688,6 +716,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ");
                 $stmt->execute([$template_id]);
                 $template['categories'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                // Get assigned sessions
+                $stmt = $pdo->prepare("
+                    SELECT se.id as session_eval_id, se.name as eval_name, se.status,
+                           s.id as session_id, s.title as session_title, s.session_date
+                    FROM session_evaluations se
+                    INNER JOIN sessions s ON se.session_id = s.id
+                    WHERE se.template_id = ?
+                    ORDER BY s.session_date ASC
+                ");
+                $stmt->execute([$template_id]);
+                $template['sessions'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 
                 echo json_encode(['success' => true, 'evaluation' => $template]);
                 exit;

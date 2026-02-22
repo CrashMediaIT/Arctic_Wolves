@@ -156,6 +156,10 @@
         // Create calendar structure
         const calendarContainer = document.createElement('div');
         calendarContainer.className = 'calendar-container';
+        calendarContainer.style.display = 'grid';
+        calendarContainer.style.gridTemplateColumns = 'repeat(7, 1fr)';
+        calendarContainer.style.gap = '4px';
+        calendarContainer.style.overflow = 'hidden';
 
         // Add day headers
         const dayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];

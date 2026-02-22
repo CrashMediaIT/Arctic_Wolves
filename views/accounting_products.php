@@ -839,6 +839,8 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     padding: 16px;
     margin-bottom: 16px;
     max-width: 420px;
+    overflow: hidden;
+    box-sizing: border-box;
 }
 .arctic-cal-header {
     display: flex;
@@ -872,6 +874,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
 .arctic-cal-weekdays {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
     text-align: center;
     font-size: 11px;
     font-weight: 600;
@@ -884,6 +887,9 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     gap: 4px;
+    overflow: hidden;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 .arctic-cal-day {
     aspect-ratio: 1;
@@ -899,6 +905,9 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     transition: all 0.15s;
     font-weight: 500;
     position: relative;
+    min-width: 0;
+    overflow: hidden;
+    box-sizing: border-box;
 }
 .arctic-cal-day:hover:not(.disabled):not(.empty) {
     background: rgba(107, 70, 193, 0.15);

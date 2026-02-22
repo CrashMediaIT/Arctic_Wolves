@@ -566,6 +566,9 @@ $activeView = $_GET['view'] ?? 'list';
 .calendar-body {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
+    overflow: hidden;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .calendar-day {
@@ -573,6 +576,9 @@ $activeView = $_GET['view'] ?? 'list';
     padding: 8px;
     border: 1px solid var(--border, #2D2D3F);
     position: relative;
+    min-width: 0;
+    overflow: hidden;
+    box-sizing: border-box;
 }
 
 .calendar-day.other-month {

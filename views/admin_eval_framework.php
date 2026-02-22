@@ -1147,6 +1147,13 @@ try {
                         <?php endforeach; ?>
                     </div>
                 </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Assigned Sessions</label>
+                    <div id="edit-eval-sessions" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 12px;">
+                        <p style="color: var(--text-dim); font-size: 13px;">Loading sessions...</p>
+                    </div>
+                </div>
             </div>
             
             <div class="modal-footer">
@@ -1601,6 +1608,23 @@ function openEditEvaluationModal(templateId) {
                 cb.checked = selectedCats.indexOf(cb.value) !== -1;
             });
             
+            // Load assigned sessions
+            var sessionsDiv = document.getElementById('edit-eval-sessions');
+            var sessions = data.evaluation.sessions || [];
+            if (sessions.length === 0) {
+                sessionsDiv.innerHTML = '<p style="color: var(--text-dim); font-size: 13px; text-align: center;"><i class="fas fa-info-circle"></i> No sessions assigned to this evaluation.</p>';
+            } else {
+                var html = '';
+                sessions.forEach(function(s) {
+                    var dateDisplay = s.session_date ? new Date(s.session_date + 'T00:00:00').toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'}) : 'N/A';
+                    html += '<div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; border-radius: 6px; background: var(--bg-main, #0A0A0F); margin-bottom: 4px;">';
+                    html += '<span style="font-size: 13px; color: var(--text-white, #fff);"><i class="fas fa-calendar" style="color: var(--primary); margin-right: 8px;"></i>' + (s.session_title || 'Untitled') + ' <small style="color: var(--text-dim);">(' + dateDisplay + ')</small></span>';
+                    html += '<button type="button" class="btn-action danger" style="padding: 4px 8px; font-size: 11px; background: rgba(239,68,68,0.1); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); border-radius: 4px; cursor: pointer;" onclick="removeEvalFromSession(' + s.session_eval_id + ', ' + templateId + ')"><i class="fas fa-unlink"></i> Remove</button>';
+                    html += '</div>';
+                });
+                sessionsDiv.innerHTML = html;
+            }
+            
             var modal = document.getElementById('edit-evaluation-modal');
             if (modal) modal.classList.add('active');
         }
@@ -1608,6 +1632,32 @@ function openEditEvaluationModal(templateId) {
     .catch(function(err) {
         console.error('Error loading evaluation:', err);
     });
+}
+
+function removeEvalFromSession(sessionEvalId, templateId) {
+    if (!confirm('Remove this evaluation from the session?')) return;
+    
+    var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '';
+    var formData = new FormData();
+    formData.append('action', 'remove_from_session');
+    formData.append('session_eval_id', sessionEvalId);
+    formData.append('csrf_token', csrfToken);
+    
+    fetch('process_eval_framework.php', {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            // Reload the modal to refresh sessions list
+            openEditEvaluationModal(templateId);
+        } else {
+            alert('Error: ' + (data.message || 'Failed to remove'));
+        }
+    })
+    .catch(function() { alert('An error occurred'); });
 }
 
 function deleteEvaluation(templateId, evalName) {
