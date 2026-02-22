@@ -16,8 +16,7 @@ try {
     $stmt = $pdo->query("
         SELECT u.id, u.first_name, u.last_name
         FROM users u
-        JOIN user_roles ur ON u.id = ur.user_id
-        WHERE ur.role = 'athlete' AND u.is_active = 1
+        WHERE u.role = 'athlete' AND u.is_active = 1
         ORDER BY u.last_name, u.first_name
     ");
     $athletes = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -206,14 +205,7 @@ try {
                     
                     <div class="form-group" style="margin-bottom: var(--space-5);">
                         <label class="form-label">Select Athlete *</label>
-                        <select id="athlete-select" name="athlete_id" class="form-select" required>
-                            <option value="">-- Choose Athlete --</option>
-                            <?php foreach ($athletes as $athlete): ?>
-                                <option value="<?= $athlete['id'] ?>">
-                                    <?= htmlspecialchars($athlete['last_name'] . ', ' . $athlete['first_name']) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+                        <div id="shot-speed-athlete-typeahead"></div>
                     </div>
                     
                     <div class="speed-input-wrapper">
@@ -308,6 +300,33 @@ const csrfToken = '<?= htmlspecialchars($csrf_token) ?>';
 let currentUnit = 'mph';
 let currentAthleteId = null;
 
+// Initialize athlete typeahead
+new ArcticTypeahead({
+    container: '#shot-speed-athlete-typeahead',
+    name: 'athlete_id',
+    placeholder: 'Search for an athlete…',
+    roles: 'athlete',
+    multiple: false,
+    required: true,
+    onSelect: function(item) {
+        currentAthleteId = item.id;
+        const recordBtn = document.getElementById('record-btn');
+        const speedInput = document.getElementById('speed-input');
+        recordBtn.disabled = !(currentAthleteId && speedInput.value);
+        loadRecentSpeeds();
+        loadStats();
+    },
+    onChange: function(ids) {
+        if (!ids || ids.length === 0) {
+            currentAthleteId = null;
+            document.getElementById('record-btn').disabled = true;
+            document.getElementById('no-speeds').style.display = 'block';
+            document.getElementById('speed-tbody').innerHTML = '';
+            document.getElementById('stats-card').style.display = 'none';
+        }
+    }
+});
+
 // Unit selection
 function selectUnit(unit) {
     currentUnit = unit;
@@ -322,23 +341,7 @@ function selectUnit(unit) {
     speedInput.max = unit === 'mph' ? 150 : 240;
 }
 
-// Enable record button when athlete and speed are selected
-document.getElementById('athlete-select').addEventListener('change', function() {
-    currentAthleteId = this.value;
-    const recordBtn = document.getElementById('record-btn');
-    const speedInput = document.getElementById('speed-input');
-    recordBtn.disabled = !(currentAthleteId && speedInput.value);
-    
-    if (currentAthleteId) {
-        loadRecentSpeeds();
-        loadStats();
-    } else {
-        document.getElementById('no-speeds').style.display = 'block';
-        document.getElementById('speed-tbody').innerHTML = '';
-        document.getElementById('stats-card').style.display = 'none';
-    }
-});
-
+// Enable record button when speed value changes
 document.getElementById('speed-input').addEventListener('input', function() {
     const recordBtn = document.getElementById('record-btn');
     recordBtn.disabled = !(currentAthleteId && this.value);

@@ -16,11 +16,11 @@ try {
     $stmt = $pdo->query("
         SELECT u.id, u.first_name, u.last_name
         FROM users u
-        JOIN user_roles ur ON u.id = ur.user_id
-        WHERE ur.role = 'athlete' AND u.is_active = 1
+        WHERE u.role = 'athlete' AND u.is_active = 1
         ORDER BY u.last_name, u.first_name
     ");
     $athletes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $athletes = decryptUserRows($athletes);
 } catch (Exception $e) {
     $athletes = [];
 }
@@ -551,13 +551,8 @@ try {
                         <input type="text" name="session_name" class="form-input" placeholder="e.g., Sprint Drill" required id="sw-session-name">
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Link to Skill</label>
-                        <select name="skill_id" class="form-select" id="sw-skill-select">
-                            <option value="">-- None --</option>
-                            <?php foreach ($stopwatch_skills as $skill): ?>
-                                <option value="<?= $skill['id'] ?>"><?= htmlspecialchars($skill['category_name'] . ' > ' . $skill['name']) ?></option>
-                            <?php endforeach; ?>
-                        </select>
+                        <label class="form-label">Assign to Athlete</label>
+                        <div id="sw-athlete-typeahead"></div>
                     </div>
                     <div class="form-group" style="flex: 0 0 auto;">
                         <label class="form-label">&nbsp;</label>
@@ -655,6 +650,17 @@ const csrfToken = '<?= htmlspecialchars($csrf_token) ?>';
 const athleteOptions = <?= json_encode(array_map(function($a) {
     return ['id' => $a['id'], 'name' => ($a['first_name'] ?? '') . ' ' . ($a['last_name'] ?? '')];
 }, $athletes), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+
+var swSelectedAthleteId = null;
+new ArcticTypeahead({
+    container: '#sw-athlete-typeahead',
+    name: 'athlete_id',
+    placeholder: 'Search for an athlete…',
+    roles: 'athlete',
+    multiple: false,
+    onSelect: function(item) { swSelectedAthleteId = item.id; },
+    onChange: function(ids) { swSelectedAthleteId = (ids && ids.length > 0) ? ids[0] : null; }
+});
 
 function swStart() {
     stopwatch.start();
@@ -923,7 +929,7 @@ function swSaveSession(e) {
     formData.append('action', 'save_session');
     formData.append('csrf_token', csrfToken);
     formData.append('session_name', sessionName);
-    formData.append('skill_id', document.getElementById('sw-skill-select').value || '');
+    formData.append('athlete_id', swSelectedAthleteId || '');
     formData.append('laps', JSON.stringify(laps));
 
     fetch('process_stopwatch.php', {

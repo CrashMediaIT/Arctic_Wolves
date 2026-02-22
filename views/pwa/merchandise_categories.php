@@ -13,7 +13,7 @@ if (!$isAdmin) {
 }
 
 $categories = [];
-$parentCategories = [];
+$parentCategoriesFlat = [];
 try {
     $stmt = $pdo->prepare("
         SELECT id, name, slug, description, display_order, is_active, parent_id,
@@ -23,10 +23,22 @@ try {
     ");
     $stmt->execute();
     $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    $parentStmt = $pdo->prepare("SELECT id, name FROM merchandise_categories WHERE parent_id IS NULL OR parent_id = 0 ORDER BY name");
-    $parentStmt->execute();
-    $parentCategories = $parentStmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) { $categories = []; $parentCategories = []; }
+    
+    // Build hierarchical list with depth for indentation in dropdowns
+    $allCatsForTree = $categories;
+    $parentCategoriesFlat = [];
+    $buildTree = function($cats, $parentId = null, $depth = 0) use (&$buildTree, &$parentCategoriesFlat) {
+        foreach ($cats as $cat) {
+            $catParent = empty($cat['parent_id']) ? null : $cat['parent_id'];
+            if ($catParent == $parentId) {
+                $cat['depth'] = $depth;
+                $parentCategoriesFlat[] = $cat;
+                $buildTree($cats, $cat['id'], $depth + 1);
+            }
+        }
+    };
+    $buildTree($allCatsForTree);
+} catch (PDOException $e) { $categories = []; $parentCategoriesFlat = []; }
 
 $totalCats = count($categories);
 ?>
@@ -126,8 +138,8 @@ $totalCats = count($categories);
                 <label class="m-form-label">Parent Category</label>
                 <select name="parent_id" id="mCatParent" class="m-form-select">
                     <option value="">None (Top-Level)</option>
-                    <?php foreach ($parentCategories as $pc): ?>
-                    <option value="<?= (int)$pc['id'] ?>"><?= htmlspecialchars($pc['name']) ?></option>
+                    <?php foreach ($parentCategoriesFlat as $pc): ?>
+                    <option value="<?= (int)$pc['id'] ?>"><?= str_repeat('— ', $pc['depth']) ?><?= htmlspecialchars($pc['name']) ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
@@ -165,6 +177,11 @@ $totalCats = count($categories);
         var sheet = document.getElementById('mCatSheet');
         document.getElementById('mCatSheetTitle').textContent = mode === 'edit' ? 'Edit Category' : 'Add Category';
         document.getElementById('mCatAction').value = mode === 'edit' ? 'update' : 'create';
+        
+        // Re-enable all parent options first
+        var parentSelect = document.getElementById('mCatParent');
+        Array.from(parentSelect.options).forEach(function(opt) { opt.disabled = false; });
+        
         if (mode === 'edit' && card) {
             document.getElementById('mCatId').value = card.dataset.id;
             document.getElementById('mCatName').value = card.dataset.name;
@@ -172,6 +189,25 @@ $totalCats = count($categories);
             document.getElementById('mCatOrder').value = card.dataset.order;
             document.getElementById('mCatActive').value = card.dataset.active;
             document.getElementById('mCatParent').value = card.dataset.parent || '';
+            
+            // Disable self and descendants in parent dropdown to prevent circular reference
+            var editId = parseInt(card.dataset.id);
+            var allCats = <?= json_encode($parentCategoriesFlat, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+            function getDescendantIds(catId) {
+                var ids = [catId];
+                allCats.forEach(function(c) {
+                    if (parseInt(c.parent_id) === catId) {
+                        ids = ids.concat(getDescendantIds(parseInt(c.id)));
+                    }
+                });
+                return ids;
+            }
+            var disabledIds = getDescendantIds(editId);
+            Array.from(parentSelect.options).forEach(function(opt) {
+                if (opt.value !== '' && disabledIds.indexOf(parseInt(opt.value)) !== -1) {
+                    opt.disabled = true;
+                }
+            });
         } else {
             document.getElementById('mCatId').value = '';
             document.getElementById('mCatName').value = '';
