@@ -56,6 +56,7 @@ test.describe('Payment Success - Package Purchase Handling', () => {
     const content = readFile('payment_success.php');
     expect(content).toContain('already_processed');
     expect(content).toContain('stripe_session_id');
+    expect(content).toContain('!empty($athlete_ids)');
   });
 
   test('payment_success.php uses database transaction for package processing', () => {
@@ -111,7 +112,7 @@ test.describe('Upcoming Sessions - Package Sessions Support', () => {
     const content = readFile('views/sessions_upcoming.php');
     // For upcoming (non-history) view, cancelled bookings should be excluded
     // but sessions from packages should still show even without a booking
-    expect(content).toContain("b.status IS NULL OR b.status != 'cancelled'");
+    expect(content).toContain("b.id IS NULL OR b.status != 'cancelled'");
   });
 
   test('Upcoming sessions history view also includes package sessions', () => {

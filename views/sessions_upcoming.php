@@ -73,7 +73,7 @@ if ($user_role === 'athlete') {
             ))
               AND s.session_date >= NOW()
               AND s.status = 'scheduled'
-              AND (b.status IS NULL OR b.status != 'cancelled')
+              AND (b.id IS NULL OR b.status != 'cancelled')
         ";
     }
     $params = [$user_id, $user_id];

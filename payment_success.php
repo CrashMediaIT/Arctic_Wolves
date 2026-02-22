@@ -36,10 +36,11 @@ try {
             $pkg_stmt->execute([$package_id]);
             $package = $pkg_stmt->fetch(PDO::FETCH_ASSOC);
 
-            if ($package) {
-                // Check if already processed (idempotency)
-                $dup_stmt = $pdo->prepare("SELECT id FROM user_packages WHERE package_id = ? AND user_id = ? AND stripe_session_id = ?");
-                $dup_stmt->execute([$package_id, $athlete_ids[0] ?? 0, $stripe_sid]);
+            if ($package && !empty($athlete_ids)) {
+                // Check if already processed (idempotency) - check ANY athlete
+                $athlete_placeholders = implode(',', array_fill(0, count($athlete_ids), '?'));
+                $dup_stmt = $pdo->prepare("SELECT id FROM user_packages WHERE package_id = ? AND stripe_session_id = ? AND user_id IN ($athlete_placeholders)");
+                $dup_stmt->execute(array_merge([$package_id, $stripe_sid], array_map('intval', $athlete_ids)));
                 $already_processed = $dup_stmt->fetch();
 
                 if (!$already_processed) {
@@ -50,6 +51,8 @@ try {
                         $sess_stmt->execute([$package_id]);
                         $linked_session_ids = $sess_stmt->fetchAll(PDO::FETCH_COLUMN);
 
+                        $amount_per_athlete = $total / count($athlete_ids);
+
                         foreach ($athlete_ids as $athlete_id) {
                             $athlete_id = intval($athlete_id);
 
@@ -58,7 +61,7 @@ try {
                                 INSERT INTO user_packages (user_id, package_id, credits_remaining, payment_status, amount_paid, stripe_session_id)
                                 VALUES (?, ?, ?, 'paid', ?, ?)
                             ");
-                            $up_stmt->execute([$athlete_id, $package_id, $package['credits'], $total / count($athlete_ids), $stripe_sid]);
+                            $up_stmt->execute([$athlete_id, $package_id, $package['credits'], $amount_per_athlete, $stripe_sid]);
                             $user_package_id = $pdo->lastInsertId();
 
                             // Save selected add-ons
