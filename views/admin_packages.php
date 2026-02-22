@@ -215,12 +215,21 @@ $sessions = $pdo->query("
                 <span style="color: #94a3b8;">After creating this package, use the <strong style="color: #e2e8f0;">Manage Sessions</strong> button to select specific sessions from your sessions library.</span>
             </div>
             
-            <!-- Camp/Program Calendar Section -->
+            <!-- Camp Date Range Section -->
             <div id="campDatesSection" style="display: none;">
                 <h4 style="color: #e2e8f0; margin-bottom: 16px; border-bottom: 1px solid #334155; padding-bottom: 8px;">
-                    <i class="fas fa-campground"></i> Camp Dates
+                    <i class="fas fa-campground"></i> Camp Dates &amp; Hours
                 </h4>
-                <p style="color: #94a3b8; font-size: 13px; margin-bottom: 12px;">Click dates on the calendar to select or deselect them. Each date can have its own time and location.</p>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Start Date <span class="required">*</span></label>
+                        <input type="date" name="camp_start_date" id="campStartDate">
+                    </div>
+                    <div class="form-group">
+                        <label>End Date <span class="required">*</span></label>
+                        <input type="date" name="camp_end_date" id="campEndDate">
+                    </div>
+                </div>
                 <div class="form-row">
                     <div class="form-group">
                         <label>Default Daily Start Time</label>
@@ -231,19 +240,13 @@ $sessions = $pdo->query("
                         <input type="time" name="daily_end_time" id="dailyEndTime" value="17:00">
                     </div>
                 </div>
-                <div class="arctic-calendar" id="camp-calendar">
-                    <div class="arctic-cal-header">
-                        <button type="button" class="arctic-cal-nav" onclick="campCalNav(-1)"><i class="fas fa-chevron-left"></i></button>
-                        <span class="arctic-cal-title" id="camp-cal-title"></span>
-                        <button type="button" class="arctic-cal-nav" onclick="campCalNav(1)"><i class="fas fa-chevron-right"></i></button>
-                    </div>
-                    <div class="arctic-cal-weekdays">
-                        <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
-                    </div>
-                    <div class="arctic-cal-days" id="camp-cal-days"></div>
+                <div style="margin-bottom: 16px;">
+                    <button type="button" class="btn-secondary" onclick="generateCampDays()" style="padding: 8px 16px; font-size: 13px;">
+                        <i class="fas fa-calendar-plus"></i> Generate Daily Schedule
+                    </button>
+                    <small style="color: #94a3b8; display: block; margin-top: 6px;">Click to auto-populate schedule for each day in the date range</small>
                 </div>
-                <div id="campCalendarDatesContainer"></div>
-                <p id="campCalendarDatesEmpty" style="color: #94a3b8; font-size: 13px; text-align: center; padding: 12px; display: block;"><i class="fas fa-mouse-pointer"></i> Click on dates above to add them to this camp</p>
+                <div id="campScheduleRows"></div>
             </div>
             
             <!-- Multi-Week Program Section -->
@@ -251,7 +254,6 @@ $sessions = $pdo->query("
                 <h4 style="color: #e2e8f0; margin-bottom: 16px; border-bottom: 1px solid #334155; padding-bottom: 8px;">
                     <i class="fas fa-calendar-alt"></i> Program Dates
                 </h4>
-                <p style="color: #94a3b8; font-size: 13px; margin-bottom: 12px;">Click dates on the calendar to select or deselect them. Each date can have its own time and location.</p>
                 <div class="form-row">
                     <div class="form-group">
                         <label>Default Start Time</label>
@@ -272,19 +274,13 @@ $sessions = $pdo->query("
                         <span class="toggle-slider"></span>
                     </label>
                 </div>
-                <div class="arctic-calendar" id="mw-calendar">
-                    <div class="arctic-cal-header">
-                        <button type="button" class="arctic-cal-nav" onclick="mwCalNav(-1)"><i class="fas fa-chevron-left"></i></button>
-                        <span class="arctic-cal-title" id="mw-cal-title"></span>
-                        <button type="button" class="arctic-cal-nav" onclick="mwCalNav(1)"><i class="fas fa-chevron-right"></i></button>
-                    </div>
-                    <div class="arctic-cal-weekdays">
-                        <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
-                    </div>
-                    <div class="arctic-cal-days" id="mw-cal-days"></div>
+                <div style="margin-bottom: 16px;">
+                    <button type="button" class="btn-secondary" onclick="addProgramDate()" style="padding: 8px 16px; font-size: 13px;">
+                        <i class="fas fa-plus"></i> Add Date
+                    </button>
+                    <small style="color: #94a3b8; margin-left: 8px;">Select individual dates from the calendar</small>
                 </div>
-                <div id="mwCalendarDatesContainer"></div>
-                <p id="mwCalendarDatesEmpty" style="color: #94a3b8; font-size: 13px; text-align: center; padding: 12px; display: block;"><i class="fas fa-mouse-pointer"></i> Click on dates above to add them to this program</p>
+                <div id="programDateRows"></div>
             </div>
             
             <!-- Add-Ons Section (for Camp and Multi-Week) -->
@@ -759,155 +755,6 @@ td {
         grid-template-columns: 1fr 1fr;
     }
 }
-
-/* Arctic Calendar Picker */
-.arctic-calendar {
-    background: #1e293b;
-    border: 1px solid #334155;
-    border-radius: 12px;
-    padding: 16px;
-    margin-bottom: 16px;
-    max-width: 420px;
-    overflow: hidden;
-    box-sizing: border-box;
-}
-.arctic-cal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 12px;
-}
-.arctic-cal-title {
-    color: #e2e8f0;
-    font-weight: 700;
-    font-size: 15px;
-}
-.arctic-cal-nav {
-    background: transparent;
-    border: 1px solid #334155;
-    color: #94a3b8;
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-}
-.arctic-cal-nav:hover {
-    background: #334155;
-    color: #fff;
-}
-.arctic-cal-weekdays {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    text-align: center;
-    margin-bottom: 8px;
-}
-.arctic-cal-weekdays span {
-    color: #64748b;
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    padding: 4px 0;
-}
-.arctic-cal-days {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 4px;
-}
-.arctic-cal-day {
-    width: 100%;
-    aspect-ratio: 1;
-    border: none;
-    border-radius: 8px;
-    background: transparent;
-    color: #e2e8f0;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.15s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.arctic-cal-day:hover:not(.disabled):not(.empty) {
-    background: #334155;
-}
-.arctic-cal-day.disabled {
-    color: #334155;
-    cursor: default;
-}
-.arctic-cal-day.empty {
-    cursor: default;
-}
-.arctic-cal-day.today {
-    border: 1px solid #6B46C1;
-}
-.arctic-cal-day.selected {
-    background: #6B46C1;
-    color: #fff;
-    font-weight: 700;
-}
-.session-date-entry {
-    background: #020305;
-    border: 1px solid #334155;
-    border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 8px;
-    position: relative;
-}
-.session-date-entry .date-label {
-    color: #e2e8f0;
-    font-weight: 600;
-    font-size: 14px;
-    margin-bottom: 8px;
-}
-.session-date-entry .date-fields {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-.session-date-entry .form-group {
-    margin-bottom: 0;
-}
-.session-date-entry .form-label {
-    display: block;
-    color: #94a3b8;
-    font-size: 12px;
-    font-weight: 600;
-    margin-bottom: 4px;
-}
-.session-date-entry .form-input {
-    width: 100%;
-    padding: 8px;
-    background: #0a0f16;
-    border: 1px solid #334155;
-    border-radius: 4px;
-    color: #e2e8f0;
-    font-size: 13px;
-}
-.remove-date-btn {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    background: transparent;
-    border: 1px solid #ef4444;
-    color: #ef4444;
-    width: 28px;
-    height: 28px;
-    border-radius: 6px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-}
-.remove-date-btn:hover {
-    background: #ef4444;
-    color: white;
-}
 </style>
 
 <script>
@@ -949,10 +796,9 @@ function openPackageModal() {
     document.getElementById('packageActive').checked = true;
     document.getElementById('packageChildCheckin').checked = false;
     // Clear dynamic sections
+    document.getElementById('campScheduleRows').innerHTML = '';
+    document.getElementById('programDateRows').innerHTML = '';
     document.getElementById('addOnRows').innerHTML = '';
-    // Reset calendar pickers
-    campCal.clearAll();
-    mwCal.clearAll();
     togglePackageFields();
     document.getElementById('packageModal').style.display = 'block';
 }
@@ -977,6 +823,8 @@ function editPackage(pkg) {
     document.getElementById('packageChildCheckin').checked = pkg.enable_child_checkin == 1;
     
     // Camp fields
+    if (pkg.camp_start_date) document.getElementById('campStartDate').value = pkg.camp_start_date;
+    if (pkg.camp_end_date) document.getElementById('campEndDate').value = pkg.camp_end_date;
     if (pkg.daily_start_time) document.getElementById('dailyStartTime').value = pkg.daily_start_time;
     if (pkg.daily_end_time) document.getElementById('dailyEndTime').value = pkg.daily_end_time;
     
@@ -985,19 +833,15 @@ function editPackage(pkg) {
     if (pkg.daily_end_time) document.getElementById('mwEndTime').value = pkg.daily_end_time;
     if (pkg.allow_individual_sessions) document.getElementById('allowIndividualSessions').checked = pkg.allow_individual_sessions == 1;
     
-    // Reset calendars before loading
-    campCal.clearAll();
-    mwCal.clearAll();
-    
     togglePackageFields();
     
-    // Load camp schedules into calendar if camp type
+    // Load camp schedules if camp type
     if (pkg.package_type === 'camp') {
         loadCampSchedules(pkg.id);
         loadAddOns(pkg.id);
     }
     
-    // Load multi-week dates into calendar if multi_week type
+    // Load multi-week dates if multi_week type
     if (pkg.package_type === 'multi_week') {
         loadProgramDates(pkg.id);
         loadAddOns(pkg.id);
@@ -1006,233 +850,64 @@ function editPackage(pkg) {
     document.getElementById('packageModal').style.display = 'block';
 }
 
-// ArcticCalendar - Interactive calendar date picker for packages
-function ArcticCalendar(config) {
-    var self = this;
-    this.calendarId = config.calendarId;
-    this.daysId = config.daysId;
-    this.titleId = config.titleId;
-    this.datesContainerId = config.datesContainerId;
-    this.emptyId = config.emptyId;
-    this.fieldPrefix = config.fieldPrefix || 'program_dates';
-    this.defaultStartTime = config.defaultStartTime || '09:00';
-    this.defaultEndTime = config.defaultEndTime || '17:00';
-    this.selectedDates = {};
-    this.dateIndex = 0;
+// Generate daily schedule rows from camp date range
+function generateCampDays() {
+    var startDate = document.getElementById('campStartDate').value;
+    var endDate = document.getElementById('campEndDate').value;
+    var defaultStart = document.getElementById('dailyStartTime').value || '09:00';
+    var defaultEnd = document.getElementById('dailyEndTime').value || '17:00';
     
-    var now = new Date();
-    this.currentMonth = now.getMonth();
-    this.currentYear = now.getFullYear();
+    if (!startDate || !endDate) {
+        showNotification('Please set start and end dates first', 'error');
+        return;
+    }
     
-    this.render = function() {
-        var titleEl = document.getElementById(self.titleId);
-        var daysEl = document.getElementById(self.daysId);
-        if (!titleEl || !daysEl) return;
-        
-        var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-        titleEl.textContent = months[self.currentMonth] + ' ' + self.currentYear;
-        
-        var firstDay = new Date(self.currentYear, self.currentMonth, 1).getDay();
-        var daysInMonth = new Date(self.currentYear, self.currentMonth + 1, 0).getDate();
-        var today = new Date();
-        today.setHours(0,0,0,0);
-        
-        var html = '';
-        for (var e = 0; e < firstDay; e++) {
-            html += '<button type="button" class="arctic-cal-day empty" disabled></button>';
-        }
-        
-        for (var d = 1; d <= daysInMonth; d++) {
-            var dateObj = new Date(self.currentYear, self.currentMonth, d);
-            var dateStr = self.formatDate(dateObj);
-            var isPast = dateObj < today;
-            var isToday = dateObj.getTime() === today.getTime();
-            var isSelected = self.selectedDates.hasOwnProperty(dateStr);
-            
-            var cls = 'arctic-cal-day';
-            if (isPast) cls += ' disabled';
-            if (isToday) cls += ' today';
-            if (isSelected) cls += ' selected';
-            
-            if (isPast) {
-                html += '<button type="button" class="' + cls + '" disabled>' + d + '</button>';
-            } else {
-                html += '<button type="button" class="' + cls + '" data-date="' + dateStr + '" onclick="' + self.calendarId + 'Cal.toggleDate(\'' + dateStr + '\')">' + d + '</button>';
-            }
-        }
-        
-        daysEl.innerHTML = html;
-    };
+    var container = document.getElementById('campScheduleRows');
+    container.innerHTML = '';
     
-    this.formatDate = function(d) {
-        var y = d.getFullYear();
-        var m = String(d.getMonth() + 1).padStart(2, '0');
-        var day = String(d.getDate()).padStart(2, '0');
-        return y + '-' + m + '-' + day;
-    };
+    var current = new Date(startDate + 'T00:00:00');
+    var end = new Date(endDate + 'T00:00:00');
+    var dayIndex = 0;
     
-    this.formatDisplayDate = function(dateStr) {
-        var parts = dateStr.split('-');
-        var d = new Date(parts[0], parts[1] - 1, parts[2]);
-        var days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-        var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        return days[d.getDay()] + ', ' + months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
-    };
-    
-    this.toggleDate = function(dateStr) {
-        if (self.selectedDates.hasOwnProperty(dateStr)) {
-            self.removeDateEntry(dateStr);
-            delete self.selectedDates[dateStr];
-        } else {
-            self.dateIndex++;
-            self.selectedDates[dateStr] = self.dateIndex;
-            self.addDateEntry(dateStr, self.dateIndex);
-        }
-        self.render();
-        self.updateEmpty();
-    };
-    
-    this.addDateEntry = function(dateStr, idx) {
-        var container = document.getElementById(self.datesContainerId);
-        
-        var entry = document.createElement('div');
-        entry.className = 'session-date-entry';
-        entry.setAttribute('data-date', dateStr);
-        entry.innerHTML = '<input type="hidden" name="' + self.fieldPrefix + '[' + idx + '][date]" value="' + dateStr + '">' +
-            '<button type="button" class="remove-date-btn" onclick="' + self.calendarId + 'Cal.toggleDate(\'' + dateStr + '\')"><i class="fas fa-times"></i></button>' +
-            '<div class="date-label"><i class="fas fa-calendar-day"></i> ' + self.formatDisplayDate(dateStr) + '</div>' +
-            '<div class="date-fields">' +
-                '<div class="form-group" style="flex: 0 0 110px;">' +
-                    '<label class="form-label" style="font-size:12px;">Start Time</label>' +
-                    '<input type="time" name="' + self.fieldPrefix + '[' + idx + '][start_time]" class="form-input" value="' + self.defaultStartTime + '" style="font-size:13px;">' +
-                '</div>' +
-                '<div class="form-group" style="flex: 0 0 110px;">' +
-                    '<label class="form-label" style="font-size:12px;">End Time</label>' +
-                    '<input type="time" name="' + self.fieldPrefix + '[' + idx + '][end_time]" class="form-input" value="' + self.defaultEndTime + '" style="font-size:13px;">' +
-                '</div>' +
-                '<div class="form-group" style="flex: 1; min-width: 150px;">' +
-                    '<label class="form-label" style="font-size:12px;">Location</label>' +
-                    '<input type="text" name="' + self.fieldPrefix + '[' + idx + '][location_id]" class="form-input" placeholder="Arena / Venue" style="font-size:13px;">' +
-                '</div>' +
-            '</div>';
-        
-        // Insert sorted by date
-        var entries = container.querySelectorAll('.session-date-entry');
-        var inserted = false;
-        for (var i = 0; i < entries.length; i++) {
-            if (entries[i].getAttribute('data-date') > dateStr) {
-                container.insertBefore(entry, entries[i]);
-                inserted = true;
-                break;
-            }
-        }
-        if (!inserted) container.appendChild(entry);
-    };
-    
-    this.removeDateEntry = function(dateStr) {
-        var container = document.getElementById(self.datesContainerId);
-        var entry = container.querySelector('.session-date-entry[data-date="' + dateStr + '"]');
-        if (entry) entry.remove();
-    };
-    
-    this.updateEmpty = function() {
-        var emptyEl = document.getElementById(self.emptyId);
-        if (emptyEl) {
-            emptyEl.style.display = Object.keys(self.selectedDates).length === 0 ? 'block' : 'none';
-        }
-    };
-    
-    this.nav = function(dir) {
-        self.currentMonth += dir;
-        if (self.currentMonth > 11) { self.currentMonth = 0; self.currentYear++; }
-        if (self.currentMonth < 0) { self.currentMonth = 11; self.currentYear--; }
-        self.render();
-    };
-    
-    this.clearAll = function() {
-        self.selectedDates = {};
-        self.dateIndex = 0;
-        var container = document.getElementById(self.datesContainerId);
-        if (container) container.innerHTML = '';
-        self.updateEmpty();
-        self.render();
-    };
-    
-    this.addExistingDate = function(dateStr, startTime, endTime, location) {
-        self.dateIndex++;
-        self.selectedDates[dateStr] = self.dateIndex;
-        var container = document.getElementById(self.datesContainerId);
-        
-        var entry = document.createElement('div');
-        entry.className = 'session-date-entry';
-        entry.setAttribute('data-date', dateStr);
-        entry.innerHTML = '<input type="hidden" name="' + self.fieldPrefix + '[' + self.dateIndex + '][date]" value="' + dateStr + '">' +
-            '<button type="button" class="remove-date-btn" onclick="' + self.calendarId + 'Cal.toggleDate(\'' + dateStr + '\')"><i class="fas fa-times"></i></button>' +
-            '<div class="date-label"><i class="fas fa-calendar-day"></i> ' + self.formatDisplayDate(dateStr) + '</div>' +
-            '<div class="date-fields">' +
-                '<div class="form-group" style="flex: 0 0 110px;">' +
-                    '<label class="form-label" style="font-size:12px;">Start Time</label>' +
-                    '<input type="time" name="' + self.fieldPrefix + '[' + self.dateIndex + '][start_time]" class="form-input" value="' + (startTime || self.defaultStartTime) + '" style="font-size:13px;">' +
-                '</div>' +
-                '<div class="form-group" style="flex: 0 0 110px;">' +
-                    '<label class="form-label" style="font-size:12px;">End Time</label>' +
-                    '<input type="time" name="' + self.fieldPrefix + '[' + self.dateIndex + '][end_time]" class="form-input" value="' + (endTime || self.defaultEndTime) + '" style="font-size:13px;">' +
-                '</div>' +
-                '<div class="form-group" style="flex: 1; min-width: 150px;">' +
-                    '<label class="form-label" style="font-size:12px;">Location</label>' +
-                    '<input type="text" name="' + self.fieldPrefix + '[' + self.dateIndex + '][location_id]" class="form-input" value="' + escapeHtml(location || '') + '" placeholder="Arena / Venue" style="font-size:13px;">' +
-                '</div>' +
-            '</div>';
-        
-        var entries = container.querySelectorAll('.session-date-entry');
-        var inserted = false;
-        for (var i = 0; i < entries.length; i++) {
-            if (entries[i].getAttribute('data-date') > dateStr) {
-                container.insertBefore(entry, entries[i]);
-                inserted = true;
-                break;
-            }
-        }
-        if (!inserted) container.appendChild(entry);
-        self.updateEmpty();
-        self.render();
-    };
-    
-    this.render();
+    while (current <= end) {
+        var dateStr = current.toISOString().split('T')[0];
+        var dayName = current.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        addScheduleRow(dateStr, defaultStart, defaultEnd, 'Day ' + (dayIndex + 1) + ' - ' + dayName, '', '');
+        current.setDate(current.getDate() + 1);
+        dayIndex++;
+    }
 }
 
-// Camp calendar instance
-var campCal = new ArcticCalendar({
-    calendarId: 'camp',
-    daysId: 'camp-cal-days',
-    titleId: 'camp-cal-title',
-    datesContainerId: 'campCalendarDatesContainer',
-    emptyId: 'campCalendarDatesEmpty',
-    fieldPrefix: 'program_dates',
-    defaultStartTime: '09:00',
-    defaultEndTime: '17:00'
-});
-window.campCal = campCal;
-function campCalNav(dir) { campCal.nav(dir); }
+function addScheduleRow(date, startTime, endTime, title, desc, location) {
+    var container = document.getElementById('campScheduleRows');
+    var idx = container.children.length;
+    var row = document.createElement('div');
+    row.className = 'schedule-row';
+    row.innerHTML = '<div><label>Date</label><input type="date" name="schedule_dates[]" value="' + (date || '') + '" required></div>' +
+        '<div><label>Start</label><input type="time" name="schedule_start_times[]" value="' + (startTime || '09:00') + '" required></div>' +
+        '<div><label>End</label><input type="time" name="schedule_end_times[]" value="' + (endTime || '17:00') + '" required></div>' +
+        '<div><label>Title</label><input type="text" name="schedule_titles[]" value="' + escapeHtml(title || '') + '" placeholder="Day title"></div>' +
+        '<div><label>Location</label><input type="text" name="schedule_locations[]" value="' + escapeHtml(location || '') + '" placeholder="Arena / Venue"></div>' +
+        '<div><button type="button" class="btn-remove-row" onclick="this.closest(\'.schedule-row\').remove()"><i class="fas fa-trash"></i></button></div>';
+    container.appendChild(row);
+}
 
-// Multi-week calendar instance
-var mwCal = new ArcticCalendar({
-    calendarId: 'mw',
-    daysId: 'mw-cal-days',
-    titleId: 'mw-cal-title',
-    datesContainerId: 'mwCalendarDatesContainer',
-    emptyId: 'mwCalendarDatesEmpty',
-    fieldPrefix: 'program_dates',
-    defaultStartTime: '09:00',
-    defaultEndTime: '10:00'
-});
-window.mwCal = mwCal;
-function mwCalNav(dir) { mwCal.nav(dir); }
-
-// Deprecated: These stubs maintain backward compatibility after replacing manual date inputs with ArcticCalendar
-function generateCampDays() {}
-function addScheduleRow() {}
-function addProgramDate() {}
+// Add program date row for multi-week
+function addProgramDate(date, startTime, endTime, title, indPrice, location) {
+    var container = document.getElementById('programDateRows');
+    var defaultStart = document.getElementById('mwStartTime').value || '09:00';
+    var defaultEnd = document.getElementById('mwEndTime').value || '10:00';
+    var row = document.createElement('div');
+    row.className = 'program-date-row';
+    row.innerHTML = '<div><label>Date</label><input type="date" name="program_dates[]" value="' + (date || '') + '" required></div>' +
+        '<div><label>Start</label><input type="time" name="program_start_times[]" value="' + (startTime || defaultStart) + '" required></div>' +
+        '<div><label>End</label><input type="time" name="program_end_times[]" value="' + (endTime || defaultEnd) + '" required></div>' +
+        '<div><label>Title</label><input type="text" name="program_titles[]" value="' + escapeHtml(title || '') + '" placeholder="Session title"></div>' +
+        '<div><label>Location</label><input type="text" name="program_locations[]" value="' + escapeHtml(location || '') + '" placeholder="Arena / Venue"></div>' +
+        '<div><label>Indiv. Price</label><input type="number" name="program_individual_prices[]" step="0.01" min="0" value="' + (indPrice || '') + '" placeholder="$"></div>' +
+        '<div><button type="button" class="btn-remove-row" onclick="this.closest(\'.program-date-row\').remove()"><i class="fas fa-trash"></i></button></div>';
+    container.appendChild(row);
+}
 
 // Add add-on row
 function addAddOnRow(name, desc, price, isDefault) {
@@ -1248,26 +923,26 @@ function addAddOnRow(name, desc, price, isDefault) {
     container.appendChild(row);
 }
 
-// Load existing camp schedules into calendar via AJAX
+// Load existing camp schedules via AJAX
 function loadCampSchedules(packageId) {
     fetch('process_packages.php?action=get_camp_schedules&package_id=' + packageId)
         .then(function(r) { return r.json(); })
         .then(function(schedules) {
-            campCal.clearAll();
+            document.getElementById('campScheduleRows').innerHTML = '';
             schedules.forEach(function(s) {
-                campCal.addExistingDate(s.schedule_date, s.start_time, s.end_time, s.location || '');
+                addScheduleRow(s.schedule_date, s.start_time, s.end_time, s.title || '', s.description || '', s.location || '');
             });
         });
 }
 
-// Load existing program dates into calendar via AJAX
+// Load existing program dates via AJAX
 function loadProgramDates(packageId) {
     fetch('process_packages.php?action=get_program_dates&package_id=' + packageId)
         .then(function(r) { return r.json(); })
         .then(function(dates) {
-            mwCal.clearAll();
+            document.getElementById('programDateRows').innerHTML = '';
             dates.forEach(function(d) {
-                mwCal.addExistingDate(d.session_date, d.start_time, d.end_time, d.location || '');
+                addProgramDate(d.session_date, d.start_time, d.end_time, d.title || '', d.individual_price || '', d.location || '');
             });
         });
 }
@@ -1346,15 +1021,13 @@ function togglePackageFields() {
     } else if (type === 'camp') {
         campDatesSection.style.display = 'block';
         addOnsSection.style.display = 'block';
-        // Camps don't need expiry - they have scheduled dates
+        // Camps don't need expiry - they have start/end dates
         if (validDaysGroup) validDaysGroup.style.display = 'none';
-        campCal.render();
     } else if (type === 'multi_week') {
         multiWeekSection.style.display = 'block';
         addOnsSection.style.display = 'block';
         // Programs don't need expiry - they have scheduled dates
         if (validDaysGroup) validDaysGroup.style.display = 'none';
-        mwCal.render();
     }
 }
 
