@@ -13,12 +13,19 @@ $user_role = $_SESSION['user_role'] ?? 'athlete';
 
 // Handle direct package registration intent (from landing page)
 $target_package_id = isset($_GET['package_id']) ? intval($_GET['package_id']) : 0;
+$show_completed = isset($_GET['show_completed']) && $_GET['show_completed'] == '1';
 
-// Get active camp and multi-week packages
+// Get active camp and multi-week packages, hiding completed ones by default
+// A program/camp is "completed" if its last session date has passed
 $stmt = $pdo->prepare("
     SELECT p.*, 
            ag.name as age_group_name,
-           sl.name as skill_level_name
+           sl.name as skill_level_name,
+           GREATEST(
+               COALESCE(p.camp_end_date, '1970-01-01'),
+               COALESCE((SELECT MAX(schedule_date) FROM camp_daily_schedules WHERE package_id = p.id), '1970-01-01'),
+               COALESCE((SELECT MAX(session_date) FROM multiweek_program_dates WHERE package_id = p.id), '1970-01-01')
+           ) as last_session_date
     FROM packages p
     LEFT JOIN age_groups ag ON p.age_group_id = ag.id
     LEFT JOIN skill_levels sl ON p.skill_level_id = sl.id
@@ -26,7 +33,24 @@ $stmt = $pdo->prepare("
     ORDER BY p.package_type, p.camp_start_date ASC, p.price
 ");
 $stmt->execute();
-$programs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$all_programs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Split into active and completed
+$programs = [];
+$completed_programs = [];
+$today = date('Y-m-d');
+foreach ($all_programs as $pkg) {
+    if ($pkg['last_session_date'] && $pkg['last_session_date'] > '1970-01-01' && $pkg['last_session_date'] < $today) {
+        $completed_programs[] = $pkg;
+    } else {
+        $programs[] = $pkg;
+    }
+}
+
+// If show_completed is toggled, include completed programs
+if ($show_completed) {
+    $programs = array_merge($programs, $completed_programs);
+}
 
 // Get tax settings
 $settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
@@ -65,7 +89,18 @@ if ($user_role === 'parent') {
         <button class="filter-btn active" data-type="all">All Programs</button>
         <button class="filter-btn" data-type="camp"><i class="fas fa-campground"></i> Camps</button>
         <button class="filter-btn" data-type="multi_week"><i class="fas fa-calendar-alt"></i> Weekly Programs</button>
+        <div style="margin-left: auto; display: flex; align-items: center; gap: 12px;">
+            <input type="text" id="program-search-input" placeholder="Search programs..." oninput="filterProgramCards()" style="padding: 8px 14px; background: #0a0f16; border: 1px solid #334155; border-radius: 8px; color: #e2e8f0; font-size: 13px; min-width: 180px;">
+            <a href="?page=programs_camps&show_completed=<?php echo $show_completed ? '0' : '1'; ?>" class="filter-btn <?php echo $show_completed ? 'active' : ''; ?>" style="white-space: nowrap; text-decoration: none;">
+                <i class="fas fa-<?php echo $show_completed ? 'eye-slash' : 'eye'; ?>"></i> <?php echo $show_completed ? 'Hide Completed' : 'Show Completed'; ?>
+            </a>
+        </div>
     </div>
+    <?php if ($show_completed && !empty($completed_programs)): ?>
+    <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 10px 16px; margin-bottom: 16px; color: #f59e0b; font-size: 13px;">
+        <i class="fas fa-info-circle"></i> Showing <?php echo count($completed_programs); ?> completed program<?php echo count($completed_programs) !== 1 ? 's' : ''; ?> alongside active ones.
+    </div>
+    <?php endif; ?>
 
     <!-- Calendar View -->
     <div id="camp-calendar-view" style="display: none;">
@@ -93,8 +128,9 @@ if ($user_role === 'parent') {
             $price_with_tax = $pkg['price'] * (1 + $tax_rate / 100);
             $is_target = ($target_package_id === intval($pkg['id']));
         ?>
-        <div class="program-card <?php echo $is_target ? 'highlighted' : ''; ?>" 
+        <div class="program-card <?php echo $is_target ? 'highlighted' : ''; ?><?php echo (isset($pkg['last_session_date']) && $pkg['last_session_date'] > '1970-01-01' && $pkg['last_session_date'] < $today) ? ' completed-program' : ''; ?>" 
              data-type="<?php echo $pkg['package_type']; ?>"
+             data-name="<?php echo htmlspecialchars(strtolower($pkg['name'])); ?>"
              id="package-<?php echo $pkg['id']; ?>">
             
             <div class="program-header <?php echo $pkg['package_type']; ?>">
@@ -105,6 +141,9 @@ if ($user_role === 'parent') {
                         <i class="fas fa-calendar-alt"></i> Weekly Program
                     <?php endif; ?>
                 </span>
+                <?php if (isset($pkg['last_session_date']) && $pkg['last_session_date'] > '1970-01-01' && $pkg['last_session_date'] < $today): ?>
+                    <span class="completed-badge"><i class="fas fa-check-circle"></i> Completed</span>
+                <?php endif; ?>
                 <h3><?php echo htmlspecialchars($pkg['name']); ?></h3>
                 <?php if ($pkg['enable_child_checkin']): ?>
                     <span class="child-pickup-badge"><i class="fas fa-child"></i> Child Pickup Enabled</span>
@@ -850,27 +889,34 @@ if ($user_role === 'parent') {
     transform: translateY(-1px);
     box-shadow: 0 2px 8px rgba(0,0,0,0.3);
 }
+
+.completed-badge {
+    display: inline-block;
+    background: rgba(107, 114, 128, 0.2);
+    color: #9ca3af;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-left: 8px;
+}
+
+.completed-program {
+    opacity: 0.7;
+}
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Program filtering
-    var filterButtons = document.querySelectorAll('.program-filter .filter-btn');
+    var filterButtons = document.querySelectorAll('.program-filter .filter-btn[data-type]');
     var programCards = document.querySelectorAll('.program-card');
     
     filterButtons.forEach(function(btn) {
         btn.addEventListener('click', function() {
             filterButtons.forEach(function(b) { b.classList.remove('active'); });
             this.classList.add('active');
-            
-            var filterType = this.dataset.type;
-            programCards.forEach(function(card) {
-                if (filterType === 'all' || card.dataset.type === filterType) {
-                    card.style.display = 'block';
-                } else {
-                    card.style.display = 'none';
-                }
-            });
+            applyProgramFilters();
         });
     });
     
@@ -882,6 +928,24 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     <?php endif; ?>
 });
+
+// Shared filter logic for type + search
+function applyProgramFilters() {
+    var activeBtn = document.querySelector('.program-filter .filter-btn[data-type].active');
+    var filterType = activeBtn ? activeBtn.dataset.type : 'all';
+    var searchQuery = (document.getElementById('program-search-input').value || '').toLowerCase();
+    var cards = document.querySelectorAll('.program-card');
+    cards.forEach(function(card) {
+        var matchesType = (filterType === 'all' || card.dataset.type === filterType);
+        var matchesSearch = (searchQuery === '' || (card.getAttribute('data-name') || '').indexOf(searchQuery) !== -1);
+        card.style.display = (matchesType && matchesSearch) ? 'block' : 'none';
+    });
+}
+
+// Search/filter program cards by name (called from search input)
+function filterProgramCards() {
+    applyProgramFilters();
+}
 
 function toggleSchedule(packageId) {
     var el = document.getElementById('schedule-' + packageId);
