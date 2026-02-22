@@ -59,6 +59,7 @@ try {
     $categories = [];
     $subcategories = [];
     $parentCategories = [];
+    $parentCategoriesFlat = [];
     $allCategories = [];
 }
 

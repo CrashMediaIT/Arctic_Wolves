@@ -10,13 +10,13 @@ if (empty($csrf_token)) {
     $_SESSION['csrf_token'] = $csrf_token;
 }
 
-// Fetch athletes for assignment dropdown
+// Fetch all active users for assignment dropdown (all users are athletes)
 $athletes = [];
 try {
     $stmt = $pdo->query("
         SELECT u.id, u.first_name, u.last_name
         FROM users u
-        WHERE u.role = 'athlete' AND u.is_active = 1
+        WHERE u.is_active = 1
         ORDER BY u.last_name, u.first_name
     ");
     $athletes = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -157,6 +157,14 @@ try {
         background: var(--bg-card);
         border-color: var(--primary);
         transform: translateY(-1px);
+    }
+    .sw-btn-checkpoint {
+        background: var(--warning, #f59e0b);
+        color: #fff;
+    }
+    .sw-btn-checkpoint:hover {
+        background: #d97706;
+        transform: translateY(-2px);
     }
     .sw-btn:disabled {
         opacity: 0.4;
@@ -379,13 +387,53 @@ try {
         0%, 100% { transform: scale(1); opacity: 1; }
         50% { transform: scale(1.05); opacity: 0.8; }
     }
+    .sw-cam-assignment-row {
+        display: flex;
+        gap: var(--space-3);
+        align-items: center;
+        margin-bottom: var(--space-3);
+    }
+    .sw-cam-role-badge {
+        padding: 8px 14px;
+        border-radius: var(--radius-md);
+        font-size: var(--font-size-sm);
+        font-weight: var(--font-weight-bold);
+        white-space: nowrap;
+        min-width: 130px;
+        text-align: center;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        justify-content: center;
+    }
+    .sw-cam-source-select {
+        flex: 1;
+    }
+    .sw-cam-checkpoint-row {
+        display: flex;
+        gap: var(--space-3);
+        align-items: center;
+        margin-bottom: var(--space-3);
+    }
+    .sw-cam-remove-btn {
+        background: rgba(239,68,68,0.1);
+        color: var(--error);
+        border: none;
+        padding: 8px 10px;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        font-size: 13px;
+    }
+    .sw-cam-remove-btn:hover {
+        background: rgba(239,68,68,0.2);
+    }
 </style>
 
 <!-- Camera Mode Panel -->
 <div id="sw-camera-panel" class="sw-camera-panel">
     <div class="card">
         <div class="card-header">
-            <h3><i class="fas fa-video"></i> Dual-Camera Trigger Mode</h3>
+            <h3><i class="fas fa-video"></i> Camera Trigger Mode</h3>
             <span id="sw-cam-global-status" class="sw-cam-status">
                 <i class="fas fa-circle" style="font-size:8px;"></i> Inactive
             </span>
@@ -393,20 +441,40 @@ try {
         <div class="card-body">
             <div class="alert alert-info" style="margin-bottom: var(--space-5);">
                 <i class="fas fa-info-circle"></i>
-                Use two separate cameras for precision timing. Camera 1 (Start Line) detects motion to start the timer. Camera 2 (Finish Line) detects motion to record a lap/stop. Position cameras at the start and finish of a sprint or drill.
+                Assign cameras to trigger points. <strong>Start Line</strong> detects motion to start the timer. <strong>Checkpoint</strong> cameras record intermediate splits. <strong>Finish Line</strong> records the final time. Supports device cameras and NDI network cameras.
             </div>
 
-            <!-- Camera Selection -->
-            <div class="sw-camera-setup" style="margin-bottom: var(--space-5);">
-                <div class="form-group">
-                    <label class="form-label"><i class="fas fa-play-circle" style="color:var(--success);"></i> Start Line Camera</label>
-                    <select id="sw-cam-start-select" class="form-select">
+            <!-- Camera Source Discovery -->
+            <div style="margin-bottom: var(--space-4); display: flex; gap: var(--space-3); flex-wrap: wrap; align-items: center;">
+                <button class="btn btn-secondary" onclick="swCamRefreshSources()">
+                    <i class="fas fa-sync-alt"></i> Refresh Camera Sources
+                </button>
+                <div class="form-group" style="margin: 0; flex: 1; min-width: 200px;">
+                    <input type="text" id="sw-ndi-url" class="form-input" placeholder="NDI source URL (e.g., ndi://machine/source)" style="font-size: 13px;">
+                </div>
+                <button class="btn btn-secondary" onclick="swCamAddNdi()">
+                    <i class="fas fa-plus"></i> Add NDI Source
+                </button>
+            </div>
+
+            <!-- Camera Assignments -->
+            <div id="sw-cam-assignments" style="margin-bottom: var(--space-5);">
+                <!-- Start Line -->
+                <div class="sw-cam-assignment-row" data-role="start">
+                    <div class="sw-cam-role-badge" style="background: rgba(16,185,129,0.15); color: var(--success);"><i class="fas fa-play-circle"></i> Start Line</div>
+                    <select class="form-select sw-cam-source-select" data-role="start" id="sw-cam-start-select">
                         <option value="">-- Select Camera --</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label class="form-label"><i class="fas fa-flag-checkered" style="color:var(--error);"></i> Finish Line Camera</label>
-                    <select id="sw-cam-finish-select" class="form-select">
+                <!-- Checkpoint cameras (dynamically added) -->
+                <div id="sw-cam-checkpoint-list"></div>
+                <button class="btn btn-secondary" onclick="swCamAddCheckpoint()" style="margin: var(--space-3) 0;">
+                    <i class="fas fa-map-marker-alt"></i> Add Checkpoint Camera
+                </button>
+                <!-- Finish Line -->
+                <div class="sw-cam-assignment-row" data-role="finish">
+                    <div class="sw-cam-role-badge" style="background: rgba(239,68,68,0.15); color: var(--error);"><i class="fas fa-flag-checkered"></i> Finish Line</div>
+                    <select class="form-select sw-cam-source-select" data-role="finish" id="sw-cam-finish-select">
                         <option value="">-- Select Camera --</option>
                     </select>
                 </div>
@@ -463,6 +531,8 @@ try {
                         <div class="sw-motion-bar" id="sw-cam-finish-motion" style="width:0%;"></div>
                     </div>
                 </div>
+                <!-- Dynamic checkpoint camera feeds inserted here -->
+                <div id="sw-cam-checkpoint-feeds"></div>
             </div>
 
             <div id="sw-cam-alert" class="alert alert-success" style="display:none; margin-top: var(--space-4);">
@@ -531,6 +601,9 @@ try {
                     <button id="sw-lap-btn" class="sw-btn sw-btn-lap" onclick="swLap()" disabled>
                         <i class="fas fa-flag"></i> Lap
                     </button>
+                    <button id="sw-checkpoint-btn" class="sw-btn sw-btn-checkpoint" onclick="swCheckpoint()" disabled>
+                        <i class="fas fa-map-marker-alt"></i> Checkpoint
+                    </button>
                     <button id="sw-reset-btn" class="sw-btn sw-btn-reset" onclick="swReset()">
                         <i class="fas fa-redo"></i> Reset
                     </button>
@@ -573,15 +646,16 @@ try {
         <!-- Current Laps -->
         <div class="card">
             <div class="card-header">
-                <h3><i class="fas fa-list-ol"></i> Lap Times</h3>
-                <span id="sw-lap-count" style="color: var(--text-muted); font-size: var(--font-size-sm);">0 laps</span>
+                <h3><i class="fas fa-list-ol"></i> Lap & Checkpoint Times</h3>
+                <span id="sw-lap-count" style="color: var(--text-muted); font-size: var(--font-size-sm);">0 entries</span>
             </div>
             <div class="card-body" style="padding: 0; max-height: 400px; overflow-y: auto;">
                 <table class="sw-lap-table" id="sw-lap-table">
                     <thead>
                         <tr>
                             <th>#</th>
-                            <th>Lap Time</th>
+                            <th>Type</th>
+                            <th>Split Time</th>
                             <th>Total</th>
                             <th>Athlete</th>
                         </tr>
@@ -591,7 +665,7 @@ try {
                 </table>
                 <div id="sw-no-laps" class="sw-empty">
                     <i class="fas fa-stopwatch" style="font-size: 24px; margin-bottom: 8px; display: block;"></i>
-                    Press <strong>Lap</strong> while the timer is running to record splits
+                    Press <strong>Lap</strong> or <strong>Checkpoint</strong> while the timer is running to record splits
                 </div>
             </div>
         </div>
@@ -655,8 +729,8 @@ var swSelectedAthleteId = null;
 new ArcticTypeahead({
     container: '#sw-athlete-typeahead',
     name: 'athlete_id',
-    placeholder: 'Search for an athlete…',
-    roles: 'athlete',
+    placeholder: 'Search for a user…',
+    roles: '',
     multiple: false,
     onSelect: function(item) { swSelectedAthleteId = item.id; },
     onChange: function(ids) { swSelectedAthleteId = (ids && ids.length > 0) ? ids[0] : null; }
@@ -667,6 +741,7 @@ function swStart() {
     document.getElementById('sw-start-btn').disabled = true;
     document.getElementById('sw-stop-btn').disabled = false;
     document.getElementById('sw-lap-btn').disabled = false;
+    document.getElementById('sw-checkpoint-btn').disabled = false;
     document.getElementById('sw-save-btn').disabled = true;
 }
 
@@ -675,12 +750,23 @@ function swStop() {
     document.getElementById('sw-start-btn').disabled = false;
     document.getElementById('sw-stop-btn').disabled = true;
     document.getElementById('sw-lap-btn').disabled = true;
+    document.getElementById('sw-checkpoint-btn').disabled = true;
     document.getElementById('sw-save-btn').disabled = stopwatch.getLaps().length === 0;
 }
 
 function swLap() {
     const lap = stopwatch.lap();
     if (!lap) return;
+    // Tag as lap type
+    lap.type = 'lap';
+    renderLaps();
+}
+
+function swCheckpoint() {
+    const lap = stopwatch.lap();
+    if (!lap) return;
+    // Tag as checkpoint type
+    lap.type = 'checkpoint';
     renderLaps();
 }
 
@@ -689,6 +775,7 @@ function swReset() {
     document.getElementById('sw-start-btn').disabled = false;
     document.getElementById('sw-stop-btn').disabled = true;
     document.getElementById('sw-lap-btn').disabled = true;
+    document.getElementById('sw-checkpoint-btn').disabled = true;
     document.getElementById('sw-save-btn').disabled = true;
     renderLaps();
 }
@@ -707,6 +794,7 @@ function swToggleMode() {
         modeLabel.textContent = 'Countdown';
         countdownInput.style.display = 'block';
         lapBtn.style.display = 'none'; // Hide lap button in countdown mode
+        document.getElementById('sw-checkpoint-btn').style.display = 'none';
         
         // Set initial countdown time
         const minutes = parseInt(document.getElementById('sw-countdown-minutes').value) || 0;
@@ -722,6 +810,7 @@ function swToggleMode() {
         modeLabel.textContent = 'Stopwatch';
         countdownInput.style.display = 'none';
         lapBtn.style.display = 'inline-flex'; // Show lap button in stopwatch mode
+        document.getElementById('sw-checkpoint-btn').style.display = 'inline-flex';
         stopwatch.setStopwatchMode();
     }
     
@@ -729,6 +818,7 @@ function swToggleMode() {
     document.getElementById('sw-start-btn').disabled = false;
     document.getElementById('sw-stop-btn').disabled = true;
     document.getElementById('sw-lap-btn').disabled = true;
+    document.getElementById('sw-checkpoint-btn').disabled = true;
 }
 
 function swUpdateCountdownPreview() {
@@ -852,7 +942,7 @@ function renderLaps() {
     const noLaps = document.getElementById('sw-no-laps');
     const lapCount = document.getElementById('sw-lap-count');
 
-    lapCount.textContent = laps.length + ' lap' + (laps.length !== 1 ? 's' : '');
+    lapCount.textContent = laps.length + ' entr' + (laps.length !== 1 ? 'ies' : 'y');
 
     if (laps.length === 0) {
         tbody.innerHTML = '';
@@ -878,6 +968,11 @@ function renderLaps() {
             if (i === bestIdx) cls = 'sw-lap-best';
             else if (i === worstIdx) cls = 'sw-lap-worst';
         }
+        
+        const lapType = lap.type || 'lap';
+        const typeBadge = lapType === 'checkpoint' 
+            ? '<span style="background:rgba(245,158,11,0.15);color:#f59e0b;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;"><i class="fas fa-map-marker-alt"></i> CP</span>'
+            : '<span style="background:rgba(107,70,193,0.15);color:var(--primary-light);padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;"><i class="fas fa-flag"></i> Lap</span>';
 
         let athleteSelect = '<select class="sw-assign-select" onchange="swAssignAthlete(' + i + ', this.value)">';
         athleteSelect += '<option value="">-- Assign --</option>';
@@ -889,6 +984,7 @@ function renderLaps() {
 
         html += '<tr class="' + cls + '">';
         html += '<td>' + lap.number + '</td>';
+        html += '<td>' + typeBadge + '</td>';
         html += '<td class="sw-lap-time">' + Stopwatch.formatTimeMs(lap.lapTimeMs) + '</td>';
         html += '<td class="sw-lap-time">' + Stopwatch.formatTimeMs(lap.totalTimeMs) + '</td>';
         html += '<td>' + athleteSelect + '</td>';
@@ -1203,4 +1299,101 @@ function swCamShowAlert(type, message) {
         setTimeout(() => { alertEl.style.display = 'none'; }, 6000);
     }
 }
+
+// ===== Camera Source Management =====
+var swCamSources = []; // [{id, label, type:'device'|'ndi'}]
+var swCamCheckpointCount = 0;
+var swNdiSources = []; // Manually added NDI sources
+
+// Refresh device cameras and populate all camera dropdowns
+function swCamRefreshSources() {
+    swCamSources = [];
+    
+    // Enumerate device cameras
+    if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+        navigator.mediaDevices.enumerateDevices().then(function(devices) {
+            var camIdx = 1;
+            devices.forEach(function(dev) {
+                if (dev.kind === 'videoinput') {
+                    swCamSources.push({
+                        id: dev.deviceId,
+                        label: dev.label || ('Device Camera ' + camIdx),
+                        type: 'device'
+                    });
+                    camIdx++;
+                }
+            });
+            // Add NDI sources
+            swNdiSources.forEach(function(ndi) {
+                swCamSources.push(ndi);
+            });
+            swCamPopulateSelects();
+        }).catch(function() {
+            swCamPopulateSelects();
+        });
+    } else {
+        // Add NDI sources even if device enumeration not available
+        swNdiSources.forEach(function(ndi) { swCamSources.push(ndi); });
+        swCamPopulateSelects();
+    }
+}
+
+// Add manual NDI source
+function swCamAddNdi() {
+    var urlInput = document.getElementById('sw-ndi-url');
+    var url = (urlInput.value || '').trim();
+    if (!url) return;
+    var ndiSource = {
+        id: 'ndi_' + Date.now(),
+        label: 'NDI: ' + url,
+        type: 'ndi',
+        url: url
+    };
+    swNdiSources.push(ndiSource);
+    swCamSources.push(ndiSource);
+    urlInput.value = '';
+    swCamPopulateSelects();
+}
+
+// Populate all camera select dropdowns
+function swCamPopulateSelects() {
+    document.querySelectorAll('.sw-cam-source-select').forEach(function(sel) {
+        var currentVal = sel.value;
+        var role = sel.getAttribute('data-role');
+        var html = '<option value="">-- Select Camera --</option>';
+        swCamSources.forEach(function(src) {
+            var icon = src.type === 'ndi' ? '🌐 ' : '📷 ';
+            var selected = currentVal === src.id ? ' selected' : '';
+            html += '<option value="' + src.id + '"' + selected + '>' + icon + src.label + '</option>';
+        });
+        sel.innerHTML = html;
+    });
+}
+
+// Add a checkpoint camera row
+function swCamAddCheckpoint() {
+    swCamCheckpointCount++;
+    var idx = swCamCheckpointCount;
+    var container = document.getElementById('sw-cam-checkpoint-list');
+    var row = document.createElement('div');
+    row.className = 'sw-cam-checkpoint-row';
+    row.id = 'sw-cam-cp-row-' + idx;
+    row.innerHTML = '<div class="sw-cam-role-badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;"><i class="fas fa-map-marker-alt"></i> Checkpoint ' + idx + '</div>' +
+        '<select class="form-select sw-cam-source-select" data-role="checkpoint-' + idx + '"><option value="">-- Select Camera --</option></select>' +
+        '<button class="sw-cam-remove-btn" onclick="swCamRemoveCheckpoint(' + idx + ')"><i class="fas fa-times"></i></button>';
+    container.appendChild(row);
+    // Populate the new select
+    swCamPopulateSelects();
+}
+
+// Remove a checkpoint camera row
+function swCamRemoveCheckpoint(idx) {
+    var row = document.getElementById('sw-cam-cp-row-' + idx);
+    if (row) row.remove();
+}
+
+// Auto-refresh camera sources on panel open
+document.addEventListener('DOMContentLoaded', function() {
+    swCamRefreshSources();
+});
 </script>

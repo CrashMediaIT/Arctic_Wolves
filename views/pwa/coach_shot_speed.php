@@ -24,7 +24,7 @@ try {
     $stmt = $pdo->query("
         SELECT u.id, u.first_name, u.last_name
         FROM users u
-        WHERE u.role = 'athlete' AND u.is_active = 1
+        WHERE u.is_active = 1
         ORDER BY u.last_name, u.first_name
     ");
     $athletes = $stmt->fetchAll(PDO::FETCH_ASSOC);

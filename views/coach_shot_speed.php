@@ -10,13 +10,13 @@ if (empty($csrf_token)) {
     $_SESSION['csrf_token'] = $csrf_token;
 }
 
-// Fetch athletes for the dropdown
+// Fetch all active users for the dropdown (all users are athletes)
 $athletes = [];
 try {
     $stmt = $pdo->query("
         SELECT u.id, u.first_name, u.last_name
         FROM users u
-        WHERE u.role = 'athlete' AND u.is_active = 1
+        WHERE u.is_active = 1
         ORDER BY u.last_name, u.first_name
     ");
     $athletes = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -304,8 +304,8 @@ let currentAthleteId = null;
 new ArcticTypeahead({
     container: '#shot-speed-athlete-typeahead',
     name: 'athlete_id',
-    placeholder: 'Search for an athlete…',
-    roles: 'athlete',
+    placeholder: 'Search for a user…',
+    roles: '',
     multiple: false,
     required: true,
     onSelect: function(item) {
