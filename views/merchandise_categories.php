@@ -553,7 +553,7 @@ function editCategory(category) {
     
     const parentSelect = document.getElementById('edit-category-parent');
     Array.from(parentSelect.options).forEach(option => {
-        option.disabled = disabledIds.indexOf(parseInt(option.value)) !== -1;
+        option.disabled = option.value !== '' && disabledIds.indexOf(parseInt(option.value)) !== -1;
     });
     
     // Show image preview if exists
