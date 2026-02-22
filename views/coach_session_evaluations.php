@@ -225,15 +225,14 @@ $activeView = $_GET['view'] ?? 'list';
             <!-- Add Existing User -->
             <div id="tab-existing" class="athlete-tab-content active">
                 <div class="info-box" style="margin-bottom: 16px;">
-                    <p><i class="fas fa-info-circle"></i> Select from users already registered in the system. Users who are already added to this evaluation will not appear in the list.</p>
+                    <p><i class="fas fa-info-circle"></i> Type a name to search for users registered in the system. Users who are already added to this evaluation will not appear.</p>
                 </div>
                 <form id="add-existing-form">
                     <div class="form-group">
-                        <label>Select User from System</label>
-                        <select id="existing-user-select" class="form-select">
-                            <option value="">-- Select User --</option>
-                        </select>
-                        <p class="help-text">Shows athletes and other users registered in the system</p>
+                        <label>Search Users</label>
+                        <div id="athlete-typeahead-container"></div>
+                        <input type="hidden" id="existing-user-select" value="">
+                        <p class="help-text">Start typing a name to search all users in the system</p>
                     </div>
                     <button type="button" class="btn btn-primary" onclick="addExistingAthlete()">
                         <i class="fas fa-plus"></i> Add to Evaluation
@@ -545,6 +544,8 @@ $activeView = $_GET['view'] ?? 'list';
     background: var(--bg-main, #0A0A0F);
     border-radius: 8px;
     overflow: hidden;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .calendar-header {
@@ -1091,8 +1092,8 @@ async function manageAthletes(evaluationId) {
     // Load existing athletes
     await loadAthletes(evaluationId);
     
-    // Load available users
-    await loadAvailableUsers();
+    // Initialize typeahead for user search
+    initAthleteTypeahead();
     
     openModal('athletes-modal');
 }
@@ -1129,13 +1130,44 @@ async function loadAthletes(evaluationId) {
     }
 }
 
-async function loadAvailableUsers() {
+var athleteTypeahead = null;
+
+function initAthleteTypeahead() {
+    var container = document.getElementById('athlete-typeahead-container');
+    if (!container) return;
+    
+    // Clear previous instance
+    container.innerHTML = '';
+    document.getElementById('existing-user-select').value = '';
+    
+    if (typeof ArcticTypeahead !== 'undefined') {
+        athleteTypeahead = new ArcticTypeahead({
+            container: '#athlete-typeahead-container',
+            name: 'user_id',
+            placeholder: 'Start typing a name to search…',
+            searchUrl: 'ajax_search_users.php',
+            roles: '',
+            multiple: false,
+            onSelect: function(item) {
+                document.getElementById('existing-user-select').value = item.id;
+            }
+        });
+    } else {
+        // Fallback if typeahead not available
+        loadAvailableUsersFallback();
+    }
+}
+
+async function loadAvailableUsersFallback() {
     const evaluationId = document.getElementById('current-evaluation-id').value;
+    var container = document.getElementById('athlete-typeahead-container');
     try {
         const response = await fetch(`process_session_evaluations.php?action=get_existing_users&evaluation_id=${evaluationId}`);
         const data = await response.json();
         
-        const select = document.getElementById('existing-user-select');
+        var select = document.createElement('select');
+        select.className = 'form-select';
+        select.id = 'existing-user-select-fallback';
         select.innerHTML = '<option value="">-- Select User --</option>';
         
         if (data.success && data.users) {
@@ -1148,6 +1180,12 @@ async function loadAvailableUsers() {
                 }
             });
         }
+        
+        container.innerHTML = '';
+        container.appendChild(select);
+        select.addEventListener('change', function() {
+            document.getElementById('existing-user-select').value = this.value;
+        });
     } catch (error) {
         console.error('Error loading users:', error);
     }
@@ -1158,7 +1196,7 @@ async function addExistingAthlete() {
     const userId = document.getElementById('existing-user-select').value;
     
     if (!userId) {
-        alert('Please select an athlete');
+        alert('Please search and select an athlete');
         return;
     }
     
@@ -1178,6 +1216,8 @@ async function addExistingAthlete() {
         if (data.success) {
             await loadAthletes(evaluationId);
             document.getElementById('existing-user-select').value = '';
+            // Re-initialize typeahead to reset selection
+            initAthleteTypeahead();
         } else {
             alert(data.message);
         }

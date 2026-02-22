@@ -116,7 +116,7 @@ $sessions = $pdo->query("
                             <em>All</em>
                         <?php endif; ?>
                     </td>
-                    <td><?php echo $pkg['valid_days']; ?> days</td>
+                    <td><?php echo in_array($pkg['package_type'], ['camp', 'multi_week']) ? 'N/A' : ($pkg['valid_days'] . ' days'); ?></td>
                     <td>
                         <span class="status-badge <?php echo $pkg['is_active'] ? 'active' : 'inactive'; ?>">
                             <?php echo $pkg['is_active'] ? 'Active' : 'Inactive'; ?>
@@ -204,7 +204,7 @@ $sessions = $pdo->query("
                     <small style="color: #94a3b8; font-size: 12px;">Dollar amount of store credit included</small>
                 </div>
                 
-                <div class="form-group">
+                <div class="form-group" id="validDaysGroup">
                     <label>Valid for (days)</label>
                     <input type="number" name="valid_days" id="packageValidDays" value="365" min="1">
                 </div>
@@ -996,6 +996,7 @@ function togglePackageFields() {
     const campDatesSection = document.getElementById('campDatesSection');
     const multiWeekSection = document.getElementById('multiWeekSection');
     const addOnsSection = document.getElementById('addOnsSection');
+    const validDaysGroup = document.getElementById('validDaysGroup');
     
     // Hide all type-specific sections
     creditsGroup.style.display = 'none';
@@ -1006,6 +1007,8 @@ function togglePackageFields() {
     campDatesSection.style.display = 'none';
     multiWeekSection.style.display = 'none';
     addOnsSection.style.display = 'none';
+    // Show valid_days by default
+    if (validDaysGroup) validDaysGroup.style.display = 'block';
     
     if (type === 'credits') {
         creditsGroup.style.display = 'block';
@@ -1018,9 +1021,13 @@ function togglePackageFields() {
     } else if (type === 'camp') {
         campDatesSection.style.display = 'block';
         addOnsSection.style.display = 'block';
+        // Camps don't need expiry - they have start/end dates
+        if (validDaysGroup) validDaysGroup.style.display = 'none';
     } else if (type === 'multi_week') {
         multiWeekSection.style.display = 'block';
         addOnsSection.style.display = 'block';
+        // Programs don't need expiry - they have scheduled dates
+        if (validDaysGroup) validDaysGroup.style.display = 'none';
     }
 }
 

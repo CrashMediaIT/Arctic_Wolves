@@ -783,6 +783,7 @@ $is_demo_data = false;
 .calendar-grid {
     display: block;
     min-height: 400px;
+    overflow: hidden;
 }
 
 .calendar-container {
@@ -794,6 +795,8 @@ $is_demo_data = false;
     border-radius: 8px;
     overflow: hidden;
     padding: 0;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .calendar-day-header {

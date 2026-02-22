@@ -162,9 +162,9 @@ $settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings"
                 <div class="form-group">
                     <label class="form-label">Session Category *</label>
                     <select name="session_type_category" class="form-select" required>
-                        <option value="group">Group Session</option>
-                        <option value="semi-private">Semi-Private</option>
-                        <option value="private">Private Session</option>
+                        <option value="all_players">All Players</option>
+                        <option value="players">Players</option>
+                        <option value="goalies">Goalies</option>
                     </select>
                 </div>
             </div>
