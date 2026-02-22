@@ -693,7 +693,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 
                 echo json_encode(['success' => true, 'scores' => $scores_indexed]);
-                exit;
+                break;
                 
             case 'download_csv_template':
                 header('Content-Type: text/csv');

@@ -181,8 +181,8 @@ if ($user_role === 'parent') {
                             for ($di = 1; $di < count($program_dates); $di++) {
                                 $prev = strtotime($range_end);
                                 $curr = strtotime($program_dates[$di]['session_date']);
-                                // Check if consecutive (within 1 day)
-                                if (($curr - $prev) <= 86400) {
+                                // Check if consecutive (exactly 1 day apart)
+                                if (($curr - $prev) === 86400) {
                                     $range_end = $program_dates[$di]['session_date'];
                                 } else {
                                     $date_ranges[] = ['start' => $range_start, 'end' => $range_end];
@@ -202,7 +202,7 @@ if ($user_role === 'parent') {
                                     <span><?php echo date('M j', strtotime($date_ranges[0]['start'])); ?> - <?php echo date('M j, Y', strtotime($date_ranges[0]['end'])); ?></span>
                                 <?php endif; ?>
                             <?php elseif (count($date_ranges) > 1): ?>
-                                <span><?php echo count($program_dates); ?> sessions across <?php echo count($date_ranges); ?> weeks (<?php echo date('M j', strtotime($program_dates[0]['session_date'])); ?> - <?php echo date('M j, Y', strtotime(end($program_dates)['session_date'])); ?>)</span>
+                                <span><?php echo count($program_dates); ?> sessions across <?php echo count($date_ranges); ?> date ranges (<?php echo date('M j', strtotime($program_dates[0]['session_date'])); ?> - <?php echo date('M j, Y', strtotime(end($program_dates)['session_date'])); ?>)</span>
                             <?php else: ?>
                                 <span><?php echo count($program_dates); ?> sessions over multiple weeks</span>
                             <?php endif; ?>
