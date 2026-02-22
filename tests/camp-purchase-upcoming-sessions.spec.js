@@ -83,8 +83,8 @@ test.describe('Payment Success - Package Purchase Handling', () => {
   test('payment_success.php still handles regular session bookings', () => {
     const content = readFile('payment_success.php');
     expect(content).toContain('HANDLE REGULAR SESSION BOOKING');
-    expect(content).toContain("booking['status'] == 'pending'");
-    expect(content).toContain("UPDATE bookings SET status = 'paid'");
+    expect(content).toContain("payment_status");
+    expect(content).toContain("UPDATE bookings SET payment_status = 'paid'");
   });
 });
 
