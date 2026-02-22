@@ -187,6 +187,9 @@ if ($active_tab === 'incoming') {
     }
 }
 
+// Pre-calculate incoming stats
+$totalUnitsReceived = array_sum(array_map(function($p) { return max(0, intval($p['quantity_change'])); }, $incomingPackages));
+
 // --- Outgoing Packages (processing/shipped orders) ---
 $outgoingOrders = [];
 
@@ -511,7 +514,7 @@ if ($active_tab === 'outgoing') {
         <span class="stat-label">Recent Shipments</span>
     </div>
     <div class="inv-stat-card stat-success">
-        <span class="stat-value"><?= array_sum(array_map(function($p) { return max(0, intval($p['quantity_change'])); }, $incomingPackages)) ?></span>
+        <span class="stat-value"><?= $totalUnitsReceived ?></span>
         <span class="stat-label">Total Units Received</span>
     </div>
 </div>

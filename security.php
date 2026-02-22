@@ -710,7 +710,10 @@ function ensureCredentialsEncrypted($pdo) {
 /**
  * Check if a user field value appears to be encrypted with FieldEncryption.
  * FieldEncryption uses base64(IV + ciphertext) where IV is 16 bytes for AES-256-CBC.
- * Encrypted values are significantly longer than typical plaintext names/phones.
+ *
+ * Detection is heuristic: checks base64 validity, IV length, then attempts decryption.
+ * Typical plaintext (names, phone numbers) will fail the base64/IV checks, making
+ * false positives extremely unlikely for PII field values.
  *
  * @param string $value The value to check
  * @return bool True if the value appears to be encrypted
@@ -749,6 +752,9 @@ function isFieldEncrypted($value) {
  * as plaintext, and encrypt them in-place. Called during setup finalization
  * to ensure all user data is properly encrypted.
  *
+ * Processes users in batches to avoid memory exhaustion on large databases.
+ * Uses a transaction for atomic updates within each batch.
+ *
  * @param PDO $pdo Database connection
  * @return array Summary: ['migrated_users' => int, 'already_encrypted' => int, 'fields_checked' => array]
  */
@@ -764,10 +770,6 @@ function ensureUserDataEncrypted($pdo) {
     
     $fields = FieldEncryption::USER_PII_FIELDS;
     
-    // Fetch all users with non-empty PII fields
-    $stmt = $pdo->query("SELECT id, " . implode(', ', $fields) . " FROM users");
-    $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
     $update_parts = [];
     foreach ($fields as $field) {
         $update_parts[] = "$field = :$field";
@@ -775,35 +777,56 @@ function ensureUserDataEncrypted($pdo) {
     $update_sql = "UPDATE users SET " . implode(', ', $update_parts) . " WHERE id = :id";
     $update_stmt = $pdo->prepare($update_sql);
     
-    foreach ($users as $user) {
-        $needs_update = false;
-        $params = ['id' => $user['id']];
+    // Process users in batches to avoid memory exhaustion
+    $batchSize = 100;
+    $offset = 0;
+    
+    do {
+        $stmt = $pdo->prepare("SELECT id, " . implode(', ', $fields) . " FROM users LIMIT ? OFFSET ?");
+        $stmt->execute([$batchSize, $offset]);
+        $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        foreach ($fields as $field) {
-            $value = $user[$field] ?? '';
-            
-            if (empty($value)) {
-                $params[$field] = $value;
-                continue;
+        if (empty($users)) break;
+        
+        $pdo->beginTransaction();
+        try {
+            foreach ($users as $user) {
+                $needs_update = false;
+                $params = ['id' => $user['id']];
+                
+                foreach ($fields as $field) {
+                    $value = $user[$field] ?? '';
+                    
+                    if (empty($value)) {
+                        $params[$field] = $value;
+                        continue;
+                    }
+                    
+                    // Check if already encrypted
+                    if (isFieldEncrypted($value)) {
+                        $params[$field] = $value; // Keep as-is
+                    } else {
+                        // Plaintext — encrypt it
+                        $params[$field] = FieldEncryption::encrypt($value);
+                        $needs_update = true;
+                    }
+                }
+                
+                if ($needs_update) {
+                    $update_stmt->execute($params);
+                    $results['migrated_users']++;
+                } else {
+                    $results['already_encrypted']++;
+                }
             }
-            
-            // Check if already encrypted
-            if (isFieldEncrypted($value)) {
-                $params[$field] = $value; // Keep as-is
-            } else {
-                // Plaintext — encrypt it
-                $params[$field] = FieldEncryption::encrypt($value);
-                $needs_update = true;
-            }
+            $pdo->commit();
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            error_log("ensureUserDataEncrypted batch error: " . $e->getMessage());
         }
         
-        if ($needs_update) {
-            $update_stmt->execute($params);
-            $results['migrated_users']++;
-        } else {
-            $results['already_encrypted']++;
-        }
-    }
+        $offset += $batchSize;
+    } while (count($users) === $batchSize);
     
     return $results;
 }

@@ -28,20 +28,18 @@ test.describe('User Data Encryption Migration', () => {
 
   test('ensureUserDataEncrypted checks all USER_PII_FIELDS', () => {
     const content = readFile('security.php');
-    const fnBody = content.substring(
-      content.indexOf('function ensureUserDataEncrypted'),
-      content.indexOf('}', content.lastIndexOf("return $results;", content.indexOf('function ensureUserDataEncrypted') + 2000)) + 1
-    );
+    const fnStart = content.indexOf('function ensureUserDataEncrypted');
+    const fnEnd = content.indexOf('\nfunction ', fnStart + 10);
+    const fnBody = content.substring(fnStart, fnEnd > -1 ? fnEnd : fnStart + 4000);
     expect(fnBody).toContain('USER_PII_FIELDS');
     expect(fnBody).toContain('FROM users');
   });
 
   test('ensureUserDataEncrypted encrypts plaintext user fields', () => {
     const content = readFile('security.php');
-    const fnBody = content.substring(
-      content.indexOf('function ensureUserDataEncrypted'),
-      content.indexOf('}', content.lastIndexOf("return $results;", content.indexOf('function ensureUserDataEncrypted') + 2000)) + 1
-    );
+    const fnStart = content.indexOf('function ensureUserDataEncrypted');
+    const fnEnd = content.indexOf('\nfunction ', fnStart + 10);
+    const fnBody = content.substring(fnStart, fnEnd > -1 ? fnEnd : fnStart + 4000);
     expect(fnBody).toContain('FieldEncryption::encrypt');
     expect(fnBody).toContain('isFieldEncrypted');
     expect(fnBody).toContain('UPDATE users SET');
@@ -49,10 +47,9 @@ test.describe('User Data Encryption Migration', () => {
 
   test('ensureUserDataEncrypted returns migration summary', () => {
     const content = readFile('security.php');
-    const fnBody = content.substring(
-      content.indexOf('function ensureUserDataEncrypted'),
-      content.indexOf('}', content.lastIndexOf("return $results;", content.indexOf('function ensureUserDataEncrypted') + 2000)) + 1
-    );
+    const fnStart = content.indexOf('function ensureUserDataEncrypted');
+    const fnEnd = content.indexOf('\nfunction ', fnStart + 10);
+    const fnBody = content.substring(fnStart, fnEnd > -1 ? fnEnd : fnStart + 4000);
     expect(fnBody).toContain("'migrated_users'");
     expect(fnBody).toContain("'already_encrypted'");
     expect(fnBody).toContain("'fields_checked'");
