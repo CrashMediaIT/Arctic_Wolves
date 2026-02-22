@@ -709,7 +709,10 @@ try {
                 $stored_pass_stmt->execute();
                 $encrypted_pass = $stored_pass_stmt->fetchColumn();
                 if (!empty($encrypted_pass)) {
-                    $backup_password = decryptPassword($encrypted_pass);
+                    $decrypted = decryptPassword($encrypted_pass);
+                    if (!empty($decrypted)) {
+                        $backup_password = $decrypted;
+                    }
                 }
             }
             $settings = [
