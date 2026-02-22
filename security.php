@@ -706,3 +706,104 @@ function ensureCredentialsEncrypted($pdo) {
     
     return $results;
 }
+
+/**
+ * Check if a user field value appears to be encrypted with FieldEncryption.
+ * FieldEncryption uses base64(IV + ciphertext) where IV is 16 bytes for AES-256-CBC.
+ * Encrypted values are significantly longer than typical plaintext names/phones.
+ *
+ * @param string $value The value to check
+ * @return bool True if the value appears to be encrypted
+ */
+function isFieldEncrypted($value) {
+    if (empty($value)) {
+        return false;
+    }
+    
+    // Try to base64-decode
+    $data = base64_decode($value, true);
+    if ($data === false) {
+        return false;
+    }
+    
+    // AES-256-CBC IV is 16 bytes; encrypted data must be longer than just the IV
+    $ivLen = 16;
+    if (strlen($data) <= $ivLen) {
+        return false;
+    }
+    
+    // If we can successfully decrypt it, it's encrypted
+    if (class_exists('FieldEncryption') && FieldEncryption::isConfigured()) {
+        $decrypted = FieldEncryption::decrypt($value);
+        // If decrypt returns a different value, the original was encrypted
+        if ($decrypted !== $value) {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+/**
+ * Scan the users table for PII fields that should be encrypted but are stored
+ * as plaintext, and encrypt them in-place. Called during setup finalization
+ * to ensure all user data is properly encrypted.
+ *
+ * @param PDO $pdo Database connection
+ * @return array Summary: ['migrated_users' => int, 'already_encrypted' => int, 'fields_checked' => array]
+ */
+function ensureUserDataEncrypted($pdo) {
+    require_once __DIR__ . '/lib/encryption.php';
+    
+    $results = ['migrated_users' => 0, 'already_encrypted' => 0, 'fields_checked' => FieldEncryption::USER_PII_FIELDS];
+    
+    if (!FieldEncryption::isConfigured()) {
+        error_log("ensureUserDataEncrypted: FieldEncryption not configured, skipping");
+        return $results;
+    }
+    
+    $fields = FieldEncryption::USER_PII_FIELDS;
+    
+    // Fetch all users with non-empty PII fields
+    $stmt = $pdo->query("SELECT id, " . implode(', ', $fields) . " FROM users");
+    $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    $update_parts = [];
+    foreach ($fields as $field) {
+        $update_parts[] = "$field = :$field";
+    }
+    $update_sql = "UPDATE users SET " . implode(', ', $update_parts) . " WHERE id = :id";
+    $update_stmt = $pdo->prepare($update_sql);
+    
+    foreach ($users as $user) {
+        $needs_update = false;
+        $params = ['id' => $user['id']];
+        
+        foreach ($fields as $field) {
+            $value = $user[$field] ?? '';
+            
+            if (empty($value)) {
+                $params[$field] = $value;
+                continue;
+            }
+            
+            // Check if already encrypted
+            if (isFieldEncrypted($value)) {
+                $params[$field] = $value; // Keep as-is
+            } else {
+                // Plaintext — encrypt it
+                $params[$field] = FieldEncryption::encrypt($value);
+                $needs_update = true;
+            }
+        }
+        
+        if ($needs_update) {
+            $update_stmt->execute($params);
+            $results['migrated_users']++;
+        } else {
+            $results['already_encrypted']++;
+        }
+    }
+    
+    return $results;
+}

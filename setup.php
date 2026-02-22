@@ -685,6 +685,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
             
+            // Encrypt any plaintext user PII data (first_name, last_name, phone, birth_date)
+            // This ensures all user data is properly encrypted with FieldEncryption
+            if (function_exists('ensureUserDataEncrypted')) {
+                $user_migration = ensureUserDataEncrypted($test_pdo);
+                if ($user_migration['migrated_users'] > 0) {
+                    error_log("Setup: Encrypted PII for " . $user_migration['migrated_users'] . " users (fields: " . implode(', ', $user_migration['fields_checked']) . ")");
+                }
+            }
+            
             // All checks passed - finalize setup
             file_put_contents($setup_complete_file, date('Y-m-d H:i:s'));
             

@@ -35,18 +35,23 @@ $inStoreStats = ['total_products' => 0, 'total_units' => 0, 'total_value' => 0];
 
 if ($active_tab === 'in_store') {
     try {
-        $locationFilter = $hasStockLocation ? "AND mps.stock_location = 'in_store'" : "";
+        $params = [];
+        $locationJoin = "LEFT JOIN merchandise_product_sizes mps ON mps.product_id = mp.id";
+        if ($hasStockLocation) {
+            $locationJoin .= " AND mps.stock_location = ?";
+            $params[] = 'in_store';
+        }
         $stmt = $pdo->prepare("
             SELECT mp.id, mp.name, mp.sku, mp.price, mp.cost_price, mp.image_url, mp.is_active,
                    mc.name as category_name,
                    mps.id as size_id, mps.size, mps.quantity, mps.sku_suffix
             FROM merchandise_products mp
             LEFT JOIN merchandise_categories mc ON mp.category_id = mc.id
-            LEFT JOIN merchandise_product_sizes mps ON mps.product_id = mp.id {$locationFilter}
+            {$locationJoin}
             WHERE mp.track_inventory = 1
             ORDER BY mp.name ASC, mps.size ASC
         ");
-        $stmt->execute();
+        $stmt->execute($params);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Group by product

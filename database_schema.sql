@@ -3374,13 +3374,15 @@ CREATE TABLE IF NOT EXISTS `merchandise_product_sizes` (
     `product_id` INT NOT NULL,
     `size` VARCHAR(50) NOT NULL,
     `quantity` INT NOT NULL DEFAULT 0,
+    `stock_location` ENUM('in_store', 'warehouse') NOT NULL DEFAULT 'in_store',
     `sku_suffix` VARCHAR(50) DEFAULT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (`product_id`) REFERENCES `merchandise_products`(`id`) ON DELETE CASCADE,
-    UNIQUE KEY `unique_product_size` (`product_id`, `size`),
+    UNIQUE KEY `unique_product_size` (`product_id`, `size`, `stock_location`),
     INDEX `idx_product` (`product_id`),
-    INDEX `idx_size` (`size`)
+    INDEX `idx_size` (`size`),
+    INDEX `idx_stock_location` (`stock_location`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Merchandise Product Images (multiple images per product)

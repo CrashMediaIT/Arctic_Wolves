@@ -197,6 +197,7 @@ $allowed_pages = [
     
     // POS System (Admin and Front Desk Staff)
     'pos_terminal'            => 'views/pos_terminal.php',
+    'inventory_management'    => 'views/inventory_management.php',
     'pos_online_orders'       => 'views/pos_online_orders.php',
     'shop_orders'             => 'views/shop_orders.php',
     'pos_transactions'        => 'views/pos_transactions.php',
@@ -863,8 +864,8 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="?page=pos_terminal" class="nav-link <?= $page=='pos_terminal'?'active':'' ?>">
                 <i class="fa-solid fa-cash-register icon"></i> POS Terminal
             </a>
-            <a href="?page=pos_online_orders" class="nav-link <?= $page=='pos_online_orders'?'active':'' ?>">
-                <i class="fa-solid fa-shipping-fast icon"></i> Online Orders
+            <a href="?page=inventory_management" class="nav-link <?= $page=='inventory_management'?'active':'' ?>">
+                <i class="fa-solid fa-warehouse icon"></i> Inventory & Orders
             </a>
             <a href="?page=pos_time_tracking" class="nav-link <?= $page=='pos_time_tracking'?'active':'' ?>">
                 <i class="fa-solid fa-clock icon"></i> Time Tracking
