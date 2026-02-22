@@ -177,6 +177,7 @@ try {
                 // Standard Stripe refund
                 $stripe_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'stripe_secret_key'");
                 $stripe_secret = $stripe_stmt->fetchColumn();
+                if (function_exists('decryptCredential') && !empty($stripe_secret)) { $stripe_secret = decryptCredential($stripe_secret); }
                 
                 if (empty($stripe_secret)) {
                     throw new Exception('Stripe not configured');

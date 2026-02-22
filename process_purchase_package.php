@@ -31,6 +31,7 @@ if (file_exists('vendor/autoload.php')) {
 // Load Stripe settings
 $settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 $stripe_secret = $settings['stripe_secret_key'] ?? '';
+if (function_exists('decryptCredential')) { $stripe_secret = decryptCredential($stripe_secret); }
 $currency = $settings['currency'] ?? 'CAD';
 $tax_rate = floatval($settings['tax_rate'] ?? 13.00);
 $tax_name = $settings['tax_name'] ?? 'HST';
@@ -172,8 +173,13 @@ try {
         'selected_addons' => $selected_addon_ids
     ];
     
+    // Get user email for Stripe checkout pre-fill
+    $email_stmt = $pdo->prepare("SELECT email FROM users WHERE id = ?");
+    $email_stmt->execute([$user_id]);
+    $customer_email = $email_stmt->fetchColumn();
+    
     // Create Stripe checkout session
-    $checkout_session = \Stripe\Checkout\Session::create([
+    $stripe_params = [
         'payment_method_types' => ['card'],
         'line_items' => $line_items,
         'mode' => 'payment',
@@ -186,7 +192,11 @@ try {
             'athlete_ids' => implode(',', $athlete_ids),
             'selected_addons' => implode(',', $selected_addon_ids),
         ]
-    ]);
+    ];
+    if (!empty($customer_email)) {
+        $stripe_params['customer_email'] = $customer_email;
+    }
+    $checkout_session = \Stripe\Checkout\Session::create($stripe_params);
     
     // Redirect to Stripe checkout
     header("Location: " . $checkout_session->url);

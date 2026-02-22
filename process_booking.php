@@ -29,6 +29,7 @@ if (file_exists('vendor/autoload.php')) {
 // 3. LOAD KEYS FROM DB
 $settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 $stripe_secret = $settings['stripe_secret_key'] ?? '';
+if (function_exists('decryptCredential')) { $stripe_secret = decryptCredential($stripe_secret); }
 $currency = $settings['currency'] ?? 'CAD';
 
 if (empty($stripe_secret)) { die("Stripe is not configured in Admin Settings."); }
@@ -336,8 +337,13 @@ if ($action === 'book_private_session') {
         $original_price = $session_type['price'];
         $final_price = $original_price;
         
+        // Get user email for Stripe checkout pre-fill
+        $email_stmt = $pdo->prepare("SELECT email FROM users WHERE id = ?");
+        $email_stmt->execute([$user_id]);
+        $customer_email = $email_stmt->fetchColumn();
+        
         // Create Stripe checkout session
-        $checkout_session = \Stripe\Checkout\Session::create([
+        $stripe_params = [
             'payment_method_types' => ['card'],
             'line_items' => [[
                 'price_data' => [
@@ -354,13 +360,16 @@ if ($action === 'book_private_session') {
             'success_url' => $domain . '/payment_success.php?session_id={CHECKOUT_SESSION_ID}',
             'cancel_url'  => $domain . '/dashboard.php?page=booking&error=cancelled',
             'client_reference_id' => $user_id,
-        ]);
+        ];
+        if (!empty($customer_email)) {
+            $stripe_params['customer_email'] = $customer_email;
+        }
+        $checkout_session = \Stripe\Checkout\Session::create($stripe_params);
         
-        // Save booking with pending status until payment confirmed
-        // Note: payment_status='pending' until Stripe webhook confirms payment
+        // Save booking with confirmed status, payment_status='pending' until Stripe confirms payment
         $stmt = $pdo->prepare("
             INSERT INTO bookings (session_id, user_id, amount, payment_status, status, notes) 
-            VALUES (?, ?, ?, 'pending', 'pending', ?)
+            VALUES (?, ?, ?, 'pending', 'confirmed', ?)
         ");
         $stmt->execute([$session_id, $user_id, $final_price, $notes]);
         $new_booking_id = $pdo->lastInsertId();
@@ -435,7 +444,12 @@ if (!empty($user_code)) {
 
 // 6. CREATE STRIPE SESSION
 try {
-    $checkout_session = \Stripe\Checkout\Session::create([
+    // Get user email for Stripe checkout pre-fill
+    $email_stmt = $pdo->prepare("SELECT email FROM users WHERE id = ?");
+    $email_stmt->execute([$user_id]);
+    $customer_email = $email_stmt->fetchColumn();
+    
+    $stripe_params = [
         'payment_method_types' => ['card'],
         'line_items' => [[
             'price_data' => [
@@ -452,10 +466,14 @@ try {
         'success_url' => $domain . '/payment_success.php?session_id={CHECKOUT_SESSION_ID}',
         'cancel_url'  => $domain . '/dashboard.php?page=schedule&error=cancelled',
         'client_reference_id' => $user_id,
-    ]);
+    ];
+    if (!empty($customer_email)) {
+        $stripe_params['customer_email'] = $customer_email;
+    }
+    $checkout_session = \Stripe\Checkout\Session::create($stripe_params);
 
-    // 7. SAVE PENDING BOOKING IN DB
-    $stmt = $pdo->prepare("INSERT INTO bookings (user_id, session_id, stripe_session_id, amount_paid, original_price, discount_code, status) VALUES (?, ?, ?, ?, ?, ?, 'pending')");
+    // 7. SAVE BOOKING IN DB (status='confirmed', payment_status tracks payment state separately)
+    $stmt = $pdo->prepare("INSERT INTO bookings (user_id, session_id, stripe_session_id, amount_paid, original_price, discount_code, status, payment_status) VALUES (?, ?, ?, ?, ?, ?, 'confirmed', 'pending')");
     $stmt->execute([$user_id, $session_id, $checkout_session->id, $final_price, $original_price, $applied_code]);
     $new_booking_id = $pdo->lastInsertId();
 

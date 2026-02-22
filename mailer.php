@@ -1,6 +1,7 @@
 <?php
 // mailer.php
 require_once 'db_config.php';
+require_once __DIR__ . '/security.php';
 
 /**
  * Custom SMTP Class to handle direct server communication.
@@ -25,6 +26,11 @@ class SmtpMailer {
         // Ensure strings to prevent PHP 8 Fatal Errors on null
         $user = trim((string)($config['smtp_user'] ?? ''));
         $pass = trim((string)($config['smtp_pass'] ?? ''));
+        
+        // Decrypt SMTP password (may be stored encrypted)
+        if (!empty($pass) && function_exists('decryptCredential')) {
+            $pass = decryptCredential($pass);
+        }
         
         // 2. DETERMINE PROTOCOL
         // SSL connects securely immediately. TLS starts plain and upgrades later.

@@ -980,12 +980,17 @@ if ($action == 'update_smtp') {
 // =========================================================
 if ($action == 'update_billing') {
     $keys = ['stripe_publishable_key', 'stripe_secret_key', 'currency'];
+    $encrypted_keys = ['stripe_publishable_key', 'stripe_secret_key'];
     try {
         $del = $pdo->prepare("DELETE FROM system_settings WHERE setting_key = ?");
         $ins = $pdo->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES (?, ?)");
         foreach ($keys as $k) {
             $val = $_POST[$k] ?? '';
+            if (empty($val)) continue;
             $del->execute([$k]);
+            if (in_array($k, $encrypted_keys) && function_exists('encryptPassword')) {
+                $val = encryptPassword($val);
+            }
             $ins->execute([$k, $val]);
         }
         Auditor::log($pdo, $user_id, 'update', 'system_settings', 0, ['action' => 'update_billing', 'settings' => ['currency' => $_POST['currency'] ?? '', 'stripe_key_updated' => !empty($_POST['stripe_secret_key'])]]);

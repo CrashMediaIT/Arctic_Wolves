@@ -361,9 +361,11 @@ CREATE TABLE IF NOT EXISTS `user_packages` (
     `expiry_date` DATE DEFAULT NULL,
     `payment_status` ENUM('pending', 'paid', 'refunded') DEFAULT 'pending',
     `amount_paid` DECIMAL(10,2) DEFAULT 0.00,
+    `stripe_session_id` VARCHAR(255) DEFAULT NULL COMMENT 'Stripe checkout session ID for payment tracking',
     FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`package_id`) REFERENCES `packages`(`id`) ON DELETE CASCADE,
-    INDEX `idx_user` (`user_id`)
+    INDEX `idx_user` (`user_id`),
+    INDEX `idx_stripe_session` (`stripe_session_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Discount codes
@@ -3372,13 +3374,15 @@ CREATE TABLE IF NOT EXISTS `merchandise_product_sizes` (
     `product_id` INT NOT NULL,
     `size` VARCHAR(50) NOT NULL,
     `quantity` INT NOT NULL DEFAULT 0,
+    `stock_location` ENUM('in_store', 'warehouse') NOT NULL DEFAULT 'in_store',
     `sku_suffix` VARCHAR(50) DEFAULT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (`product_id`) REFERENCES `merchandise_products`(`id`) ON DELETE CASCADE,
-    UNIQUE KEY `unique_product_size` (`product_id`, `size`),
+    UNIQUE KEY `unique_product_size` (`product_id`, `size`, `stock_location`),
     INDEX `idx_product` (`product_id`),
-    INDEX `idx_size` (`size`)
+    INDEX `idx_size` (`size`),
+    INDEX `idx_stock_location` (`stock_location`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Merchandise Product Images (multiple images per product)
@@ -4616,3 +4620,8 @@ CREATE TABLE IF NOT EXISTS `marketing_email_campaigns` (
 -- Add show_on_landing to packages if not exists (for camps/programs landing page display)
 ALTER TABLE `packages`
 ADD COLUMN IF NOT EXISTS `show_on_landing` TINYINT(1) DEFAULT 0 COMMENT 'Whether to show on public landing page';
+
+-- Add stripe_session_id to user_packages for payment tracking and idempotency
+ALTER TABLE `user_packages`
+ADD COLUMN IF NOT EXISTS `stripe_session_id` VARCHAR(255) DEFAULT NULL COMMENT 'Stripe checkout session ID for payment tracking',
+ADD INDEX IF NOT EXISTS `idx_stripe_session` (`stripe_session_id`);

@@ -773,28 +773,52 @@ try {
                 exit();
             }
             
-            // Save temporarily with correct extension based on MIME type
+            // Save file permanently so it can be attached to an expense
             $ext = ($mime_type === 'image/png') ? '.png' : (($mime_type === 'application/pdf') ? '.pdf' : '.jpg');
-            $temp_file = sys_get_temp_dir() . '/' . uniqid('ocr_') . $ext;
-            move_uploaded_file($_FILES['receipt_file']['tmp_name'], $temp_file);
+            $upload_dir = 'uploads/receipts/';
+            if (!is_dir($upload_dir)) {
+                mkdir($upload_dir, 0755, true);
+            }
+            $saved_file = $upload_dir . uniqid('receipt_') . $ext;
+            move_uploaded_file($_FILES['receipt_file']['tmp_name'], $saved_file);
             
             // Perform OCR via Paperless-NGX (handles all file types including PDFs natively)
-            $ocr_data = performReceiptOCR($temp_file);
+            $ocr_data = performReceiptOCR($saved_file);
             
-            // Clean up
-            if (file_exists($temp_file)) {
-                unlink($temp_file);
+            // Upload to Nextcloud for cloud storage
+            $nextcloud_path = null;
+            $vendor_name = $ocr_data['vendor'] ?? 'Unknown';
+            $expense_date = $ocr_data['date'] ?? date('Y-m-d');
+            try {
+                $nc_result = uploadReceiptToNextcloud($pdo, $saved_file, $expense_date, $vendor_name, 'ocr_scan_' . uniqid());
+                if ($nc_result['success']) {
+                    $nextcloud_path = $nc_result['cloud_path'];
+                }
+            } catch (Exception $ncErr) {
+                error_log("OCR scan Nextcloud upload error: " . $ncErr->getMessage());
+            }
+            
+            // Upload to Paperless-NGX for document storage
+            try {
+                $receipt_title = $expense_date . '_' . $vendor_name . '_Receipt';
+                uploadToPaperless($pdo, $saved_file, 'Receipt', $receipt_title);
+            } catch (Exception $plErr) {
+                error_log("OCR scan Paperless upload error: " . $plErr->getMessage());
             }
             
             if (!empty($ocr_data['error'])) {
                 echo json_encode([
                     'success' => false,
-                    'message' => $ocr_data['error']
+                    'message' => $ocr_data['error'],
+                    'receipt_url' => $saved_file,
+                    'nextcloud_path' => $nextcloud_path
                 ]);
             } else {
                 echo json_encode([
                     'success' => true,
-                    'ocr_data' => $ocr_data
+                    'ocr_data' => $ocr_data,
+                    'receipt_url' => $saved_file,
+                    'nextcloud_path' => $nextcloud_path
                 ]);
             }
             exit();
@@ -1004,6 +1028,7 @@ try {
             // Get Stripe secret key
             $stripe_key_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'stripe_secret_key'");
             $stripe_secret = $stripe_key_stmt->fetchColumn();
+            if (function_exists('decryptCredential') && !empty($stripe_secret)) { $stripe_secret = decryptCredential($stripe_secret); }
             
             if (empty($stripe_secret)) {
                 echo json_encode(['success' => false, 'message' => 'Stripe not configured']);
@@ -1142,6 +1167,7 @@ try {
             try {
                 $stripe_key_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'stripe_secret_key'");
                 $stripe_secret = $stripe_key_stmt->fetchColumn();
+                if (function_exists('decryptCredential') && !empty($stripe_secret)) { $stripe_secret = decryptCredential($stripe_secret); }
                 
                 // Check Stripe library exists
                 $stripe_lib_path = __DIR__ . '/stripe-php/init.php';

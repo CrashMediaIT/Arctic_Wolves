@@ -16,6 +16,7 @@ if (file_exists('vendor/autoload.php')) {
 // Get settings
 $settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 $stripeSecret = $settings['stripe_secret_key'] ?? '';
+if (function_exists('decryptCredential') && !empty($stripeSecret)) { $stripeSecret = decryptCredential($stripeSecret); }
 
 if (!empty($stripeSecret)) {
     \Stripe\Stripe::setApiKey($stripeSecret);

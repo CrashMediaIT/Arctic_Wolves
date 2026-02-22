@@ -3,6 +3,11 @@
  * AJAX User Search Endpoint
  * Returns matching users for typeahead/autocomplete inputs.
  * Supports filtering by role(s) and limiting results.
+ *
+ * Note: first_name and last_name are encrypted in the database via FieldEncryption.
+ * SQL LIKE cannot match encrypted values, so we fetch candidates, decrypt, then
+ * filter in PHP. Email is NOT encrypted and can still be matched in SQL to narrow
+ * the candidate set when the search query looks like an email.
  */
 session_start();
 require_once __DIR__ . '/db_config.php';
@@ -30,21 +35,6 @@ try {
     $where = ["u.is_active = 1"];
     $params = [];
 
-    // Split query into individual words for approximate matching
-    $words = preg_split('/\s+/', $query);
-    $words = array_filter($words, function($w) { return strlen($w) >= 1; });
-
-    // Build LIKE conditions: each word must match somewhere in name or email
-    $wordConditions = [];
-    foreach ($words as $word) {
-        $wordConditions[] = "(u.first_name LIKE ? OR u.last_name LIKE ? OR u.email LIKE ?)";
-        $searchTerm = '%' . $word . '%';
-        $params[] = $searchTerm;
-        $params[] = $searchTerm;
-        $params[] = $searchTerm;
-    }
-    $where[] = '(' . implode(' AND ', $wordConditions) . ')';
-
     // Filter by roles if specified
     if (!empty($roles)) {
         $roleList = array_map('trim', explode(',', $roles));
@@ -58,18 +48,49 @@ try {
         }
     }
 
+    // first_name and last_name are encrypted, so we cannot use SQL LIKE on them.
+    // Fetch all candidate users (filtered by role/active), decrypt, then filter in PHP.
+    // Email is not encrypted, so we can still pre-filter by email in SQL if the query
+    // looks like it contains an '@'.
+    if (strpos($query, '@') !== false) {
+        $where[] = "u.email LIKE ?";
+        $params[] = '%' . $query . '%';
+    }
+
     $whereClause = implode(' AND ', $where);
     $sql = "SELECT u.id, u.first_name, u.last_name, u.email, u.role
             FROM users u
             WHERE $whereClause
-            ORDER BY u.last_name, u.first_name
-            LIMIT ?";
-    $params[] = $limit;
+            ORDER BY u.last_name, u.first_name";
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
     $users = decryptUserRows($users);
+
+    // Filter decrypted users by matching search query words against name and email
+    $words = preg_split('/\s+/u', mb_strtolower($query));
+    $words = array_filter($words, function($w) { return mb_strlen($w) >= 1; });
+
+    $filtered = [];
+    foreach ($users as $u) {
+        $haystack = mb_strtolower(
+            ($u['first_name'] ?? '') . ' ' . ($u['last_name'] ?? '') . ' ' . ($u['email'] ?? '')
+        );
+        $match = true;
+        foreach ($words as $word) {
+            if (mb_strpos($haystack, $word) === false) {
+                $match = false;
+                break;
+            }
+        }
+        if ($match) {
+            $filtered[] = $u;
+            if (count($filtered) >= $limit) {
+                break; // Early termination once limit reached
+            }
+        }
+    }
 
     $results = array_map(function($u) {
         $roleLabel = '';
@@ -89,7 +110,7 @@ try {
             'email' => $u['email'],
             'role'  => $roleLabel
         ];
-    }, $users);
+    }, $filtered);
 
     echo json_encode(['success' => true, 'results' => $results]);
 } catch (PDOException $e) {

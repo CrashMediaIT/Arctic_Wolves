@@ -60,6 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['pay_now']) && $bookin
         // Get Stripe settings
         $settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
         $stripe_secret = $settings['stripe_secret_key'] ?? '';
+        if (function_exists('decryptCredential') && !empty($stripe_secret)) { $stripe_secret = decryptCredential($stripe_secret); }
         
         if (empty($stripe_secret)) {
             throw new Exception("Payment system not configured.");

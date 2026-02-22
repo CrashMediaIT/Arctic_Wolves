@@ -50,6 +50,7 @@ $action = $input['action'] ?? '';
 // Load settings
 $settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 $stripeSecret = $settings['stripe_secret_key'] ?? '';
+if (function_exists('decryptCredential')) { $stripeSecret = decryptCredential($stripeSecret); }
 $currency = strtolower($settings['currency'] ?? 'cad');
 $taxRate = floatval($settings['tax_rate'] ?? 13.00);
 

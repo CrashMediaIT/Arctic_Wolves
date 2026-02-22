@@ -34,6 +34,7 @@ $google_maps_api_key = '';
 try {
     $api_key_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'google_maps_api_key'");
     $google_maps_api_key = $api_key_stmt->fetchColumn() ?: '';
+    if (function_exists('decryptCredential') && !empty($google_maps_api_key)) { $google_maps_api_key = decryptCredential($google_maps_api_key); }
 } catch (Exception $e) {
     // Silently continue without autocomplete
 }
@@ -75,6 +76,10 @@ $cartCount = $cartData['item_count'];
 
 // Get Stripe settings
 $stripeSettings = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('stripe_publishable_key', 'stripe_secret_key')")->fetchAll(PDO::FETCH_KEY_PAIR);
+if (function_exists('decryptCredential')) {
+    if (!empty($stripeSettings['stripe_secret_key'])) $stripeSettings['stripe_secret_key'] = decryptCredential($stripeSettings['stripe_secret_key']);
+    if (!empty($stripeSettings['stripe_publishable_key'])) $stripeSettings['stripe_publishable_key'] = decryptCredential($stripeSettings['stripe_publishable_key']);
+}
 $stripeConfigured = !empty($stripeSettings['stripe_publishable_key']) && !empty($stripeSettings['stripe_secret_key']);
 ?>
 <!DOCTYPE html>

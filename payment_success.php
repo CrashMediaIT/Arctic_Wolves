@@ -10,10 +10,13 @@ elseif (file_exists('stripe-php/init.php')) { require 'stripe-php/init.php'; }
 
 // 2. GET KEYS
 $settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
-\Stripe\Stripe::setApiKey($settings['stripe_secret_key']);
+require_once __DIR__ . '/security.php';
+\Stripe\Stripe::setApiKey(function_exists('decryptCredential') ? decryptCredential($settings['stripe_secret_key']) : $settings['stripe_secret_key']);
 
 $stripe_sid = $_GET['session_id'] ?? '';
 if (!$stripe_sid) { header("Location: dashboard.php"); exit(); }
+
+$purchase_type = $_GET['type'] ?? 'booking';
 
 try {
     // 3. VERIFY PAYMENT WITH STRIPE API
@@ -21,32 +24,117 @@ try {
 
     if ($checkout->payment_status == 'paid') {
         
-        // 4. FIND THE PENDING BOOKING
-        $stmt = $pdo->prepare("
-            SELECT b.*, s.title, s.session_date, s.session_time, u.email, u.first_name 
-            FROM bookings b
-            JOIN sessions s ON b.session_id = s.id
-            JOIN users u ON b.user_id = u.id
-            WHERE b.stripe_session_id = ?
-        ");
-        $stmt->execute([$stripe_sid]);
-        $booking = $stmt->fetch();
+        if ($purchase_type === 'package' && isset($_SESSION['package_purchase'])) {
+            // HANDLE CAMP / MULTI-WEEK PACKAGE PURCHASE
+            $purchase = $_SESSION['package_purchase'];
+            $package_id = intval($purchase['package_id']);
+            $athlete_ids = $purchase['athlete_ids'] ?? [];
+            $total = $purchase['total'] ?? 0;
+            $selected_addons = $purchase['selected_addons'] ?? [];
 
-        // Only process if it hasn't been processed yet
-        if ($booking && $booking['status'] == 'pending') {
-            
-            // 5. MARK AS PAID IN DB
-            $pdo->prepare("UPDATE bookings SET status = 'paid' WHERE id = ?")->execute([$booking['id']]);
+            // Get package details
+            $pkg_stmt = $pdo->prepare("SELECT * FROM packages WHERE id = ?");
+            $pkg_stmt->execute([$package_id]);
+            $package = $pkg_stmt->fetch(PDO::FETCH_ASSOC);
 
-            // 6. SEND EMAIL RECEIPT
-            $session_date = date('M j, Y', strtotime($booking['session_date']));
-            
-            sendEmail($booking['email'], 'payment_receipt', [
-                'session_title' => $booking['title'],
-                'amount'        => number_format($booking['amount_paid'], 2),
-                'date'          => $session_date,
-                'trans_id'      => $stripe_sid
-            ]);
+            if ($package && !empty($athlete_ids)) {
+                // Check if already processed (idempotency) - check ANY athlete
+                $athlete_placeholders = implode(',', array_fill(0, count($athlete_ids), '?'));
+                $dup_stmt = $pdo->prepare("SELECT id FROM user_packages WHERE package_id = ? AND stripe_session_id = ? AND user_id IN ($athlete_placeholders)");
+                $dup_stmt->execute(array_merge([$package_id, $stripe_sid], array_map('intval', $athlete_ids)));
+                $already_processed = $dup_stmt->fetch();
+
+                if (!$already_processed) {
+                    $pdo->beginTransaction();
+                    try {
+                        // Get sessions linked to this package
+                        $sess_stmt = $pdo->prepare("SELECT session_id FROM package_sessions WHERE package_id = ? AND session_id IS NOT NULL");
+                        $sess_stmt->execute([$package_id]);
+                        $linked_session_ids = $sess_stmt->fetchAll(PDO::FETCH_COLUMN);
+
+                        $amount_per_athlete = $total / count($athlete_ids);
+
+                        foreach ($athlete_ids as $athlete_id) {
+                            $athlete_id = intval($athlete_id);
+
+                            // Create user_packages record
+                            $up_stmt = $pdo->prepare("
+                                INSERT INTO user_packages (user_id, package_id, credits_remaining, payment_status, amount_paid, stripe_session_id)
+                                VALUES (?, ?, ?, 'paid', ?, ?)
+                            ");
+                            $up_stmt->execute([$athlete_id, $package_id, $package['credits'], $amount_per_athlete, $stripe_sid]);
+                            $user_package_id = $pdo->lastInsertId();
+
+                            // Save selected add-ons
+                            if (!empty($selected_addons)) {
+                                $addon_stmt = $pdo->prepare("INSERT INTO camp_registration_add_ons (user_package_id, add_on_id, opted_in) VALUES (?, ?, 1)");
+                                foreach ($selected_addons as $addon_id) {
+                                    try { $addon_stmt->execute([$user_package_id, intval($addon_id)]); } catch (PDOException $ae) { /* ignore duplicates */ }
+                                }
+                            }
+
+                            // Create bookings for each linked session
+                            foreach ($linked_session_ids as $session_id) {
+                                $bk_stmt = $pdo->prepare("
+                                    INSERT INTO bookings (session_id, user_id, stripe_session_id, amount_paid, status, payment_status)
+                                    VALUES (?, ?, ?, 0, 'confirmed', 'paid')
+                                ");
+                                $bk_stmt->execute([intval($session_id), $athlete_id, $stripe_sid]);
+                            }
+                        }
+
+                        $pdo->commit();
+                    } catch (Exception $txe) {
+                        $pdo->rollBack();
+                        throw $txe;
+                    }
+
+                    // Send confirmation email to the purchaser
+                    $user_id = $_SESSION['user_id'] ?? ($athlete_ids[0] ?? 0);
+                    $email_stmt = $pdo->prepare("SELECT email, first_name FROM users WHERE id = ?");
+                    $email_stmt->execute([$user_id]);
+                    $user_info = $email_stmt->fetch(PDO::FETCH_ASSOC);
+                    if ($user_info && !empty($user_info['email'])) {
+                        sendEmail($user_info['email'], 'payment_receipt', [
+                            'session_title' => $package['name'],
+                            'amount'        => number_format($total, 2),
+                            'date'          => date('M j, Y'),
+                            'trans_id'      => $stripe_sid
+                        ]);
+                    }
+                }
+            }
+
+            unset($_SESSION['package_purchase']);
+        } else {
+            // HANDLE REGULAR SESSION BOOKING
+            // 4. FIND THE PENDING BOOKING
+            $stmt = $pdo->prepare("
+                SELECT b.*, s.title, s.session_date, s.session_time, u.email, u.first_name 
+                FROM bookings b
+                JOIN sessions s ON b.session_id = s.id
+                JOIN users u ON b.user_id = u.id
+                WHERE b.stripe_session_id = ?
+            ");
+            $stmt->execute([$stripe_sid]);
+            $booking = $stmt->fetch();
+
+            // Only process if payment hasn't been recorded yet
+            if ($booking && $booking['payment_status'] !== 'paid') {
+                
+                // 5. MARK AS PAID IN DB (update payment_status, not status)
+                $pdo->prepare("UPDATE bookings SET payment_status = 'paid' WHERE id = ?")->execute([$booking['id']]);
+
+                // 6. SEND EMAIL RECEIPT
+                $session_date = date('M j, Y', strtotime($booking['session_date']));
+                
+                sendEmail($booking['email'], 'payment_receipt', [
+                    'session_title' => $booking['title'],
+                    'amount'        => number_format($booking['amount_paid'], 2),
+                    'date'          => $session_date,
+                    'trans_id'      => $stripe_sid
+                ]);
+            }
         }
     }
 } catch (Exception $e) {

@@ -574,3 +574,259 @@ function decryptPassword($encrypted_data) {
     }
     return '';
 }
+
+/**
+ * Decrypt a credential value. Returns the decrypted value if the credential
+ * is properly encrypted. If decryption fails (value may be plaintext/not yet
+ * migrated), logs a warning and returns the original value to avoid breaking
+ * functionality. Run ensureCredentialsEncrypted() during setup to migrate
+ * any plaintext values.
+ *
+ * @param string $value The encrypted value from system_settings
+ * @return string The decrypted value, or original value if decryption fails
+ */
+function decryptCredential($value) {
+    if (empty($value)) {
+        return '';
+    }
+    
+    // Try decryption — if it succeeds, use the decrypted value
+    if (function_exists('decryptPassword')) {
+        $decrypted = decryptPassword($value);
+        if (!empty($decrypted)) {
+            return $decrypted;
+        }
+    }
+    
+    // Decryption failed — value may be plaintext (not yet migrated)
+    // Log a warning but still return the raw value to avoid breaking functionality
+    error_log("decryptCredential: Failed to decrypt a credential value. Run setup to encrypt all credentials.");
+    return $value;
+}
+
+/**
+ * List of system_settings keys that must be stored encrypted.
+ * Used by ensureCredentialsEncrypted() during setup finalization.
+ *
+ * @return array List of setting_key values that should be encrypted
+ */
+function getEncryptedSettingKeys() {
+    return [
+        'smtp_pass',
+        'nextcloud_password',
+        'nextcloud_backup_password',
+        'paperless_api_token',
+        'stripe_publishable_key',
+        'stripe_secret_key',
+        'google_maps_api_key',
+        'github_token',
+        'docuseal_api_key',
+        'docuseal_webhook_secret',
+        'stallion_api_key',
+        'stallion_api_secret',
+    ];
+}
+
+/**
+ * Check if a value appears to be encrypted (base64-encoded with :: separator).
+ * Encrypted values from encryptPassword() have the format: base64(IV::ciphertext)
+ *
+ * @param string $value The value to check
+ * @return bool True if the value looks encrypted
+ */
+function isValueEncrypted($value) {
+    if (empty($value)) {
+        return false;
+    }
+    
+    // Try to base64-decode it
+    $decoded = base64_decode($value, true);
+    if ($decoded === false) {
+        return false;
+    }
+    
+    // Encrypted format is IV::ciphertext after base64 decode
+    $parts = explode('::', $decoded, 2);
+    if (count($parts) !== 2) {
+        return false;
+    }
+    
+    // IV should be 16 bytes for AES-256-CBC
+    if (strlen($parts[0]) !== 16) {
+        return false;
+    }
+    
+    return true;
+}
+
+/**
+ * Scan system_settings for credentials that should be encrypted but are stored
+ * as plaintext, and encrypt them in-place. Called during setup finalization
+ * to ensure all sensitive data is properly encrypted.
+ *
+ * @param PDO $pdo Database connection
+ * @return array Summary of what was encrypted ['migrated' => [...], 'already_encrypted' => [...], 'empty' => [...]]
+ */
+function ensureCredentialsEncrypted($pdo) {
+    $keys = getEncryptedSettingKeys();
+    $results = ['migrated' => [], 'already_encrypted' => [], 'empty' => []];
+    
+    // Fetch all sensitive settings in one query
+    $placeholders = implode(',', array_fill(0, count($keys), '?'));
+    $stmt = $pdo->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ($placeholders)");
+    $stmt->execute($keys);
+    $settings = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+    
+    $update_stmt = $pdo->prepare("UPDATE system_settings SET setting_value = ? WHERE setting_key = ?");
+    
+    foreach ($keys as $key) {
+        $value = $settings[$key] ?? null;
+        
+        if (empty($value)) {
+            $results['empty'][] = $key;
+            continue;
+        }
+        
+        // Check if the value is already encrypted
+        if (isValueEncrypted($value)) {
+            // Verify it actually decrypts successfully using decryptPassword() directly
+            // (not decryptCredential() which would log warnings during migration)
+            $decrypted = decryptPassword($value);
+            if (!empty($decrypted)) {
+                $results['already_encrypted'][] = $key;
+                continue;
+            }
+        }
+        
+        // Value is plaintext — encrypt it in-place
+        $encrypted = encryptPassword($value);
+        $update_stmt->execute([$encrypted, $key]);
+        $results['migrated'][] = $key;
+    }
+    
+    return $results;
+}
+
+/**
+ * Check if a user field value appears to be encrypted with FieldEncryption.
+ * FieldEncryption uses base64(IV + ciphertext) where IV is 16 bytes for AES-256-CBC.
+ *
+ * Detection is heuristic: checks base64 validity, IV length, then attempts decryption.
+ * Typical plaintext (names, phone numbers) will fail the base64/IV checks, making
+ * false positives extremely unlikely for PII field values.
+ *
+ * @param string $value The value to check
+ * @return bool True if the value appears to be encrypted
+ */
+function isFieldEncrypted($value) {
+    if (empty($value)) {
+        return false;
+    }
+    
+    // Try to base64-decode
+    $data = base64_decode($value, true);
+    if ($data === false) {
+        return false;
+    }
+    
+    // AES-256-CBC IV is 16 bytes; encrypted data must be longer than just the IV
+    $ivLen = 16;
+    if (strlen($data) <= $ivLen) {
+        return false;
+    }
+    
+    // If we can successfully decrypt it, it's encrypted
+    if (class_exists('FieldEncryption') && FieldEncryption::isConfigured()) {
+        $decrypted = FieldEncryption::decrypt($value);
+        // If decrypt returns a different value, the original was encrypted
+        if ($decrypted !== $value) {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+/**
+ * Scan the users table for PII fields that should be encrypted but are stored
+ * as plaintext, and encrypt them in-place. Called during setup finalization
+ * to ensure all user data is properly encrypted.
+ *
+ * Processes users in batches to avoid memory exhaustion on large databases.
+ * Uses a transaction for atomic updates within each batch.
+ *
+ * @param PDO $pdo Database connection
+ * @return array Summary: ['migrated_users' => int, 'already_encrypted' => int, 'fields_checked' => array]
+ */
+function ensureUserDataEncrypted($pdo) {
+    require_once __DIR__ . '/lib/encryption.php';
+    
+    $results = ['migrated_users' => 0, 'already_encrypted' => 0, 'fields_checked' => FieldEncryption::USER_PII_FIELDS];
+    
+    if (!FieldEncryption::isConfigured()) {
+        error_log("ensureUserDataEncrypted: FieldEncryption not configured, skipping");
+        return $results;
+    }
+    
+    $fields = FieldEncryption::USER_PII_FIELDS;
+    
+    $update_parts = [];
+    foreach ($fields as $field) {
+        $update_parts[] = "$field = :$field";
+    }
+    $update_sql = "UPDATE users SET " . implode(', ', $update_parts) . " WHERE id = :id";
+    $update_stmt = $pdo->prepare($update_sql);
+    
+    // Process users in batches to avoid memory exhaustion
+    $batchSize = 100;
+    $offset = 0;
+    
+    do {
+        $stmt = $pdo->prepare("SELECT id, " . implode(', ', $fields) . " FROM users LIMIT ? OFFSET ?");
+        $stmt->execute([$batchSize, $offset]);
+        $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        if (empty($users)) break;
+        
+        $pdo->beginTransaction();
+        try {
+            foreach ($users as $user) {
+                $needs_update = false;
+                $params = ['id' => $user['id']];
+                
+                foreach ($fields as $field) {
+                    $value = $user[$field] ?? '';
+                    
+                    if (empty($value)) {
+                        $params[$field] = $value;
+                        continue;
+                    }
+                    
+                    // Check if already encrypted
+                    if (isFieldEncrypted($value)) {
+                        $params[$field] = $value; // Keep as-is
+                    } else {
+                        // Plaintext — encrypt it
+                        $params[$field] = FieldEncryption::encrypt($value);
+                        $needs_update = true;
+                    }
+                }
+                
+                if ($needs_update) {
+                    $update_stmt->execute($params);
+                    $results['migrated_users']++;
+                } else {
+                    $results['already_encrypted']++;
+                }
+            }
+            $pdo->commit();
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            error_log("ensureUserDataEncrypted batch error: " . $e->getMessage());
+        }
+        
+        $offset += $batchSize;
+    } while (count($users) === $batchSize);
+    
+    return $results;
+}

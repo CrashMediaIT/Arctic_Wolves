@@ -67,6 +67,7 @@ try {
 $stripe_configured = false;
 try {
     $stripe_key = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'stripe_secret_key'")->fetchColumn();
+    if (function_exists('decryptCredential') && !empty($stripe_key)) { $stripe_key = decryptCredential($stripe_key); }
     $stripe_configured = !empty($stripe_key);
 } catch (PDOException $e) {}
 ?>

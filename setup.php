@@ -593,16 +593,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                               $db_creds['user'], $db_creds['pass']);
                 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                 
+                // Check if SMTP is already configured - skip if so
+                $existing_smtp = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'smtp_host'")->fetchColumn();
+                if (!empty($existing_smtp)) {
+                    $_SESSION['setup']['smtp'] = true;
+                    header("Location: setup.php?step=5");
+                    exit();
+                }
+                
                 $smtp_host = trim($_POST['smtp_host']);
                 $smtp_port = trim($_POST['smtp_port']);
                 $smtp_user = trim($_POST['smtp_user']);
                 $smtp_pass = $_POST['smtp_pass'];
                 $smtp_from = trim($_POST['smtp_from']);
+                
+                // Encrypt SMTP password before storage
+                require_once __DIR__ . '/security.php';
+                $encrypted_smtp_pass = function_exists('encryptPassword') ? encryptPassword($smtp_pass) : $smtp_pass;
+                
             $settings = [
                 ['smtp_host', $smtp_host],
                 ['smtp_port', $smtp_port],
                 ['smtp_user', $smtp_user],
-                ['smtp_pass', $smtp_pass],
+                ['smtp_pass', $encrypted_smtp_pass],
                 ['smtp_from_email', $smtp_from],
                 ['smtp_from_name', 'Arctic Wolves'],
                 ['smtp_encryption', 'tls']
@@ -660,6 +673,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             );
             $test_pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $test_pdo->query("SELECT 1");
+            
+            // Encrypt any plaintext credentials in system_settings
+            // This ensures all sensitive settings are encrypted, including any
+            // that existed before encryption was implemented or were manually inserted
+            require_once __DIR__ . '/security.php';
+            if (function_exists('ensureCredentialsEncrypted')) {
+                $migration_result = ensureCredentialsEncrypted($test_pdo);
+                if (!empty($migration_result['migrated'])) {
+                    error_log("Setup: Encrypted " . count($migration_result['migrated']) . " plaintext credentials: " . implode(', ', $migration_result['migrated']));
+                }
+            }
+            
+            // Encrypt any plaintext user PII data (first_name, last_name, phone, birth_date)
+            // This ensures all user data is properly encrypted with FieldEncryption
+            if (function_exists('ensureUserDataEncrypted')) {
+                $user_migration = ensureUserDataEncrypted($test_pdo);
+                if ($user_migration['migrated_users'] > 0) {
+                    error_log("Setup: Encrypted PII for " . $user_migration['migrated_users'] . " users (fields: " . implode(', ', $user_migration['fields_checked']) . ")");
+                }
+            }
             
             // All checks passed - finalize setup
             file_put_contents($setup_complete_file, date('Y-m-d H:i:s'));

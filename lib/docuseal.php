@@ -43,6 +43,12 @@ function getDocuSealSettings($pdo) {
         $settings['docuseal_verify_ssl'] = '1';
     }
     
+    // Decrypt sensitive credentials
+    if (function_exists('decryptCredential')) {
+        if (!empty($settings['docuseal_api_key'])) $settings['docuseal_api_key'] = decryptCredential($settings['docuseal_api_key']);
+        if (!empty($settings['docuseal_webhook_secret'])) $settings['docuseal_webhook_secret'] = decryptCredential($settings['docuseal_webhook_secret']);
+    }
+    
     return $settings;
 }
 

@@ -162,7 +162,7 @@ try {
             updateSetting($pdo, 'smtp_encryption', $smtp_encryption);
             updateSetting($pdo, 'smtp_user', $smtp_user);
             if (!empty($smtp_pass)) {
-                updateSetting($pdo, 'smtp_pass', $smtp_pass);
+                updateSetting($pdo, 'smtp_pass', encryptPassword($smtp_pass));
             }
             updateSetting($pdo, 'smtp_from_email', $smtp_from_email);
             updateSetting($pdo, 'smtp_from_name', $smtp_from_name);
@@ -407,10 +407,12 @@ try {
             }
             
             // Update Stripe settings
-            updateSetting($pdo, 'stripe_publishable_key', $stripe_publishable_key);
+            if (!empty($stripe_publishable_key)) {
+                updateSetting($pdo, 'stripe_publishable_key', encryptPassword($stripe_publishable_key));
+            }
             // Only update secret key if a new one is provided
             if (!empty($stripe_secret_key)) {
-                updateSetting($pdo, 'stripe_secret_key', $stripe_secret_key);
+                updateSetting($pdo, 'stripe_secret_key', encryptPassword($stripe_secret_key));
             }
             updateSetting($pdo, 'currency', $currency);
             
@@ -553,7 +555,9 @@ try {
             
         case 'update_google_maps':
             $api_key = trim($_POST['google_maps_api_key']);
-            updateSetting($pdo, 'google_maps_api_key', $api_key);
+            if (!empty($api_key)) {
+                updateSetting($pdo, 'google_maps_api_key', encryptPassword($api_key));
+            }
             
             Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
                 'action' => 'update_google_maps',
@@ -638,7 +642,9 @@ try {
             
         case 'update_github_settings':
             $github_token = trim($_POST['github_token']);
-            updateSetting($pdo, 'github_token', $github_token);
+            if (!empty($github_token)) {
+                updateSetting($pdo, 'github_token', encryptPassword($github_token));
+            }
             
             Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
                 'action' => 'update_github_settings',
@@ -903,9 +909,11 @@ try {
             updateSetting($pdo, 'docuseal_enabled', $docuseal_enabled);
             updateSetting($pdo, 'docuseal_url', $docuseal_url);
             if (!empty($docuseal_api_key)) {
-                updateSetting($pdo, 'docuseal_api_key', $docuseal_api_key);
+                updateSetting($pdo, 'docuseal_api_key', encryptPassword($docuseal_api_key));
             }
-            updateSetting($pdo, 'docuseal_webhook_secret', $docuseal_webhook_secret);
+            if (!empty($docuseal_webhook_secret)) {
+                updateSetting($pdo, 'docuseal_webhook_secret', encryptPassword($docuseal_webhook_secret));
+            }
             updateSetting($pdo, 'docuseal_auto_confirm', $docuseal_auto_confirm);
             updateSetting($pdo, 'docuseal_verify_ssl', $docuseal_verify_ssl);
             
@@ -960,8 +968,12 @@ try {
             
             updateSetting($pdo, 'stallion_enabled', $stallion_enabled);
             updateSetting($pdo, 'stallion_api_url', $stallion_api_url);
-            updateSetting($pdo, 'stallion_api_key', $stallion_api_key);
-            updateSetting($pdo, 'stallion_api_secret', $stallion_api_secret);
+            if (!empty($stallion_api_key)) {
+                updateSetting($pdo, 'stallion_api_key', encryptPassword($stallion_api_key));
+            }
+            if (!empty($stallion_api_secret)) {
+                updateSetting($pdo, 'stallion_api_secret', encryptPassword($stallion_api_secret));
+            }
             updateSetting($pdo, 'stallion_sender_name', $stallion_sender_name);
             updateSetting($pdo, 'stallion_sender_company', $stallion_sender_company);
             updateSetting($pdo, 'stallion_sender_address', $stallion_sender_address);
