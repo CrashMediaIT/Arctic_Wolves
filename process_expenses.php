@@ -790,7 +790,7 @@ try {
             $vendor_name = $ocr_data['vendor'] ?? 'Unknown';
             $expense_date = $ocr_data['date'] ?? date('Y-m-d');
             try {
-                $nc_result = uploadReceiptToNextcloud($pdo, $saved_file, $expense_date, $vendor_name, 'ocr_' . uniqid());
+                $nc_result = uploadReceiptToNextcloud($pdo, $saved_file, $expense_date, $vendor_name, 'ocr_scan_' . uniqid());
                 if ($nc_result['success']) {
                     $nextcloud_path = $nc_result['cloud_path'];
                 }
@@ -800,7 +800,7 @@ try {
             
             // Upload to Paperless-NGX for document storage
             try {
-                $receipt_title = $expense_date . '_' . $vendor_name . '_OCR';
+                $receipt_title = $expense_date . '_' . $vendor_name . '_Receipt';
                 uploadToPaperless($pdo, $saved_file, 'Receipt', $receipt_title);
             } catch (Exception $plErr) {
                 error_log("OCR scan Paperless upload error: " . $plErr->getMessage());
