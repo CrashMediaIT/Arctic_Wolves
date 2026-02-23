@@ -246,8 +246,20 @@ if (!$show_history) {
     $sessions = array_slice($sessions, 0, 50);
 }
 
-// For athletes: also fetch camp daily schedules and multiweek program dates from purchased packages
-if ($user_role === 'athlete' && !$show_history) {
+// For all users: also fetch camp daily schedules and multiweek program dates from purchased packages
+if (!$show_history) {
+    // Determine which user IDs to check for purchased packages
+    $camp_check_ids = [intval($user_id)];
+    if ($user_role === 'parent') {
+        $managed_stmt = $pdo->prepare("SELECT athlete_id FROM managed_athletes WHERE parent_id = ? AND can_book = 1");
+        $managed_stmt->execute([$user_id]);
+        $managed_ids = array_map('intval', $managed_stmt->fetchAll(PDO::FETCH_COLUMN));
+        if (!empty($managed_ids)) {
+            $camp_check_ids = array_merge($camp_check_ids, $managed_ids);
+        }
+    }
+    $camp_id_placeholders = implode(',', array_fill(0, count($camp_check_ids), '?'));
+
     // Fetch camp daily schedules for purchased camp packages
     $camp_sched_stmt = $pdo->prepare("
         SELECT cds.schedule_date as session_date, cds.start_time as session_time,
@@ -264,12 +276,12 @@ if ($user_role === 'athlete' && !$show_history) {
         FROM camp_daily_schedules cds
         JOIN packages p ON cds.package_id = p.id
         JOIN user_packages up ON up.package_id = p.id
-        WHERE up.user_id = ? AND up.payment_status = 'paid'
+        WHERE up.user_id IN ($camp_id_placeholders) AND up.payment_status = 'paid'
           AND cds.schedule_date >= CURDATE()
           AND p.package_type = 'camp'
         ORDER BY cds.schedule_date
     ");
-    $camp_sched_stmt->execute([$user_id]);
+    $camp_sched_stmt->execute($camp_check_ids);
     $camp_schedules = $camp_sched_stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Fetch multi-week program dates for purchased program packages
@@ -288,12 +300,12 @@ if ($user_role === 'athlete' && !$show_history) {
         FROM multiweek_program_dates mpd
         JOIN packages p ON mpd.package_id = p.id
         JOIN user_packages up ON up.package_id = p.id
-        WHERE up.user_id = ? AND up.payment_status = 'paid'
+        WHERE up.user_id IN ($camp_id_placeholders) AND up.payment_status = 'paid'
           AND mpd.session_date >= CURDATE()
           AND p.package_type = 'multi_week'
         ORDER BY mpd.session_date
     ");
-    $mw_dates_stmt->execute([$user_id]);
+    $mw_dates_stmt->execute($camp_check_ids);
     $mw_dates = $mw_dates_stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Merge camp and program dates into sessions list
@@ -568,7 +580,7 @@ $is_demo_data = false;
                     <?php if (!$show_history && strtotime($session['session_date']) > strtotime('+48 hours') && !empty($session['booking_id']) && $session['booking_status'] !== 'cancelled'): ?>
                         <button class="btn-danger" data-action="cancel-session" data-session-id="<?= $session['id'] ?>" data-booking-id="<?= $session['booking_id'] ?>"><i class="fas fa-times"></i> Cancel</button>
                     <?php elseif (!$show_history && in_array($session['source_type'] ?? '', ['camp_schedule', 'program_schedule'])): ?>
-                        <a href="dashboard.php?page=programs_camps&package_id=<?= intval($session['package_id'] ?? 0) ?>" class="btn-secondary"><i class="fas fa-cog"></i> Manage</a>
+                        <span class="btn-secondary" style="background:rgba(0,255,136,0.1);color:#00ff88;cursor:default;opacity:0.8;pointer-events:none;"><i class="fas fa-check-circle"></i> Registered</span>
                     <?php endif; ?>
                 </div>
             </div>

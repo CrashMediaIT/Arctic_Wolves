@@ -91,7 +91,7 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
                     $pkgCheck->execute([$intent['package_id']]);
                     $pkgType = $pkgCheck->fetchColumn();
                     if (in_array($pkgType, ['camp', 'multi_week'])) {
-                        header("Location: dashboard.php?page=programs_camps&package_id=" . $intent['package_id']);
+                        header("Location: dashboard.php?page=booking");
                     } else {
                         header("Location: dashboard.php?page=packages&package_id=" . $intent['package_id']);
                     }

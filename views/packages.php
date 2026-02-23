@@ -11,7 +11,7 @@ require_once 'security.php';
 $user_id = $_SESSION['user_id'];
 $user_role = $_SESSION['user_role'] ?? 'athlete';
 
-// Get active packages
+// Get active packages (exclude camps and multi-week programs - they have their own section in booking)
 $stmt = $pdo->prepare("
     SELECT p.*, 
            ag.name as age_group_name,
@@ -21,6 +21,7 @@ $stmt = $pdo->prepare("
     LEFT JOIN age_groups ag ON p.age_group_id = ag.id
     LEFT JOIN skill_levels sl ON p.skill_level_id = sl.id
     WHERE p.is_active = 1
+      AND (p.package_type IS NULL OR p.package_type NOT IN ('camp', 'multi_week'))
     ORDER BY p.package_type, p.price
 ");
 $stmt->execute();
@@ -72,8 +73,6 @@ $tax_name = $settings['tax_name'] ?? 'HST';
             <button class="filter-btn active" data-type="all">All Packages</button>
             <button class="filter-btn" data-type="credits">Credit Packages</button>
             <button class="filter-btn" data-type="bundled">Bundled Packages</button>
-            <button class="filter-btn" data-type="camp">Camps</button>
-            <button class="filter-btn" data-type="multi_week">Multi-Week Programs</button>
         </div>
         
         <div class="packages-grid">

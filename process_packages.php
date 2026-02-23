@@ -15,7 +15,7 @@ $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
     // Allow staff roles for specific registration management actions
     $staff_roles = ['admin', 'coach', 'coach_plus', 'team_coach', 'front_desk_staff'];
-    $staff_actions = ['get_registrations', 'cancel_registration'];
+    $staff_actions = ['get_registrations', 'cancel_registration', 'get_session_registrations'];
     // Allow any logged-in user to cancel their own package registration
     $user_actions = ['user_cancel_package'];
     $current_action = $_GET['action'] ?? $_POST['action'] ?? '';
@@ -94,6 +94,76 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         echo json_encode(['success' => true, 'registered' => $registered_result, 'waitlisted' => $waitlisted_result]);
     } catch (PDOException $e) {
         error_log("Registration fetch error: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Failed to load registrations']);
+    }
+    exit();
+}
+
+// Handle GET request for retrieving registered users for a session template (AJAX - Staff)
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'get_session_registrations') {
+    header('Content-Type: application/json');
+    $session_template_id = intval($_GET['session_template_id'] ?? 0);
+    
+    if ($session_template_id <= 0) {
+        echo json_encode(['success' => false, 'message' => 'Invalid session template ID']);
+        exit();
+    }
+    
+    try {
+        // Get users booked for sessions linked to this template (via training_session_dates)
+        $reg_stmt = $pdo->prepare("
+            SELECT DISTINCT u.first_name, u.last_name, u.email,
+                   DATE_FORMAT(tsd.session_date, '%b %e, %Y') as session_date
+            FROM bookings b
+            JOIN sessions s ON b.session_id = s.id
+            JOIN training_session_dates tsd ON DATE(tsd.session_date) = DATE(s.session_date)
+            JOIN training_session_templates tst ON tsd.template_id = tst.id
+            JOIN users u ON b.user_id = u.id
+            WHERE tst.id = ?
+              AND b.status IN ('confirmed', 'waitlisted')
+              AND b.payment_status IN ('pending', 'paid')
+            ORDER BY tsd.session_date, u.last_name
+        ");
+        $reg_stmt->execute([$session_template_id]);
+        $registered = $reg_stmt->fetchAll(PDO::FETCH_ASSOC);
+        $registered = decryptUserRows($registered);
+        
+        // Also check direct bookings on sessions matching this template
+        $direct_stmt = $pdo->prepare("
+            SELECT DISTINCT u.first_name, u.last_name, u.email,
+                   DATE_FORMAT(s.session_date, '%b %e, %Y') as session_date
+            FROM bookings b
+            JOIN sessions s ON b.session_id = s.id
+            JOIN users u ON b.user_id = u.id
+            WHERE s.session_type_id = (SELECT session_type_id FROM training_session_templates WHERE id = ?)
+              AND b.status IN ('confirmed', 'waitlisted')
+              AND b.payment_status IN ('pending', 'paid')
+              AND s.session_date >= CURDATE()
+            ORDER BY s.session_date, u.last_name
+        ");
+        $direct_stmt->execute([$session_template_id]);
+        $direct_registered = $direct_stmt->fetchAll(PDO::FETCH_ASSOC);
+        $direct_registered = decryptUserRows($direct_registered);
+        
+        // Merge and deduplicate
+        $all_users = array_merge($registered, $direct_registered);
+        $seen = [];
+        $result = [];
+        foreach ($all_users as $u) {
+            $key = ($u['email'] ?? '') . '_' . ($u['session_date'] ?? '');
+            if (!isset($seen[$key])) {
+                $seen[$key] = true;
+                $result[] = [
+                    'name' => trim(($u['first_name'] ?? '') . ' ' . ($u['last_name'] ?? '')),
+                    'email' => $u['email'] ?? '',
+                    'session_date' => $u['session_date'] ?? ''
+                ];
+            }
+        }
+        
+        echo json_encode(['success' => true, 'users' => $result]);
+    } catch (PDOException $e) {
+        error_log("Session registration fetch error: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Failed to load registrations']);
     }
     exit();

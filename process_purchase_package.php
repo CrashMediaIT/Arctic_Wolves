@@ -90,9 +90,8 @@ try {
     $dup_check_stmt->execute(array_merge([$package_id], $athlete_ids));
     $already_purchased = $dup_check_stmt->fetchAll(PDO::FETCH_COLUMN);
     if (!empty($already_purchased)) {
-        // Redirect back to programs page — the inline "Already Registered" badge
-        // replaces the register button automatically based on purchased_package_ids
-        header("Location: dashboard.php?page=programs_camps&package_id=" . urlencode($package_id));
+        // Redirect back to booking page — Already Registered status shown inline
+        header("Location: dashboard.php?page=booking");
         exit();
     }
     

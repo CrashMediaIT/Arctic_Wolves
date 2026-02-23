@@ -71,6 +71,19 @@ if (($user_role ?? '') === 'parent') {
     $user_booked_sessions = array_unique(array_merge($user_booked_sessions, $child_booked_stmt->fetchAll(PDO::FETCH_COLUMN)));
 }
 
+// Get already purchased package IDs for the current user (and their athletes) to show registration status
+$booking_purchased_ids = [];
+$booking_check_ids = [intval($_SESSION['user_id'])];
+if (($user_role ?? '') === 'parent') {
+    $bp_athletes_stmt = $pdo->prepare("SELECT athlete_id FROM managed_athletes WHERE parent_id = ? AND can_book = 1");
+    $bp_athletes_stmt->execute([$_SESSION['user_id']]);
+    $booking_check_ids = array_merge($booking_check_ids, array_map('intval', $bp_athletes_stmt->fetchAll(PDO::FETCH_COLUMN)));
+}
+$bp_placeholders = implode(',', array_fill(0, count($booking_check_ids), '?'));
+$bp_stmt = $pdo->prepare("SELECT DISTINCT package_id FROM user_packages WHERE user_id IN ($bp_placeholders) AND payment_status IN ('pending', 'paid')");
+$bp_stmt->execute($booking_check_ids);
+$booking_purchased_ids = $bp_stmt->fetchAll(PDO::FETCH_COLUMN);
+
 // Get available sessions for booking - combine regular sessions and training session templates
 $available_sessions_query = "
     SELECT CONCAT('session_', s.id) as unique_id, s.id, s.title as session_type_name, s.description, 
@@ -475,6 +488,11 @@ $is_demo_sessions = false;
                         <span class="program-price">$<?= number_format($prog['price'], 0) ?></span>
                         <span class="program-tax">+ $<?= number_format($tax_amount, 2) ?> <?= htmlspecialchars($booking_tax_name) ?></span>
                     </div>
+                    <?php if (in_array($prog['id'], $booking_purchased_ids)): ?>
+                    <button type="button" class="btn-register-program" disabled style="background:rgba(0,255,136,0.1);color:#00ff88;cursor:default;opacity:0.8;">
+                        <i class="fas fa-check-circle"></i> Already Registered
+                    </button>
+                    <?php else: ?>
                     <form method="POST" action="process_purchase_package.php" style="display:inline;">
                         <?= csrfTokenInput() ?>
                         <input type="hidden" name="package_id" value="<?= $prog['id'] ?>">
@@ -483,6 +501,7 @@ $is_demo_sessions = false;
                             <?= $is_camp ? 'Register for Camp' : 'Enroll in Program' ?>
                         </button>
                     </form>
+                    <?php endif; ?>
                 </div>
             </div>
             <?php endforeach; ?>
