@@ -991,8 +991,8 @@ try {
             
         case 'email_registered_users':
             $package_id = intval($_POST['package_id'] ?? 0);
-            $email_subject = trim($_POST['subject'] ?? '');
-            $email_message = trim($_POST['message'] ?? '');
+            $email_subject = htmlspecialchars(trim($_POST['subject'] ?? ''), ENT_QUOTES, 'UTF-8');
+            $email_message = htmlspecialchars(trim($_POST['message'] ?? ''), ENT_QUOTES, 'UTF-8');
             
             if ($package_id <= 0) throw new Exception('Invalid package ID');
             if (empty($email_subject)) throw new Exception('Email subject is required');
