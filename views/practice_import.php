@@ -162,9 +162,23 @@ $status_messages = [
                         <button type="button" class="btn-secondary" onclick="clearPreview()">
                             <i class="fas fa-times"></i> Clear
                         </button>
-                        <button type="submit" class="btn-primary">
+                        <button type="submit" class="btn-primary" id="importPlanBtn">
                             <i class="fas fa-download"></i> Import Practice Plan & All Drills
                         </button>
+                    </div>
+                    
+                    <!-- Import Progress Indicator -->
+                    <div id="importProgressContainer" style="display:none; margin-top: 20px; text-align: center; padding: 20px; background: var(--bg-main, #06080b); border: 1px solid var(--border, #1e293b); border-radius: 8px;">
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 12px;">
+                            <i class="fas fa-spinner fa-spin" style="color: var(--primary, #7c3aed); font-size: 20px;"></i>
+                            <span style="color: #fff; font-weight: 700;">Importing practice plan and drills…</span>
+                        </div>
+                        <div style="background: rgba(30, 41, 59, 0.5); border-radius: 999px; height: 6px; overflow: hidden; position: relative;">
+                            <div id="importProgressBar" style="height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--primary, #7c3aed), #a855f7); width: 20%; transition: width 0.4s ease; position: relative; overflow: hidden;">
+                                <div style="position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); animation: importShimmer 1.5s infinite;"></div>
+                            </div>
+                        </div>
+                        <p style="color: var(--text-dim, #64748b); font-size: 12px; margin-top: 8px;">Creating practice plan, saving drills and uploading images to cloud storage…</p>
                     </div>
                 </form>
             </div>
@@ -204,6 +218,24 @@ $status_messages = [
 
 <script>
 let currentPlanData = null;
+
+// Show progress bar when import form is submitted
+document.getElementById('importPlanForm').addEventListener('submit', function() {
+    var btn = document.getElementById('importPlanBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importing…';
+    var container = document.getElementById('importProgressContainer');
+    container.style.display = 'block';
+    var bar = document.getElementById('importProgressBar');
+    var progress = 20;
+    setInterval(function() {
+        if (progress < 85) {
+            progress += Math.random() * 10;
+            if (progress > 85) progress = 85;
+            bar.style.width = progress + '%';
+        }
+    }, 600);
+});
 
 async function fetchPracticePlanFromUrl() {
     const urlInput = document.getElementById('ihsUrlInput');
@@ -680,6 +712,11 @@ function showNotification(message, type = 'info') {
 
 @keyframes spin {
     to { transform: rotate(360deg); }
+}
+
+@keyframes importShimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
 }
 
 /* Practice Plan Preview Section */

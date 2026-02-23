@@ -104,6 +104,29 @@ $category_count = (int)$pdo->query("SELECT COUNT(*) FROM drill_categories")->fet
     <i class="fas fa-exclamation-circle"></i> <span id="ei-error-msg"></span>
 </div>
 
+<!-- Import Progress Bar -->
+<div id="ei-progress-container" style="display:none; margin-bottom: var(--space-5);">
+    <div style="background: var(--bg-card, #0d1117); border: 1px solid var(--border, #1e293b); border-radius: var(--radius-lg); padding: var(--space-5); text-align: center;">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: var(--space-3);">
+            <i class="fas fa-spinner fa-spin" style="color: var(--primary); font-size: 20px;"></i>
+            <span id="ei-progress-text" style="color: var(--text-white); font-weight: 700; font-size: var(--font-size-base);">Importing drills…</span>
+        </div>
+        <div style="background: var(--bg-main, #06080b); border-radius: 999px; height: 8px; overflow: hidden; position: relative;">
+            <div id="ei-progress-bar" style="height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--primary), #a855f7); width: 0%; transition: width 0.4s ease; position: relative; overflow: hidden;">
+                <div style="position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); animation: ei-shimmer 1.5s infinite;"></div>
+            </div>
+        </div>
+        <p id="ei-progress-detail" style="color: var(--text-dim, #64748b); font-size: var(--font-size-sm); margin-top: var(--space-2);">Reading file and uploading to server…</p>
+    </div>
+</div>
+
+<style>
+@keyframes ei-shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+</style>
+
 <div class="ei-grid">
     <!-- Export Card -->
     <div class="card">
@@ -175,29 +198,76 @@ document.getElementById('drill-import-form').addEventListener('submit', function
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importing...';
     
-    const formData = new FormData(this);
+    const progressContainer = document.getElementById('ei-progress-container');
+    const progressBar = document.getElementById('ei-progress-bar');
+    const progressText = document.getElementById('ei-progress-text');
+    const progressDetail = document.getElementById('ei-progress-detail');
     
-    fetch('process_drills.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showEiAlert('success', data.message);
-            fileInput.value = '';
-        } else {
-            showEiAlert('error', data.message);
-        }
-    })
-    .catch(error => {
-        showEiAlert('error', 'Import failed. Please try again.');
-        console.error(error);
-    })
-    .finally(() => {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-upload"></i> Import Drills';
-    });
+    // Read file to count items for progress display
+    const reader = new FileReader();
+    reader.onload = function(event) {
+        let itemCount = 0;
+        let categoryCount = 0;
+        try {
+            const json = JSON.parse(event.target.result);
+            itemCount = (json.drills || []).length;
+            categoryCount = (json.categories || []).length;
+        } catch(e) { /* will be caught server-side */ }
+        
+        // Show progress bar
+        progressContainer.style.display = 'block';
+        progressBar.style.width = '10%';
+        progressText.textContent = itemCount > 0
+            ? 'Importing ' + itemCount + ' drill' + (itemCount !== 1 ? 's' : '') + (categoryCount > 0 ? ' and ' + categoryCount + ' categor' + (categoryCount !== 1 ? 'ies' : 'y') : '') + '…'
+            : 'Importing drills…';
+        progressDetail.textContent = 'Uploading file and processing. Images saving to cloud storage may take a moment…';
+        
+        // Animate progress bar to simulate progress
+        let progress = 10;
+        const progressInterval = setInterval(function() {
+            if (progress < 85) {
+                progress += Math.random() * 8;
+                if (progress > 85) progress = 85;
+                progressBar.style.width = progress + '%';
+            }
+        }, 800);
+        
+        const formData = new FormData(document.getElementById('drill-import-form'));
+        
+        fetch('process_drills.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            clearInterval(progressInterval);
+            progressBar.style.width = '100%';
+            
+            if (data.success) {
+                progressText.textContent = 'Import complete!';
+                progressDetail.textContent = data.message;
+                setTimeout(function() {
+                    progressContainer.style.display = 'none';
+                    showEiAlert('success', data.message);
+                }, 1500);
+                fileInput.value = '';
+            } else {
+                progressContainer.style.display = 'none';
+                showEiAlert('error', data.message);
+            }
+        })
+        .catch(error => {
+            clearInterval(progressInterval);
+            progressContainer.style.display = 'none';
+            showEiAlert('error', 'Import failed. Please try again.');
+            console.error(error);
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-upload"></i> Import Drills';
+        });
+    };
+    reader.readAsText(fileInput.files[0]);
 });
 
 function showEiAlert(type, message) {

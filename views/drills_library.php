@@ -968,13 +968,20 @@ function addDrillToPracticePlan(drillId) {
     window.location.href = '?page=practice_create';
 }
 
+// Get CSRF token from the page
+function getDrillCsrfToken() {
+    if (typeof csrfToken !== 'undefined') return csrfToken;
+    var el = document.querySelector('input[name="csrf_token"]');
+    return el ? el.value : '';
+}
+
 // Delete a drill with confirmation
 function deleteDrill(drillId) {
     if (!confirm('Delete this drill? This cannot be undone.')) return;
     var body = new URLSearchParams();
     body.set('action', 'delete_drill');
     body.set('drill_id', drillId);
-    body.set('csrf_token', typeof csrfToken !== 'undefined' ? csrfToken : (document.querySelector('input[name="csrf_token"]') ? document.querySelector('input[name="csrf_token"]').value : ''));
+    body.set('csrf_token', getDrillCsrfToken());
     fetch('process_drills.php', { method: 'POST', body: body, credentials: 'same-origin' })
         .then(function(r) {
             if (r.ok || r.redirected) {
