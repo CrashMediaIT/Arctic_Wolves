@@ -10,7 +10,7 @@ require_once __DIR__ . '/db_config.php';
  * Get Nextcloud settings from database
  */
 function getNextcloudSettings($pdo) {
-    $stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('nextcloud_url', 'nextcloud_username', 'nextcloud_password', 'nextcloud_receipt_folder', 'nextcloud_hr_dir', 'nextcloud_terminations_dir', 'nextcloud_payroll_dir', 'nextcloud_onboarding_dir', 'nextcloud_drill_videos_dir', 'nextcloud_contracts_dir')");
+    $stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('nextcloud_url', 'nextcloud_username', 'nextcloud_password', 'nextcloud_receipt_folder', 'nextcloud_hr_dir', 'nextcloud_terminations_dir', 'nextcloud_payroll_dir', 'nextcloud_onboarding_dir', 'nextcloud_drill_videos_dir', 'nextcloud_contracts_dir', 'nextcloud_images_dir')");
     $settings = [];
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $settings[$row['setting_key']] = $row['setting_value'];
@@ -676,8 +676,92 @@ function uploadDrillVideo($pdo, $settings, $session_name, $drill_name, $athlete_
 }
 
 /**
- * Get drill video path for Nextcloud
- * Returns the expected path for a drill video based on naming convention
+ * Upload an image file to Nextcloud for persistent storage
+ * Creates folder structure: /Images/profiles/ or /Images/evaluations/{eval_id}/
+ * 
+ * @param PDO $pdo Database connection
+ * @param array $settings Nextcloud settings (from getNextcloudSettings)
+ * @param string $local_file_path Path to the local file to upload
+ * @param string $subfolder Subfolder within images dir (e.g., 'profiles', 'evaluations/123')
+ * @param string $filename Target filename for the upload
+ * @return array Result with success status and remote_path
+ */
+function uploadImageToNextcloud($pdo, $settings, $local_file_path, $subfolder, $filename) {
+    try {
+        $connection = connectNextcloud($settings);
+        
+        $images_dir = $settings['nextcloud_images_dir'] ?? '/Images';
+        
+        // Build folder path
+        $sub_parts = array_filter(explode('/', $subfolder), function($p) { return $p !== ''; });
+        $folder_path = ensureNextcloudPath($connection, $images_dir, $sub_parts);
+        
+        // Read file content
+        $file_content = file_get_contents($local_file_path);
+        if ($file_content === false) {
+            throw new Exception("Failed to read local file: $local_file_path");
+        }
+        
+        // Determine content type
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $content_type = finfo_file($finfo, $local_file_path);
+        finfo_close($finfo);
+        
+        // Upload file
+        $remote_path = $folder_path . '/' . $filename;
+        uploadToNextcloud($connection, $remote_path, $file_content, $content_type);
+        
+        return [
+            'success' => true,
+            'remote_path' => $remote_path,
+            'file_size' => strlen($file_content)
+        ];
+        
+    } catch (Exception $e) {
+        error_log("Error uploading image to Nextcloud: " . $e->getMessage());
+        return [
+            'success' => false,
+            'message' => $e->getMessage()
+        ];
+    }
+}
+
+/**
+ * Download an image from Nextcloud and restore it locally
+ * Used when local file is missing but Nextcloud path exists
+ * 
+ * @param PDO $pdo Database connection
+ * @param array $settings Nextcloud settings (from getNextcloudSettings)
+ * @param string $nextcloud_path Remote path in Nextcloud
+ * @param string $local_path Local path to save the file to
+ * @return bool True if file was restored successfully
+ */
+function restoreImageFromNextcloud($pdo, $settings, $nextcloud_path, $local_path) {
+    try {
+        $connection = connectNextcloud($settings);
+        
+        $content = downloadNextcloudFile($connection, $nextcloud_path);
+        
+        // Ensure local directory exists
+        $local_dir = dirname($local_path);
+        if (!is_dir($local_dir)) {
+            mkdir($local_dir, 0755, true);
+        }
+        
+        // Write file
+        if (file_put_contents($local_path, $content) === false) {
+            throw new Exception("Failed to write file to: $local_path");
+        }
+        
+        return true;
+        
+    } catch (Exception $e) {
+        error_log("Error restoring image from Nextcloud: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
  * 
  * @param array $settings Nextcloud settings
  * @param string $session_name Session title

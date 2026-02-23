@@ -1,5 +1,7 @@
 <!-- User Profile View -->
 <?php
+require_once __DIR__ . '/../lib/image_helper.php';
+
 // Fetch user data
 try {
     $stmt = $pdo->prepare("
@@ -11,6 +13,14 @@ try {
     $stmt->execute([$user_id]);
     $userData = $stmt->fetch(PDO::FETCH_ASSOC);
     $userData = $userData ? decryptUserRow($userData) : $userData;
+    
+    // Restore profile image from Nextcloud if local file is missing
+    if ($userData && !empty($userData['profile_image']) && !file_exists($userData['profile_image'])) {
+        $restored = resolveProfileImage($pdo, $user_id, $userData['profile_image']);
+        if ($restored) {
+            $userData['profile_image'] = $restored;
+        }
+    }
     
     // Get additional player data (available for ALL users, not just athletes)
     $playerData = null;

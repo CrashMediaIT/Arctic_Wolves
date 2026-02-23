@@ -213,6 +213,7 @@ try {
             $hr_dir = trim($_POST['nextcloud_hr_dir'] ?? '/HR');
             $terminations_dir = trim($_POST['nextcloud_terminations_dir'] ?? '/HR/Terminations');
             $contracts_dir = trim($_POST['nextcloud_contracts_dir'] ?? '/accounting/contracts');
+            $images_dir = trim($_POST['nextcloud_images_dir'] ?? '/Images');
             
             // Sync options
             $sync_backups = isset($_POST['sync_backups']) ? '1' : '0';
@@ -222,6 +223,7 @@ try {
             $sync_hr = isset($_POST['sync_hr']) ? '1' : '0';
             $sync_terminations = isset($_POST['sync_terminations']) ? '1' : '0';
             $sync_contracts = isset($_POST['sync_contracts']) ? '1' : '0';
+            $sync_images = isset($_POST['sync_images']) ? '1' : '0';
             
             updateSetting($pdo, 'nextcloud_url', $url);
             updateSetting($pdo, 'nextcloud_username', $username);
@@ -244,6 +246,7 @@ try {
             updateSetting($pdo, 'nextcloud_hr_dir', $hr_dir);
             updateSetting($pdo, 'nextcloud_terminations_dir', $terminations_dir);
             updateSetting($pdo, 'nextcloud_contracts_dir', $contracts_dir);
+            updateSetting($pdo, 'nextcloud_images_dir', $images_dir);
             
             // Save sync options
             updateSetting($pdo, 'sync_backups', $sync_backups);
@@ -253,6 +256,7 @@ try {
             updateSetting($pdo, 'sync_hr', $sync_hr);
             updateSetting($pdo, 'sync_terminations', $sync_terminations);
             updateSetting($pdo, 'sync_contracts', $sync_contracts);
+            updateSetting($pdo, 'sync_images', $sync_images);
             
             Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
                 'action' => 'update_nextcloud',

@@ -2,6 +2,7 @@
 session_start();
 require 'db_config.php';
 require 'security.php';
+require_once __DIR__ . '/cloud_config.php';
 require_once __DIR__ . '/lib/encryption.php';
 require_once __DIR__ . '/lib/auditor.php';
 require_once __DIR__ . '/error_logger.php';
@@ -43,6 +44,27 @@ if ($action == 'upload_avatar') {
             
             if (move_uploaded_file($_FILES['profile_pic']['tmp_name'], $new_name)) {
                 $pdo->prepare("UPDATE users SET profile_image = ? WHERE id = ?")->execute([$new_name, $target_id]);
+                
+                // Upload to Nextcloud for persistent storage
+                try {
+                    $nc_settings = getNextcloudSettings($pdo);
+                    if (!empty($nc_settings['nextcloud_url'])) {
+                        // Decrypt password if encrypted
+                        if (!empty($nc_settings['nextcloud_password'])) {
+                            $decrypted = decryptPassword($nc_settings['nextcloud_password']);
+                            if (!empty($decrypted)) {
+                                $nc_settings['nextcloud_password'] = $decrypted;
+                            }
+                        }
+                        $nc_filename = "avatar_" . $target_id . "_" . time() . "." . $ext;
+                        $result = uploadImageToNextcloud($pdo, $nc_settings, $new_name, 'profiles', $nc_filename);
+                        if ($result['success']) {
+                            $pdo->prepare("UPDATE users SET nextcloud_image_path = ? WHERE id = ?")->execute([$result['remote_path'], $target_id]);
+                        }
+                    }
+                } catch (Exception $e) {
+                    error_log("Nextcloud profile image upload failed: " . $e->getMessage());
+                }
                 
                 Auditor::log($pdo, $current_user_id, 'update', 'users', $target_id, ['action' => 'uploaded_avatar']);
                 

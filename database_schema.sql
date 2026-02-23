@@ -4625,3 +4625,15 @@ ADD COLUMN IF NOT EXISTS `show_on_landing` TINYINT(1) DEFAULT 0 COMMENT 'Whether
 ALTER TABLE `user_packages`
 ADD COLUMN IF NOT EXISTS `stripe_session_id` VARCHAR(255) DEFAULT NULL COMMENT 'Stripe checkout session ID for payment tracking',
 ADD INDEX IF NOT EXISTS `idx_stripe_session` (`stripe_session_id`);
+
+-- Add nextcloud_path to users for persistent profile image storage
+ALTER TABLE `users`
+ADD COLUMN IF NOT EXISTS `nextcloud_image_path` VARCHAR(500) DEFAULT NULL COMMENT 'Nextcloud path for profile image persistence';
+
+-- Add nextcloud_path to evaluation_media for persistent media storage
+ALTER TABLE `evaluation_media`
+ADD COLUMN IF NOT EXISTS `nextcloud_path` VARCHAR(500) DEFAULT NULL COMMENT 'Nextcloud path for persistent media storage';
+
+-- Default Nextcloud images directory setting
+INSERT IGNORE INTO `system_settings` (`setting_key`, `setting_value`, `setting_type`, `description`) VALUES
+('nextcloud_images_dir', '/Images', 'text', 'Nextcloud directory for profile images and evaluation media');
