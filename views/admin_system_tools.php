@@ -2086,6 +2086,7 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
         <form method="POST" action="process_settings.php">
             <?php echo csrfTokenInput(); ?>
             <input type="hidden" name="action" value="update_landing">
+            <input type="hidden" name="redirect_page" value="system_tools">
             
             <!-- Programs Section -->
             <div class="card">

@@ -4,6 +4,7 @@ session_start();
 require 'db_config.php';
 require_once __DIR__ . '/csrf_protection.php';
 require_once __DIR__ . '/security.php';
+require_once __DIR__ . '/lib/encryption.php';
 require_once __DIR__ . '/pwa_detect.php';
 
 // Detect POS subdomain (pos.arcticwolves.ca) - redirect to kiosk login
@@ -170,7 +171,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $_SESSION['logged_in'] = true;
                 $_SESSION['user_id']   = $user['id'];
                 $_SESSION['user_role'] = $user['role'];
-                $_SESSION['user_name'] = $user['first_name'];
+                $_SESSION['user_name'] = FieldEncryption::decrypt($user['first_name']) . ' ' . FieldEncryption::decrypt($user['last_name']);
                 $_SESSION['user_email'] = $user['email']; // Useful for test emails
                 
                 recordLoginHistory($pdo, $user['id'], 'success');

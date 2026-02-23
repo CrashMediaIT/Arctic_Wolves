@@ -524,8 +524,73 @@ function checkPOSIPAccess($pdo, $user_role) {
 }
 
 /**
+ * Load the credential encryption key material.
+ *
+ * Resolution order:
+ *   1. Local key file  (.nextcloud_key)  – fastest, no DB hit.
+ *   2. Database row     (system_settings, key = '_credential_encryption_key')
+ *      → also restores the file so subsequent calls use the fast path.
+ *   3. Generate a new key and store it in both file AND database so it
+ *      survives destruction of the application folder.
+ *
+ * @return string Raw hex key material (64-char hex string)
+ */
+function loadCredentialKey() {
+    $key_file = __DIR__ . '/.nextcloud_key';
+
+    // 1. Fast path – local file
+    if (file_exists($key_file)) {
+        $key = file_get_contents($key_file);
+        if (!empty($key)) {
+            return $key;
+        }
+    }
+
+    // 2. Try the database
+    global $pdo;
+    if (isset($pdo) && $pdo instanceof PDO) {
+        try {
+            $stmt = $pdo->prepare(
+                "SELECT setting_value FROM system_settings WHERE setting_key = '_credential_encryption_key' LIMIT 1"
+            );
+            $stmt->execute();
+            $db_key = $stmt->fetchColumn();
+            if (!empty($db_key)) {
+                // Restore the local file for fast future reads
+                file_put_contents($key_file, $db_key);
+                chmod($key_file, 0600);
+                return $db_key;
+            }
+        } catch (PDOException $e) {
+            // Table may not exist yet during initial setup – fall through
+            error_log("loadCredentialKey: DB lookup failed: " . $e->getMessage());
+        }
+    }
+
+    // 3. Generate a new key and persist to both file and database
+    $key = bin2hex(random_bytes(32));
+    file_put_contents($key_file, $key);
+    chmod($key_file, 0600);
+
+    if (isset($pdo) && $pdo instanceof PDO) {
+        try {
+            $ins = $pdo->prepare(
+                "INSERT INTO system_settings (setting_key, setting_value)
+                 VALUES ('_credential_encryption_key', ?)
+                 ON DUPLICATE KEY UPDATE setting_value = ?"
+            );
+            $ins->execute([$key, $key]);
+        } catch (PDOException $e) {
+            error_log("loadCredentialKey: Failed to persist key to DB: " . $e->getMessage());
+        }
+    }
+
+    return $key;
+}
+
+/**
  * Encrypt a password/token using AES-256-CBC
- * Uses a persistent key file (.nextcloud_key) for key material.
+ * Uses a persistent key resolved via loadCredentialKey() (file → DB → generate).
  * This is the single canonical implementation — all files should
  * include security.php instead of defining their own copy.
  *
@@ -533,14 +598,7 @@ function checkPOSIPAccess($pdo, $user_role) {
  * @return string Base64-encoded ciphertext (IV::encrypted)
  */
 function encryptPassword($password) {
-    $key_file = __DIR__ . '/.nextcloud_key';
-    if (!file_exists($key_file)) {
-        $key = bin2hex(random_bytes(32));
-        file_put_contents($key_file, $key);
-        chmod($key_file, 0600);
-    } else {
-        $key = file_get_contents($key_file);
-    }
+    $key = loadCredentialKey();
     
     $key_hash = hash('sha256', $key, true);
     $iv = random_bytes(16);
@@ -556,11 +614,37 @@ function encryptPassword($password) {
  */
 function decryptPassword($encrypted_data) {
     $key_file = __DIR__ . '/.nextcloud_key';
-    if (!file_exists($key_file)) {
+
+    // Need the key from file or DB
+    global $pdo;
+    $key = null;
+
+    if (file_exists($key_file)) {
+        $key = file_get_contents($key_file);
+    }
+
+    if (empty($key) && isset($pdo) && $pdo instanceof PDO) {
+        try {
+            $stmt = $pdo->prepare(
+                "SELECT setting_value FROM system_settings WHERE setting_key = '_credential_encryption_key' LIMIT 1"
+            );
+            $stmt->execute();
+            $db_key = $stmt->fetchColumn();
+            if (!empty($db_key)) {
+                $key = $db_key;
+                // Restore the local file
+                file_put_contents($key_file, $key);
+                chmod($key_file, 0600);
+            }
+        } catch (PDOException $e) {
+            error_log("decryptPassword: DB key lookup failed: " . $e->getMessage());
+        }
+    }
+
+    if (empty($key)) {
         return '';
     }
     
-    $key = file_get_contents($key_file);
     $key_hash = hash('sha256', $key, true);
     $decoded = base64_decode($encrypted_data, true);
     if ($decoded === false) {
@@ -570,7 +654,8 @@ function decryptPassword($encrypted_data) {
     if (count($parts) === 2) {
         $iv = $parts[0];
         $encrypted = $parts[1];
-        return openssl_decrypt($encrypted, 'AES-256-CBC', $key_hash, 0, $iv);
+        $result = openssl_decrypt($encrypted, 'AES-256-CBC', $key_hash, 0, $iv);
+        return ($result === false) ? '' : $result;
     }
     return '';
 }

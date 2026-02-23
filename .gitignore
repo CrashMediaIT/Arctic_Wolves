@@ -31,6 +31,7 @@ backups/*
 .env
 .env.local
 arctic_wolves.env
+.nextcloud_key
 
 # IDE and editor files
 .vscode/
