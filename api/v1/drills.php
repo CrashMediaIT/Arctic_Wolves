@@ -5,6 +5,7 @@
  * Endpoints:
  *   GET /v1/drills          - List drills
  *   GET /v1/drills/{id}     - Get drill details
+ *   DELETE /v1/drills/{id}  - Delete a drill
  */
 
 require_once __DIR__ . '/../api_auth.php';
@@ -18,6 +19,8 @@ if ($method === 'GET' && !$drill_id) {
     handleListDrills($auth);
 } elseif ($method === 'GET' && $drill_id && !$action) {
     handleGetDrill($auth, (int) $drill_id);
+} elseif ($method === 'DELETE' && $drill_id && !$action) {
+    handleDeleteDrill($auth, (int) $drill_id);
 } else {
     apiResponse(404, ['success' => false, 'error' => 'Drill endpoint not found']);
 }
@@ -125,6 +128,34 @@ function handleGetDrill($auth, $drill_id) {
 
         logApiAccess('get_drill', "Viewed drill ID: $drill_id", $auth['user_id']);
         apiResponse(200, ['success' => true, 'data' => $drill]);
+    } catch (PDOException $e) {
+        error_log('[API DRILLS ERROR] ' . $e->getMessage());
+        apiResponse(500, ['success' => false, 'error' => 'Internal server error']);
+    }
+}
+
+/**
+ * DELETE /v1/drills/{id}
+ */
+function handleDeleteDrill($auth, $drill_id) {
+    global $pdo;
+
+    if (!hasApiPermission($auth, 'write_drills')) {
+        apiResponse(403, ['success' => false, 'error' => 'Insufficient permissions']);
+    }
+
+    try {
+        $stmt = $pdo->prepare("SELECT id FROM drills WHERE id = ?");
+        $stmt->execute([$drill_id]);
+        if (!$stmt->fetch()) {
+            apiResponse(404, ['success' => false, 'error' => 'Drill not found']);
+        }
+
+        $stmt = $pdo->prepare("DELETE FROM drills WHERE id = ?");
+        $stmt->execute([$drill_id]);
+
+        logApiAccess('delete_drill', "Deleted drill ID: $drill_id", $auth['user_id']);
+        apiResponse(200, ['success' => true, 'message' => 'Drill deleted successfully']);
     } catch (PDOException $e) {
         error_log('[API DRILLS ERROR] ' . $e->getMessage());
         apiResponse(500, ['success' => false, 'error' => 'Internal server error']);
