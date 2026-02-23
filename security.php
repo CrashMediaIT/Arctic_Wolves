@@ -577,13 +577,15 @@ function decryptPassword($encrypted_data) {
 
 /**
  * Decrypt a credential value. Returns the decrypted value if the credential
- * is properly encrypted. If decryption fails (value may be plaintext/not yet
- * migrated), logs a warning and returns the original value to avoid breaking
- * functionality. Run ensureCredentialsEncrypted() during setup to migrate
- * any plaintext values.
+ * is properly encrypted. If decryption fails and the value appears to be
+ * encrypted (e.g. the encryption key file was lost), returns an empty string
+ * so that the UI shows fields as blank rather than displaying unusable
+ * ciphertext. If the value is plaintext (not yet migrated), returns it
+ * as-is for backward compatibility. Run ensureCredentialsEncrypted() during
+ * setup to migrate any plaintext values.
  *
  * @param string $value The encrypted value from system_settings
- * @return string The decrypted value, or original value if decryption fails
+ * @return string The decrypted value, empty string if key is lost, or original plaintext
  */
 function decryptCredential($value) {
     if (empty($value)) {
@@ -598,8 +600,16 @@ function decryptCredential($value) {
         }
     }
     
-    // Decryption failed — value may be plaintext (not yet migrated)
-    // Log a warning but still return the raw value to avoid breaking functionality
+    // Decryption failed — check if the value looks encrypted
+    if (function_exists('isValueEncrypted') && isValueEncrypted($value)) {
+        // Value is encrypted but we cannot decrypt it (key file likely lost).
+        // Return empty so the UI shows the field as blank and the user knows
+        // they need to re-enter the credential.
+        error_log("decryptCredential: Encrypted credential cannot be decrypted — encryption key may be missing. Credential must be re-entered.");
+        return '';
+    }
+    
+    // Value is plaintext (not yet migrated) — return as-is for backward compatibility
     error_log("decryptCredential: Failed to decrypt a credential value. Run setup to encrypt all credentials.");
     return $value;
 }

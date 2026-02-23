@@ -173,6 +173,9 @@ $is_demo_drills = false;
                             <button class="btn-icon" data-action="edit" data-id="<?php echo $drill['id']; ?>" data-modal="edit-drill-modal" title="Edit">
                                 <i class="fas fa-edit"></i>
                             </button>
+                            <button class="btn-icon btn-icon-danger" data-action="delete" data-id="<?php echo $drill['id']; ?>" title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </button>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -372,6 +375,12 @@ $is_demo_drills = false;
     background: rgba(107, 70, 193, 0.1);
     border-color: var(--primary);
     color: var(--primary);
+}
+
+.btn-icon-danger:hover {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: #EF4444;
+    color: #EF4444;
 }
 
 .empty-state {
@@ -917,6 +926,16 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
+    document.querySelectorAll('[data-action="delete"]').forEach(btn => {
+        const drillId = btn.getAttribute('data-id');
+        if (drillId) {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                deleteDrill(drillId);
+            });
+        }
+    });
+    
     // Render ice rink thumbnails for drills
     renderDrillThumbnails();
 });
@@ -947,6 +966,24 @@ function addDrillToPracticePlan(drillId) {
     
     // Redirect to practice plan creation page
     window.location.href = '?page=practice_create';
+}
+
+// Delete a drill with confirmation
+function deleteDrill(drillId) {
+    if (!confirm('Delete this drill? This cannot be undone.')) return;
+    var body = new URLSearchParams();
+    body.set('action', 'delete_drill');
+    body.set('drill_id', drillId);
+    body.set('csrf_token', typeof csrfToken !== 'undefined' ? csrfToken : (document.querySelector('input[name="csrf_token"]') ? document.querySelector('input[name="csrf_token"]').value : ''));
+    fetch('process_drills.php', { method: 'POST', body: body, credentials: 'same-origin' })
+        .then(function(r) {
+            if (r.ok || r.redirected) {
+                window.location.reload();
+            } else {
+                throw new Error('Server returned ' + r.status);
+            }
+        })
+        .catch(function(err) { alert('Delete failed: ' + err.message); });
 }
 
 // Render ice rink thumbnails for all drill cards using shared IceCanvasRenderer
