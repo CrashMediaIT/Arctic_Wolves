@@ -54,6 +54,23 @@ $coaches = decryptUserRows($coaches);
 // Get session types
 $session_types = $pdo->query("SELECT * FROM session_types ORDER BY name")->fetchAll();
 
+// Get the current user's existing bookings to check for duplicates
+$user_booked_sessions = [];
+$booked_stmt = $pdo->prepare("SELECT session_id FROM bookings WHERE user_id = ? AND status IN ('confirmed', 'waitlisted') AND payment_status IN ('pending', 'paid')");
+$booked_stmt->execute([$_SESSION['user_id']]);
+$user_booked_sessions = $booked_stmt->fetchAll(PDO::FETCH_COLUMN);
+
+// For parents, also check their managed athletes' bookings
+if (($user_role ?? '') === 'parent') {
+    $child_booked_stmt = $pdo->prepare("
+        SELECT DISTINCT bk.session_id FROM bookings bk
+        JOIN managed_athletes ma ON bk.user_id = ma.athlete_id
+        WHERE ma.parent_id = ? AND bk.status IN ('confirmed', 'waitlisted') AND bk.payment_status IN ('pending', 'paid')
+    ");
+    $child_booked_stmt->execute([$_SESSION['user_id']]);
+    $user_booked_sessions = array_unique(array_merge($user_booked_sessions, $child_booked_stmt->fetchAll(PDO::FETCH_COLUMN)));
+}
+
 // Get available sessions for booking - combine regular sessions and training session templates
 $available_sessions_query = "
     SELECT CONCAT('session_', s.id) as unique_id, s.id, s.title as session_type_name, s.description, 
@@ -67,7 +84,7 @@ $available_sessions_query = "
     LEFT JOIN users c ON s.coach_id = c.id
     LEFT JOIN session_types st ON s.session_type_id = st.id
     LEFT JOIN locations l ON s.location_id = l.id
-    LEFT JOIN bookings b ON b.session_id = s.id
+    LEFT JOIN bookings b ON b.session_id = s.id AND b.status IN ('confirmed', 'waitlisted')
     WHERE s.session_date >= CURDATE() 
       AND s.status = 'scheduled'
     GROUP BY s.id
@@ -156,6 +173,7 @@ $is_demo_sessions = false;
                     $spots_left = ($session['max_participants'] ?? 10) - ($session['registered_count'] ?? 0);
                     $is_almost_full = $spots_left > 0 && $spots_left <= 3;
                     $is_full = $spots_left <= 0 && !empty($session['max_participants']);
+                    $already_booked = in_array($session['id'], $user_booked_sessions);
                 ?>
                 <div class="session-list-card" data-session-id="<?= $session['id'] ?>" data-date="<?= date('Y-m-d', $session_datetime) ?>">
                     <div class="session-date-column">
@@ -180,7 +198,16 @@ $is_demo_sessions = false;
                         <?php endif; ?>
                     </div>
                     <div class="session-action-column">
-                        <?php if ($is_full): ?>
+                        <?php if ($already_booked): ?>
+                        <div class="spots-indicator">
+                            <span class="spots-number" style="color:#00ff88;"><i class="fas fa-check"></i></span>
+                            <span class="spots-text">registered</span>
+                        </div>
+                        <div class="session-price-tag">$<?= number_format($session['session_price'] ?? 0, 0) ?></div>
+                        <button class="btn-register" disabled style="background:rgba(0,255,136,0.1);color:#00ff88;cursor:default;opacity:0.8;">
+                            <i class="fas fa-check-circle"></i> Already Registered
+                        </button>
+                        <?php elseif ($is_full): ?>
                         <div class="spots-indicator almost-full">
                             <span class="spots-number" style="color:#EF4444;">0</span>
                             <span class="spots-text">spots left</span>

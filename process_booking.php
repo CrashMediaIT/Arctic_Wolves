@@ -83,14 +83,14 @@ if ($action === 'cancel_booking' || $action === 'cancel') {
             exit();
         }
         
-        // Check cancellation policy (e.g., must cancel 24 hours before)
+        // Check cancellation policy (sessions require 48 hours notice)
         $hours_until_session = ($session_date->getTimestamp() - $now->getTimestamp()) / 3600;
-        $min_cancellation_hours = 24; // Can be made configurable
+        $min_cancellation_hours = 48; // 48-hour cancellation policy for sessions
         
         if ($hours_until_session < $min_cancellation_hours) {
             // Allow cancellation but note that refund may not be available
             $refund_eligible = false;
-            $message = 'Booking cancelled. Note: Cancellations within 24 hours may not be eligible for refund.';
+            $message = 'Booking cancelled. Note: Cancellations within 48 hours of the session are not eligible for refund.';
         } else {
             $refund_eligible = true;
             $message = 'Booking cancelled successfully. You may request a refund if payment was made.';
@@ -399,6 +399,14 @@ $stmt = $pdo->prepare("SELECT * FROM sessions WHERE id = ?");
 $stmt->execute([$session_id]);
 $session = $stmt->fetch();
 if (!$session) { die("Session not found."); }
+
+// Check for duplicate booking — prevent re-ordering an already booked session
+$dup_check = $pdo->prepare("SELECT id FROM bookings WHERE session_id = ? AND user_id = ? AND status IN ('confirmed', 'waitlisted') AND payment_status IN ('pending', 'paid')");
+$dup_check->execute([$session_id, $user_id]);
+if ($dup_check->fetch()) {
+    header("Location: dashboard.php?page=sessions&error=already_booked&session_id=" . urlencode($session_id));
+    exit();
+}
 
 // Check capacity — if session is full, prevent booking
 if (!empty($session['max_participants'])) {
