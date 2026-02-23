@@ -10,6 +10,23 @@
 require_once __DIR__ . '/../cloud_config.php';
 
 /**
+ * Validate that a file path is safe (within uploads directory, no traversal)
+ * 
+ * @param string $path The path to validate
+ * @return bool True if path is safe
+ */
+function isValidImagePath($path) {
+    if (empty($path)) return false;
+    // Must start with uploads/ and not contain path traversal
+    if (strpos($path, 'uploads/') !== 0) return false;
+    if (strpos($path, '..') !== false) return false;
+    // Must have a valid image/video extension
+    $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+    $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'mov', 'avi', 'webm'];
+    return in_array($ext, $allowed);
+}
+
+/**
  * Resolve a profile image path, restoring from Nextcloud if needed.
  * Call this before displaying a profile image to ensure the local file exists.
  * 
@@ -19,6 +36,11 @@ require_once __DIR__ . '/../cloud_config.php';
  * @return string|null The resolved local path, or null if unavailable
  */
 function resolveProfileImage($pdo, $user_id, $local_path) {
+    // Validate path to prevent directory traversal
+    if (!empty($local_path) && !isValidImagePath($local_path)) {
+        return null;
+    }
+    
     // If local file exists, nothing to do
     if (!empty($local_path) && file_exists($local_path)) {
         return $local_path;
@@ -50,7 +72,12 @@ function resolveProfileImage($pdo, $user_id, $local_path) {
         // Determine local path to restore to
         if (empty($local_path)) {
             $ext = pathinfo($nextcloud_path, PATHINFO_EXTENSION) ?: 'jpg';
-            $local_path = "uploads/avatar_" . $user_id . "_restored." . $ext;
+            $local_path = "uploads/avatar_" . intval($user_id) . "_restored." . $ext;
+        }
+        
+        // Final safety check on restore path
+        if (!isValidImagePath($local_path)) {
+            return null;
         }
         
         $restored = restoreImageFromNextcloud($pdo, $nc_settings, $nextcloud_path, $local_path);
@@ -75,6 +102,11 @@ function resolveProfileImage($pdo, $user_id, $local_path) {
  * @return string|null The resolved local path, or null if unavailable
  */
 function resolveEvaluationMedia($pdo, $media_id, $local_path) {
+    // Validate path to prevent directory traversal
+    if (!empty($local_path) && !isValidImagePath($local_path)) {
+        return null;
+    }
+    
     // If local file exists, nothing to do
     if (!empty($local_path) && file_exists($local_path)) {
         return $local_path;
@@ -106,7 +138,12 @@ function resolveEvaluationMedia($pdo, $media_id, $local_path) {
         // Determine local path
         if (empty($local_path)) {
             $ext = pathinfo($nextcloud_path, PATHINFO_EXTENSION) ?: 'jpg';
-            $local_path = "uploads/evaluations/restored_" . $media_id . "." . $ext;
+            $local_path = "uploads/evaluations/restored_" . intval($media_id) . "." . $ext;
+        }
+        
+        // Final safety check on restore path
+        if (!isValidImagePath($local_path)) {
+            return null;
         }
         
         $restored = restoreImageFromNextcloud($pdo, $nc_settings, $nextcloud_path, $local_path);
