@@ -337,9 +337,40 @@ $is_staff = in_array($user_role, ['admin', 'coach', 'coach_plus', 'team_coach', 
                 ?>
 
                 <?php if ($is_already_purchased): ?>
+                    <?php
+                    // Get user_package_id for cancellation
+                    $up_id_stmt = $pdo->prepare("SELECT up.id FROM user_packages up WHERE up.package_id = ? AND up.user_id IN ($check_placeholders) AND up.payment_status = 'paid' LIMIT 1");
+                    $up_id_stmt->execute(array_merge([$pkg['id']], $check_user_ids));
+                    $user_pkg_id = $up_id_stmt->fetchColumn();
+                    
+                    // Determine cancellation eligibility
+                    $can_cancel = false;
+                    $cancel_note = '';
+                    if ($pkg['package_type'] === 'camp' && !empty($pkg['camp_start_date'])) {
+                        $days_until = (int)(new DateTime())->diff(new DateTime($pkg['camp_start_date']))->format('%r%a');
+                        $can_cancel = ($days_until >= 14);
+                        $cancel_note = $can_cancel 
+                            ? 'Cancellation available until ' . date('M j, Y', strtotime($pkg['camp_start_date'] . ' -14 days'))
+                            : 'Camp cancellation deadline has passed (14 days before start)';
+                    } elseif ($pkg['package_type'] === 'multi_week') {
+                        $can_cancel = true;
+                        $cancel_note = 'Remaining sessions beyond 48 hours will be refunded';
+                    }
+                    ?>
                     <button type="button" class="btn-register" disabled style="background:rgba(0,255,136,0.1);color:#00ff88;cursor:default;opacity:0.8;">
                         <i class="fas fa-check-circle"></i> Already Registered
                     </button>
+                    <?php if ($user_pkg_id): ?>
+                    <div style="margin-top:8px;font-size:12px;color:#94a3b8;">
+                        <i class="fas fa-info-circle"></i> <?php echo htmlspecialchars($cancel_note); ?>
+                    </div>
+                    <?php if ($can_cancel): ?>
+                    <button type="button" onclick="cancelPackageRegistration(<?php echo (int)$user_pkg_id; ?>, '<?php echo $pkg['package_type']; ?>')" 
+                            style="margin-top:8px;width:100%;background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.3);padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px;">
+                        <i class="fas fa-times-circle"></i> Cancel Registration
+                    </button>
+                    <?php endif; ?>
+                    <?php endif; ?>
                 <?php else: ?>
                 <form action="process_purchase_package.php" method="POST">
                     <input type="hidden" name="csrf_token" value="<?php echo generateCsrfToken(); ?>">
@@ -1114,6 +1145,34 @@ function renderCampCalendar() {
     }
     
     grid.innerHTML = html;
+}
+
+function cancelPackageRegistration(userPackageId, packageType) {
+    var policyMsg = '';
+    if (packageType === 'camp') {
+        policyMsg = 'Camp cancellation policy: Full refund for cancellations made 14+ days before camp start.\n\n';
+    } else if (packageType === 'multi_week') {
+        policyMsg = 'Program cancellation policy: Sessions within 48 hours are not refundable. Remaining sessions will be refunded.\n\n';
+    }
+    if (!confirm(policyMsg + 'Are you sure you want to cancel this registration?')) return;
+    
+    var csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
+    fetch('process_packages.php', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'action=user_cancel_package&user_package_id=' + userPackageId + '&csrf_token=' + encodeURIComponent(csrfToken)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            alert(data.message || 'Registration cancelled successfully.');
+            location.reload();
+        } else {
+            alert('Error: ' + (data.message || 'Failed to cancel registration'));
+        }
+    })
+    .catch(function() { alert('Failed to process cancellation'); });
 }
 
 function scrollToPackage(packageId) {
