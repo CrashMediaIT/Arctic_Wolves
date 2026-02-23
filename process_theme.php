@@ -7,6 +7,7 @@
 session_start();
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/security.php';
+require_once __DIR__ . '/cloud_config.php';
 require_once __DIR__ . '/lib/auditor.php';
 require_once __DIR__ . '/error_logger.php';
 
@@ -91,7 +92,28 @@ function handleFileUpload($file, $type = 'image') {
     $filepath = $upload_dir . $filename;
     
     if (move_uploaded_file($file['tmp_name'], $filepath)) {
-        return ['success' => true, 'url' => 'uploads/theme/' . $filename];
+        $local_url = 'uploads/theme/' . $filename;
+        
+        // Upload theme image to Nextcloud for persistent storage
+        global $pdo;
+        if ($pdo) {
+            try {
+                $nc_settings = getNextcloudSettings($pdo);
+                if (!empty($nc_settings['nextcloud_url'])) {
+                    if (!empty($nc_settings['nextcloud_password'])) {
+                        $decrypted = decryptPassword($nc_settings['nextcloud_password']);
+                        if (!empty($decrypted)) {
+                            $nc_settings['nextcloud_password'] = $decrypted;
+                        }
+                    }
+                    uploadImageToNextcloud($pdo, $nc_settings, $local_url, 'theme', $filename);
+                }
+            } catch (Exception $e) {
+                error_log("Nextcloud theme image upload failed: " . $e->getMessage());
+            }
+        }
+        
+        return ['success' => true, 'url' => $local_url];
     }
     
     return ['success' => false, 'message' => 'Failed to save file'];

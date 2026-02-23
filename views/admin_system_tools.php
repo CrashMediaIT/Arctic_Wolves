@@ -698,6 +698,15 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                                        value="<?php echo htmlspecialchars($settings['nextcloud_contracts_dir'] ?? '/accounting/contracts'); ?>"
                                        placeholder="/accounting/contracts">
                             </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4><i class="fas fa-image" style="color: #6366f1; margin-right: 8px;"></i>Images Directory</h4>
+                                    <p>Profile images and evaluation media storage path (persistent across updates)</p>
+                                </div>
+                                <input type="text" name="nextcloud_images_dir" class="form-input" 
+                                       value="<?php echo htmlspecialchars($settings['nextcloud_images_dir'] ?? '/Images'); ?>"
+                                       placeholder="/Images">
+                            </div>
                         </div>
                     </div>
                     
@@ -740,6 +749,11 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                                 <input type="checkbox" name="sync_contracts" 
                                        <?php echo ($settings['sync_contracts'] ?? true) ? 'checked' : ''; ?>>
                                 <span>Contract Documents</span>
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" name="sync_images" 
+                                       <?php echo ($settings['sync_images'] ?? true) ? 'checked' : ''; ?>>
+                                <span>Images (Profiles &amp; Evaluations)</span>
                             </label>
                         </div>
                     </div>

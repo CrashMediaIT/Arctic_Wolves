@@ -7,6 +7,7 @@
 session_start();
 require_once 'db_config.php';
 require_once 'security.php';
+require_once __DIR__ . '/cloud_config.php';
 require_once __DIR__ . '/lib/auditor.php';
 require_once __DIR__ . '/error_logger.php';
 
@@ -188,6 +189,27 @@ if ($action === 'save_drill' || $action === 'create') {
         }
         
         Auditor::log($pdo, $user_id, isset($_POST['drill_id']) && !empty($_POST['drill_id']) ? 'update' : 'create', 'drills', $drill_id, ['action' => 'drill_saved', 'title' => $title]);
+
+        // Upload drill video to Nextcloud for persistent storage
+        if (!empty($video_upload_path)) {
+            try {
+                $nc_settings = getNextcloudSettings($pdo);
+                if (!empty($nc_settings['nextcloud_url'])) {
+                    if (!empty($nc_settings['nextcloud_password'])) {
+                        $decrypted = decryptPassword($nc_settings['nextcloud_password']);
+                        if (!empty($decrypted)) {
+                            $nc_settings['nextcloud_password'] = $decrypted;
+                        }
+                    }
+                    $result = uploadImageToNextcloud($pdo, $nc_settings, $video_upload_path, 'drills/videos', $filename);
+                    if ($result['success']) {
+                        $pdo->prepare("UPDATE drills SET nextcloud_image_path = ? WHERE id = ?")->execute([$result['remote_path'], $drill_id]);
+                    }
+                }
+            } catch (Exception $e) {
+                error_log("Nextcloud drill video upload failed: " . $e->getMessage());
+            }
+        }
 
         header("Location: dashboard.php?page=drills&status=drill_saved");
         exit();
@@ -850,7 +872,28 @@ function downloadAndSaveImage($image_url, $user_id) {
     $filepath = $upload_dir . $filename;
     
     if (file_put_contents($filepath, $image_data)) {
-        return 'uploads/drills/' . $filename;
+        $local_path = 'uploads/drills/' . $filename;
+        
+        // Upload drill diagram image to Nextcloud for persistent storage
+        global $pdo;
+        if ($pdo) {
+            try {
+                $nc_settings = getNextcloudSettings($pdo);
+                if (!empty($nc_settings['nextcloud_url'])) {
+                    if (!empty($nc_settings['nextcloud_password'])) {
+                        $decrypted = decryptPassword($nc_settings['nextcloud_password']);
+                        if (!empty($decrypted)) {
+                            $nc_settings['nextcloud_password'] = $decrypted;
+                        }
+                    }
+                    $result = uploadImageToNextcloud($pdo, $nc_settings, $local_path, 'drills/diagrams', $filename);
+                }
+            } catch (Exception $e) {
+                error_log("Nextcloud drill diagram upload failed: " . $e->getMessage());
+            }
+        }
+        
+        return $local_path;
     }
     
     return '';

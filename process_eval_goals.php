@@ -7,6 +7,7 @@
 session_start();
 require 'db_config.php';
 require 'security.php';
+require_once __DIR__ . '/cloud_config.php';
 require_once __DIR__ . '/lib/auditor.php';
 require_once __DIR__ . '/error_logger.php';
 
@@ -472,7 +473,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     VALUES (?, ?, ?, ?, ?, NOW())
                 ");
                 $stmt->execute([$step_id, $user_id, $progress_note, $media_url, $media_type]);
-                Auditor::log($pdo, $user_id, 'create', 'goal_eval_progress', $pdo->lastInsertId(), ['action' => 'Added media to step', 'step_id' => $step_id]);
+                $progress_id = $pdo->lastInsertId();
+                Auditor::log($pdo, $user_id, 'create', 'goal_eval_progress', $progress_id, ['action' => 'Added media to step', 'step_id' => $step_id]);
+                
+                // Upload evaluation goal media to Nextcloud for persistent storage
+                if (!empty($media_url)) {
+                    try {
+                        $nc_settings = getNextcloudSettings($pdo);
+                        if (!empty($nc_settings['nextcloud_url'])) {
+                            if (!empty($nc_settings['nextcloud_password'])) {
+                                $decrypted = decryptPassword($nc_settings['nextcloud_password']);
+                                if (!empty($decrypted)) {
+                                    $nc_settings['nextcloud_password'] = $decrypted;
+                                }
+                            }
+                            $result = uploadImageToNextcloud($pdo, $nc_settings, $media_url, 'eval_goals/' . $step_id, $file_name);
+                            if ($result['success']) {
+                                $pdo->prepare("UPDATE goal_eval_progress SET nextcloud_path = ? WHERE id = ?")->execute([$result['remote_path'], $progress_id]);
+                            }
+                        }
+                    } catch (Exception $e) {
+                        error_log("Nextcloud eval goal media upload failed: " . $e->getMessage());
+                    }
+                }
                 
                 echo json_encode([
                     'success' => true,

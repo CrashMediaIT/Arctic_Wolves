@@ -4625,3 +4625,43 @@ ADD COLUMN IF NOT EXISTS `show_on_landing` TINYINT(1) DEFAULT 0 COMMENT 'Whether
 ALTER TABLE `user_packages`
 ADD COLUMN IF NOT EXISTS `stripe_session_id` VARCHAR(255) DEFAULT NULL COMMENT 'Stripe checkout session ID for payment tracking',
 ADD INDEX IF NOT EXISTS `idx_stripe_session` (`stripe_session_id`);
+
+-- Add nextcloud_path to users for persistent profile image storage
+ALTER TABLE `users`
+ADD COLUMN IF NOT EXISTS `nextcloud_image_path` VARCHAR(500) DEFAULT NULL COMMENT 'Nextcloud path for profile image persistence';
+
+-- Add nextcloud_path to evaluation_media for persistent media storage
+ALTER TABLE `evaluation_media`
+ADD COLUMN IF NOT EXISTS `nextcloud_path` VARCHAR(500) DEFAULT NULL COMMENT 'Nextcloud path for persistent media storage';
+
+-- Default Nextcloud images directory setting
+INSERT IGNORE INTO `system_settings` (`setting_key`, `setting_value`, `setting_type`, `description`) VALUES
+('nextcloud_images_dir', '/Images', 'text', 'Nextcloud directory for profile images and evaluation media');
+
+-- Add nextcloud_image_path to exercise_library for persistent exercise image storage
+ALTER TABLE `exercise_library`
+ADD COLUMN IF NOT EXISTS `nextcloud_image_path` VARCHAR(500) DEFAULT NULL COMMENT 'Nextcloud path for exercise image persistence';
+
+-- Add nextcloud_image_path to merchandise_products for persistent product image storage
+ALTER TABLE `merchandise_products`
+ADD COLUMN IF NOT EXISTS `nextcloud_image_path` VARCHAR(500) DEFAULT NULL COMMENT 'Nextcloud path for product image persistence';
+
+-- Add nextcloud_image_path to merchandise_categories for persistent category image storage
+ALTER TABLE `merchandise_categories`
+ADD COLUMN IF NOT EXISTS `nextcloud_image_path` VARCHAR(500) DEFAULT NULL COMMENT 'Nextcloud path for category image persistence';
+
+-- Add nextcloud_image_path to drills for persistent drill video/image storage
+ALTER TABLE `drills`
+ADD COLUMN IF NOT EXISTS `nextcloud_image_path` VARCHAR(500) DEFAULT NULL COMMENT 'Nextcloud path for drill media persistence';
+
+-- Add nextcloud_path to goal_eval_progress for persistent eval goal media storage
+ALTER TABLE `goal_eval_progress`
+ADD COLUMN IF NOT EXISTS `nextcloud_path` VARCHAR(500) DEFAULT NULL COMMENT 'Nextcloud path for eval goal media persistence';
+
+-- Add nextcloud_logo_path to teams for persistent team logo storage
+ALTER TABLE `teams`
+ADD COLUMN IF NOT EXISTS `nextcloud_logo_path` VARCHAR(500) DEFAULT NULL COMMENT 'Nextcloud path for team logo persistence';
+
+-- Add nextcloud_path to vr_video_sources for persistent gameplan video storage
+ALTER TABLE `vr_video_sources`
+ADD COLUMN IF NOT EXISTS `nextcloud_path` VARCHAR(500) DEFAULT NULL COMMENT 'Nextcloud path for gameplan video persistence';

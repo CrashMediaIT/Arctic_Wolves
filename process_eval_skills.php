@@ -7,6 +7,7 @@
 session_start();
 require 'db_config.php';
 require 'security.php';
+require_once __DIR__ . '/cloud_config.php';
 require_once __DIR__ . '/lib/auditor.php';
 require_once __DIR__ . '/error_logger.php';
 
@@ -305,11 +306,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     VALUES (?, ?, ?, ?, ?, NOW())
                 ");
                 $stmt->execute([$eval['evaluation_id'], $score_id, $filepath, $media_type, $user_id]);
-                Auditor::log($pdo, $user_id, 'create', 'evaluation_media', $pdo->lastInsertId(), ['action' => 'Uploaded evaluation media']);
+                $media_id = $pdo->lastInsertId();
+                Auditor::log($pdo, $user_id, 'create', 'evaluation_media', $media_id, ['action' => 'Uploaded evaluation media']);
+                
+                // Upload to Nextcloud for persistent storage
+                $nextcloud_path = null;
+                try {
+                    $nc_settings = getNextcloudSettings($pdo);
+                    if (!empty($nc_settings['nextcloud_url'])) {
+                        if (!empty($nc_settings['nextcloud_password'])) {
+                            $decrypted = decryptPassword($nc_settings['nextcloud_password']);
+                            if (!empty($decrypted)) {
+                                $nc_settings['nextcloud_password'] = $decrypted;
+                            }
+                        }
+                        $subfolder = 'evaluations/' . $eval['evaluation_id'];
+                        $result = uploadImageToNextcloud($pdo, $nc_settings, $filepath, $subfolder, $filename);
+                        if ($result['success']) {
+                            $nextcloud_path = $result['remote_path'];
+                            $pdo->prepare("UPDATE evaluation_media SET nextcloud_path = ? WHERE id = ?")->execute([$nextcloud_path, $media_id]);
+                        }
+                    }
+                } catch (Exception $e) {
+                    error_log("Nextcloud evaluation media upload failed: " . $e->getMessage());
+                }
                 
                 echo json_encode([
                     'success' => true,
-                    'media_id' => $pdo->lastInsertId(),
+                    'media_id' => $media_id,
                     'media_url' => $filepath,
                     'media_type' => $media_type,
                     'message' => 'Media uploaded successfully'

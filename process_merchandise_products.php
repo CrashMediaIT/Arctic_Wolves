@@ -3,6 +3,7 @@
 session_start();
 require 'db_config.php';
 require 'security.php';
+require_once __DIR__ . '/cloud_config.php';
 require_once __DIR__ . '/lib/file_upload_validator.php';
 require_once __DIR__ . '/lib/auditor.php';
 require_once __DIR__ . '/error_logger.php';
@@ -297,6 +298,28 @@ try {
             $pdo->commit();
             Auditor::log($pdo, $user_id, 'CREATE', 'merchandise_products', $productId, ['action' => 'Created merchandise product', 'name' => $name]);
             
+            // Upload product image to Nextcloud for persistent storage
+            if (!empty($imageUrl)) {
+                try {
+                    $nc_settings = getNextcloudSettings($pdo);
+                    if (!empty($nc_settings['nextcloud_url'])) {
+                        if (!empty($nc_settings['nextcloud_password'])) {
+                            $decrypted = decryptPassword($nc_settings['nextcloud_password']);
+                            if (!empty($decrypted)) {
+                                $nc_settings['nextcloud_password'] = $decrypted;
+                            }
+                        }
+                        $nc_filename = basename($imageUrl);
+                        $result = uploadImageToNextcloud($pdo, $nc_settings, $imageUrl, 'merchandise/products', $nc_filename);
+                        if ($result['success']) {
+                            $pdo->prepare("UPDATE merchandise_products SET nextcloud_image_path = ? WHERE id = ?")->execute([$result['remote_path'], $productId]);
+                        }
+                    }
+                } catch (Exception $e) {
+                    error_log("Nextcloud product image upload failed: " . $e->getMessage());
+                }
+            }
+            
             if ($isAjax) {
                 header('Content-Type: application/json');
                 echo json_encode(['success' => true, 'message' => 'Product created successfully!', 'id' => $productId]);
@@ -365,6 +388,28 @@ try {
             
             $pdo->commit();
             Auditor::log($pdo, $user_id, 'UPDATE', 'merchandise_products', $id, ['action' => 'Updated merchandise product', 'name' => $name]);
+            
+            // Upload updated product image to Nextcloud for persistent storage
+            if ($updateImage && !empty($imageUrl)) {
+                try {
+                    $nc_settings = getNextcloudSettings($pdo);
+                    if (!empty($nc_settings['nextcloud_url'])) {
+                        if (!empty($nc_settings['nextcloud_password'])) {
+                            $decrypted = decryptPassword($nc_settings['nextcloud_password']);
+                            if (!empty($decrypted)) {
+                                $nc_settings['nextcloud_password'] = $decrypted;
+                            }
+                        }
+                        $nc_filename = basename($imageUrl);
+                        $result = uploadImageToNextcloud($pdo, $nc_settings, $imageUrl, 'merchandise/products', $nc_filename);
+                        if ($result['success']) {
+                            $pdo->prepare("UPDATE merchandise_products SET nextcloud_image_path = ? WHERE id = ?")->execute([$result['remote_path'], $id]);
+                        }
+                    }
+                } catch (Exception $e) {
+                    error_log("Nextcloud product image upload failed: " . $e->getMessage());
+                }
+            }
             
             if ($isAjax) {
                 header('Content-Type: application/json');
