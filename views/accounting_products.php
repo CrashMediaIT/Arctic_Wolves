@@ -407,6 +407,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                             <div class="product-actions">
                                 <button type="button" class="btn-action" data-action="edit" data-id="<?= $session['id'] ?>" data-type="session" data-modal="edit-session-modal" title="Edit"><i class="fas fa-edit"></i></button>
                                 <button class="btn-action" data-action="manage-dates" data-id="<?= $session['id'] ?>" data-type="session" data-modal="manage-dates-modal" title="Manage Dates"><i class="fas fa-calendar-plus"></i></button>
+                                <button class="btn-action" data-action="view-session-registrations" data-id="<?= $session['id'] ?>" title="View Registered Users"><i class="fas fa-users"></i></button>
                                 <button class="btn-action <?= $isActive ? '' : 'active' ?>" data-action="toggle-status" data-id="<?= $session['id'] ?>" data-type="session" title="<?= $isActive ? 'Disable' : 'Enable' ?>"><i class="fas fa-toggle-<?= $isActive ? 'on' : 'off' ?>"></i></button>
                             </div>
                         </div>
@@ -705,18 +706,29 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                                         <h5 style="margin: 0 0 8px; color: var(--text-white); font-size: 13px;"><i class="fas fa-users"></i> Registered Users (<?= count($programRegistrations[$prog['id']]) ?>)</h5>
                                         <table class="data-table" style="margin: 0; font-size: 13px;">
                                             <thead>
-                                                <tr><th>Name</th><th>Email</th><th>Registered On</th></tr>
+                                                <tr><th>Name</th><th>Email</th><th>Registered On</th><th>Actions</th></tr>
                                             </thead>
                                             <tbody>
-                                                <?php foreach ($programRegistrations[$prog['id']] as $regUser): ?>
+                                                <?php
+                                                $prog_all_emails = [];
+                                                foreach ($programRegistrations[$prog['id']] as $regUser):
+                                                    $reg_email = htmlspecialchars($regUser['email'] ?? '');
+                                                    if (!empty($reg_email)) $prog_all_emails[] = $reg_email;
+                                                ?>
                                                 <tr>
                                                     <td><?= htmlspecialchars(($regUser['first_name'] ?? '') . ' ' . ($regUser['last_name'] ?? '')) ?></td>
-                                                    <td><?= htmlspecialchars($regUser['email'] ?? '') ?></td>
+                                                    <td><?= $reg_email ?></td>
                                                     <td><?= !empty($regUser['created_at']) ? date('M j, Y g:i A', strtotime($regUser['created_at'])) : 'N/A' ?></td>
+                                                    <td><?php if (!empty($reg_email)): ?><a href="mailto:<?= $reg_email ?>" title="Email" style="color:var(--primary);"><i class="fas fa-envelope"></i></a><?php endif; ?></td>
                                                 </tr>
                                                 <?php endforeach; ?>
                                             </tbody>
                                         </table>
+                                        <?php if (!empty($prog_all_emails)): ?>
+                                        <div style="margin-top: 10px; text-align: center;">
+                                            <a href="mailto:<?= implode(',', $prog_all_emails) ?>" class="btn btn-primary" style="display:inline-block;text-decoration:none;padding:8px 20px;font-size:13px;"><i class="fas fa-envelope"></i> Email All Registered Users</a>
+                                        </div>
+                                        <?php endif; ?>
                                     </div>
                                 </td>
                             </tr>
@@ -2131,6 +2143,19 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     </div>
 </div>
 
+<!-- Session Registrations Modal -->
+<div id="session-registrations-modal" class="modal">
+    <div class="modal-content" style="max-width:600px;">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-users"></i> Registered Users</h2>
+            <button type="button" class="modal-close" onclick="closeModal('session-registrations-modal')">&times;</button>
+        </div>
+        <div class="modal-body" id="session-reg-modal-body">
+            <p style="text-align:center;color:var(--text-dim);"><i class="fas fa-spinner fa-spin"></i> Loading...</p>
+        </div>
+    </div>
+</div>
+
 <script>
 // Toggle registration list visibility in the programs table
 function toggleRegistrationList(packageId) {
@@ -2138,6 +2163,48 @@ function toggleRegistrationList(packageId) {
     if (row) {
         row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
     }
+}
+
+// View registered users for a session template
+function viewSessionRegistrations(sessionId) {
+    var modal = document.getElementById('session-registrations-modal');
+    var body = document.getElementById('session-reg-modal-body');
+    if (!modal || !body) return;
+    body.innerHTML = '<p style="text-align:center;color:var(--text-dim);"><i class="fas fa-spinner fa-spin"></i> Loading...</p>';
+    modal.classList.add('active');
+    modal.style.display = 'flex';
+
+    fetch('process_packages.php?action=get_session_registrations&session_template_id=' + encodeURIComponent(sessionId), { credentials: 'same-origin' })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (!data.success) { body.innerHTML = '<p style="color:var(--danger);">Error loading registrations.</p>'; return; }
+        var users = data.users || [];
+        if (users.length === 0) {
+            body.innerHTML = '<p style="color:var(--text-dim);text-align:center;padding:20px;">No registered users for this session.</p>';
+            return;
+        }
+        var html = '<h4 style="margin:0 0 12px;color:var(--text-white);"><i class="fas fa-check-circle" style="color:var(--success);"></i> Registered (' + users.length + ')</h4>';
+        html += '<table class="data-table" style="font-size:13px;"><thead><tr><th>Name</th><th>Email</th><th>Session Date</th></tr></thead><tbody>';
+        var allEmails = [];
+        users.forEach(function(u) {
+            html += '<tr><td>' + escapeHtml(u.name) + '</td><td>' + escapeHtml(u.email) + '</td><td>' + escapeHtml(u.session_date || 'N/A') + '</td></tr>';
+            if (u.email && allEmails.indexOf(u.email) === -1) allEmails.push(u.email);
+        });
+        html += '</tbody></table>';
+        if (allEmails.length > 0) {
+            html += '<div style="margin-top:12px;text-align:center;"><a href="mailto:' + allEmails.join(',') + '" class="btn btn-primary" style="display:inline-block;text-decoration:none;padding:8px 20px;font-size:13px;"><i class="fas fa-envelope"></i> Email All Registered Users</a></div>';
+        }
+        body.innerHTML = html;
+    })
+    .catch(function() {
+        body.innerHTML = '<p style="color:var(--danger);">Failed to load registrations.</p>';
+    });
+}
+
+function escapeHtml(str) {
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(str || ''));
+    return div.innerHTML;
 }
 
 // Session edit data (from PHP)
@@ -2200,6 +2267,15 @@ document.addEventListener('DOMContentLoaded', function() {
             var url = new URL(window.location);
             url.searchParams.set('tab', tabName);
             window.history.replaceState({}, '', url);
+        });
+    });
+    
+    // Handle view-session-registrations buttons
+    document.querySelectorAll('[data-action="view-session-registrations"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var sessionId = this.getAttribute('data-id');
+            viewSessionRegistrations(sessionId);
         });
     });
     

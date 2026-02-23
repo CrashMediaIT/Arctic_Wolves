@@ -281,7 +281,6 @@ $allowed_pages = [
     
     // Packages and Payments
     'packages'                => 'views/packages.php',
-    'programs_camps'          => 'views/programs_camps.php',
     'payment_history'         => 'views/payment_history.php',
     'session_payment'         => 'views/session_payment.php',
     'refunds'                 => 'views/refunds.php',
