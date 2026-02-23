@@ -37,14 +37,19 @@ test.describe('Theme Logo Upload - Form Validation Fix', () => {
 
   test('toggle functions are called on page load to set initial disabled state', () => {
     const content = readFile('views/admin_system_tools.php');
-    // After function definitions, both toggles should be called
+    // Both toggle functions should be called on DOMContentLoaded
     // to set the correct initial disabled state based on the current logo_method
-    const themeToggleDefEnd = content.indexOf('toggleCenterIceLogoInput()');
-    const initCallIndex = content.indexOf('toggleThemeLogoInput();', themeToggleDefEnd);
-    expect(initCallIndex).toBeGreaterThan(-1);
+    expect(content).toContain('toggleThemeLogoInput();');
+    expect(content).toContain('toggleCenterIceLogoInput();');
 
-    const centerIceInitCall = content.indexOf('toggleCenterIceLogoInput();', initCallIndex);
-    expect(centerIceInitCall).toBeGreaterThan(-1);
+    // Verify the calls are inside a DOMContentLoaded handler
+    // by checking they appear after the function definitions
+    const themeToggleDef = content.indexOf('function toggleThemeLogoInput()');
+    const centerIceDef = content.indexOf('function toggleCenterIceLogoInput()');
+    const themeCall = content.indexOf('toggleThemeLogoInput();', centerIceDef);
+    const centerIceCall = content.indexOf('toggleCenterIceLogoInput();', themeCall);
+    expect(themeCall).toBeGreaterThan(centerIceDef);
+    expect(centerIceCall).toBeGreaterThan(themeCall);
   });
 
   test('theme form has enctype multipart/form-data for file uploads', () => {

@@ -3325,8 +3325,10 @@ function toggleCenterIceLogoInput() {
 }
 
 // Set initial disabled state for hidden URL inputs on page load
-toggleThemeLogoInput();
-toggleCenterIceLogoInput();
+document.addEventListener('DOMContentLoaded', function() {
+    toggleThemeLogoInput();
+    toggleCenterIceLogoInput();
+});
 
 function removeCenterIceLogo() {
     if (!confirm('Are you sure you want to remove the center ice logo?')) return;
