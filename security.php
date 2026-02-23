@@ -524,6 +524,46 @@ function checkPOSIPAccess($pdo, $user_role) {
 }
 
 /**
+ * Write a key file with restricted permissions.
+ * Sets umask temporarily to ensure the file is created with 0600.
+ *
+ * @param string $path File path
+ * @param string $data Key material to write
+ */
+function writeKeyFile($path, $data) {
+    $old_umask = umask(0177); // new files: owner rw only (0600)
+    file_put_contents($path, $data);
+    umask($old_umask);
+    chmod($path, 0600);
+}
+
+/**
+ * Read a stored encrypted setting from the database and decrypt it.
+ * Useful when test handlers need to fall back to DB-stored credentials
+ * that are not provided via the form POST.
+ *
+ * @param PDO $pdo Database connection
+ * @param string $key The setting_key in system_settings
+ * @return string Decrypted value, or empty string if not found/decryption fails
+ */
+function getDecryptedSetting($pdo, $key) {
+    try {
+        $stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = ? LIMIT 1");
+        $stmt->execute([$key]);
+        $encrypted = $stmt->fetchColumn();
+        if (!empty($encrypted)) {
+            $decrypted = decryptPassword($encrypted);
+            if (!empty($decrypted)) {
+                return $decrypted;
+            }
+        }
+    } catch (PDOException $e) {
+        error_log("getDecryptedSetting($key): " . $e->getMessage());
+    }
+    return '';
+}
+
+/**
  * Load the credential encryption key material.
  *
  * Resolution order:
@@ -557,8 +597,7 @@ function loadCredentialKey() {
             $db_key = $stmt->fetchColumn();
             if (!empty($db_key)) {
                 // Restore the local file for fast future reads
-                file_put_contents($key_file, $db_key);
-                chmod($key_file, 0600);
+                writeKeyFile($key_file, $db_key);
                 return $db_key;
             }
         } catch (PDOException $e) {
@@ -569,8 +608,7 @@ function loadCredentialKey() {
 
     // 3. Generate a new key and persist to both file and database
     $key = bin2hex(random_bytes(32));
-    file_put_contents($key_file, $key);
-    chmod($key_file, 0600);
+    writeKeyFile($key_file, $key);
 
     if (isset($pdo) && $pdo instanceof PDO) {
         try {
@@ -633,8 +671,7 @@ function decryptPassword($encrypted_data) {
             if (!empty($db_key)) {
                 $key = $db_key;
                 // Restore the local file
-                file_put_contents($key_file, $key);
-                chmod($key_file, 0600);
+                writeKeyFile($key_file, $key);
             }
         } catch (PDOException $e) {
             error_log("decryptPassword: DB key lookup failed: " . $e->getMessage());

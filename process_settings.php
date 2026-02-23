@@ -579,15 +579,7 @@ try {
             
             // If no API key provided in form, use stored encrypted key from database
             if (empty($api_key)) {
-                $stored_stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'google_maps_api_key'");
-                $stored_stmt->execute();
-                $encrypted_key = $stored_stmt->fetchColumn();
-                if (!empty($encrypted_key)) {
-                    $decrypted = decryptPassword($encrypted_key);
-                    if (!empty($decrypted)) {
-                        $api_key = $decrypted;
-                    }
-                }
+                $api_key = getDecryptedSetting($pdo, 'google_maps_api_key');
             }
             
             if (empty($api_key)) {
@@ -977,15 +969,7 @@ try {
             
             // If no API key provided in form, use stored encrypted key from database
             if (empty($docuseal_api_key)) {
-                $stored_stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'docuseal_api_key'");
-                $stored_stmt->execute();
-                $encrypted_key = $stored_stmt->fetchColumn();
-                if (!empty($encrypted_key)) {
-                    $decrypted = decryptPassword($encrypted_key);
-                    if (!empty($decrypted)) {
-                        $docuseal_api_key = $decrypted;
-                    }
-                }
+                $docuseal_api_key = getDecryptedSetting($pdo, 'docuseal_api_key');
             }
             
             // If no URL provided in form, use stored URL from database
@@ -1069,28 +1053,12 @@ try {
             
             // If no API key provided in form, use stored encrypted key from database
             if (empty($stallion_api_key)) {
-                $stored_stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'stallion_api_key'");
-                $stored_stmt->execute();
-                $encrypted_key = $stored_stmt->fetchColumn();
-                if (!empty($encrypted_key)) {
-                    $decrypted = decryptPassword($encrypted_key);
-                    if (!empty($decrypted)) {
-                        $stallion_api_key = $decrypted;
-                    }
-                }
+                $stallion_api_key = getDecryptedSetting($pdo, 'stallion_api_key');
             }
             
             // If no API secret provided in form, use stored encrypted secret from database
             if (empty($stallion_api_secret)) {
-                $stored_stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'stallion_api_secret'");
-                $stored_stmt->execute();
-                $encrypted_secret = $stored_stmt->fetchColumn();
-                if (!empty($encrypted_secret)) {
-                    $decrypted = decryptPassword($encrypted_secret);
-                    if (!empty($decrypted)) {
-                        $stallion_api_secret = $decrypted;
-                    }
-                }
+                $stallion_api_secret = getDecryptedSetting($pdo, 'stallion_api_secret');
             }
             
             // If no URL provided in form, use stored URL from database
