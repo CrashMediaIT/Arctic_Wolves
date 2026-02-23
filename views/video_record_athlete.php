@@ -8,20 +8,19 @@
 // Get the current user's assigned coach
 $assigned_coach_id = null;
 $assigned_coach_name = '';
-if ($user_role === 'athlete' || $user_role === 'parent') {
-    $coach_stmt = $pdo->prepare("SELECT assigned_coach_id FROM users WHERE id = ?");
-    $coach_stmt->execute([$user_id]);
-    $coach_row = $coach_stmt->fetch();
-    $assigned_coach_id = $coach_row['assigned_coach_id'] ?? null;
-    
-    if ($assigned_coach_id) {
-        $coach_name_stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
-        $coach_name_stmt->execute([$assigned_coach_id]);
-        $coach_row_data = $coach_name_stmt->fetch(PDO::FETCH_ASSOC);
-        if ($coach_row_data) {
-            $coach_row_data = decryptUserRow($coach_row_data);
-            $assigned_coach_name = trim(($coach_row_data['first_name'] ?? '') . ' ' . ($coach_row_data['last_name'] ?? ''));
-        }
+// Check assigned_coach_id for all user roles, not just athletes/parents
+$coach_stmt = $pdo->prepare("SELECT assigned_coach_id FROM users WHERE id = ?");
+$coach_stmt->execute([$user_id]);
+$coach_row = $coach_stmt->fetch();
+$assigned_coach_id = $coach_row['assigned_coach_id'] ?? null;
+
+if ($assigned_coach_id) {
+    $coach_name_stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
+    $coach_name_stmt->execute([$assigned_coach_id]);
+    $coach_row_data = $coach_name_stmt->fetch(PDO::FETCH_ASSOC);
+    if ($coach_row_data) {
+        $coach_row_data = decryptUserRow($coach_row_data);
+        $assigned_coach_name = trim(($coach_row_data['first_name'] ?? '') . ' ' . ($coach_row_data['last_name'] ?? ''));
     }
 }
 

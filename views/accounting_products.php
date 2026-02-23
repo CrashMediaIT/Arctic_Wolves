@@ -683,7 +683,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                                 <td>
                                     <?php $regCount = (int)($prog['registered_count'] ?? 0); ?>
                                     <?php if ($regCount > 0): ?>
-                                        <button type="button" class="btn-action" onclick="toggleRegistrationList(<?= $prog['id'] ?>)" title="View registered users" style="color: var(--primary);">
+                                        <button type="button" class="btn-action" data-action="view-program-registrations" data-id="<?= $prog['id'] ?>" data-name="<?= htmlspecialchars($prog['name']) ?>" title="View registered users" style="color: var(--primary);">
                                             <i class="fas fa-users"></i> <?= $regCount ?>
                                         </button>
                                     <?php else: ?>
@@ -698,41 +698,6 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                                     </div>
                                 </td>
                             </tr>
-                            <?php if (!empty($programRegistrations[$prog['id']])): ?>
-                            <tr class="registration-list-row" id="reg-list-<?= $prog['id'] ?>" style="display: none;">
-                                <!-- colspan matches the 8 columns: Name, Type, Dates, Price, Age Group, Registered, Status, Actions -->
-                                <td colspan="8" style="padding: 0;">
-                                    <div style="background: var(--bg-main); padding: 12px 20px; border-top: 1px solid var(--border);">
-                                        <h5 style="margin: 0 0 8px; color: var(--text-white); font-size: 13px;"><i class="fas fa-users"></i> Registered Users (<?= count($programRegistrations[$prog['id']]) ?>)</h5>
-                                        <table class="data-table" style="margin: 0; font-size: 13px;">
-                                            <thead>
-                                                <tr><th>Name</th><th>Email</th><th>Registered On</th><th>Actions</th></tr>
-                                            </thead>
-                                            <tbody>
-                                                <?php
-                                                $prog_all_emails = [];
-                                                foreach ($programRegistrations[$prog['id']] as $regUser):
-                                                    $reg_email = htmlspecialchars($regUser['email'] ?? '');
-                                                    if (!empty($reg_email)) $prog_all_emails[] = $reg_email;
-                                                ?>
-                                                <tr>
-                                                    <td><?= htmlspecialchars(($regUser['first_name'] ?? '') . ' ' . ($regUser['last_name'] ?? '')) ?></td>
-                                                    <td><?= $reg_email ?></td>
-                                                    <td><?= !empty($regUser['created_at']) ? date('M j, Y g:i A', strtotime($regUser['created_at'])) : 'N/A' ?></td>
-                                                    <td><?php if (!empty($reg_email)): ?><a href="mailto:<?= $reg_email ?>" title="Email" style="color:var(--primary);"><i class="fas fa-envelope"></i></a><?php endif; ?></td>
-                                                </tr>
-                                                <?php endforeach; ?>
-                                            </tbody>
-                                        </table>
-                                        <?php if (!empty($prog_all_emails)): ?>
-                                        <div style="margin-top: 10px; text-align: center;">
-                                            <a href="mailto:<?= implode(',', $prog_all_emails) ?>" class="btn btn-primary" style="display:inline-block;text-decoration:none;padding:8px 20px;font-size:13px;"><i class="fas fa-envelope"></i> Email All Registered Users</a>
-                                        </div>
-                                        <?php endif; ?>
-                                    </div>
-                                </td>
-                            </tr>
-                            <?php endif; ?>
                             <?php endforeach; ?>
                         </tbody>
                     </table>
@@ -2143,11 +2108,11 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     </div>
 </div>
 
-<!-- Session Registrations Modal -->
+<!-- Registrations Modal (for Sessions and Programs/Camps) -->
 <div id="session-registrations-modal" class="modal">
-    <div class="modal-content" style="max-width:600px;">
+    <div class="modal-content" style="max-width:650px;">
         <div class="modal-header">
-            <h2 class="modal-title"><i class="fas fa-users"></i> Registered Users</h2>
+            <h2 class="modal-title" id="reg-modal-title"><i class="fas fa-users"></i> Registered Users</h2>
             <button type="button" class="modal-close" onclick="closeModal('session-registrations-modal')">&times;</button>
         </div>
         <div class="modal-body" id="session-reg-modal-body">
@@ -2157,19 +2122,93 @@ $activeTab = $_GET['tab'] ?? 'sessions';
 </div>
 
 <script>
-// Toggle registration list visibility in the programs table
-function toggleRegistrationList(packageId) {
-    var row = document.getElementById('reg-list-' + packageId);
-    if (row) {
-        row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
-    }
+// View registered users for a program/camp package (modal + AJAX)
+function viewProgramRegistrations(packageId, packageName) {
+    var modal = document.getElementById('session-registrations-modal');
+    var title = document.getElementById('reg-modal-title');
+    var body = document.getElementById('session-reg-modal-body');
+    if (!modal || !body) return;
+    title.innerHTML = '<i class="fas fa-users"></i> ' + escapeHtml(packageName || 'Registered Users');
+    body.innerHTML = '<p style="text-align:center;color:var(--text-dim);"><i class="fas fa-spinner fa-spin"></i> Loading...</p>';
+    modal.classList.add('active');
+    modal.style.display = 'flex';
+
+    fetch('process_packages.php?action=get_registrations&package_id=' + encodeURIComponent(packageId), { credentials: 'same-origin' })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (!data.success) { body.innerHTML = '<p style="color:var(--danger);">Error loading registrations.</p>'; return; }
+        var users = data.registered || [];
+        if (users.length === 0) {
+            body.innerHTML = '<p style="color:var(--text-dim);text-align:center;padding:20px;">No registered users for this program.</p>';
+            return;
+        }
+        var html = '<h4 style="margin:0 0 12px;color:var(--text-white);"><i class="fas fa-check-circle" style="color:var(--success);"></i> Registered (' + users.length + ')</h4>';
+        html += '<div style="max-height:250px;overflow-y:auto;margin-bottom:16px;"><table class="data-table" style="font-size:13px;"><thead><tr><th>Name</th><th>Email</th><th>Purchased</th></tr></thead><tbody>';
+        var allEmails = [];
+        users.forEach(function(u) {
+            html += '<tr><td>' + escapeHtml(u.name) + '</td><td>' + escapeHtml(u.email) + '</td><td>' + escapeHtml(u.purchase_date || 'N/A') + '</td></tr>';
+            if (u.email && allEmails.indexOf(u.email) === -1) allEmails.push(u.email);
+        });
+        html += '</tbody></table></div>';
+        // Email compose form
+        if (allEmails.length > 0) {
+            html += '<div style="border-top:1px solid var(--border);padding-top:16px;margin-top:8px;">';
+            html += '<h4 style="margin:0 0 12px;color:var(--text-white);font-size:14px;"><i class="fas fa-envelope" style="color:var(--primary);"></i> Email All Registered Users</h4>';
+            html += '<div style="margin-bottom:10px;"><label style="display:block;font-size:12px;color:var(--text-dim);margin-bottom:4px;font-weight:600;text-transform:uppercase;">Subject</label>';
+            html += '<input type="text" id="reg-email-subject" class="form-input" placeholder="Enter email subject..." style="width:100%;box-sizing:border-box;padding:10px 14px;background:var(--bg-main);border:1px solid var(--border);border-radius:6px;color:#fff;font-size:14px;"></div>';
+            html += '<div style="margin-bottom:10px;"><label style="display:block;font-size:12px;color:var(--text-dim);margin-bottom:4px;font-weight:600;text-transform:uppercase;">Message</label>';
+            html += '<textarea id="reg-email-message" class="form-textarea" rows="4" placeholder="Enter your message to registered users..." style="width:100%;box-sizing:border-box;padding:10px 14px;background:var(--bg-main);border:1px solid var(--border);border-radius:6px;color:#fff;font-size:14px;resize:vertical;"></textarea></div>';
+            html += '<div style="display:flex;gap:10px;justify-content:flex-end;">';
+            html += '<button type="button" class="btn btn-primary" onclick="sendRegisteredUsersEmail(' + packageId + ')" style="padding:10px 20px;font-size:13px;"><i class="fas fa-paper-plane"></i> Send Email</button>';
+            html += '</div>';
+            html += '<div id="reg-email-status"></div>';
+            html += '</div>';
+        }
+        body.innerHTML = html;
+    })
+    .catch(function() {
+        body.innerHTML = '<p style="color:var(--danger);">Failed to load registrations.</p>';
+    });
+}
+
+// Send email to all registered users of a package
+function sendRegisteredUsersEmail(packageId) {
+    var subject = document.getElementById('reg-email-subject');
+    var message = document.getElementById('reg-email-message');
+    var statusDiv = document.getElementById('reg-email-status');
+    if (!subject || !message) return;
+    if (!subject.value.trim()) { statusDiv.innerHTML = '<p style="color:var(--danger);font-size:13px;margin-top:8px;"><i class="fas fa-exclamation-circle"></i> Please enter a subject.</p>'; return; }
+    if (!message.value.trim()) { statusDiv.innerHTML = '<p style="color:var(--danger);font-size:13px;margin-top:8px;"><i class="fas fa-exclamation-circle"></i> Please enter a message.</p>'; return; }
+    statusDiv.innerHTML = '<p style="color:var(--text-dim);font-size:13px;margin-top:8px;"><i class="fas fa-spinner fa-spin"></i> Sending emails...</p>';
+
+    fetch('process_packages.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+        credentials: 'same-origin',
+        body: 'action=email_registered_users&package_id=' + encodeURIComponent(packageId) + '&subject=' + encodeURIComponent(subject.value.trim()) + '&message=' + encodeURIComponent(message.value.trim()) + '&csrf_token=' + encodeURIComponent(csrfToken)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            statusDiv.innerHTML = '<p style="color:var(--success);font-size:13px;margin-top:8px;"><i class="fas fa-check-circle"></i> ' + escapeHtml(data.message || 'Emails sent successfully!') + '</p>';
+            subject.value = '';
+            message.value = '';
+        } else {
+            statusDiv.innerHTML = '<p style="color:var(--danger);font-size:13px;margin-top:8px;"><i class="fas fa-exclamation-circle"></i> ' + escapeHtml(data.message || 'Failed to send emails.') + '</p>';
+        }
+    })
+    .catch(function() {
+        statusDiv.innerHTML = '<p style="color:var(--danger);font-size:13px;margin-top:8px;"><i class="fas fa-exclamation-circle"></i> An error occurred. Please try again.</p>';
+    });
 }
 
 // View registered users for a session template
 function viewSessionRegistrations(sessionId) {
     var modal = document.getElementById('session-registrations-modal');
+    var title = document.getElementById('reg-modal-title');
     var body = document.getElementById('session-reg-modal-body');
     if (!modal || !body) return;
+    if (title) title.innerHTML = '<i class="fas fa-users"></i> Registered Users';
     body.innerHTML = '<p style="text-align:center;color:var(--text-dim);"><i class="fas fa-spinner fa-spin"></i> Loading...</p>';
     modal.classList.add('active');
     modal.style.display = 'flex';
@@ -2276,6 +2315,17 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             var sessionId = this.getAttribute('data-id');
             viewSessionRegistrations(sessionId);
+        });
+    });
+    
+    // Handle view-program-registrations buttons (Programs & Camps)
+    document.querySelectorAll('[data-action="view-program-registrations"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var packageId = this.getAttribute('data-id');
+            var packageName = this.getAttribute('data-name') || 'Registered Users';
+            viewProgramRegistrations(packageId, packageName);
         });
     });
     

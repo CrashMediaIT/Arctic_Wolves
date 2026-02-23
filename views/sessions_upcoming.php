@@ -549,7 +549,13 @@ $is_demo_data = false;
                             <span><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($session['location_name']) ?></span>
                         <?php endif; ?>
                     </div>
-                    <?php if (!empty($session['session_type_name']) || !empty($session['practice_plan_name']) || in_array($session['source_type'] ?? '', ['camp_schedule', 'program_schedule'])): ?>
+                    <?php
+                    // Determine role badges early so we can include them in the condition
+                    $is_session_coach = ($user_role !== 'athlete' && isset($session['coach_id']) && (int)$session['coach_id'] === (int)$user_id);
+                    $is_session_athlete = ($user_role === 'athlete' || (!empty($session['booking_id']) && ($session['booking_status'] ?? '') !== 'cancelled'));
+                    $has_role_badge = $is_session_coach || $is_session_athlete;
+                    ?>
+                    <?php if (!empty($session['session_type_name']) || !empty($session['practice_plan_name']) || in_array($session['source_type'] ?? '', ['camp_schedule', 'program_schedule']) || $has_role_badge): ?>
                     <div class="session-tags">
                         <?php if (($session['source_type'] ?? '') === 'camp_schedule'): ?>
                             <span class="tag skill-tag" style="background:rgba(16,185,129,0.15);color:#10b981;"><i class="fas fa-campground"></i> Camp</span>
@@ -567,6 +573,11 @@ $is_demo_data = false;
                         <?php if (!empty($session['practice_plan_name'])): ?>
                             <span class="tag plan-tag"><i class="fas fa-clipboard-list"></i> <?= htmlspecialchars($session['practice_plan_name']) ?></span>
                         <?php endif; ?>
+                        <?php if ($is_session_coach): ?>
+                            <span class="tag" style="background:rgba(59,130,246,0.15);color:#3b82f6;"><i class="fas fa-whistle"></i> Coach</span>
+                        <?php elseif ($is_session_athlete): ?>
+                            <span class="tag" style="background:rgba(168,85,247,0.15);color:#a855f7;"><i class="fas fa-running"></i> Athlete</span>
+                        <?php endif; ?>
                     </div>
                     <?php endif; ?>
                     <?php if (!empty($session['description'])): ?>
@@ -580,7 +591,7 @@ $is_demo_data = false;
                     <?php if (!$show_history && strtotime($session['session_date']) > strtotime('+48 hours') && !empty($session['booking_id']) && $session['booking_status'] !== 'cancelled'): ?>
                         <button class="btn-danger" data-action="cancel-session" data-session-id="<?= $session['id'] ?>" data-booking-id="<?= $session['booking_id'] ?>"><i class="fas fa-times"></i> Cancel</button>
                     <?php elseif (!$show_history && in_array($session['source_type'] ?? '', ['camp_schedule', 'program_schedule'])): ?>
-                        <span class="btn-secondary" style="background:rgba(0,255,136,0.1);color:#00ff88;cursor:default;opacity:0.8;pointer-events:none;"><i class="fas fa-check-circle"></i> Registered</span>
+                        <span class="tag skill-tag" style="background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);padding:6px 14px;font-size:12px;font-weight:600;border-radius:6px;"><i class="fas fa-check-circle"></i> Registered</span>
                     <?php endif; ?>
                 </div>
             </div>

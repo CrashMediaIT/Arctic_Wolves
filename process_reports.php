@@ -265,7 +265,7 @@ function fetchReportData($report_type, $parameters) {
             $athlete_ids = $parameters['athlete_ids'] ?? [];
             if (empty($athlete_ids)) {
                 // Get all coach's athletes
-                $stmt = $pdo->prepare("SELECT id FROM users WHERE assigned_coach_id = ? AND role = 'athlete'");
+                $stmt = $pdo->prepare("SELECT id FROM users WHERE assigned_coach_id = ?");
                 $stmt->execute([$user_id]);
                 $athlete_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
             }

@@ -989,6 +989,61 @@ try {
             echo json_encode(['success' => true, 'message' => 'Package status updated']);
             exit();
             
+        case 'email_registered_users':
+            $package_id = intval($_POST['package_id'] ?? 0);
+            $email_subject = htmlspecialchars(trim($_POST['subject'] ?? ''), ENT_QUOTES, 'UTF-8');
+            $email_message = htmlspecialchars(trim($_POST['message'] ?? ''), ENT_QUOTES, 'UTF-8');
+            
+            if ($package_id <= 0) throw new Exception('Invalid package ID');
+            if (empty($email_subject)) throw new Exception('Email subject is required');
+            if (empty($email_message)) throw new Exception('Email message is required');
+            
+            // Get package name
+            $pkg_stmt = $pdo->prepare("SELECT name FROM packages WHERE id = ?");
+            $pkg_stmt->execute([$package_id]);
+            $pkg = $pkg_stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$pkg) throw new Exception('Package not found');
+            
+            // Get registered users with emails
+            $reg_stmt = $pdo->prepare("
+                SELECT u.first_name, u.last_name, u.email
+                FROM user_packages up
+                JOIN users u ON up.user_id = u.id
+                WHERE up.package_id = ? AND up.payment_status = 'paid'
+            ");
+            $reg_stmt->execute([$package_id]);
+            $recipients = $reg_stmt->fetchAll(PDO::FETCH_ASSOC);
+            $recipients = decryptUserRows($recipients);
+            
+            if (empty($recipients)) throw new Exception('No registered users with email addresses found');
+            
+            require_once __DIR__ . '/mailer.php';
+            
+            $sent = 0;
+            $failed = 0;
+            foreach ($recipients as $r) {
+                $email = $r['email'] ?? '';
+                if (empty($email)) { $failed++; continue; }
+                $name = trim(($r['first_name'] ?? '') . ' ' . ($r['last_name'] ?? '')) ?: 'Athlete';
+                try {
+                    sendEmail($email, 'notification', [
+                        'title' => $email_subject,
+                        'message' => $email_message,
+                        'name' => $name
+                    ]);
+                    $sent++;
+                } catch (Exception $mailErr) {
+                    error_log("Email to $email failed: " . $mailErr->getMessage());
+                    $failed++;
+                }
+            }
+            
+            Auditor::log($pdo, $user_id, 'email', 'packages', $package_id, ['action' => 'email_registered_users', 'sent' => $sent, 'failed' => $failed, 'subject' => $email_subject]);
+            
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => "Emails sent: $sent" . ($failed > 0 ? ", failed: $failed" : '')]);
+            exit();
+            
         default:
             throw new Exception('Invalid action');
     }

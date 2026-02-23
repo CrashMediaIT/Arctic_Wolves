@@ -46,7 +46,7 @@ if ($isAnyCoach) {
     $athletes_query = "
         SELECT DISTINCT u.id, u.first_name, u.last_name, u.email
         FROM users u
-        WHERE u.assigned_coach_id = ? AND u.is_active = 1 AND u.role = 'athlete'
+        WHERE u.assigned_coach_id = ? AND u.is_active = 1
         ORDER BY u.last_name, u.first_name
     ";
     $athletes_stmt = $pdo->prepare($athletes_query);

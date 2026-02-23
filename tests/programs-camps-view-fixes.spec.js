@@ -112,21 +112,21 @@ test.describe('Products View - Registered Users', () => {
   test('accounting_products.php has Registered column in programs table', () => {
     const content = readFile('views/accounting_products.php');
     expect(content).toContain('<th>Registered</th>');
-    expect(content).toContain('toggleRegistrationList');
+    expect(content).toContain('view-program-registrations');
   });
 
-  test('accounting_products.php has expandable registration list rows with email functionality', () => {
+  test('accounting_products.php has program registrations modal with email form', () => {
     const content = readFile('views/accounting_products.php');
-    expect(content).toContain('registration-list-row');
-    expect(content).toContain('reg-list-');
+    expect(content).toContain('session-registrations-modal');
     expect(content).toContain('Registered Users');
-    expect(content).toContain('Email All Registered Users');
-    expect(content).toContain('mailto:');
+    expect(content).toContain('viewProgramRegistrations');
+    expect(content).toContain('sendRegisteredUsersEmail');
+    expect(content).toContain('email_registered_users');
   });
 
-  test('accounting_products.php has toggleRegistrationList JavaScript function', () => {
+  test('accounting_products.php has viewProgramRegistrations JavaScript function', () => {
     const content = readFile('views/accounting_products.php');
-    expect(content).toContain('function toggleRegistrationList(packageId)');
+    expect(content).toContain('function viewProgramRegistrations(packageId, packageName)');
   });
 
   test('accounting_products.php has view registered users button for sessions', () => {
