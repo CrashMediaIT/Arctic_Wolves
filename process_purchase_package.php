@@ -81,6 +81,19 @@ try {
     
     $num_purchases = count($athlete_ids);
     
+    // Check for duplicate purchases — prevent re-ordering the same package
+    $dup_placeholders = implode(',', array_fill(0, count($athlete_ids), '?'));
+    $dup_check_stmt = $pdo->prepare("
+        SELECT user_id FROM user_packages 
+        WHERE package_id = ? AND user_id IN ($dup_placeholders) AND payment_status IN ('pending', 'paid')
+    ");
+    $dup_check_stmt->execute(array_merge([$package_id], $athlete_ids));
+    $already_purchased = $dup_check_stmt->fetchAll(PDO::FETCH_COLUMN);
+    if (!empty($already_purchased)) {
+        header("Location: dashboard.php?page=programs_camps&error=already_purchased&package_id=" . urlencode($package_id));
+        exit();
+    }
+    
     // Calculate pricing
     $subtotal = $package['price'] * $num_purchases;
     

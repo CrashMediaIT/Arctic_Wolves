@@ -13,14 +13,330 @@ setSecurityHeaders();
 $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
 
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
-    if ($isAjax) {
-        header('Content-Type: application/json');
+    // Allow staff roles for specific registration management actions
+    $staff_roles = ['admin', 'coach', 'coach_plus', 'team_coach', 'front_desk_staff'];
+    $staff_actions = ['get_registrations', 'cancel_registration'];
+    // Allow any logged-in user to cancel their own package registration
+    $user_actions = ['user_cancel_package'];
+    $current_action = $_GET['action'] ?? $_POST['action'] ?? '';
+    
+    if (in_array($_SESSION['user_role'] ?? '', $staff_roles) && in_array($current_action, $staff_actions)) {
+        // Allow staff access for registration management
+    } elseif (isset($_SESSION['user_id']) && in_array($current_action, $user_actions)) {
+        // Allow any logged-in user for self-service cancellation (ownership verified later)
+    } else {
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Admin access required']);
+            exit();
+        }
         http_response_code(403);
-        echo json_encode(['success' => false, 'message' => 'Admin access required']);
+        die('Access denied.');
+    }
+}
+
+// Handle GET request for retrieving registered users for a package (AJAX - Staff)
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'get_registrations') {
+    header('Content-Type: application/json');
+    $package_id = intval($_GET['package_id'] ?? 0);
+    
+    if ($package_id <= 0) {
+        echo json_encode(['success' => false, 'message' => 'Invalid package ID']);
         exit();
     }
-    http_response_code(403);
-    die('Access denied.');
+    
+    try {
+        // Get registered users (paid)
+        $reg_stmt = $pdo->prepare("
+            SELECT up.id as user_package_id, up.user_id, up.amount_paid, up.purchase_date,
+                   u.first_name, u.last_name, u.email
+            FROM user_packages up
+            JOIN users u ON up.user_id = u.id
+            WHERE up.package_id = ? AND up.payment_status = 'paid'
+            ORDER BY up.purchase_date DESC
+        ");
+        $reg_stmt->execute([$package_id]);
+        $registered = $reg_stmt->fetchAll(PDO::FETCH_ASSOC);
+        $registered = decryptUserRows($registered);
+        
+        $registered_result = array_map(function($u) {
+            return [
+                'user_package_id' => (int)$u['user_package_id'],
+                'user_id' => (int)$u['user_id'],
+                'name' => ($u['first_name'] ?? '') . ' ' . ($u['last_name'] ?? ''),
+                'email' => $u['email'] ?? '',
+                'amount_paid' => $u['amount_paid'],
+                'purchase_date' => $u['purchase_date']
+            ];
+        }, $registered);
+        
+        // Get waitlisted users (from bookings on linked sessions)
+        $wait_stmt = $pdo->prepare("
+            SELECT DISTINCT u.id as user_id, u.first_name, u.last_name, u.email
+            FROM bookings b
+            JOIN package_sessions ps ON b.session_id = ps.session_id
+            JOIN users u ON b.user_id = u.id
+            WHERE ps.package_id = ? AND b.status = 'waitlisted'
+        ");
+        $wait_stmt->execute([$package_id]);
+        $waitlisted = $wait_stmt->fetchAll(PDO::FETCH_ASSOC);
+        $waitlisted = decryptUserRows($waitlisted);
+        
+        $waitlisted_result = array_map(function($u) {
+            return [
+                'user_id' => (int)$u['user_id'],
+                'name' => ($u['first_name'] ?? '') . ' ' . ($u['last_name'] ?? ''),
+                'email' => $u['email'] ?? ''
+            ];
+        }, $waitlisted);
+        
+        echo json_encode(['success' => true, 'registered' => $registered_result, 'waitlisted' => $waitlisted_result]);
+    } catch (PDOException $e) {
+        error_log("Registration fetch error: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Failed to load registrations']);
+    }
+    exit();
+}
+
+// Handle POST for cancelling a registration with auto-refund (Staff)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'cancel_registration') {
+    header('Content-Type: application/json');
+    checkCsrfToken();
+    
+    $user_package_id = intval($_POST['user_package_id'] ?? 0);
+    
+    if ($user_package_id <= 0) {
+        echo json_encode(['success' => false, 'message' => 'Invalid registration ID']);
+        exit();
+    }
+    
+    try {
+        // Get the user_package details
+        $up_stmt = $pdo->prepare("SELECT * FROM user_packages WHERE id = ? AND payment_status = 'paid'");
+        $up_stmt->execute([$user_package_id]);
+        $user_package = $up_stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$user_package) {
+            echo json_encode(['success' => false, 'message' => 'Registration not found or already cancelled']);
+            exit();
+        }
+        
+        $pdo->beginTransaction();
+        
+        // Update user_packages to refunded
+        $pdo->prepare("UPDATE user_packages SET payment_status = 'refunded' WHERE id = ?")->execute([$user_package_id]);
+        
+        // Cancel all related bookings
+        $pdo->prepare("
+            UPDATE bookings SET status = 'cancelled', payment_status = 'refunded'
+            WHERE user_id = ? AND stripe_session_id = ? AND status = 'confirmed'
+        ")->execute([$user_package['user_id'], $user_package['stripe_session_id']]);
+        
+        // Create refund record
+        $refund_amount = $user_package['amount_paid'] ?? 0;
+        $pdo->prepare("
+            INSERT INTO credits_refunds (user_id, transaction_type, amount, reason, status, processed_by, processed_at)
+            VALUES (?, 'refund', ?, 'Staff cancelled registration', 'completed', ?, NOW())
+        ")->execute([$user_package['user_id'], $refund_amount, $_SESSION['user_id']]);
+        
+        // Process Stripe refund if applicable
+        if (!empty($user_package['stripe_session_id']) && $refund_amount > 0) {
+            try {
+                if (file_exists(__DIR__ . '/vendor/autoload.php')) { require_once __DIR__ . '/vendor/autoload.php'; }
+                elseif (file_exists(__DIR__ . '/stripe-php/init.php')) { require_once __DIR__ . '/stripe-php/init.php'; }
+                
+                $settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+                $stripe_secret = $settings['stripe_secret_key'] ?? '';
+                if (function_exists('decryptCredential')) { $stripe_secret = decryptCredential($stripe_secret); }
+                \Stripe\Stripe::setApiKey($stripe_secret);
+                
+                $checkout = \Stripe\Checkout\Session::retrieve($user_package['stripe_session_id']);
+                if (!empty($checkout->payment_intent)) {
+                    \Stripe\Refund::create([
+                        'payment_intent' => $checkout->payment_intent,
+                        'amount' => intval($refund_amount * 100)
+                    ]);
+                }
+            } catch (Exception $stripeErr) {
+                error_log("Stripe refund error for user_package $user_package_id: " . $stripeErr->getMessage());
+            }
+        }
+        
+        $pdo->commit();
+        
+        Auditor::log($pdo, $_SESSION['user_id'], 'update', 'user_packages', $user_package_id, [
+            'action' => 'staff_cancel_registration',
+            'user_id' => $user_package['user_id'],
+            'refund_amount' => $refund_amount
+        ]);
+        
+        echo json_encode(['success' => true, 'message' => 'Registration cancelled and refund initiated']);
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        error_log("Cancel registration error: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Failed to cancel registration']);
+    }
+    exit();
+}
+
+// Handle POST for user self-service cancellation with refund policy enforcement
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'user_cancel_package') {
+    header('Content-Type: application/json');
+    checkCsrfToken();
+    
+    $user_package_id = intval($_POST['user_package_id'] ?? 0);
+    $cancel_user_id = $_SESSION['user_id'];
+    
+    if ($user_package_id <= 0) {
+        echo json_encode(['success' => false, 'message' => 'Invalid registration ID']);
+        exit();
+    }
+    
+    try {
+        // Get the user_package details with package info
+        $up_stmt = $pdo->prepare("
+            SELECT up.*, p.package_type, p.name as package_name, p.camp_start_date, p.camp_end_date, p.price
+            FROM user_packages up
+            JOIN packages p ON up.package_id = p.id
+            WHERE up.id = ? AND up.payment_status = 'paid'
+        ");
+        $up_stmt->execute([$user_package_id]);
+        $user_package = $up_stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$user_package) {
+            echo json_encode(['success' => false, 'message' => 'Registration not found or already cancelled']);
+            exit();
+        }
+        
+        // Verify ownership (user cancelling their own or their child's registration)
+        $is_own = ($user_package['user_id'] == $cancel_user_id);
+        $is_parent = false;
+        if (!$is_own) {
+            $parent_check = $pdo->prepare("SELECT 1 FROM managed_athletes WHERE parent_id = ? AND athlete_id = ?");
+            $parent_check->execute([$cancel_user_id, $user_package['user_id']]);
+            $is_parent = (bool)$parent_check->fetch();
+        }
+        
+        if (!$is_own && !$is_parent) {
+            echo json_encode(['success' => false, 'message' => 'You do not have permission to cancel this registration']);
+            exit();
+        }
+        
+        $now = new DateTime();
+        $refund_amount = 0;
+        $policy_message = '';
+        
+        if ($user_package['package_type'] === 'camp') {
+            // CAMP CANCELLATION POLICY: Must cancel 14 days before camp starts
+            $camp_start = new DateTime($user_package['camp_start_date']);
+            $diff = $now->diff($camp_start);
+            $days_until_camp = $diff->days * ($diff->invert ? -1 : 1);
+            
+            if ($days_until_camp < 14) {
+                $msg = ($days_until_camp < 0) 
+                    ? 'This camp has already started. Cancellations are no longer available.'
+                    : 'Camp cancellations must be made at least 14 days before the camp start date (' . $camp_start->format('M j, Y') . '). You are ' . $days_until_camp . ' day(s) from the start.';
+                echo json_encode(['success' => false, 'message' => $msg]);
+                exit();
+            }
+            $refund_amount = $user_package['amount_paid'] ?? 0;
+            $policy_message = 'Camp registration cancelled. Full refund will be processed.';
+            
+        } elseif ($user_package['package_type'] === 'multi_week') {
+            // PROGRAM CANCELLATION POLICY: Refund remaining sessions; no refund for sessions <48hrs away
+            $sessions_stmt = $pdo->prepare("
+                SELECT mpd.session_date FROM multiweek_program_dates mpd
+                WHERE mpd.package_id = ?
+                ORDER BY mpd.session_date
+            ");
+            $sessions_stmt->execute([$user_package['package_id']]);
+            $program_dates = $sessions_stmt->fetchAll(PDO::FETCH_COLUMN);
+            
+            $total_sessions = count($program_dates);
+            $refundable_sessions = 0;
+            $cutoff = (clone $now)->modify('+48 hours');
+            
+            foreach ($program_dates as $session_date) {
+                $sd = new DateTime($session_date);
+                if ($sd > $cutoff) {
+                    $refundable_sessions++;
+                }
+            }
+            
+            if ($total_sessions > 0 && $refundable_sessions > 0) {
+                $per_session = ($user_package['amount_paid'] ?? 0) / $total_sessions;
+                $refund_amount = round($per_session * $refundable_sessions, 2);
+            }
+            
+            $non_refundable = $total_sessions - $refundable_sessions;
+            $policy_message = "Program cancelled. Refund for $refundable_sessions of $total_sessions sessions ($" . number_format($refund_amount, 2) . ").";
+            if ($non_refundable > 0) {
+                $policy_message .= " $non_refundable session(s) within 48 hours are not eligible for refund.";
+            }
+        } else {
+            // Default: full refund for regular packages
+            $refund_amount = $user_package['amount_paid'] ?? 0;
+            $policy_message = 'Registration cancelled. Refund will be processed.';
+        }
+        
+        $pdo->beginTransaction();
+        
+        // Update user_packages to refunded
+        $pdo->prepare("UPDATE user_packages SET payment_status = 'refunded' WHERE id = ?")->execute([$user_package_id]);
+        
+        // Cancel all related bookings
+        $pdo->prepare("
+            UPDATE bookings SET status = 'cancelled', payment_status = 'refunded'
+            WHERE user_id = ? AND stripe_session_id = ? AND status = 'confirmed'
+        ")->execute([$user_package['user_id'], $user_package['stripe_session_id']]);
+        
+        // Create refund record
+        if ($refund_amount > 0) {
+            $pdo->prepare("
+                INSERT INTO credits_refunds (user_id, transaction_type, amount, reason, status, processed_by, processed_at)
+                VALUES (?, 'refund', ?, ?, 'completed', ?, NOW())
+            ")->execute([$user_package['user_id'], $refund_amount, 'Self-service cancellation: ' . $user_package['package_name'], $cancel_user_id]);
+            
+            // Process Stripe refund if applicable
+            if (!empty($user_package['stripe_session_id'])) {
+                try {
+                    if (file_exists(__DIR__ . '/vendor/autoload.php')) { require_once __DIR__ . '/vendor/autoload.php'; }
+                    elseif (file_exists(__DIR__ . '/stripe-php/init.php')) { require_once __DIR__ . '/stripe-php/init.php'; }
+                    
+                    $settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+                    $stripe_secret = $settings['stripe_secret_key'] ?? '';
+                    if (function_exists('decryptCredential')) { $stripe_secret = decryptCredential($stripe_secret); }
+                    \Stripe\Stripe::setApiKey($stripe_secret);
+                    
+                    $checkout = \Stripe\Checkout\Session::retrieve($user_package['stripe_session_id']);
+                    if (!empty($checkout->payment_intent)) {
+                        \Stripe\Refund::create([
+                            'payment_intent' => $checkout->payment_intent,
+                            'amount' => intval($refund_amount * 100)
+                        ]);
+                    }
+                } catch (Exception $stripeErr) {
+                    error_log("Stripe refund error for user_package $user_package_id: " . $stripeErr->getMessage());
+                }
+            }
+        }
+        
+        $pdo->commit();
+        
+        Auditor::log($pdo, $cancel_user_id, 'update', 'user_packages', $user_package_id, [
+            'action' => 'user_cancel_package',
+            'package_type' => $user_package['package_type'],
+            'refund_amount' => $refund_amount
+        ]);
+        
+        echo json_encode(['success' => true, 'message' => $policy_message]);
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        error_log("User cancel package error: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Failed to process cancellation']);
+    }
+    exit();
 }
 
 // Handle GET request for retrieving package sessions (AJAX)

@@ -74,12 +74,13 @@ try {
                             }
 
                             // Create bookings for each linked session
+                            $per_session_amount = count($linked_session_ids) > 0 ? round($amount_per_athlete / count($linked_session_ids), 2) : 0;
                             foreach ($linked_session_ids as $session_id) {
                                 $bk_stmt = $pdo->prepare("
                                     INSERT INTO bookings (session_id, user_id, stripe_session_id, amount_paid, status, payment_status)
-                                    VALUES (?, ?, ?, 0, 'confirmed', 'paid')
+                                    VALUES (?, ?, ?, ?, 'confirmed', 'paid')
                                 ");
-                                $bk_stmt->execute([intval($session_id), $athlete_id, $stripe_sid]);
+                                $bk_stmt->execute([intval($session_id), $athlete_id, $stripe_sid, $per_session_amount]);
                             }
                         }
 

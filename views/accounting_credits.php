@@ -355,24 +355,11 @@ try {
             <div class="modal-body">
                 <div class="form-group">
                     <label class="form-label">Client *</label>
-                    <select name="user_id" class="form-input" required id="credit-user-select">
-                        <option value="">Select Client</option>
-                        <?php
-                        // Fetch users for dropdown
-                        try {
-                            $userStmt = $pdo->query("SELECT id, first_name, last_name, email FROM users WHERE role IN ('athlete', 'parent') ORDER BY first_name, last_name");
-                            $modalUsers = $userStmt->fetchAll(PDO::FETCH_ASSOC);
-                            $modalUsers = decryptUserRows($modalUsers);
-                            foreach ($modalUsers as $user) {
-                                echo '<option value="' . $user['id'] . '">' . 
-                                     htmlspecialchars($user['first_name'] . ' ' . $user['last_name']) . 
-                                     ' (' . htmlspecialchars($user['email']) . ')</option>';
-                            }
-                        } catch (PDOException $e) {
-                            error_log("User fetch error: " . $e->getMessage());
-                        }
-                        ?>
-                    </select>
+                    <input type="hidden" name="user_id" id="credit-user-id" required>
+                    <div style="position:relative;">
+                        <input type="text" id="credit-user-search" class="form-input" placeholder="Search by name or email..." autocomplete="off" required>
+                        <div id="credit-user-results" style="display:none;position:absolute;top:100%;left:0;right:0;background:#0d1116;border:1px solid #334155;border-top:none;border-radius:0 0 8px 8px;max-height:200px;overflow-y:auto;z-index:1000;"></div>
+                    </div>
                 </div>
                 
                 <div id="purchase-history" style="display: none; margin-bottom: 20px;">
@@ -531,58 +518,132 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // User purchase history loading
-    const userSelect = document.getElementById('credit-user-select');
-    const purchaseHistory = document.getElementById('purchase-history');
-    const purchaseList = document.getElementById('purchase-list');
+    // User typeahead search for credit/refund modal
+    var searchInput = document.getElementById('credit-user-search');
+    var hiddenInput = document.getElementById('credit-user-id');
+    var resultsDiv = document.getElementById('credit-user-results');
+    var purchaseHistory = document.getElementById('purchase-history');
+    var purchaseList = document.getElementById('purchase-list');
+    var searchTimeout = null;
     
-    if (userSelect) {
-        userSelect.addEventListener('change', function() {
-            if (this.value) {
-                purchaseHistory.style.display = 'block';
-                purchaseList.innerHTML = '<p style="color: var(--text-dim); font-size: 13px;"><i class="fas fa-spinner fa-spin"></i> Loading purchase history...</p>';
-                
-                // Fetch purchase history via AJAX
-                fetch('process_refunds.php?action=get_purchases&user_id=' + this.value)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success && data.purchases && data.purchases.length > 0) {
-                            // Clear and build content safely
-                            purchaseList.innerHTML = '';
-                            var container = document.createElement('div');
-                            container.style.cssText = 'display: flex; flex-direction: column; gap: 8px;';
-                            
-                            data.purchases.forEach(function(purchase) {
-                                var item = document.createElement('div');
-                                item.style.cssText = 'padding: 8px; background: var(--bg-card); border-radius: 4px; border: 1px solid var(--border); font-size: 13px;';
-                                
-                                var desc = document.createElement('strong');
-                                desc.textContent = purchase.description;
-                                item.appendChild(desc);
-                                
-                                var price = document.createTextNode(' - $' + purchase.amount);
-                                item.appendChild(price);
-                                
-                                var dateSpan = document.createElement('span');
-                                dateSpan.style.cssText = 'color: var(--text-dim); margin-left: 8px;';
-                                dateSpan.textContent = purchase.date;
-                                item.appendChild(dateSpan);
-                                
-                                container.appendChild(item);
-                            });
-                            purchaseList.appendChild(container);
-                        } else {
-                            purchaseList.innerHTML = '<p style="color: var(--text-dim); font-size: 13px;">No recent purchases found</p>';
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error fetching purchases:', error);
-                        purchaseList.innerHTML = '<p style="color: var(--error); font-size: 13px;">Error loading purchase history</p>';
-                    });
-            } else {
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            var query = this.value.trim();
+            hiddenInput.value = '';
+            
+            if (searchTimeout) clearTimeout(searchTimeout);
+            
+            if (query.length < 1) {
+                resultsDiv.style.display = 'none';
                 purchaseHistory.style.display = 'none';
+                return;
+            }
+            
+            searchTimeout = setTimeout(function() {
+                fetch('ajax_search_users.php?q=' + encodeURIComponent(query) + '&limit=15')
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        if (!data.success || !data.results || data.results.length === 0) {
+                            resultsDiv.innerHTML = '<div style="padding:10px 14px;color:#64748b;font-size:13px;">No users found</div>';
+                            resultsDiv.style.display = 'block';
+                            return;
+                        }
+                        resultsDiv.innerHTML = '';
+                        data.results.forEach(function(user) {
+                            var item = document.createElement('div');
+                            item.style.cssText = 'padding:10px 14px;cursor:pointer;border-bottom:1px solid #1e293b;font-size:13px;';
+                            item.onmouseenter = function() { this.style.background = '#1e293b'; };
+                            item.onmouseleave = function() { this.style.background = 'transparent'; };
+                            
+                            var nameSpan = document.createElement('strong');
+                            nameSpan.style.color = '#e2e8f0';
+                            nameSpan.textContent = user.name;
+                            item.appendChild(nameSpan);
+                            
+                            var emailSpan = document.createElement('span');
+                            emailSpan.style.cssText = 'color:#64748b;margin-left:8px;';
+                            emailSpan.textContent = user.email;
+                            item.appendChild(emailSpan);
+                            
+                            if (user.role) {
+                                var roleSpan = document.createElement('span');
+                                roleSpan.style.cssText = 'color:#818cf8;margin-left:8px;font-size:11px;background:rgba(99,102,241,0.15);padding:2px 6px;border-radius:4px;';
+                                roleSpan.textContent = user.role;
+                                item.appendChild(roleSpan);
+                            }
+                            
+                            item.onclick = function() {
+                                hiddenInput.value = user.id;
+                                searchInput.value = user.name + ' (' + user.email + ')';
+                                resultsDiv.style.display = 'none';
+                                loadPurchaseHistory(user.id);
+                            };
+                            resultsDiv.appendChild(item);
+                        });
+                        resultsDiv.style.display = 'block';
+                    })
+                    .catch(function() {
+                        resultsDiv.innerHTML = '<div style="padding:10px 14px;color:#ef4444;font-size:13px;">Search failed</div>';
+                        resultsDiv.style.display = 'block';
+                    });
+            }, 300);
+        });
+        
+        // Close results on click outside
+        document.addEventListener('click', function(e) {
+            if (!searchInput.contains(e.target) && !resultsDiv.contains(e.target)) {
+                resultsDiv.style.display = 'none';
             }
         });
+        
+        // Prevent form submission if no user selected
+        searchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !hiddenInput.value) {
+                e.preventDefault();
+            }
+        });
+    }
+    
+    function loadPurchaseHistory(userId) {
+        if (!purchaseHistory || !purchaseList) return;
+        purchaseHistory.style.display = 'block';
+        purchaseList.innerHTML = '<p style="color: var(--text-dim); font-size: 13px;"><i class="fas fa-spinner fa-spin"></i> Loading purchase history...</p>';
+        
+        fetch('process_refunds.php?action=get_purchases&user_id=' + userId)
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (data.success && data.purchases && data.purchases.length > 0) {
+                    purchaseList.innerHTML = '';
+                    var container = document.createElement('div');
+                    container.style.cssText = 'display: flex; flex-direction: column; gap: 8px;';
+                    
+                    data.purchases.forEach(function(purchase) {
+                        var item = document.createElement('div');
+                        item.style.cssText = 'padding: 8px; background: var(--bg-card); border-radius: 4px; border: 1px solid var(--border); font-size: 13px;';
+                        
+                        var desc = document.createElement('strong');
+                        desc.textContent = purchase.description;
+                        item.appendChild(desc);
+                        
+                        var price = document.createTextNode(' - $' + purchase.amount);
+                        item.appendChild(price);
+                        
+                        var dateSpan = document.createElement('span');
+                        dateSpan.style.cssText = 'color: var(--text-dim); margin-left: 8px;';
+                        dateSpan.textContent = purchase.date;
+                        item.appendChild(dateSpan);
+                        
+                        container.appendChild(item);
+                    });
+                    purchaseList.appendChild(container);
+                } else {
+                    purchaseList.innerHTML = '<p style="color: var(--text-dim); font-size: 13px;">No recent purchases found</p>';
+                }
+            })
+            .catch(function(error) {
+                console.error('Error fetching purchases:', error);
+                purchaseList.innerHTML = '<p style="color: var(--error); font-size: 13px;">Error loading purchase history</p>';
+            });
     }
 });
 
@@ -592,6 +653,11 @@ function closeModal(modalId) {
         modal.classList.remove('active');
         var form = modal.querySelector('form');
         if (form) form.reset();
+        // Clear typeahead state
+        var hiddenInput = document.getElementById('credit-user-id');
+        if (hiddenInput) hiddenInput.value = '';
+        var resultsDiv = document.getElementById('credit-user-results');
+        if (resultsDiv) resultsDiv.style.display = 'none';
     }
 }
 </script>

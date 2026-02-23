@@ -70,6 +70,23 @@ if ($user_role === 'parent') {
     $athletes = $athletes_stmt->fetchAll(PDO::FETCH_ASSOC);
     $athletes = decryptUserRows($athletes);
 }
+
+// Get already purchased package IDs for the current user (and their athletes)
+$purchased_package_ids = [];
+$check_user_ids = [$user_id];
+if ($user_role === 'parent' && !empty($athletes)) {
+    $check_user_ids = array_merge($check_user_ids, array_column($athletes, 'id'));
+}
+$check_placeholders = implode(',', array_fill(0, count($check_user_ids), '?'));
+$purchased_stmt = $pdo->prepare("
+    SELECT DISTINCT package_id FROM user_packages 
+    WHERE user_id IN ($check_placeholders) AND payment_status IN ('pending', 'paid')
+");
+$purchased_stmt->execute($check_user_ids);
+$purchased_package_ids = $purchased_stmt->fetchAll(PDO::FETCH_COLUMN);
+
+// Check if user is staff (admin, coach, front_desk_staff)
+$is_staff = in_array($user_role, ['admin', 'coach', 'coach_plus', 'team_coach', 'front_desk_staff']);
 ?>
 
 <div class="programs-camps-container">
@@ -310,6 +327,52 @@ if ($user_role === 'parent') {
             </div>
 
             <div class="program-footer">
+                <?php
+                $is_already_purchased = in_array($pkg['id'], $purchased_package_ids);
+                
+                // Get registered users count for staff view
+                $reg_count_stmt = $pdo->prepare("SELECT COUNT(*) FROM user_packages WHERE package_id = ? AND payment_status = 'paid'");
+                $reg_count_stmt->execute([$pkg['id']]);
+                $registered_count = (int)$reg_count_stmt->fetchColumn();
+                ?>
+
+                <?php if ($is_already_purchased): ?>
+                    <?php
+                    // Get user_package_id for cancellation
+                    $up_id_stmt = $pdo->prepare("SELECT up.id FROM user_packages up WHERE up.package_id = ? AND up.user_id IN ($check_placeholders) AND up.payment_status = 'paid' LIMIT 1");
+                    $up_id_stmt->execute(array_merge([$pkg['id']], $check_user_ids));
+                    $user_pkg_id = $up_id_stmt->fetchColumn();
+                    
+                    // Determine cancellation eligibility
+                    $can_cancel = false;
+                    $cancel_note = '';
+                    if ($pkg['package_type'] === 'camp' && !empty($pkg['camp_start_date'])) {
+                        $camp_diff = (new DateTime())->diff(new DateTime($pkg['camp_start_date']));
+                        $days_until = $camp_diff->days * ($camp_diff->invert ? -1 : 1);
+                        $can_cancel = ($days_until >= 14);
+                        $cancel_note = $can_cancel 
+                            ? 'Cancellation available until ' . date('M j, Y', strtotime($pkg['camp_start_date'] . ' -14 days'))
+                            : 'Camp cancellation deadline has passed (14 days before start)';
+                    } elseif ($pkg['package_type'] === 'multi_week') {
+                        $can_cancel = true;
+                        $cancel_note = 'Remaining sessions beyond 48 hours will be refunded';
+                    }
+                    ?>
+                    <button type="button" class="btn-register" disabled style="background:rgba(0,255,136,0.1);color:#00ff88;cursor:default;opacity:0.8;">
+                        <i class="fas fa-check-circle"></i> Already Registered
+                    </button>
+                    <?php if ($user_pkg_id): ?>
+                    <div style="margin-top:8px;font-size:12px;color:#94a3b8;">
+                        <i class="fas fa-info-circle"></i> <?php echo htmlspecialchars($cancel_note); ?>
+                    </div>
+                    <?php if ($can_cancel): ?>
+                    <button type="button" onclick="cancelPackageRegistration(<?php echo (int)$user_pkg_id; ?>, '<?php echo $pkg['package_type']; ?>')" 
+                            style="margin-top:8px;width:100%;background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.3);padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px;">
+                        <i class="fas fa-times-circle"></i> Cancel Registration
+                    </button>
+                    <?php endif; ?>
+                    <?php endif; ?>
+                <?php else: ?>
                 <form action="process_purchase_package.php" method="POST">
                     <input type="hidden" name="csrf_token" value="<?php echo generateCsrfToken(); ?>">
                     <input type="hidden" name="package_id" value="<?php echo $pkg['id']; ?>">
@@ -360,6 +423,15 @@ if ($user_role === 'parent') {
                         <?php echo $pkg['package_type'] === 'camp' ? 'Register for Camp' : 'Enroll in Program'; ?>
                     </button>
                 </form>
+                <?php endif; ?>
+
+                <?php if ($is_staff): ?>
+                <div class="staff-registration-info" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border, #1e293b);">
+                    <button type="button" class="btn-view-registrations" onclick="viewRegistrations(<?php echo $pkg['id']; ?>, '<?php echo htmlspecialchars(addslashes($pkg['name'])); ?>', '<?php echo $pkg['package_type']; ?>')" style="width:100%;background:rgba(99,102,241,0.15);color:#818cf8;border:1px solid rgba(99,102,241,0.3);padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px;">
+                        <i class="fas fa-users"></i> View Registrations (<?php echo $registered_count; ?>)
+                    </button>
+                </div>
+                <?php endif; ?>
             </div>
         </div>
         <?php endforeach; ?>
@@ -1076,6 +1148,34 @@ function renderCampCalendar() {
     grid.innerHTML = html;
 }
 
+function cancelPackageRegistration(userPackageId, packageType) {
+    var policyMsg = '';
+    if (packageType === 'camp') {
+        policyMsg = 'Camp cancellation policy: Full refund for cancellations made 14 days or more before camp start.\n\n';
+    } else if (packageType === 'multi_week') {
+        policyMsg = 'Program cancellation policy: Sessions within 48 hours are not refundable. Remaining sessions will be refunded.\n\n';
+    }
+    if (!confirm(policyMsg + 'Are you sure you want to cancel this registration?')) return;
+    
+    var csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
+    fetch('process_packages.php', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'action=user_cancel_package&user_package_id=' + userPackageId + '&csrf_token=' + encodeURIComponent(csrfToken)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            alert(data.message || 'Registration cancelled successfully.');
+            location.reload();
+        } else {
+            alert('Error: ' + (data.message || 'Failed to cancel registration'));
+        }
+    })
+    .catch(function() { alert('Failed to process cancellation'); });
+}
+
 function scrollToPackage(packageId) {
     switchCampView('list');
     var el = document.getElementById('package-' + packageId);
@@ -1085,4 +1185,131 @@ function scrollToPackage(packageId) {
         setTimeout(function() { el.classList.remove('highlighted'); }, 3000);
     }
 }
+
+// Staff Registration Management
+function viewRegistrations(packageId, packageName, packageType) {
+    var modal = document.getElementById('registrations-modal');
+    if (!modal) return;
+    document.getElementById('reg-modal-title').textContent = packageName + ' - Registrations';
+    document.getElementById('reg-modal-package-id').value = packageId;
+    document.getElementById('reg-modal-package-type').value = packageType;
+    modal.style.display = 'flex';
+    loadRegistrations(packageId);
+}
+
+function closeRegistrationsModal() {
+    var modal = document.getElementById('registrations-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+function loadRegistrations(packageId) {
+    var container = document.getElementById('reg-list-container');
+    container.innerHTML = '<div style="text-align:center;padding:20px;color:#94a3b8;"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+
+    fetch('process_packages.php?action=get_registrations&package_id=' + packageId, {
+        credentials: 'same-origin'
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.success) { container.innerHTML = '<p style="color:#ef4444;">Error loading registrations</p>'; return; }
+        var html = '';
+        
+        // Registered Users
+        html += '<h4 style="color:#e2e8f0;margin-bottom:8px;"><i class="fas fa-check-circle" style="color:#00ff88;"></i> Registered (' + data.registered.length + ')</h4>';
+        if (data.registered.length === 0) {
+            html += '<p style="color:#64748b;font-size:13px;margin-bottom:16px;">No registered users yet.</p>';
+        } else {
+            html += '<div class="reg-user-list">';
+            data.registered.forEach(function(u) {
+                html += '<div class="reg-user-item">';
+                html += '<div class="reg-user-info"><strong>' + escHtml(u.name) + '</strong><span style="color:#64748b;font-size:12px;"> ' + escHtml(u.email) + '</span></div>';
+                html += '<div class="reg-user-actions">';
+                html += '<button onclick="cancelRegistration(' + u.user_package_id + ', ' + packageId + ')" class="reg-btn-cancel" title="Cancel & Refund"><i class="fas fa-times-circle"></i> Cancel & Refund</button>';
+                html += '<a href="mailto:' + escHtml(u.email) + '" class="reg-btn-email" title="Email"><i class="fas fa-envelope"></i></a>';
+                html += '</div></div>';
+            });
+            html += '</div>';
+        }
+
+        // Waitlisted Users
+        if (data.waitlisted && data.waitlisted.length > 0) {
+            html += '<h4 style="color:#e2e8f0;margin:16px 0 8px;"><i class="fas fa-clock" style="color:#f59e0b;"></i> Waitlisted (' + data.waitlisted.length + ')</h4>';
+            html += '<div class="reg-user-list">';
+            data.waitlisted.forEach(function(u) {
+                html += '<div class="reg-user-item">';
+                html += '<div class="reg-user-info"><strong>' + escHtml(u.name) + '</strong><span style="color:#64748b;font-size:12px;"> ' + escHtml(u.email) + '</span></div>';
+                html += '<div class="reg-user-actions">';
+                html += '<a href="mailto:' + escHtml(u.email) + '" class="reg-btn-email" title="Email"><i class="fas fa-envelope"></i></a>';
+                html += '</div></div>';
+            });
+            html += '</div>';
+        }
+
+        // Email all button
+        if (data.registered.length > 0) {
+            var allEmails = data.registered.map(function(u) { return u.email; }).join(',');
+            html += '<div style="margin-top:16px;text-align:center;">';
+            html += '<a href="mailto:' + allEmails + '" class="btn-register" style="display:inline-block;text-decoration:none;padding:10px 24px;font-size:13px;"><i class="fas fa-envelope"></i> Email All Registered Users</a>';
+            html += '</div>';
+        }
+
+        container.innerHTML = html;
+    })
+    .catch(function() {
+        container.innerHTML = '<p style="color:#ef4444;">Failed to load registrations</p>';
+    });
+}
+
+function cancelRegistration(userPackageId, packageId) {
+    if (!confirm('Cancel this registration and automatically refund the user?')) return;
+    
+    var csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
+    fetch('process_packages.php', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'action=cancel_registration&user_package_id=' + userPackageId + '&csrf_token=' + encodeURIComponent(csrfToken)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('Registration cancelled and refund initiated.');
+            loadRegistrations(packageId);
+        } else {
+            alert('Error: ' + (data.message || 'Failed to cancel registration'));
+        }
+    })
+    .catch(function() { alert('Failed to process cancellation'); });
+}
+
+function escHtml(str) {
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(str || ''));
+    return div.innerHTML;
+}
 </script>
+
+<?php if ($is_staff): ?>
+<!-- Staff Registration Management Modal -->
+<div id="registrations-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;justify-content:center;align-items:center;">
+    <div style="background:#0d1116;border:1px solid #1e293b;border-radius:12px;width:90%;max-width:600px;max-height:80vh;overflow:hidden;display:flex;flex-direction:column;">
+        <div style="padding:16px 20px;border-bottom:1px solid #1e293b;display:flex;justify-content:space-between;align-items:center;">
+            <h3 id="reg-modal-title" style="margin:0;color:#e2e8f0;font-size:16px;"></h3>
+            <button onclick="closeRegistrationsModal()" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:20px;">&times;</button>
+        </div>
+        <input type="hidden" id="reg-modal-package-id">
+        <input type="hidden" id="reg-modal-package-type">
+        <div id="reg-list-container" style="padding:20px;overflow-y:auto;flex:1;"></div>
+    </div>
+</div>
+<style>
+.reg-user-list { display:flex; flex-direction:column; gap:8px; margin-bottom:8px; }
+.reg-user-item { display:flex; justify-content:space-between; align-items:center; background:#0a0f16; padding:10px 14px; border-radius:8px; border:1px solid #1e293b; }
+.reg-user-info { display:flex; flex-direction:column; gap:2px; }
+.reg-user-actions { display:flex; gap:8px; align-items:center; }
+.reg-btn-cancel { background:rgba(239,68,68,0.15); color:#ef4444; border:1px solid rgba(239,68,68,0.3); padding:6px 12px; border-radius:6px; cursor:pointer; font-size:12px; }
+.reg-btn-cancel:hover { background:rgba(239,68,68,0.25); }
+.reg-btn-email { background:rgba(99,102,241,0.15); color:#818cf8; border:1px solid rgba(99,102,241,0.3); padding:6px 10px; border-radius:6px; text-decoration:none; font-size:12px; }
+.reg-btn-email:hover { background:rgba(99,102,241,0.25); }
+</style>
+<?php endif; ?>

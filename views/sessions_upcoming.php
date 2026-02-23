@@ -246,6 +246,68 @@ if (!$show_history) {
     $sessions = array_slice($sessions, 0, 50);
 }
 
+// For athletes: also fetch camp daily schedules and multiweek program dates from purchased packages
+if ($user_role === 'athlete' && !$show_history) {
+    // Fetch camp daily schedules for purchased camp packages
+    $camp_sched_stmt = $pdo->prepare("
+        SELECT cds.schedule_date as session_date, cds.start_time as session_time,
+               TIMESTAMPDIFF(MINUTE, cds.start_time, cds.end_time) as duration_minutes,
+               cds.title as camp_day_title, cds.location as camp_location,
+               p.name as title, p.id as package_id, cds.id as id,
+               'camp_schedule' as source_type, 'scheduled' as status,
+               NULL as coach_first_name, NULL as coach_last_name,
+               NULL as session_type_name, NULL as skill_id,
+               cds.location as location_name,
+               NULL as practice_plan_name, NULL as practice_plan_description, NULL as practice_plan_id,
+               NULL as booking_id, 'confirmed' as booking_status,
+               up.id as user_package_id
+        FROM camp_daily_schedules cds
+        JOIN packages p ON cds.package_id = p.id
+        JOIN user_packages up ON up.package_id = p.id
+        WHERE up.user_id = ? AND up.payment_status = 'paid'
+          AND cds.schedule_date >= CURDATE()
+          AND p.package_type = 'camp'
+        ORDER BY cds.schedule_date
+    ");
+    $camp_sched_stmt->execute([$user_id]);
+    $camp_schedules = $camp_sched_stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Fetch multi-week program dates for purchased program packages
+    $mw_dates_stmt = $pdo->prepare("
+        SELECT mpd.session_date, mpd.start_time as session_time,
+               TIMESTAMPDIFF(MINUTE, mpd.start_time, mpd.end_time) as duration_minutes,
+               mpd.title as program_day_title, mpd.location as program_location,
+               p.name as title, p.id as package_id, mpd.id as id,
+               'program_schedule' as source_type, 'scheduled' as status,
+               NULL as coach_first_name, NULL as coach_last_name,
+               NULL as session_type_name, NULL as skill_id,
+               mpd.location as location_name,
+               NULL as practice_plan_name, NULL as practice_plan_description, NULL as practice_plan_id,
+               NULL as booking_id, 'confirmed' as booking_status,
+               up.id as user_package_id
+        FROM multiweek_program_dates mpd
+        JOIN packages p ON mpd.package_id = p.id
+        JOIN user_packages up ON up.package_id = p.id
+        WHERE up.user_id = ? AND up.payment_status = 'paid'
+          AND mpd.session_date >= CURDATE()
+          AND p.package_type = 'multi_week'
+        ORDER BY mpd.session_date
+    ");
+    $mw_dates_stmt->execute([$user_id]);
+    $mw_dates = $mw_dates_stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Merge camp and program dates into sessions list
+    if (!empty($camp_schedules) || !empty($mw_dates)) {
+        $sessions = array_merge($sessions, $camp_schedules, $mw_dates);
+        usort($sessions, function($a, $b) {
+            $dateA = strtotime($a['session_date'] ?? '1970-01-01');
+            $dateB = strtotime($b['session_date'] ?? '1970-01-01');
+            return ($dateA ?: 0) - ($dateB ?: 0);
+        });
+        $sessions = array_slice($sessions, 0, 50);
+    }
+}
+
 // Decrypt coach PII fields in session rows
 foreach ($sessions as &$s) {
     foreach (['coach_first_name', 'coach_last_name'] as $f) {
@@ -438,9 +500,13 @@ $is_demo_data = false;
         <div class="sessions-list">
         <?php if (count($sessions) > 0): ?>
             <?php foreach ($sessions as $session): 
-                $session_datetime = strtotime($session['session_date']);
+                $session_date_str = $session['session_date'];
+                if (!empty($session['session_time'])) {
+                    $session_date_str = date('Y-m-d', strtotime($session['session_date'])) . ' ' . $session['session_time'];
+                }
+                $session_datetime = strtotime($session_date_str) ?: strtotime($session['session_date'] ?? 'now') ?: time();
                 $session_end_time = $session_datetime + ($session['duration_minutes'] ?? 60) * 60;
-                $is_demo = strpos($session['id'], 'demo-') === 0;
+                $is_demo = isset($session['id']) && is_string($session['id']) && strpos($session['id'], 'demo-') === 0;
             ?>
             <div class="session-card" data-component="SessionCard" data-session-id="<?= $session['id'] ?>"
                  <?php if ($is_demo): ?>
@@ -471,9 +537,13 @@ $is_demo_data = false;
                             <span><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($session['location_name']) ?></span>
                         <?php endif; ?>
                     </div>
-                    <?php if (!empty($session['session_type_name']) || !empty($session['practice_plan_name'])): ?>
+                    <?php if (!empty($session['session_type_name']) || !empty($session['practice_plan_name']) || in_array($session['source_type'] ?? '', ['camp_schedule', 'program_schedule'])): ?>
                     <div class="session-tags">
-                        <?php if (!empty($session['session_type_name'])): ?>
+                        <?php if (($session['source_type'] ?? '') === 'camp_schedule'): ?>
+                            <span class="tag skill-tag" style="background:rgba(16,185,129,0.15);color:#10b981;"><i class="fas fa-campground"></i> Camp</span>
+                        <?php elseif (($session['source_type'] ?? '') === 'program_schedule'): ?>
+                            <span class="tag skill-tag" style="background:rgba(245,158,11,0.15);color:#f59e0b;"><i class="fas fa-calendar-alt"></i> Program</span>
+                        <?php elseif (!empty($session['session_type_name'])): ?>
                             <span class="tag skill-tag"><i class="fas fa-bullseye"></i> <?= htmlspecialchars($session['session_type_name']) ?></span>
                         <?php endif; ?>
                         <?php if (!empty($session['practice_plan_name'])): ?>
@@ -489,8 +559,10 @@ $is_demo_data = false;
                 </div>
                 <div class="session-actions">
                     <button class="btn-secondary" data-action="view-session" data-session-id="<?= $session['id'] ?>"><i class="fas fa-eye"></i> View</button>
-                    <?php if (!$show_history && strtotime($session['session_date']) > strtotime('+24 hours') && !empty($session['booking_id']) && $session['booking_status'] !== 'cancelled'): ?>
+                    <?php if (!$show_history && strtotime($session['session_date']) > strtotime('+48 hours') && !empty($session['booking_id']) && $session['booking_status'] !== 'cancelled'): ?>
                         <button class="btn-danger" data-action="cancel-session" data-session-id="<?= $session['id'] ?>" data-booking-id="<?= $session['booking_id'] ?>"><i class="fas fa-times"></i> Cancel</button>
+                    <?php elseif (!$show_history && in_array($session['source_type'] ?? '', ['camp_schedule', 'program_schedule'])): ?>
+                        <a href="dashboard.php?page=programs_camps&package_id=<?= intval($session['package_id'] ?? 0) ?>" class="btn-secondary"><i class="fas fa-cog"></i> Manage</a>
                     <?php endif; ?>
                 </div>
             </div>
@@ -966,11 +1038,13 @@ $is_demo_data = false;
     background: transparent;
     border: 1px solid var(--border);
     color: var(--text-white);
+    text-decoration: none;
 }
 
 .btn-secondary:hover {
     border-color: var(--primary);
     color: var(--primary);
+    text-decoration: none;
 }
 
 /* Demo Data Notice */
@@ -1314,7 +1388,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 (sessionCard.querySelector('.session-title')?.textContent || 'this session') : 
                 'this session';
             
-            if (!confirm(`Are you sure you want to cancel ${sessionTitle}?\n\nCancellations within 24 hours of the session may not be eligible for refund.`)) {
+            if (!confirm(`Are you sure you want to cancel ${sessionTitle}?\n\nCancellation Policy: Sessions must be cancelled at least 48 hours before the session start time to be eligible for a refund.`)) {
                 return false;
             }
             
