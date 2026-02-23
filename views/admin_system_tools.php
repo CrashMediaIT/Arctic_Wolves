@@ -3305,6 +3305,9 @@ function toggleThemeLogoInput() {
     
     if (uploadRow) uploadRow.style.display = method.value === 'upload' ? '' : 'none';
     if (urlRow) urlRow.style.display = method.value === 'url' ? '' : 'none';
+    
+    const logoUrlInput = document.querySelector('input[name="logo_url"]');
+    if (logoUrlInput) logoUrlInput.disabled = method.value !== 'url';
 }
 
 function toggleCenterIceLogoInput() {
@@ -3316,7 +3319,14 @@ function toggleCenterIceLogoInput() {
     
     if (uploadRow) uploadRow.style.display = method.value === 'upload' ? '' : 'none';
     if (urlRow) urlRow.style.display = method.value === 'url' ? '' : 'none';
+    
+    const centerIceUrlInput = document.querySelector('input[name="center_ice_logo_url_input"]');
+    if (centerIceUrlInput) centerIceUrlInput.disabled = method.value !== 'url';
 }
+
+// Set initial disabled state for hidden URL inputs on page load
+toggleThemeLogoInput();
+toggleCenterIceLogoInput();
 
 function removeCenterIceLogo() {
     if (!confirm('Are you sure you want to remove the center ice logo?')) return;
