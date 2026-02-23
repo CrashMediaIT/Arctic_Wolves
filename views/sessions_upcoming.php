@@ -298,9 +298,9 @@ if ($user_role === 'athlete' && !$show_history) {
     if (!empty($camp_schedules) || !empty($mw_dates)) {
         $sessions = array_merge($sessions, $camp_schedules, $mw_dates);
         usort($sessions, function($a, $b) {
-            $dateA = strtotime($a['session_date'] ?? '');
-            $dateB = strtotime($b['session_date'] ?? '');
-            return $dateA - $dateB;
+            $dateA = strtotime($a['session_date'] ?? '1970-01-01');
+            $dateB = strtotime($b['session_date'] ?? '1970-01-01');
+            return ($dateA ?: 0) - ($dateB ?: 0);
         });
         $sessions = array_slice($sessions, 0, 50);
     }

@@ -230,10 +230,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'user_
         if ($user_package['package_type'] === 'camp') {
             // CAMP CANCELLATION POLICY: Must cancel 14 days before camp starts
             $camp_start = new DateTime($user_package['camp_start_date']);
-            $days_until_camp = (int)$now->diff($camp_start)->format('%r%a');
+            $diff = $now->diff($camp_start);
+            $days_until_camp = $diff->days * ($diff->invert ? -1 : 1);
             
             if ($days_until_camp < 14) {
-                echo json_encode(['success' => false, 'message' => 'Camp cancellations must be made at least 14 days before the camp start date (' . $camp_start->format('M j, Y') . '). You are ' . abs($days_until_camp) . ' days from the start.']);
+                $msg = ($days_until_camp < 0) 
+                    ? 'This camp has already started. Cancellations are no longer available.'
+                    : 'Camp cancellations must be made at least 14 days before the camp start date (' . $camp_start->format('M j, Y') . '). You are ' . $days_until_camp . ' day(s) from the start.';
+                echo json_encode(['success' => false, 'message' => $msg]);
                 exit();
             }
             $refund_amount = $user_package['amount_paid'] ?? 0;

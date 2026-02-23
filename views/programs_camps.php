@@ -347,7 +347,8 @@ $is_staff = in_array($user_role, ['admin', 'coach', 'coach_plus', 'team_coach', 
                     $can_cancel = false;
                     $cancel_note = '';
                     if ($pkg['package_type'] === 'camp' && !empty($pkg['camp_start_date'])) {
-                        $days_until = (int)(new DateTime())->diff(new DateTime($pkg['camp_start_date']))->format('%r%a');
+                        $camp_diff = (new DateTime())->diff(new DateTime($pkg['camp_start_date']));
+                        $days_until = $camp_diff->days * ($camp_diff->invert ? -1 : 1);
                         $can_cancel = ($days_until >= 14);
                         $cancel_note = $can_cancel 
                             ? 'Cancellation available until ' . date('M j, Y', strtotime($pkg['camp_start_date'] . ' -14 days'))
@@ -1150,7 +1151,7 @@ function renderCampCalendar() {
 function cancelPackageRegistration(userPackageId, packageType) {
     var policyMsg = '';
     if (packageType === 'camp') {
-        policyMsg = 'Camp cancellation policy: Full refund for cancellations made 14+ days before camp start.\n\n';
+        policyMsg = 'Camp cancellation policy: Full refund for cancellations made 14 days or more before camp start.\n\n';
     } else if (packageType === 'multi_week') {
         policyMsg = 'Program cancellation policy: Sessions within 48 hours are not refundable. Remaining sessions will be refunded.\n\n';
     }
