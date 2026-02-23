@@ -253,13 +253,14 @@ if ($user_role === 'athlete' && !$show_history) {
         SELECT cds.schedule_date as session_date, cds.start_time as session_time,
                TIMESTAMPDIFF(MINUTE, cds.start_time, cds.end_time) as duration_minutes,
                cds.title as camp_day_title, cds.location as camp_location,
-               p.name as title, p.id as package_id,
+               p.name as title, p.id as package_id, cds.id as id,
                'camp_schedule' as source_type, 'scheduled' as status,
                NULL as coach_first_name, NULL as coach_last_name,
                NULL as session_type_name, NULL as skill_id,
                cds.location as location_name,
                NULL as practice_plan_name, NULL as practice_plan_description, NULL as practice_plan_id,
-               NULL as booking_id, 'confirmed' as booking_status
+               NULL as booking_id, 'confirmed' as booking_status,
+               up.id as user_package_id
         FROM camp_daily_schedules cds
         JOIN packages p ON cds.package_id = p.id
         JOIN user_packages up ON up.package_id = p.id
@@ -276,13 +277,14 @@ if ($user_role === 'athlete' && !$show_history) {
         SELECT mpd.session_date, mpd.start_time as session_time,
                TIMESTAMPDIFF(MINUTE, mpd.start_time, mpd.end_time) as duration_minutes,
                mpd.title as program_day_title, mpd.location as program_location,
-               p.name as title, p.id as package_id,
+               p.name as title, p.id as package_id, mpd.id as id,
                'program_schedule' as source_type, 'scheduled' as status,
                NULL as coach_first_name, NULL as coach_last_name,
                NULL as session_type_name, NULL as skill_id,
                mpd.location as location_name,
                NULL as practice_plan_name, NULL as practice_plan_description, NULL as practice_plan_id,
-               NULL as booking_id, 'confirmed' as booking_status
+               NULL as booking_id, 'confirmed' as booking_status,
+               up.id as user_package_id
         FROM multiweek_program_dates mpd
         JOIN packages p ON mpd.package_id = p.id
         JOIN user_packages up ON up.package_id = p.id
@@ -498,9 +500,13 @@ $is_demo_data = false;
         <div class="sessions-list">
         <?php if (count($sessions) > 0): ?>
             <?php foreach ($sessions as $session): 
-                $session_datetime = strtotime($session['session_date']);
+                $session_date_str = $session['session_date'];
+                if (!empty($session['session_time'])) {
+                    $session_date_str = date('Y-m-d', strtotime($session['session_date'])) . ' ' . $session['session_time'];
+                }
+                $session_datetime = strtotime($session_date_str) ?: strtotime($session['session_date']);
                 $session_end_time = $session_datetime + ($session['duration_minutes'] ?? 60) * 60;
-                $is_demo = strpos($session['id'], 'demo-') === 0;
+                $is_demo = is_string($session['id'] ?? '') && strpos($session['id'], 'demo-') === 0;
             ?>
             <div class="session-card" data-component="SessionCard" data-session-id="<?= $session['id'] ?>"
                  <?php if ($is_demo): ?>
@@ -555,6 +561,8 @@ $is_demo_data = false;
                     <button class="btn-secondary" data-action="view-session" data-session-id="<?= $session['id'] ?>"><i class="fas fa-eye"></i> View</button>
                     <?php if (!$show_history && strtotime($session['session_date']) > strtotime('+48 hours') && !empty($session['booking_id']) && $session['booking_status'] !== 'cancelled'): ?>
                         <button class="btn-danger" data-action="cancel-session" data-session-id="<?= $session['id'] ?>" data-booking-id="<?= $session['booking_id'] ?>"><i class="fas fa-times"></i> Cancel</button>
+                    <?php elseif (!$show_history && in_array($session['source_type'] ?? '', ['camp_schedule', 'program_schedule'])): ?>
+                        <a href="dashboard.php?page=programs_camps&package_id=<?= intval($session['package_id'] ?? 0) ?>" class="btn-secondary" style="text-decoration:none;"><i class="fas fa-cog"></i> Manage</a>
                     <?php endif; ?>
                 </div>
             </div>
