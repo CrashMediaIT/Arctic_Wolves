@@ -73,11 +73,11 @@ if (($user_role ?? '') === 'parent') {
 
 // Get already purchased package IDs for the current user (and their athletes) to show registration status
 $booking_purchased_ids = [];
-$booking_check_ids = [$_SESSION['user_id']];
+$booking_check_ids = [intval($_SESSION['user_id'])];
 if (($user_role ?? '') === 'parent') {
     $bp_athletes_stmt = $pdo->prepare("SELECT athlete_id FROM managed_athletes WHERE parent_id = ? AND can_book = 1");
     $bp_athletes_stmt->execute([$_SESSION['user_id']]);
-    $booking_check_ids = array_merge($booking_check_ids, $bp_athletes_stmt->fetchAll(PDO::FETCH_COLUMN));
+    $booking_check_ids = array_merge($booking_check_ids, array_map('intval', $bp_athletes_stmt->fetchAll(PDO::FETCH_COLUMN)));
 }
 $bp_placeholders = implode(',', array_fill(0, count($booking_check_ids), '?'));
 $bp_stmt = $pdo->prepare("SELECT DISTINCT package_id FROM user_packages WHERE user_id IN ($bp_placeholders) AND payment_status IN ('pending', 'paid')");

@@ -78,11 +78,10 @@ test.describe('Programs & Camps View', () => {
     expect(content).toContain('Completed');
   });
 
-  test('Dashboard routing includes programs_camps page for backward compatibility', async () => {
+  test('Dashboard routing does NOT include programs_camps page', async () => {
     const dashboardContent = readFile('dashboard.php');
-    // Route mapping should still exist for backward compatibility
-    expect(dashboardContent).toContain("'programs_camps'");
-    expect(dashboardContent).toContain('views/programs_camps.php');
+    // Route mapping should be removed - programs_camps page was deleted
+    expect(dashboardContent).not.toContain("'programs_camps'");
   });
 
   test('Programs & Camps is NOT a main navigation item', async () => {
@@ -299,17 +298,19 @@ test.describe('Database Schema Updates', () => {
 // =====================================================
 
 test.describe('Registration Intent Flow', () => {
-  test('Login page redirects camp/program intents to programs_camps page', async () => {
+  test('Login page redirects camp/program intents to booking page', async () => {
     const loginContent = readFile('login.php');
-    expect(loginContent).toContain('programs_camps');
+    expect(loginContent).toContain('page=booking');
     expect(loginContent).toContain("'camp', 'multi_week'");
     expect(loginContent).toContain('package_type');
+    expect(loginContent).not.toContain('page=programs_camps');
   });
 
-  test('Register page redirects camp/program intents to programs_camps page', async () => {
+  test('Register page redirects camp/program intents to booking page', async () => {
     const registerContent = readFile('register.php');
-    expect(registerContent).toContain('programs_camps');
+    expect(registerContent).toContain('page=booking');
     expect(registerContent).toContain("'camp', 'multi_week'");
+    expect(registerContent).not.toContain('page=programs_camps');
   });
 });
 

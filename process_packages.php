@@ -117,9 +117,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             FROM bookings b
             JOIN sessions s ON b.session_id = s.id
             JOIN training_session_dates tsd ON DATE(tsd.session_date) = DATE(s.session_date)
-            JOIN training_session_templates tst ON tsd.template_id = tst.id AND tst.id = ?
+            JOIN training_session_templates tst ON tsd.template_id = tst.id
             JOIN users u ON b.user_id = u.id
-            WHERE b.status IN ('confirmed', 'waitlisted')
+            WHERE tst.id = ?
+              AND b.status IN ('confirmed', 'waitlisted')
               AND b.payment_status IN ('pending', 'paid')
             ORDER BY tsd.session_date, u.last_name
         ");

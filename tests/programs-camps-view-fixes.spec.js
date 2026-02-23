@@ -29,18 +29,22 @@ test.describe('Already Registered - Inline Display', () => {
     expect(content).not.toContain('error=already_purchased');
   });
 
-  test('process_purchase_package.php redirects back to programs_camps page with package_id only', () => {
+  test('process_purchase_package.php redirects back to booking page for already purchased', () => {
     const content = readFile('process_purchase_package.php');
-    // Should redirect to programs_camps with just the package_id
-    expect(content).toContain('dashboard.php?page=programs_camps&package_id=');
-    expect(content).toContain('Already Registered');
+    // Should redirect to booking page (programs_camps page was removed)
+    expect(content).toContain('dashboard.php?page=booking');
+    expect(content).not.toContain('dashboard.php?page=programs_camps');
   });
 
-  test('programs_camps.php already shows inline Already Registered button', () => {
-    const content = readFile('views/programs_camps.php');
-    expect(content).toContain('is_already_purchased');
+  test('programs_camps page is removed from dashboard routing', () => {
+    const content = readFile('dashboard.php');
+    expect(content).not.toContain("'programs_camps'");
+  });
+
+  test('sessions_booking.php shows Already Registered for purchased programs', () => {
+    const content = readFile('views/sessions_booking.php');
+    expect(content).toContain('booking_purchased_ids');
     expect(content).toContain('Already Registered');
-    expect(content).toContain('fa-check-circle');
   });
 });
 
@@ -70,6 +74,21 @@ test.describe('Upcoming Sessions - Camp/Program Day Titles', () => {
     expect(content).toContain('camp_schedule');
     expect(content).toContain('program_schedule');
   });
+
+  test('sessions_upcoming.php shows camp dates for all users not just athletes', () => {
+    const content = readFile('views/sessions_upcoming.php');
+    // Should not restrict to athlete role only
+    expect(content).not.toContain("user_role === 'athlete' && !$show_history");
+    // Should use a broader check
+    expect(content).toContain('!$show_history');
+    expect(content).toContain('camp_daily_schedules');
+    expect(content).toContain('multiweek_program_dates');
+  });
+
+  test('sessions_upcoming.php does not link to programs_camps page', () => {
+    const content = readFile('views/sessions_upcoming.php');
+    expect(content).not.toContain('page=programs_camps');
+  });
 });
 
 // =====================================================
@@ -96,16 +115,39 @@ test.describe('Products View - Registered Users', () => {
     expect(content).toContain('toggleRegistrationList');
   });
 
-  test('accounting_products.php has expandable registration list rows', () => {
+  test('accounting_products.php has expandable registration list rows with email functionality', () => {
     const content = readFile('views/accounting_products.php');
     expect(content).toContain('registration-list-row');
     expect(content).toContain('reg-list-');
     expect(content).toContain('Registered Users');
+    expect(content).toContain('Email All Registered Users');
+    expect(content).toContain('mailto:');
   });
 
   test('accounting_products.php has toggleRegistrationList JavaScript function', () => {
     const content = readFile('views/accounting_products.php');
     expect(content).toContain('function toggleRegistrationList(packageId)');
+  });
+
+  test('accounting_products.php has view registered users button for sessions', () => {
+    const content = readFile('views/accounting_products.php');
+    expect(content).toContain('view-session-registrations');
+    expect(content).toContain('viewSessionRegistrations');
+    expect(content).toContain('session-registrations-modal');
+  });
+
+  test('process_packages.php has get_session_registrations endpoint', () => {
+    const content = readFile('process_packages.php');
+    expect(content).toContain('get_session_registrations');
+    expect(content).toContain('session_template_id');
+  });
+
+  test('packages.php excludes camps and multi_week packages', () => {
+    const content = readFile('views/packages.php');
+    expect(content).toContain("NOT IN ('camp', 'multi_week')");
+    // Should not have camp/multi_week filter buttons
+    expect(content).not.toContain('data-type="camp"');
+    expect(content).not.toContain('data-type="multi_week"');
   });
 });
 
