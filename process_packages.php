@@ -338,6 +338,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'user_
     }
     exit();
 }
+
+// Handle GET request for retrieving package sessions (AJAX)
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'get_sessions') {
     $package_id = intval($_GET['package_id'] ?? 0);
     
     $stmt = $pdo->prepare("SELECT session_id FROM package_sessions WHERE package_id = ?");
