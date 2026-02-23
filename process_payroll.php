@@ -226,6 +226,7 @@ if ($action === 'add_employee') {
         if (!$user) {
             throw new Exception('User not found or not eligible for payroll');
         }
+        $user = decryptUserRow($user);
         
         // Check if already on payroll
         $existsStmt = $pdo->prepare("SELECT id FROM employee_payroll WHERE user_id = ?");

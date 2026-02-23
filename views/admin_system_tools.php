@@ -40,6 +40,21 @@ try {
             $settings[$key] = $value;
         }
     }
+    
+    // Decrypt encrypted credential settings so they display correctly in form fields
+    // and don't get double-encrypted on re-save
+    $encrypted_setting_keys = [
+        'google_maps_api_key', 'stripe_publishable_key', 'stripe_secret_key',
+        'docuseal_api_key', 'docuseal_webhook_secret',
+        'stallion_api_key', 'stallion_api_secret',
+        'smtp_pass', 'nextcloud_password', 'paperless_api_token',
+        'github_token'
+    ];
+    foreach ($encrypted_setting_keys as $esk) {
+        if (!empty($settings[$esk])) {
+            $settings[$esk] = decryptCredential($settings[$esk]);
+        }
+    }
 } catch (PDOException $e) {
     error_log("Settings fetch error: " . $e->getMessage());
     $settings = [];
