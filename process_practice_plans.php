@@ -7,6 +7,7 @@
 session_start();
 require_once 'db_config.php';
 require_once 'security.php';
+require_once __DIR__ . '/cloud_config.php';
 require_once __DIR__ . '/lib/auditor.php';
 require_once __DIR__ . '/error_logger.php';
 
@@ -944,7 +945,28 @@ function downloadAndSaveDrillImage($image_url, $user_id) {
     $filepath = $upload_dir . $filename;
     
     if (file_put_contents($filepath, $image_data)) {
-        return 'uploads/drills/' . $filename;
+        $local_path = 'uploads/drills/' . $filename;
+        
+        // Upload practice plan drill image to Nextcloud for persistent storage
+        global $pdo;
+        if ($pdo) {
+            try {
+                $nc_settings = getNextcloudSettings($pdo);
+                if (!empty($nc_settings['nextcloud_url'])) {
+                    if (!empty($nc_settings['nextcloud_password'])) {
+                        $decrypted = decryptPassword($nc_settings['nextcloud_password']);
+                        if (!empty($decrypted)) {
+                            $nc_settings['nextcloud_password'] = $decrypted;
+                        }
+                    }
+                    $result = uploadImageToNextcloud($pdo, $nc_settings, $local_path, 'drills/diagrams', $filename);
+                }
+            } catch (Exception $e) {
+                error_log("Nextcloud drill diagram upload failed: " . $e->getMessage());
+            }
+        }
+        
+        return $local_path;
     }
     
     return '';

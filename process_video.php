@@ -11,6 +11,7 @@ require_once 'csrf_protection.php';
 require_once 'lib/file_upload_validator.php';
 require_once 'notifications.php';
 require_once 'mailer.php';
+require_once __DIR__ . '/cloud_config.php';
 require_once __DIR__ . '/lib/auditor.php';
 require_once __DIR__ . '/error_logger.php';
 
@@ -254,6 +255,25 @@ function handleVideoUpload() {
     $video_id = $pdo->lastInsertId();
     Auditor::log($pdo, $user_id, 'create', 'videos', $video_id, ['action' => 'Coach video uploaded']);
     
+    // Upload video to Nextcloud for persistent storage
+    try {
+        $nc_settings = getNextcloudSettings($pdo);
+        if (!empty($nc_settings['nextcloud_url'])) {
+            if (!empty($nc_settings['nextcloud_password'])) {
+                $decrypted = decryptPassword($nc_settings['nextcloud_password']);
+                if (!empty($decrypted)) {
+                    $nc_settings['nextcloud_password'] = $decrypted;
+                }
+            }
+            $result = uploadImageToNextcloud($pdo, $nc_settings, $upload_path, 'videos/coach', $unique_filename);
+            if ($result['success']) {
+                $pdo->prepare("UPDATE videos SET nextcloud_path = ? WHERE id = ?")->execute([$result['remote_path'], $video_id]);
+            }
+        }
+    } catch (Exception $e) {
+        error_log("Nextcloud coach video upload failed: " . $e->getMessage());
+    }
+    
     // Log the action
     logSecurityEvent($pdo, 'video_upload', "Video uploaded for athlete ID: $athlete_id", $user_id);
     
@@ -406,6 +426,25 @@ function handleAthleteVideoUpload() {
     
     $video_id = $pdo->lastInsertId();
     Auditor::log($pdo, $user_id, 'create', 'videos', $video_id, ['action' => 'Athlete video uploaded']);
+    
+    // Upload video to Nextcloud for persistent storage
+    try {
+        $nc_settings = getNextcloudSettings($pdo);
+        if (!empty($nc_settings['nextcloud_url'])) {
+            if (!empty($nc_settings['nextcloud_password'])) {
+                $decrypted = decryptPassword($nc_settings['nextcloud_password']);
+                if (!empty($decrypted)) {
+                    $nc_settings['nextcloud_password'] = $decrypted;
+                }
+            }
+            $result = uploadImageToNextcloud($pdo, $nc_settings, $upload_path, 'videos/athlete', $unique_filename);
+            if ($result['success']) {
+                $pdo->prepare("UPDATE videos SET nextcloud_path = ? WHERE id = ?")->execute([$result['remote_path'], $video_id]);
+            }
+        }
+    } catch (Exception $e) {
+        error_log("Nextcloud athlete video upload failed: " . $e->getMessage());
+    }
     
     // Log the action
     logSecurityEvent($pdo, 'athlete_video_upload', "Athlete video uploaded for review, ID: $video_id", $athlete_id);
@@ -1148,6 +1187,25 @@ function handleUploadVideoSource() {
     ]);
     $source_id_new = $pdo->lastInsertId();
     Auditor::log($pdo, $user_id, 'create', 'vr_video_sources', $source_id_new, ['action' => 'Video source uploaded']);
+
+    // Upload gameplan video to Nextcloud for persistent storage
+    try {
+        $nc_settings = getNextcloudSettings($pdo);
+        if (!empty($nc_settings['nextcloud_url'])) {
+            if (!empty($nc_settings['nextcloud_password'])) {
+                $decrypted = decryptPassword($nc_settings['nextcloud_password']);
+                if (!empty($decrypted)) {
+                    $nc_settings['nextcloud_password'] = $decrypted;
+                }
+            }
+            $result = uploadImageToNextcloud($pdo, $nc_settings, $upload_path, 'videos/gameplan', $unique_name);
+            if ($result['success']) {
+                $pdo->prepare("UPDATE vr_video_sources SET nextcloud_path = ? WHERE id = ?")->execute([$result['remote_path'], $source_id_new]);
+            }
+        }
+    } catch (Exception $e) {
+        error_log("Nextcloud gameplan video upload failed: " . $e->getMessage());
+    }
 
     logSecurityEvent($pdo, 'video_source_uploaded', "Video source uploaded: " . $file['name'], $user_id);
     header('Location: /gameplan.php?page=film_room&tab=upload&success=source_uploaded');

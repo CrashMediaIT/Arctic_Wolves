@@ -3187,6 +3187,27 @@ if ($action == 'create_team') {
         }
         Auditor::log($pdo, $user_id, 'create', 'teams', $new_team_id, ['action' => 'create_team']);
         
+        // Upload team logo to Nextcloud for persistent storage
+        if (!empty($logo_url)) {
+            try {
+                $nc_settings = getNextcloudSettings($pdo);
+                if (!empty($nc_settings['nextcloud_url'])) {
+                    if (!empty($nc_settings['nextcloud_password'])) {
+                        $decrypted = decryptPassword($nc_settings['nextcloud_password']);
+                        if (!empty($decrypted)) {
+                            $nc_settings['nextcloud_password'] = $decrypted;
+                        }
+                    }
+                    $result = uploadImageToNextcloud($pdo, $nc_settings, $logo_url, 'team_logos', $filename);
+                    if ($result['success']) {
+                        $pdo->prepare("UPDATE teams SET nextcloud_logo_path = ? WHERE id = ?")->execute([$result['remote_path'], $new_team_id]);
+                    }
+                }
+            } catch (Exception $e) {
+                error_log("Nextcloud team logo upload failed: " . $e->getMessage());
+            }
+        }
+        
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => true, 'message' => 'Team created successfully!']);
@@ -3262,6 +3283,27 @@ if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'team') {
             }
         }
         Auditor::log($pdo, $user_id, 'update', 'teams', intval($_POST['id']), ['action' => 'edit_team']);
+        
+        // Upload updated team logo to Nextcloud for persistent storage
+        if (!empty($logo_url)) {
+            try {
+                $nc_settings = getNextcloudSettings($pdo);
+                if (!empty($nc_settings['nextcloud_url'])) {
+                    if (!empty($nc_settings['nextcloud_password'])) {
+                        $decrypted = decryptPassword($nc_settings['nextcloud_password']);
+                        if (!empty($decrypted)) {
+                            $nc_settings['nextcloud_password'] = $decrypted;
+                        }
+                    }
+                    $result = uploadImageToNextcloud($pdo, $nc_settings, $logo_url, 'team_logos', $filename);
+                    if ($result['success']) {
+                        $pdo->prepare("UPDATE teams SET nextcloud_logo_path = ? WHERE id = ?")->execute([$result['remote_path'], $id]);
+                    }
+                }
+            } catch (Exception $e) {
+                error_log("Nextcloud team logo upload failed: " . $e->getMessage());
+            }
+        }
         
         if ($isAjax) {
             header('Content-Type: application/json');

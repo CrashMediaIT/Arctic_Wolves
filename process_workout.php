@@ -7,6 +7,7 @@
 session_start();
 require_once 'db_config.php';
 require_once 'security.php';
+require_once __DIR__ . '/cloud_config.php';
 require_once __DIR__ . '/lib/auditor.php';
 require_once __DIR__ . '/error_logger.php';
 
@@ -73,6 +74,27 @@ try {
             $exercise_id = $pdo->lastInsertId();
             Auditor::log($pdo, $user_id, 'create', 'exercise_library', $exercise_id, ['action' => 'Exercise created']);
             
+            // Upload exercise image to Nextcloud for persistent storage
+            if (!empty($image_url)) {
+                try {
+                    $nc_settings = getNextcloudSettings($pdo);
+                    if (!empty($nc_settings['nextcloud_url'])) {
+                        if (!empty($nc_settings['nextcloud_password'])) {
+                            $decrypted = decryptPassword($nc_settings['nextcloud_password']);
+                            if (!empty($decrypted)) {
+                                $nc_settings['nextcloud_password'] = $decrypted;
+                            }
+                        }
+                        $result = uploadImageToNextcloud($pdo, $nc_settings, $image_url, 'exercises', $filename);
+                        if ($result['success']) {
+                            $pdo->prepare("UPDATE exercise_library SET nextcloud_image_path = ? WHERE id = ?")->execute([$result['remote_path'], $exercise_id]);
+                        }
+                    }
+                } catch (Exception $e) {
+                    error_log("Nextcloud exercise image upload failed: " . $e->getMessage());
+                }
+            }
+            
             echo json_encode(['success' => true, 'message' => 'Exercise created successfully']);
             break;
             
@@ -115,6 +137,27 @@ try {
             $stmt->execute($params);
             
             Auditor::log($pdo, $user_id, 'update', 'exercise_library', $id, ['action' => 'Exercise updated']);
+            
+            // Upload updated exercise image to Nextcloud for persistent storage
+            if (isset($uploadPath) && !empty($uploadPath)) {
+                try {
+                    $nc_settings = getNextcloudSettings($pdo);
+                    if (!empty($nc_settings['nextcloud_url'])) {
+                        if (!empty($nc_settings['nextcloud_password'])) {
+                            $decrypted = decryptPassword($nc_settings['nextcloud_password']);
+                            if (!empty($decrypted)) {
+                                $nc_settings['nextcloud_password'] = $decrypted;
+                            }
+                        }
+                        $result = uploadImageToNextcloud($pdo, $nc_settings, $uploadPath, 'exercises', $filename);
+                        if ($result['success']) {
+                            $pdo->prepare("UPDATE exercise_library SET nextcloud_image_path = ? WHERE id = ?")->execute([$result['remote_path'], $id]);
+                        }
+                    }
+                } catch (Exception $e) {
+                    error_log("Nextcloud exercise image upload failed: " . $e->getMessage());
+                }
+            }
             
             echo json_encode(['success' => true, 'message' => 'Exercise updated successfully']);
             break;

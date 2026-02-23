@@ -3,6 +3,7 @@
 session_start();
 require 'db_config.php';
 require 'security.php';
+require_once __DIR__ . '/cloud_config.php';
 require_once __DIR__ . '/lib/file_upload_validator.php';
 require_once __DIR__ . '/lib/auditor.php';
 require_once __DIR__ . '/error_logger.php';
@@ -99,6 +100,29 @@ try {
             ]);
             Auditor::log($pdo, $user_id, 'CREATE', 'merchandise_categories', $pdo->lastInsertId(), ['action' => 'Created merchandise category', 'name' => $name]);
             
+            // Upload category image to Nextcloud for persistent storage
+            if (!empty($imageUrl)) {
+                try {
+                    $nc_settings = getNextcloudSettings($pdo);
+                    if (!empty($nc_settings['nextcloud_url'])) {
+                        if (!empty($nc_settings['nextcloud_password'])) {
+                            $decrypted = decryptPassword($nc_settings['nextcloud_password']);
+                            if (!empty($decrypted)) {
+                                $nc_settings['nextcloud_password'] = $decrypted;
+                            }
+                        }
+                        $nc_filename = basename($imageUrl);
+                        $catId = $pdo->lastInsertId();
+                        $result = uploadImageToNextcloud($pdo, $nc_settings, $imageUrl, 'merchandise/categories', $nc_filename);
+                        if ($result['success']) {
+                            $pdo->prepare("UPDATE merchandise_categories SET nextcloud_image_path = ? WHERE id = ?")->execute([$result['remote_path'], $catId]);
+                        }
+                    }
+                } catch (Exception $e) {
+                    error_log("Nextcloud category image upload failed: " . $e->getMessage());
+                }
+            }
+            
             if ($isAjax) {
                 header('Content-Type: application/json');
                 echo json_encode(['success' => true, 'message' => 'Category created successfully!', 'id' => $pdo->lastInsertId()]);
@@ -175,6 +199,28 @@ try {
                 $stmt->execute([$parentId, $name, $slug, $description ?: null, $displayOrder, $isActive, $id]);
             }
             Auditor::log($pdo, $user_id, 'UPDATE', 'merchandise_categories', $id, ['action' => 'Updated merchandise category', 'name' => $name]);
+            
+            // Upload updated category image to Nextcloud for persistent storage
+            if ($updateImage && !empty($imageUrl)) {
+                try {
+                    $nc_settings = getNextcloudSettings($pdo);
+                    if (!empty($nc_settings['nextcloud_url'])) {
+                        if (!empty($nc_settings['nextcloud_password'])) {
+                            $decrypted = decryptPassword($nc_settings['nextcloud_password']);
+                            if (!empty($decrypted)) {
+                                $nc_settings['nextcloud_password'] = $decrypted;
+                            }
+                        }
+                        $nc_filename = basename($imageUrl);
+                        $result = uploadImageToNextcloud($pdo, $nc_settings, $imageUrl, 'merchandise/categories', $nc_filename);
+                        if ($result['success']) {
+                            $pdo->prepare("UPDATE merchandise_categories SET nextcloud_image_path = ? WHERE id = ?")->execute([$result['remote_path'], $id]);
+                        }
+                    }
+                } catch (Exception $e) {
+                    error_log("Nextcloud category image upload failed: " . $e->getMessage());
+                }
+            }
             
             if ($isAjax) {
                 header('Content-Type: application/json');
