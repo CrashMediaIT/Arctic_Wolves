@@ -162,25 +162,24 @@ $status_messages = [
                         <button type="button" class="btn-secondary" onclick="clearPreview()">
                             <i class="fas fa-times"></i> Clear
                         </button>
-                        <button type="submit" class="btn-primary" id="importPlanBtn">
+                        <button type="submit" class="btn-primary" id="importPlanSubmitBtn">
                             <i class="fas fa-download"></i> Import Practice Plan & All Drills
                         </button>
                     </div>
-                    
-                    <!-- Import Progress Indicator -->
-                    <div id="importProgressContainer" style="display:none; margin-top: 20px; text-align: center; padding: 20px; background: var(--bg-main, #06080b); border: 1px solid var(--border, #1e293b); border-radius: 8px;">
-                        <div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 12px;">
-                            <i class="fas fa-spinner fa-spin" style="color: var(--primary, #7c3aed); font-size: 20px;"></i>
-                            <span style="color: #fff; font-weight: 700;">Importing practice plan and drills…</span>
-                        </div>
-                        <div style="background: rgba(30, 41, 59, 0.5); border-radius: 999px; height: 6px; overflow: hidden; position: relative;">
-                            <div id="importProgressBar" style="height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--primary, #7c3aed), #a855f7); width: 20%; transition: width 0.4s ease; position: relative; overflow: hidden;">
-                                <div style="position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); animation: importShimmer 1.5s infinite;"></div>
-                            </div>
-                        </div>
-                        <p style="color: var(--text-dim, #64748b); font-size: 12px; margin-top: 8px;">Creating practice plan, saving drills and uploading images to cloud storage…</p>
-                    </div>
                 </form>
+
+                <!-- Import Progress Overlay -->
+                <div id="importProgressOverlay" class="import-progress-overlay" style="display: none;">
+                    <div class="import-progress-card">
+                        <div class="spinner"></div>
+                        <h4>Importing Practice Plan...</h4>
+                        <p class="import-progress-text">Downloading drill images and saving to library. This may take a moment.</p>
+                        <div class="import-progress-bar-container">
+                            <div class="import-progress-bar" id="importProgressBar"></div>
+                        </div>
+                        <span class="import-progress-status" id="importProgressStatus">Please wait...</span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -218,26 +217,6 @@ $status_messages = [
 
 <script>
 let currentPlanData = null;
-
-// Show progress bar when import form is submitted
-document.getElementById('importPlanForm').addEventListener('submit', function() {
-    var btn = document.getElementById('importPlanBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importing…';
-    var container = document.getElementById('importProgressContainer');
-    container.style.display = 'block';
-    var bar = document.getElementById('importProgressBar');
-    var progress = 20;
-    var interval = setInterval(function() {
-        if (progress < 85) {
-            progress += Math.random() * 10;
-            if (progress > 85) progress = 85;
-            bar.style.width = progress + '%';
-        } else {
-            clearInterval(interval);
-        }
-    }, 600);
-});
 
 async function fetchPracticePlanFromUrl() {
     const urlInput = document.getElementById('ihsUrlInput');
@@ -546,6 +525,38 @@ function showNotification(message, type = 'info') {
     document.body.appendChild(alertDiv);
     setTimeout(() => alertDiv.remove(), 4000);
 }
+
+// Show import progress overlay on form submit
+document.getElementById('importPlanForm').addEventListener('submit', function(e) {
+    var overlay = document.getElementById('importProgressOverlay');
+    var btn = document.getElementById('importPlanSubmitBtn');
+    var bar = document.getElementById('importProgressBar');
+    var status = document.getElementById('importProgressStatus');
+    overlay.style.display = 'flex';
+    btn.disabled = true;
+
+    var drillCount = currentDrills.length || 1;
+    var progress = 0;
+    var step = 0;
+    var interval = setInterval(function() {
+        if (progress < 70) {
+            progress += Math.random() * (60 / drillCount) + 1;
+        } else if (progress < 90) {
+            progress += Math.random() * 2 + 0.3;
+        }
+        if (progress > 95) progress = 95;
+        bar.style.width = progress + '%';
+        step++;
+        var currentDrill = Math.min(Math.floor(step / 3) + 1, drillCount);
+        if (progress < 20) {
+            status.textContent = 'Creating practice plan...';
+        } else if (progress < 80) {
+            status.textContent = 'Importing drill ' + currentDrill + ' of ' + drillCount + ' — downloading images...';
+        } else {
+            status.textContent = 'Finalizing import...';
+        }
+    }, 600);
+});
 </script>
 
 <style>
@@ -714,11 +725,6 @@ function showNotification(message, type = 'info') {
 
 @keyframes spin {
     to { transform: rotate(360deg); }
-}
-
-@keyframes importShimmer {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
 }
 
 /* Practice Plan Preview Section */
@@ -1133,6 +1139,70 @@ function showNotification(message, type = 'info') {
         opacity: 1;
         transform: translateX(0);
     }
+}
+
+/* Import Progress Overlay */
+.import-progress-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
+.import-progress-card {
+    background: var(--bg-card, #0d1117);
+    border: 1px solid var(--border, #1e293b);
+    border-radius: 12px;
+    padding: 40px;
+    text-align: center;
+    max-width: 420px;
+    width: 90%;
+}
+
+.import-progress-card .spinner {
+    width: 36px;
+    height: 36px;
+    margin: 0 auto 16px;
+}
+
+.import-progress-card h4 {
+    color: var(--text-white, #fff);
+    font-size: 18px;
+    margin-bottom: 8px;
+}
+
+.import-progress-text {
+    color: var(--text-dim, #64748b);
+    font-size: 13px;
+    margin-bottom: 20px;
+}
+
+.import-progress-bar-container {
+    width: 100%;
+    height: 8px;
+    background: var(--bg-main, #06080b);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 12px;
+}
+
+.import-progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--primary, #7c3aed), #a78bfa);
+    border-radius: 4px;
+    transition: width 0.4s ease;
+}
+
+.import-progress-status {
+    color: var(--text-dim, #64748b);
+    font-size: 12px;
 }
 
 /* Responsive */
