@@ -44,7 +44,7 @@ $query = "
            (SELECT COUNT(*) FROM bookings b INNER JOIN sessions s ON b.session_id = s.id WHERE b.user_id = u.id AND b.status IN ('confirmed', 'waitlisted') AND s.session_date <= CURDATE()) as sessions_attended,
            (SELECT GROUP_CONCAT(t.name SEPARATOR ', ') FROM athlete_teams at2 INNER JOIN teams t ON at2.team_id = t.id WHERE at2.athlete_id = u.id AND at2.status = 'active') as team_names
     FROM users u
-    WHERE u.assigned_coach_id = ? AND u.role = 'athlete'
+    WHERE u.assigned_coach_id = ?
 ";
 
 $params = [$user_id];
