@@ -698,11 +698,12 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                                     </div>
                                 </td>
                             </tr>
-                            <?php if (!empty($programRegistrations[$prog['id']])): ?>
+                            <?php if ($regCount > 0): ?>
                             <tr class="registration-list-row" id="reg-list-<?= $prog['id'] ?>" style="display: none;">
                                 <!-- colspan matches the 8 columns: Name, Type, Dates, Price, Age Group, Registered, Status, Actions -->
                                 <td colspan="8" style="padding: 0;">
                                     <div style="background: var(--bg-main); padding: 12px 20px; border-top: 1px solid var(--border);">
+                                        <?php if (!empty($programRegistrations[$prog['id']])): ?>
                                         <h5 style="margin: 0 0 8px; color: var(--text-white); font-size: 13px;"><i class="fas fa-users"></i> Registered Users (<?= count($programRegistrations[$prog['id']]) ?>)</h5>
                                         <table class="data-table" style="margin: 0; font-size: 13px;">
                                             <thead>
@@ -728,6 +729,10 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                                         <div style="margin-top: 10px; text-align: center;">
                                             <a href="mailto:<?= implode(',', $prog_all_emails) ?>" class="btn btn-primary" style="display:inline-block;text-decoration:none;padding:8px 20px;font-size:13px;"><i class="fas fa-envelope"></i> Email All Registered Users</a>
                                         </div>
+                                        <?php endif; ?>
+                                        <?php else: ?>
+                                        <h5 style="margin: 0 0 8px; color: var(--text-white); font-size: 13px;"><i class="fas fa-users"></i> Registered Users (<?= $regCount ?>)</h5>
+                                        <p style="color: var(--text-dim); font-size: 13px; margin: 0;">Registered user details are being loaded. Please refresh the page if details don't appear.</p>
                                         <?php endif; ?>
                                     </div>
                                 </td>
