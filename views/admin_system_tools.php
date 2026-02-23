@@ -641,8 +641,8 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                                     <p>Database backups storage path</p>
                                 </div>
                                 <input type="text" name="nextcloud_backups_dir" class="form-input" 
-                                       value="<?php echo htmlspecialchars($settings['nextcloud_backups_dir'] ?? '/Arctic_Wolves/Backups'); ?>"
-                                       placeholder="/Arctic_Wolves/Backups">
+                                       value="<?php echo htmlspecialchars($settings['nextcloud_backups_dir'] ?? '/Backups'); ?>"
+                                       placeholder="/Backups">
                             </div>
                             <div class="setting-item">
                                 <div class="setting-info">
@@ -650,8 +650,8 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                                     <p>Video uploads storage path</p>
                                 </div>
                                 <input type="text" name="nextcloud_videos_dir" class="form-input" 
-                                       value="<?php echo htmlspecialchars($settings['nextcloud_videos_dir'] ?? '/Arctic_Wolves/Videos'); ?>"
-                                       placeholder="/Arctic_Wolves/Videos">
+                                       value="<?php echo htmlspecialchars($settings['nextcloud_videos_dir'] ?? '/Videos'); ?>"
+                                       placeholder="/Videos">
                             </div>
                             <div class="setting-item">
                                 <div class="setting-info">
@@ -659,8 +659,8 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                                     <p>Scanned receipts storage path</p>
                                 </div>
                                 <input type="text" name="nextcloud_receipts_dir" class="form-input" 
-                                       value="<?php echo htmlspecialchars($settings['nextcloud_receipts_dir'] ?? '/Arctic_Wolves/Receipts'); ?>"
-                                       placeholder="/Arctic_Wolves/Receipts">
+                                       value="<?php echo htmlspecialchars($settings['nextcloud_receipts_dir'] ?? '/Receipts'); ?>"
+                                       placeholder="/Receipts">
                             </div>
                             <div class="setting-item">
                                 <div class="setting-info">
@@ -668,8 +668,8 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                                     <p>General documents storage path</p>
                                 </div>
                                 <input type="text" name="nextcloud_documents_dir" class="form-input" 
-                                       value="<?php echo htmlspecialchars($settings['nextcloud_documents_dir'] ?? '/Arctic_Wolves/Documents'); ?>"
-                                       placeholder="/Arctic_Wolves/Documents">
+                                       value="<?php echo htmlspecialchars($settings['nextcloud_documents_dir'] ?? '/Documents'); ?>"
+                                       placeholder="/Documents">
                             </div>
                             <div class="setting-item">
                                 <div class="setting-info">
@@ -677,8 +677,8 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                                     <p>Human Resources files storage path</p>
                                 </div>
                                 <input type="text" name="nextcloud_hr_dir" class="form-input" 
-                                       value="<?php echo htmlspecialchars($settings['nextcloud_hr_dir'] ?? '/Arctic_Wolves/HR'); ?>"
-                                       placeholder="/Arctic_Wolves/HR">
+                                       value="<?php echo htmlspecialchars($settings['nextcloud_hr_dir'] ?? '/HR'); ?>"
+                                       placeholder="/HR">
                             </div>
                             <div class="setting-item">
                                 <div class="setting-info">
@@ -686,8 +686,8 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                                     <p>Staff termination documents (organized by Year/Month/StaffName)</p>
                                 </div>
                                 <input type="text" name="nextcloud_terminations_dir" class="form-input" 
-                                       value="<?php echo htmlspecialchars($settings['nextcloud_terminations_dir'] ?? '/Arctic_Wolves/HR/Terminations'); ?>"
-                                       placeholder="/Arctic_Wolves/HR/Terminations">
+                                       value="<?php echo htmlspecialchars($settings['nextcloud_terminations_dir'] ?? '/HR/Terminations'); ?>"
+                                       placeholder="/HR/Terminations">
                             </div>
                             <div class="setting-item">
                                 <div class="setting-info">

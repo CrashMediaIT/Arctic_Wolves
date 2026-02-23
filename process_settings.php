@@ -206,12 +206,12 @@ try {
             $auto_sync = isset($_POST['nextcloud_auto_sync']) ? '1' : '0';
             
             // Directory settings
-            $backups_dir = trim($_POST['nextcloud_backups_dir'] ?? '/Arctic_Wolves/Backups');
-            $videos_dir = trim($_POST['nextcloud_videos_dir'] ?? '/Arctic_Wolves/Videos');
-            $receipts_dir = trim($_POST['nextcloud_receipts_dir'] ?? '/Arctic_Wolves/Receipts');
-            $documents_dir = trim($_POST['nextcloud_documents_dir'] ?? '/Arctic_Wolves/Documents');
-            $hr_dir = trim($_POST['nextcloud_hr_dir'] ?? '/Arctic_Wolves/HR');
-            $terminations_dir = trim($_POST['nextcloud_terminations_dir'] ?? '/Arctic_Wolves/HR/Terminations');
+            $backups_dir = trim($_POST['nextcloud_backups_dir'] ?? '/Backups');
+            $videos_dir = trim($_POST['nextcloud_videos_dir'] ?? '/Videos');
+            $receipts_dir = trim($_POST['nextcloud_receipts_dir'] ?? '/Receipts');
+            $documents_dir = trim($_POST['nextcloud_documents_dir'] ?? '/Documents');
+            $hr_dir = trim($_POST['nextcloud_hr_dir'] ?? '/HR');
+            $terminations_dir = trim($_POST['nextcloud_terminations_dir'] ?? '/HR/Terminations');
             $contracts_dir = trim($_POST['nextcloud_contracts_dir'] ?? '/accounting/contracts');
             
             // Sync options
@@ -722,7 +722,7 @@ try {
                 'nextcloud_url' => trim($_POST['nextcloud_backup_url'] ?? ''),
                 'nextcloud_username' => trim($_POST['nextcloud_backup_username'] ?? ''),
                 'nextcloud_password' => $backup_password,
-                'nextcloud_receipt_folder' => '/Arctic_Wolves',
+                'nextcloud_receipt_folder' => '/',
                 'nextcloud_webdav_path' => ''
             ];
             

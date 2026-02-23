@@ -51,7 +51,7 @@ function uploadOnboardingDocuments($pdo, $settings, $staffName, $year, $files) {
         $connection = connectNextcloud($settings);
         
         // Base onboarding directory
-        $onboardingDir = $settings['nextcloud_hr_dir'] ?? '/Arctic_Wolves/HR';
+        $onboardingDir = $settings['nextcloud_hr_dir'] ?? '/HR';
         $onboardingDir .= '/Onboarding';
         
         // Sanitize staff name
@@ -116,7 +116,7 @@ function exportOnboardingData($pdo, $settings, $onboardingData, $staffName, $yea
         $connection = connectNextcloud($settings);
         
         // Base onboarding directory
-        $onboardingDir = $settings['nextcloud_hr_dir'] ?? '/Arctic_Wolves/HR';
+        $onboardingDir = $settings['nextcloud_hr_dir'] ?? '/HR';
         $onboardingDir .= '/Onboarding';
         
         // Sanitize staff name

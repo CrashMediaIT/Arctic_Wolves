@@ -12,6 +12,30 @@ class Logger {
     const LEVEL_DEBUG = 'DEBUG';
     
     private static $log_dir = __DIR__ . '/../logs/';
+    private static $timezone_set = false;
+    
+    /**
+     * Ensure the timezone is set from system settings
+     */
+    private static function ensureTimezone() {
+        if (self::$timezone_set) {
+            return;
+        }
+        self::$timezone_set = true;
+        
+        try {
+            global $pdo;
+            if (isset($pdo) && $pdo instanceof PDO) {
+                $stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'timezone' LIMIT 1");
+                $tz = $stmt->fetchColumn();
+                if (!empty($tz) && in_array($tz, timezone_identifiers_list())) {
+                    date_default_timezone_set($tz);
+                }
+            }
+        } catch (Exception $e) {
+            // Silently fail - use default timezone
+        }
+    }
     
     /**
      * Log an error message
@@ -45,6 +69,9 @@ class Logger {
      * Core logging function
      */
     private static function log($level, $message, $context = []) {
+        // Ensure timezone is set from system settings
+        self::ensureTimezone();
+        
         // Create logs directory if it doesn't exist
         if (!is_dir(self::$log_dir)) {
             mkdir(self::$log_dir, 0755, true);
@@ -102,6 +129,8 @@ class Logger {
      * Log a security event
      */
     public static function logSecurityEvent($event, $details = []) {
+        self::ensureTimezone();
+        
         $context = [
             'event' => $event,
             'details' => $details,

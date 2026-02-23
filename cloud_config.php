@@ -430,7 +430,7 @@ function uploadTerminationDocuments($pdo, $settings, $staff_name, $termination_d
         $connection = connectNextcloud($settings);
         
         // Get base terminations directory
-        $terminations_dir = $settings['nextcloud_terminations_dir'] ?? '/Arctic_Wolves/HR/Terminations';
+        $terminations_dir = $settings['nextcloud_terminations_dir'] ?? '/HR/Terminations';
         
         // Parse date for Year/Month folders
         $date = new DateTime($termination_date);
@@ -506,7 +506,7 @@ function exportTerminationData($pdo, $settings, $termination_data, $staff_name, 
         $connection = connectNextcloud($settings);
         
         // Get base terminations directory
-        $terminations_dir = $settings['nextcloud_terminations_dir'] ?? '/Arctic_Wolves/HR/Terminations';
+        $terminations_dir = $settings['nextcloud_terminations_dir'] ?? '/HR/Terminations';
         
         // Parse date for Year/Month folders
         $date = new DateTime($termination_date);
@@ -602,7 +602,7 @@ function uploadDrillVideo($pdo, $settings, $session_name, $drill_name, $athlete_
         $connection = connectNextcloud($settings);
         
         // Get base drill videos directory
-        $drill_videos_dir = $settings['nextcloud_drill_videos_dir'] ?? '/Arctic_Wolves/DrillVideos';
+        $drill_videos_dir = $settings['nextcloud_drill_videos_dir'] ?? '/DrillVideos';
         
         // Parse date for Year/Month/Day folders
         $date_obj = new DateTime($date ?? date('Y-m-d'));
@@ -689,7 +689,7 @@ function uploadDrillVideo($pdo, $settings, $session_name, $drill_name, $athlete_
  * @return string Expected Nextcloud path
  */
 function getDrillVideoPath($settings, $session_name, $drill_name, $athlete_name, $rep_number, $date, $ext = 'mp4') {
-    $drill_videos_dir = $settings['nextcloud_drill_videos_dir'] ?? '/Arctic_Wolves/DrillVideos';
+    $drill_videos_dir = $settings['nextcloud_drill_videos_dir'] ?? '/DrillVideos';
     
     $date_obj = new DateTime($date);
     $year = $date_obj->format('Y');
@@ -716,7 +716,7 @@ function getDrillVideoPath($settings, $session_name, $drill_name, $athlete_name,
 function listDrillVideosForDate($pdo, $settings, $date) {
     try {
         $connection = connectNextcloud($settings);
-        $drill_videos_dir = $settings['nextcloud_drill_videos_dir'] ?? '/Arctic_Wolves/DrillVideos';
+        $drill_videos_dir = $settings['nextcloud_drill_videos_dir'] ?? '/DrillVideos';
         
         $date_obj = new DateTime($date);
         $folder_path = sprintf('%s/%s/%s/%s', 

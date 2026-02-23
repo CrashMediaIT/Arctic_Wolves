@@ -44,7 +44,7 @@ function uploadReceiptToNextcloud($pdo, $local_file_path, $expense_date, $vendor
         }
         
         $connection = connectNextcloud($settings);
-        $receipts_dir = $settings['nextcloud_receipts_dir'] ?? '/Arctic_Wolves/Receipts';
+        $receipts_dir = $settings['nextcloud_receipts_dir'] ?? '/Receipts';
         
         // Parse date for Year/Month folders
         $date = new DateTime($expense_date);
