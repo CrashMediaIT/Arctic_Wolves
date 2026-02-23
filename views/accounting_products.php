@@ -99,7 +99,8 @@ try {
 // Fetch camp and multi-week program packages separately
 try {
     $programsStmt = $pdo->query("
-        SELECT p.*, ag.name as age_group_name, sl.name as skill_level_name
+        SELECT p.*, ag.name as age_group_name, sl.name as skill_level_name,
+               (SELECT COUNT(*) FROM user_packages up WHERE up.package_id = p.id AND up.payment_status = 'paid') as registered_count
         FROM packages p
         LEFT JOIN age_groups ag ON p.age_group_id = ag.id
         LEFT JOIN skill_levels sl ON p.skill_level_id = sl.id
@@ -110,6 +111,30 @@ try {
 } catch (PDOException $e) {
     error_log("Programs fetch error: " . $e->getMessage());
     $programPackages = [];
+}
+
+// Fetch registered users for each program package (for display in the table)
+$programRegistrations = [];
+try {
+    if (!empty($programPackages)) {
+        $pkgIds = array_column($programPackages, 'id');
+        $placeholders = implode(',', array_fill(0, count($pkgIds), '?'));
+        $regStmt = $pdo->prepare("
+            SELECT up.package_id, u.id as user_id, u.first_name, u.last_name, u.email, up.payment_status, up.created_at
+            FROM user_packages up
+            JOIN users u ON up.user_id = u.id
+            WHERE up.package_id IN ($placeholders) AND up.payment_status = 'paid'
+            ORDER BY up.created_at DESC
+        ");
+        $regStmt->execute($pkgIds);
+        $allRegs = $regStmt->fetchAll(PDO::FETCH_ASSOC);
+        $allRegs = decryptUserRows($allRegs);
+        foreach ($allRegs as $reg) {
+            $programRegistrations[$reg['package_id']][] = $reg;
+        }
+    }
+} catch (PDOException $e) {
+    error_log("Program registrations fetch error: " . $e->getMessage());
 }
 
 // Fetch age groups for package form
@@ -630,6 +655,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                                 <th>Dates</th>
                                 <th>Price</th>
                                 <th>Age Group</th>
+                                <th>Registered</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
@@ -653,6 +679,16 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                                 </td>
                                 <td>$<?= number_format($prog['price'] ?? 0, 2) ?></td>
                                 <td><?= htmlspecialchars($prog['age_group_name'] ?? $prog['age_group'] ?? 'All') ?></td>
+                                <td>
+                                    <?php $regCount = (int)($prog['registered_count'] ?? 0); ?>
+                                    <?php if ($regCount > 0): ?>
+                                        <button type="button" class="btn-action" onclick="toggleRegistrationList(<?= $prog['id'] ?>)" title="View registered users" style="color: var(--primary);">
+                                            <i class="fas fa-users"></i> <?= $regCount ?>
+                                        </button>
+                                    <?php else: ?>
+                                        <span style="color: var(--text-dim);">0</span>
+                                    <?php endif; ?>
+                                </td>
                                 <td><span class="status-badge <?= !empty($prog['is_active']) ? 'active' : 'inactive' ?>"><?= !empty($prog['is_active']) ? 'Active' : 'Inactive' ?></span></td>
                                 <td>
                                     <div class="table-actions">
@@ -661,6 +697,29 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                                     </div>
                                 </td>
                             </tr>
+                            <?php if (!empty($programRegistrations[$prog['id']])): ?>
+                            <tr class="registration-list-row" id="reg-list-<?= $prog['id'] ?>" style="display: none;">
+                                <td colspan="8" style="padding: 0;">
+                                    <div style="background: var(--bg-main); padding: 12px 20px; border-top: 1px solid var(--border);">
+                                        <h5 style="margin: 0 0 8px; color: var(--text-white); font-size: 13px;"><i class="fas fa-users"></i> Registered Users (<?= count($programRegistrations[$prog['id']]) ?>)</h5>
+                                        <table class="data-table" style="margin: 0; font-size: 13px;">
+                                            <thead>
+                                                <tr><th>Name</th><th>Email</th><th>Registered On</th></tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php foreach ($programRegistrations[$prog['id']] as $regUser): ?>
+                                                <tr>
+                                                    <td><?= htmlspecialchars(($regUser['first_name'] ?? '') . ' ' . ($regUser['last_name'] ?? '')) ?></td>
+                                                    <td><?= htmlspecialchars($regUser['email'] ?? '') ?></td>
+                                                    <td><?= !empty($regUser['created_at']) ? date('M j, Y g:i A', strtotime($regUser['created_at'])) : 'N/A' ?></td>
+                                                </tr>
+                                                <?php endforeach; ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </td>
+                            </tr>
+                            <?php endif; ?>
                             <?php endforeach; ?>
                         </tbody>
                     </table>
@@ -2072,6 +2131,14 @@ $activeTab = $_GET['tab'] ?? 'sessions';
 </div>
 
 <script>
+// Toggle registration list visibility in the programs table
+function toggleRegistrationList(packageId) {
+    var row = document.getElementById('reg-list-' + packageId);
+    if (row) {
+        row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+    }
+}
+
 // Session edit data (from PHP)
 var editCoaches = <?= json_encode(array_map(function($c) { return ['id' => $c['id'], 'name' => $c['first_name'] . ' ' . $c['last_name'], 'role' => $c['role']]; }, $coaches)) ?>;
 var editLocations = <?= json_encode(array_map(function($l) { return ['id' => $l['id'], 'name' => $l['name'], 'city' => $l['city'] ?? '']; }, $locations)) ?>;

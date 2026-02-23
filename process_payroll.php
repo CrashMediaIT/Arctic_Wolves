@@ -149,7 +149,7 @@ function uploadPayrollDocuments($pdo, $settings, $staffName, $year, $documentTyp
         $connection = connectNextcloud($settings);
         
         // Base payroll directory
-        $payrollDir = $settings['nextcloud_hr_dir'] ?? '/Arctic_Wolves/HR';
+        $payrollDir = $settings['nextcloud_hr_dir'] ?? '/HR';
         $payrollDir .= '/Payroll';
         
         // Sanitize staff name

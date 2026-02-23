@@ -541,8 +541,14 @@ $is_demo_data = false;
                     <div class="session-tags">
                         <?php if (($session['source_type'] ?? '') === 'camp_schedule'): ?>
                             <span class="tag skill-tag" style="background:rgba(16,185,129,0.15);color:#10b981;"><i class="fas fa-campground"></i> Camp</span>
+                            <?php if (!empty($session['camp_day_title'])): ?>
+                                <span class="tag plan-tag"><i class="fas fa-tag"></i> <?= htmlspecialchars($session['camp_day_title']) ?></span>
+                            <?php endif; ?>
                         <?php elseif (($session['source_type'] ?? '') === 'program_schedule'): ?>
                             <span class="tag skill-tag" style="background:rgba(245,158,11,0.15);color:#f59e0b;"><i class="fas fa-calendar-alt"></i> Program</span>
+                            <?php if (!empty($session['program_day_title'])): ?>
+                                <span class="tag plan-tag"><i class="fas fa-tag"></i> <?= htmlspecialchars($session['program_day_title']) ?></span>
+                            <?php endif; ?>
                         <?php elseif (!empty($session['session_type_name'])): ?>
                             <span class="tag skill-tag"><i class="fas fa-bullseye"></i> <?= htmlspecialchars($session['session_type_name']) ?></span>
                         <?php endif; ?>

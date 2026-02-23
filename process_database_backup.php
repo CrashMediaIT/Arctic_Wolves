@@ -181,7 +181,7 @@ try {
                     'id' => 0,
                     'name' => 'Quick Backup',
                     'destination_type' => 'both_nextcloud',
-                    'nextcloud_folder' => '/Arctic_Wolves/Backups/',
+                    'nextcloud_folder' => '/Backups/',
                     'smb_path' => '',
                     'smb_username' => '',
                     'smb_password' => '',
@@ -210,7 +210,7 @@ try {
             
         case 'force_nextcloud':
             // Force backup directly to both Nextcloud instances
-            $nextcloud_folder = trim($_POST['nextcloud_folder'] ?? '/Arctic_Wolves/Backups/');
+            $nextcloud_folder = trim($_POST['nextcloud_folder'] ?? '/Backups/');
             
             $job = [
                 'id' => 0,
