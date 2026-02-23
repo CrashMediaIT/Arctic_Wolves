@@ -13,14 +13,167 @@ setSecurityHeaders();
 $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
 
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
-    if ($isAjax) {
-        header('Content-Type: application/json');
+    // Allow staff roles for specific registration management actions
+    $staff_roles = ['admin', 'coach', 'coach_plus', 'team_coach', 'front_desk_staff'];
+    $staff_actions = ['get_registrations', 'cancel_registration'];
+    $current_action = $_GET['action'] ?? $_POST['action'] ?? '';
+    
+    if (in_array($_SESSION['user_role'] ?? '', $staff_roles) && in_array($current_action, $staff_actions)) {
+        // Allow staff access for registration management
+    } else {
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Admin access required']);
+            exit();
+        }
         http_response_code(403);
-        echo json_encode(['success' => false, 'message' => 'Admin access required']);
+        die('Access denied.');
+    }
+}
+
+// Handle GET request for retrieving registered users for a package (AJAX - Staff)
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'get_registrations') {
+    header('Content-Type: application/json');
+    $package_id = intval($_GET['package_id'] ?? 0);
+    
+    if ($package_id <= 0) {
+        echo json_encode(['success' => false, 'message' => 'Invalid package ID']);
         exit();
     }
-    http_response_code(403);
-    die('Access denied.');
+    
+    try {
+        // Get registered users (paid)
+        $reg_stmt = $pdo->prepare("
+            SELECT up.id as user_package_id, up.user_id, up.amount_paid, up.purchase_date,
+                   u.first_name, u.last_name, u.email
+            FROM user_packages up
+            JOIN users u ON up.user_id = u.id
+            WHERE up.package_id = ? AND up.payment_status = 'paid'
+            ORDER BY up.purchase_date DESC
+        ");
+        $reg_stmt->execute([$package_id]);
+        $registered = $reg_stmt->fetchAll(PDO::FETCH_ASSOC);
+        $registered = decryptUserRows($registered);
+        
+        $registered_result = array_map(function($u) {
+            return [
+                'user_package_id' => (int)$u['user_package_id'],
+                'user_id' => (int)$u['user_id'],
+                'name' => ($u['first_name'] ?? '') . ' ' . ($u['last_name'] ?? ''),
+                'email' => $u['email'] ?? '',
+                'amount_paid' => $u['amount_paid'],
+                'purchase_date' => $u['purchase_date']
+            ];
+        }, $registered);
+        
+        // Get waitlisted users (from bookings on linked sessions)
+        $wait_stmt = $pdo->prepare("
+            SELECT DISTINCT u.id as user_id, u.first_name, u.last_name, u.email
+            FROM bookings b
+            JOIN package_sessions ps ON b.session_id = ps.session_id
+            JOIN users u ON b.user_id = u.id
+            WHERE ps.package_id = ? AND b.status = 'waitlisted'
+        ");
+        $wait_stmt->execute([$package_id]);
+        $waitlisted = $wait_stmt->fetchAll(PDO::FETCH_ASSOC);
+        $waitlisted = decryptUserRows($waitlisted);
+        
+        $waitlisted_result = array_map(function($u) {
+            return [
+                'user_id' => (int)$u['user_id'],
+                'name' => ($u['first_name'] ?? '') . ' ' . ($u['last_name'] ?? ''),
+                'email' => $u['email'] ?? ''
+            ];
+        }, $waitlisted);
+        
+        echo json_encode(['success' => true, 'registered' => $registered_result, 'waitlisted' => $waitlisted_result]);
+    } catch (PDOException $e) {
+        error_log("Registration fetch error: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Failed to load registrations']);
+    }
+    exit();
+}
+
+// Handle POST for cancelling a registration with auto-refund (Staff)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'cancel_registration') {
+    header('Content-Type: application/json');
+    checkCsrfToken();
+    
+    $user_package_id = intval($_POST['user_package_id'] ?? 0);
+    
+    if ($user_package_id <= 0) {
+        echo json_encode(['success' => false, 'message' => 'Invalid registration ID']);
+        exit();
+    }
+    
+    try {
+        // Get the user_package details
+        $up_stmt = $pdo->prepare("SELECT * FROM user_packages WHERE id = ? AND payment_status = 'paid'");
+        $up_stmt->execute([$user_package_id]);
+        $user_package = $up_stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$user_package) {
+            echo json_encode(['success' => false, 'message' => 'Registration not found or already cancelled']);
+            exit();
+        }
+        
+        $pdo->beginTransaction();
+        
+        // Update user_packages to refunded
+        $pdo->prepare("UPDATE user_packages SET payment_status = 'refunded' WHERE id = ?")->execute([$user_package_id]);
+        
+        // Cancel all related bookings
+        $pdo->prepare("
+            UPDATE bookings SET status = 'cancelled', payment_status = 'refunded'
+            WHERE user_id = ? AND stripe_session_id = ? AND status = 'confirmed'
+        ")->execute([$user_package['user_id'], $user_package['stripe_session_id']]);
+        
+        // Create refund record
+        $refund_amount = $user_package['amount_paid'] ?? 0;
+        $pdo->prepare("
+            INSERT INTO credits_refunds (user_id, transaction_type, amount, reason, status, processed_by, processed_at)
+            VALUES (?, 'refund', ?, 'Staff cancelled registration', 'completed', ?, NOW())
+        ")->execute([$user_package['user_id'], $refund_amount, $_SESSION['user_id']]);
+        
+        // Process Stripe refund if applicable
+        if (!empty($user_package['stripe_session_id']) && $refund_amount > 0) {
+            try {
+                if (file_exists(__DIR__ . '/vendor/autoload.php')) { require_once __DIR__ . '/vendor/autoload.php'; }
+                elseif (file_exists(__DIR__ . '/stripe-php/init.php')) { require_once __DIR__ . '/stripe-php/init.php'; }
+                
+                $settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+                $stripe_secret = $settings['stripe_secret_key'] ?? '';
+                if (function_exists('decryptCredential')) { $stripe_secret = decryptCredential($stripe_secret); }
+                \Stripe\Stripe::setApiKey($stripe_secret);
+                
+                $checkout = \Stripe\Checkout\Session::retrieve($user_package['stripe_session_id']);
+                if (!empty($checkout->payment_intent)) {
+                    \Stripe\Refund::create([
+                        'payment_intent' => $checkout->payment_intent,
+                        'amount' => intval($refund_amount * 100)
+                    ]);
+                }
+            } catch (Exception $stripeErr) {
+                error_log("Stripe refund error for user_package $user_package_id: " . $stripeErr->getMessage());
+            }
+        }
+        
+        $pdo->commit();
+        
+        Auditor::log($pdo, $_SESSION['user_id'], 'update', 'user_packages', $user_package_id, [
+            'action' => 'staff_cancel_registration',
+            'user_id' => $user_package['user_id'],
+            'refund_amount' => $refund_amount
+        ]);
+        
+        echo json_encode(['success' => true, 'message' => 'Registration cancelled and refund initiated']);
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        error_log("Cancel registration error: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Failed to cancel registration']);
+    }
+    exit();
 }
 
 // Handle GET request for retrieving package sessions (AJAX)

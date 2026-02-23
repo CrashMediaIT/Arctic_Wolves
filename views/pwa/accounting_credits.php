@@ -36,12 +36,8 @@ try {
     $creditStats = $statsStmt->fetch(PDO::FETCH_ASSOC) ?: $creditStats;
 } catch (PDOException $e) { /* use defaults */ }
 
-// Fetch users for the modal dropdown
+// Fetch users for the modal - no longer needed as we use typeahead
 $modalUsers = [];
-try {
-    $userStmt = $pdo->query("SELECT id, first_name, last_name FROM users WHERE role IN ('athlete', 'parent') ORDER BY first_name, last_name LIMIT 500");
-    $modalUsers = $userStmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) { /* empty list */ }
 ?>
 <style>
 .m-credits { padding: 16px; font-family: Inter, sans-serif; padding-bottom: 80px; }
@@ -298,12 +294,11 @@ try {
 
             <div class="m-modal-field">
                 <label for="mCreditUser">Client *</label>
-                <select name="user_id" id="mCreditUser" required>
-                    <option value="">Select Client</option>
-                    <?php foreach ($modalUsers as $u): ?>
-                    <option value="<?= (int)$u['id'] ?>"><?= htmlspecialchars(trim($u['first_name'] . ' ' . $u['last_name'])) ?></option>
-                    <?php endforeach; ?>
-                </select>
+                <input type="hidden" name="user_id" id="mCreditUserId">
+                <div style="position:relative;">
+                    <input type="text" id="mCreditUser" placeholder="Search by name or email..." autocomplete="off" required style="width:100%;padding:10px 12px;border-radius:10px;background:#16161F;border:1px solid #2D2D3F;color:#fff;font-size:14px;font-family:Inter,sans-serif;min-height:44px;box-sizing:border-box;">
+                    <div id="mCreditUserResults" style="display:none;position:absolute;top:100%;left:0;right:0;background:#16161F;border:1px solid #2D2D3F;border-top:none;border-radius:0 0 10px 10px;max-height:180px;overflow-y:auto;z-index:1000;"></div>
+                </div>
             </div>
 
             <div class="m-modal-field">
@@ -371,6 +366,91 @@ try {
         modal.classList.remove('m-show');
         var form = document.getElementById('mCreditForm');
         if (form) form.reset();
+        // Clear typeahead state
+        var hiddenInput = document.getElementById('mCreditUserId');
+        if (hiddenInput) hiddenInput.value = '';
+        var resultsDiv = document.getElementById('mCreditUserResults');
+        if (resultsDiv) resultsDiv.style.display = 'none';
+    }
+
+    // Client typeahead search
+    var mSearchInput = document.getElementById('mCreditUser');
+    var mHiddenInput = document.getElementById('mCreditUserId');
+    var mResultsDiv = document.getElementById('mCreditUserResults');
+    var mSearchTimeout = null;
+    
+    if (mSearchInput) {
+        mSearchInput.addEventListener('input', function() {
+            var query = this.value.trim();
+            mHiddenInput.value = '';
+            
+            if (mSearchTimeout) clearTimeout(mSearchTimeout);
+            
+            if (query.length < 1) {
+                mResultsDiv.style.display = 'none';
+                return;
+            }
+            
+            mSearchTimeout = setTimeout(function() {
+                fetch('ajax_search_users.php?q=' + encodeURIComponent(query) + '&limit=15')
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        if (!data.success || !data.results || data.results.length === 0) {
+                            mResultsDiv.innerHTML = '<div style="padding:10px 12px;color:#6B6B7B;font-size:13px;">No users found</div>';
+                            mResultsDiv.style.display = 'block';
+                            return;
+                        }
+                        mResultsDiv.innerHTML = '';
+                        data.results.forEach(function(user) {
+                            var item = document.createElement('div');
+                            item.style.cssText = 'padding:10px 12px;cursor:pointer;border-bottom:1px solid #2D2D3F;font-size:13px;';
+                            item.onmouseenter = function() { this.style.background = '#2D2D3F'; };
+                            item.onmouseleave = function() { this.style.background = 'transparent'; };
+                            
+                            var nameSpan = document.createElement('strong');
+                            nameSpan.style.color = '#fff';
+                            nameSpan.textContent = user.name;
+                            item.appendChild(nameSpan);
+                            
+                            var emailSpan = document.createElement('span');
+                            emailSpan.style.cssText = 'color:#6B6B7B;margin-left:6px;font-size:12px;';
+                            emailSpan.textContent = user.email;
+                            item.appendChild(emailSpan);
+                            
+                            if (user.role) {
+                                var roleSpan = document.createElement('span');
+                                roleSpan.style.cssText = 'color:#8B5CF6;margin-left:6px;font-size:10px;background:rgba(139,92,246,0.15);padding:2px 6px;border-radius:4px;';
+                                roleSpan.textContent = user.role;
+                                item.appendChild(roleSpan);
+                            }
+                            
+                            item.onclick = function() {
+                                mHiddenInput.value = user.id;
+                                mSearchInput.value = user.name + ' (' + user.email + ')';
+                                mResultsDiv.style.display = 'none';
+                            };
+                            mResultsDiv.appendChild(item);
+                        });
+                        mResultsDiv.style.display = 'block';
+                    })
+                    .catch(function() {
+                        mResultsDiv.innerHTML = '<div style="padding:10px 12px;color:#EF4444;font-size:13px;">Search failed</div>';
+                        mResultsDiv.style.display = 'block';
+                    });
+            }, 300);
+        });
+        
+        document.addEventListener('click', function(e) {
+            if (!mSearchInput.contains(e.target) && !mResultsDiv.contains(e.target)) {
+                mResultsDiv.style.display = 'none';
+            }
+        });
+        
+        mSearchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !mHiddenInput.value) {
+                e.preventDefault();
+            }
+        });
     }
 
     // Form submit via AJAX
