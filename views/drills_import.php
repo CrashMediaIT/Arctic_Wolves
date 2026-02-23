@@ -245,11 +245,13 @@ document.getElementById('importDrillForm').addEventListener('submit', function()
     container.style.display = 'block';
     var bar = document.getElementById('importProgressBar');
     var progress = 20;
-    setInterval(function() {
+    var interval = setInterval(function() {
         if (progress < 85) {
             progress += Math.random() * 10;
             if (progress > 85) progress = 85;
             bar.style.width = progress + '%';
+        } else {
+            clearInterval(interval);
         }
     }, 600);
 });
