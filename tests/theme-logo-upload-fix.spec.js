@@ -3,10 +3,17 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 /**
- * Arctic Wolves - Theme Logo Upload Fix Tests
- * Tests that the theme tab logo upload in system tools works correctly
- * by ensuring hidden URL inputs are disabled to prevent browser validation
- * from blocking form submission when they contain relative upload paths.
+ * Arctic Wolves - Theme Save Button Fix Tests
+ * Tests that the Save Theme button in the system tools theme tab works correctly.
+ * 
+ * Root cause: logo_url and center_ice_logo_url_input used type="url" but could
+ * contain relative upload paths (e.g. uploads/theme/logo_xxx.png) that fail
+ * browser URL validation. When the inputs are hidden, the browser error
+ * "An invalid form control with name='...' is not focusable" silently blocks
+ * form submission.
+ * 
+ * Fix: Changed these inputs to type="text" since they can hold either full URLs
+ * or relative upload paths.
  */
 
 const ROOT = path.resolve(__dirname, '..');
@@ -16,45 +23,29 @@ function readFile(relativePath) {
 }
 
 // =====================================================
-// Theme Logo Upload - URL Input Disabled When Hidden
+// Theme Save Button - Form Submission Fix
 // =====================================================
 
-test.describe('Theme Logo Upload - Form Validation Fix', () => {
-  test('toggleThemeLogoInput disables logo_url input when upload method is selected', () => {
+test.describe('Theme Save Button - Form Submission Fix', () => {
+  test('logo_url input uses type="text" to allow relative upload paths', () => {
     const content = readFile('views/admin_system_tools.php');
-    // The toggle function should disable the URL input to prevent
-    // browser type="url" validation from blocking form submission
-    // when the URL field contains a relative upload path
-    expect(content).toContain('logoUrlInput.disabled');
-    expect(content).toContain("input[name=\"logo_url\"]");
+    // The logo_url input must NOT use type="url" because it can contain
+    // relative paths like "uploads/theme/logo_xxx.png" from file uploads.
+    // type="url" would reject these and silently block form submission.
+    expect(content).toContain('type="text" name="logo_url"');
+    expect(content).not.toMatch(/type="url"\s+name="logo_url"/);
   });
 
-  test('toggleCenterIceLogoInput disables center ice URL input when upload method is selected', () => {
+  test('center_ice_logo_url_input uses type="text" to allow relative upload paths', () => {
     const content = readFile('views/admin_system_tools.php');
-    expect(content).toContain('centerIceUrlInput.disabled');
-    expect(content).toContain("input[name=\"center_ice_logo_url_input\"]");
+    expect(content).toContain('type="text" name="center_ice_logo_url_input"');
+    expect(content).not.toMatch(/type="url"\s+name="center_ice_logo_url_input"/);
   });
 
-  test('toggle functions are called on page load to set initial disabled state', () => {
-    const content = readFile('views/admin_system_tools.php');
-    // Both toggle functions should be called on DOMContentLoaded
-    // to set the correct initial disabled state based on the current logo_method
-    expect(content).toContain('toggleThemeLogoInput();');
-    expect(content).toContain('toggleCenterIceLogoInput();');
-
-    // Verify the calls are inside a DOMContentLoaded handler
-    // by checking they appear after the function definitions
-    const themeToggleDef = content.indexOf('function toggleThemeLogoInput()');
-    const centerIceDef = content.indexOf('function toggleCenterIceLogoInput()');
-    const themeCall = content.indexOf('toggleThemeLogoInput();', centerIceDef);
-    const centerIceCall = content.indexOf('toggleCenterIceLogoInput();', themeCall);
-    expect(themeCall).toBeGreaterThan(centerIceDef);
-    expect(centerIceCall).toBeGreaterThan(themeCall);
-  });
-
-  test('theme form has enctype multipart/form-data for file uploads', () => {
+  test('theme form has correct method and action', () => {
     const content = readFile('views/admin_system_tools.php');
     expect(content).toContain('id="theme-form"');
+    expect(content).toContain('method="POST" action="process_theme.php"');
     expect(content).toContain('enctype="multipart/form-data"');
   });
 
@@ -63,10 +54,21 @@ test.describe('Theme Logo Upload - Form Validation Fix', () => {
     expect(content).toContain('type="file" name="logo"');
   });
 
-  test('process_theme.php handles logo file upload in save_theme action', () => {
+  test('theme form has a submit button', () => {
+    const content = readFile('views/admin_system_tools.php');
+    // Find the theme form content
+    const formStart = content.indexOf('id="theme-form"');
+    const formEnd = content.indexOf('</form>', formStart);
+    const formContent = content.substring(formStart, formEnd);
+    expect(formContent).toContain('type="submit"');
+    expect(formContent).toContain('Save Theme');
+  });
+
+  test('process_theme.php handles save_theme action with redirect', () => {
     const content = readFile('process_theme.php');
     expect(content).toContain("case 'save_theme':");
     expect(content).toContain("$_FILES['logo']");
     expect(content).toContain("handleFileUpload");
+    expect(content).toContain("dashboard.php?page=system_tools&tab=theme&success=1");
   });
 });

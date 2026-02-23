@@ -1582,7 +1582,7 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                                     <h4>Logo URL</h4>
                                     <p>Direct URL to your logo image</p>
                                 </div>
-                                <input type="url" name="logo_url" class="form-input" 
+                                <input type="text" name="logo_url" class="form-input" 
                                        value="<?php echo htmlspecialchars($theme_settings['logo_url']); ?>"
                                        placeholder="https://example.com/logo.png" style="min-width: 300px;">
                             </div>
@@ -1654,7 +1654,7 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                                     <h4>Center Ice Logo URL</h4>
                                     <p>Direct URL to your center ice logo image</p>
                                 </div>
-                                <input type="url" name="center_ice_logo_url_input" class="form-input" 
+                                <input type="text" name="center_ice_logo_url_input" class="form-input" 
                                        value="<?php echo htmlspecialchars($theme_settings['center_ice_logo_url']); ?>"
                                        placeholder="https://example.com/center-ice-logo.png" style="min-width: 300px;">
                             </div>
@@ -3305,9 +3305,6 @@ function toggleThemeLogoInput() {
     
     if (uploadRow) uploadRow.style.display = method.value === 'upload' ? '' : 'none';
     if (urlRow) urlRow.style.display = method.value === 'url' ? '' : 'none';
-    
-    const logoUrlInput = document.querySelector('input[name="logo_url"]');
-    if (logoUrlInput) logoUrlInput.disabled = method.value !== 'url';
 }
 
 function toggleCenterIceLogoInput() {
@@ -3319,16 +3316,7 @@ function toggleCenterIceLogoInput() {
     
     if (uploadRow) uploadRow.style.display = method.value === 'upload' ? '' : 'none';
     if (urlRow) urlRow.style.display = method.value === 'url' ? '' : 'none';
-    
-    const centerIceUrlInput = document.querySelector('input[name="center_ice_logo_url_input"]');
-    if (centerIceUrlInput) centerIceUrlInput.disabled = method.value !== 'url';
 }
-
-// Set initial disabled state for hidden URL inputs on page load
-document.addEventListener('DOMContentLoaded', function() {
-    toggleThemeLogoInput();
-    toggleCenterIceLogoInput();
-});
 
 function removeCenterIceLogo() {
     if (!confirm('Are you sure you want to remove the center ice logo?')) return;
