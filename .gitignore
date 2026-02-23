@@ -10,6 +10,7 @@ test-results/
 # Logs
 logs/*.log
 error_log.txt
+test_results.log
 
 # Temporary files
 tmp/*
