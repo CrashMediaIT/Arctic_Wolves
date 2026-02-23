@@ -112,10 +112,10 @@ try {
                             }
                         }
                         $nc_filename = basename($imageUrl);
-                        $catId = $pdo->lastInsertId();
+                        $categoryId = $pdo->lastInsertId();
                         $result = uploadImageToNextcloud($pdo, $nc_settings, $imageUrl, 'merchandise/categories', $nc_filename);
                         if ($result['success']) {
-                            $pdo->prepare("UPDATE merchandise_categories SET nextcloud_image_path = ? WHERE id = ?")->execute([$result['remote_path'], $catId]);
+                            $pdo->prepare("UPDATE merchandise_categories SET nextcloud_image_path = ? WHERE id = ?")->execute([$result['remote_path'], $categoryId]);
                         }
                     }
                 } catch (Exception $e) {
