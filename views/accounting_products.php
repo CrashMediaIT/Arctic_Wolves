@@ -699,6 +699,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                             </tr>
                             <?php if (!empty($programRegistrations[$prog['id']])): ?>
                             <tr class="registration-list-row" id="reg-list-<?= $prog['id'] ?>" style="display: none;">
+                                <!-- colspan matches the 8 columns: Name, Type, Dates, Price, Age Group, Registered, Status, Actions -->
                                 <td colspan="8" style="padding: 0;">
                                     <div style="background: var(--bg-main); padding: 12px 20px; border-top: 1px solid var(--border);">
                                         <h5 style="margin: 0 0 8px; color: var(--text-white); font-size: 13px;"><i class="fas fa-users"></i> Registered Users (<?= count($programRegistrations[$prog['id']]) ?>)</h5>
