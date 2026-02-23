@@ -504,9 +504,9 @@ $is_demo_data = false;
                 if (!empty($session['session_time'])) {
                     $session_date_str = date('Y-m-d', strtotime($session['session_date'])) . ' ' . $session['session_time'];
                 }
-                $session_datetime = strtotime($session_date_str) ?: strtotime($session['session_date']);
+                $session_datetime = strtotime($session_date_str) ?: strtotime($session['session_date'] ?? 'now') ?: time();
                 $session_end_time = $session_datetime + ($session['duration_minutes'] ?? 60) * 60;
-                $is_demo = is_string($session['id'] ?? '') && strpos($session['id'], 'demo-') === 0;
+                $is_demo = isset($session['id']) && is_string($session['id']) && strpos($session['id'], 'demo-') === 0;
             ?>
             <div class="session-card" data-component="SessionCard" data-session-id="<?= $session['id'] ?>"
                  <?php if ($is_demo): ?>
@@ -562,7 +562,7 @@ $is_demo_data = false;
                     <?php if (!$show_history && strtotime($session['session_date']) > strtotime('+48 hours') && !empty($session['booking_id']) && $session['booking_status'] !== 'cancelled'): ?>
                         <button class="btn-danger" data-action="cancel-session" data-session-id="<?= $session['id'] ?>" data-booking-id="<?= $session['booking_id'] ?>"><i class="fas fa-times"></i> Cancel</button>
                     <?php elseif (!$show_history && in_array($session['source_type'] ?? '', ['camp_schedule', 'program_schedule'])): ?>
-                        <a href="dashboard.php?page=programs_camps&package_id=<?= intval($session['package_id'] ?? 0) ?>" class="btn-secondary" style="text-decoration:none;"><i class="fas fa-cog"></i> Manage</a>
+                        <a href="dashboard.php?page=programs_camps&package_id=<?= intval($session['package_id'] ?? 0) ?>" class="btn-secondary"><i class="fas fa-cog"></i> Manage</a>
                     <?php endif; ?>
                 </div>
             </div>
@@ -1038,11 +1038,13 @@ $is_demo_data = false;
     background: transparent;
     border: 1px solid var(--border);
     color: var(--text-white);
+    text-decoration: none;
 }
 
 .btn-secondary:hover {
     border-color: var(--primary);
     color: var(--primary);
+    text-decoration: none;
 }
 
 /* Demo Data Notice */
