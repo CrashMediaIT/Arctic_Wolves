@@ -577,6 +577,11 @@ try {
         case 'test_google_maps':
             $api_key = trim($_POST['google_maps_api_key'] ?? '');
             
+            // If no API key provided in form, use stored encrypted key from database
+            if (empty($api_key)) {
+                $api_key = getDecryptedSetting($pdo, 'google_maps_api_key');
+            }
+            
             if (empty($api_key)) {
                 echo json_encode(['success' => false, 'message' => 'Please enter a Google Maps API key first.']);
                 exit;
@@ -910,7 +915,12 @@ try {
                 'settings' => ['programs_and_standards_updated' => true]
             ]);
             
-            header('Location: dashboard.php?page=admin_settings&success=1');
+            $redirect_page = isset($_POST['redirect_page']) ? $_POST['redirect_page'] : 'admin_settings';
+            if ($redirect_page === 'system_tools') {
+                header('Location: dashboard.php?page=system_tools&tab=landing&success=1');
+            } else {
+                header('Location: dashboard.php?page=admin_settings&success=1');
+            }
             exit;
             
         case 'update_docuseal':
@@ -954,9 +964,24 @@ try {
         case 'test_docuseal':
             require_once __DIR__ . '/lib/docuseal.php';
             
+            $docuseal_url = trim($_POST['docuseal_url'] ?? '');
+            $docuseal_api_key = trim($_POST['docuseal_api_key'] ?? '');
+            
+            // If no API key provided in form, use stored encrypted key from database
+            if (empty($docuseal_api_key)) {
+                $docuseal_api_key = getDecryptedSetting($pdo, 'docuseal_api_key');
+            }
+            
+            // If no URL provided in form, use stored URL from database
+            if (empty($docuseal_url)) {
+                $stored_url_stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'docuseal_url'");
+                $stored_url_stmt->execute();
+                $docuseal_url = $stored_url_stmt->fetchColumn() ?: '';
+            }
+            
             $settings = [
-                'docuseal_url' => trim($_POST['docuseal_url'] ?? ''),
-                'docuseal_api_key' => trim($_POST['docuseal_api_key'] ?? ''),
+                'docuseal_url' => $docuseal_url,
+                'docuseal_api_key' => $docuseal_api_key,
                 'docuseal_verify_ssl' => '1'
             ];
             
@@ -1022,10 +1047,31 @@ try {
         case 'test_stallion':
             require_once __DIR__ . '/lib/stallion_express.php';
             
+            $stallion_api_url = trim($_POST['stallion_api_url'] ?? '');
+            $stallion_api_key = trim($_POST['stallion_api_key'] ?? '');
+            $stallion_api_secret = trim($_POST['stallion_api_secret'] ?? '');
+            
+            // If no API key provided in form, use stored encrypted key from database
+            if (empty($stallion_api_key)) {
+                $stallion_api_key = getDecryptedSetting($pdo, 'stallion_api_key');
+            }
+            
+            // If no API secret provided in form, use stored encrypted secret from database
+            if (empty($stallion_api_secret)) {
+                $stallion_api_secret = getDecryptedSetting($pdo, 'stallion_api_secret');
+            }
+            
+            // If no URL provided in form, use stored URL from database
+            if (empty($stallion_api_url)) {
+                $stored_url_stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'stallion_api_url'");
+                $stored_url_stmt->execute();
+                $stallion_api_url = $stored_url_stmt->fetchColumn() ?: '';
+            }
+            
             $settings = [
-                'stallion_api_url' => trim($_POST['stallion_api_url'] ?? ''),
-                'stallion_api_key' => trim($_POST['stallion_api_key'] ?? ''),
-                'stallion_api_secret' => trim($_POST['stallion_api_secret'] ?? '')
+                'stallion_api_url' => $stallion_api_url,
+                'stallion_api_key' => $stallion_api_key,
+                'stallion_api_secret' => $stallion_api_secret
             ];
             
             $result = testStallionConnection($settings);

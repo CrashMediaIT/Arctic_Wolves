@@ -8,6 +8,7 @@ session_start();
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/csrf_protection.php';
 require_once __DIR__ . '/security.php';
+require_once __DIR__ . '/lib/encryption.php';
 
 // Detect POS subdomain (pos.arcticwolves.ca)
 // Strict validation: must end with arcticwolves.ca
@@ -78,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     $_SESSION['logged_in'] = true;
                     $_SESSION['user_id'] = $matchedStaff['id'];
                     $_SESSION['user_role'] = $matchedStaff['role'];
-                    $_SESSION['user_name'] = $matchedStaff['first_name'];
+                    $_SESSION['user_name'] = FieldEncryption::decrypt($matchedStaff['first_name']);
                     $_SESSION['kiosk_mode'] = true;
                     
                     // Check for active shift and auto clock-in if needed

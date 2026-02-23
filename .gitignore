@@ -10,6 +10,7 @@ test-results/
 # Logs
 logs/*.log
 error_log.txt
+test_results.log
 
 # Temporary files
 tmp/*
@@ -31,6 +32,7 @@ backups/*
 .env
 .env.local
 arctic_wolves.env
+.nextcloud_key
 
 # IDE and editor files
 .vscode/

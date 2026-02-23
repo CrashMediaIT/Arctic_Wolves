@@ -5,6 +5,7 @@
  */
 session_start();
 require_once __DIR__ . '/db_config.php';
+require_once __DIR__ . '/security.php';
 
 // Load Stripe library
 if (file_exists('vendor/autoload.php')) {
