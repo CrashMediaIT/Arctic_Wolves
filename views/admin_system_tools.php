@@ -1582,7 +1582,7 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                                     <h4>Logo URL</h4>
                                     <p>Direct URL to your logo image</p>
                                 </div>
-                                <input type="url" name="logo_url" class="form-input" 
+                                <input type="text" name="logo_url" class="form-input" 
                                        value="<?php echo htmlspecialchars($theme_settings['logo_url']); ?>"
                                        placeholder="https://example.com/logo.png" style="min-width: 300px;">
                             </div>
@@ -1654,7 +1654,7 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                                     <h4>Center Ice Logo URL</h4>
                                     <p>Direct URL to your center ice logo image</p>
                                 </div>
-                                <input type="url" name="center_ice_logo_url_input" class="form-input" 
+                                <input type="text" name="center_ice_logo_url_input" class="form-input" 
                                        value="<?php echo htmlspecialchars($theme_settings['center_ice_logo_url']); ?>"
                                        placeholder="https://example.com/center-ice-logo.png" style="min-width: 300px;">
                             </div>
