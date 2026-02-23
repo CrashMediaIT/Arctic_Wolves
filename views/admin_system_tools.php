@@ -40,6 +40,15 @@ try {
             $settings[$key] = $value;
         }
     }
+    
+    // Decrypt encrypted credential settings so they display correctly in form fields
+    // and don't get double-encrypted on re-save
+    $encrypted_setting_keys = getEncryptedSettingKeys();
+    foreach ($encrypted_setting_keys as $esk) {
+        if (!empty($settings[$esk])) {
+            $settings[$esk] = decryptCredential($settings[$esk]);
+        }
+    }
 } catch (PDOException $e) {
     error_log("Settings fetch error: " . $e->getMessage());
     $settings = [];

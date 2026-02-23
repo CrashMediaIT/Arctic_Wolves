@@ -75,6 +75,7 @@ try {
                 $customerStmt->execute([$customerUserId]);
                 $customer = $customerStmt->fetch(PDO::FETCH_ASSOC);
                 if ($customer) {
+                    $customer = decryptUserRow($customer);
                     $customerName = $customer['first_name'] . ' ' . $customer['last_name'];
                     $customerEmail = $customer['email'];
                 }
@@ -252,6 +253,7 @@ try {
                 $customerStmt->execute([$customerUserId]);
                 $customer = $customerStmt->fetch(PDO::FETCH_ASSOC);
                 if ($customer) {
+                    $customer = decryptUserRow($customer);
                     $customerName = $customer['first_name'] . ' ' . $customer['last_name'];
                     $customerEmail = $customer['email'];
                 }

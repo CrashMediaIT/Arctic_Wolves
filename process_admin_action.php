@@ -52,6 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             if (!$session) {
                 throw new Exception('Session not found');
             }
+            $session = decryptUserRow($session);
             
             // Fetch session dates
             $datesStmt = $pdo->prepare("
@@ -1132,6 +1133,7 @@ if ($action == 'download_invoice' || (isset($_GET['action']) && $_GET['action'] 
             header("Location: dashboard.php?page=finance_dashboard&tab=billing&error=invoice_not_found");
             exit();
         }
+        $invoice = decryptUserRow($invoice);
         
         // Get line items
         $items_stmt = $pdo->prepare("SELECT * FROM invoice_items WHERE invoice_id = ?");
@@ -1264,6 +1266,7 @@ if ($action == 'view_invoice' || (isset($_GET['action']) && $_GET['action'] == '
             header("Location: dashboard.php?page=finance_dashboard&tab=billing&error=invoice_not_found");
             exit();
         }
+        $invoice = decryptUserRow($invoice);
         
         // Get line items
         $items_stmt = $pdo->prepare("SELECT * FROM invoice_items WHERE invoice_id = ?");
@@ -1938,6 +1941,7 @@ if ($action == 'toggle_user_status') {
             echo json_encode(['success' => false, 'message' => 'User not found']);
             exit();
         }
+        $user = decryptUserRow($user);
         
         // Toggle status
         $new_status = $user['is_verified'] ? 0 : 1;
@@ -1995,6 +1999,7 @@ if ($action == 'reset_user_password') {
             echo json_encode(['success' => false, 'message' => 'User not found']);
             exit();
         }
+        $user = decryptUserRow($user);
         
         // Hash and update password
         $hashed_password = password_hash($new_password, PASSWORD_BCRYPT);
@@ -2044,6 +2049,7 @@ if ($action == 'admin_reset_pin') {
             echo json_encode(['success' => false, 'message' => 'User not found']);
             exit();
         }
+        $user = decryptUserRow($user);
         
         // Verify user has a role that supports PIN login
         $allowed_roles = ['admin', 'coach', 'health_coach', 'front_desk_staff', 'hr', 'accounting'];
@@ -2101,6 +2107,7 @@ if ($action == 'force_2fa') {
         $stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
         $stmt->execute([$user_id_to_update]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        $user = decryptUserRow($user);
         
         $action_text = $two_factor_required ? 'required' : 'not required';
         Auditor::log($pdo, $user_id, 'update', 'users', $user_id_to_update, ['action' => 'force_2fa']);
