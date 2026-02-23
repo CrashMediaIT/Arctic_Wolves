@@ -120,6 +120,10 @@ class Stopwatch {
         }
     }
 
+    getElapsedMs() {
+        return this.getElapsed();
+    }
+
     getLaps() {
         return this.laps;
     }

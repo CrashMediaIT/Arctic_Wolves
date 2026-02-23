@@ -21,6 +21,7 @@ $taxName = $stripeSettings['tax_name'] ?? 'HST';
 // Initialize Stripe balance data
 $stripeBalance = null;
 $stripeRecentCharges = [];
+$stripePendingTransactions = [];
 
 // If Stripe is configured, try to fetch balance
 if ($stripeConfigured) {
@@ -37,6 +38,15 @@ if ($stripeConfigured) {
         if ($stripeLibLoaded) {
             \Stripe\Stripe::setApiKey($stripeSettings['stripe_secret_key']);
             $stripeBalance = \Stripe\Balance::retrieve();
+
+            // Fetch pending balance transactions from Stripe
+            $pendingTxns = \Stripe\BalanceTransaction::all([
+                'status' => 'pending',
+                'limit' => 10,
+            ]);
+            if ($pendingTxns && !empty($pendingTxns->data)) {
+                $stripePendingTransactions = $pendingTxns->data;
+            }
         }
     } catch (Exception $e) {
         error_log("Stripe API error: " . $e->getMessage());
@@ -417,6 +427,56 @@ try {
             <a href="https://dashboard.stripe.com/balance/overview" target="_blank" class="stripe-dashboard-link">
                 <i class="fas fa-external-link-alt"></i> View in Stripe Dashboard
             </a>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- Stripe Pending Transactions -->
+    <?php if ($stripeConfigured && !empty($stripePendingTransactions)): ?>
+    <div class="stripe-pending-section">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-hourglass-half"></i> Stripe Pending Transactions</h3>
+                <span class="pending-count-badge"><?= count($stripePendingTransactions) ?> pending</span>
+            </div>
+            <div class="card-body">
+                <div class="pending-transactions-list">
+                    <?php foreach ($stripePendingTransactions as $ptxn):
+                        $ptxnAmount = ($ptxn->amount ?? 0) / 100;
+                        $ptxnNet = ($ptxn->net ?? 0) / 100;
+                        $ptxnFee = ($ptxn->fee ?? 0) / 100;
+                        $ptxnCurrency = strtoupper($ptxn->currency ?? $currency);
+                        $ptxnType = ucwords(str_replace('_', ' ', $ptxn->type ?? 'unknown'));
+                        $ptxnCreated = date('M d, Y \a\t g:i A', $ptxn->created ?? time());
+                        $ptxnAvailable = date('M d, Y', $ptxn->available_on ?? time());
+                        $ptxnDesc = $ptxn->description ?? '';
+                    ?>
+                        <div class="pending-txn-item">
+                            <div class="pending-txn-icon">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="pending-txn-details">
+                                <h4><?= htmlspecialchars($ptxnType) ?></h4>
+                                <?php if ($ptxnDesc): ?>
+                                    <span class="pending-txn-desc"><?= htmlspecialchars($ptxnDesc) ?></span>
+                                <?php endif; ?>
+                                <span class="pending-txn-date">Created: <?= $ptxnCreated ?></span>
+                                <span class="pending-txn-available">Available: <?= $ptxnAvailable ?></span>
+                            </div>
+                            <div class="pending-txn-amounts">
+                                <span class="pending-txn-gross">$<?= number_format($ptxnAmount, 2) ?> <small><?= $ptxnCurrency ?></small></span>
+                                <?php if ($ptxnFee > 0): ?>
+                                    <span class="pending-txn-fee">Fee: $<?= number_format($ptxnFee, 2) ?></span>
+                                <?php endif; ?>
+                                <span class="pending-txn-net">Net: $<?= number_format($ptxnNet, 2) ?></span>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+                <a href="https://dashboard.stripe.com/balance/overview" target="_blank" class="stripe-dashboard-link" style="margin-top: 16px;">
+                    <i class="fas fa-external-link-alt"></i> View All in Stripe Dashboard
+                </a>
+            </div>
         </div>
     </div>
     <?php endif; ?>
@@ -1215,6 +1275,126 @@ function updateChartPeriod(days) {
     
     .finance-value {
         font-size: 26px;
+    }
+}
+
+/* Stripe Pending Transactions */
+.stripe-pending-section {
+    margin-bottom: 24px;
+}
+
+.pending-count-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    background: rgba(245, 158, 11, 0.15);
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #f59e0b;
+}
+
+.pending-transactions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.pending-txn-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px;
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    border-left: 4px solid #f59e0b;
+    transition: all 0.3s ease;
+}
+
+.pending-txn-item:hover {
+    border-color: rgba(245, 158, 11, 0.5);
+    background: rgba(245, 158, 11, 0.05);
+}
+
+.pending-txn-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 18px;
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+}
+
+.pending-txn-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.pending-txn-details h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-white);
+    margin: 0 0 2px 0;
+}
+
+.pending-txn-desc {
+    font-size: 12px;
+    color: var(--text-dim);
+}
+
+.pending-txn-date,
+.pending-txn-available {
+    font-size: 11px;
+    color: var(--text-dim);
+}
+
+.pending-txn-available {
+    color: #f59e0b;
+}
+
+.pending-txn-amounts {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.pending-txn-gross {
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--text-white);
+}
+
+.pending-txn-fee {
+    font-size: 11px;
+    color: #ef4444;
+}
+
+.pending-txn-net {
+    font-size: 13px;
+    font-weight: 700;
+    color: #f59e0b;
+}
+
+@media (max-width: 768px) {
+    .pending-txn-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .pending-txn-amounts {
+        align-items: flex-start;
+        flex-direction: row;
+        gap: 12px;
+        flex-wrap: wrap;
     }
 }
 </style>

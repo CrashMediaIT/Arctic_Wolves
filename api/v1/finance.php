@@ -74,6 +74,59 @@ function handleFinanceOverview($auth) {
         $stmt->execute();
         $overview['total_paid_bookings'] = (float) $stmt->fetchColumn();
 
+        // Stripe pending funds
+        $overview['stripe_pending_funds'] = null;
+        $stripeSettingsQuery = "SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('stripe_publishable_key', 'stripe_secret_key', 'currency')";
+        $stripeSettings = $pdo->query($stripeSettingsQuery)->fetchAll(PDO::FETCH_KEY_PAIR);
+        if (function_exists('decryptCredential')) {
+            if (!empty($stripeSettings['stripe_secret_key'])) $stripeSettings['stripe_secret_key'] = decryptCredential($stripeSettings['stripe_secret_key']);
+            if (!empty($stripeSettings['stripe_publishable_key'])) $stripeSettings['stripe_publishable_key'] = decryptCredential($stripeSettings['stripe_publishable_key']);
+        }
+        $stripeConfigured = !empty($stripeSettings['stripe_publishable_key']) && !empty($stripeSettings['stripe_secret_key']);
+
+        if ($stripeConfigured) {
+            try {
+                $stripeLibLoaded = false;
+                if (file_exists(__DIR__ . '/../../vendor/autoload.php')) {
+                    require_once __DIR__ . '/../../vendor/autoload.php';
+                    $stripeLibLoaded = true;
+                } elseif (file_exists(__DIR__ . '/../../stripe-php/init.php')) {
+                    require_once __DIR__ . '/../../stripe-php/init.php';
+                    $stripeLibLoaded = true;
+                }
+
+                if ($stripeLibLoaded) {
+                    \Stripe\Stripe::setApiKey($stripeSettings['stripe_secret_key']);
+                    $balance = \Stripe\Balance::retrieve();
+                    $pendingBalance = $balance->pending[0] ?? null;
+                    $pendingTxns = \Stripe\BalanceTransaction::all([
+                        'status' => 'pending',
+                        'limit' => 10,
+                    ]);
+                    $overview['stripe_pending_funds'] = [
+                        'total_amount' => $pendingBalance ? ($pendingBalance->amount / 100) : 0,
+                        'currency' => strtoupper($pendingBalance->currency ?? $stripeSettings['currency'] ?? 'CAD'),
+                        'transaction_count' => count($pendingTxns->data ?? []),
+                        'transactions' => array_map(function ($txn) {
+                            return [
+                                'id' => $txn->id,
+                                'amount' => $txn->amount / 100,
+                                'fee' => $txn->fee / 100,
+                                'net' => $txn->net / 100,
+                                'currency' => strtoupper($txn->currency),
+                                'type' => $txn->type,
+                                'description' => $txn->description,
+                                'created' => date('c', $txn->created),
+                                'available_on' => date('c', $txn->available_on),
+                            ];
+                        }, $pendingTxns->data ?? []),
+                    ];
+                }
+            } catch (Exception $e) {
+                error_log('[API FINANCE] Stripe pending funds error: ' . $e->getMessage());
+            }
+        }
+
         logApiAccess('finance_overview', 'Viewed finance overview', $auth['user_id']);
         apiResponse(200, ['success' => true, 'data' => $overview]);
     } catch (PDOException $e) {
