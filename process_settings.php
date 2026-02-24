@@ -1718,12 +1718,7 @@ try {
             'save_encryption_key' => 'encryption',
         ];
         $redirect_tab = $action_tab_map[$action] ?? 'settings';
-        $redirect_page = isset($_POST['redirect_page']) ? $_POST['redirect_page'] : '';
-        if ($redirect_page === 'system_tools' || !empty($redirect_tab)) {
-            header('Location: dashboard.php?page=system_tools&tab=' . urlencode($redirect_tab) . '&error=' . urlencode($e->getMessage()));
-        } else {
-            header('Location: dashboard.php?page=system_tools&error=' . urlencode($e->getMessage()));
-        }
+        header('Location: dashboard.php?page=system_tools&tab=' . urlencode($redirect_tab) . '&error=' . urlencode($e->getMessage()));
         exit;
     }
 }

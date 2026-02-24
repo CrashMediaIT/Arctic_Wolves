@@ -489,7 +489,8 @@ class GitHubUpdater {
         }
         
         // Clean up backup directory
-        $backup_dir = !empty($backup) ? dirname(reset($backup)) : null;
+        $backup_values = array_values($backup);
+        $backup_dir = !empty($backup_values) ? dirname($backup_values[0]) : null;
         if ($backup_dir && is_dir($backup_dir)) {
             @rmdir($backup_dir);
         }

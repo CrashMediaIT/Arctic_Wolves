@@ -53,7 +53,7 @@ if (!$drill) {
 }
 
 // Restore drill image from Nextcloud if local file is missing
-if (!empty($drill['custom_image']) && !file_exists($drill['custom_image'])) {
+if (!empty($drill['custom_image']) && strpos($drill['custom_image'], '..') === false && strpos($drill['custom_image'], 'uploads/') === 0 && !file_exists($drill['custom_image'])) {
     require_once __DIR__ . '/../lib/image_helper.php';
     $restored = resolveDrillImage($pdo, $drill['id'], $drill['custom_image']);
     if ($restored) {

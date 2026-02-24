@@ -215,7 +215,7 @@ $totalDuration = $plan['total_duration'] ?? $calculatedDuration;
                         $hasCustomImage = !empty($drill['custom_image']) && trim($drill['custom_image']) !== '';
                         
                         // Restore drill image from Nextcloud if local file is missing
-                        if ($hasCustomImage && !file_exists($drill['custom_image'])) {
+                        if ($hasCustomImage && strpos($drill['custom_image'], '..') === false && strpos($drill['custom_image'], 'uploads/') === 0 && !file_exists($drill['custom_image'])) {
                             require_once __DIR__ . '/../lib/image_helper.php';
                             $restored = resolveDrillImage($pdo, $drill['drill_id'], $drill['custom_image']);
                             if ($restored) {
