@@ -138,7 +138,15 @@ class GitHubUpdater {
      * Apply updates from GitHub
      */
     public function applyUpdates() {
+        $backup = [];
+        
         try {
+            // Pre-flight connectivity check before starting destructive operations
+            $connectivity = $this->testGitHubConnection();
+            if (!$connectivity['success']) {
+                return ['success' => false, 'message' => 'Cannot connect to GitHub: ' . ($connectivity['message'] ?? 'Network error')];
+            }
+            
             // Backup persistent files before update
             $backup = $this->backupPersistentFiles();
             
@@ -159,19 +167,25 @@ class GitHubUpdater {
             }
             
             if ($response === false) {
-                return ['success' => false, 'message' => 'Failed to fetch repository tree'];
+                $this->restorePersistentFiles($backup);
+                return ['success' => false, 'message' => 'Failed to fetch repository tree. Network error or GitHub is unreachable.'];
             }
             
             $tree_data = json_decode($response, true);
             
-            if (!isset($tree_data['tree'])) {
+            if (!isset($tree_data['tree']) || !is_array($tree_data['tree'])) {
+                $this->restorePersistentFiles($backup);
                 return ['success' => false, 'message' => 'Invalid repository structure'];
             }
             
             $repo_files = [];
+            $total_files = 0;
             foreach ($tree_data['tree'] as $item) {
                 if ($item['type'] === 'blob') { // Only files, not directories
                     $repo_files[] = $item['path'];
+                    if (!$this->isExcludedPath($item['path'])) {
+                        $total_files++;
+                    }
                 }
             }
             
@@ -183,6 +197,7 @@ class GitHubUpdater {
             
             // Update/download files from repository
             $updated_count = 0;
+            $failed_count = 0;
             $deleted_count = 0;
             $errors = [];
             
@@ -200,22 +215,37 @@ class GitHubUpdater {
                 if ($result['success']) {
                     $updated_count++;
                 } else {
+                    $failed_count++;
                     $errors[] = "Failed to update {$file_path}: {$result['message']}";
+                }
+                
+                // Abort if too many downloads are failing (network likely down)
+                if ($failed_count > 0 && $total_files > 0 && ($failed_count / ($updated_count + $failed_count)) > 0.5 && $failed_count >= 5) {
+                    $this->restorePersistentFiles($backup);
+                    return [
+                        'success' => false,
+                        'message' => "Update aborted: too many download failures ({$failed_count} failed). Site files have been preserved.",
+                        'errors' => $errors
+                    ];
                 }
             }
             
-            // Delete files that no longer exist in repository
-            foreach ($files_to_delete as $file_path) {
-                if ($this->isExcludedPath($file_path)) {
-                    continue;
+            // Only delete files if all downloads succeeded (no network issues)
+            if ($failed_count === 0) {
+                foreach ($files_to_delete as $file_path) {
+                    if ($this->isExcludedPath($file_path)) {
+                        continue;
+                    }
+                    
+                    $result = $this->deleteLocalFile($file_path);
+                    if ($result['success']) {
+                        $deleted_count++;
+                    } else {
+                        $errors[] = "Failed to delete {$file_path}: {$result['message']}";
+                    }
                 }
-                
-                $result = $this->deleteLocalFile($file_path);
-                if ($result['success']) {
-                    $deleted_count++;
-                } else {
-                    $errors[] = "Failed to delete {$file_path}: {$result['message']}";
-                }
+            } elseif (count($files_to_delete) > 0) {
+                $errors[] = "File deletions skipped due to download errors — re-run update when network is stable";
             }
             
             // Restore persistent files after update
@@ -236,6 +266,10 @@ class GitHubUpdater {
             ];
             
         } catch (Exception $e) {
+            // Ensure persistent files are restored even on unexpected errors
+            if (!empty($backup)) {
+                $this->restorePersistentFiles($backup);
+            }
             return ['success' => false, 'message' => 'Error: ' . $e->getMessage()];
         }
     }
@@ -342,9 +376,9 @@ class GitHubUpdater {
     }
     
     /**
-     * Make HTTP request to GitHub API
+     * Make HTTP request to GitHub API with retry logic
      */
-    private function makeGitHubRequest($url, $headers = []) {
+    private function makeGitHubRequest($url, $headers = [], $retries = 2) {
         $context_options = [
             'http' => [
                 'method' => 'GET',
@@ -359,7 +393,18 @@ class GitHubUpdater {
         ];
         
         $context = stream_context_create($context_options);
-        return @file_get_contents($url, false, $context);
+        
+        for ($attempt = 0; $attempt <= $retries; $attempt++) {
+            $result = @file_get_contents($url, false, $context);
+            if ($result !== false) {
+                return $result;
+            }
+            if ($attempt < $retries) {
+                sleep(1);
+            }
+        }
+        
+        return false;
     }
     
     /**

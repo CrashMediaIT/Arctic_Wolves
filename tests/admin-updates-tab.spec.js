@@ -236,3 +236,88 @@ test.describe('ZIP feature importer UI removed from updates tab', () => {
     expect(content).not.toContain('let selectedUpdateFile');
   });
 });
+
+// =====================================================
+// 6. Network error handling
+// =====================================================
+
+test.describe('GitHub updater network error handling', () => {
+
+  test('makeGitHubRequest should have retry logic', () => {
+    const content = readFile('lib/github_updater.php');
+    expect(content).toContain('$retries');
+    expect(content).toContain('$attempt');
+    expect(content).toContain('sleep(1)');
+  });
+
+  test('applyUpdates should pre-check connectivity before destructive operations', () => {
+    const content = readFile('lib/github_updater.php');
+    const fnStart = content.indexOf('function applyUpdates()');
+    const fnEnd = content.indexOf('function downloadAndUpdateFile');
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('testGitHubConnection');
+    expect(fn).toContain('Cannot connect to GitHub');
+  });
+
+  test('applyUpdates should abort on excessive download failures', () => {
+    const content = readFile('lib/github_updater.php');
+    const fnStart = content.indexOf('function applyUpdates()');
+    const fnEnd = content.indexOf('function downloadAndUpdateFile');
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('$failed_count');
+    expect(fn).toContain('Update aborted: too many download failures');
+  });
+
+  test('applyUpdates should skip file deletions when download errors occurred', () => {
+    const content = readFile('lib/github_updater.php');
+    const fnStart = content.indexOf('function applyUpdates()');
+    const fnEnd = content.indexOf('function downloadAndUpdateFile');
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('$failed_count === 0');
+    expect(fn).toContain('File deletions skipped due to download errors');
+  });
+
+  test('applyUpdates should restore persistent files on failure', () => {
+    const content = readFile('lib/github_updater.php');
+    const fnStart = content.indexOf('function applyUpdates()');
+    const fnEnd = content.indexOf('function downloadAndUpdateFile');
+    const fn = content.substring(fnStart, fnEnd);
+    // Should restore backup on early returns and in catch block
+    const restoreCalls = fn.match(/restorePersistentFiles/g);
+    expect(restoreCalls).not.toBeNull();
+    expect(restoreCalls.length).toBeGreaterThanOrEqual(4);
+  });
+
+  test('githubCheckForUpdates JS should check response.ok', () => {
+    const content = readFile('views/admin_system_tools.php');
+    const fnStart = content.indexOf('async function githubCheckForUpdates()');
+    const fnEnd = content.indexOf('async function githubApplyUpdate()');
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('response.ok');
+  });
+
+  test('githubApplyUpdate JS should check response.ok', () => {
+    const content = readFile('views/admin_system_tools.php');
+    const fnStart = content.indexOf('async function githubApplyUpdate()');
+    const fnEnd = content.indexOf('// Stripe Library Update functions');
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('response.ok');
+  });
+
+  test('githubApplyUpdate JS should handle JSON parse errors gracefully', () => {
+    const content = readFile('views/admin_system_tools.php');
+    const fnStart = content.indexOf('async function githubApplyUpdate()');
+    const fnEnd = content.indexOf('// Stripe Library Update functions');
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('parseError');
+    expect(fn).toContain('Invalid response from server');
+  });
+
+  test('githubApplyUpdate JS catch block should display error message', () => {
+    const content = readFile('views/admin_system_tools.php');
+    const fnStart = content.indexOf('async function githubApplyUpdate()');
+    const fnEnd = content.indexOf('// Stripe Library Update functions');
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('error.message');
+  });
+});
