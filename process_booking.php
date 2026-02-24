@@ -400,17 +400,18 @@ $stmt->execute([$session_id]);
 $session = $stmt->fetch();
 if (!$session) { die("Session not found."); }
 
-// Check for duplicate booking — prevent re-ordering an already booked session
-$dup_check = $pdo->prepare("SELECT id FROM bookings WHERE session_id = ? AND user_id = ? AND status IN ('confirmed', 'waitlisted') AND payment_status IN ('pending', 'paid')");
+// Check for duplicate booking — prevent re-ordering an already paid session
+$dup_check = $pdo->prepare("SELECT id, payment_status FROM bookings WHERE session_id = ? AND user_id = ? AND status IN ('confirmed', 'waitlisted')");
 $dup_check->execute([$session_id, $user_id]);
-if ($dup_check->fetch()) {
+$existing_booking = $dup_check->fetch(PDO::FETCH_ASSOC);
+if ($existing_booking && $existing_booking['payment_status'] === 'paid') {
     header("Location: dashboard.php?page=sessions&error=already_booked&session_id=" . urlencode($session_id));
     exit();
 }
 
-// Check capacity — if session is full, prevent booking
+// Check capacity — if session is full, prevent booking (only count paid bookings)
 if (!empty($session['max_participants'])) {
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM bookings WHERE session_id = ? AND status = 'confirmed'");
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM bookings WHERE session_id = ? AND status = 'confirmed' AND payment_status = 'paid'");
     $stmt->execute([$session_id]);
     $confirmed_count = (int)$stmt->fetchColumn();
     if ($confirmed_count >= (int)$session['max_participants']) {
@@ -481,9 +482,16 @@ try {
     $checkout_session = \Stripe\Checkout\Session::create($stripe_params);
 
     // 7. SAVE BOOKING IN DB (status='confirmed', payment_status tracks payment state separately)
-    $stmt = $pdo->prepare("INSERT INTO bookings (user_id, session_id, stripe_session_id, amount_paid, original_price, discount_code, status, payment_status) VALUES (?, ?, ?, ?, ?, ?, 'confirmed', 'pending')");
-    $stmt->execute([$user_id, $session_id, $checkout_session->id, $final_price, $original_price, $applied_code]);
-    $new_booking_id = $pdo->lastInsertId();
+    // If there's an existing pending booking for this session, update it instead of creating a duplicate
+    if ($existing_booking && $existing_booking['payment_status'] === 'pending') {
+        $stmt = $pdo->prepare("UPDATE bookings SET stripe_session_id = ?, amount_paid = ?, original_price = ?, discount_code = ? WHERE id = ?");
+        $stmt->execute([$checkout_session->id, $final_price, $original_price, $applied_code, $existing_booking['id']]);
+        $new_booking_id = $existing_booking['id'];
+    } else {
+        $stmt = $pdo->prepare("INSERT INTO bookings (user_id, session_id, stripe_session_id, amount_paid, original_price, discount_code, status, payment_status) VALUES (?, ?, ?, ?, ?, ?, 'confirmed', 'pending')");
+        $stmt->execute([$user_id, $session_id, $checkout_session->id, $final_price, $original_price, $applied_code]);
+        $new_booking_id = $pdo->lastInsertId();
+    }
 
     Auditor::log($pdo, $user_id, 'create', 'bookings', $new_booking_id, ['action' => 'book_session', 'session_id' => $session_id, 'amount' => $final_price, 'discount_code' => $applied_code]);
 

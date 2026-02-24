@@ -56,7 +56,7 @@ $session_types = $pdo->query("SELECT * FROM session_types ORDER BY name")->fetch
 
 // Get the current user's existing bookings to check for duplicates
 $user_booked_sessions = [];
-$booked_stmt = $pdo->prepare("SELECT session_id FROM bookings WHERE user_id = ? AND status IN ('confirmed', 'waitlisted') AND payment_status IN ('pending', 'paid')");
+$booked_stmt = $pdo->prepare("SELECT session_id FROM bookings WHERE user_id = ? AND status IN ('confirmed', 'waitlisted') AND payment_status = 'paid'");
 $booked_stmt->execute([$_SESSION['user_id']]);
 $user_booked_sessions = $booked_stmt->fetchAll(PDO::FETCH_COLUMN);
 
@@ -65,7 +65,7 @@ if (($user_role ?? '') === 'parent') {
     $child_booked_stmt = $pdo->prepare("
         SELECT DISTINCT bk.session_id FROM bookings bk
         JOIN managed_athletes ma ON bk.user_id = ma.athlete_id
-        WHERE ma.parent_id = ? AND bk.status IN ('confirmed', 'waitlisted') AND bk.payment_status IN ('pending', 'paid')
+        WHERE ma.parent_id = ? AND bk.status IN ('confirmed', 'waitlisted') AND bk.payment_status = 'paid'
     ");
     $child_booked_stmt->execute([$_SESSION['user_id']]);
     $user_booked_sessions = array_unique(array_merge($user_booked_sessions, $child_booked_stmt->fetchAll(PDO::FETCH_COLUMN)));
@@ -80,7 +80,7 @@ if (($user_role ?? '') === 'parent') {
     $booking_check_ids = array_merge($booking_check_ids, array_map('intval', $bp_athletes_stmt->fetchAll(PDO::FETCH_COLUMN)));
 }
 $bp_placeholders = implode(',', array_fill(0, count($booking_check_ids), '?'));
-$bp_stmt = $pdo->prepare("SELECT DISTINCT package_id FROM user_packages WHERE user_id IN ($bp_placeholders) AND payment_status IN ('pending', 'paid')");
+$bp_stmt = $pdo->prepare("SELECT DISTINCT package_id FROM user_packages WHERE user_id IN ($bp_placeholders) AND payment_status = 'paid'");
 $bp_stmt->execute($booking_check_ids);
 $booking_purchased_ids = $bp_stmt->fetchAll(PDO::FETCH_COLUMN);
 
@@ -97,7 +97,7 @@ $available_sessions_query = "
     LEFT JOIN users c ON s.coach_id = c.id
     LEFT JOIN session_types st ON s.session_type_id = st.id
     LEFT JOIN locations l ON s.location_id = l.id
-    LEFT JOIN bookings b ON b.session_id = s.id AND b.status IN ('confirmed', 'waitlisted')
+    LEFT JOIN bookings b ON b.session_id = s.id AND b.status IN ('confirmed', 'waitlisted') AND b.payment_status = 'paid'
     WHERE s.session_date >= CURDATE() 
       AND s.status = 'scheduled'
     GROUP BY s.id
@@ -163,7 +163,7 @@ $is_demo_sessions = false;
                     $is_full = $spots_left <= 0 && !empty($session['max_participants']);
                     $already_booked = in_array($session['id'], $user_booked_sessions);
                 ?>
-                <div class="session-list-card" data-session-id="<?= $session['id'] ?>" data-date="<?= date('Y-m-d', $session_datetime) ?>">
+                <div class="session-list-card" data-session-id="<?= $session['id'] ?>" data-date="<?= date('Y-m-d', $session_datetime) ?>" data-booked="<?= $already_booked ? '1' : '0' ?>" data-full="<?= $is_full ? '1' : '0' ?>" data-spots="<?= $spots_left ?>">
                     <div class="session-date-column">
                         <div class="date-badge">
                             <span class="date-month"><?= date('M', $session_datetime) ?></span>
@@ -193,7 +193,7 @@ $is_demo_sessions = false;
                         </div>
                         <div class="session-price-tag">$<?= number_format($session['session_price'] ?? 0, 0) ?></div>
                         <button class="btn-register" disabled style="background:rgba(0,255,136,0.1);color:#00ff88;cursor:default;opacity:0.8;">
-                            <i class="fas fa-check-circle"></i> Already Registered
+                            <i class="fas fa-check-circle"></i> Registered
                         </button>
                         <?php elseif ($is_full): ?>
                         <div class="spots-indicator almost-full">
@@ -465,7 +465,7 @@ $is_demo_sessions = false;
                     </div>
                     <?php if (in_array($prog['id'], $booking_purchased_ids)): ?>
                     <button type="button" class="btn-register-program" disabled style="background:rgba(0,255,136,0.1);color:#00ff88;cursor:default;opacity:0.8;">
-                        <i class="fas fa-check-circle"></i> Already Registered
+                        <i class="fas fa-check-circle"></i> Registered
                     </button>
                     <?php else: ?>
                     <form method="POST" action="process_purchase_package.php" style="display:inline;">
@@ -1631,6 +1631,9 @@ document.addEventListener('DOMContentLoaded', function() {
         sessionData.push({
             id: card.dataset.sessionId,
             date: card.dataset.date,
+            booked: card.dataset.booked === '1',
+            full: card.dataset.full === '1',
+            spots: parseInt(card.dataset.spots, 10) || 0,
             element: card
         });
     });
@@ -1772,17 +1775,33 @@ document.addEventListener('DOMContentLoaded', function() {
                 spotsContainer.style.marginLeft = '12px';
                 spotsContainer.innerHTML = '<i class="fas fa-users" style="color: var(--primary, #6B46C1); margin-right: 6px;"></i>';
                 const spotsSpan = document.createElement('span');
-                spotsSpan.textContent = spots + ' spots left';
+                if (session.booked) {
+                    spotsSpan.textContent = 'registered';
+                } else {
+                    spotsSpan.textContent = spots + ' spots left';
+                }
                 spotsContainer.appendChild(spotsSpan);
                 detailsDiv.appendChild(spotsContainer);
                 
-                // Register button
+                // Action button - respect booking/full status
                 const registerBtn = document.createElement('button');
                 registerBtn.className = 'btn-register';
-                registerBtn.setAttribute('data-action', 'register-session');
-                registerBtn.setAttribute('data-session-id', session.id);
                 registerBtn.style.cssText = 'width: 100%; justify-content: center;';
-                registerBtn.innerHTML = '<i class="fas fa-plus-circle"></i> Register';
+                
+                if (session.booked) {
+                    registerBtn.disabled = true;
+                    registerBtn.style.cssText += 'background:rgba(0,255,136,0.1);color:#00ff88;cursor:default;opacity:0.8;';
+                    registerBtn.innerHTML = '<i class="fas fa-check-circle"></i> Registered';
+                } else if (session.full) {
+                    registerBtn.setAttribute('data-action', 'join-waitlist');
+                    registerBtn.setAttribute('data-session-id', session.id);
+                    registerBtn.style.cssText += 'background:rgba(245,158,11,0.15);color:#F59E0B;';
+                    registerBtn.innerHTML = '<i class="fas fa-clock"></i> Join Waitlist';
+                } else {
+                    registerBtn.setAttribute('data-action', 'register-session');
+                    registerBtn.setAttribute('data-session-id', session.id);
+                    registerBtn.innerHTML = '<i class="fas fa-plus-circle"></i> Register';
+                }
                 
                 itemEl.appendChild(headerDiv);
                 itemEl.appendChild(detailsDiv);
