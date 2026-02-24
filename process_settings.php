@@ -44,7 +44,7 @@ try {
                 'settings' => ['site_name' => $site_name, 'timezone' => $timezone, 'language' => $language]
             ]);
             
-            header('Location: dashboard.php?page=admin_settings&success=1');
+            header('Location: dashboard.php?page=system_tools&tab=settings&success=1');
             exit;
 
         case 'toggle_pii_encryption':
@@ -173,12 +173,8 @@ try {
             ]);
             
             // Redirect back to the appropriate page
-            $redirect_page = isset($_POST['redirect_page']) ? $_POST['redirect_page'] : 'admin_settings';
-            if ($redirect_page === 'system_tools') {
-                header('Location: dashboard.php?page=system_tools&tab=smtp&success=1');
-            } else {
-                header('Location: dashboard.php?page=admin_settings&success=1');
-            }
+            $redirect_page = isset($_POST['redirect_page']) ? $_POST['redirect_page'] : 'system_tools';
+            header('Location: dashboard.php?page=system_tools&tab=smtp&success=1');
             exit;
             
         case 'test_smtp':
@@ -264,12 +260,7 @@ try {
             ]);
             
             // Redirect back to the appropriate page
-            $redirect_page = isset($_POST['redirect_page']) ? $_POST['redirect_page'] : 'admin_settings';
-            if ($redirect_page === 'system_tools') {
-                header('Location: dashboard.php?page=system_tools&tab=nextcloud&success=1');
-            } else {
-                header('Location: dashboard.php?page=admin_settings&success=1');
-            }
+            header('Location: dashboard.php?page=system_tools&tab=nextcloud&success=1');
             exit;
             
         case 'test_nextcloud':
@@ -433,12 +424,7 @@ try {
             ]);
             
             // Redirect back to the appropriate page
-            $redirect_page = isset($_POST['redirect_page']) ? $_POST['redirect_page'] : 'admin_settings';
-            if ($redirect_page === 'system_tools') {
-                header('Location: dashboard.php?page=system_tools&tab=payments&success=1');
-            } else {
-                header('Location: dashboard.php?page=admin_settings&success=1');
-            }
+            header('Location: dashboard.php?page=system_tools&tab=payments&success=1');
             exit;
             
         case 'update_security':
@@ -451,7 +437,7 @@ try {
                 'settings' => ['session_timeout_minutes' => $session_timeout]
             ]);
             
-            header('Location: dashboard.php?page=admin_settings&success=1');
+            header('Location: dashboard.php?page=system_tools&tab=settings&success=1');
             exit;
             
         case 'update_advanced':
@@ -466,7 +452,7 @@ try {
                 'settings' => ['maintenance_mode' => $maintenance_mode, 'debug_mode' => $debug_mode]
             ]);
             
-            header('Location: dashboard.php?page=admin_settings&success=1');
+            header('Location: dashboard.php?page=system_tools&tab=settings&success=1');
             exit;
             
         case 'update_settings':
@@ -663,7 +649,7 @@ try {
                 'settings' => ['github_token' => '***updated***']
             ]);
             
-            header('Location: dashboard.php?page=admin_settings&success=1');
+            header('Location: dashboard.php?page=system_tools&tab=updates&success=1');
             exit;
             
         case 'test_github':
@@ -915,12 +901,7 @@ try {
                 'settings' => ['programs_and_standards_updated' => true]
             ]);
             
-            $redirect_page = isset($_POST['redirect_page']) ? $_POST['redirect_page'] : 'admin_settings';
-            if ($redirect_page === 'system_tools') {
-                header('Location: dashboard.php?page=system_tools&tab=landing&success=1');
-            } else {
-                header('Location: dashboard.php?page=admin_settings&success=1');
-            }
+            header('Location: dashboard.php?page=system_tools&tab=landing&success=1');
             exit;
             
         case 'update_docuseal':
@@ -953,12 +934,7 @@ try {
             ]);
             
             // Redirect back to the appropriate page
-            $redirect_page = isset($_POST['redirect_page']) ? $_POST['redirect_page'] : 'admin_settings';
-            if ($redirect_page === 'system_tools') {
-                header('Location: dashboard.php?page=system_tools&tab=docuseal&success=1');
-            } else {
-                header('Location: dashboard.php?page=admin_settings&success=1');
-            }
+            header('Location: dashboard.php?page=system_tools&tab=docuseal&success=1');
             exit;
             
         case 'test_docuseal':
@@ -1036,12 +1012,7 @@ try {
                 'settings' => ['stallion_enabled' => $stallion_enabled, 'stallion_api_url' => $stallion_api_url, 'stallion_api_key' => '***updated***']
             ]);
             
-            $redirect_page = isset($_POST['redirect_page']) ? $_POST['redirect_page'] : 'admin_settings';
-            if ($redirect_page === 'system_tools') {
-                header('Location: dashboard.php?page=system_tools&tab=stallion&success=1');
-            } else {
-                header('Location: dashboard.php?page=admin_settings&success=1');
-            }
+            header('Location: dashboard.php?page=system_tools&tab=stallion&success=1');
             exit;
             
         case 'test_stallion':
@@ -1729,7 +1700,30 @@ try {
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     } else {
-        header('Location: dashboard.php?page=admin_settings&error=' . urlencode($e->getMessage()));
+        // Determine the correct redirect tab based on the action
+        $action_tab_map = [
+            'update_payments'    => 'payments',
+            'update_smtp'        => 'smtp',
+            'update_nextcloud'   => 'nextcloud',
+            'update_nextcloud_backup' => 'nextcloud',
+            'update_theme'       => 'theme',
+            'update_google_maps' => 'mileage',
+            'update_mileage_rates' => 'mileage',
+            'update_paperless'   => 'paperless',
+            'update_docuseal'    => 'docuseal',
+            'update_stallion'    => 'stallion',
+            'update_landing'     => 'landing',
+            'update_settings'    => 'settings',
+            'toggle_pii_encryption' => 'encryption',
+            'save_encryption_key' => 'encryption',
+        ];
+        $redirect_tab = $action_tab_map[$action] ?? 'settings';
+        $redirect_page = isset($_POST['redirect_page']) ? $_POST['redirect_page'] : '';
+        if ($redirect_page === 'system_tools' || !empty($redirect_tab)) {
+            header('Location: dashboard.php?page=system_tools&tab=' . urlencode($redirect_tab) . '&error=' . urlencode($e->getMessage()));
+        } else {
+            header('Location: dashboard.php?page=system_tools&error=' . urlencode($e->getMessage()));
+        }
         exit;
     }
 }

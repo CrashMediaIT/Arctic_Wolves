@@ -576,12 +576,29 @@ function getDecryptedSetting($pdo, $key) {
  * @return string Raw hex key material (64-char hex string)
  */
 function loadCredentialKey() {
+    static $synced_to_db = false;
     $key_file = __DIR__ . '/.nextcloud_key';
 
     // 1. Fast path – local file
     if (file_exists($key_file)) {
         $key = file_get_contents($key_file);
         if (!empty($key)) {
+            // Ensure key is also in database for recovery after directory wipe
+            if (!$synced_to_db) {
+                $synced_to_db = true;
+                global $pdo;
+                if (isset($pdo) && $pdo instanceof PDO) {
+                    try {
+                        $ins = $pdo->prepare(
+                            "INSERT IGNORE INTO system_settings (setting_key, setting_value)
+                             VALUES ('_credential_encryption_key', ?)"
+                        );
+                        $ins->execute([$key]);
+                    } catch (PDOException $e) {
+                        // Non-critical – best-effort persistence
+                    }
+                }
+            }
             return $key;
         }
     }

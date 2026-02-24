@@ -17,6 +17,8 @@ class GitHubUpdater {
         'uploads/',
         '.git/',
         '.env',
+        '.nextcloud_key',
+        'arctic_wolves.env',
         'config.php',
         'vendor/',
         'node_modules/',
@@ -137,6 +139,9 @@ class GitHubUpdater {
      */
     public function applyUpdates() {
         try {
+            // Backup persistent files before update
+            $backup = $this->backupPersistentFiles();
+            
             // Get list of all files in the repository
             $url = "https://api.github.com/repos/{$this->repo_owner}/{$this->repo_name}/git/trees/main?recursive=1";
             $headers = ['User-Agent: Arctic-Wolves-Updater'];
@@ -212,6 +217,9 @@ class GitHubUpdater {
                     $errors[] = "Failed to delete {$file_path}: {$result['message']}";
                 }
             }
+            
+            // Restore persistent files after update
+            $this->restorePersistentFiles($backup);
             
             // Update current commit SHA
             $check_result = $this->checkForUpdates();
@@ -427,5 +435,63 @@ class GitHubUpdater {
         }
         
         return ['success' => false, 'message' => $result['error_description'] ?? 'Unknown error'];
+    }
+    
+    /**
+     * Backup persistent files before applying updates.
+     * These files contain encryption keys and configuration that must survive updates.
+     * 
+     * @return array Map of original path => backup path
+     */
+    private function backupPersistentFiles() {
+        $persistent_files = [
+            '.nextcloud_key',
+            'arctic_wolves.env',
+            '.env',
+            'db_config.php',
+        ];
+        
+        $backup = [];
+        $backup_dir = sys_get_temp_dir() . '/arctic_wolves_update_backup_' . time();
+        
+        foreach ($persistent_files as $file) {
+            $full_path = $this->base_path . '/' . $file;
+            if (file_exists($full_path)) {
+                if (!is_dir($backup_dir)) {
+                    mkdir($backup_dir, 0700, true);
+                }
+                $backup_path = $backup_dir . '/' . $file;
+                if (copy($full_path, $backup_path)) {
+                    $backup[$file] = $backup_path;
+                }
+            }
+        }
+        
+        return $backup;
+    }
+    
+    /**
+     * Restore persistent files after applying updates.
+     * 
+     * @param array $backup Map of original path => backup path from backupPersistentFiles()
+     */
+    private function restorePersistentFiles($backup) {
+        foreach ($backup as $file => $backup_path) {
+            $full_path = $this->base_path . '/' . $file;
+            if (file_exists($backup_path)) {
+                // Only restore if the file was removed or changed during update
+                if (!file_exists($full_path) || md5_file($full_path) !== md5_file($backup_path)) {
+                    copy($backup_path, $full_path);
+                    chmod($full_path, 0600);
+                }
+                @unlink($backup_path);
+            }
+        }
+        
+        // Clean up backup directory
+        $backup_dir = !empty($backup) ? dirname(reset($backup)) : null;
+        if ($backup_dir && is_dir($backup_dir)) {
+            @rmdir($backup_dir);
+        }
     }
 }

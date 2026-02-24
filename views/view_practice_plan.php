@@ -213,6 +213,18 @@ $totalDuration = $plan['total_duration'] ?? $calculatedDuration;
                         $categoryName = $drill['category_name'] ?? 'General';
                         $description = $drill['description'] ?? 'No description available.';
                         $hasCustomImage = !empty($drill['custom_image']) && trim($drill['custom_image']) !== '';
+                        
+                        // Restore drill image from Nextcloud if local file is missing
+                        if ($hasCustomImage && !file_exists($drill['custom_image'])) {
+                            require_once __DIR__ . '/../lib/image_helper.php';
+                            $restored = resolveDrillImage($pdo, $drill['drill_id'], $drill['custom_image']);
+                            if ($restored) {
+                                $drill['custom_image'] = $restored;
+                            } else {
+                                $hasCustomImage = false;
+                            }
+                        }
+                        
                         $hasDiagramData = !empty($drill['diagram_data']) && trim($drill['diagram_data']) !== '' && $drill['diagram_data'] !== '[]';
                         
                         // Extract ice view from diagram data for proper CSS aspect ratio
