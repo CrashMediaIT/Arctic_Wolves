@@ -36,9 +36,15 @@ try {
 // 4. Teams
 $teams = [];
 try {
-    $stmt = $pdo->prepare("SELECT t.id, t.name, t.age_group, t.skill_level, t.division, t.is_active, CONCAT(c.first_name,' ',c.last_name) as coach_name, CONCAT(a.first_name,' ',a.last_name) as asst_name FROM teams t LEFT JOIN users c ON c.id=t.coach_id LEFT JOIN users a ON a.id=t.assistant_coach_id ORDER BY t.is_active DESC, t.name ASC");
+    $stmt = $pdo->prepare("SELECT t.id, t.name, t.age_group, t.skill_level, t.division, t.is_active, c.first_name as coach_first_name, c.last_name as coach_last_name, a.first_name as asst_first_name, a.last_name as asst_last_name FROM teams t LEFT JOIN users c ON c.id=t.coach_id LEFT JOIN users a ON a.id=t.assistant_coach_id ORDER BY t.is_active DESC, t.name ASC");
     $stmt->execute();
     $teams = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $teams = decryptUserRows($teams);
+    foreach ($teams as &$t) {
+        $t['coach_name'] = trim(($t['coach_first_name'] ?? '') . ' ' . ($t['coach_last_name'] ?? ''));
+        $t['asst_name'] = trim(($t['asst_first_name'] ?? '') . ' ' . ($t['asst_last_name'] ?? ''));
+    }
+    unset($t);
 } catch (PDOException $e) { $teams = []; }
 
 // 5. Locations

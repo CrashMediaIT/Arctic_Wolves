@@ -18,8 +18,11 @@ try {
 
 $staffList = [];
 try {
-    $stStaff = $pdo->query("SELECT id, CONCAT(first_name, ' ', last_name) AS name FROM users WHERE role IN ('admin','coach','staff') ORDER BY first_name");
+    $stStaff = $pdo->query("SELECT id, first_name, last_name FROM users WHERE role IN ('admin','coach','staff') ORDER BY first_name");
     $staffList = $stStaff->fetchAll(PDO::FETCH_ASSOC);
+    $staffList = decryptUserRows($staffList);
+    foreach ($staffList as &$s) { $s['name'] = trim(($s['first_name'] ?? '') . ' ' . ($s['last_name'] ?? '')); }
+    unset($s);
 } catch (PDOException $e) { $staffList = []; }
 
 $nextComplaintNum = 'COMP-' . str_pad(count($complaints) + 1, 4, '0', STR_PAD_LEFT);

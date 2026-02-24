@@ -146,8 +146,7 @@ try {
 
             // Get lap times
             $stmt = $pdo->prepare("
-                SELECT st.*, u.first_name, u.last_name,
-                       CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, '')) as athlete_name
+                SELECT st.*, u.first_name, u.last_name
                 FROM stopwatch_times st
                 LEFT JOIN users u ON st.athlete_id = u.id
                 WHERE st.session_id = ?
@@ -156,6 +155,10 @@ try {
             $stmt->execute([$session_id]);
             $times = $stmt->fetchAll(PDO::FETCH_ASSOC);
             $times = decryptUserRows($times);
+            foreach ($times as &$t) {
+                $t['athlete_name'] = trim(($t['first_name'] ?? '') . ' ' . ($t['last_name'] ?? ''));
+            }
+            unset($t);
 
             sendJson(true, 'Session loaded', ['session' => $session, 'times' => $times]);
             break;
