@@ -147,6 +147,40 @@ foreach ($available_sessions as &$s) {
 }
 unset($s);
 
+// Also fetch sessions from training_session_templates + training_session_dates
+$template_sessions_query = "
+    SELECT CONCAT('template_', td.id) as unique_id, td.id as id, t.name as session_type_name, t.description,
+           DATE(td.session_date) as session_date, TIME(td.session_date) as session_time,
+           t.duration_minutes, COALESCE(t.price, 0) as session_price,
+           COALESCE(td.max_participants, t.max_participants) as max_participants, 'template' as source_type, td.id as date_id,
+           c.first_name as coach_first_name, c.last_name as coach_last_name,
+           l.name as location_name,
+           (SELECT COUNT(*) FROM session_date_athletes sda WHERE sda.session_date_id = td.id) as registered_count
+    FROM training_session_templates t
+    INNER JOIN training_session_dates td ON td.template_id = t.id
+    LEFT JOIN users c ON t.coach_id = c.id
+    LEFT JOIN locations l ON t.location_id = l.id
+    WHERE t.is_active = 1
+      AND td.is_active = 1
+      AND (DATE(td.session_date) > CURDATE() OR (DATE(td.session_date) = CURDATE() AND TIME(td.session_date) > CURTIME()))
+    ORDER BY td.session_date ASC
+";
+$template_sessions = $pdo->query($template_sessions_query)->fetchAll();
+foreach ($template_sessions as &$ts) {
+    foreach (['coach_first_name', 'coach_last_name'] as $f) {
+        if (!empty($ts[$f])) $ts[$f] = FieldEncryption::decrypt($ts[$f]);
+    }
+}
+unset($ts);
+
+// Merge and sort all sessions by date
+$available_sessions = array_merge($available_sessions, $template_sessions);
+usort($available_sessions, function($a, $b) {
+    $dateA = $a['session_date'] . ' ' . ($a['session_time'] ?? '00:00:00');
+    $dateB = $b['session_date'] . ' ' . ($b['session_time'] ?? '00:00:00');
+    return strtotime($dateA) - strtotime($dateB);
+});
+
 // No demo data - show empty state when no real data exists
 $is_demo_packages = false;
 $is_demo_sessions = false;
@@ -192,13 +226,13 @@ $is_demo_sessions = false;
             <?php if (count($available_sessions) > 0): ?>
             <div class="sessions-list-grid">
                 <?php foreach ($available_sessions as $session): 
-                    $session_datetime = strtotime($session['session_date']);
+                    $session_datetime = strtotime($session['session_date'] . ' ' . ($session['session_time'] ?? '00:00:00'));
                     $spots_left = ($session['max_participants'] ?? 10) - ($session['registered_count'] ?? 0);
                     $is_almost_full = $spots_left > 0 && $spots_left <= 3;
                     $is_full = $spots_left <= 0 && !empty($session['max_participants']);
-                    $already_booked = in_array($session['id'], $user_booked_sessions);
+                    $already_booked = ($session['source_type'] === 'session') ? in_array($session['id'], $user_booked_sessions) : false;
                 ?>
-                <div class="session-list-card" data-session-id="<?= $session['id'] ?>" data-date="<?= date('Y-m-d', $session_datetime) ?>" data-booked="<?= $already_booked ? '1' : '0' ?>" data-full="<?= $is_full ? '1' : '0' ?>" data-spots="<?= $spots_left ?>">
+                <div class="session-list-card" data-session-id="<?= $session['id'] ?>" data-source-type="<?= $session['source_type'] ?>" data-date-id="<?= $session['date_id'] ?? '' ?>" data-date="<?= date('Y-m-d', $session_datetime) ?>" data-booked="<?= $already_booked ? '1' : '0' ?>" data-full="<?= $is_full ? '1' : '0' ?>" data-spots="<?= $spots_left ?>">
                     <div class="session-date-column">
                         <div class="date-badge">
                             <span class="date-month"><?= date('M', $session_datetime) ?></span>
@@ -236,7 +270,7 @@ $is_demo_sessions = false;
                             <span class="spots-text">spots left</span>
                         </div>
                         <div class="session-price-tag">$<?= number_format($session['session_price'] ?? 0, 0) ?></div>
-                        <button class="btn-register" data-action="join-waitlist" data-session-id="<?= $session['id'] ?>" style="background:rgba(245,158,11,0.15);color:#F59E0B;">
+                        <button class="btn-register" data-action="join-waitlist" data-session-id="<?= $session['id'] ?>" data-source-type="<?= $session['source_type'] ?>" data-date-id="<?= $session['date_id'] ?? '' ?>" style="background:rgba(245,158,11,0.15);color:#F59E0B;">
                             <i class="fas fa-clock"></i> Join Waitlist
                         </button>
                         <?php else: ?>
@@ -245,7 +279,7 @@ $is_demo_sessions = false;
                             <span class="spots-text">spots left</span>
                         </div>
                         <div class="session-price-tag">$<?= number_format($session['session_price'] ?? 0, 0) ?></div>
-                        <button class="btn-register" data-action="register-session" data-session-id="<?= $session['id'] ?>" data-price="<?= $session['session_price'] ?? 0 ?>">
+                        <button class="btn-register" data-action="register-session" data-session-id="<?= $session['id'] ?>" data-source-type="<?= $session['source_type'] ?>" data-date-id="<?= $session['date_id'] ?? '' ?>" data-price="<?= $session['session_price'] ?? 0 ?>">
                             <i class="fas fa-plus-circle"></i> Register
                         </button>
                         <?php endif; ?>
@@ -1666,6 +1700,8 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.session-list-card').forEach(card => {
         sessionData.push({
             id: card.dataset.sessionId,
+            sourceType: card.dataset.sourceType || 'session',
+            dateId: card.dataset.dateId || '',
             date: card.dataset.date,
             booked: card.dataset.booked === '1',
             full: card.dataset.full === '1',
@@ -1831,11 +1867,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else if (session.full) {
                     registerBtn.setAttribute('data-action', 'join-waitlist');
                     registerBtn.setAttribute('data-session-id', session.id);
+                    registerBtn.setAttribute('data-source-type', session.sourceType);
+                    registerBtn.setAttribute('data-date-id', session.dateId);
                     registerBtn.style.cssText += 'background:rgba(245,158,11,0.15);color:#F59E0B;';
                     registerBtn.innerHTML = '<i class="fas fa-clock"></i> Join Waitlist';
                 } else {
                     registerBtn.setAttribute('data-action', 'register-session');
                     registerBtn.setAttribute('data-session-id', session.id);
+                    registerBtn.setAttribute('data-source-type', session.sourceType);
+                    registerBtn.setAttribute('data-date-id', session.dateId);
                     registerBtn.innerHTML = '<i class="fas fa-plus-circle"></i> Register';
                 }
                 
@@ -1933,6 +1973,8 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const sessionId = btn.dataset.sessionId;
         const price = btn.dataset.price;
+        const sourceType = btn.dataset.sourceType || 'session';
+        const dateId = btn.dataset.dateId || '';
         
         if (sessionId.startsWith('demo-')) {
             showBookingNotification('Demo Mode: This is a demo session. Book real sessions when they become available.', 'info');
@@ -1958,14 +2000,22 @@ document.addEventListener('DOMContentLoaded', function() {
             const actionInput = document.createElement('input');
             actionInput.type = 'hidden';
             actionInput.name = 'action';
-            actionInput.value = 'register_session';
+            actionInput.value = sourceType === 'template' ? 'register_template_session' : 'register_session';
             form.appendChild(actionInput);
             
-            const sessionInput = document.createElement('input');
-            sessionInput.type = 'hidden';
-            sessionInput.name = 'session_id';
-            sessionInput.value = sessionId;
-            form.appendChild(sessionInput);
+            if (sourceType === 'template') {
+                const dateIdInput = document.createElement('input');
+                dateIdInput.type = 'hidden';
+                dateIdInput.name = 'session_date_id';
+                dateIdInput.value = dateId;
+                form.appendChild(dateIdInput);
+            } else {
+                const sessionInput = document.createElement('input');
+                sessionInput.type = 'hidden';
+                sessionInput.name = 'session_id';
+                sessionInput.value = sessionId;
+                form.appendChild(sessionInput);
+            }
             
             const csrfInput = document.createElement('input');
             csrfInput.type = 'hidden';

@@ -22,28 +22,44 @@ function readFile(relativePath) {
 // =====================================================
 
 test.describe('Booking Page - Session Query Fix', () => {
-  test('sessions_booking.php does not query training_session_templates', () => {
-    const content = readFile('views/sessions_booking.php');
-    expect(content).not.toContain('training_session_templates');
-    expect(content).not.toContain('UNION ALL');
-  });
-
-  test('sessions_booking.php queries only the sessions table for available sessions', () => {
+  test('sessions_booking.php queries the sessions table for available sessions', () => {
     const content = readFile('views/sessions_booking.php');
     expect(content).toContain('FROM sessions s');
     expect(content).toContain("s.status = 'scheduled'");
     expect(content).toContain('s.session_date >= CURDATE()');
   });
 
-  test('sessions_booking.php orders sessions by date', () => {
+  test('sessions_booking.php also queries training_session_templates with dates', () => {
+    const content = readFile('views/sessions_booking.php');
+    expect(content).toContain('FROM training_session_templates t');
+    expect(content).toContain('INNER JOIN training_session_dates td ON td.template_id = t.id');
+    expect(content).toContain('t.is_active = 1');
+    expect(content).toContain('td.is_active = 1');
+  });
+
+  test('sessions_booking.php merges and sorts both session sources by date', () => {
+    const content = readFile('views/sessions_booking.php');
+    expect(content).toContain('array_merge');
+    expect(content).toContain('usort');
+  });
+
+  test('sessions_booking.php orders sessions from sessions table by date', () => {
     const content = readFile('views/sessions_booking.php');
     expect(content).toContain('ORDER BY s.session_date ASC');
   });
 
-  test('sessions_booking.php uses session id for register button', () => {
+  test('sessions_booking.php uses session id and source type for register button', () => {
     const content = readFile('views/sessions_booking.php');
     expect(content).toContain('data-action="register-session"');
     expect(content).toContain('data-session-id');
+    expect(content).toContain('data-source-type');
+    expect(content).toContain('data-date-id');
+  });
+
+  test('sessions_booking.php JS sends correct action for template sessions', () => {
+    const content = readFile('views/sessions_booking.php');
+    expect(content).toContain("register_template_session");
+    expect(content).toContain("session_date_id");
   });
 });
 
@@ -136,5 +152,35 @@ test.describe('Registration Intent Fix', () => {
   test('calendar view register links also use correct type based on source_type', () => {
     const content = readFile('sessions_public.php');
     expect(content).toContain("session.source_type === 'template' ? 'template_date' : 'session'");
+  });
+});
+
+// =====================================================
+// 6. Process Booking - Template Session Registration
+// =====================================================
+
+test.describe('Process Booking - Template Session Support', () => {
+  test('process_booking.php has register_template_session handler', () => {
+    const content = readFile('process_booking.php');
+    expect(content).toContain("register_template_session");
+    expect(content).toContain('session_date_athletes');
+    expect(content).toContain('session_date_id');
+  });
+
+  test('register_template_session validates session_date_id', () => {
+    const content = readFile('process_booking.php');
+    const startIdx = content.indexOf("register_template_session");
+    const section = content.substring(startIdx, content.indexOf('JOIN WAITLIST'));
+    expect(section).toContain('session_date_id');
+    expect(section).toContain('training_session_dates');
+    expect(section).toContain('training_session_templates');
+  });
+
+  test('register_template_session checks for duplicate registration', () => {
+    const content = readFile('process_booking.php');
+    const startIdx = content.indexOf("register_template_session");
+    const section = content.substring(startIdx, content.indexOf('JOIN WAITLIST'));
+    expect(section).toContain('session_date_athletes');
+    expect(section).toContain('already_booked');
   });
 });
