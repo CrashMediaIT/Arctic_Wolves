@@ -4116,7 +4116,9 @@ CREATE TABLE IF NOT EXISTS `parent_invitation_athletes` (
 
 -- Add check-in/check-out toggle to sessions and packages
 ALTER TABLE `sessions`
-ADD COLUMN IF NOT EXISTS `enable_child_checkin` TINYINT(1) DEFAULT 0 COMMENT 'Enable child check-in/check-out for this session/camp';
+ADD COLUMN IF NOT EXISTS `enable_child_checkin` TINYINT(1) DEFAULT 0 COMMENT 'Enable child check-in/check-out for this session/camp',
+ADD COLUMN IF NOT EXISTS `is_private` TINYINT(1) DEFAULT 0 COMMENT 'Whether this is a private session',
+ADD COLUMN IF NOT EXISTS `is_semi_private` TINYINT(1) DEFAULT 0 COMMENT 'Whether this is a semi-private session';
 
 ALTER TABLE `packages`
 ADD COLUMN IF NOT EXISTS `enable_child_checkin` TINYINT(1) DEFAULT 0 COMMENT 'Enable child check-in/check-out for sessions in this package';

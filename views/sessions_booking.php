@@ -41,22 +41,55 @@ $tax_settings = $pdo->query("SELECT setting_key, setting_value FROM system_setti
 $booking_tax_rate = floatval($tax_settings['tax_rate'] ?? 13.00);
 $booking_tax_name = $tax_settings['tax_name'] ?? 'HST';
 
-// Get coaches for individual sessions
-$coaches_query = "
-    SELECT u.id, u.first_name, u.last_name
-    FROM users u
-    WHERE u.role IN ('coach', 'admin') AND u.is_active = 1
-    ORDER BY u.last_name, u.first_name
-";
-$coaches = $pdo->query($coaches_query)->fetchAll();
-$coaches = decryptUserRows($coaches);
+// Auto-create "Sessions" category and Private/Semi-Private products if they don't exist
+$default_private_price = 150.00;
+$default_semi_private_price = 100.00;
+try {
+    $pdo->prepare("INSERT IGNORE INTO merchandise_categories (name, description, is_active) VALUES (?, ?, 1)")->execute(['Sessions', 'Session pricing for private and semi-private bookings']);
+    $sessions_cat = $pdo->query("SELECT id FROM merchandise_categories WHERE name = 'Sessions' LIMIT 1")->fetchColumn();
+    if ($sessions_cat) {
+        $pdo->prepare("INSERT IGNORE INTO merchandise_products (category_id, name, description, sku, price, is_active, track_inventory) VALUES (?, 'Private Session', 'One-on-one private training session with a coach', 'SESSION-PRIVATE', ?, 1, 0)")->execute([$sessions_cat, $default_private_price]);
+        $pdo->prepare("INSERT IGNORE INTO merchandise_products (category_id, name, description, sku, price, is_active, track_inventory) VALUES (?, 'Semi-Private Session', 'Small group semi-private training session with a coach', 'SESSION-SEMI-PRIVATE', ?, 1, 0)")->execute([$sessions_cat, $default_semi_private_price]);
+    }
+} catch (PDOException $e) { /* Products may already exist */ }
 
-// Get session types
-$session_types = $pdo->query("SELECT * FROM session_types ORDER BY name")->fetchAll();
+// Get pricing from products for private/semi-private sessions
+$private_product = $pdo->query("SELECT price FROM merchandise_products WHERE sku = 'SESSION-PRIVATE' AND is_active = 1 LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+$semi_private_product = $pdo->query("SELECT price FROM merchandise_products WHERE sku = 'SESSION-SEMI-PRIVATE' AND is_active = 1 LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+$private_session_price = $private_product['price'] ?? $default_private_price;
+$semi_private_session_price = $semi_private_product['price'] ?? $default_semi_private_price;
+
+// Get available private and semi-private sessions (created by coaches)
+$private_sessions_query = "
+    SELECT s.id, s.title as session_type_name, s.description, 
+           s.session_date, s.session_time,
+           s.duration_minutes, s.price as session_price,
+           s.max_participants, s.is_private, s.is_semi_private,
+           c.first_name as coach_first_name, c.last_name as coach_last_name,
+           l.name as location_name,
+           COUNT(DISTINCT b.id) as registered_count
+    FROM sessions s
+    LEFT JOIN users c ON s.coach_id = c.id
+    LEFT JOIN locations l ON s.location_id = l.id
+    LEFT JOIN bookings b ON b.session_id = s.id AND b.status IN ('confirmed', 'waitlisted') AND b.payment_status = 'paid'
+    WHERE s.session_date >= CURDATE() 
+      AND s.status = 'scheduled'
+      AND (s.is_private = 1 OR s.is_semi_private = 1)
+    GROUP BY s.id
+    HAVING registered_count < COALESCE(s.max_participants, 1)
+    ORDER BY s.session_date ASC, s.session_time ASC
+";
+$private_sessions = $pdo->query($private_sessions_query)->fetchAll();
+foreach ($private_sessions as &$ps) {
+    foreach (['coach_first_name', 'coach_last_name'] as $f) {
+        if (!empty($ps[$f])) $ps[$f] = FieldEncryption::decrypt($ps[$f]);
+    }
+}
+unset($ps);
 
 // Get the current user's existing bookings to check for duplicates
 $user_booked_sessions = [];
-$booked_stmt = $pdo->prepare("SELECT session_id FROM bookings WHERE user_id = ? AND status IN ('confirmed', 'waitlisted') AND payment_status IN ('pending', 'paid')");
+$booked_stmt = $pdo->prepare("SELECT session_id FROM bookings WHERE user_id = ? AND status IN ('confirmed', 'waitlisted') AND payment_status = 'paid'");
 $booked_stmt->execute([$_SESSION['user_id']]);
 $user_booked_sessions = $booked_stmt->fetchAll(PDO::FETCH_COLUMN);
 
@@ -65,7 +98,7 @@ if (($user_role ?? '') === 'parent') {
     $child_booked_stmt = $pdo->prepare("
         SELECT DISTINCT bk.session_id FROM bookings bk
         JOIN managed_athletes ma ON bk.user_id = ma.athlete_id
-        WHERE ma.parent_id = ? AND bk.status IN ('confirmed', 'waitlisted') AND bk.payment_status IN ('pending', 'paid')
+        WHERE ma.parent_id = ? AND bk.status IN ('confirmed', 'waitlisted') AND bk.payment_status = 'paid'
     ");
     $child_booked_stmt->execute([$_SESSION['user_id']]);
     $user_booked_sessions = array_unique(array_merge($user_booked_sessions, $child_booked_stmt->fetchAll(PDO::FETCH_COLUMN)));
@@ -80,7 +113,7 @@ if (($user_role ?? '') === 'parent') {
     $booking_check_ids = array_merge($booking_check_ids, array_map('intval', $bp_athletes_stmt->fetchAll(PDO::FETCH_COLUMN)));
 }
 $bp_placeholders = implode(',', array_fill(0, count($booking_check_ids), '?'));
-$bp_stmt = $pdo->prepare("SELECT DISTINCT package_id FROM user_packages WHERE user_id IN ($bp_placeholders) AND payment_status IN ('pending', 'paid')");
+$bp_stmt = $pdo->prepare("SELECT DISTINCT package_id FROM user_packages WHERE user_id IN ($bp_placeholders) AND payment_status = 'paid'");
 $bp_stmt->execute($booking_check_ids);
 $booking_purchased_ids = $bp_stmt->fetchAll(PDO::FETCH_COLUMN);
 
@@ -97,9 +130,11 @@ $available_sessions_query = "
     LEFT JOIN users c ON s.coach_id = c.id
     LEFT JOIN session_types st ON s.session_type_id = st.id
     LEFT JOIN locations l ON s.location_id = l.id
-    LEFT JOIN bookings b ON b.session_id = s.id AND b.status IN ('confirmed', 'waitlisted')
+    LEFT JOIN bookings b ON b.session_id = s.id AND b.status IN ('confirmed', 'waitlisted') AND b.payment_status = 'paid'
     WHERE s.session_date >= CURDATE() 
       AND s.status = 'scheduled'
+      AND (s.is_private = 0 OR s.is_private IS NULL)
+      AND (s.is_semi_private = 0 OR s.is_semi_private IS NULL)
     GROUP BY s.id
     ORDER BY s.session_date ASC, s.session_time ASC
 ";
@@ -163,7 +198,7 @@ $is_demo_sessions = false;
                     $is_full = $spots_left <= 0 && !empty($session['max_participants']);
                     $already_booked = in_array($session['id'], $user_booked_sessions);
                 ?>
-                <div class="session-list-card" data-session-id="<?= $session['id'] ?>" data-date="<?= date('Y-m-d', $session_datetime) ?>">
+                <div class="session-list-card" data-session-id="<?= $session['id'] ?>" data-date="<?= date('Y-m-d', $session_datetime) ?>" data-booked="<?= $already_booked ? '1' : '0' ?>" data-full="<?= $is_full ? '1' : '0' ?>" data-spots="<?= $spots_left ?>">
                     <div class="session-date-column">
                         <div class="date-badge">
                             <span class="date-month"><?= date('M', $session_datetime) ?></span>
@@ -193,7 +228,7 @@ $is_demo_sessions = false;
                         </div>
                         <div class="session-price-tag">$<?= number_format($session['session_price'] ?? 0, 0) ?></div>
                         <button class="btn-register" disabled style="background:rgba(0,255,136,0.1);color:#00ff88;cursor:default;opacity:0.8;">
-                            <i class="fas fa-check-circle"></i> Already Registered
+                            <i class="fas fa-check-circle"></i> Registered
                         </button>
                         <?php elseif ($is_full): ?>
                         <div class="spots-indicator almost-full">
@@ -222,7 +257,7 @@ $is_demo_sessions = false;
             <div class="empty-state-card">
                 <i class="fas fa-calendar-times"></i>
                 <h4>No Upcoming Sessions</h4>
-                <p>Check back soon for new training sessions or book a private lesson below.</p>
+                <p>Check back soon for new training sessions.</p>
             </div>
             <?php endif; ?>
         </div>
@@ -250,77 +285,78 @@ $is_demo_sessions = false;
             </div>
         </div>
         
-        <!-- Private Session Booking Form -->
+        <!-- Private & Semi-Private Sessions -->
         <div class="private-session-form-container">
             <div class="form-section-divider">
-                <span>OR BOOK A PRIVATE SESSION</span>
+                <span>PRIVATE & SEMI-PRIVATE SESSIONS</span>
             </div>
-            <div class="booking-form-card">
-                <div class="form-card-header">
-                    <i class="fas fa-user-plus"></i>
-                    <div>
-                        <h3>Book Private Session</h3>
-                        <p>Schedule a one-on-one session with a coach</p>
+            <?php if (count($private_sessions) > 0): ?>
+            <div class="sessions-list-grid">
+                <?php foreach ($private_sessions as $ps): 
+                    $ps_datetime = strtotime($ps['session_date']);
+                    $ps_spots_left = ($ps['max_participants'] ?? 1) - ($ps['registered_count'] ?? 0);
+                    $ps_already_booked = in_array($ps['id'], $user_booked_sessions);
+                    $ps_label = !empty($ps['is_private']) ? 'Private' : 'Semi-Private';
+                    $ps_price = !empty($ps['is_private']) ? $private_session_price : $semi_private_session_price;
+                    // Use session price if coach set one, otherwise fall back to product price
+                    if (!empty($ps['session_price']) && $ps['session_price'] > 0) {
+                        $ps_price = $ps['session_price'];
+                    }
+                ?>
+                <div class="session-list-card" data-session-id="<?= $ps['id'] ?>" data-date="<?= date('Y-m-d', $ps_datetime) ?>" data-booked="<?= $ps_already_booked ? '1' : '0' ?>" data-full="0" data-spots="<?= $ps_spots_left ?>">
+                    <div class="session-date-column">
+                        <div class="date-badge">
+                            <span class="date-month"><?= date('M', $ps_datetime) ?></span>
+                            <span class="date-day"><?= date('j', $ps_datetime) ?></span>
+                            <span class="date-weekday"><?= date('D', $ps_datetime) ?></span>
+                        </div>
+                        <span class="session-time"><?= !empty($ps['session_time']) ? date('g:i A', strtotime($ps['session_time'])) : 'TBD' ?></span>
+                    </div>
+                    <div class="session-details-column">
+                        <h4 class="session-title"><?= htmlspecialchars($ps['session_type_name'] ?? $ps_label . ' Session') ?></h4>
+                        <div class="session-meta">
+                            <span class="meta-item" style="color:#6B46C1;font-weight:600;"><i class="fas fa-<?= !empty($ps['is_private']) ? 'user' : 'user-friends' ?>"></i> <?= $ps_label ?></span>
+                            <span class="meta-item"><i class="fas fa-user-tie"></i> <?= htmlspecialchars(trim(($ps['coach_first_name'] ?? '') . ' ' . ($ps['coach_last_name'] ?? '')) ?: 'TBD') ?></span>
+                            <?php if (!empty($ps['location_name'])): ?>
+                            <span class="meta-item"><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($ps['location_name']) ?></span>
+                            <?php endif; ?>
+                            <span class="meta-item"><i class="fas fa-clock"></i> <?= $ps['duration_minutes'] ?? 60 ?> min</span>
+                        </div>
+                        <?php if (!empty($ps['description'])): ?>
+                        <p class="session-description"><?= htmlspecialchars(substr($ps['description'], 0, 120)) ?><?= strlen($ps['description'] ?? '') > 120 ? '...' : '' ?></p>
+                        <?php endif; ?>
+                    </div>
+                    <div class="session-action-column">
+                        <?php if ($ps_already_booked): ?>
+                        <div class="spots-indicator">
+                            <span class="spots-number" style="color:#00ff88;"><i class="fas fa-check"></i></span>
+                            <span class="spots-text">registered</span>
+                        </div>
+                        <div class="session-price-tag">$<?= number_format($ps_price, 0) ?></div>
+                        <button class="btn-register" disabled style="background:rgba(0,255,136,0.1);color:#00ff88;cursor:default;opacity:0.8;">
+                            <i class="fas fa-check-circle"></i> Registered
+                        </button>
+                        <?php else: ?>
+                        <div class="spots-indicator">
+                            <span class="spots-number"><?= $ps_spots_left ?></span>
+                            <span class="spots-text">spots left</span>
+                        </div>
+                        <div class="session-price-tag">$<?= number_format($ps_price, 0) ?></div>
+                        <button class="btn-register" data-action="register-session" data-session-id="<?= $ps['id'] ?>" data-price="<?= $ps_price ?>">
+                            <i class="fas fa-plus-circle"></i> Book
+                        </button>
+                        <?php endif; ?>
                     </div>
                 </div>
-                
-                <form class="booking-form" method="POST" action="process_booking.php" data-form="session-booking">
-                    <?= csrfTokenInput() ?>
-                    <input type="hidden" name="action" value="book_private_session">
-                    
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Session Type <span class="required">*</span></label>
-                            <select name="session_type_id" class="form-input" required data-field="session-type">
-                                <option value="">-- Select Type --</option>
-                                <?php foreach ($session_types as $type): ?>
-                                    <option value="<?= $type['id'] ?>" data-price="<?= $type['price'] ?>">
-                                        <?= htmlspecialchars($type['name']) ?> - $<?= number_format($type['price'], 0) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Coach <span class="required">*</span></label>
-                            <div id="coach-typeahead-container"></div>
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Date <span class="required">*</span></label>
-                            <input type="date" name="session_date" class="form-input" required min="<?= date('Y-m-d') ?>" data-field="session-date">
-                        </div>
-                        <div class="form-group">
-                            <label>Time <span class="required">*</span></label>
-                            <select name="session_time" class="form-input" required data-field="session-time">
-                                <option value="">-- Select Time --</option>
-                                <?php 
-                                $times = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
-                                foreach ($times as $time): 
-                                ?>
-                                    <option value="<?= $time ?>"><?= date('g:i A', strtotime($time)) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Special Notes (Optional)</label>
-                        <textarea name="notes" class="form-textarea" rows="3" placeholder="Any specific goals or focus areas for this session?"></textarea>
-                    </div>
-
-                    <div class="form-actions">
-                        <div class="session-price-display">
-                            <span class="price-label">Session Price:</span>
-                            <span class="price-value" data-display="session-price">$0</span>
-                        </div>
-                        <button type="submit" class="btn-primary btn-book-session" data-action="submit-form">
-                            <i class="fas fa-check"></i> Book Session
-                        </button>
-                    </div>
-                </form>
+                <?php endforeach; ?>
             </div>
+            <?php else: ?>
+            <div class="empty-state-card">
+                <i class="fas fa-user-lock"></i>
+                <h4>No Private Sessions Available</h4>
+                <p>No private or semi-private sessions are currently scheduled. Check back soon!</p>
+            </div>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -465,7 +501,7 @@ $is_demo_sessions = false;
                     </div>
                     <?php if (in_array($prog['id'], $booking_purchased_ids)): ?>
                     <button type="button" class="btn-register-program" disabled style="background:rgba(0,255,136,0.1);color:#00ff88;cursor:default;opacity:0.8;">
-                        <i class="fas fa-check-circle"></i> Already Registered
+                        <i class="fas fa-check-circle"></i> Registered
                     </button>
                     <?php else: ?>
                     <form method="POST" action="process_purchase_package.php" style="display:inline;">
@@ -1631,6 +1667,9 @@ document.addEventListener('DOMContentLoaded', function() {
         sessionData.push({
             id: card.dataset.sessionId,
             date: card.dataset.date,
+            booked: card.dataset.booked === '1',
+            full: card.dataset.full === '1',
+            spots: parseInt(card.dataset.spots, 10) || 0,
             element: card
         });
     });
@@ -1772,17 +1811,33 @@ document.addEventListener('DOMContentLoaded', function() {
                 spotsContainer.style.marginLeft = '12px';
                 spotsContainer.innerHTML = '<i class="fas fa-users" style="color: var(--primary, #6B46C1); margin-right: 6px;"></i>';
                 const spotsSpan = document.createElement('span');
-                spotsSpan.textContent = spots + ' spots left';
+                if (session.booked) {
+                    spotsSpan.textContent = 'registered';
+                } else {
+                    spotsSpan.textContent = spots + ' spots left';
+                }
                 spotsContainer.appendChild(spotsSpan);
                 detailsDiv.appendChild(spotsContainer);
                 
-                // Register button
+                // Action button - respect booking/full status
                 const registerBtn = document.createElement('button');
                 registerBtn.className = 'btn-register';
-                registerBtn.setAttribute('data-action', 'register-session');
-                registerBtn.setAttribute('data-session-id', session.id);
                 registerBtn.style.cssText = 'width: 100%; justify-content: center;';
-                registerBtn.innerHTML = '<i class="fas fa-plus-circle"></i> Register';
+                
+                if (session.booked) {
+                    registerBtn.disabled = true;
+                    registerBtn.style.cssText += 'background:rgba(0,255,136,0.1);color:#00ff88;cursor:default;opacity:0.8;';
+                    registerBtn.innerHTML = '<i class="fas fa-check-circle"></i> Registered';
+                } else if (session.full) {
+                    registerBtn.setAttribute('data-action', 'join-waitlist');
+                    registerBtn.setAttribute('data-session-id', session.id);
+                    registerBtn.style.cssText += 'background:rgba(245,158,11,0.15);color:#F59E0B;';
+                    registerBtn.innerHTML = '<i class="fas fa-clock"></i> Join Waitlist';
+                } else {
+                    registerBtn.setAttribute('data-action', 'register-session');
+                    registerBtn.setAttribute('data-session-id', session.id);
+                    registerBtn.innerHTML = '<i class="fas fa-plus-circle"></i> Register';
+                }
                 
                 itemEl.appendChild(headerDiv);
                 itemEl.appendChild(detailsDiv);
@@ -1969,41 +2024,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 btn.innerHTML = '<i class="fas fa-clock"></i> Join Waitlist';
             });
     });
-    
-    // ============================================
-    // PRIVATE SESSION FORM - PRICE UPDATE
-    // ============================================
-    const sessionTypeSelect = document.querySelector('[data-field="session-type"]');
-    const priceDisplay = document.querySelector('[data-display="session-price"]');
-    
-    if (sessionTypeSelect && priceDisplay) {
-        sessionTypeSelect.addEventListener('change', function() {
-            const selectedOption = this.options[this.selectedIndex];
-            const price = selectedOption.dataset.price || 0;
-            priceDisplay.textContent = '$' + price;
-        });
-    }
-    
-    // Form submission
-    const bookingForm = document.querySelector('[data-form="session-booking"]');
-    if (bookingForm) {
-        bookingForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(this);
-            const sessionTypeId = formData.get('session_type_id');
-            const coachId = formData.get('coach_id');
-            
-            // Check for demo data
-            if (sessionTypeId?.startsWith('demo-') || coachId?.startsWith('demo-')) {
-                showBookingNotification('Demo Mode: Private session booking requires real coaches and session types. Contact admin for setup.', 'info');
-                return;
-            }
-            
-            // Submit the form
-            this.submit();
-        });
-    }
 });
 
 // Notification helper
@@ -2062,15 +2082,4 @@ function showBookingNotification(message, type = 'info') {
         setTimeout(() => alertDiv.remove(), 300);
     }, 4500);
 }
-</script>
-<script>
-// Initialize coach typeahead for private session booking
-new ArcticTypeahead({
-    container: '#coach-typeahead-container',
-    name: 'coach_id',
-    placeholder: 'Search for a coach…',
-    roles: 'coach,admin',
-    multiple: false,
-    required: true
-});
 </script>
