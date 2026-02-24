@@ -164,10 +164,10 @@ function uploadPayrollDocuments($pdo, $settings, $staffName, $year, $documentTyp
         uploadToNextcloud($connection, $remotePath, $content, 'application/pdf');
         
         // Save to persistent local storage
-        $tmpFile = sys_get_temp_dir() . '/' . uniqid('payroll_persist_') . '.pdf';
-        file_put_contents($tmpFile, $content);
-        saveToPersistentStorage($tmpFile, 'Payroll/' . $year . '/' . $safeStaffName, $filename);
-        if (file_exists($tmpFile)) { unlink($tmpFile); }
+        $persistTmpFile = sys_get_temp_dir() . '/' . uniqid('payroll_persist_') . '.pdf';
+        file_put_contents($persistTmpFile, $content);
+        saveToPersistentStorage($persistTmpFile, 'Payroll/' . $year . '/' . $safeStaffName, $filename);
+        if (file_exists($persistTmpFile)) { unlink($persistTmpFile); }
         
         // Also upload to Paperless-NGX with HR tag
         $tmpFile = sys_get_temp_dir() . '/' . uniqid('payroll_') . '.pdf';
