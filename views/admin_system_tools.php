@@ -3667,7 +3667,7 @@ async function githubCheckForUpdates() {
             
             if (data.latest_commit) {
                 details.style.display = 'block';
-                document.getElementById('githubLatestSha').textContent = data.latest_commit.sha ? data.latest_commit.sha.substring(0, 12) : '';
+                document.getElementById('githubLatestSha').textContent = data.latest_commit.sha ? data.latest_commit.sha.substring(0, 7) : '';
                 document.getElementById('githubLatestMessage').textContent = data.latest_commit.message || '';
                 document.getElementById('githubLatestAuthor').textContent = data.latest_commit.author || '';
                 document.getElementById('githubLatestDate').textContent = data.latest_commit.date ? new Date(data.latest_commit.date).toLocaleString() : '';
