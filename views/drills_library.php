@@ -858,6 +858,23 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 
+<!-- Delete Confirmation Modal -->
+<div id="delete-confirm-modal" class="modal">
+    <div class="modal-content" style="max-width: 440px;">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-exclamation-triangle" style="color: #EF4444;"></i> Confirm Delete</h2>
+            <button class="modal-close" aria-label="Close modal" onclick="closeDeleteConfirm()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p id="deleteConfirmMessage" style="font-size: 15px; color: var(--text-white); margin: 0;">Are you sure?</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeDeleteConfirm()"><i class="fas fa-times"></i> Cancel</button>
+            <button type="button" class="btn btn-danger" id="deleteConfirmBtn" onclick="executeDeleteConfirm()"><i class="fas fa-trash"></i> Delete</button>
+        </div>
+    </div>
+</div>
+
 <!-- Shared Ice Canvas Renderer - ensures consistent rink drawing across all views -->
 <script src="js/ice_canvas.js"></script>
 <script>
@@ -1068,9 +1085,34 @@ function getDrillCsrfToken() {
     return el ? el.value : '';
 }
 
+// --- In-App Delete Confirmation Modal ---
+var _deleteConfirmCallback = null;
+
+function showDeleteConfirm(message, onConfirm) {
+    document.getElementById('deleteConfirmMessage').textContent = message;
+    _deleteConfirmCallback = onConfirm;
+    openModal('delete-confirm-modal');
+}
+
+function closeDeleteConfirm() {
+    _deleteConfirmCallback = null;
+    closeModal('delete-confirm-modal');
+}
+
+function executeDeleteConfirm() {
+    var cb = _deleteConfirmCallback;
+    closeDeleteConfirm();
+    if (typeof cb === 'function') cb();
+}
+
 // Delete a drill with confirmation (uses JSON response)
 function deleteDrill(drillId) {
-    if (!confirm('Delete this drill? This cannot be undone.')) return;
+    showDeleteConfirm('Delete this drill? This cannot be undone.', function() {
+        performDeleteDrill(drillId);
+    });
+}
+
+function performDeleteDrill(drillId) {
     var body = new URLSearchParams();
     body.set('action', 'delete_drill');
     body.set('drill_id', drillId);
@@ -1181,8 +1223,12 @@ function bulkDeleteDrills() {
         return;
     }
     
-    if (!confirm('Delete ' + ids.length + ' selected drill(s)? This cannot be undone.')) return;
-    
+    showDeleteConfirm('Delete ' + ids.length + ' selected drill(s)? This cannot be undone.', function() {
+        performBulkDeleteDrills(ids);
+    });
+}
+
+function performBulkDeleteDrills(ids) {
     var body = new URLSearchParams();
     body.set('action', 'bulk_delete_drills');
     body.set('csrf_token', getDrillCsrfToken());
