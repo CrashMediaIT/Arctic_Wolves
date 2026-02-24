@@ -561,7 +561,7 @@ if ($action == 'upload_photo') {
             if (move_uploaded_file($_FILES['profile_photo']['tmp_name'], $new_name)) {
                 // Save to persistent storage (survives updates)
                 try {
-                    saveToPersistentStorage($new_name, 'profiles', basename($new_name));
+                    saveToPersistentStorage($new_name, 'profiles', basename($new_name), $pdo);
                 } catch (Exception $e) {
                     error_log("Persistent storage save failed: " . $e->getMessage());
                 }

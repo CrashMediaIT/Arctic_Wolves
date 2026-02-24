@@ -35,14 +35,14 @@ function isValidImagePath($path) {
  * @param string|null $filename Override filename, otherwise uses basename of local_path
  * @return bool True if restored successfully
  */
-function tryRestoreFromPersistent($local_path, $subfolder, $filename = null) {
+function tryRestoreFromPersistent($local_path, $subfolder, $filename = null, $pdo = null) {
     if (empty($subfolder)) return false;
     if ($filename === null) {
         $filename = basename($local_path);
     }
     if (empty($filename)) return false;
     
-    return restoreFromPersistentStorage($subfolder, $filename, $local_path);
+    return restoreFromPersistentStorage($subfolder, $filename, $local_path, $pdo);
 }
 
 /**
@@ -68,7 +68,7 @@ function resolveProfileImage($pdo, $user_id, $local_path) {
     // Try persistent local storage first (fast, no network)
     if (!empty($local_path)) {
         $filename = basename($local_path);
-        if (tryRestoreFromPersistent($local_path, 'profiles', $filename)) {
+        if (tryRestoreFromPersistent($local_path, 'profiles', $filename, $pdo)) {
             return $local_path;
         }
     }
@@ -145,7 +145,7 @@ function resolveEvaluationMedia($pdo, $media_id, $local_path) {
         $relative = (strpos($local_path, 'uploads/') === 0) ? substr($local_path, strlen('uploads/')) : $local_path;
         $subfolder = dirname($relative);
         $filename = basename($local_path);
-        if (!empty($subfolder) && $subfolder !== '.' && tryRestoreFromPersistent($local_path, $subfolder, $filename)) {
+        if (!empty($subfolder) && $subfolder !== '.' && tryRestoreFromPersistent($local_path, $subfolder, $filename, $pdo)) {
             return $local_path;
         }
     }
@@ -220,7 +220,7 @@ function resolveDrillImage($pdo, $drill_id, $local_path) {
     // Try persistent local storage first (fast, no network)
     if (!empty($local_path)) {
         $filename = basename($local_path);
-        if (tryRestoreFromPersistent($local_path, 'drills', $filename)) {
+        if (tryRestoreFromPersistent($local_path, 'drills', $filename, $pdo)) {
             return $local_path;
         }
     }

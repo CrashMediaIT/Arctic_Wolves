@@ -166,7 +166,7 @@ function uploadPayrollDocuments($pdo, $settings, $staffName, $year, $documentTyp
         // Save to persistent local storage
         $persistTmpFile = sys_get_temp_dir() . '/' . uniqid('payroll_persist_') . '.pdf';
         file_put_contents($persistTmpFile, $content);
-        saveToPersistentStorage($persistTmpFile, 'Payroll/' . $year . '/' . $safeStaffName, $filename);
+        saveToPersistentStorage($persistTmpFile, 'Payroll/' . $year . '/' . $safeStaffName, $filename, $pdo);
         if (file_exists($persistTmpFile)) { unlink($persistTmpFile); }
         
         // Also upload to Paperless-NGX with HR tag
