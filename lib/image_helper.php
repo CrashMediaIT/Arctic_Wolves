@@ -3,8 +3,8 @@
  * Image Helper - Handles persistent image resolution
  * 
  * When images are stored both locally and in Nextcloud, this helper
- * ensures images are available locally by restoring from Nextcloud
- * when the local file is missing (e.g., after a directory wipe).
+ * ensures images are available locally by restoring from persistent
+ * local storage first, then falling back to Nextcloud when needed.
  */
 
 require_once __DIR__ . '/../cloud_config.php';
@@ -27,7 +27,26 @@ function isValidImagePath($path) {
 }
 
 /**
- * Resolve a profile image path, restoring from Nextcloud if needed.
+ * Try to restore a file from persistent local storage based on known subfolder and filename.
+ * This is a quick local check that doesn't require Nextcloud credentials.
+ * 
+ * @param string $local_path The local path to restore to
+ * @param string $subfolder The subfolder (e.g., 'profiles', 'evaluations/123')
+ * @param string|null $filename Override filename, otherwise uses basename of local_path
+ * @return bool True if restored successfully
+ */
+function tryRestoreFromPersistent($local_path, $subfolder, $filename = null) {
+    if (empty($subfolder)) return false;
+    if ($filename === null) {
+        $filename = basename($local_path);
+    }
+    if (empty($filename)) return false;
+    
+    return restoreFromPersistentStorage($subfolder, $filename, $local_path);
+}
+
+/**
+ * Resolve a profile image path, restoring from persistent storage or Nextcloud if needed.
  * Call this before displaying a profile image to ensure the local file exists.
  * 
  * @param PDO $pdo Database connection
@@ -44,6 +63,14 @@ function resolveProfileImage($pdo, $user_id, $local_path) {
     // If local file exists, nothing to do
     if (!empty($local_path) && file_exists($local_path)) {
         return $local_path;
+    }
+    
+    // Try persistent local storage first (fast, no network)
+    if (!empty($local_path)) {
+        $filename = basename($local_path);
+        if (tryRestoreFromPersistent($local_path, 'profiles', $filename)) {
+            return $local_path;
+        }
     }
     
     // Try to restore from Nextcloud
@@ -94,7 +121,7 @@ function resolveProfileImage($pdo, $user_id, $local_path) {
 }
 
 /**
- * Resolve an evaluation media file path, restoring from Nextcloud if needed.
+ * Resolve an evaluation media file path, restoring from persistent storage or Nextcloud if needed.
  * 
  * @param PDO $pdo Database connection
  * @param int $media_id The evaluation_media record ID
@@ -110,6 +137,17 @@ function resolveEvaluationMedia($pdo, $media_id, $local_path) {
     // If local file exists, nothing to do
     if (!empty($local_path) && file_exists($local_path)) {
         return $local_path;
+    }
+    
+    // Try persistent local storage first (fast, no network)
+    if (!empty($local_path)) {
+        // Extract subfolder from path like "uploads/evaluations/123/file.jpg"
+        $relative = str_replace('uploads/', '', $local_path);
+        $subfolder = dirname($relative);
+        $filename = basename($local_path);
+        if (!empty($subfolder) && $subfolder !== '.' && tryRestoreFromPersistent($local_path, $subfolder, $filename)) {
+            return $local_path;
+        }
     }
     
     // Try to restore from Nextcloud
@@ -160,7 +198,7 @@ function resolveEvaluationMedia($pdo, $media_id, $local_path) {
 }
 
 /**
- * Resolve a drill image path, restoring from Nextcloud if needed.
+ * Resolve a drill image path, restoring from persistent storage or Nextcloud if needed.
  * Call this before displaying a drill image to ensure the local file exists.
  * 
  * @param PDO $pdo Database connection
@@ -177,6 +215,14 @@ function resolveDrillImage($pdo, $drill_id, $local_path) {
     // If local file exists, nothing to do
     if (!empty($local_path) && file_exists($local_path)) {
         return $local_path;
+    }
+    
+    // Try persistent local storage first (fast, no network)
+    if (!empty($local_path)) {
+        $filename = basename($local_path);
+        if (tryRestoreFromPersistent($local_path, 'drills', $filename)) {
+            return $local_path;
+        }
     }
     
     // Try to restore from Nextcloud

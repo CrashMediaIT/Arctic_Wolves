@@ -193,7 +193,7 @@ test.describe('GitHub updater preserves persistent files during updates', () => 
     const content = readFile('lib/github_updater.php');
     const applyFn = content.substring(
       content.indexOf('function applyUpdates()'),
-      content.indexOf('function downloadAndUpdateFile')
+      content.indexOf('function downloadFileToStaging')
     );
     expect(applyFn).toContain('backupPersistentFiles');
   });
@@ -202,7 +202,7 @@ test.describe('GitHub updater preserves persistent files during updates', () => 
     const content = readFile('lib/github_updater.php');
     const applyFn = content.substring(
       content.indexOf('function applyUpdates()'),
-      content.indexOf('function downloadAndUpdateFile')
+      content.indexOf('function downloadFileToStaging')
     );
     expect(applyFn).toContain('restorePersistentFiles');
   });
