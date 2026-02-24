@@ -33,6 +33,7 @@ if ($drillId > 0) {
         ");
         $stmt->execute([$drillId]);
         $drill = $stmt->fetch(PDO::FETCH_ASSOC);
+        $drill = decryptUserRow($drill);
     } catch (PDOException $e) { $drill = null; }
 
     if ($drill) {
