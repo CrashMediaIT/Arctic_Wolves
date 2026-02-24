@@ -106,33 +106,37 @@ test.describe('Backend create action uses OCR receipt when no file uploaded', ()
 // =====================================================
 
 test.describe('Backend validates OCR receipt path for security', () => {
-  test('should validate path starts with uploads/receipts/', () => {
+  test('should use realpath to prevent directory traversal', () => {
     const content = readFile('process_expenses.php');
     const createStart = content.indexOf("case 'create':");
     const createEnd = content.indexOf("case 'update':", createStart);
     const createSection = content.substring(createStart, createEnd);
-    expect(createSection).toContain("strpos($ocr_receipt, 'uploads/receipts/')");
+    expect(createSection).toContain('realpath($ocr_receipt)');
+    expect(createSection).toContain("realpath('uploads/receipts')");
   });
 
-  test('should verify file exists before using OCR receipt path', () => {
+  test('should verify resolved path starts within allowed directory', () => {
     const content = readFile('process_expenses.php');
     const createStart = content.indexOf("case 'create':");
     const createEnd = content.indexOf("case 'update':", createStart);
     const createSection = content.substring(createStart, createEnd);
-    expect(createSection).toContain('file_exists($ocr_receipt)');
+    expect(createSection).toContain('strpos($real_path, $allowed_dir)');
   });
 });
 
 // =====================================================
-// 5. Skip re-upload when nextcloud_path already set
+// 5. Always upload to Nextcloud for redundancy
 // =====================================================
 
-test.describe('Skip Nextcloud re-upload for OCR-scanned receipts', () => {
-  test('Nextcloud upload should check nextcloud_path is empty before uploading', () => {
+test.describe('Always upload receipt to Nextcloud for redundancy', () => {
+  test('Nextcloud upload should always happen when receipt_url and vendor exist', () => {
     const content = readFile('process_expenses.php');
     const createStart = content.indexOf("case 'create':");
     const createEnd = content.indexOf("case 'update':", createStart);
     const createSection = content.substring(createStart, createEnd);
-    expect(createSection).toContain('empty($nextcloud_path)');
+    // Should upload to Nextcloud whenever receipt_url is set, not skip when nextcloud_path exists
+    expect(createSection).toContain("if ($receipt_url && !empty($vendor_name))");
+    expect(createSection).toContain('uploadReceiptToNextcloud');
+    expect(createSection).toContain('uploadToPaperless');
   });
 });
