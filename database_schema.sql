@@ -871,7 +871,9 @@ INSERT IGNORE INTO `theme_settings` (`setting_name`, `setting_value`) VALUES
 ('hero_subtitle', 'Elite Hockey Training Program'),
 ('hero_cta_text', 'Get Started'),
 ('hero_cta_url', '/register.php'),
-('custom_css', NULL);
+('custom_css', NULL),
+('business_card_front_bg_url', NULL),
+('business_card_back_bg_url', NULL);
 
 -- Cron jobs
 CREATE TABLE IF NOT EXISTS `cron_jobs` (

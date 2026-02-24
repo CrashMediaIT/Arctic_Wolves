@@ -75,7 +75,9 @@ $theme_defaults = [
     'logo_method' => 'url',
     'use_logo_as_favicon' => '0',
     'center_ice_logo_url' => '',
-    'center_ice_logo_method' => 'upload'
+    'center_ice_logo_method' => 'upload',
+    'business_card_front_bg_url' => '',
+    'business_card_back_bg_url' => ''
 ];
 foreach ($theme_defaults as $key => $value) {
     if (!isset($theme_settings[$key])) {
@@ -1713,6 +1715,73 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                         </button>
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-save"></i> Save Theme
+                        </button>
+                    </div>
+                </form>
+                
+                <!-- Business Card Backgrounds -->
+                <form id="bc-bg-form" method="POST" action="process_theme.php" enctype="multipart/form-data" style="margin-top: 24px; border-top: 1px solid var(--border); padding-top: 24px;">
+                    <?php echo csrfTokenInput(); ?>
+                    <input type="hidden" name="action" value="update_business_card_backgrounds">
+                    <input type="hidden" name="redirect_page" value="system_tools">
+                    
+                    <div class="sync-options" style="margin-bottom: 24px;">
+                        <h4><i class="fas fa-id-card"></i> Business Card Backgrounds</h4>
+                        <p class="help-text" style="margin-bottom: 16px;">Upload background images for the front and back of business cards. The logo above is automatically used on cards. Recommended: 1050×600px (3.5" × 2" at 300 DPI).</p>
+                        
+                        <div class="settings-list">
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4>Front Card Background</h4>
+                                    <p>PNG, JPG, WEBP (max 5MB)</p>
+                                </div>
+                                <input type="file" name="bc_front_bg" class="form-input" accept=".png,.jpg,.jpeg,.webp" style="max-width: 300px;">
+                            </div>
+                            
+                            <?php
+                            $st_bc_front_bg = $theme_settings['business_card_front_bg_url'] ?? '';
+                            $st_bc_back_bg = $theme_settings['business_card_back_bg_url'] ?? '';
+                            ?>
+                            
+                            <?php if (!empty($st_bc_front_bg)): ?>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4>Current Front Background</h4>
+                                    <p>Preview of the current front card background</p>
+                                </div>
+                                <div style="background: #0A0A0F; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+                                    <img src="<?php echo htmlspecialchars($st_bc_front_bg); ?>" alt="Front Card Background" 
+                                         style="max-height: 80px; max-width: 200px;" onerror="this.style.display='none'">
+                                </div>
+                            </div>
+                            <?php endif; ?>
+                            
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4>Back Card Background</h4>
+                                    <p>PNG, JPG, WEBP (max 5MB)</p>
+                                </div>
+                                <input type="file" name="bc_back_bg" class="form-input" accept=".png,.jpg,.jpeg,.webp" style="max-width: 300px;">
+                            </div>
+                            
+                            <?php if (!empty($st_bc_back_bg)): ?>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4>Current Back Background</h4>
+                                    <p>Preview of the current back card background</p>
+                                </div>
+                                <div style="background: #0A0A0F; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+                                    <img src="<?php echo htmlspecialchars($st_bc_back_bg); ?>" alt="Back Card Background" 
+                                         style="max-height: 80px; max-width: 200px;" onerror="this.style.display='none'">
+                                </div>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Save Business Card Backgrounds
                         </button>
                     </div>
                 </form>
