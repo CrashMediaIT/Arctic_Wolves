@@ -676,7 +676,100 @@ function uploadDrillVideo($pdo, $settings, $session_name, $drill_name, $athlete_
 }
 
 /**
+ * Get the persistent storage base directory (outside the web root).
+ * This directory survives application updates because it lives outside the project folder.
+ * Structure mirrors Nextcloud: persistent_uploads/Images/{subfolder}/{filename}
+ * 
+ * @return string Absolute path to the persistent storage directory
+ */
+function getPersistentStoragePath() {
+    return realpath(__DIR__ . '/..') . '/persistent_uploads';
+}
+
+/**
+ * Save a file to persistent local storage outside the web root.
+ * Uses the same subfolder structure as Nextcloud so files can be cross-restored.
+ * 
+ * @param string $local_file_path Path to the source file
+ * @param string $subfolder Subfolder (e.g., 'profiles', 'evaluations/123', 'team_logos')
+ * @param string $filename Target filename
+ * @return array Result with success status and persistent_path
+ */
+function saveToPersistentStorage($local_file_path, $subfolder, $filename) {
+    try {
+        $base_dir = getPersistentStoragePath();
+        
+        // Build path: persistent_uploads/Images/{subfolder}/{filename}
+        $sub_parts = array_filter(explode('/', $subfolder), function($p) { return $p !== ''; });
+        $target_dir = $base_dir . '/Images/' . implode('/', $sub_parts);
+        
+        if (!is_dir($target_dir)) {
+            if (!mkdir($target_dir, 0755, true)) {
+                throw new Exception("Failed to create persistent storage directory: $target_dir");
+            }
+        }
+        
+        $target_path = $target_dir . '/' . $filename;
+        
+        if (!copy($local_file_path, $target_path)) {
+            throw new Exception("Failed to copy file to persistent storage: $target_path");
+        }
+        
+        return [
+            'success' => true,
+            'persistent_path' => $target_path
+        ];
+        
+    } catch (Exception $e) {
+        error_log("Error saving to persistent storage: " . $e->getMessage());
+        return [
+            'success' => false,
+            'message' => $e->getMessage()
+        ];
+    }
+}
+
+/**
+ * Restore a file from persistent local storage to the uploads directory.
+ * Used when the local file in uploads/ is missing after an update.
+ * 
+ * @param string $subfolder Subfolder (e.g., 'profiles', 'evaluations/123')
+ * @param string $filename The filename to look for
+ * @param string $local_path The local path to restore the file to
+ * @return bool True if file was restored successfully
+ */
+function restoreFromPersistentStorage($subfolder, $filename, $local_path) {
+    try {
+        $base_dir = getPersistentStoragePath();
+        
+        $sub_parts = array_filter(explode('/', $subfolder), function($p) { return $p !== ''; });
+        $persistent_path = $base_dir . '/Images/' . implode('/', $sub_parts) . '/' . $filename;
+        
+        if (!file_exists($persistent_path)) {
+            return false;
+        }
+        
+        // Ensure local directory exists
+        $local_dir = dirname($local_path);
+        if (!is_dir($local_dir)) {
+            mkdir($local_dir, 0755, true);
+        }
+        
+        if (!copy($persistent_path, $local_path)) {
+            throw new Exception("Failed to restore file from persistent storage to: $local_path");
+        }
+        
+        return true;
+        
+    } catch (Exception $e) {
+        error_log("Error restoring from persistent storage: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
  * Upload an image file to Nextcloud for persistent storage
+ * Also saves a copy to persistent local storage outside the web root.
  * Creates folder structure: /Images/profiles/ or /Images/evaluations/{eval_id}/
  * 
  * @param PDO $pdo Database connection
@@ -687,6 +780,9 @@ function uploadDrillVideo($pdo, $settings, $session_name, $drill_name, $athlete_
  * @return array Result with success status and remote_path
  */
 function uploadImageToNextcloud($pdo, $settings, $local_file_path, $subfolder, $filename) {
+    // Always save to persistent local storage (survives updates)
+    saveToPersistentStorage($local_file_path, $subfolder, $filename);
+    
     try {
         $connection = connectNextcloud($settings);
         
@@ -727,8 +823,9 @@ function uploadImageToNextcloud($pdo, $settings, $local_file_path, $subfolder, $
 }
 
 /**
- * Download an image from Nextcloud and restore it locally
- * Used when local file is missing but Nextcloud path exists
+ * Download an image from Nextcloud and restore it locally.
+ * First tries to restore from persistent local storage (faster, no network needed).
+ * Falls back to Nextcloud if persistent copy is not available.
  * 
  * @param PDO $pdo Database connection
  * @param array $settings Nextcloud settings (from getNextcloudSettings)
@@ -737,6 +834,23 @@ function uploadImageToNextcloud($pdo, $settings, $local_file_path, $subfolder, $
  * @return bool True if file was restored successfully
  */
 function restoreImageFromNextcloud($pdo, $settings, $nextcloud_path, $local_path) {
+    // Try persistent local storage first (faster, works offline)
+    $images_dir = $settings['nextcloud_images_dir'] ?? '/Images';
+    $relative_path = $nextcloud_path;
+    if (strpos($relative_path, $images_dir . '/') === 0) {
+        $relative_path = substr($relative_path, strlen($images_dir . '/'));
+    }
+    $subfolder = dirname($relative_path);
+    $filename = basename($relative_path);
+    
+    if (!empty($subfolder) && !empty($filename) && $subfolder !== '.') {
+        $restored = restoreFromPersistentStorage($subfolder, $filename, $local_path);
+        if ($restored) {
+            return true;
+        }
+    }
+    
+    // Fall back to Nextcloud
     try {
         $connection = connectNextcloud($settings);
         
@@ -751,6 +865,11 @@ function restoreImageFromNextcloud($pdo, $settings, $nextcloud_path, $local_path
         // Write file
         if (file_put_contents($local_path, $content) === false) {
             throw new Exception("Failed to write file to: $local_path");
+        }
+        
+        // Also save to persistent storage for future restores
+        if (!empty($subfolder) && !empty($filename) && $subfolder !== '.') {
+            saveToPersistentStorage($local_path, $subfolder, $filename);
         }
         
         return true;

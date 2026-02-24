@@ -69,6 +69,14 @@ test.describe('Drill delete JavaScript handler', () => {
     expect(fnBody).toContain('csrf_token');
   });
 
+  test('deleteDrill sends Accept: application/json header', () => {
+    const content = readFile('views/drills_library.php');
+    const fnStart = content.indexOf('function deleteDrill(');
+    const fnEnd = content.indexOf('}', content.indexOf('.catch', fnStart)) + 1;
+    const fnBody = content.substring(fnStart, fnEnd);
+    expect(fnBody).toContain("'Accept': 'application/json'");
+  });
+
   test('deleteDrill shows confirmation before deleting', () => {
     const content = readFile('views/drills_library.php');
     const fnStart = content.indexOf('function deleteDrill(');
@@ -81,6 +89,86 @@ test.describe('Drill delete JavaScript handler', () => {
     const content = readFile('views/drills_library.php');
     expect(content).toContain("data-action=\"delete\"");
     expect(content).toContain('deleteDrill(drillId)');
+  });
+});
+
+// =====================================================
+// 2b. Drill delete returns JSON for AJAX
+// =====================================================
+
+test.describe('Drill delete returns JSON for AJAX requests', () => {
+  test('process_drills.php delete_drill returns JSON when Accept header is application/json', () => {
+    const content = readFile('process_drills.php');
+    const fnStart = content.indexOf("if ($action === 'delete_drill')");
+    const fnEnd = content.indexOf("if ($action === 'bulk_delete_drills')");
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain("HTTP_ACCEPT");
+    expect(fn).toContain("application/json");
+    expect(fn).toContain("json_encode");
+    expect(fn).toContain("'success' => true");
+  });
+});
+
+// =====================================================
+// 2c. Multi-select drills UI and bulk actions
+// =====================================================
+
+test.describe('Drill multi-select and bulk actions', () => {
+  test('drill cards have selection checkboxes', () => {
+    const content = readFile('views/drills_library.php');
+    expect(content).toContain('drill-select-checkbox');
+    expect(content).toContain('drill-select-overlay');
+    expect(content).toContain('onchange="updateBulkSelection()"');
+  });
+
+  test('bulk actions bar exists with Create Practice Plan and Delete Selected buttons', () => {
+    const content = readFile('views/drills_library.php');
+    expect(content).toContain('id="bulkActionsBar"');
+    expect(content).toContain('id="bulkCreatePlanBtn"');
+    expect(content).toContain('id="bulkDeleteBtn"');
+    expect(content).toContain('Create Practice Plan');
+    expect(content).toContain('Delete Selected');
+  });
+
+  test('select all checkbox exists', () => {
+    const content = readFile('views/drills_library.php');
+    expect(content).toContain('id="selectAllDrills"');
+    expect(content).toContain('toggleSelectAllDrills');
+  });
+
+  test('updateBulkSelection function exists and manages bulk actions bar', () => {
+    const content = readFile('views/drills_library.php');
+    expect(content).toContain('function updateBulkSelection()');
+    expect(content).toContain('bulkActionsBar');
+    expect(content).toContain('bulkSelectedCount');
+  });
+
+  test('bulkCreatePracticePlan function stores drill IDs and navigates to practice_create', () => {
+    const content = readFile('views/drills_library.php');
+    expect(content).toContain('function bulkCreatePracticePlan()');
+    expect(content).toContain('drillsToAdd');
+    expect(content).toContain('sessionStorage.setItem');
+    expect(content).toContain('practice_create');
+  });
+
+  test('bulkDeleteDrills function sends bulk_delete_drills action', () => {
+    const content = readFile('views/drills_library.php');
+    expect(content).toContain('function bulkDeleteDrills()');
+    expect(content).toContain("'bulk_delete_drills'");
+    expect(content).toContain('process_drills.php');
+    expect(content).toContain('drill_ids[]');
+  });
+
+  test('process_drills.php has bulk_delete_drills action', () => {
+    const content = readFile('process_drills.php');
+    expect(content).toContain("if ($action === 'bulk_delete_drills')");
+    expect(content).toContain("'delete_drills'");
+    expect(content).toContain("drill_ids");
+  });
+
+  test('drill cards have data-drill-id attribute for DOM manipulation', () => {
+    const content = readFile('views/drills_library.php');
+    expect(content).toContain('data-drill-id=');
   });
 });
 

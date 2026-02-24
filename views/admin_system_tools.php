@@ -707,6 +707,15 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                                        value="<?php echo htmlspecialchars($settings['nextcloud_images_dir'] ?? '/Images'); ?>"
                                        placeholder="/Images">
                             </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4><i class="fas fa-hdd" style="color: #10b981; margin-right: 8px;"></i>Persistent Local Storage</h4>
+                                    <p>Images are automatically saved to a folder outside the web root that persists across updates. Same folder structure as Nextcloud for easy restoration.</p>
+                                </div>
+                                <input type="text" class="form-input" readonly disabled
+                                       value="<?php echo htmlspecialchars(dirname(dirname(__DIR__)) . '/persistent_uploads/Images/'); ?>"
+                                       style="opacity: 0.7; cursor: default;">
+                            </div>
                         </div>
                     </div>
                     
@@ -3645,7 +3654,16 @@ async function githubCheckForUpdates() {
             body: `action=check_updates&csrf_token=${encodeURIComponent(csrfToken)}`
         });
         
-        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(`Server error (HTTP ${response.status})`);
+        }
+        
+        let data;
+        try {
+            data = await response.json();
+        } catch (parseError) {
+            throw new Error('Invalid response from server');
+        }
         
         if (data.success) {
             const currentSha = data.current_sha ? data.current_sha.substring(0, 7) : 'Not set';
@@ -3679,8 +3697,9 @@ async function githubCheckForUpdates() {
         }
     } catch (error) {
         console.error('Error:', error);
+        versionInfo.textContent = 'Error checking for updates';
         resultBanner.style.cssText = 'display: block; background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #ef4444; border-radius: 8px; padding: 20px; margin-top: 20px;';
-        resultBanner.innerHTML = '<p style="margin: 0;"><i class="fas fa-exclamation-triangle"></i> Network error or server not responding</p>';
+        resultBanner.innerHTML = `<p style="margin: 0;"><i class="fas fa-exclamation-triangle"></i> ${error.message || 'Network error or server not responding'}</p>`;
     }
     
     checkBtn.disabled = false;
@@ -3724,7 +3743,18 @@ async function githubApplyUpdate() {
         });
         
         progressBar.style.width = '80%';
-        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(`Server error (HTTP ${response.status})`);
+        }
+        
+        let data;
+        try {
+            data = await response.json();
+        } catch (parseError) {
+            throw new Error('Invalid response from server — the update may have partially applied. Please check the site and try again.');
+        }
+        
         progressBar.style.width = '100%';
         
         if (data.success) {
@@ -3760,13 +3790,13 @@ async function githubApplyUpdate() {
         }
     } catch (error) {
         console.error('Error:', error);
-        githubAddLogEntry('Network error or server not responding', 'error');
+        githubAddLogEntry(error.message || 'Network error or server not responding', 'error');
         document.getElementById('githubProgressTitle').innerHTML = '<i class="fas fa-times-circle" style="color: #ef4444;"></i> Update Failed';
         
         resultBanner.style.cssText = 'display: block; background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #ef4444; border-radius: 8px; padding: 20px; margin-top: 20px;';
         resultBanner.innerHTML = `
             <h3 style="margin: 0 0 10px 0; font-size: 18px;"><i class="fas fa-times-circle"></i> Update Failed</h3>
-            <p style="margin: 0;">Network error or server not responding</p>
+            <p style="margin: 0;">${error.message || 'Network error or server not responding'}</p>
         `;
         updateBtn.disabled = false;
     }

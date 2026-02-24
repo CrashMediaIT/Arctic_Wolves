@@ -559,6 +559,13 @@ if ($action == 'upload_photo') {
             $new_name = $upload_dir . "profile_" . $current_user_id . "_" . time() . "." . $ext;
             
             if (move_uploaded_file($_FILES['profile_photo']['tmp_name'], $new_name)) {
+                // Save to persistent storage (survives updates)
+                try {
+                    saveToPersistentStorage($new_name, 'profiles', basename($new_name));
+                } catch (Exception $e) {
+                    error_log("Persistent storage save failed: " . $e->getMessage());
+                }
+                
                 // Delete old profile image if exists
                 $stmt = $pdo->prepare("SELECT profile_image FROM users WHERE id = ?");
                 $stmt->execute([$current_user_id]);

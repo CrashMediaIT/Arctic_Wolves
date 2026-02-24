@@ -305,3 +305,148 @@ test.describe('Profile view includes image restoration from Nextcloud', () => {
     expect(content).toContain("strpos($img_path, '..')");
   });
 });
+
+// =====================================================
+// 10. Persistent local storage functions
+// =====================================================
+
+test.describe('Persistent local storage functions in cloud_config.php', () => {
+  test('cloud_config.php should define getPersistentStoragePath function', () => {
+    const content = readFile('cloud_config.php');
+    expect(content).toContain('function getPersistentStoragePath()');
+  });
+
+  test('getPersistentStoragePath should return path outside web root', () => {
+    const content = readFile('cloud_config.php');
+    const fnStart = content.indexOf('function getPersistentStoragePath()');
+    const fnEnd = content.indexOf('}', fnStart) + 1;
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain("realpath(__DIR__ . '/..')");
+    expect(fn).toContain('persistent_uploads');
+  });
+
+  test('cloud_config.php should define saveToPersistentStorage function', () => {
+    const content = readFile('cloud_config.php');
+    expect(content).toContain('function saveToPersistentStorage(');
+  });
+
+  test('saveToPersistentStorage should use Images subfolder structure', () => {
+    const content = readFile('cloud_config.php');
+    const fnStart = content.indexOf('function saveToPersistentStorage(');
+    const fnEnd = content.indexOf('function restoreFromPersistentStorage(');
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain("'/Images/'");
+    expect(fn).toContain('$subfolder');
+    expect(fn).toContain('copy(');
+  });
+
+  test('cloud_config.php should define restoreFromPersistentStorage function', () => {
+    const content = readFile('cloud_config.php');
+    expect(content).toContain('function restoreFromPersistentStorage(');
+  });
+
+  test('restoreFromPersistentStorage should check file_exists before copy', () => {
+    const content = readFile('cloud_config.php');
+    const fnStart = content.indexOf('function restoreFromPersistentStorage(');
+    const fnEnd = content.indexOf('function uploadImageToNextcloud(');
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('file_exists($persistent_path)');
+    expect(fn).toContain('copy($persistent_path');
+  });
+});
+
+// =====================================================
+// 11. uploadImageToNextcloud also saves to persistent storage
+// =====================================================
+
+test.describe('uploadImageToNextcloud saves to persistent storage', () => {
+  test('uploadImageToNextcloud should call saveToPersistentStorage', () => {
+    const content = readFile('cloud_config.php');
+    const fnStart = content.indexOf('function uploadImageToNextcloud(');
+    const fnEnd = content.indexOf('function restoreImageFromNextcloud(');
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('saveToPersistentStorage(');
+  });
+});
+
+// =====================================================
+// 12. restoreImageFromNextcloud tries persistent storage first
+// =====================================================
+
+test.describe('restoreImageFromNextcloud tries persistent storage first', () => {
+  test('restoreImageFromNextcloud should try restoreFromPersistentStorage before Nextcloud', () => {
+    const content = readFile('cloud_config.php');
+    const fnStart = content.indexOf('function restoreImageFromNextcloud(');
+    const fnEnd = content.indexOf('function getDrillVideoPath(');
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('restoreFromPersistentStorage');
+    // persistent storage should be tried BEFORE connectNextcloud
+    const persistentIdx = fn.indexOf('restoreFromPersistentStorage');
+    const connectIdx = fn.indexOf('connectNextcloud');
+    expect(persistentIdx).toBeLessThan(connectIdx);
+  });
+
+  test('restoreImageFromNextcloud should save to persistent after Nextcloud download', () => {
+    const content = readFile('cloud_config.php');
+    const fnStart = content.indexOf('function restoreImageFromNextcloud(');
+    const fnEnd = content.indexOf('function getDrillVideoPath(');
+    const fn = content.substring(fnStart, fnEnd);
+    // After downloading from Nextcloud, should also save to persistent storage
+    expect(fn).toContain('saveToPersistentStorage($local_path');
+  });
+});
+
+// =====================================================
+// 13. Image helper uses persistent storage fallback
+// =====================================================
+
+test.describe('Image helper uses persistent storage fallback', () => {
+  test('image_helper.php should define tryRestoreFromPersistent function', () => {
+    const content = readFile('lib/image_helper.php');
+    expect(content).toContain('function tryRestoreFromPersistent(');
+  });
+
+  test('resolveProfileImage should try persistent storage before Nextcloud', () => {
+    const content = readFile('lib/image_helper.php');
+    const fnStart = content.indexOf('function resolveProfileImage(');
+    const fnEnd = content.indexOf('function resolveEvaluationMedia(');
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('tryRestoreFromPersistent');
+    // persistent check should come before the Nextcloud section
+    const persistentIdx = fn.indexOf('tryRestoreFromPersistent');
+    const nextcloudIdx = fn.indexOf('getNextcloudSettings');
+    expect(persistentIdx).toBeLessThan(nextcloudIdx);
+  });
+
+  test('resolveEvaluationMedia should try persistent storage before Nextcloud', () => {
+    const content = readFile('lib/image_helper.php');
+    const fnStart = content.indexOf('function resolveEvaluationMedia(');
+    const fnEnd = content.indexOf('function resolveDrillImage(');
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('tryRestoreFromPersistent');
+  });
+
+  test('resolveDrillImage should try persistent storage before Nextcloud', () => {
+    const content = readFile('lib/image_helper.php');
+    const fnStart = content.indexOf('function resolveDrillImage(');
+    const fn = content.substring(fnStart);
+    expect(fn).toContain('tryRestoreFromPersistent');
+  });
+});
+
+// =====================================================
+// 14. Persistent storage in admin UI and gitignore
+// =====================================================
+
+test.describe('Persistent storage in admin UI and infrastructure', () => {
+  test('admin_system_tools.php should show persistent local storage path', () => {
+    const content = readFile('views/admin_system_tools.php');
+    expect(content).toContain('Persistent Local Storage');
+    expect(content).toContain('persistent_uploads');
+  });
+
+  test('.gitignore should exclude persistent_uploads', () => {
+    const content = readFile('.gitignore');
+    expect(content).toContain('persistent_uploads');
+  });
+});

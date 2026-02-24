@@ -27,6 +27,7 @@ videos/*
 !videos/.gitkeep
 backups/*
 !backups/.gitkeep
+persistent_uploads/
 
 # Environment configuration (if added in the future)
 .env
