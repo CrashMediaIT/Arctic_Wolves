@@ -699,19 +699,6 @@ if ($action == 'update_training_session') {
         $stmt->execute([$name, $description, $price, $duration, $maxParticipants, $isActive,
                         $sessionTypeId, $locationId, $practicePlanId, $primaryCoachId, $sessionId]);
         
-        // Update session_coaches junction table
-        // Remove existing coach assignments
-        $stmt = $pdo->prepare("DELETE FROM session_coaches WHERE session_id = ?");
-        $stmt->execute([$sessionId]);
-        
-        // Insert new coach assignments
-        if (!empty($coachIds)) {
-            $stmt = $pdo->prepare("INSERT INTO session_coaches (session_id, coach_id) VALUES (?, ?)");
-            foreach ($coachIds as $coachId) {
-                $stmt->execute([$sessionId, $coachId]);
-            }
-        }
-        
         $pdo->commit();
         Auditor::log($pdo, $user_id, 'update', 'training_session_templates', $sessionId, ['action' => 'update_training_session']);
         

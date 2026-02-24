@@ -29,14 +29,14 @@ if (isset($_GET['register'])) {
             // Store the intent
             $stmt = $pdo->prepare("
                 INSERT INTO session_registration_intents 
-                (template_id, package_id, intent_token, expires_at) 
+                (session_id, package_id, intent_token, expires_at) 
                 VALUES (?, ?, ?, ?)
             ");
             
-            $templateId = ($intentType === 'session') ? $intentId : null;
+            $sessionId = ($intentType === 'session') ? $intentId : null;
             $packageId = ($intentType === 'package') ? $intentId : null;
             
-            $stmt->execute([$templateId, $packageId, $token, $expiresAt]);
+            $stmt->execute([$sessionId, $packageId, $token, $expiresAt]);
             
             // Redirect to login with token
             header("Location: login.php?session_intent=" . $token);
@@ -52,46 +52,14 @@ if (isset($_GET['register'])) {
     exit();
 }
 
-// Fetch public sessions (templates with show_on_landing = 1 AND regular sessions with show_on_landing = 1)
+// Fetch public sessions (sessions with show_on_landing = 1)
 $sessions = [];
 $packages = [];
 
 if ($db_connected) {
-    // Fetch upcoming sessions from training_session_templates that are marked for landing page
+    // Fetch upcoming sessions from the sessions table marked for landing page
     try {
         $sessionsStmt = $pdo->query("
-            SELECT tst.*, 
-                   u.first_name as coach_first_name, u.last_name as coach_last_name,
-                   l.name as location_name,
-                   tsd.session_date as next_date,
-                   COUNT(DISTINCT tsd2.id) as total_dates,
-                   'template' as source_type
-            FROM training_session_templates tst
-            LEFT JOIN users u ON tst.coach_id = u.id
-            LEFT JOIN locations l ON tst.location_id = l.id
-            LEFT JOIN training_session_dates tsd ON tsd.template_id = tst.id 
-                AND tsd.session_date > NOW() AND tsd.is_active = 1
-            LEFT JOIN training_session_dates tsd2 ON tsd2.template_id = tst.id AND tsd2.is_active = 1
-            WHERE tst.is_active = 1 AND tst.show_on_landing = 1
-            GROUP BY tst.id
-            HAVING next_date IS NOT NULL
-            ORDER BY next_date ASC
-            LIMIT 20
-        ");
-        $sessions = $sessionsStmt->fetchAll(PDO::FETCH_ASSOC);
-        $sessions = decryptUserRows($sessions);
-        foreach ($sessions as &$s) {
-            $s['coach_name'] = trim(($s['coach_first_name'] ?? '') . ' ' . ($s['coach_last_name'] ?? ''));
-        }
-        unset($s);
-    } catch (PDOException $e) {
-        error_log("Public sessions fetch error: " . $e->getMessage());
-        $sessions = [];
-    }
-    
-    // Also fetch upcoming sessions from the regular sessions table marked for landing page
-    try {
-        $regularSessionsStmt = $pdo->query("
             SELECT s.id, 
                    s.title as name,
                    s.description,
@@ -115,30 +83,16 @@ if ($db_connected) {
               AND s.status = 'scheduled'
               AND (s.session_date > CURDATE() OR (s.session_date = CURDATE() AND COALESCE(s.session_time, '00:00:00') > CURTIME()))
             ORDER BY s.session_date ASC, s.session_time ASC
-            LIMIT 20
         ");
-        $regularSessions = $regularSessionsStmt->fetchAll(PDO::FETCH_ASSOC);
-        $regularSessions = decryptUserRows($regularSessions);
-        foreach ($regularSessions as &$rs) {
-            $rs['coach_name'] = trim(($rs['coach_first_name'] ?? '') . ' ' . ($rs['coach_last_name'] ?? ''));
+        $sessions = $sessionsStmt->fetchAll(PDO::FETCH_ASSOC);
+        $sessions = decryptUserRows($sessions);
+        foreach ($sessions as &$s) {
+            $s['coach_name'] = trim(($s['coach_first_name'] ?? '') . ' ' . ($s['coach_last_name'] ?? ''));
         }
-        unset($rs);
-        
-        // Merge regular sessions with template sessions
-        $sessions = array_merge($sessions, $regularSessions);
-        
-        // Sort combined sessions by date
-        usort($sessions, function($a, $b) {
-            $dateA = strtotime($a['next_date'] ?? '');
-            $dateB = strtotime($b['next_date'] ?? '');
-            return $dateA - $dateB;
-        });
-        
-        // Limit to 10 total
-        $sessions = array_slice($sessions, 0, 10);
+        unset($s);
     } catch (PDOException $e) {
-        error_log("Public regular sessions fetch error: " . $e->getMessage());
-        // Don't reset $sessions here, keep template sessions if regular fetch fails
+        error_log("Public sessions fetch error: " . $e->getMessage());
+        $sessions = [];
     }
     
     // Fetch active packages for landing page (credits, bundled, dollar_value)

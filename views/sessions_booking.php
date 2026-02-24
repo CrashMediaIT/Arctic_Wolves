@@ -84,7 +84,7 @@ $bp_stmt = $pdo->prepare("SELECT DISTINCT package_id FROM user_packages WHERE us
 $bp_stmt->execute($booking_check_ids);
 $booking_purchased_ids = $bp_stmt->fetchAll(PDO::FETCH_COLUMN);
 
-// Get available sessions for booking - combine regular sessions and training session templates
+// Get available sessions for booking
 $available_sessions_query = "
     SELECT CONCAT('session_', s.id) as unique_id, s.id, s.title as session_type_name, s.description, 
            s.session_date, s.session_time,
@@ -101,32 +101,7 @@ $available_sessions_query = "
     WHERE s.session_date >= CURDATE() 
       AND s.status = 'scheduled'
     GROUP BY s.id
-    
-    UNION ALL
-    
-    SELECT CONCAT('template_', tst.id, '_', tsd.id) as unique_id, tst.id, tst.name as session_type_name, tst.description, 
-           DATE(tsd.session_date) as session_date, TIME(tsd.session_date) as session_time,
-           tst.duration_minutes, COALESCE(tst.price, 0) as session_price,
-           COALESCE(tsd.max_participants, tst.max_participants) as max_participants,
-           'template' as source_type, tsd.id as date_id,
-           c.first_name as coach_first_name, c.last_name as coach_last_name,
-           l.name as location_name,
-           0 as registered_count
-    FROM training_session_templates tst
-    INNER JOIN training_session_dates tsd ON tsd.template_id = tst.id AND tsd.is_active = 1
-    LEFT JOIN users c ON tst.coach_id = c.id
-    LEFT JOIN locations l ON tst.location_id = l.id
-    WHERE tst.is_active = 1
-      AND tsd.session_date >= NOW()
-      AND NOT EXISTS (
-          SELECT 1 FROM sessions s2 
-          WHERE s2.title = tst.name 
-          AND s2.session_date = DATE(tsd.session_date) 
-          AND s2.status = 'scheduled'
-      )
-    
-    ORDER BY session_date
-    LIMIT 20
+    ORDER BY s.session_date ASC, s.session_time ASC
 ";
 $available_sessions = $pdo->query($available_sessions_query)->fetchAll();
 // Decrypt coach PII fields in session rows
