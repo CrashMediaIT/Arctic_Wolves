@@ -9,6 +9,26 @@ if (!isset($isAdmin) || !$isAdmin) {
 // Company website URL for QR code - can be configured via settings
 $company_website = 'https://arcticwolves.ca';
 
+// Fetch logo and business card background URLs from theme settings
+$bc_logo_url = 'https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png'; // fallback default
+$bc_front_bg_url = '';
+$bc_back_bg_url = '';
+try {
+    $ts_stmt = $pdo->prepare("SELECT setting_name, setting_value FROM theme_settings WHERE setting_name IN ('logo_url', 'business_card_front_bg_url', 'business_card_back_bg_url')");
+    $ts_stmt->execute();
+    while ($ts_row = $ts_stmt->fetch(PDO::FETCH_ASSOC)) {
+        if ($ts_row['setting_name'] === 'logo_url' && !empty($ts_row['setting_value'])) {
+            $bc_logo_url = $ts_row['setting_value'];
+        } elseif ($ts_row['setting_name'] === 'business_card_front_bg_url' && !empty($ts_row['setting_value'])) {
+            $bc_front_bg_url = $ts_row['setting_value'];
+        } elseif ($ts_row['setting_name'] === 'business_card_back_bg_url' && !empty($ts_row['setting_value'])) {
+            $bc_back_bg_url = $ts_row['setting_value'];
+        }
+    }
+} catch (PDOException $e) {
+    error_log("Theme settings fetch error for business cards: " . $e->getMessage());
+}
+
 // Fetch users from database for selection
 try {
     // Get filter values
@@ -243,85 +263,6 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
                     </div>
                 </div>
                 
-                <!-- Background Images Section -->
-                <div class="form-section">
-                    <h4 class="form-section-title"><i class="fas fa-image"></i> Card Background Images</h4>
-                    <div class="background-upload-grid">
-                        <!-- Front Background -->
-                        <div class="file-upload-zone" id="frontBgDropZone">
-                            <div class="upload-icon">
-                                <i class="fas fa-cloud-upload-alt"></i>
-                            </div>
-                            <p class="upload-text">Drag & drop front background or click to browse</p>
-                            <span class="upload-hint">Front side background image (PNG, JPG, WebP)</span>
-                            <input type="file" id="front-bg-input" accept="image/*" style="display: none;" onchange="previewBackground('front', this)">
-                            <div class="upload-buttons">
-                                <button type="button" class="btn-secondary btn-small" onclick="document.getElementById('front-bg-input').click()">
-                                    <i class="fas fa-folder-open"></i> Choose File
-                                </button>
-                                <button type="button" class="btn-secondary btn-small" onclick="removeBackground('front')" id="remove-front-bg" style="display: none;">
-                                    <i class="fas fa-trash"></i> Remove
-                                </button>
-                            </div>
-                            <div id="front-bg-preview" class="upload-preview"></div>
-                        </div>
-                        
-                        <!-- Back Background -->
-                        <div class="file-upload-zone" id="backBgDropZone">
-                            <div class="upload-icon">
-                                <i class="fas fa-cloud-upload-alt"></i>
-                            </div>
-                            <p class="upload-text">Drag & drop back background or click to browse</p>
-                            <span class="upload-hint">Back side background image (PNG, JPG, WebP)</span>
-                            <input type="file" id="back-bg-input" accept="image/*" style="display: none;" onchange="previewBackground('back', this)">
-                            <div class="upload-buttons">
-                                <button type="button" class="btn-secondary btn-small" onclick="document.getElementById('back-bg-input').click()">
-                                    <i class="fas fa-folder-open"></i> Choose File
-                                </button>
-                                <button type="button" class="btn-secondary btn-small" onclick="removeBackground('back')" id="remove-back-bg" style="display: none;">
-                                    <i class="fas fa-trash"></i> Remove
-                                </button>
-                            </div>
-                            <div id="back-bg-preview" class="upload-preview"></div>
-                        </div>
-                    </div>
-                    <p class="form-help"><i class="fas fa-info-circle"></i> Recommended size: 1050x600 pixels (3.5" x 2" at 300 DPI). Supports PNG, JPG, WebP.</p>
-                </div>
-                
-                <!-- Logo Upload Section -->
-                <div class="form-section">
-                    <h4 class="form-section-title"><i class="fas fa-image"></i> Custom Logo</h4>
-                    <div class="background-upload-grid">
-                        <div class="file-upload-zone" id="logoDropZone">
-                            <div class="upload-icon">
-                                <i class="fas fa-cloud-upload-alt"></i>
-                            </div>
-                            <p class="upload-text">Drag & drop custom logo or click to browse</p>
-                            <span class="upload-hint">Company logo image (PNG recommended, transparent background)</span>
-                            <input type="file" id="logo-input" accept="image/*" style="display: none;" onchange="previewLogo(this)">
-                            <div class="upload-buttons">
-                                <button type="button" class="btn-secondary btn-small" onclick="document.getElementById('logo-input').click()">
-                                    <i class="fas fa-folder-open"></i> Choose File
-                                </button>
-                                <button type="button" class="btn-secondary btn-small" onclick="removeLogo()" id="remove-logo-btn" style="display: none;">
-                                    <i class="fas fa-trash"></i> Remove
-                                </button>
-                                <button type="button" class="btn-secondary btn-small" onclick="resetToDefaultLogo()">
-                                    <i class="fas fa-undo"></i> Use Default
-                                </button>
-                            </div>
-                            <div id="logo-preview" class="upload-preview"></div>
-                        </div>
-                        <div class="logo-defaults-info">
-                            <h5><i class="fas fa-info-circle"></i> Current Logo</h5>
-                            <div id="current-logo-display">
-                                <img src="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png" alt="Current Logo" style="max-width: 150px; max-height: 80px;">
-                            </div>
-                            <p class="form-help">The logo appears on both front and back of the card. Recommended: PNG with transparent background, max 200x100px.</p>
-                        </div>
-                    </div>
-                </div>
-                
                 <!-- Back Card Content Section -->
                 <div class="form-section">
                     <h4 class="form-section-title"><i class="fas fa-align-center"></i> Back Card Content</h4>
@@ -331,13 +272,8 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
                             <input type="text" name="company_name" id="bc_company_name" class="form-input" 
                                    placeholder="ARCTIC WOLVES" value="ARCTIC WOLVES" oninput="updateBackCardPreview()">
                         </div>
-                        <div class="form-group">
-                            <label class="form-label">Slogan / Tagline</label>
-                            <input type="text" name="slogan" id="bc_slogan" class="form-input" 
-                                   placeholder="Hockey Training Academy" value="Hockey Training Academy" oninput="updateBackCardPreview()">
-                        </div>
                     </div>
-                    <p class="form-help"><i class="fas fa-info-circle"></i> These text fields appear on the back of the business card below the logo.</p>
+                    <p class="form-help"><i class="fas fa-info-circle"></i> This text appears on the back of the business card below the logo.</p>
                 </div>
                 
                 <!-- Card Style Options Section -->
@@ -351,14 +287,6 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
                                 <option value="square">Square Corners</option>
                             </select>
                         </div>
-                    </div>
-                    <div class="default-settings-actions">
-                        <button type="button" class="btn btn-secondary" onclick="setCurrentAsDefault()">
-                            <i class="fas fa-save"></i> Save Current Settings as Default
-                        </button>
-                        <button type="button" class="btn btn-secondary" onclick="loadDefaultSettings()">
-                            <i class="fas fa-undo"></i> Load Default Settings
-                        </button>
                     </div>
                 </div>
                 
@@ -403,10 +331,10 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
                 <div class="business-card-wrapper" id="business-card-wrapper">
                     <!-- Front of Card -->
                     <div class="business-card front" id="card-front">
-                        <div class="card-bg-overlay" id="front-overlay"></div>
+                        <div class="card-bg-overlay" id="front-overlay"<?php if ($bc_front_bg_url): ?> style="background-image: url('<?php echo htmlspecialchars($bc_front_bg_url); ?>')"<?php endif; ?>></div>
                         <div class="card-content">
                             <div class="card-logo">
-                                <img src="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png" alt="Arctic Wolves Logo">
+                                <img src="<?php echo htmlspecialchars($bc_logo_url); ?>" alt="Arctic Wolves Logo">
                             </div>
                             <div class="card-main-info">
                                 <h2 class="card-name" id="preview-name"><?php echo $selected_user ? htmlspecialchars(trim(($selected_user['first_name'] ?? '') . ' ' . ($selected_user['last_name'] ?? ''))) : 'Full Name'; ?></h2>
@@ -430,14 +358,13 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
                     
                     <!-- Back of Card -->
                     <div class="business-card back" id="card-back">
-                        <div class="card-bg-overlay" id="back-overlay"></div>
+                        <div class="card-bg-overlay" id="back-overlay"<?php if ($bc_back_bg_url): ?> style="background-image: url('<?php echo htmlspecialchars($bc_back_bg_url); ?>')"<?php endif; ?>></div>
                         <div class="card-content back-content">
                             <div class="back-logo">
-                                <img src="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png" alt="Arctic Wolves Logo">
+                                <img src="<?php echo htmlspecialchars($bc_logo_url); ?>" alt="Arctic Wolves Logo">
                             </div>
                             <div class="back-company-name">
                                 <h1 id="preview-company-name">ARCTIC WOLVES</h1>
-                                <p class="tagline" id="preview-slogan">Hockey Training Academy</p>
                             </div>
                         </div>
                     </div>
@@ -736,59 +663,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Generate QR code on page load if user is selected
     generateQRCode();
     <?php endif; ?>
-    
-    // Initialize drag and drop for file upload zones
-    initDragAndDrop('frontBgDropZone', 'front-bg-input', 'front');
-    initDragAndDrop('backBgDropZone', 'back-bg-input', 'back');
 });
-
-// Initialize drag and drop event handlers
-function initDragAndDrop(zoneId, inputId, side) {
-    const zone = document.getElementById(zoneId);
-    const input = document.getElementById(inputId);
-    
-    if (!zone || !input) return;
-    
-    // Click to browse
-    zone.addEventListener('click', function(e) {
-        if (e.target.tagName !== 'BUTTON' && !e.target.closest('button')) {
-            input.click();
-        }
-    });
-    
-    // Drag over
-    zone.addEventListener('dragover', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        zone.style.borderColor = 'var(--primary)';
-        zone.style.background = 'rgba(107, 70, 193, 0.1)';
-    });
-    
-    // Drag leave
-    zone.addEventListener('dragleave', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        zone.style.borderColor = '';
-        zone.style.background = '';
-    });
-    
-    // Drop
-    zone.addEventListener('drop', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        zone.style.borderColor = '';
-        zone.style.background = '';
-        
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            // Use DataTransfer for cross-browser compatibility
-            const dataTransfer = new DataTransfer();
-            dataTransfer.items.add(files[0]);
-            input.files = dataTransfer.files;
-            previewBackground(side, input);
-        }
-    });
-}
 
 // Select a user
 function selectUser(userId) {
@@ -845,19 +720,14 @@ function updatePreview() {
     showNotification('Preview updated!', 'success');
 }
 
-// Update back card preview with company name and slogan
+// Update back card preview with company name
 function updateBackCardPreview() {
     const companyName = document.getElementById('bc_company_name')?.value || 'ARCTIC WOLVES';
-    const slogan = document.getElementById('bc_slogan')?.value || 'Hockey Training Academy';
     
     const companyNameElement = document.getElementById('preview-company-name');
-    const sloganElement = document.getElementById('preview-slogan');
     
     if (companyNameElement) {
         companyNameElement.textContent = companyName;
-    }
-    if (sloganElement) {
-        sloganElement.textContent = slogan;
     }
 }
 
@@ -943,7 +813,6 @@ function printBusinessCard() {
         .back-content { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
         .back-logo img { height: 60px; width: auto; margin-bottom: 12px; }
         .back-company-name h1 { color: #fff; font-size: 22px; font-weight: 900; letter-spacing: 2px; }
-        .back-company-name .tagline { color: rgba(255,255,255,0.8); font-size: 11px; font-weight: 500; margin-top: 4px; }
         h2 { margin: 0; }
         p { margin: 0; }
         .card-bg-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-size: cover; background-position: center; border-radius: inherit; }
@@ -997,217 +866,6 @@ function showNotification(message, type) {
     }, 2000);
 }
 
-// Background image storage
-let frontBackgroundImage = null;
-let backBackgroundImage = null;
-
-// Preview background image
-function previewBackground(side, input) {
-    const file = input.files[0];
-    if (!file) return;
-    
-    // Validate file type
-    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
-    if (!validTypes.includes(file.type)) {
-        showNotification('Please select a valid image file (PNG, JPG, WebP)', 'error');
-        return;
-    }
-    
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const imageData = e.target.result;
-        
-        if (side === 'front') {
-            frontBackgroundImage = imageData;
-            document.getElementById('front-bg-preview').innerHTML = `<img src="${imageData}" alt="Front Background">`;
-            document.getElementById('front-overlay').style.backgroundImage = `url(${imageData})`;
-            document.getElementById('remove-front-bg').style.display = 'inline-flex';
-        } else {
-            backBackgroundImage = imageData;
-            document.getElementById('back-bg-preview').innerHTML = `<img src="${imageData}" alt="Back Background">`;
-            document.getElementById('back-overlay').style.backgroundImage = `url(${imageData})`;
-            document.getElementById('remove-back-bg').style.display = 'inline-flex';
-        }
-        
-        showNotification(`${side.charAt(0).toUpperCase() + side.slice(1)} background uploaded!`, 'success');
-    };
-    reader.readAsDataURL(file);
-}
-
-// Remove background image
-function removeBackground(side) {
-    if (side === 'front') {
-        frontBackgroundImage = null;
-        document.getElementById('front-bg-preview').innerHTML = '';
-        document.getElementById('front-overlay').style.backgroundImage = 'none';
-        document.getElementById('front-bg-input').value = '';
-        document.getElementById('remove-front-bg').style.display = 'none';
-    } else {
-        backBackgroundImage = null;
-        document.getElementById('back-bg-preview').innerHTML = '';
-        document.getElementById('back-overlay').style.backgroundImage = 'none';
-        document.getElementById('back-bg-input').value = '';
-        document.getElementById('remove-back-bg').style.display = 'none';
-    }
-    
-    showNotification(`${side.charAt(0).toUpperCase() + side.slice(1)} background removed!`, 'success');
-}
-
-// Default logo URL
-const defaultLogoUrl = 'https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png';
-let customLogoImage = null;
-
-// Preview custom logo
-function previewLogo(input) {
-    const file = input.files[0];
-    if (!file) return;
-    
-    // Validate file type
-    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
-    if (!validTypes.includes(file.type)) {
-        showNotification('Please select a valid image file (PNG, JPG, WebP)', 'error');
-        return;
-    }
-    
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        customLogoImage = e.target.result;
-        document.getElementById('logo-preview').innerHTML = `<img src="${customLogoImage}" alt="Custom Logo">`;
-        document.getElementById('current-logo-display').innerHTML = `<img src="${customLogoImage}" alt="Current Logo" style="max-width: 150px; max-height: 80px;">`;
-        document.getElementById('remove-logo-btn').style.display = 'inline-flex';
-        
-        // Update all logo images on the card
-        updateCardLogos(customLogoImage);
-        
-        showNotification('Custom logo uploaded!', 'success');
-    };
-    reader.readAsDataURL(file);
-}
-
-// Remove custom logo and revert to default
-function removeLogo() {
-    customLogoImage = null;
-    document.getElementById('logo-preview').innerHTML = '';
-    document.getElementById('logo-input').value = '';
-    document.getElementById('remove-logo-btn').style.display = 'none';
-    
-    // Revert to default logo
-    document.getElementById('current-logo-display').innerHTML = `<img src="${defaultLogoUrl}" alt="Current Logo" style="max-width: 150px; max-height: 80px;">`;
-    updateCardLogos(defaultLogoUrl);
-    
-    showNotification('Custom logo removed. Using default logo.', 'success');
-}
-
-// Reset to default logo
-function resetToDefaultLogo() {
-    removeLogo();
-}
-
-// Update all logo images on the business card
-function updateCardLogos(logoSrc) {
-    // Update front card logo
-    const frontLogo = document.querySelector('#card-front .card-logo img');
-    if (frontLogo) {
-        frontLogo.src = logoSrc;
-    }
-    
-    // Update back card logo
-    const backLogo = document.querySelector('#card-back .back-logo img');
-    if (backLogo) {
-        backLogo.src = logoSrc;
-    }
-}
-
-// Initialize logo drop zone
-document.addEventListener('DOMContentLoaded', function() {
-    initDragAndDrop('logoDropZone', 'logo-input', 'logo');
-});
-
-// Save current settings as default (store in database)
-function setCurrentAsDefault() {
-    const settings = {
-        cornerStyle: document.getElementById('corner-style-select')?.value || 'round',
-        customLogo: customLogoImage,
-        frontBackground: frontBackgroundImage,
-        backBackground: backBackgroundImage
-    };
-    
-    var csrfToken = '<?= htmlspecialchars($_SESSION["csrf_token"] ?? "", ENT_QUOTES) ?>';
-    var formData = new FormData();
-    formData.append('action', 'save_business_card_defaults');
-    formData.append('settings', JSON.stringify(settings));
-    formData.append('csrf_token', csrfToken);
-    
-    fetch('process_admin_action.php', {
-        method: 'POST',
-        body: formData,
-        headers: { 'X-Requested-With': 'XMLHttpRequest' }
-    })
-    .then(function(response) { return response.json(); })
-    .then(function(data) {
-        if (data.success) {
-            showNotification(data.message || 'Settings saved as default!', 'success');
-        } else {
-            showNotification(data.message || 'Could not save settings.', 'error');
-        }
-    })
-    .catch(function() {
-        showNotification('Could not save settings. Please try again.', 'error');
-    });
-}
-
-// Load default settings from database
-function loadDefaultSettings() {
-    fetch('process_admin_action.php?action=get_business_card_defaults', {
-        headers: { 'X-Requested-With': 'XMLHttpRequest' }
-    })
-    .then(function(response) { return response.json(); })
-    .then(function(data) {
-        if (!data.success || !data.data) {
-            showNotification(data.message || 'No saved defaults found.', 'info');
-            return;
-        }
-        
-        var settings = data.data;
-        
-        // Apply corner style
-        if (settings.cornerStyle) {
-            document.getElementById('corner-style-select').value = settings.cornerStyle;
-            updateCornerStyle();
-        }
-        
-        // Apply custom logo
-        if (settings.customLogo) {
-            customLogoImage = settings.customLogo;
-            document.getElementById('logo-preview').innerHTML = `<img src="${customLogoImage}" alt="Custom Logo">`;
-            document.getElementById('current-logo-display').innerHTML = `<img src="${customLogoImage}" alt="Current Logo" style="max-width: 150px; max-height: 80px;">`;
-            document.getElementById('remove-logo-btn').style.display = 'inline-flex';
-            updateCardLogos(customLogoImage);
-        }
-        
-        // Apply front background
-        if (settings.frontBackground) {
-            frontBackgroundImage = settings.frontBackground;
-            document.getElementById('front-bg-preview').innerHTML = `<img src="${frontBackgroundImage}" alt="Front Background">`;
-            document.getElementById('front-overlay').style.backgroundImage = `url(${frontBackgroundImage})`;
-            document.getElementById('remove-front-bg').style.display = 'inline-flex';
-        }
-        
-        // Apply back background
-        if (settings.backBackground) {
-            backBackgroundImage = settings.backBackground;
-            document.getElementById('back-bg-preview').innerHTML = `<img src="${backBackgroundImage}" alt="Back Background">`;
-            document.getElementById('back-overlay').style.backgroundImage = `url(${backBackgroundImage})`;
-            document.getElementById('remove-back-bg').style.display = 'inline-flex';
-        }
-        
-        showNotification('Default settings loaded!', 'success');
-    })
-    .catch(function() {
-        showNotification('Could not load settings.', 'error');
-    });
-}
-
 // Toggle export dropdown menu
 function toggleExportMenu() {
     const menu = document.getElementById('export-menu');
@@ -1224,6 +882,7 @@ document.addEventListener('click', function(e) {
 });
 
 // Export individual card side as PNG using html2canvas library
+// Includes 0.125" bleed margin on all sides for professional print services (e.g., Vistaprint)
 function exportCardSide(side) {
     const cardElement = side === 'front' ? document.getElementById('card-front') : document.getElementById('card-back');
     const firstName = document.getElementById('bc_first_name').value || 'User';
@@ -1233,7 +892,7 @@ function exportCardSide(side) {
     document.getElementById('export-menu').classList.remove('show');
     
     // Show loading notification
-    showNotification('Preparing export...', 'info');
+    showNotification('Preparing export with bleed margins...', 'info');
     
     // Get corner style preference
     const cornerStyle = document.getElementById('corner-style-select')?.value || 'round';
@@ -1280,11 +939,15 @@ function exportCardSide(side) {
     
     // Wait for all logos to be converted, then proceed with export
     Promise.all(logoPromises).then(() => {
-        showNotification('Generating PNG...', 'info');
+        showNotification('Generating PNG with cut margins...', 'info');
+        
+        const renderScale = 3; // 300 DPI equivalent
+        // 0.125 inch bleed at 96 CSS px/inch * renderScale
+        const bleedPx = Math.round(0.125 * 96 * renderScale);
         
         // Use html2canvas to capture the card
         html2canvas(cardElement, {
-            scale: 3, // Higher scale for better quality (equivalent to 300 DPI)
+            scale: renderScale,
             useCORS: true,
             allowTaint: true,
             backgroundColor: null,
@@ -1332,14 +995,41 @@ function exportCardSide(side) {
                     });
                 }
             }
-        }).then(canvas => {
+        }).then(cardCanvas => {
+            // Create a new canvas with bleed margins added around the card
+            const finalCanvas = document.createElement('canvas');
+            finalCanvas.width = cardCanvas.width + bleedPx * 2;
+            finalCanvas.height = cardCanvas.height + bleedPx * 2;
+            const ctx = finalCanvas.getContext('2d');
+            
+            // Fill bleed area by stretching edge pixels of the card
+            // Top-left corner
+            ctx.drawImage(cardCanvas, 0, 0, 1, 1, 0, 0, bleedPx, bleedPx);
+            // Top edge
+            ctx.drawImage(cardCanvas, 0, 0, cardCanvas.width, 1, bleedPx, 0, cardCanvas.width, bleedPx);
+            // Top-right corner
+            ctx.drawImage(cardCanvas, cardCanvas.width - 1, 0, 1, 1, bleedPx + cardCanvas.width, 0, bleedPx, bleedPx);
+            // Left edge
+            ctx.drawImage(cardCanvas, 0, 0, 1, cardCanvas.height, 0, bleedPx, bleedPx, cardCanvas.height);
+            // Right edge
+            ctx.drawImage(cardCanvas, cardCanvas.width - 1, 0, 1, cardCanvas.height, bleedPx + cardCanvas.width, bleedPx, bleedPx, cardCanvas.height);
+            // Bottom-left corner
+            ctx.drawImage(cardCanvas, 0, cardCanvas.height - 1, 1, 1, 0, bleedPx + cardCanvas.height, bleedPx, bleedPx);
+            // Bottom edge
+            ctx.drawImage(cardCanvas, 0, cardCanvas.height - 1, cardCanvas.width, 1, bleedPx, bleedPx + cardCanvas.height, cardCanvas.width, bleedPx);
+            // Bottom-right corner
+            ctx.drawImage(cardCanvas, cardCanvas.width - 1, cardCanvas.height - 1, 1, 1, bleedPx + cardCanvas.width, bleedPx + cardCanvas.height, bleedPx, bleedPx);
+            
+            // Draw the actual card in the center
+            ctx.drawImage(cardCanvas, bleedPx, bleedPx);
+            
             // Create download link
             const link = document.createElement('a');
             link.download = `${firstName}_${lastName}_BusinessCard_${side}.png`;
-            link.href = canvas.toDataURL('image/png');
+            link.href = finalCanvas.toDataURL('image/png');
             link.click();
             
-            showNotification(`${side.charAt(0).toUpperCase() + side.slice(1)} side exported as PNG!`, 'success');
+            showNotification(`${side.charAt(0).toUpperCase() + side.slice(1)} side exported with bleed margins!`, 'success');
         }).catch(err => {
             console.error('Export error:', err);
             showNotification('Export failed. Please try again.', 'error');
@@ -2203,13 +1893,6 @@ function copyEmailSignatureHTML() {
     font-weight: 900;
     letter-spacing: 3px;
     margin: 0;
-}
-
-.back-company-name .tagline {
-    color: rgba(255, 255, 255, 0.85);
-    font-size: 12px;
-    font-weight: 500;
-    margin-top: 6px;
 }
 
 /* Preview Instructions */

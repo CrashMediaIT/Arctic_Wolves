@@ -49,6 +49,8 @@ $colors = array_merge($defaults, $theme_colors);
 // Get branding settings
 $logo_url = $theme_colors['logo_url'] ?? '';
 $center_ice_logo_url = $theme_colors['center_ice_logo_url'] ?? '';
+$bc_front_bg_url_theme = $theme_colors['business_card_front_bg_url'] ?? '';
+$bc_back_bg_url_theme = $theme_colors['business_card_back_bg_url'] ?? '';
 $hero_image_url = $theme_colors['hero_image_url'] ?? '';
 $hero_title = $theme_colors['hero_title'] ?? 'Arctic Wolves Player Development';
 $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-ice training protocols designed for competitive athletes seeking elite performance levels.';
@@ -1084,6 +1086,60 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
                     <i class="fas fa-trash"></i> Remove Logo
                 </button>
                 <?php endif; ?>
+            </div>
+        </form>
+        
+        <!-- Business Card Backgrounds Section -->
+        <form id="businessCardBgForm" method="POST" action="process_theme.php" enctype="multipart/form-data" style="margin-top: 40px; border-top: 1px solid #1e293b; padding-top: 30px;">
+            <?= csrfTokenInput() ?>
+            <input type="hidden" name="action" value="update_business_card_backgrounds">
+            
+            <h3 class="section-title">
+                <i class="fas fa-id-card"></i>
+                Business Card Backgrounds
+            </h3>
+            <p style="color: #94a3b8; margin-bottom: 20px; font-size: 14px;">
+                Upload background images for business card front and back sides. The logo above is automatically used on business cards. Recommended size: 1050×600px (3.5" × 2" at 300 DPI).
+            </p>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                <!-- Front Background -->
+                <div class="form-group">
+                    <label>Front Card Background</label>
+                    <input type="file" class="form-control" name="bc_front_bg" accept=".png,.jpg,.jpeg,.webp" onchange="previewImage(this, 'bc_front_bg_preview')">
+                    <div class="image-preview" id="bc_front_bg_preview" style="margin-top: 12px;">
+                        <?php if ($bc_front_bg_url_theme): ?>
+                            <img src="<?= htmlspecialchars($bc_front_bg_url_theme) ?>" alt="Front Card Background" style="max-height: 120px;">
+                        <?php else: ?>
+                            <div class="image-preview-empty">
+                                <i class="fas fa-image" style="font-size: 32px; margin-bottom: 8px; opacity: 0.3;"></i>
+                                <p>No front background uploaded</p>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                
+                <!-- Back Background -->
+                <div class="form-group">
+                    <label>Back Card Background</label>
+                    <input type="file" class="form-control" name="bc_back_bg" accept=".png,.jpg,.jpeg,.webp" onchange="previewImage(this, 'bc_back_bg_preview')">
+                    <div class="image-preview" id="bc_back_bg_preview" style="margin-top: 12px;">
+                        <?php if ($bc_back_bg_url_theme): ?>
+                            <img src="<?= htmlspecialchars($bc_back_bg_url_theme) ?>" alt="Back Card Background" style="max-height: 120px;">
+                        <?php else: ?>
+                            <div class="image-preview-empty">
+                                <i class="fas fa-image" style="font-size: 32px; margin-bottom: 8px; opacity: 0.3;"></i>
+                                <p>No back background uploaded</p>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="action-buttons">
+                <button type="submit" class="btn btn-save">
+                    <i class="fas fa-save"></i> Save Business Card Backgrounds
+                </button>
             </div>
         </form>
     </div>

@@ -214,6 +214,34 @@ try {
             header('Location: dashboard.php?page=admin_theme_settings&tab=branding&success=1');
             exit;
             
+        case 'update_business_card_backgrounds':
+            // Handle front card background upload
+            if (isset($_FILES['bc_front_bg']) && $_FILES['bc_front_bg']['error'] === UPLOAD_ERR_OK) {
+                $result = handleFileUpload($_FILES['bc_front_bg'], 'bc_front_bg');
+                if ($result['success']) {
+                    updateThemeSetting($pdo, 'business_card_front_bg_url', $result['url']);
+                }
+            }
+            
+            // Handle back card background upload
+            if (isset($_FILES['bc_back_bg']) && $_FILES['bc_back_bg']['error'] === UPLOAD_ERR_OK) {
+                $result = handleFileUpload($_FILES['bc_back_bg'], 'bc_back_bg');
+                if ($result['success']) {
+                    updateThemeSetting($pdo, 'business_card_back_bg_url', $result['url']);
+                }
+            }
+            
+            Auditor::log($pdo, $user_id, 'update', 'theme_settings', null, ['action' => 'Business card backgrounds updated']);
+            
+            // Redirect back to the correct page
+            $redirect_page = $_POST['redirect_page'] ?? 'admin_theme_settings';
+            if ($redirect_page === 'system_tools') {
+                header('Location: dashboard.php?page=system_tools&tab=theme&success=1');
+            } else {
+                header('Location: dashboard.php?page=admin_theme_settings&tab=branding&success=1');
+            }
+            exit;
+            
         case 'update_hero':
             // Handle hero image upload
             if (isset($_FILES['hero_image']) && $_FILES['hero_image']['error'] === UPLOAD_ERR_OK) {
