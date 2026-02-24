@@ -226,6 +226,64 @@ try {
 .m-modal-msg { font-size: 13px; margin-top: 8px; text-align: center; }
 .m-modal-msg.m-msg-ok { color: #10B981; }
 .m-modal-msg.m-msg-err { color: #EF4444; }
+
+/* Multi-select checkbox */
+.m-drill-select {
+    width: 22px; height: 22px; flex-shrink: 0; cursor: pointer;
+    accent-color: #8B5CF6; border-radius: 4px; margin-right: 8px;
+}
+.m-drill-card.m-selected { border-color: #8B5CF6; box-shadow: 0 0 0 1px rgba(139,92,246,0.3); }
+
+/* Bulk actions bar */
+.m-bulk-bar {
+    display: none; position: sticky; top: 0; z-index: 20;
+    background: #16161F; border-bottom: 1px solid #8B5CF6;
+    padding: 10px 16px; gap: 10px; align-items: center;
+    animation: mSlideDown 0.2s ease-out;
+}
+.m-bulk-bar.m-bulk-visible { display: flex; }
+@keyframes mSlideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+.m-bulk-select-all {
+    display: flex; align-items: center; gap: 6px; font-size: 12px; color: #A8A8B8;
+    cursor: pointer; min-height: 36px;
+}
+.m-bulk-select-all input { width: 18px; height: 18px; accent-color: #8B5CF6; cursor: pointer; }
+.m-bulk-count { font-size: 12px; font-weight: 600; color: #8B5CF6; margin-left: auto; }
+.m-bulk-actions { display: flex; gap: 8px; margin-left: 8px; }
+.m-bulk-btn {
+    font-size: 11px; font-weight: 600; font-family: Inter, sans-serif;
+    padding: 6px 12px; border-radius: 8px; border: none; cursor: pointer;
+    display: flex; align-items: center; gap: 4px; min-height: 36px;
+    white-space: nowrap;
+}
+.m-bulk-btn-plan { background: rgba(107,70,193,0.15); color: #8B5CF6; }
+.m-bulk-btn-plan:active { opacity: 0.7; }
+.m-bulk-btn-delete { background: rgba(239,68,68,0.15); color: #EF4444; }
+.m-bulk-btn-delete:active { opacity: 0.7; }
+
+/* Delete confirmation modal */
+.m-confirm-overlay {
+    display: none; position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,0.6); align-items: center; justify-content: center;
+    padding: 20px;
+}
+.m-confirm-overlay.m-confirm-open { display: flex; }
+.m-confirm-box {
+    background: #16161F; border: 1px solid #2D2D3F; border-radius: 16px;
+    width: 100%; max-width: 340px; padding: 24px 20px; text-align: center;
+    animation: mSlideUp 0.2s ease-out;
+}
+.m-confirm-icon { font-size: 36px; color: #EF4444; margin-bottom: 12px; }
+.m-confirm-title { font-size: 16px; font-weight: 700; color: #fff; margin: 0 0 8px; }
+.m-confirm-msg { font-size: 13px; color: #A8A8B8; margin: 0 0 20px; }
+.m-confirm-actions { display: flex; gap: 10px; }
+.m-confirm-cancel, .m-confirm-delete {
+    flex: 1; padding: 12px; border: none; border-radius: 10px;
+    font-size: 14px; font-weight: 600; font-family: Inter, sans-serif;
+    cursor: pointer; min-height: 44px;
+}
+.m-confirm-cancel { background: #2D2D3F; color: #A8A8B8; }
+.m-confirm-delete { background: #EF4444; color: #fff; }
 </style>
 
 <div class="m-drills">
@@ -238,6 +296,20 @@ try {
     <div class="m-drill-toolbar">
         <a href="?page=import_drill"><i class="fas fa-file-import"></i> Import</a>
         <a href="?page=export_import_drills"><i class="fas fa-file-export"></i> Export</a>
+        <button type="button" style="margin-left:auto;font-size:12px;color:#8B5CF6;background:none;border:none;cursor:pointer;display:flex;align-items:center;gap:4px;min-height:32px;font-family:Inter,sans-serif;" onclick="mToggleSelectMode()"><i class="fas fa-check-double"></i> <span id="m-select-mode-label">Select</span></button>
+    </div>
+
+    <!-- Bulk Actions Bar -->
+    <div class="m-bulk-bar" id="m-bulk-bar">
+        <label class="m-bulk-select-all">
+            <input type="checkbox" id="m-select-all" onchange="mToggleSelectAll(this)">
+            <span>All</span>
+        </label>
+        <span class="m-bulk-count" id="m-bulk-count">0 selected</span>
+        <div class="m-bulk-actions">
+            <button type="button" class="m-bulk-btn m-bulk-btn-plan" onclick="mBulkCreatePlan()"><i class="fas fa-clipboard-list"></i> Plan</button>
+            <button type="button" class="m-bulk-btn m-bulk-btn-delete" onclick="mBulkDelete()"><i class="fas fa-trash"></i> Delete</button>
+        </div>
     </div>
 
     <!-- My Drills Tab -->
@@ -276,8 +348,9 @@ try {
                 };
                 $canEdit = ($isAdmin || (int)$d['created_by'] === (int)$user_id);
             ?>
-            <div class="m-drill-card" data-drill-title="<?= htmlspecialchars(strtolower($d['title'])) ?>">
+            <div class="m-drill-card" data-drill-title="<?= htmlspecialchars(strtolower($d['title'])) ?>" data-drill-id="<?= (int)$d['id'] ?>">
                 <div class="m-drill-top">
+                    <input type="checkbox" class="m-drill-select" value="<?= (int)$d['id'] ?>" onchange="mUpdateBulkSelection()" style="display:none;">
                     <a href="?page=view_drill&id=<?= (int)$d['id'] ?>" style="flex:1;text-decoration:none;display:flex;align-items:flex-start;gap:8px;">
                         <span class="m-drill-title"><?= htmlspecialchars($d['title']) ?></span>
                         <?php if ($diff): ?>
@@ -329,8 +402,9 @@ try {
                 };
                 $canEdit = ($isAdmin || (int)$d['created_by'] === (int)$user_id);
             ?>
-            <div class="m-drill-card" data-drill-title="<?= htmlspecialchars(strtolower($d['title'])) ?>">
+            <div class="m-drill-card" data-drill-title="<?= htmlspecialchars(strtolower($d['title'])) ?>" data-drill-id="<?= (int)$d['id'] ?>">
                 <div class="m-drill-top">
+                    <input type="checkbox" class="m-drill-select" value="<?= (int)$d['id'] ?>" onchange="mUpdateBulkSelection()" style="display:none;">
                     <a href="?page=view_drill&id=<?= (int)$d['id'] ?>" style="flex:1;text-decoration:none;display:flex;align-items:flex-start;gap:8px;">
                         <span class="m-drill-title"><?= htmlspecialchars($d['title']) ?></span>
                         <?php if ($diff): ?>
@@ -361,6 +435,19 @@ try {
     </div>
 
     <button type="button" class="m-fab" title="Create Drill" onclick="mOpenCreateModal()"><i class="fas fa-plus"></i></button>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="m-confirm-overlay" id="m-confirm-overlay" onclick="if(event.target===this)mCloseConfirm()">
+    <div class="m-confirm-box">
+        <div class="m-confirm-icon"><i class="fas fa-exclamation-triangle"></i></div>
+        <p class="m-confirm-title">Confirm Delete</p>
+        <p class="m-confirm-msg" id="m-confirm-msg">Are you sure?</p>
+        <div class="m-confirm-actions">
+            <button type="button" class="m-confirm-cancel" onclick="mCloseConfirm()">Cancel</button>
+            <button type="button" class="m-confirm-delete" id="m-confirm-delete-btn" onclick="mExecConfirm()">Delete</button>
+        </div>
+    </div>
 </div>
 
 <!-- Create / Edit Drill Modal -->
@@ -516,21 +603,134 @@ function mSubmitEdit(e) {
     return false;
 }
 
-/* Delete drill */
+/* --- In-App Delete Confirmation Modal --- */
+var _mConfirmCallback = null;
+
+function mShowConfirm(message, onConfirm) {
+    document.getElementById('m-confirm-msg').textContent = message;
+    _mConfirmCallback = onConfirm;
+    document.getElementById('m-confirm-overlay').classList.add('m-confirm-open');
+}
+
+function mCloseConfirm() {
+    _mConfirmCallback = null;
+    document.getElementById('m-confirm-overlay').classList.remove('m-confirm-open');
+}
+
+function mExecConfirm() {
+    var cb = _mConfirmCallback;
+    mCloseConfirm();
+    if (typeof cb === 'function') cb();
+}
+
+/* Delete drill with in-app confirmation */
 function mDeleteDrill(drillId) {
-    if (!confirm('Delete this drill? This cannot be undone.')) return;
-    var body = new URLSearchParams();
-    body.set('action', 'delete_drill');
-    body.set('drill_id', drillId);
-    body.set('csrf_token', mGetCsrf());
-    fetch('process_drills.php', { method: 'POST', body: body, credentials: 'same-origin' })
-        .then(function(r) {
-            if (r.ok || r.redirected) {
-                window.location.reload();
-            } else {
-                throw new Error('Server returned ' + r.status);
+    mShowConfirm('Delete this drill? This cannot be undone.', function() {
+        var body = new URLSearchParams();
+        body.set('action', 'delete_drill');
+        body.set('drill_id', drillId);
+        body.set('csrf_token', mGetCsrf());
+        fetch('process_drills.php', { method: 'POST', body: body, credentials: 'same-origin' })
+            .then(function(r) {
+                if (r.ok || r.redirected) {
+                    window.location.reload();
+                } else {
+                    throw new Error('Server returned ' + r.status);
+                }
+            })
+            .catch(function(err) { alert('Delete failed: ' + err.message); });
+    });
+}
+
+/* --- Multi-Select / Bulk Actions --- */
+var _mSelectMode = false;
+
+function mToggleSelectMode() {
+    _mSelectMode = !_mSelectMode;
+    var label = document.getElementById('m-select-mode-label');
+    var checkboxes = document.querySelectorAll('.m-drill-select');
+    if (_mSelectMode) {
+        label.textContent = 'Cancel';
+        checkboxes.forEach(function(cb) { cb.style.display = ''; });
+        document.getElementById('m-bulk-bar').classList.add('m-bulk-visible');
+    } else {
+        label.textContent = 'Select';
+        checkboxes.forEach(function(cb) { cb.style.display = 'none'; cb.checked = false; });
+        document.querySelectorAll('.m-drill-card.m-selected').forEach(function(c) { c.classList.remove('m-selected'); });
+        document.getElementById('m-bulk-bar').classList.remove('m-bulk-visible');
+        document.getElementById('m-select-all').checked = false;
+    }
+    mUpdateBulkSelection();
+}
+
+function mUpdateBulkSelection() {
+    var checkboxes = document.querySelectorAll('.m-drill-select');
+    var checked = document.querySelectorAll('.m-drill-select:checked');
+    var countEl = document.getElementById('m-bulk-count');
+    var selectAll = document.getElementById('m-select-all');
+
+    countEl.textContent = checked.length + ' selected';
+
+    if (selectAll) {
+        var visible = Array.from(checkboxes).filter(function(cb) { return cb.style.display !== 'none' && cb.closest('.m-drill-card').style.display !== 'none'; });
+        selectAll.checked = visible.length > 0 && checked.length === visible.length;
+        selectAll.indeterminate = checked.length > 0 && checked.length < visible.length;
+    }
+
+    checkboxes.forEach(function(cb) {
+        var card = cb.closest('.m-drill-card');
+        if (card) {
+            if (cb.checked) { card.classList.add('m-selected'); }
+            else { card.classList.remove('m-selected'); }
+        }
+    });
+}
+
+function mToggleSelectAll(selectAllCb) {
+    var checkboxes = document.querySelectorAll('.m-drill-select');
+    checkboxes.forEach(function(cb) {
+        if (cb.style.display !== 'none') {
+            var card = cb.closest('.m-drill-card');
+            if (card && card.style.display !== 'none') {
+                cb.checked = selectAllCb.checked;
             }
-        })
-        .catch(function(err) { alert('Delete failed: ' + err.message); });
+        }
+    });
+    mUpdateBulkSelection();
+}
+
+function mGetSelectedIds() {
+    var checked = document.querySelectorAll('.m-drill-select:checked');
+    return Array.from(checked).map(function(cb) { return cb.value; });
+}
+
+function mBulkCreatePlan() {
+    var ids = mGetSelectedIds();
+    if (ids.length === 0) { alert('Please select at least one drill.'); return; }
+    sessionStorage.setItem('drillsToAdd', JSON.stringify(ids.map(Number)));
+    window.location.href = '?page=practice_create';
+}
+
+function mBulkDelete() {
+    var ids = mGetSelectedIds();
+    if (ids.length === 0) { alert('Please select at least one drill.'); return; }
+
+    mShowConfirm('Delete ' + ids.length + ' selected drill(s)? This cannot be undone.', function() {
+        var body = new URLSearchParams();
+        body.set('action', 'bulk_delete_drills');
+        body.set('csrf_token', mGetCsrf());
+        ids.forEach(function(id) { body.append('drill_ids[]', id); });
+
+        fetch('process_drills.php', { method: 'POST', body: body, credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+            .then(function(r) {
+                if (!r.ok) throw new Error('Server returned ' + r.status);
+                return r.json();
+            })
+            .then(function(data) {
+                if (data.success) { window.location.reload(); }
+                else { alert('Delete failed: ' + (data.message || 'Unknown error')); }
+            })
+            .catch(function(err) { alert('Delete failed: ' + err.message); });
+    });
 }
 </script>
