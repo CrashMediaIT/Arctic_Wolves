@@ -3852,19 +3852,20 @@ async function githubApplyUpdate() {
     
     const csrfToken = document.querySelector('input[name="csrf_token"]').value;
     const maxRetries = 2;
+    const fetchTimeoutMs = 5 * 60 * 1000; // 5 minute timeout for the fetch request
     
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {
             if (attempt > 0) {
                 githubAddLogEntry(`Retrying update (attempt ${attempt + 1}/${maxRetries + 1})...`, 'warning');
-                await new Promise(resolve => setTimeout(resolve, attempt * 3000));
+                await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 2000));
             }
             
             githubAddLogEntry('Downloading files from repository...', 'info');
             progressBar.style.width = '40%';
             
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minute timeout
+            const timeoutId = setTimeout(() => controller.abort(), fetchTimeoutMs);
             
             const response = await fetch('process_settings.php', {
                 method: 'POST',
