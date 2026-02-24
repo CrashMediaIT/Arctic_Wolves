@@ -713,7 +713,7 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                                     <p>Images are automatically saved to a folder outside the web root that persists across updates. Same folder structure as Nextcloud for easy restoration.</p>
                                 </div>
                                 <input type="text" class="form-input" readonly disabled
-                                       value="<?php echo htmlspecialchars(realpath(__DIR__ . '/../..') . '/persistent_uploads/Images/'); ?>"
+                                       value="<?php echo htmlspecialchars(dirname(dirname(__DIR__)) . '/persistent_uploads/Images/'); ?>"
                                        style="opacity: 0.7; cursor: default;">
                             </div>
                         </div>

@@ -142,7 +142,7 @@ function resolveEvaluationMedia($pdo, $media_id, $local_path) {
     // Try persistent local storage first (fast, no network)
     if (!empty($local_path)) {
         // Extract subfolder from path like "uploads/evaluations/123/file.jpg"
-        $relative = str_replace('uploads/', '', $local_path);
+        $relative = (strpos($local_path, 'uploads/') === 0) ? substr($local_path, strlen('uploads/')) : $local_path;
         $subfolder = dirname($relative);
         $filename = basename($local_path);
         if (!empty($subfolder) && $subfolder !== '.' && tryRestoreFromPersistent($local_path, $subfolder, $filename)) {
