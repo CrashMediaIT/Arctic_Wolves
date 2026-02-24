@@ -706,6 +706,7 @@ function decryptPassword($encrypted_data) {
             $db_key = $stmt->fetchColumn();
             if (!empty($db_key)) {
                 $key = $db_key;
+                // Restore the local file for fast future reads
                 writeKeyFile($key_file, $key);
             }
         } catch (PDOException $e) {
