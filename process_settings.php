@@ -700,8 +700,27 @@ try {
             
         case 'apply_updates':
             require_once __DIR__ . '/lib/github_updater.php';
+            
+            // Apply any leftover deferred files from a previous update
+            GitHubUpdater::applyDeferredUpdates(__DIR__);
+            
+            // Prevent the update from being interrupted by client disconnect
+            ignore_user_abort(true);
+            set_time_limit(300);
+            
             $updater = new GitHubUpdater($pdo);
             $result = $updater->applyUpdates();
+            
+            // If the update produced deferred files, schedule them to be applied
+            // after the response is sent so the running PHP files are not replaced
+            // while this request is still using them.
+            $base_dir = __DIR__;
+            if (!empty($result['has_deferred'])) {
+                register_shutdown_function(function() use ($base_dir) {
+                    GitHubUpdater::applyDeferredUpdates($base_dir);
+                });
+            }
+            
             echo json_encode($result);
             exit;
             

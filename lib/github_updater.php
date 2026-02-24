@@ -22,6 +22,15 @@ class GitHubUpdater {
         'config.php',
         'vendor/',
         'node_modules/',
+        '.update_deferred.json',
+    ];
+    
+    // Files that are part of the active update execution chain.
+    // These cannot be safely overwritten while the update is running,
+    // so they are deferred and applied after the response is sent.
+    private $active_update_files = [
+        'lib/github_updater.php',
+        'process_settings.php',
     ];
     
     public function __construct($pdo) {
@@ -245,8 +254,9 @@ class GitHubUpdater {
                 ];
             }
             
-            // Phase 2: Copy staged files to live site
+            // Phase 2: Copy staged files to live site, deferring active update files
             $updated_count = 0;
+            $deferred_files = [];
             foreach ($tree_data['tree'] as $item) {
                 if ($item['type'] !== 'blob') continue;
                 
@@ -257,6 +267,12 @@ class GitHubUpdater {
                 $live_path = $this->base_path . '/' . $file_path;
                 
                 if (!file_exists($staged_path)) continue;
+                
+                // Defer files that are part of the running update process
+                if ($this->isActiveUpdateFile($file_path)) {
+                    $deferred_files[$file_path] = $staged_path;
+                    continue;
+                }
                 
                 $dir = dirname($live_path);
                 if (!is_dir($dir)) {
@@ -277,6 +293,8 @@ class GitHubUpdater {
             
             foreach ($files_to_delete as $file_path) {
                 if ($this->isExcludedPath($file_path)) continue;
+                // Do not delete active update files during the running update
+                if ($this->isActiveUpdateFile($file_path)) continue;
                 
                 $result = $this->deleteLocalFile($file_path);
                 if ($result['success']) {
@@ -284,6 +302,12 @@ class GitHubUpdater {
                 } else {
                     $errors[] = "Failed to delete {$file_path}: {$result['message']}";
                 }
+            }
+            
+            // Write deferred manifest for active update files before cleaning staging
+            $has_deferred = !empty($deferred_files);
+            if ($has_deferred) {
+                $this->writeDeferredManifest($deferred_files);
             }
             
             // Clean up staging directory
@@ -298,11 +322,17 @@ class GitHubUpdater {
                 $this->updateCurrentCommitSha($check_result['latest_commit']['sha']);
             }
             
+            $message = "Update completed: {$updated_count} files updated, {$deleted_count} files deleted";
+            if ($has_deferred) {
+                $message .= " (" . count($deferred_files) . " deferred)";
+            }
+            
             return [
                 'success' => true,
-                'message' => "Update completed: {$updated_count} files updated, {$deleted_count} files deleted",
+                'message' => $message,
                 'updated_count' => $updated_count,
                 'deleted_count' => $deleted_count,
+                'has_deferred' => $has_deferred,
                 'errors' => $errors
             ];
             
@@ -437,6 +467,114 @@ class GitHubUpdater {
             }
         }
         return false;
+    }
+    
+    /**
+     * Check if a file is part of the active update execution chain.
+     * These files are deferred during updates to prevent replacing running code.
+     */
+    private function isActiveUpdateFile($path) {
+        $path = str_replace('\\', '/', $path);
+        return in_array($path, $this->active_update_files, true);
+    }
+    
+    /**
+     * Write deferred update manifest for files that cannot be replaced during the running update.
+     * Copies deferred files from staging to .pending files alongside the live versions,
+     * and writes a JSON manifest so they can be applied after the response is sent.
+     *
+     * @param array $deferred_files Map of relative_path => staged_path
+     */
+    private function writeDeferredManifest(array $deferred_files) {
+        $manifest = [];
+        
+        foreach ($deferred_files as $relative_path => $staged_path) {
+            $pending_path = $this->base_path . '/' . $relative_path . '.pending';
+            $dir = dirname($pending_path);
+            
+            if (!is_dir($dir)) {
+                mkdir($dir, 0755, true);
+            }
+            
+            if (copy($staged_path, $pending_path)) {
+                $manifest[] = $relative_path;
+            }
+        }
+        
+        if (!empty($manifest)) {
+            $manifest_path = $this->base_path . '/.update_deferred.json';
+            if (file_put_contents($manifest_path, json_encode($manifest, JSON_PRETTY_PRINT)) === false) {
+                // Fallback: apply deferred files immediately if manifest write fails
+                foreach ($deferred_files as $relative_path => $staged_path) {
+                    $live_path = $this->base_path . '/' . $relative_path;
+                    @copy($staged_path, $live_path);
+                }
+            }
+        }
+    }
+    
+    /**
+     * Apply deferred update files that were skipped during the main update.
+     * Uses rename() for atomic replacement to avoid leaving files in a half-written state.
+     * Safe to call from a shutdown function after the HTTP response has been sent.
+     *
+     * @param string $base_path Application base path
+     * @return array Result with applied count and any errors
+     */
+    public static function applyDeferredUpdates($base_path) {
+        $manifest_path = $base_path . '/.update_deferred.json';
+        
+        if (!file_exists($manifest_path)) {
+            return ['applied' => 0, 'errors' => []];
+        }
+        
+        $raw = @file_get_contents($manifest_path);
+        if ($raw === false) {
+            @unlink($manifest_path);
+            return ['applied' => 0, 'errors' => ['Failed to read deferred manifest']];
+        }
+        
+        $manifest = json_decode($raw, true);
+        if (!is_array($manifest) || empty($manifest)) {
+            @unlink($manifest_path);
+            return ['applied' => 0, 'errors' => []];
+        }
+        
+        $applied = 0;
+        $errors = [];
+        
+        foreach ($manifest as $relative_path) {
+            $pending_path = $base_path . '/' . $relative_path . '.pending';
+            $live_path = $base_path . '/' . $relative_path;
+            
+            if (!file_exists($pending_path)) {
+                $errors[] = "Pending file not found: {$relative_path}";
+                continue;
+            }
+            
+            $dir = dirname($live_path);
+            if (!is_dir($dir)) {
+                mkdir($dir, 0755, true);
+            }
+            
+            // Use rename() for atomic replacement on the same filesystem
+            if (rename($pending_path, $live_path)) {
+                $applied++;
+            } else {
+                // Fallback to copy + delete if rename fails (e.g. cross-device)
+                if (copy($pending_path, $live_path)) {
+                    @unlink($pending_path);
+                    $applied++;
+                } else {
+                    $errors[] = "Failed to apply deferred file: {$relative_path}";
+                }
+            }
+        }
+        
+        // Remove the manifest after all files are processed
+        @unlink($manifest_path);
+        
+        return ['applied' => $applied, 'errors' => $errors];
     }
     
     /**
