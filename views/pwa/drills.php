@@ -166,6 +166,12 @@ try {
     display: flex; align-items: center; gap: 4px; min-height: 32px;
 }
 .m-drill-toolbar a:active { opacity: 0.7; }
+.m-select-toggle {
+    margin-left: auto; font-size: 12px; color: #8B5CF6; background: none; border: none;
+    cursor: pointer; display: flex; align-items: center; gap: 4px;
+    min-height: 32px; font-family: Inter, sans-serif;
+}
+.m-select-toggle:active { opacity: 0.7; }
 
 /* Card action buttons */
 .m-drill-actions {
@@ -296,7 +302,7 @@ try {
     <div class="m-drill-toolbar">
         <a href="?page=import_drill"><i class="fas fa-file-import"></i> Import</a>
         <a href="?page=export_import_drills"><i class="fas fa-file-export"></i> Export</a>
-        <button type="button" style="margin-left:auto;font-size:12px;color:#8B5CF6;background:none;border:none;cursor:pointer;display:flex;align-items:center;gap:4px;min-height:32px;font-family:Inter,sans-serif;" onclick="mToggleSelectMode()"><i class="fas fa-check-double"></i> <span id="m-select-mode-label">Select</span></button>
+        <button type="button" class="m-select-toggle" onclick="mToggleSelectMode()"><i class="fas fa-check-double"></i> <span id="m-select-mode-label">Select</span></button>
     </div>
 
     <!-- Bulk Actions Bar -->
@@ -672,7 +678,10 @@ function mUpdateBulkSelection() {
     countEl.textContent = checked.length + ' selected';
 
     if (selectAll) {
-        var visible = Array.from(checkboxes).filter(function(cb) { return cb.style.display !== 'none' && cb.closest('.m-drill-card').style.display !== 'none'; });
+        var visible = Array.from(checkboxes).filter(function(cb) {
+            var card = cb.closest('.m-drill-card');
+            return cb.style.display !== 'none' && card && card.style.display !== 'none';
+        });
         selectAll.checked = visible.length > 0 && checked.length === visible.length;
         selectAll.indeterminate = checked.length > 0 && checked.length < visible.length;
     }
