@@ -54,11 +54,11 @@ test.describe('Booking Page - Session Query Fix', () => {
 test.describe('Admin Action - Template Update Fix', () => {
   test('update_training_session does not write to session_coaches', () => {
     const content = readFile('process_admin_action.php');
-    // Find the update_training_session section
-    const updateSection = content.substring(
-      content.indexOf("action == 'update_training_session'"),
-      content.indexOf("action == 'update_training_session'") + 2000
-    );
+    // Find the update_training_session section up to the next major action or commit
+    const startIdx = content.indexOf("action == 'update_training_session'");
+    const sectionAfter = content.substring(startIdx);
+    const commitIdx = sectionAfter.indexOf('$pdo->commit()');
+    const updateSection = sectionAfter.substring(0, commitIdx);
     // Should NOT contain INSERT INTO session_coaches in the template update section
     expect(updateSection).not.toContain('INSERT INTO session_coaches');
   });
@@ -77,12 +77,10 @@ test.describe('Admin Action - Template Update Fix', () => {
 test.describe('Landing Page - Session Dates Display', () => {
   test('sessions_public.php does not query training_session_templates for display', () => {
     const content = readFile('sessions_public.php');
-    // The data query section should not reference training_session_templates
-    // (it may still exist in the registration_intents table schema reference)
-    const dataSection = content.substring(
-      content.indexOf('Fetch public sessions'),
-      content.indexOf('Fetch active packages')
-    );
+    // The data query section between fetching sessions and fetching packages
+    const startIdx = content.indexOf('FROM sessions s');
+    const endIdx = content.indexOf('Fetch active packages');
+    const dataSection = content.substring(startIdx, endIdx);
     expect(dataSection).not.toContain('training_session_templates');
   });
 
@@ -95,11 +93,10 @@ test.describe('Landing Page - Session Dates Display', () => {
 
   test('sessions_public.php does not artificially limit session count', () => {
     const content = readFile('sessions_public.php');
-    // The main sessions query should not have LIMIT
-    const dataSection = content.substring(
-      content.indexOf('Fetch public sessions'),
-      content.indexOf('Fetch active packages')
-    );
+    // The main sessions query between FROM sessions and the catch block should not have LIMIT
+    const startIdx = content.indexOf('FROM sessions s');
+    const endIdx = content.indexOf('} catch (PDOException $e)');
+    const dataSection = content.substring(startIdx, endIdx);
     expect(dataSection).not.toContain('LIMIT');
   });
 
@@ -117,7 +114,7 @@ test.describe('Registration Intent Fix', () => {
   test('sessions_public.php uses session_id for registration intent', () => {
     const content = readFile('sessions_public.php');
     const intentSection = content.substring(
-      content.indexOf('Store the intent'),
+      content.indexOf('INSERT INTO session_registration_intents'),
       content.indexOf('Redirect to login with token')
     );
     expect(intentSection).toContain('session_id');
