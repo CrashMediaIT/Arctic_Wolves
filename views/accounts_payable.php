@@ -19,6 +19,7 @@ try {
 // Get payees
 try {
     $payees = $pdo->query("SELECT * FROM payees WHERE is_active = 1 ORDER BY name")->fetchAll(PDO::FETCH_ASSOC);
+    $payees = FieldEncryption::decryptRows($payees, ['name', 'email', 'phone', 'address_line1', 'address_line2', 'city', 'etransfer_email']);
 } catch (PDOException $e) {
     $payees = [];
 }
@@ -32,6 +33,8 @@ try {
         ORDER BY e.expense_date DESC, e.created_at DESC
         LIMIT 20
     ")->fetchAll(PDO::FETCH_ASSOC);
+    // Decrypt payee_name (encrypted in payees.name)
+    $recent_expenses = FieldEncryption::decryptRows($recent_expenses, ['payee_name']);
 } catch (PDOException $e) {
     $recent_expenses = [];
 }

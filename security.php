@@ -16,17 +16,25 @@ function setSecurityHeaders() {
     
     // Referrer policy
     header("Referrer-Policy: strict-origin-when-cross-origin");
+
+    // HSTS — enforce HTTPS for all future requests (supports SSL offloading via pfSense HAProxy)
+    $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+    if ($isHttps) {
+        header("Strict-Transport-Security: max-age=31536000; includeSubDomains");
+    }
     
     // Content Security Policy (aligned with NGINX config)
     $csp = "default-src 'self'; " .
-           "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://maps.googleapis.com https://maps.gstatic.com https://places.googleapis.com; " .
+           "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://maps.googleapis.com https://maps.gstatic.com https://places.googleapis.com https://www.google.com https://www.gstatic.com; " .
            "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://fonts.googleapis.com; " .
            "img-src 'self' data: https:; " .
            "font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; " .
-           "connect-src 'self' wss: https://maps.googleapis.com https://places.googleapis.com; " .
+           "connect-src 'self' wss: https://maps.googleapis.com https://places.googleapis.com https://www.google.com; " .
            "worker-src 'self'; " .
            "manifest-src 'self'; " .
            "media-src 'self' blob: mediastream:; " .
+           "frame-src 'self' https://www.google.com https://www.gstatic.com; " .
            "frame-ancestors 'self';";
     header("Content-Security-Policy: $csp");
 }
@@ -773,6 +781,8 @@ function getEncryptedSettingKeys() {
         'docuseal_webhook_secret',
         'stallion_api_key',
         'stallion_api_secret',
+        'recaptcha_site_key',
+        'recaptcha_secret_key',
     ];
 }
 

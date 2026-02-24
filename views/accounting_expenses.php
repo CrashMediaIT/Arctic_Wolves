@@ -13,6 +13,7 @@ try {
 $payeesQuery = "SELECT * FROM payees WHERE is_active = 1 ORDER BY name";
 try {
     $payees = $pdo->query($payeesQuery)->fetchAll(PDO::FETCH_ASSOC);
+    $payees = FieldEncryption::decryptRows($payees, ['name', 'email', 'phone', 'address_line1', 'address_line2', 'city', 'etransfer_email']);
 } catch (PDOException $e) {
     $payees = [];
 }
@@ -24,9 +25,11 @@ $expensesQuery = "SELECT e.*, p.name as payee_name
     ORDER BY e.expense_date DESC
     LIMIT 50";
 try {
-    $expenses = $pdo->query($expensesQuery);
+    $expenses = $pdo->query($expensesQuery)->fetchAll(PDO::FETCH_ASSOC);
+    // Decrypt payee_name (encrypted in payees.name)
+    $expenses = FieldEncryption::decryptRows($expenses, ['payee_name']);
 } catch (PDOException $e) {
-    $expenses = null;
+    $expenses = [];
 }
 
 // Fetch expense stats
@@ -354,8 +357,8 @@ if ($expenseStats['last_month'] > 0) {
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if($expenses && $expenses->rowCount() > 0): ?>
-                            <?php while($expense = $expenses->fetch()): ?>
+                        <?php if(!empty($expenses)): ?>
+                            <?php foreach($expenses as $expense): ?>
                             <tr>
                                 <td><span class="expense-date"><?= date('M j, Y', strtotime($expense['expense_date'])) ?></span></td>
                                 <td><strong><?= htmlspecialchars($expense['vendor_name'] ?? 'N/A') ?></strong></td>
@@ -392,7 +395,7 @@ if ($expenseStats['last_month'] > 0) {
                                     </div>
                                 </td>
                             </tr>
-                            <?php endwhile; ?>
+                            <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
                                 <td colspan="9" class="empty-state">

@@ -126,6 +126,12 @@ if (isset($_GET['error'])) {
         case 'blocked':
             $error = "Registration is not available for the provided information. Please contact the administrator.";
             break;
+        case 'rate_limited':
+            $error = "Too many registration attempts. Please try again later.";
+            break;
+        case 'captcha_failed':
+            $error = "Security verification failed. Please try again.";
+            break;
         case 'csrf_invalid':
             $error = "Security token expired. Please refresh and try again.";
             break;
@@ -134,6 +140,21 @@ if (isset($_GET['error'])) {
             break;
         default:
             $error = "An error occurred during registration. Please try again.";
+    }
+}
+
+// Load reCAPTCHA site key from database (encrypted in system_settings)
+$recaptcha_site_key = '';
+if ($db_connected && $pdo) {
+    try {
+        $rc_stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'recaptcha_site_key'");
+        $rc_stmt->execute();
+        $rc_val = $rc_stmt->fetchColumn();
+        if (!empty($rc_val) && function_exists('decryptCredential')) {
+            $recaptcha_site_key = decryptCredential($rc_val);
+        }
+    } catch (PDOException $e) {
+        // Setting may not exist yet
     }
 }
 ?>
@@ -150,6 +171,9 @@ if (isset($_GET['error'])) {
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
+    <?php if (!empty($recaptcha_site_key)): ?>
+    <script src="https://www.google.com/recaptcha/api.js?render=<?php echo htmlspecialchars($recaptcha_site_key); ?>"></script>
+    <?php endif; ?>
     <style>
         body { 
             margin: 0; 
@@ -521,6 +545,7 @@ if (isset($_GET['error'])) {
 
             <form method="POST" action="process_register.php" id="registerForm">
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
+                <input type="hidden" name="recaptcha_token" id="recaptchaToken" value="">
                 <?php if ($invitationToken): ?>
                     <input type="hidden" name="invitation_token" value="<?php echo htmlspecialchars($invitationToken); ?>">
                 <?php endif; ?>
@@ -562,23 +587,23 @@ if (isset($_GET['error'])) {
                 <div class="form-row">
                     <div class="input-box">
                         <label>First Name</label>
-                        <input type="text" name="first_name" required placeholder="John">
+                        <input type="text" name="first_name" required placeholder="John" maxlength="100" pattern="[a-zA-ZÀ-ÿ\s'\-]{1,100}" title="Letters, spaces, hyphens and apostrophes only">
                     </div>
                     
                     <div class="input-box">
                         <label>Last Name</label>
-                        <input type="text" name="last_name" required placeholder="Smith">
+                        <input type="text" name="last_name" required placeholder="Smith" maxlength="100" pattern="[a-zA-ZÀ-ÿ\s'\-]{1,100}" title="Letters, spaces, hyphens and apostrophes only">
                     </div>
                 </div>
 
                 <div class="input-box">
                     <label>Email Address</label>
-                    <input type="email" name="email" required placeholder="name@example.com">
+                    <input type="email" name="email" required placeholder="name@example.com" maxlength="255">
                 </div>
 
                 <div class="input-box">
                     <label>Phone Number (Optional)</label>
-                    <input type="tel" name="phone" placeholder="(555) 555-5555">
+                    <input type="tel" name="phone" placeholder="(555) 555-5555" maxlength="20" pattern="[0-9+\-\s().]{0,20}" title="Digits, plus sign, dashes, and parentheses only">
                 </div>
 
                 <!-- Athlete-only fields -->
@@ -826,31 +851,60 @@ if (isset($_GET['error'])) {
             }
         }
 
-        // Form validation
+        // Form validation with input sanitization and reCAPTCHA
         document.getElementById('registerForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const form = this;
+
+            // Sanitize and validate first/last name (letters, spaces, hyphens, apostrophes only)
+            const namePattern = /^[a-zA-ZÀ-ÿ\s'\-]{1,100}$/;
+            const firstName = document.querySelector('input[name="first_name"]').value.trim();
+            const lastName = document.querySelector('input[name="last_name"]').value.trim();
+            if (!namePattern.test(firstName) || !namePattern.test(lastName)) {
+                alert('Names may only contain letters, spaces, hyphens, and apostrophes.');
+                return false;
+            }
+
+            // Validate email format
+            const email = document.querySelector('input[name="email"]').value.trim();
+            const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailPattern.test(email)) {
+                alert('Please enter a valid email address.');
+                return false;
+            }
+
+            // Validate phone (optional, digits and + only)
+            const phone = document.querySelector('input[name="phone"]').value.trim();
+            if (phone && !/^[0-9+\-\s().]{0,20}$/.test(phone)) {
+                alert('Please enter a valid phone number.');
+                return false;
+            }
+
             const password = document.querySelector('input[name="password"]').value;
             const confirmPassword = document.querySelector('input[name="confirm_password"]').value;
             
             if (password !== confirmPassword) {
-                e.preventDefault();
                 alert('Passwords do not match!');
                 return false;
             }
             
             if (password.length < 8) {
-                e.preventDefault();
                 alert('Password must be at least 8 characters long.');
+                return false;
+            }
+
+            // Password complexity: at least one uppercase, one lowercase, one digit
+            if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
+                alert('Password must contain at least one uppercase letter, one lowercase letter, and one digit.');
                 return false;
             }
 
             // Validate agreements
             if (!document.getElementById('waiver_accepted').checked) {
-                e.preventDefault();
                 alert('You must accept the Hockey Player Safety Waiver to register.');
                 return false;
             }
             if (!document.getElementById('privacy_accepted').checked) {
-                e.preventDefault();
                 alert('You must accept the Privacy Policy to register.');
                 return false;
             }
@@ -860,10 +914,22 @@ if (isset($_GET['error'])) {
             if (role === 'parent') {
                 const athleteCards = document.querySelectorAll('.athlete-card');
                 if (athleteCards.length === 0) {
-                    e.preventDefault();
                     alert('Please add at least one athlete.');
                     return false;
                 }
+            }
+
+            // Fetch reCAPTCHA v3 token before submitting (if configured)
+            const siteKey = <?php echo json_encode($recaptcha_site_key); ?>;
+            if (siteKey && typeof grecaptcha !== 'undefined') {
+                grecaptcha.ready(function() {
+                    grecaptcha.execute(siteKey, {action: 'register'}).then(function(token) {
+                        document.getElementById('recaptchaToken').value = token;
+                        form.submit();
+                    });
+                });
+            } else {
+                form.submit();
             }
         });
 

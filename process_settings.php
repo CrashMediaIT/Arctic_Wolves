@@ -439,6 +439,38 @@ try {
             
             header('Location: dashboard.php?page=system_tools&tab=settings&success=1');
             exit;
+
+        case 'update_recaptcha':
+            $recaptcha_site_key = trim($_POST['recaptcha_site_key'] ?? '');
+            $recaptcha_secret_key = trim($_POST['recaptcha_secret_key'] ?? '');
+
+            // Sanitize: strip any HTML/tags
+            $recaptcha_site_key = strip_tags($recaptcha_site_key);
+            $recaptcha_secret_key = strip_tags($recaptcha_secret_key);
+
+            // Validate key format if provided (alphanumeric, hyphens, underscores)
+            if (!empty($recaptcha_site_key) && !preg_match('/^[a-zA-Z0-9_\-]{20,100}$/', $recaptcha_site_key)) {
+                throw new Exception('Invalid reCAPTCHA site key format.');
+            }
+            if (!empty($recaptcha_secret_key) && !preg_match('/^[a-zA-Z0-9_\-]{20,100}$/', $recaptcha_secret_key)) {
+                throw new Exception('Invalid reCAPTCHA secret key format.');
+            }
+
+            // Encrypt and save (only update if a value is provided)
+            if (!empty($recaptcha_site_key)) {
+                updateSetting($pdo, 'recaptcha_site_key', encryptPassword($recaptcha_site_key));
+            }
+            if (!empty($recaptcha_secret_key)) {
+                updateSetting($pdo, 'recaptcha_secret_key', encryptPassword($recaptcha_secret_key));
+            }
+
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
+                'action' => 'update_recaptcha',
+                'settings' => ['site_key_updated' => !empty($recaptcha_site_key), 'secret_key_updated' => !empty($recaptcha_secret_key)]
+            ]);
+
+            header('Location: dashboard.php?page=system_tools&tab=encryption&success=1');
+            exit;
             
         case 'update_advanced':
             $maintenance_mode = isset($_POST['maintenance_mode']) ? '1' : '0';

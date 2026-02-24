@@ -6,6 +6,8 @@ require_once __DIR__ . '/error_logger.php';
 require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/lib/encryption.php';
 require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/lib/rate_limiter.php';
+require_once __DIR__ . '/lib/input_sanitizer.php';
 
 /**
  * Record login attempt in login_history table
@@ -43,6 +45,16 @@ $_loginRedirect = (!empty($_POST['pwa_login'])) ? 'pwa_login.php?error=' : 'logi
 $_loginPage = (!empty($_POST['pwa_login'])) ? 'pwa_login.php' : 'login.php';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    // Rate limiting: max 10 login attempts per IP per 15 minutes
+    if ($db_connected && $pdo) {
+        $rateLimiter = new RateLimiter($pdo);
+        if (!$rateLimiter->isIPAllowed('login', 10, 900)) {
+            $_SESSION['login_error'] = "Too many login attempts. Please try again later.";
+            header("Location: " . $_loginPage);
+            exit();
+        }
+    }
+
     // Validate CSRF token for POST requests
     if (!isset($_POST['csrf_token']) || !validateCSRFToken($_POST['csrf_token'])) {
         $_SESSION['login_error'] = "Invalid request. Please refresh and try again.";
@@ -50,7 +62,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         exit();
     }
     
-    $email = trim($_POST['email'] ?? '');
+    $email = InputSanitizer::sanitizeEmail(trim($_POST['email'] ?? ''));
     $password = $_POST['password'] ?? '';
 
     // Validation

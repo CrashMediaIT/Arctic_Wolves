@@ -19,11 +19,15 @@ if (session_status() === PHP_SESSION_NONE) {
         if (count($parts) >= 2) {
             $cookieDomain = '.' . implode('.', array_slice($parts, -2));
 
+            // Detect HTTPS: direct or via SSL-offloading proxy (pfSense HAProxy)
+            $isSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+                     || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+
             session_set_cookie_params([
                 'lifetime' => 0,
                 'path'     => '/',
                 'domain'   => $cookieDomain,
-                'secure'   => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+                'secure'   => $isSecure,
                 'httponly'  => true,
                 'samesite'  => 'Lax',
             ]);
