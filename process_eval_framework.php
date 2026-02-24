@@ -686,6 +686,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ");
                 $stmt->execute();
                 $evaluations = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                $evaluations = decryptUserRows($evaluations);
                 
                 echo json_encode(['success' => true, 'evaluations' => $evaluations]);
                 exit;

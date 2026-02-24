@@ -584,7 +584,8 @@ function getContractStatus($pdo, $contractId) {
             WHERE ec.id = ?
         ");
         $stmt->execute([$contractId]);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return function_exists('decryptUserRow') ? decryptUserRow($row) : $row;
     } catch (PDOException $e) {
         error_log("Failed to get contract status: " . $e->getMessage());
         return false;
