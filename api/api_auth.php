@@ -7,6 +7,7 @@
 
 require_once __DIR__ . '/../db_config.php';
 require_once __DIR__ . '/../lib/encryption.php';
+require_once __DIR__ . '/../lib/rate_limiter.php';
 
 /**
  * Authenticate an API request using API key or bearer token.
@@ -22,6 +23,12 @@ function authenticateApiRequest() {
 
     if (!$db_connected || !$pdo) {
         return ['authenticated' => false, 'user_id' => null, 'permissions' => [], 'error' => 'Database unavailable'];
+    }
+
+    // Rate limiting: max 60 API requests per IP per minute
+    $rateLimiter = new RateLimiter($pdo);
+    if (!$rateLimiter->isIPAllowed('api_auth', 60, 60)) {
+        return ['authenticated' => false, 'user_id' => null, 'permissions' => [], 'error' => 'Rate limit exceeded. Please try again later.'];
     }
 
     $api_key = extractApiKey();

@@ -12,6 +12,8 @@ require_once __DIR__ . '/lib/blocklist.php';
 require_once __DIR__ . '/lib/encryption.php';
 require_once __DIR__ . '/lib/auditor.php';
 require_once __DIR__ . '/error_logger.php';
+require_once __DIR__ . '/lib/rate_limiter.php';
+require_once __DIR__ . '/lib/input_sanitizer.php';
 
 /**
  * Generate a unique email for an athlete based on parent's email
@@ -57,17 +59,60 @@ function generateSecurePassword($length = 16) {
 }
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    // Rate limiting: max 5 registration attempts per IP per 30 minutes
+    if ($db_connected && $pdo) {
+        $rateLimiter = new RateLimiter($pdo);
+        if (!$rateLimiter->isIPAllowed('registration', 5, 1800)) {
+            header("Location: register.php?error=rate_limited");
+            exit();
+        }
+    }
+
     // Validate CSRF token
     if (!isset($_POST['csrf_token']) || !validateCSRFToken($_POST['csrf_token'])) {
         header("Location: register.php?error=csrf_invalid");
         exit();
     }
+
+    // Verify reCAPTCHA v3 token
+    $recaptcha_token = $_POST['recaptcha_token'] ?? '';
+    $recaptcha_secret = $_ENV['RECAPTCHA_SECRET_KEY'] ?? '';
+    if (!empty($recaptcha_secret)) {
+        $recaptcha_valid = false;
+        if (!empty($recaptcha_token)) {
+            $verify_url = 'https://www.google.com/recaptcha/api/siteverify';
+            $verify_data = http_build_query([
+                'secret' => $recaptcha_secret,
+                'response' => $recaptcha_token,
+                'remoteip' => $_SERVER['REMOTE_ADDR'] ?? ''
+            ]);
+            $verify_opts = ['http' => [
+                'method' => 'POST',
+                'header' => 'Content-Type: application/x-www-form-urlencoded',
+                'content' => $verify_data,
+                'timeout' => 5
+            ]];
+            $verify_context = stream_context_create($verify_opts);
+            $verify_response = @file_get_contents($verify_url, false, $verify_context);
+            if ($verify_response !== false) {
+                $verify_result = json_decode($verify_response, true);
+                if (isset($verify_result['success']) && $verify_result['success'] === true
+                    && isset($verify_result['score']) && $verify_result['score'] >= 0.5) {
+                    $recaptcha_valid = true;
+                }
+            }
+        }
+        if (!$recaptcha_valid) {
+            header("Location: register.php?error=captcha_failed");
+            exit();
+        }
+    }
     
-    // Get common fields
-    $first = trim($_POST['first_name'] ?? '');
-    $last  = trim($_POST['last_name'] ?? '');
-    $email = trim($_POST['email'] ?? '');
-    $phone = trim($_POST['phone'] ?? '');
+    // Get common fields with input sanitization
+    $first = InputSanitizer::sanitizeText(trim($_POST['first_name'] ?? ''));
+    $last  = InputSanitizer::sanitizeText(trim($_POST['last_name'] ?? ''));
+    $email = InputSanitizer::sanitizeEmail(trim($_POST['email'] ?? ''));
+    $phone = InputSanitizer::sanitizePhone(trim($_POST['phone'] ?? ''));
     $role  = $_POST['role'] ?? 'athlete';
     $pass  = $_POST['password'] ?? '';
     $confirm_pass = $_POST['confirm_password'] ?? '';
@@ -92,6 +137,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     
     // Validate password length
     if (strlen($pass) < 8) {
+        header("Location: register.php?error=invalid_data");
+        exit();
+    }
+
+    // Validate password complexity (uppercase, lowercase, digit)
+    if (!preg_match('/[A-Z]/', $pass) || !preg_match('/[a-z]/', $pass) || !preg_match('/[0-9]/', $pass)) {
+        header("Location: register.php?error=invalid_data");
+        exit();
+    }
+
+    // Validate name format (letters, spaces, hyphens, apostrophes only)
+    if (!preg_match('/^[a-zA-ZÀ-ÿ\s\'\-]{1,100}$/u', $first) || !preg_match('/^[a-zA-ZÀ-ÿ\s\'\-]{1,100}$/u', $last)) {
         header("Location: register.php?error=invalid_data");
         exit();
     }
@@ -186,10 +243,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $athletes = $_POST['athletes'] ?? [];
             
             foreach ($athletes as $athlete_data) {
-                $athlete_first = trim($athlete_data['first_name'] ?? '');
-                $athlete_last  = trim($athlete_data['last_name'] ?? '');
-                $athlete_dob   = $athlete_data['birth_date'] ?? null;
-                $athlete_pos   = $athlete_data['position'] ?? '';
+                $athlete_first = InputSanitizer::sanitizeText(trim($athlete_data['first_name'] ?? ''));
+                $athlete_last  = InputSanitizer::sanitizeText(trim($athlete_data['last_name'] ?? ''));
+                $athlete_dob   = InputSanitizer::sanitizeDate($athlete_data['birth_date'] ?? null);
+                $athlete_pos   = InputSanitizer::sanitizeText($athlete_data['position'] ?? '');
                 $use_alt_email = isset($athlete_data['use_alt_email']);
                 $alt_email     = trim($athlete_data['alt_email'] ?? '');
                 
