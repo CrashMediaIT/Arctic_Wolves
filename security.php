@@ -16,6 +16,13 @@ function setSecurityHeaders() {
     
     // Referrer policy
     header("Referrer-Policy: strict-origin-when-cross-origin");
+
+    // HSTS — enforce HTTPS for all future requests (supports SSL offloading via pfSense HAProxy)
+    $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+    if ($isHttps) {
+        header("Strict-Transport-Security: max-age=31536000; includeSubDomains");
+    }
     
     // Content Security Policy (aligned with NGINX config)
     $csp = "default-src 'self'; " .

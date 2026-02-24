@@ -39,6 +39,7 @@ try {
 $pwa_payees = [];
 try {
     $pwa_payees = $pdo->query("SELECT * FROM payees WHERE is_active = 1 ORDER BY name")->fetchAll(PDO::FETCH_ASSOC);
+    $pwa_payees = FieldEncryption::decryptRows($pwa_payees, ['name', 'email', 'phone', 'address_line1', 'address_line2', 'city', 'etransfer_email']);
 } catch (PDOException $e) { $pwa_payees = []; }
 
 $expenses = [];
@@ -50,6 +51,8 @@ try {
         WHERE $periodWhere ORDER BY e.expense_date DESC LIMIT 50");
     $stmt->execute();
     $expenses = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    // Decrypt payee_name (encrypted in payees.name)
+    $expenses = FieldEncryption::decryptRows($expenses, ['payee_name']);
 } catch (PDOException $e) { $expenses = []; }
 
 // Fetch recurring expenses for the recurring tab
