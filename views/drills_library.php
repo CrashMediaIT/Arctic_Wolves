@@ -1084,7 +1084,8 @@ function deleteDrill(drillId) {
         .then(function(r) {
             if (r.ok) {
                 // Remove card from DOM with animation
-                var card = document.querySelector('.drill-card[data-drill-id="' + drillId + '"]');
+                var safeId = parseInt(drillId, 10);
+                var card = safeId ? document.querySelector('.drill-card[data-drill-id="' + safeId + '"]') : null;
                 if (card) {
                     card.style.transition = 'opacity 0.3s, transform 0.3s';
                     card.style.opacity = '0';
@@ -1201,7 +1202,8 @@ function bulkDeleteDrills() {
             if (data.success) {
                 // Remove deleted cards from DOM
                 ids.forEach(function(id) {
-                    var card = document.querySelector('.drill-card[data-drill-id="' + id + '"]');
+                    var safeId = parseInt(id, 10);
+                    var card = safeId ? document.querySelector('.drill-card[data-drill-id="' + safeId + '"]') : null;
                     if (card) card.remove();
                 });
                 updateDrillCount();
