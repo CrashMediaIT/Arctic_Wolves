@@ -209,49 +209,56 @@ class GitHubUpdater {
                 return ['success' => false, 'message' => 'Failed to create staging directory'];
             }
             
-            // Phase 1: Download all files to staging directory
+            // Phase 1: Download repository to staging directory
             $downloaded_count = 0;
             $failed_count = 0;
             $errors = [];
             
-            foreach ($tree_data['tree'] as $item) {
-                if ($item['type'] !== 'blob') continue;
-                
-                $file_path = $item['path'];
-                
-                if ($this->isExcludedPath($file_path)) {
-                    continue;
+            // Try fast zipball download first (single request instead of per-file)
+            $zipResult = $this->downloadAndExtractZipball($staging_dir);
+            if ($zipResult['success']) {
+                $downloaded_count = $zipResult['file_count'];
+            } else {
+                // Fall back to per-file downloads if zipball fails
+                foreach ($tree_data['tree'] as $item) {
+                    if ($item['type'] !== 'blob') continue;
+                    
+                    $file_path = $item['path'];
+                    
+                    if ($this->isExcludedPath($file_path)) {
+                        continue;
+                    }
+                    
+                    $result = $this->downloadFileToStaging($file_path, $staging_dir);
+                    if ($result['success']) {
+                        $downloaded_count++;
+                    } else {
+                        $failed_count++;
+                        $errors[] = "Failed to download {$file_path}: {$result['message']}";
+                    }
+                    
+                    // Abort if too many downloads are failing (network likely down)
+                    if ($failed_count > 0 && $total_files > 0 && ($failed_count / ($downloaded_count + $failed_count)) > 0.5 && $failed_count >= 5) {
+                        $this->cleanupDirectory($staging_dir);
+                        $this->restorePersistentFiles($backup);
+                        return [
+                            'success' => false,
+                            'message' => "Update aborted: too many download failures ({$failed_count} failed). Site files have been preserved.",
+                            'errors' => $errors
+                        ];
+                    }
                 }
                 
-                $result = $this->downloadFileToStaging($file_path, $staging_dir);
-                if ($result['success']) {
-                    $downloaded_count++;
-                } else {
-                    $failed_count++;
-                    $errors[] = "Failed to download {$file_path}: {$result['message']}";
-                }
-                
-                // Abort if too many downloads are failing (network likely down)
-                if ($failed_count > 0 && $total_files > 0 && ($failed_count / ($downloaded_count + $failed_count)) > 0.5 && $failed_count >= 5) {
+                // If any downloads failed, abort — do not apply partial updates
+                if ($failed_count > 0) {
                     $this->cleanupDirectory($staging_dir);
                     $this->restorePersistentFiles($backup);
                     return [
                         'success' => false,
-                        'message' => "Update aborted: too many download failures ({$failed_count} failed). Site files have been preserved.",
+                        'message' => "Update aborted: {$failed_count} file(s) failed to download. No files were changed.",
                         'errors' => $errors
                     ];
                 }
-            }
-            
-            // If any downloads failed, abort — do not apply partial updates
-            if ($failed_count > 0) {
-                $this->cleanupDirectory($staging_dir);
-                $this->restorePersistentFiles($backup);
-                return [
-                    'success' => false,
-                    'message' => "Update aborted: {$failed_count} file(s) failed to download. No files were changed.",
-                    'errors' => $errors
-                ];
             }
             
             // Phase 2: Copy staged files to live site, deferring active update files
@@ -316,6 +323,9 @@ class GitHubUpdater {
             // Restore persistent files after update
             $this->restorePersistentFiles($backup);
             
+            // Phase 4: Run database schema check to ensure tables match the updated code
+            $schema_check = $this->runSchemaCheck();
+            
             // Update current commit SHA
             $check_result = $this->checkForUpdates();
             if ($check_result['success']) {
@@ -333,6 +343,7 @@ class GitHubUpdater {
                 'updated_count' => $updated_count,
                 'deleted_count' => $deleted_count,
                 'has_deferred' => $has_deferred,
+                'schema_check' => $schema_check,
                 'errors' => $errors
             ];
             
@@ -382,6 +393,114 @@ class GitHubUpdater {
         } catch (Exception $e) {
             return ['success' => false, 'message' => $e->getMessage()];
         }
+    }
+    
+    /**
+     * Download the entire repository as a zipball and extract to the staging directory.
+     * This is much faster than downloading files individually since it uses a single HTTP request.
+     *
+     * @param string $staging_dir Path to the staging directory
+     * @return array Result with success status and file count
+     */
+    private function downloadAndExtractZipball($staging_dir) {
+        if (!class_exists('ZipArchive')) {
+            return ['success' => false, 'message' => 'ZipArchive extension not available'];
+        }
+        
+        $zip_path = $staging_dir . '/repo.zip';
+        $branches = ['main', 'master'];
+        $downloaded = false;
+        
+        foreach ($branches as $branch) {
+            $url = "https://api.github.com/repos/{$this->repo_owner}/{$this->repo_name}/zipball/{$branch}";
+            $headers = ['User-Agent: Arctic-Wolves-Updater'];
+            
+            if (!empty($this->github_token)) {
+                $headers[] = "Authorization: token {$this->github_token}";
+            }
+            
+            $context = stream_context_create([
+                'http' => [
+                    'method' => 'GET',
+                    'header' => implode("\r\n", $headers),
+                    'timeout' => 120,
+                    'follow_location' => true,
+                    'ignore_errors' => true
+                ],
+                'ssl' => [
+                    'verify_peer' => true,
+                    'verify_peer_name' => true,
+                ]
+            ]);
+            
+            $content = @file_get_contents($url, false, $context);
+            
+            if ($content !== false && strlen($content) > 0) {
+                // Verify it's a valid ZIP (starts with PK magic bytes) and not an error response
+                if (substr($content, 0, 2) === "PK") {
+                    if (file_put_contents($zip_path, $content) !== false) {
+                        $downloaded = true;
+                        break;
+                    }
+                }
+            }
+        }
+        
+        if (!$downloaded) {
+            return ['success' => false, 'message' => 'Failed to download repository archive'];
+        }
+        
+        // Extract ZIP to staging
+        $zip = new \ZipArchive();
+        if ($zip->open($zip_path) !== true) {
+            @unlink($zip_path);
+            return ['success' => false, 'message' => 'Failed to open repository archive'];
+        }
+        
+        // GitHub ZIP contains a root directory prefix (e.g., "Owner-Repo-SHA/")
+        // Find and strip this prefix when extracting
+        $prefix = '';
+        if ($zip->numFiles > 0) {
+            $first_entry = $zip->getNameIndex(0);
+            $slash_pos = strpos($first_entry, '/');
+            if ($slash_pos !== false) {
+                $prefix = substr($first_entry, 0, $slash_pos + 1);
+            }
+        }
+        
+        $file_count = 0;
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $entry_name = $zip->getNameIndex($i);
+            
+            // Skip directory entries
+            if (substr($entry_name, -1) === '/') continue;
+            
+            // Strip the root prefix
+            $relative_path = $entry_name;
+            if (!empty($prefix) && strpos($entry_name, $prefix) === 0) {
+                $relative_path = substr($entry_name, strlen($prefix));
+            }
+            
+            if (empty($relative_path)) continue;
+            
+            $dest_path = $staging_dir . '/' . $relative_path;
+            $dir = dirname($dest_path);
+            
+            if (!is_dir($dir)) {
+                mkdir($dir, 0755, true);
+            }
+            
+            $entry_content = $zip->getFromIndex($i);
+            if ($entry_content !== false) {
+                file_put_contents($dest_path, $entry_content);
+                $file_count++;
+            }
+        }
+        
+        $zip->close();
+        @unlink($zip_path);
+        
+        return ['success' => true, 'file_count' => $file_count];
     }
     
     /**
@@ -740,6 +859,120 @@ class GitHubUpdater {
         $backup_dir = !empty($backup_values) ? dirname($backup_values[0]) : null;
         if ($backup_dir && is_dir($backup_dir)) {
             @rmdir($backup_dir);
+        }
+    }
+    
+    /**
+     * Run database schema check after update to ensure tables match the updated code.
+     * Uses DatabaseMigrator to compare the live database against database_schema.sql,
+     * creates missing tables, adds missing columns, and runs inline migrations.
+     *
+     * @return array Schema check results with applied changes and any errors
+     */
+    public function runSchemaCheck() {
+        $results = [];
+        $errors = [];
+        
+        try {
+            $schema_file = $this->base_path . '/database_schema.sql';
+            if (!file_exists($schema_file)) {
+                return ['success' => false, 'message' => 'database_schema.sql not found', 'results' => [], 'errors' => []];
+            }
+            
+            $migrator_file = $this->base_path . '/lib/database_migrator.php';
+            if (!file_exists($migrator_file)) {
+                return ['success' => false, 'message' => 'DatabaseMigrator not found', 'results' => [], 'errors' => []];
+            }
+            
+            require_once $migrator_file;
+            $migrator = new \DatabaseMigrator($this->pdo, $this->base_path);
+            
+            // Parse expected schema from the updated database_schema.sql
+            $expected_schema = $migrator->parseSchemaFile($schema_file);
+            
+            // Get current live database schema
+            $current_schema = $migrator->getCurrentSchema();
+            
+            // Compare and generate migration steps
+            $migrations = $migrator->compareSchemas($current_schema, $expected_schema);
+            
+            // Execute migrations: create missing tables and add missing columns
+            $schema_sql = file_get_contents($schema_file);
+            
+            foreach ($migrations as $migration) {
+                try {
+                    if ($migration['type'] === 'create_table') {
+                        $table_name = $migration['table'];
+                        if (preg_match('/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?`?' . preg_quote($table_name, '/') . '`?\s*\(.*?\)\s*ENGINE[^;]*;/is', $schema_sql, $match)) {
+                            $this->pdo->exec($match[0]);
+                            $results[] = "Created missing table: $table_name";
+                        }
+                    } elseif ($migration['type'] === 'add_column') {
+                        $result = $migrator->executeMigration($migration);
+                        if (!empty($result['skipped'])) {
+                            $results[] = $result['message'] . ' (skipped)';
+                        } else {
+                            $results[] = $result['message'];
+                        }
+                    }
+                } catch (\Exception $e) {
+                    $errors[] = "Schema migration error: " . $e->getMessage();
+                    error_log("Update schema check error: " . $e->getMessage());
+                }
+            }
+            
+            // Run inline migrations for columns that may not be detected by schema comparison
+            $inline_migrations = [
+                ["ALTER TABLE eval_categories ADD COLUMN display_order INT DEFAULT 0 AFTER description", "eval_categories.display_order"],
+                ["ALTER TABLE eval_skills ADD COLUMN display_order INT DEFAULT 0 AFTER description", "eval_skills.display_order"],
+                ["ALTER TABLE vr_game_plan_lines ADD COLUMN roster_player_id INT DEFAULT NULL COMMENT 'References roster_players.id for non-user players' AFTER athlete_id", "vr_game_plan_lines.roster_player_id"],
+                ["ALTER TABLE vr_game_plan_lines ADD COLUMN game_id INT DEFAULT NULL COMMENT 'NULL = default/standard lineup, set = game-specific lines' AFTER team_id", "vr_game_plan_lines.game_id"],
+                ["ALTER TABLE teams ADD COLUMN is_managed TINYINT(1) DEFAULT 1 COMMENT '1 = managed team (our teams), 0 = unmanaged (opponent teams)' AFTER is_demo", "teams.is_managed"],
+                ["ALTER TABLE teams ADD COLUMN ical_url VARCHAR(1000) DEFAULT NULL COMMENT 'Stored iCal URL for calendar re-sync' AFTER is_managed", "teams.ical_url"],
+                ["ALTER TABLE game_schedules ADD COLUMN ical_uid VARCHAR(500) DEFAULT NULL COMMENT 'UID from iCal event for sync/update tracking' AFTER season_id", "game_schedules.ical_uid"],
+                ["ALTER TABLE users ADD COLUMN sip_wss_port INT DEFAULT 7443 COMMENT 'WebSocket Secure port for SIP/WSS connection to FusionPBX' AFTER sip_password", "users.sip_wss_port"],
+            ];
+            
+            foreach ($inline_migrations as $mig) {
+                try {
+                    $this->pdo->exec($mig[0]);
+                    $results[] = "Ensured column: " . $mig[1];
+                } catch (\PDOException $e) {
+                    // Ignore "Duplicate column" errors — column already exists
+                    if ($e->getCode() !== '42S21' && strpos($e->getMessage(), 'Duplicate column') === false) {
+                        $errors[] = "Could not add " . $mig[1] . ": " . $e->getMessage();
+                    }
+                }
+            }
+            
+            // Add foreign key constraints if missing
+            try {
+                $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = 'expenses' AND CONSTRAINT_NAME = 'fk_expense_payee'");
+                $stmt->execute();
+                if ($stmt->fetchColumn() == 0) {
+                    $this->pdo->exec("ALTER TABLE expenses ADD CONSTRAINT fk_expense_payee FOREIGN KEY (payee_id) REFERENCES contacts(id) ON DELETE SET NULL ON UPDATE CASCADE");
+                    $results[] = "Added foreign key: fk_expense_payee";
+                }
+            } catch (\PDOException $e) {
+                // Non-critical — FK may already exist or tables may not be ready
+            }
+            
+            return [
+                'success' => true,
+                'message' => 'Schema check completed',
+                'results' => $results,
+                'errors' => $errors,
+                'tables_checked' => count($expected_schema['tables'] ?? []),
+                'changes_applied' => count($results)
+            ];
+            
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Schema check failed: ' . $e->getMessage(),
+                'results' => $results,
+                'errors' => $errors
+            ];
         }
     }
 }

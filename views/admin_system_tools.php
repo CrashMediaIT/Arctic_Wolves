@@ -3851,74 +3851,126 @@ async function githubApplyUpdate() {
     progressBar.style.width = '20%';
     
     const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+    const maxRetries = 2;
+    const fetchTimeoutMs = 5 * 60 * 1000; // 5 minute timeout for the fetch request
     
-    try {
-        githubAddLogEntry('Downloading files from repository...', 'info');
-        progressBar.style.width = '40%';
-        
-        const response = await fetch('process_settings.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `action=apply_updates&csrf_token=${encodeURIComponent(csrfToken)}`
-        });
-        
-        progressBar.style.width = '80%';
-        
-        if (!response.ok) {
-            throw new Error(`Server error (HTTP ${response.status})`);
-        }
-        
-        let data;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {
-            data = await response.json();
-        } catch (parseError) {
-            throw new Error('Invalid response from server — the update may have partially applied. Please check the site and try again.');
-        }
-        
-        progressBar.style.width = '100%';
-        
-        if (data.success) {
-            githubAddLogEntry(data.message || 'Update completed', 'success');
-            
-            if (data.errors && data.errors.length > 0) {
-                data.errors.forEach(err => githubAddLogEntry(err, 'warning'));
+            if (attempt > 0) {
+                githubAddLogEntry(`Retrying update (attempt ${attempt + 1}/${maxRetries + 1})...`, 'warning');
+                await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 2000));
             }
             
-            githubAddLogEntry('Persistent files restored.', 'success');
-            githubAddLogEntry('Update applied successfully!', 'success');
+            githubAddLogEntry('Downloading files from repository...', 'info');
+            progressBar.style.width = '40%';
             
-            document.getElementById('githubProgressTitle').innerHTML = '<i class="fas fa-check-circle" style="color: #10b981;"></i> Update Complete';
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), fetchTimeoutMs);
             
-            resultBanner.style.cssText = 'display: block; background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; color: #10b981; border-radius: 8px; padding: 20px; margin-top: 20px;';
-            resultBanner.innerHTML = `
-                <h3 style="margin: 0 0 10px 0; font-size: 18px;"><i class="fas fa-check-circle"></i> Update Successful</h3>
-                <p style="margin: 0;">${data.message || 'System updated successfully'}</p>
-                <button onclick="window.location.reload()" class="btn btn-primary" style="margin-top: 15px;">
-                    <i class="fas fa-sync"></i> Reload Page
-                </button>
-            `;
-        } else {
-            githubAddLogEntry(data.message || 'Update failed', 'error');
+            const response = await fetch('process_settings.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `action=apply_updates&csrf_token=${encodeURIComponent(csrfToken)}`,
+                signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            progressBar.style.width = '80%';
+            
+            if (!response.ok) {
+                const isRetryableStatus = [502, 503, 504].includes(response.status);
+                if (isRetryableStatus && attempt < maxRetries) {
+                    githubAddLogEntry(`Server error (HTTP ${response.status}). Will retry...`, 'warning');
+                    continue;
+                }
+                throw new Error(`Server error (HTTP ${response.status})`);
+            }
+            
+            let data;
+            try {
+                data = await response.json();
+            } catch (parseError) {
+                throw new Error('Invalid response from server — the update may have partially applied. Please check the site and try again.');
+            }
+            
+            progressBar.style.width = '100%';
+            
+            if (data.success) {
+                githubAddLogEntry(data.message || 'Update completed', 'success');
+                
+                if (data.errors && data.errors.length > 0) {
+                    data.errors.forEach(err => githubAddLogEntry(err, 'warning'));
+                }
+                
+                githubAddLogEntry('Persistent files restored.', 'success');
+                
+                // Display schema check results
+                if (data.schema_check) {
+                    githubAddLogEntry('Running database schema check...', 'info');
+                    if (data.schema_check.success) {
+                        const changes = data.schema_check.changes_applied || 0;
+                        if (changes > 0 && data.schema_check.results) {
+                            data.schema_check.results.forEach(r => githubAddLogEntry(r, 'info'));
+                        }
+                        githubAddLogEntry(`Schema check complete: ${changes} change(s) applied.`, 'success');
+                    } else {
+                        githubAddLogEntry('Schema check failed: ' + (data.schema_check.message || 'Unknown error'), 'warning');
+                    }
+                    if (data.schema_check.errors && data.schema_check.errors.length > 0) {
+                        data.schema_check.errors.forEach(err => githubAddLogEntry(err, 'warning'));
+                    }
+                }
+                
+                githubAddLogEntry('Update applied successfully!', 'success');
+                
+                document.getElementById('githubProgressTitle').innerHTML = '<i class="fas fa-check-circle" style="color: #10b981;"></i> Update Complete';
+                
+                resultBanner.style.cssText = 'display: block; background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; color: #10b981; border-radius: 8px; padding: 20px; margin-top: 20px;';
+                resultBanner.innerHTML = `
+                    <h3 style="margin: 0 0 10px 0; font-size: 18px;"><i class="fas fa-check-circle"></i> Update Successful</h3>
+                    <p style="margin: 0;">${data.message || 'System updated successfully'}</p>
+                    <button onclick="window.location.reload()" class="btn btn-primary" style="margin-top: 15px;">
+                        <i class="fas fa-sync"></i> Reload Page
+                    </button>
+                `;
+            } else {
+                githubAddLogEntry(data.message || 'Update failed', 'error');
+                document.getElementById('githubProgressTitle').innerHTML = '<i class="fas fa-times-circle" style="color: #ef4444;"></i> Update Failed';
+                
+                resultBanner.style.cssText = 'display: block; background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #ef4444; border-radius: 8px; padding: 20px; margin-top: 20px;';
+                resultBanner.innerHTML = `
+                    <h3 style="margin: 0 0 10px 0; font-size: 18px;"><i class="fas fa-times-circle"></i> Update Failed</h3>
+                    <p style="margin: 0;">${data.message || 'An error occurred during update'}</p>
+                `;
+                updateBtn.disabled = false;
+            }
+            
+            break; // Exit retry loop on successful response
+            
+        } catch (error) {
+            const isRetryable = error.name === 'AbortError' || 
+                               error.message.includes('Failed to fetch') ||
+                               error.message.includes('NetworkError');
+            
+            if (isRetryable && attempt < maxRetries) {
+                githubAddLogEntry(`Connection issue: ${error.message || 'Request timed out'}. Will retry...`, 'warning');
+                continue;
+            }
+            
+            console.error('Error:', error);
+            const errorMsg = error.name === 'AbortError' 
+                ? 'Request timed out — the update may still be completing on the server. Please wait and check for updates again.'
+                : (error.message || 'Network error or server not responding');
+            githubAddLogEntry(errorMsg, 'error');
             document.getElementById('githubProgressTitle').innerHTML = '<i class="fas fa-times-circle" style="color: #ef4444;"></i> Update Failed';
             
             resultBanner.style.cssText = 'display: block; background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #ef4444; border-radius: 8px; padding: 20px; margin-top: 20px;';
             resultBanner.innerHTML = `
                 <h3 style="margin: 0 0 10px 0; font-size: 18px;"><i class="fas fa-times-circle"></i> Update Failed</h3>
-                <p style="margin: 0;">${data.message || 'An error occurred during update'}</p>
+                <p style="margin: 0;">${errorMsg}</p>
             `;
             updateBtn.disabled = false;
         }
-    } catch (error) {
-        console.error('Error:', error);
-        githubAddLogEntry(error.message || 'Network error or server not responding', 'error');
-        document.getElementById('githubProgressTitle').innerHTML = '<i class="fas fa-times-circle" style="color: #ef4444;"></i> Update Failed';
-        
-        resultBanner.style.cssText = 'display: block; background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #ef4444; border-radius: 8px; padding: 20px; margin-top: 20px;';
-        resultBanner.innerHTML = `
-            <h3 style="margin: 0 0 10px 0; font-size: 18px;"><i class="fas fa-times-circle"></i> Update Failed</h3>
-            <p style="margin: 0;">${error.message || 'Network error or server not responding'}</p>
-        `;
-        updateBtn.disabled = false;
     }
     
     checkBtn.disabled = false;
