@@ -583,7 +583,7 @@ function getClientBillingData($parameters) {
         ORDER BY total_billed DESC
     ");
     $stmt->execute([$date_from, $date_to]);
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    return decryptUserRows($stmt->fetchAll(PDO::FETCH_ASSOC));
 }
 
 function getCoachPaymentsData($parameters) {
@@ -604,7 +604,7 @@ function getCoachPaymentsData($parameters) {
         ORDER BY sessions_coached DESC
     ");
     $stmt->execute([$date_from, $date_to]);
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    return decryptUserRows($stmt->fetchAll(PDO::FETCH_ASSOC));
 }
 
 function getAthleteProgressData($athlete_id, $parameters) {
@@ -624,7 +624,7 @@ function getAthleteProgressData($athlete_id, $parameters) {
     ");
     $stmt->execute([$parameters['date_from'], $parameters['date_to'], $athlete_id]);
     
-    return $stmt->fetch();
+    return decryptUserRow($stmt->fetch());
 }
 
 function getTeamRosterData($team_id) {
@@ -645,7 +645,7 @@ function getTeamRosterData($team_id) {
         )
     ");
     $members_stmt->execute([$team_id]);
-    $members = $members_stmt->fetchAll();
+    $members = decryptUserRows($members_stmt->fetchAll());
     
     return [
         'team' => $team,

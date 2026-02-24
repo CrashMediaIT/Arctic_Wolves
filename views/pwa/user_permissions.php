@@ -16,6 +16,7 @@ if ($uid > 0) {
         $stmt = $pdo->prepare("SELECT id, first_name, last_name, email, role, is_active, created_at FROM users WHERE id = ?");
         $stmt->execute([$uid]);
         $userInfo = $stmt->fetch(PDO::FETCH_ASSOC);
+        $userInfo = decryptUserRow($userInfo);
     } catch (PDOException $e) { $userInfo = null; }
 }
 ?>

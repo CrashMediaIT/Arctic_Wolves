@@ -12,9 +12,13 @@ if ($isAnyCoach) {
         $goalsUserId = (int)$_GET['athlete_id'];
     }
     try {
-        $stmt = $pdo->prepare("SELECT id, CONCAT(first_name, ' ', last_name) AS name FROM users WHERE role = 'athlete' ORDER BY first_name ASC LIMIT 100");
+        $stmt = $pdo->prepare("SELECT id, first_name, last_name FROM users WHERE role = 'athlete' ORDER BY first_name ASC LIMIT 100");
         $stmt->execute();
-        $athletes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $athletes = decryptUserRows($stmt->fetchAll(PDO::FETCH_ASSOC));
+        foreach ($athletes as &$a) {
+            $a['name'] = trim(($a['first_name'] ?? '') . ' ' . ($a['last_name'] ?? ''));
+        }
+        unset($a);
     } catch (PDOException $e) { $athletes = []; }
 } elseif ($isParent && !empty($_SESSION['viewing_athlete_id'])) {
     $goalsUserId = (int)$_SESSION['viewing_athlete_id'];

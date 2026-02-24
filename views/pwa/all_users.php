@@ -14,6 +14,7 @@ try {
     $stmt = $pdo->prepare("SELECT id, first_name, last_name, email, role, is_active, is_verified, created_at FROM users ORDER BY created_at DESC LIMIT 50");
     $stmt->execute();
     $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $users = decryptUserRows($users);
 } catch (PDOException $e) { $users = []; }
 ?>
 <style>
