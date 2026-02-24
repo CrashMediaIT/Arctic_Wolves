@@ -435,7 +435,21 @@ $reviewed_videos = array_filter($videos, function($v) {
 
                 <div class="form-actions">
                     <button type="button" class="btn-secondary" data-action="cancel">Cancel</button>
-                    <button type="submit" class="btn-primary"><i class="fas fa-upload"></i> Upload for Review</button>
+                    <button type="submit" class="btn-primary" id="uploadSubmitBtn"><i class="fas fa-upload"></i> Upload for Review</button>
+                </div>
+
+                <!-- Upload Progress Overlay -->
+                <div id="uploadProgressOverlay" class="upload-progress-overlay" style="display: none;">
+                    <div class="upload-progress-card">
+                        <div class="spinner"></div>
+                        <h4>Uploading Video...</h4>
+                        <p class="upload-progress-text">Uploading your video for coach review. Please do not close this page.</p>
+                        <div class="upload-progress-bar-container">
+                            <div class="upload-progress-bar" id="uploadProgressBar"></div>
+                        </div>
+                        <span class="upload-progress-percent" id="uploadProgressPercent">0%</span>
+                        <span class="upload-progress-status" id="uploadProgressStatus">Preparing upload...</span>
+                    </div>
                 </div>
             </form>
             <?php endif; ?>
@@ -589,6 +603,86 @@ $reviewed_videos = array_filter($videos, function($v) {
 @media (max-width: 480px) {
     .tab-btn span { display: none; }
 }
+
+/* Upload Progress Overlay */
+.upload-progress-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
+.upload-progress-card {
+    background: var(--bg-card, #0d1117);
+    border: 1px solid var(--border, #1e293b);
+    border-radius: 12px;
+    padding: 40px;
+    text-align: center;
+    max-width: 420px;
+    width: 90%;
+}
+
+.upload-progress-card .spinner {
+    width: 36px;
+    height: 36px;
+    margin: 0 auto 16px;
+    border: 3px solid var(--border, #1e293b);
+    border-top-color: var(--primary, #7c3aed);
+    border-radius: 50%;
+    animation: upload-spin 0.8s linear infinite;
+}
+
+@keyframes upload-spin {
+    to { transform: rotate(360deg); }
+}
+
+.upload-progress-card h4 {
+    color: var(--text-white, #fff);
+    font-size: 18px;
+    margin-bottom: 8px;
+}
+
+.upload-progress-text {
+    color: var(--text-dim, #64748b);
+    font-size: 13px;
+    margin-bottom: 20px;
+}
+
+.upload-progress-bar-container {
+    width: 100%;
+    height: 8px;
+    background: var(--bg-main, #06080b);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.upload-progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--primary, #7c3aed), #a78bfa);
+    border-radius: 4px;
+    transition: width 0.4s ease;
+}
+
+.upload-progress-percent {
+    display: block;
+    color: var(--text-white, #fff);
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.upload-progress-status {
+    color: var(--text-dim, #64748b);
+    font-size: 12px;
+}
 </style>
 
 <script>
@@ -678,5 +772,74 @@ document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
         }
     });
+
+    // Video upload with progress bar
+    var uploadForm = document.querySelector('[data-form="video-upload"]');
+    if (uploadForm) {
+        uploadForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            var overlay = document.getElementById('uploadProgressOverlay');
+            var bar = document.getElementById('uploadProgressBar');
+            var percent = document.getElementById('uploadProgressPercent');
+            var status = document.getElementById('uploadProgressStatus');
+            var submitBtn = document.getElementById('uploadSubmitBtn');
+
+            overlay.style.display = 'flex';
+            submitBtn.disabled = true;
+
+            var formData = new FormData(uploadForm);
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', uploadForm.action, true);
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+
+            xhr.upload.onprogress = function(e) {
+                if (e.lengthComputable) {
+                    var pct = Math.round((e.loaded / e.total) * 100);
+                    bar.style.width = pct + '%';
+                    percent.textContent = pct + '%';
+                    if (pct < 100) {
+                        status.textContent = 'Uploading video...';
+                    } else {
+                        status.textContent = 'Processing video...';
+                    }
+                }
+            };
+
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    try {
+                        var response = JSON.parse(xhr.responseText);
+                        if (response.success) {
+                            bar.style.width = '100%';
+                            percent.textContent = '100%';
+                            status.textContent = 'Upload complete! Redirecting...';
+                            window.location.href = response.redirect || 'dashboard.php?page=coaches_reviews&success=video_uploaded';
+                        } else {
+                            overlay.style.display = 'none';
+                            submitBtn.disabled = false;
+                            alert('Upload failed: ' + (response.error || 'Please try again or contact support.'));
+                        }
+                    } catch (err) {
+                        overlay.style.display = 'none';
+                        submitBtn.disabled = false;
+                        alert('Upload failed. Please try again.');
+                    }
+                } else {
+                    overlay.style.display = 'none';
+                    submitBtn.disabled = false;
+                    alert('Upload failed (server error). Please try again.');
+                }
+            };
+
+            xhr.onerror = function() {
+                overlay.style.display = 'none';
+                submitBtn.disabled = false;
+                alert('Upload failed. Please check your connection and try again.');
+            };
+
+            xhr.send(formData);
+        });
+    }
 });
 </script>
