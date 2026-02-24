@@ -714,9 +714,9 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                                     <h4><i class="fas fa-hdd" style="color: #10b981; margin-right: 8px;"></i>Persistent Local Storage</h4>
                                     <p>Images are automatically saved to a folder outside the web root that persists across updates. Same folder structure as Nextcloud for easy restoration.</p>
                                 </div>
-                                <input type="text" class="form-input" readonly disabled
-                                       value="<?php echo htmlspecialchars(dirname(dirname(__DIR__)) . '/persistent_uploads/Images/'); ?>"
-                                       style="opacity: 0.7; cursor: default;">
+                                <input type="text" name="nextcloud_persistent_path" class="form-input"
+                                       value="<?php echo htmlspecialchars($settings['nextcloud_persistent_path'] ?? (dirname(dirname(__DIR__)) . '/persistent_uploads')); ?>"
+                                       placeholder="<?php echo htmlspecialchars(dirname(dirname(__DIR__)) . '/persistent_uploads'); ?>">
                             </div>
                         </div>
                     </div>

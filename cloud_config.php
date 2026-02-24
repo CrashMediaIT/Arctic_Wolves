@@ -10,7 +10,7 @@ require_once __DIR__ . '/db_config.php';
  * Get Nextcloud settings from database
  */
 function getNextcloudSettings($pdo) {
-    $stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('nextcloud_url', 'nextcloud_username', 'nextcloud_password', 'nextcloud_receipt_folder', 'nextcloud_hr_dir', 'nextcloud_terminations_dir', 'nextcloud_payroll_dir', 'nextcloud_onboarding_dir', 'nextcloud_drill_videos_dir', 'nextcloud_contracts_dir', 'nextcloud_images_dir')");
+    $stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('nextcloud_url', 'nextcloud_username', 'nextcloud_password', 'nextcloud_receipt_folder', 'nextcloud_hr_dir', 'nextcloud_terminations_dir', 'nextcloud_payroll_dir', 'nextcloud_onboarding_dir', 'nextcloud_drill_videos_dir', 'nextcloud_contracts_dir', 'nextcloud_images_dir', 'nextcloud_persistent_path')");
     $settings = [];
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $settings[$row['setting_key']] = $row['setting_value'];
@@ -680,9 +680,25 @@ function uploadDrillVideo($pdo, $settings, $session_name, $drill_name, $athlete_
  * This directory survives application updates because it lives outside the project folder.
  * Structure mirrors Nextcloud: persistent_uploads/Images/{subfolder}/{filename}
  * 
+ * If a PDO connection is provided, checks the database for a custom path
+ * configured via the 'nextcloud_persistent_path' setting.
+ * 
+ * @param PDO|null $pdo Optional database connection to read custom path from settings
  * @return string Absolute path to the persistent storage directory
  */
-function getPersistentStoragePath() {
+function getPersistentStoragePath($pdo = null) {
+    if ($pdo !== null) {
+        try {
+            $stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = ?");
+            $stmt->execute(['nextcloud_persistent_path']);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($row && !empty(trim($row['setting_value']))) {
+                return rtrim(trim($row['setting_value']), '/');
+            }
+        } catch (Exception $e) {
+            error_log("Error reading persistent path setting: " . $e->getMessage());
+        }
+    }
     return realpath(__DIR__ . '/..') . '/persistent_uploads';
 }
 

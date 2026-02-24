@@ -210,6 +210,7 @@ try {
             $terminations_dir = trim($_POST['nextcloud_terminations_dir'] ?? '/HR/Terminations');
             $contracts_dir = trim($_POST['nextcloud_contracts_dir'] ?? '/accounting/contracts');
             $images_dir = trim($_POST['nextcloud_images_dir'] ?? '/Images');
+            $persistent_path = trim($_POST['nextcloud_persistent_path'] ?? '');
             
             // Sync options
             $sync_backups = isset($_POST['sync_backups']) ? '1' : '0';
@@ -243,6 +244,7 @@ try {
             updateSetting($pdo, 'nextcloud_terminations_dir', $terminations_dir);
             updateSetting($pdo, 'nextcloud_contracts_dir', $contracts_dir);
             updateSetting($pdo, 'nextcloud_images_dir', $images_dir);
+            updateSetting($pdo, 'nextcloud_persistent_path', $persistent_path);
             
             // Save sync options
             updateSetting($pdo, 'sync_backups', $sync_backups);

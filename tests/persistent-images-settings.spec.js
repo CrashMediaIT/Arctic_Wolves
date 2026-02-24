@@ -313,16 +313,28 @@ test.describe('Profile view includes image restoration from Nextcloud', () => {
 test.describe('Persistent local storage functions in cloud_config.php', () => {
   test('cloud_config.php should define getPersistentStoragePath function', () => {
     const content = readFile('cloud_config.php');
-    expect(content).toContain('function getPersistentStoragePath()');
+    expect(content).toContain('function getPersistentStoragePath(');
   });
 
-  test('getPersistentStoragePath should return path outside web root', () => {
+  test('getPersistentStoragePath should accept optional pdo parameter', () => {
     const content = readFile('cloud_config.php');
-    const fnStart = content.indexOf('function getPersistentStoragePath()');
-    const fnEnd = content.indexOf('}', fnStart) + 1;
-    const fn = content.substring(fnStart, fnEnd);
-    expect(fn).toContain("realpath(__DIR__ . '/..')");
-    expect(fn).toContain('persistent_uploads');
+    expect(content).toContain('function getPersistentStoragePath($pdo = null)');
+  });
+
+  test('getPersistentStoragePath should return path outside web root as default', () => {
+    const content = readFile('cloud_config.php');
+    const fnStart = content.indexOf('function getPersistentStoragePath($pdo = null)');
+    const fnBody = content.substring(fnStart, fnStart + 800);
+    expect(fnBody).toContain("realpath(__DIR__ . '/..')");
+    expect(fnBody).toContain('persistent_uploads');
+  });
+
+  test('getPersistentStoragePath should check database for custom path when pdo is provided', () => {
+    const content = readFile('cloud_config.php');
+    const fnStart = content.indexOf('function getPersistentStoragePath($pdo = null)');
+    const fnBody = content.substring(fnStart, fnStart + 800);
+    expect(fnBody).toContain('nextcloud_persistent_path');
+    expect(fnBody).toContain('setting_value');
   });
 
   test('cloud_config.php should define saveToPersistentStorage function', () => {
@@ -448,5 +460,57 @@ test.describe('Persistent storage in admin UI and infrastructure', () => {
   test('.gitignore should exclude persistent_uploads', () => {
     const content = readFile('.gitignore');
     expect(content).toContain('persistent_uploads');
+  });
+});
+
+// =====================================================
+// 15. Editable persistent data path
+// =====================================================
+
+test.describe('Persistent data path is editable in nextcloud config', () => {
+  test('admin_system_tools.php should have editable nextcloud_persistent_path input', () => {
+    const content = readFile('views/admin_system_tools.php');
+    expect(content).toContain('name="nextcloud_persistent_path"');
+  });
+
+  test('admin_system_tools.php persistent path input should not be readonly or disabled', () => {
+    const content = readFile('views/admin_system_tools.php');
+    // Find the persistent path input and ensure it is not readonly/disabled
+    const inputIdx = content.indexOf('name="nextcloud_persistent_path"');
+    expect(inputIdx).toBeGreaterThan(-1);
+    // Get the surrounding input tag
+    const tagStart = content.lastIndexOf('<input', inputIdx);
+    const tagEnd = content.indexOf('>', inputIdx);
+    const inputTag = content.substring(tagStart, tagEnd + 1);
+    expect(inputTag).not.toContain('readonly');
+    expect(inputTag).not.toContain('disabled');
+  });
+
+  test('admin_system_tools.php should load nextcloud_persistent_path from settings', () => {
+    const content = readFile('views/admin_system_tools.php');
+    expect(content).toContain("nextcloud_persistent_path']");
+  });
+
+  test('process_settings.php should read nextcloud_persistent_path from POST', () => {
+    const content = readFile('process_settings.php');
+    expect(content).toContain("nextcloud_persistent_path");
+  });
+
+  test('process_settings.php should save nextcloud_persistent_path setting', () => {
+    const content = readFile('process_settings.php');
+    expect(content).toContain("updateSetting($pdo, 'nextcloud_persistent_path'");
+  });
+
+  test('getNextcloudSettings should include nextcloud_persistent_path', () => {
+    const content = readFile('cloud_config.php');
+    const fnStart = content.indexOf('function getNextcloudSettings(');
+    const fnEnd = content.indexOf('}', fnStart);
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('nextcloud_persistent_path');
+  });
+
+  test('database_schema.sql should insert default nextcloud_persistent_path setting', () => {
+    const content = readFile('database_schema.sql');
+    expect(content).toContain("'nextcloud_persistent_path'");
   });
 });
