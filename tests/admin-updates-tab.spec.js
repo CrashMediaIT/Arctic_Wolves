@@ -1,121 +1,238 @@
 import { test, expect } from '@playwright/test';
+import fs from 'fs';
+import path from 'path';
 
 /**
  * Arctic Wolves - Admin Updates Tab Tests
- * Tests to verify the Feature Import functionality in System Tools Updates tab
+ * Tests to verify the GitHub-based single-button update utility in System Tools Updates tab
  */
 
-// Get base URL from environment or use default
-const BASE_URL = process.env.BASE_URL || 'http://localhost/Arctic_Wolves';
+const ROOT = path.resolve(__dirname, '..');
 
-test.describe('System Tools - Updates Tab', () => {
+function readFile(relativePath) {
+  return fs.readFileSync(path.join(ROOT, relativePath), 'utf-8');
+}
+
+// =====================================================
+// 1. Updates tab UI structure
+// =====================================================
+
+test.describe('System Tools - Updates Tab - GitHub Updater UI', () => {
   
-  // Login as admin before each test
-  test.beforeEach(async ({ page }) => {
-    await page.goto(`${BASE_URL}/login.php`);
-    
-    // Login with admin credentials
-    await page.fill('input[name="email"]', 'admin@test.com');
-    await page.fill('input[name="password"]', 'password123');
-    await page.click('button[type="submit"]');
-    
-    // Wait for navigation to dashboard
-    await page.waitForURL('**/dashboard.php*');
-    
-    // Navigate to system tools updates tab
-    await page.goto(`${BASE_URL}/dashboard.php?page=system_tools&tab=updates`);
-    await page.waitForLoadState('networkidle');
+  test('Updates tab should have GitHub updater card', () => {
+    const content = readFile('views/admin_system_tools.php');
+    expect(content).toContain('id="updates-tab"');
+    expect(content).toContain('System Updates');
+    expect(content).toContain('fa-github');
   });
-  
-  test('Updates tab is accessible and shows Feature Importer', async ({ page }) => {
-    // Verify we're on the updates tab
-    const updatesTabLink = page.locator('a.page-tab:has-text("Updates")');
-    await expect(updatesTabLink).toBeVisible();
-    await expect(updatesTabLink).toHaveClass(/active/);
+
+  test('Updates tab should show repository name', () => {
+    const content = readFile('views/admin_system_tools.php');
+    expect(content).toContain('CrashMediaIT/Arctic_Wolves');
   });
-  
-  test('Updates tab contains system updates section', async ({ page }) => {
-    // Verify the System Updates card exists
-    const systemUpdatesCard = page.locator('.card-header:has-text("System Updates")');
-    await expect(systemUpdatesCard).toBeVisible();
-    
-    // Verify the info box with instructions is visible
-    const infoBox = page.locator('.info-box:has-text("Upload and import update packages")');
-    await expect(infoBox).toBeVisible();
+
+  test('Updates tab should have Check for Updates button', () => {
+    const content = readFile('views/admin_system_tools.php');
+    expect(content).toContain('id="githubCheckBtn"');
+    expect(content).toContain('Check for Updates');
+    expect(content).toContain('githubCheckForUpdates()');
   });
-  
-  test('Updates tab contains file upload section', async ({ page }) => {
-    // Verify upload section exists
-    const uploadSection = page.locator('#uploadSection');
-    await expect(uploadSection).toBeVisible();
-    
-    // Verify file input exists
-    const fileInput = page.locator('#updateFileInput');
-    await expect(fileInput).toHaveAttribute('accept', '.zip');
-    
-    // Verify Browse Files button exists
-    const browseBtn = page.locator('button:has-text("Browse Files")');
-    await expect(browseBtn).toBeVisible();
+
+  test('Updates tab should have Update Now button (initially disabled)', () => {
+    const content = readFile('views/admin_system_tools.php');
+    expect(content).toContain('id="githubUpdateBtn"');
+    expect(content).toContain('Update Now');
+    expect(content).toContain('githubApplyUpdate()');
+    // Button should be disabled initially
+    const btnMatch = content.match(/id="githubUpdateBtn"[^>]*disabled/);
+    expect(btnMatch).not.toBeNull();
   });
-  
-  test('Updates tab contains import button (initially disabled)', async ({ page }) => {
-    // Verify Import button exists and is disabled
-    const importBtn = page.locator('#importUpdateBtn');
-    await expect(importBtn).toBeVisible();
-    await expect(importBtn).toBeDisabled();
-    await expect(importBtn).toContainText('Import Update Package');
+
+  test('Updates tab should have status area for current version', () => {
+    const content = readFile('views/admin_system_tools.php');
+    expect(content).toContain('id="githubUpdateStatus"');
+    expect(content).toContain('id="githubCurrentVersion"');
+    expect(content).toContain('id="githubUpdateBadge"');
   });
-  
-  test('Updates tab JavaScript functions are defined', async ({ page }) => {
-    // Check if JavaScript functions exist
-    const functionsExist = await page.evaluate(() => {
-      return {
-        handleUpdateFileSelect: typeof window.handleUpdateFileSelect === 'function',
-        handleUpdateFile: typeof window.handleUpdateFile === 'function',
-        removeUpdateFile: typeof window.removeUpdateFile === 'function',
-        startUpdateImport: typeof window.startUpdateImport === 'function',
-        formatUpdateFileSize: typeof window.formatUpdateFileSize === 'function',
-        addUpdateLogEntry: typeof window.addUpdateLogEntry === 'function'
-      };
-    });
-    
-    expect(functionsExist.handleUpdateFileSelect).toBe(true);
-    expect(functionsExist.handleUpdateFile).toBe(true);
-    expect(functionsExist.removeUpdateFile).toBe(true);
-    expect(functionsExist.startUpdateImport).toBe(true);
-    expect(functionsExist.formatUpdateFileSize).toBe(true);
-    expect(functionsExist.addUpdateLogEntry).toBe(true);
+
+  test('Updates tab should have update details section', () => {
+    const content = readFile('views/admin_system_tools.php');
+    expect(content).toContain('id="githubUpdateDetails"');
+    expect(content).toContain('id="githubLatestSha"');
+    expect(content).toContain('id="githubLatestMessage"');
+    expect(content).toContain('id="githubLatestAuthor"');
+    expect(content).toContain('id="githubLatestDate"');
   });
-  
-  test('Updates tab has proper styling and layout', async ({ page }) => {
-    // Verify settings cards exist
-    const settingsCards = page.locator('#updates-tab .card');
-    const cardCount = await settingsCards.count();
-    expect(cardCount).toBeGreaterThanOrEqual(1); // At least 1 card (System updates)
-    
-    // Verify the upload section has proper styling
-    const uploadSection = page.locator('#uploadSection');
-    const borderStyle = await uploadSection.evaluate(el => getComputedStyle(el).borderStyle);
-    expect(borderStyle).toBe('dashed');
+
+  test('Updates tab should have progress section', () => {
+    const content = readFile('views/admin_system_tools.php');
+    expect(content).toContain('id="githubProgressSection"');
+    expect(content).toContain('id="githubProgressBar"');
+    expect(content).toContain('id="githubLogContainer"');
   });
+
+  test('Updates tab should have result banner area', () => {
+    const content = readFile('views/admin_system_tools.php');
+    expect(content).toContain('id="githubResultBanner"');
+  });
+
+  test('Updates tab should still have Stripe library updater', () => {
+    const content = readFile('views/admin_system_tools.php');
+    expect(content).toContain('Stripe PHP Library');
+    expect(content).toContain('checkStripeUpdates');
+    expect(content).toContain('updateStripeLibrary');
+  });
+});
+
+// =====================================================
+// 2. JavaScript functions
+// =====================================================
+
+test.describe('GitHub updater JavaScript functions', () => {
+
+  test('githubCheckForUpdates function should call check_updates action', () => {
+    const content = readFile('views/admin_system_tools.php');
+    expect(content).toContain('async function githubCheckForUpdates()');
+    // Should POST to process_settings.php with check_updates action
+    const fnStart = content.indexOf('async function githubCheckForUpdates()');
+    const fnEnd = content.indexOf('async function githubApplyUpdate()');
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain("action=check_updates");
+    expect(fn).toContain("process_settings.php");
+  });
+
+  test('githubApplyUpdate function should call apply_updates action', () => {
+    const content = readFile('views/admin_system_tools.php');
+    expect(content).toContain('async function githubApplyUpdate()');
+    const fnStart = content.indexOf('async function githubApplyUpdate()');
+    const fnEnd = content.indexOf('// Stripe Library Update functions');
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain("action=apply_updates");
+    expect(fn).toContain("process_settings.php");
+  });
+
+  test('githubApplyUpdate should show confirmation dialog', () => {
+    const content = readFile('views/admin_system_tools.php');
+    const fnStart = content.indexOf('async function githubApplyUpdate()');
+    const fnEnd = content.indexOf('// Stripe Library Update functions');
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('confirm(');
+  });
+
+  test('githubAddLogEntry function should exist', () => {
+    const content = readFile('views/admin_system_tools.php');
+    expect(content).toContain('function githubAddLogEntry(');
+  });
+
+  test('githubCheckForUpdates should display has_updates badge', () => {
+    const content = readFile('views/admin_system_tools.php');
+    const fnStart = content.indexOf('async function githubCheckForUpdates()');
+    const fnEnd = content.indexOf('async function githubApplyUpdate()');
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('has_updates');
+    expect(fn).toContain('Update Available');
+    expect(fn).toContain('Up to Date');
+  });
+
+  test('githubApplyUpdate should show reload button on success', () => {
+    const content = readFile('views/admin_system_tools.php');
+    const fnStart = content.indexOf('async function githubApplyUpdate()');
+    const fnEnd = content.indexOf('// Stripe Library Update functions');
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('window.location.reload()');
+    expect(fn).toContain('Reload Page');
+  });
+});
+
+// =====================================================
+// 3. Backend handlers exist
+// =====================================================
+
+test.describe('Backend update handlers in process_settings.php', () => {
   
-  test('Tab switching works correctly with Updates tab', async ({ page }) => {
-    // Updates tab should be active
-    const updatesTabLink = page.locator('a.page-tab:has-text("Updates")');
-    await expect(updatesTabLink).toHaveClass(/active/);
-    
-    // Click Settings tab
-    await page.click('a.page-tab:has-text("Settings")');
-    await page.waitForTimeout(300); // Wait for navigation
-    
-    // Settings tab should now be active (via URL change)
-    await expect(page).toHaveURL(/tab=settings/);
-    
-    // Click back to Updates tab
-    await page.click('a.page-tab:has-text("Updates")');
-    await page.waitForTimeout(300);
-    
-    // Updates tab should be active again
-    await expect(page).toHaveURL(/tab=updates/);
+  test('process_settings.php should handle check_updates action', () => {
+    const content = readFile('process_settings.php');
+    expect(content).toContain("case 'check_updates':");
+    expect(content).toContain('GitHubUpdater');
+    expect(content).toContain('checkForUpdates');
+  });
+
+  test('process_settings.php should handle apply_updates action', () => {
+    const content = readFile('process_settings.php');
+    expect(content).toContain("case 'apply_updates':");
+    expect(content).toContain('GitHubUpdater');
+    expect(content).toContain('applyUpdates');
+  });
+
+  test('check_updates and apply_updates should be JSON actions', () => {
+    const content = readFile('process_settings.php');
+    // These should be in the json_actions array
+    expect(content).toContain("'check_updates'");
+    expect(content).toContain("'apply_updates'");
+  });
+});
+
+// =====================================================
+// 4. GitHub updater class
+// =====================================================
+
+test.describe('GitHub updater class capabilities', () => {
+  
+  test('GitHubUpdater class should exist', () => {
+    const content = readFile('lib/github_updater.php');
+    expect(content).toContain('class GitHubUpdater');
+  });
+
+  test('GitHubUpdater should have checkForUpdates method', () => {
+    const content = readFile('lib/github_updater.php');
+    expect(content).toContain('function checkForUpdates()');
+  });
+
+  test('GitHubUpdater should have applyUpdates method', () => {
+    const content = readFile('lib/github_updater.php');
+    expect(content).toContain('function applyUpdates()');
+  });
+
+  test('GitHubUpdater should backup persistent files during updates', () => {
+    const content = readFile('lib/github_updater.php');
+    expect(content).toContain('backupPersistentFiles');
+    expect(content).toContain('restorePersistentFiles');
+  });
+
+  test('GitHubUpdater should exclude sensitive files from updates', () => {
+    const content = readFile('lib/github_updater.php');
+    expect(content).toContain("'db_config.php'");
+    expect(content).toContain("'uploads/'");
+    expect(content).toContain("'.nextcloud_key'");
+    expect(content).toContain("'.env'");
+  });
+});
+
+// =====================================================
+// 5. No ZIP upload UI remnants
+// =====================================================
+
+test.describe('ZIP feature importer UI removed from updates tab', () => {
+  
+  test('Updates tab should not have ZIP upload section', () => {
+    const content = readFile('views/admin_system_tools.php');
+    expect(content).not.toContain('id="uploadSection"');
+    expect(content).not.toContain('id="updateFileInput"');
+    expect(content).not.toContain('Upload Update Package');
+  });
+
+  test('Updates tab should not have import button', () => {
+    const content = readFile('views/admin_system_tools.php');
+    expect(content).not.toContain('id="importUpdateBtn"');
+    expect(content).not.toContain('Import Update Package');
+  });
+
+  test('Old feature importer JS functions should be removed', () => {
+    const content = readFile('views/admin_system_tools.php');
+    expect(content).not.toContain('function handleUpdateFileSelect(');
+    expect(content).not.toContain('function handleUpdateFile(');
+    expect(content).not.toContain('function removeUpdateFile(');
+    expect(content).not.toContain('function startUpdateImport(');
+    expect(content).not.toContain('let selectedUpdateFile');
   });
 });

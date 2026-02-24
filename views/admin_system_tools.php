@@ -1911,125 +1911,132 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
     
     <!-- Updates Tab -->
     <div class="tab-content <?php echo $activeTab === 'updates' ? 'active' : ''; ?>" id="updates-tab">
-        <!-- System Updates Card - Feature Importer -->
+        <!-- System Updates Card - GitHub Updater -->
         <div class="card">
             <div class="card-header">
-                <h3><i class="fas fa-file-import"></i> System Updates</h3>
+                <h3><i class="fab fa-github"></i> System Updates</h3>
             </div>
             <div class="card-body">
                 <div class="info-box" style="margin-bottom: 24px;">
                     <i class="fas fa-info-circle"></i>
-                    <p>Upload and import update packages to apply new features, bug fixes, and security patches. Update packages are ZIP files containing a manifest and the files to be updated.</p>
+                    <p>Update your system directly from the official GitHub repository. Click <strong>Check for Updates</strong> to see if a new version is available, then <strong>Update Now</strong> to apply it. Your configuration, uploads, and encryption keys are preserved automatically.</p>
                 </div>
                 
-                <?php
-                // Load installed feature versions with error handling
-                $installed_versions = [];
-                $feature_importer_error = null;
-                try {
-                    $feature_importer_file = __DIR__ . '/../admin/feature_importer.php';
-                    if (file_exists($feature_importer_file)) {
-                        require_once $feature_importer_file;
-                        $feature_importer = new FeatureImporter($pdo, __DIR__ . '/..');
-                        $installed_versions = $feature_importer->getInstalledVersions();
-                    } else {
-                        $feature_importer_error = 'Feature importer not found.';
-                    }
-                } catch (Exception $e) {
-                    $feature_importer_error = $e->getMessage();
-                    error_log("Feature importer error: " . $e->getMessage());
-                }
-                ?>
-                
-                <?php if ($feature_importer_error): ?>
-                <div class="info-box" style="margin-bottom: 24px; border-color: #f59e0b;">
-                    <i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i>
-                    <p>Unable to load feature versions: <?php echo htmlspecialchars($feature_importer_error); ?></p>
-                </div>
-                <?php endif; ?>
-                
-                <?php if (!empty($installed_versions)): ?>
-                <div style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 24px;">
-                    <h4 style="color: var(--text-white); margin-bottom: 12px;"><i class="fas fa-history"></i> Installed Feature Versions</h4>
-                    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-                        <tr style="border-bottom: 1px solid var(--border); color: var(--text-dim);">
-                            <th style="padding: 8px; text-align: left;">Feature</th>
-                            <th style="padding: 8px; text-align: left;">Version</th>
-                            <th style="padding: 8px; text-align: left;">Installed</th>
-                        </tr>
-                        <?php 
-                        // Group by feature name and show most recent version
-                        $grouped = [];
-                        foreach ($installed_versions as $v) {
-                            if (!isset($grouped[$v['feature_name']])) {
-                                $grouped[$v['feature_name']] = $v;
-                            }
-                        }
-                        foreach ($grouped as $feature_name => $version): 
-                        // Use applied_at if available, fallback to created_at
-                        $install_date = $version['applied_at'] ?? $version['created_at'] ?? null;
-                        ?>
-                        <tr style="border-bottom: 1px solid var(--border);">
-                            <td style="padding: 8px; color: var(--text-white);"><?php echo htmlspecialchars($feature_name); ?></td>
-                            <td style="padding: 8px; color: #10b981;"><?php echo htmlspecialchars($version['version']); ?></td>
-                            <td style="padding: 8px; color: var(--text-dim);"><?php echo $install_date ? date('M d, Y', strtotime($install_date)) : 'N/A'; ?></td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </table>
-                </div>
-                <?php endif; ?>
-                
-                <!-- Upload Section -->
-                <div id="uploadSection" style="background: var(--bg-main); border: 2px dashed var(--border); border-radius: 8px; padding: 40px; text-align: center; cursor: pointer; transition: all 0.2s;" onclick="document.getElementById('updateFileInput').click()">
-                    <div style="font-size: 48px; color: var(--primary); margin-bottom: 12px;">
-                        <i class="fas fa-cloud-upload-alt"></i>
+                <!-- Current Version Status -->
+                <div id="githubUpdateStatus" style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 24px; margin-bottom: 24px;">
+                    <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+                        <div style="font-size: 40px; color: var(--primary);">
+                            <i class="fab fa-github"></i>
+                        </div>
+                        <div style="flex: 1; min-width: 200px;">
+                            <div style="font-size: 16px; font-weight: 700; color: var(--text-white); margin-bottom: 4px;">
+                                CrashMediaIT/Arctic_Wolves
+                            </div>
+                            <div id="githubCurrentVersion" style="font-size: 13px; color: var(--text-dim);">
+                                Click "Check for Updates" to check current status
+                            </div>
+                        </div>
+                        <div id="githubUpdateBadge" style="display: none; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700;"></div>
                     </div>
-                    <div style="font-size: 18px; font-weight: 700; color: var(--text-white); margin-bottom: 8px;">Upload Update Package</div>
-                    <div style="font-size: 14px; color: var(--text-dim); margin-bottom: 20px;">Click to browse or drag and drop a ZIP file here</div>
-                    <button type="button" class="btn btn-primary" onclick="event.stopPropagation(); document.getElementById('updateFileInput').click();">
-                        <i class="fas fa-folder-open"></i> Browse Files
+                </div>
+                
+                <!-- Update Details (shown after check) -->
+                <div id="githubUpdateDetails" style="display: none; background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+                    <h4 style="color: var(--text-white); margin-bottom: 12px;"><i class="fas fa-code-branch"></i> Latest Commit</h4>
+                    <div style="font-size: 13px;">
+                        <div style="margin-bottom: 8px;">
+                            <span style="color: var(--text-dim);">SHA:</span>
+                            <code id="githubLatestSha" style="color: #10b981; background: var(--bg-dark); padding: 2px 8px; border-radius: 4px; margin-left: 8px;"></code>
+                        </div>
+                        <div style="margin-bottom: 8px;">
+                            <span style="color: var(--text-dim);">Message:</span>
+                            <span id="githubLatestMessage" style="color: var(--text-white); margin-left: 8px;"></span>
+                        </div>
+                        <div style="margin-bottom: 8px;">
+                            <span style="color: var(--text-dim);">Author:</span>
+                            <span id="githubLatestAuthor" style="color: var(--text-white); margin-left: 8px;"></span>
+                        </div>
+                        <div>
+                            <span style="color: var(--text-dim);">Date:</span>
+                            <span id="githubLatestDate" style="color: var(--text-white); margin-left: 8px;"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="form-actions" style="display: flex; gap: 12px; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-secondary" id="githubCheckBtn" onclick="githubCheckForUpdates()">
+                        <i class="fas fa-sync"></i> Check for Updates
                     </button>
-                    <input type="file" id="updateFileInput" accept=".zip" style="display: none;" onchange="handleUpdateFileSelect(event)">
-                </div>
-                
-                <!-- Selected File -->
-                <div id="selectedUpdateFile" style="display: none; background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-top: 20px;">
-                    <div style="display: flex; align-items: center; gap: 15px;">
-                        <div style="font-size: 32px; color: var(--primary);">
-                            <i class="fas fa-file-archive"></i>
-                        </div>
-                        <div style="flex: 1;">
-                            <div id="updateFileName" style="font-size: 16px; font-weight: 700; color: var(--text-white); margin-bottom: 4px;"></div>
-                            <div id="updateFileSize" style="font-size: 14px; color: var(--text-dim);"></div>
-                        </div>
-                        <button type="button" class="btn btn-danger" onclick="removeUpdateFile()">
-                            <i class="fas fa-times"></i> Remove
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Import Button -->
-                <div style="margin-top: 20px;">
-                    <button type="button" class="btn btn-primary" id="importUpdateBtn" onclick="startUpdateImport()" disabled style="width: 100%;">
-                        <i class="fas fa-download"></i> Import Update Package
+                    <button type="button" class="btn btn-primary" id="githubUpdateBtn" onclick="githubApplyUpdate()" disabled>
+                        <i class="fas fa-download"></i> Update Now
                     </button>
                 </div>
                 
                 <!-- Result Banner -->
-                <div id="updateResultBanner" style="display: none; border-radius: 8px; padding: 20px; margin-top: 20px;"></div>
+                <div id="githubResultBanner" style="display: none; border-radius: 8px; padding: 20px; margin-top: 20px;"></div>
                 
                 <!-- Progress Section -->
-                <div id="updateProgressSection" style="display: none; background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 24px; margin-top: 24px;">
-                    <div style="font-size: 16px; font-weight: 700; color: var(--text-white); margin-bottom: 12px;">
-                        <i class="fas fa-spinner fa-spin"></i> Importing Update...
+                <div id="githubProgressSection" style="display: none; background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 24px; margin-top: 24px;">
+                    <div id="githubProgressTitle" style="font-size: 16px; font-weight: 700; color: var(--text-white); margin-bottom: 12px;">
+                        <i class="fas fa-spinner fa-spin"></i> Applying Update...
                     </div>
                     <div style="background: var(--bg-dark); border-radius: 6px; height: 8px; overflow: hidden; margin-bottom: 20px;">
-                        <div id="updateProgressBar" style="background: var(--primary); height: 100%; width: 0; transition: width 0.3s;"></div>
+                        <div id="githubProgressBar" style="background: var(--primary); height: 100%; width: 0; transition: width 0.3s;"></div>
                     </div>
-                    <div id="updateLogContainer" style="background: var(--bg-dark); border: 1px solid var(--border); border-radius: 6px; padding: 16px; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 13px;"></div>
+                    <div id="githubLogContainer" style="background: var(--bg-dark); border: 1px solid var(--border); border-radius: 6px; padding: 16px; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 13px;"></div>
                 </div>
             </div>
         </div>
+        
+        <?php
+        // Load installed feature versions with error handling
+        $installed_versions = [];
+        try {
+            $feature_importer_file = __DIR__ . '/../admin/feature_importer.php';
+            if (file_exists($feature_importer_file)) {
+                require_once $feature_importer_file;
+                $feature_importer = new FeatureImporter($pdo, __DIR__ . '/..');
+                $installed_versions = $feature_importer->getInstalledVersions();
+            }
+        } catch (Exception $e) {
+            error_log("Feature importer error: " . $e->getMessage());
+        }
+        ?>
+        
+        <?php if (!empty($installed_versions)): ?>
+        <!-- Installed Feature Versions (historical reference) -->
+        <div class="card" style="margin-top: 24px;">
+            <div class="card-header">
+                <h3><i class="fas fa-history"></i> Installed Feature Versions</h3>
+            </div>
+            <div class="card-body">
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                    <tr style="border-bottom: 1px solid var(--border); color: var(--text-dim);">
+                        <th style="padding: 8px; text-align: left;">Feature</th>
+                        <th style="padding: 8px; text-align: left;">Version</th>
+                        <th style="padding: 8px; text-align: left;">Installed</th>
+                    </tr>
+                    <?php 
+                    $grouped = [];
+                    foreach ($installed_versions as $v) {
+                        if (!isset($grouped[$v['feature_name']])) {
+                            $grouped[$v['feature_name']] = $v;
+                        }
+                    }
+                    foreach ($grouped as $feature_name => $version): 
+                    $install_date = $version['applied_at'] ?? $version['created_at'] ?? null;
+                    ?>
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 8px; color: var(--text-white);"><?php echo htmlspecialchars($feature_name); ?></td>
+                        <td style="padding: 8px; color: #10b981;"><?php echo htmlspecialchars($version['version']); ?></td>
+                        <td style="padding: 8px; color: var(--text-dim);"><?php echo $install_date ? date('M d, Y', strtotime($install_date)) : 'N/A'; ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                </table>
+            </div>
+        </div>
+        <?php endif; ?>
         
         <!-- Stripe PHP Library Updates -->
         <div class="card" style="margin-top: 24px;">
@@ -3596,174 +3603,176 @@ function syncToBackup() {
     });
 }
 
-// Feature Importer Update functions
-let selectedUpdateFile = null;
+// GitHub Updater functions
+function githubAddLogEntry(message, type) {
+    const container = document.getElementById('githubLogContainer');
+    if (!container) return;
+    const logEntry = document.createElement('div');
+    logEntry.style.cssText = 'padding: 6px 0; display: flex; align-items: start; gap: 10px;';
+    
+    let color = 'var(--text-dim)';
+    if (type === 'success') color = '#10b981';
+    else if (type === 'warning') color = '#f59e0b';
+    else if (type === 'error') color = '#ef4444';
+    else if (type === 'info') color = '#60a5fa';
+    
+    logEntry.innerHTML = `
+        <span style="color: var(--text-dim); flex-shrink: 0;">${new Date().toLocaleTimeString()}</span>
+        <span style="flex: 1; color: ${color};">${message}</span>
+    `;
+    container.appendChild(logEntry);
+    container.scrollTop = container.scrollHeight;
+}
 
-// Drag and drop for update upload section
-document.addEventListener('DOMContentLoaded', function() {
-    const uploadSection = document.getElementById('uploadSection');
-    if (uploadSection) {
-        uploadSection.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadSection.style.borderColor = 'var(--primary)';
-            uploadSection.style.background = 'rgba(112, 0, 164, 0.1)';
+async function githubCheckForUpdates() {
+    const checkBtn = document.getElementById('githubCheckBtn');
+    const updateBtn = document.getElementById('githubUpdateBtn');
+    const badge = document.getElementById('githubUpdateBadge');
+    const details = document.getElementById('githubUpdateDetails');
+    const versionInfo = document.getElementById('githubCurrentVersion');
+    const resultBanner = document.getElementById('githubResultBanner');
+    
+    checkBtn.disabled = true;
+    checkBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
+    resultBanner.style.display = 'none';
+    
+    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+    
+    try {
+        const response = await fetch('process_settings.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `action=check_updates&csrf_token=${encodeURIComponent(csrfToken)}`
         });
         
-        uploadSection.addEventListener('dragleave', () => {
-            uploadSection.style.borderColor = 'var(--border)';
-            uploadSection.style.background = 'var(--bg-main)';
-        });
+        const data = await response.json();
         
-        uploadSection.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadSection.style.borderColor = 'var(--border)';
-            uploadSection.style.background = 'var(--bg-main)';
+        if (data.success) {
+            const currentSha = data.current_sha ? data.current_sha.substring(0, 7) : 'Not set';
+            const latestSha = data.latest_commit ? data.latest_commit.sha.substring(0, 7) : 'Unknown';
             
-            const files = e.dataTransfer.files;
-            if (files.length > 0 && files[0].name.endsWith('.zip')) {
-                handleUpdateFile(files[0]);
+            versionInfo.innerHTML = `Current: <code style="color: #10b981; background: var(--bg-dark); padding: 2px 8px; border-radius: 4px;">${currentSha}</code>`;
+            
+            if (data.has_updates) {
+                badge.style.display = 'inline-block';
+                badge.style.cssText = 'display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid #f59e0b;';
+                badge.textContent = 'Update Available';
+                updateBtn.disabled = false;
             } else {
-                alert('Please select a ZIP file');
+                badge.style.display = 'inline-block';
+                badge.style.cssText = 'display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid #10b981;';
+                badge.textContent = 'Up to Date';
+                updateBtn.disabled = true;
             }
-        });
+            
+            if (data.latest_commit) {
+                details.style.display = 'block';
+                document.getElementById('githubLatestSha').textContent = data.latest_commit.sha ? data.latest_commit.sha.substring(0, 12) : '';
+                document.getElementById('githubLatestMessage').textContent = data.latest_commit.message || '';
+                document.getElementById('githubLatestAuthor').textContent = data.latest_commit.author || '';
+                document.getElementById('githubLatestDate').textContent = data.latest_commit.date ? new Date(data.latest_commit.date).toLocaleString() : '';
+            }
+        } else {
+            versionInfo.textContent = 'Error checking for updates';
+            resultBanner.style.cssText = 'display: block; background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #ef4444; border-radius: 8px; padding: 20px; margin-top: 20px;';
+            resultBanner.innerHTML = `<p style="margin: 0;"><i class="fas fa-exclamation-triangle"></i> ${data.message || 'Failed to check for updates'}</p>`;
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        resultBanner.style.cssText = 'display: block; background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #ef4444; border-radius: 8px; padding: 20px; margin-top: 20px;';
+        resultBanner.innerHTML = '<p style="margin: 0;"><i class="fas fa-exclamation-triangle"></i> Network error or server not responding</p>';
     }
-});
-
-function handleUpdateFileSelect(event) {
-    const file = event.target.files[0];
-    if (file) {
-        handleUpdateFile(file);
-    }
-}
-
-function handleUpdateFile(file) {
-    selectedUpdateFile = file;
     
-    document.getElementById('updateFileName').textContent = file.name;
-    document.getElementById('updateFileSize').textContent = formatUpdateFileSize(file.size);
-    document.getElementById('selectedUpdateFile').style.display = 'block';
-    document.getElementById('importUpdateBtn').disabled = false;
-    document.getElementById('uploadSection').style.display = 'none';
+    checkBtn.disabled = false;
+    checkBtn.innerHTML = '<i class="fas fa-sync"></i> Check for Updates';
 }
 
-function removeUpdateFile() {
-    selectedUpdateFile = null;
-    document.getElementById('selectedUpdateFile').style.display = 'none';
-    document.getElementById('importUpdateBtn').disabled = true;
-    document.getElementById('uploadSection').style.display = 'block';
-    document.getElementById('updateFileInput').value = '';
-    document.getElementById('updateResultBanner').style.display = 'none';
-}
-
-function formatUpdateFileSize(bytes) {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
-}
-
-async function startUpdateImport() {
-    if (!selectedUpdateFile) {
-        alert('Please select a file first');
+async function githubApplyUpdate() {
+    if (!confirm('Apply the latest update from GitHub?\n\nThis will update system files. Your configuration, uploads, and encryption keys are preserved automatically.\n\nThe page will reload when complete.')) {
         return;
     }
     
-    if (!confirm('Import this update package? This will apply changes to system files.\n\nMake sure you have a backup before proceeding.')) {
-        return;
-    }
+    const checkBtn = document.getElementById('githubCheckBtn');
+    const updateBtn = document.getElementById('githubUpdateBtn');
+    const progressSection = document.getElementById('githubProgressSection');
+    const progressBar = document.getElementById('githubProgressBar');
+    const resultBanner = document.getElementById('githubResultBanner');
+    const logContainer = document.getElementById('githubLogContainer');
     
-    const importBtn = document.getElementById('importUpdateBtn');
-    const progressSection = document.getElementById('updateProgressSection');
-    const logContainer = document.getElementById('updateLogContainer');
-    const resultBanner = document.getElementById('updateResultBanner');
-    const progressBar = document.getElementById('updateProgressBar');
-    
-    // Reset UI
-    importBtn.disabled = true;
+    checkBtn.disabled = true;
+    updateBtn.disabled = true;
+    updateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
     progressSection.style.display = 'block';
     logContainer.innerHTML = '';
     resultBanner.style.display = 'none';
     progressBar.style.width = '10%';
     
-    // Prepare form data
-    const formData = new FormData();
-    formData.append('action', 'import_feature');
-    formData.append('feature_package', selectedUpdateFile);
-    formData.append('csrf_token', document.querySelector('input[name="csrf_token"]').value);
+    githubAddLogEntry('Starting update from GitHub...', 'info');
+    githubAddLogEntry('Backing up configuration files...', 'info');
+    progressBar.style.width = '20%';
+    
+    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
     
     try {
-        progressBar.style.width = '30%';
+        githubAddLogEntry('Downloading files from repository...', 'info');
+        progressBar.style.width = '40%';
         
-        const response = await fetch('process_feature_import.php', {
+        const response = await fetch('process_settings.php', {
             method: 'POST',
-            body: formData
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `action=apply_updates&csrf_token=${encodeURIComponent(csrfToken)}`
         });
         
-        progressBar.style.width = '70%';
-        
+        progressBar.style.width = '80%';
         const data = await response.json();
-        
         progressBar.style.width = '100%';
         
-        // Display log entries
-        if (data.log && Array.isArray(data.log)) {
-            data.log.forEach(entry => {
-                addUpdateLogEntry(entry, logContainer);
-            });
-        }
-        
-        // Show result
         if (data.success) {
-            resultBanner.className = '';
+            githubAddLogEntry(data.message || 'Update completed', 'success');
+            
+            if (data.errors && data.errors.length > 0) {
+                data.errors.forEach(err => githubAddLogEntry(err, 'warning'));
+            }
+            
+            githubAddLogEntry('Persistent files restored.', 'success');
+            githubAddLogEntry('Update applied successfully!', 'success');
+            
+            document.getElementById('githubProgressTitle').innerHTML = '<i class="fas fa-check-circle" style="color: #10b981;"></i> Update Complete';
+            
             resultBanner.style.cssText = 'display: block; background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; color: #10b981; border-radius: 8px; padding: 20px; margin-top: 20px;';
             resultBanner.innerHTML = `
-                <h3 style="margin: 0 0 10px 0; font-size: 18px;"><i class="fas fa-check-circle"></i> Import Successful</h3>
-                <p style="margin: 0;">${data.message || 'Update package imported successfully'}</p>
-                ${data.backup_id ? '<p style="font-size: 12px; margin-top: 10px;">Backup ID: ' + data.backup_id + '</p>' : ''}
+                <h3 style="margin: 0 0 10px 0; font-size: 18px;"><i class="fas fa-check-circle"></i> Update Successful</h3>
+                <p style="margin: 0;">${data.message || 'System updated successfully'}</p>
                 <button onclick="window.location.reload()" class="btn btn-primary" style="margin-top: 15px;">
-                    <i class="fas fa-sync"></i> Reload Page to See Changes
+                    <i class="fas fa-sync"></i> Reload Page
                 </button>
             `;
-            
         } else {
-            resultBanner.className = '';
+            githubAddLogEntry(data.message || 'Update failed', 'error');
+            document.getElementById('githubProgressTitle').innerHTML = '<i class="fas fa-times-circle" style="color: #ef4444;"></i> Update Failed';
+            
             resultBanner.style.cssText = 'display: block; background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #ef4444; border-radius: 8px; padding: 20px; margin-top: 20px;';
             resultBanner.innerHTML = `
-                <h3 style="margin: 0 0 10px 0; font-size: 18px;"><i class="fas fa-times-circle"></i> Import Failed</h3>
-                <p style="margin: 0;">${data.error || 'An error occurred during import'}</p>
+                <h3 style="margin: 0 0 10px 0; font-size: 18px;"><i class="fas fa-times-circle"></i> Update Failed</h3>
+                <p style="margin: 0;">${data.message || 'An error occurred during update'}</p>
             `;
-            importBtn.disabled = false;
+            updateBtn.disabled = false;
         }
-        
     } catch (error) {
         console.error('Error:', error);
-        resultBanner.className = '';
+        githubAddLogEntry('Network error or server not responding', 'error');
+        document.getElementById('githubProgressTitle').innerHTML = '<i class="fas fa-times-circle" style="color: #ef4444;"></i> Update Failed';
+        
         resultBanner.style.cssText = 'display: block; background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #ef4444; border-radius: 8px; padding: 20px; margin-top: 20px;';
         resultBanner.innerHTML = `
-            <h3 style="margin: 0 0 10px 0; font-size: 18px;"><i class="fas fa-times-circle"></i> Import Failed</h3>
+            <h3 style="margin: 0 0 10px 0; font-size: 18px;"><i class="fas fa-times-circle"></i> Update Failed</h3>
             <p style="margin: 0;">Network error or server not responding</p>
         `;
-        importBtn.disabled = false;
+        updateBtn.disabled = false;
     }
-}
-
-function addUpdateLogEntry(entry, container) {
-    const logEntry = document.createElement('div');
-    logEntry.style.cssText = 'padding: 6px 0; display: flex; align-items: start; gap: 10px;';
     
-    let color = 'var(--text-dim)';
-    if (entry.type === 'success') color = '#10b981';
-    else if (entry.type === 'warning') color = '#f59e0b';
-    else if (entry.type === 'error') color = '#ef4444';
-    
-    logEntry.innerHTML = `
-        <span style="color: var(--text-dim); flex-shrink: 0;">${entry.timestamp || new Date().toLocaleTimeString()}</span>
-        <span style="flex: 1; color: ${color};">${entry.message}</span>
-    `;
-    
-    container.appendChild(logEntry);
-    container.scrollTop = container.scrollHeight;
+    checkBtn.disabled = false;
+    updateBtn.innerHTML = '<i class="fas fa-download"></i> Update Now';
 }
 
 // Stripe Library Update functions
