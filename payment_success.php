@@ -127,11 +127,11 @@ try {
                 
                 // 5. MARK AS PAID IN DB (update payment_status, not status)
                 // Use WHERE condition for idempotency to prevent duplicate payment processing
-                $upd = $pdo->prepare("UPDATE bookings SET payment_status = 'paid' WHERE id = ? AND payment_status != 'paid'");
-                $upd->execute([$booking['id']]);
+                $update_stmt = $pdo->prepare("UPDATE bookings SET payment_status = 'paid' WHERE id = ? AND payment_status != 'paid'");
+                $update_stmt->execute([$booking['id']]);
                 
                 // Only send receipt if we actually updated the record (prevents duplicate emails)
-                if ($upd->rowCount() > 0) {
+                if ($update_stmt->rowCount() > 0) {
                     // 6. SEND EMAIL RECEIPT
                     $session_date = date('M j, Y', strtotime($booking['session_date']));
                     

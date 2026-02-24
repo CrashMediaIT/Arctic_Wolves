@@ -149,7 +149,7 @@ test.describe('Calendar View Status Awareness', () => {
 test.describe('Private & Semi-Private Sessions', () => {
   test('auto-creates Sessions category and Private/Semi-Private products', () => {
     const content = readFile('views/sessions_booking.php');
-    expect(content).toContain("INSERT IGNORE INTO merchandise_categories (name, description, is_active) VALUES ('Sessions'");
+    expect(content).toContain("INSERT IGNORE INTO merchandise_categories (name, description, is_active) VALUES (?, ?, 1)");
     expect(content).toContain("INSERT IGNORE INTO merchandise_products");
     expect(content).toContain("'SESSION-PRIVATE'");
     expect(content).toContain("'SESSION-SEMI-PRIVATE'");

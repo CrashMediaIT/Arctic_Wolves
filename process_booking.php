@@ -484,7 +484,7 @@ try {
     // 7. SAVE BOOKING IN DB (status='confirmed', payment_status tracks payment state separately)
     // If there's an existing pending booking for this session, update it instead of creating a duplicate
     if ($existing_booking && $existing_booking['payment_status'] === 'pending') {
-        $stmt = $pdo->prepare("UPDATE bookings SET stripe_session_id = ?, amount_paid = ?, original_price = ?, discount_code = ? WHERE id = ?");
+        $stmt = $pdo->prepare("UPDATE bookings SET stripe_session_id = ?, amount_paid = ?, original_price = ?, discount_code = ?, booking_date = NOW() WHERE id = ?");
         $stmt->execute([$checkout_session->id, $final_price, $original_price, $applied_code, $existing_booking['id']]);
         $new_booking_id = $existing_booking['id'];
     } else {

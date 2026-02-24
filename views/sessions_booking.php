@@ -42,20 +42,22 @@ $booking_tax_rate = floatval($tax_settings['tax_rate'] ?? 13.00);
 $booking_tax_name = $tax_settings['tax_name'] ?? 'HST';
 
 // Auto-create "Sessions" category and Private/Semi-Private products if they don't exist
+$default_private_price = 150.00;
+$default_semi_private_price = 100.00;
 try {
-    $pdo->exec("INSERT IGNORE INTO merchandise_categories (name, description, is_active) VALUES ('Sessions', 'Session pricing for private and semi-private bookings', 1)");
+    $pdo->prepare("INSERT IGNORE INTO merchandise_categories (name, description, is_active) VALUES (?, ?, 1)")->execute(['Sessions', 'Session pricing for private and semi-private bookings']);
     $sessions_cat = $pdo->query("SELECT id FROM merchandise_categories WHERE name = 'Sessions' LIMIT 1")->fetchColumn();
     if ($sessions_cat) {
-        $pdo->prepare("INSERT IGNORE INTO merchandise_products (category_id, name, description, sku, price, is_active, track_inventory) VALUES (?, 'Private Session', 'One-on-one private training session with a coach', 'SESSION-PRIVATE', 150.00, 1, 0)")->execute([$sessions_cat]);
-        $pdo->prepare("INSERT IGNORE INTO merchandise_products (category_id, name, description, sku, price, is_active, track_inventory) VALUES (?, 'Semi-Private Session', 'Small group semi-private training session with a coach', 'SESSION-SEMI-PRIVATE', 100.00, 1, 0)")->execute([$sessions_cat]);
+        $pdo->prepare("INSERT IGNORE INTO merchandise_products (category_id, name, description, sku, price, is_active, track_inventory) VALUES (?, 'Private Session', 'One-on-one private training session with a coach', 'SESSION-PRIVATE', ?, 1, 0)")->execute([$sessions_cat, $default_private_price]);
+        $pdo->prepare("INSERT IGNORE INTO merchandise_products (category_id, name, description, sku, price, is_active, track_inventory) VALUES (?, 'Semi-Private Session', 'Small group semi-private training session with a coach', 'SESSION-SEMI-PRIVATE', ?, 1, 0)")->execute([$sessions_cat, $default_semi_private_price]);
     }
 } catch (PDOException $e) { /* Products may already exist */ }
 
 // Get pricing from products for private/semi-private sessions
 $private_product = $pdo->query("SELECT price FROM merchandise_products WHERE sku = 'SESSION-PRIVATE' AND is_active = 1 LIMIT 1")->fetch(PDO::FETCH_ASSOC);
 $semi_private_product = $pdo->query("SELECT price FROM merchandise_products WHERE sku = 'SESSION-SEMI-PRIVATE' AND is_active = 1 LIMIT 1")->fetch(PDO::FETCH_ASSOC);
-$private_session_price = $private_product['price'] ?? 150.00;
-$semi_private_session_price = $semi_private_product['price'] ?? 100.00;
+$private_session_price = $private_product['price'] ?? $default_private_price;
+$semi_private_session_price = $semi_private_product['price'] ?? $default_semi_private_price;
 
 // Get available private and semi-private sessions (created by coaches)
 $private_sessions_query = "
