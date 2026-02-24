@@ -509,6 +509,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ["ALTER TABLE teams ADD COLUMN ical_url VARCHAR(1000) DEFAULT NULL COMMENT 'Stored iCal URL for calendar re-sync' AFTER is_managed", "teams.ical_url"],
                     ["ALTER TABLE game_schedules ADD COLUMN ical_uid VARCHAR(500) DEFAULT NULL COMMENT 'UID from iCal event for sync/update tracking' AFTER season_id", "game_schedules.ical_uid"],
                     ["ALTER TABLE users ADD COLUMN sip_wss_port INT DEFAULT 7443 COMMENT 'WebSocket Secure port for SIP/WSS connection to FusionPBX' AFTER sip_password", "users.sip_wss_port"],
+                    ["ALTER TABLE sessions ADD COLUMN enable_child_checkin TINYINT(1) DEFAULT 0 COMMENT 'Enable child check-in/check-out for this session/camp'", "sessions.enable_child_checkin"],
+                    ["ALTER TABLE sessions ADD COLUMN is_private TINYINT(1) DEFAULT 0 COMMENT 'Whether this is a private session'", "sessions.is_private"],
+                    ["ALTER TABLE sessions ADD COLUMN is_semi_private TINYINT(1) DEFAULT 0 COMMENT 'Whether this is a semi-private session'", "sessions.is_semi_private"],
                 ];
                 
                 foreach ($inline_migrations as $mig) {

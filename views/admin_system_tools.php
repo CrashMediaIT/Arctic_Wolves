@@ -2133,9 +2133,9 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                 <?php
                 // Get current Stripe version if available - validate path is within expected directory
                 $stripe_base_path = realpath(__DIR__ . '/../stripe-php');
-                $stripe_version_file = $stripe_base_path ? $stripe_base_path . '/VERSION' : '';
                 $current_stripe_version = 'Unknown';
-                if ($stripe_version_file && strpos(realpath(dirname($stripe_version_file)), $stripe_base_path) === 0) {
+                if ($stripe_base_path && is_dir($stripe_base_path)) {
+                    $stripe_version_file = $stripe_base_path . '/VERSION';
                     if (file_exists($stripe_version_file)) {
                         $current_stripe_version = trim(file_get_contents($stripe_version_file));
                     }

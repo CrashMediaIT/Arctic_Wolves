@@ -815,12 +815,26 @@ try {
             
         case 'update_stripe_library':
             // Update Stripe PHP library from GitHub
-            $stripe_path = realpath(__DIR__ . '/stripe-php');
-            if (!$stripe_path || strpos($stripe_path, realpath(__DIR__)) !== 0) {
+            $stripe_path = __DIR__ . '/stripe-php';
+            $real_base = realpath(__DIR__);
+            $real_stripe = realpath($stripe_path);
+            // Allow update even if stripe-php doesn't exist yet (first install or after failed update)
+            if ($real_stripe && strpos($real_stripe, $real_base) !== 0) {
                 echo json_encode(['success' => false, 'message' => 'Invalid stripe-php path']);
                 exit;
             }
+            // Use the canonical path for the target directory
+            $stripe_path = $real_stripe ?: ($real_base . '/stripe-php');
             $temp_path = sys_get_temp_dir() . '/stripe-php-' . time();
+            
+            // Helper to recursively remove a directory
+            $removeDir = function($dir) use (&$removeDir) {
+                if (!is_dir($dir)) return;
+                $rdi = new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS);
+                $rfi = new RecursiveIteratorIterator($rdi, RecursiveIteratorIterator::CHILD_FIRST);
+                foreach ($rfi as $f) { $f->isDir() ? rmdir($f->getRealPath()) : unlink($f->getRealPath()); }
+                rmdir($dir);
+            };
             
             // Get latest release info
             $context = stream_context_create([
@@ -883,23 +897,65 @@ try {
                 }
             }
             if (!$extracted_dir) {
+                // Cleanup temp directory
+                $removeDir($temp_path);
                 echo json_encode(['success' => false, 'message' => 'Could not find extracted files with valid naming pattern']);
                 exit;
             }
             
             // Backup current stripe-php if exists
+            $backup_path = null;
             if (is_dir($stripe_path)) {
                 $backup_path = $stripe_path . '.backup-' . date('Y-m-d-His');
-                rename($stripe_path, $backup_path);
+                if (!rename($stripe_path, $backup_path)) {
+                    echo json_encode(['success' => false, 'message' => 'Failed to backup existing Stripe library. Check file permissions on ' . basename($stripe_path)]);
+                    exit;
+                }
             }
             
-            // Move new files to stripe-php
-            rename($extracted_dir, $stripe_path);
+            // Move new files to stripe-php (rename may fail across filesystems, use copy fallback)
+            $install_success = @rename($extracted_dir, $stripe_path);
+            if (!$install_success) {
+                // Fallback: recursively copy from extracted dir to stripe_path
+                $install_success = true;
+                $src = realpath($extracted_dir);
+                if ($src) {
+                    mkdir($stripe_path, 0755, true);
+                    $rdi = new RecursiveDirectoryIterator($src, RecursiveDirectoryIterator::SKIP_DOTS);
+                    $rfi = new RecursiveIteratorIterator($rdi, RecursiveIteratorIterator::SELF_FIRST);
+                    foreach ($rfi as $item) {
+                        $dest = $stripe_path . '/' . $rfi->getSubPathname();
+                        if ($item->isDir()) {
+                            if (!is_dir($dest)) { mkdir($dest, 0755, true); }
+                        } else {
+                            if (!copy($item->getRealPath(), $dest)) {
+                                $install_success = false;
+                                break;
+                            }
+                        }
+                    }
+                } else {
+                    $install_success = false;
+                }
+            }
+            
+            if (!$install_success) {
+                // Restore backup if install failed
+                if ($backup_path && is_dir($backup_path)) {
+                    if (is_dir($stripe_path)) {
+                        // Clean partial install
+                        $removeDir($stripe_path);
+                    }
+                    rename($backup_path, $stripe_path);
+                }
+                // Cleanup temp directory
+                $removeDir($temp_path);
+                echo json_encode(['success' => false, 'message' => 'Failed to install new Stripe library — previous version has been restored']);
+                exit;
+            }
             
             // Cleanup temp directory
-            if (is_dir($temp_path)) {
-                rmdir($temp_path);
-            }
+            $removeDir($temp_path);
             
             echo json_encode([
                 'success' => true, 
