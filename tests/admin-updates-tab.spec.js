@@ -253,39 +253,73 @@ test.describe('GitHub updater network error handling', () => {
   test('applyUpdates should pre-check connectivity before destructive operations', () => {
     const content = readFile('lib/github_updater.php');
     const fnStart = content.indexOf('function applyUpdates()');
-    const fnEnd = content.indexOf('function downloadAndUpdateFile');
+    const fnEnd = content.indexOf('function downloadFileToStaging');
     const fn = content.substring(fnStart, fnEnd);
     expect(fn).toContain('testGitHubConnection');
     expect(fn).toContain('Cannot connect to GitHub');
   });
 
+  test('applyUpdates should use staging directory for downloads', () => {
+    const content = readFile('lib/github_updater.php');
+    const fnStart = content.indexOf('function applyUpdates()');
+    const fnEnd = content.indexOf('function downloadFileToStaging');
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('staging_dir');
+    expect(fn).toContain('arctic_wolves_staging_');
+    expect(fn).toContain('downloadFileToStaging');
+  });
+
+  test('applyUpdates should copy from staging to live only after all downloads succeed', () => {
+    const content = readFile('lib/github_updater.php');
+    const fnStart = content.indexOf('function applyUpdates()');
+    const fnEnd = content.indexOf('function downloadFileToStaging');
+    const fn = content.substring(fnStart, fnEnd);
+    // Phase 2: copy staged files to live
+    expect(fn).toContain('Copy staged files to live site');
+    expect(fn).toContain('copy($staged_path, $live_path)');
+  });
+
+  test('applyUpdates should abort without modifying site if downloads fail', () => {
+    const content = readFile('lib/github_updater.php');
+    const fnStart = content.indexOf('function applyUpdates()');
+    const fnEnd = content.indexOf('function downloadFileToStaging');
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('No files were changed');
+    expect(fn).toContain('cleanupDirectory($staging_dir)');
+  });
+
   test('applyUpdates should abort on excessive download failures', () => {
     const content = readFile('lib/github_updater.php');
     const fnStart = content.indexOf('function applyUpdates()');
-    const fnEnd = content.indexOf('function downloadAndUpdateFile');
+    const fnEnd = content.indexOf('function downloadFileToStaging');
     const fn = content.substring(fnStart, fnEnd);
     expect(fn).toContain('$failed_count');
     expect(fn).toContain('Update aborted: too many download failures');
   });
 
-  test('applyUpdates should skip file deletions when download errors occurred', () => {
-    const content = readFile('lib/github_updater.php');
-    const fnStart = content.indexOf('function applyUpdates()');
-    const fnEnd = content.indexOf('function downloadAndUpdateFile');
-    const fn = content.substring(fnStart, fnEnd);
-    expect(fn).toContain('$failed_count === 0');
-    expect(fn).toContain('File deletions skipped due to download errors');
-  });
-
   test('applyUpdates should restore persistent files on failure', () => {
     const content = readFile('lib/github_updater.php');
     const fnStart = content.indexOf('function applyUpdates()');
-    const fnEnd = content.indexOf('function downloadAndUpdateFile');
+    const fnEnd = content.indexOf('function downloadFileToStaging');
     const fn = content.substring(fnStart, fnEnd);
-    // Should restore backup on early returns and in catch block
     const restoreCalls = fn.match(/restorePersistentFiles/g);
     expect(restoreCalls).not.toBeNull();
     expect(restoreCalls.length).toBeGreaterThanOrEqual(4);
+  });
+
+  test('downloadFileToStaging method should exist and write to staging dir', () => {
+    const content = readFile('lib/github_updater.php');
+    expect(content).toContain('function downloadFileToStaging($file_path, $staging_dir)');
+    const fnStart = content.indexOf('function downloadFileToStaging');
+    const fnEnd = content.indexOf('function cleanupDirectory');
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('$staged_path = $staging_dir');
+    expect(fn).toContain('file_put_contents($staged_path');
+  });
+
+  test('cleanupDirectory method should exist for staging cleanup', () => {
+    const content = readFile('lib/github_updater.php');
+    expect(content).toContain('function cleanupDirectory($dir)');
   });
 
   test('githubCheckForUpdates JS should check response.ok', () => {

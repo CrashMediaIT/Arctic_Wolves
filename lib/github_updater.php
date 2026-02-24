@@ -135,10 +135,14 @@ class GitHubUpdater {
     }
     
     /**
-     * Apply updates from GitHub
+     * Apply updates from GitHub using a staging approach.
+     * All files are downloaded to a temporary directory first, then copied
+     * to the live site only after all downloads succeed. This prevents
+     * partial updates from crashing the running site.
      */
     public function applyUpdates() {
         $backup = [];
+        $staging_dir = null;
         
         try {
             // Pre-flight connectivity check before starting destructive operations
@@ -181,7 +185,7 @@ class GitHubUpdater {
             $repo_files = [];
             $total_files = 0;
             foreach ($tree_data['tree'] as $item) {
-                if ($item['type'] === 'blob') { // Only files, not directories
+                if ($item['type'] === 'blob') {
                     $repo_files[] = $item['path'];
                     if (!$this->isExcludedPath($item['path'])) {
                         $total_files++;
@@ -189,16 +193,16 @@ class GitHubUpdater {
                 }
             }
             
-            // Get current local files
-            $local_files = $this->getLocalFiles();
+            // Create staging directory for downloads
+            $staging_dir = sys_get_temp_dir() . '/arctic_wolves_staging_' . time() . '_' . bin2hex(random_bytes(4));
+            if (!mkdir($staging_dir, 0755, true)) {
+                $this->restorePersistentFiles($backup);
+                return ['success' => false, 'message' => 'Failed to create staging directory'];
+            }
             
-            // Determine files to delete (in local but not in repo)
-            $files_to_delete = array_diff($local_files, $repo_files);
-            
-            // Update/download files from repository
-            $updated_count = 0;
+            // Phase 1: Download all files to staging directory
+            $downloaded_count = 0;
             $failed_count = 0;
-            $deleted_count = 0;
             $errors = [];
             
             foreach ($tree_data['tree'] as $item) {
@@ -206,21 +210,21 @@ class GitHubUpdater {
                 
                 $file_path = $item['path'];
                 
-                // Skip excluded files
                 if ($this->isExcludedPath($file_path)) {
                     continue;
                 }
                 
-                $result = $this->downloadAndUpdateFile($file_path);
+                $result = $this->downloadFileToStaging($file_path, $staging_dir);
                 if ($result['success']) {
-                    $updated_count++;
+                    $downloaded_count++;
                 } else {
                     $failed_count++;
-                    $errors[] = "Failed to update {$file_path}: {$result['message']}";
+                    $errors[] = "Failed to download {$file_path}: {$result['message']}";
                 }
                 
                 // Abort if too many downloads are failing (network likely down)
-                if ($failed_count > 0 && $total_files > 0 && ($failed_count / ($updated_count + $failed_count)) > 0.5 && $failed_count >= 5) {
+                if ($failed_count > 0 && $total_files > 0 && ($failed_count / ($downloaded_count + $failed_count)) > 0.5 && $failed_count >= 5) {
+                    $this->cleanupDirectory($staging_dir);
                     $this->restorePersistentFiles($backup);
                     return [
                         'success' => false,
@@ -230,23 +234,60 @@ class GitHubUpdater {
                 }
             }
             
-            // Only delete files if all downloads succeeded (no network issues)
-            if ($failed_count === 0) {
-                foreach ($files_to_delete as $file_path) {
-                    if ($this->isExcludedPath($file_path)) {
-                        continue;
-                    }
-                    
-                    $result = $this->deleteLocalFile($file_path);
-                    if ($result['success']) {
-                        $deleted_count++;
-                    } else {
-                        $errors[] = "Failed to delete {$file_path}: {$result['message']}";
-                    }
-                }
-            } elseif (count($files_to_delete) > 0) {
-                $errors[] = "File deletions skipped due to download errors — re-run update when network is stable";
+            // If any downloads failed, abort — do not apply partial updates
+            if ($failed_count > 0) {
+                $this->cleanupDirectory($staging_dir);
+                $this->restorePersistentFiles($backup);
+                return [
+                    'success' => false,
+                    'message' => "Update aborted: {$failed_count} file(s) failed to download. No files were changed.",
+                    'errors' => $errors
+                ];
             }
+            
+            // Phase 2: Copy staged files to live site
+            $updated_count = 0;
+            foreach ($tree_data['tree'] as $item) {
+                if ($item['type'] !== 'blob') continue;
+                
+                $file_path = $item['path'];
+                if ($this->isExcludedPath($file_path)) continue;
+                
+                $staged_path = $staging_dir . '/' . $file_path;
+                $live_path = $this->base_path . '/' . $file_path;
+                
+                if (!file_exists($staged_path)) continue;
+                
+                $dir = dirname($live_path);
+                if (!is_dir($dir)) {
+                    mkdir($dir, 0755, true);
+                }
+                
+                if (copy($staged_path, $live_path)) {
+                    $updated_count++;
+                } else {
+                    $errors[] = "Failed to apply staged file: {$file_path}";
+                }
+            }
+            
+            // Phase 3: Delete files no longer in repo (only if all downloads succeeded)
+            $local_files = $this->getLocalFiles();
+            $files_to_delete = array_diff($local_files, $repo_files);
+            $deleted_count = 0;
+            
+            foreach ($files_to_delete as $file_path) {
+                if ($this->isExcludedPath($file_path)) continue;
+                
+                $result = $this->deleteLocalFile($file_path);
+                if ($result['success']) {
+                    $deleted_count++;
+                } else {
+                    $errors[] = "Failed to delete {$file_path}: {$result['message']}";
+                }
+            }
+            
+            // Clean up staging directory
+            $this->cleanupDirectory($staging_dir);
             
             // Restore persistent files after update
             $this->restorePersistentFiles($backup);
@@ -266,7 +307,9 @@ class GitHubUpdater {
             ];
             
         } catch (Exception $e) {
-            // Ensure persistent files are restored even on unexpected errors
+            if ($staging_dir && is_dir($staging_dir)) {
+                $this->cleanupDirectory($staging_dir);
+            }
             if (!empty($backup)) {
                 $this->restorePersistentFiles($backup);
             }
@@ -275,9 +318,10 @@ class GitHubUpdater {
     }
     
     /**
-     * Download and update a single file from GitHub
+     * Download a single file from GitHub into the staging directory.
+     * Files are NOT written to the live site until all downloads succeed.
      */
-    private function downloadAndUpdateFile($file_path) {
+    private function downloadFileToStaging($file_path, $staging_dir) {
         try {
             $url = "https://raw.githubusercontent.com/{$this->repo_owner}/{$this->repo_name}/main/{$file_path}";
             $headers = ['User-Agent: Arctic-Wolves-Updater'];
@@ -292,17 +336,15 @@ class GitHubUpdater {
                 return ['success' => false, 'message' => 'Failed to download file'];
             }
             
-            $local_path = $this->base_path . '/' . $file_path;
-            $dir = dirname($local_path);
+            $staged_path = $staging_dir . '/' . $file_path;
+            $dir = dirname($staged_path);
             
-            // Create directory if it doesn't exist
             if (!is_dir($dir)) {
                 mkdir($dir, 0755, true);
             }
             
-            // Write file
-            if (file_put_contents($local_path, $content) === false) {
-                return ['success' => false, 'message' => 'Failed to write file'];
+            if (file_put_contents($staged_path, $content) === false) {
+                return ['success' => false, 'message' => 'Failed to write staged file'];
             }
             
             return ['success' => true];
@@ -310,6 +352,28 @@ class GitHubUpdater {
         } catch (Exception $e) {
             return ['success' => false, 'message' => $e->getMessage()];
         }
+    }
+    
+    /**
+     * Recursively remove a directory and all its contents
+     */
+    private function cleanupDirectory($dir) {
+        if (!is_dir($dir)) return;
+        
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::CHILD_FIRST
+        );
+        
+        foreach ($iterator as $item) {
+            if ($item->isDir()) {
+                @rmdir($item->getPathname());
+            } else {
+                @unlink($item->getPathname());
+            }
+        }
+        
+        @rmdir($dir);
     }
     
     /**

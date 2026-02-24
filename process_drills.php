@@ -231,10 +231,58 @@ if ($action === 'delete_drill') {
     try {
         $pdo->prepare("DELETE FROM drills WHERE id = ? AND created_by = ?")->execute([$drill_id, $user_id]);
         Auditor::log($pdo, $user_id, 'delete', 'drills', $drill_id, ['action' => 'drill_deleted']);
+        
+        // Return JSON for AJAX requests, redirect for form submissions
+        if (!empty($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Drill deleted successfully']);
+            exit();
+        }
         header("Location: dashboard.php?page=drills&status=drill_deleted");
         exit();
     } catch (PDOException $e) {
+        if (!empty($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) {
+            header('Content-Type: application/json');
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Failed to delete drill']);
+            exit();
+        }
         header("Location: dashboard.php?page=drills&error=delete_failed");
+        exit();
+    }
+}
+
+// =========================================================
+// BULK DELETE DRILLS
+// =========================================================
+if ($action === 'bulk_delete_drills') {
+    requirePermission($pdo, $user_id, $user_role, 'delete_drills');
+    header('Content-Type: application/json');
+    
+    $drill_ids = $_POST['drill_ids'] ?? [];
+    if (!is_array($drill_ids) || empty($drill_ids)) {
+        echo json_encode(['success' => false, 'message' => 'No drills selected']);
+        exit();
+    }
+    
+    try {
+        $deleted = 0;
+        $stmt = $pdo->prepare("DELETE FROM drills WHERE id = ? AND created_by = ?");
+        foreach ($drill_ids as $id) {
+            $drill_id = intval($id);
+            if ($drill_id > 0) {
+                $stmt->execute([$drill_id, $user_id]);
+                if ($stmt->rowCount() > 0) {
+                    $deleted++;
+                    Auditor::log($pdo, $user_id, 'delete', 'drills', $drill_id, ['action' => 'drill_deleted_bulk']);
+                }
+            }
+        }
+        echo json_encode(['success' => true, 'message' => "{$deleted} drill(s) deleted successfully", 'deleted_count' => $deleted]);
+        exit();
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Failed to delete drills']);
         exit();
     }
 }

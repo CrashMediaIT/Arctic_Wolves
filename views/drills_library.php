@@ -114,6 +114,25 @@ $is_demo_drills = false;
         </div>
     </div>
 
+    <!-- Bulk Actions Bar (hidden until selections made) -->
+    <div class="bulk-actions-bar" id="bulkActionsBar" style="display: none;">
+        <div class="bulk-actions-info">
+            <label class="bulk-select-all-label">
+                <input type="checkbox" id="selectAllDrills" onchange="toggleSelectAllDrills(this)">
+                <span>Select All</span>
+            </label>
+            <span id="bulkSelectedCount">0 selected</span>
+        </div>
+        <div class="bulk-actions-buttons">
+            <button class="btn btn-primary btn-sm" id="bulkCreatePlanBtn" onclick="bulkCreatePracticePlan()">
+                <i class="fas fa-clipboard-list"></i> Create Practice Plan
+            </button>
+            <button class="btn btn-danger btn-sm" id="bulkDeleteBtn" onclick="bulkDeleteDrills()">
+                <i class="fas fa-trash"></i> Delete Selected
+            </button>
+        </div>
+    </div>
+
     <!-- Drills Grid -->
     <div class="drills-grid" id="drills-grid">
         <?php if (count($drills) > 0): ?>
@@ -129,9 +148,13 @@ $is_demo_drills = false;
                 }
             ?>
                 <div class="drill-card" 
+                     data-drill-id="<?php echo $drill['id']; ?>"
                      data-category="<?php echo $drill['category_id'] ?? ''; ?>"
                      data-title="<?php echo htmlspecialchars(strtolower($drill['title'])); ?>"
                      data-coach="<?php echo strtolower($coachName); ?>">
+                    <div class="drill-select-overlay">
+                        <input type="checkbox" class="drill-select-checkbox" value="<?php echo $drill['id']; ?>" onchange="updateBulkSelection()">
+                    </div>
                     <div class="drill-image" data-ice-view="<?php echo htmlspecialchars($drillIceView); ?>">
                         <?php if ($drill['custom_image']): ?>
                             <img src="<?php echo htmlspecialchars($drill['custom_image']); ?>" alt="<?php echo htmlspecialchars($drill['title']); ?>">
@@ -213,6 +236,76 @@ $is_demo_drills = false;
 .action-buttons {
     display: flex;
     gap: 12px;
+}
+
+.bulk-actions-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+    padding: 12px 20px;
+    background: rgba(107, 70, 193, 0.1);
+    border: 1px solid var(--primary);
+    border-radius: 10px;
+    flex-wrap: wrap;
+}
+
+.bulk-actions-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.bulk-select-all-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text-white);
+}
+
+.bulk-select-all-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: var(--primary);
+}
+
+#bulkSelectedCount {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--primary);
+}
+
+.bulk-actions-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.drill-select-overlay {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 10;
+}
+
+.drill-select-checkbox {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: var(--primary);
+    border-radius: 4px;
+}
+
+.drill-card {
+    position: relative;
+}
+
+.drill-card.selected {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(107, 70, 193, 0.3);
 }
 
 .drills-grid {
@@ -975,19 +1068,149 @@ function getDrillCsrfToken() {
     return el ? el.value : '';
 }
 
-// Delete a drill with confirmation
+// Delete a drill with confirmation (uses JSON response)
 function deleteDrill(drillId) {
     if (!confirm('Delete this drill? This cannot be undone.')) return;
     var body = new URLSearchParams();
     body.set('action', 'delete_drill');
     body.set('drill_id', drillId);
     body.set('csrf_token', getDrillCsrfToken());
-    fetch('process_drills.php', { method: 'POST', body: body, credentials: 'same-origin' })
+    fetch('process_drills.php', {
+        method: 'POST',
+        body: body,
+        credentials: 'same-origin',
+        headers: { 'Accept': 'application/json' }
+    })
         .then(function(r) {
-            if (r.ok || r.redirected) {
-                window.location.reload();
+            if (r.ok) {
+                // Remove card from DOM with animation
+                var card = document.querySelector('.drill-card[data-drill-id="' + drillId + '"]');
+                if (card) {
+                    card.style.transition = 'opacity 0.3s, transform 0.3s';
+                    card.style.opacity = '0';
+                    card.style.transform = 'scale(0.9)';
+                    setTimeout(function() { card.remove(); updateDrillCount(); }, 300);
+                } else {
+                    window.location.reload();
+                }
             } else {
-                throw new Error('Server returned ' + r.status);
+                return r.json().then(function(data) {
+                    throw new Error(data.message || 'Server returned ' + r.status);
+                });
+            }
+        })
+        .catch(function(err) { alert('Delete failed: ' + err.message); });
+}
+
+// Update drill count display
+function updateDrillCount() {
+    var visible = document.querySelectorAll('.drill-card:not(.hidden)').length;
+    var el = document.getElementById('drill-count-display');
+    if (el) el.textContent = visible + ' drills found';
+}
+
+// --- Multi-Select / Bulk Actions ---
+
+function updateBulkSelection() {
+    var checkboxes = document.querySelectorAll('.drill-select-checkbox');
+    var checked = document.querySelectorAll('.drill-select-checkbox:checked');
+    var bar = document.getElementById('bulkActionsBar');
+    var countEl = document.getElementById('bulkSelectedCount');
+    var selectAll = document.getElementById('selectAllDrills');
+    
+    if (checked.length > 0) {
+        bar.style.display = 'flex';
+        countEl.textContent = checked.length + ' selected';
+    } else {
+        bar.style.display = 'none';
+    }
+    
+    // Update select all checkbox state
+    if (selectAll) {
+        selectAll.checked = checkboxes.length > 0 && checked.length === checkboxes.length;
+        selectAll.indeterminate = checked.length > 0 && checked.length < checkboxes.length;
+    }
+    
+    // Toggle selected class on cards
+    checkboxes.forEach(function(cb) {
+        var card = cb.closest('.drill-card');
+        if (card) {
+            if (cb.checked) {
+                card.classList.add('selected');
+            } else {
+                card.classList.remove('selected');
+            }
+        }
+    });
+}
+
+function toggleSelectAllDrills(selectAllCb) {
+    var checkboxes = document.querySelectorAll('.drill-select-checkbox');
+    checkboxes.forEach(function(cb) {
+        // Only toggle visible (not filtered out) cards
+        var card = cb.closest('.drill-card');
+        if (card && !card.classList.contains('hidden')) {
+            cb.checked = selectAllCb.checked;
+        }
+    });
+    updateBulkSelection();
+}
+
+function getSelectedDrillIds() {
+    var checked = document.querySelectorAll('.drill-select-checkbox:checked');
+    return Array.from(checked).map(function(cb) { return cb.value; });
+}
+
+function bulkCreatePracticePlan() {
+    var ids = getSelectedDrillIds();
+    if (ids.length === 0) {
+        alert('Please select at least one drill.');
+        return;
+    }
+    
+    // Store selected drill IDs in sessionStorage for the practice plan create page
+    sessionStorage.setItem('drillsToAdd', JSON.stringify(ids.map(Number)));
+    window.location.href = '?page=practice_create';
+}
+
+function bulkDeleteDrills() {
+    var ids = getSelectedDrillIds();
+    if (ids.length === 0) {
+        alert('Please select at least one drill.');
+        return;
+    }
+    
+    if (!confirm('Delete ' + ids.length + ' selected drill(s)? This cannot be undone.')) return;
+    
+    var body = new URLSearchParams();
+    body.set('action', 'bulk_delete_drills');
+    body.set('csrf_token', getDrillCsrfToken());
+    ids.forEach(function(id) { body.append('drill_ids[]', id); });
+    
+    fetch('process_drills.php', {
+        method: 'POST',
+        body: body,
+        credentials: 'same-origin',
+        headers: { 'Accept': 'application/json' }
+    })
+        .then(function(r) {
+            if (!r.ok) throw new Error('Server returned ' + r.status);
+            return r.json();
+        })
+        .then(function(data) {
+            if (data.success) {
+                // Remove deleted cards from DOM
+                ids.forEach(function(id) {
+                    var card = document.querySelector('.drill-card[data-drill-id="' + id + '"]');
+                    if (card) card.remove();
+                });
+                updateDrillCount();
+                updateBulkSelection();
+                if (typeof showNotification === 'function') {
+                    showNotification(data.message, 'success');
+                }
+            } else {
+                alert('Delete failed: ' + (data.message || 'Unknown error'));
             }
         })
         .catch(function(err) { alert('Delete failed: ' + err.message); });
