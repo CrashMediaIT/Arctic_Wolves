@@ -85,6 +85,9 @@ function uploadOnboardingDocuments($pdo, $settings, $staffName, $year, $files) {
                         'content_type' => $content_type
                     ];
                     
+                    // Save to persistent local storage
+                    saveToPersistentStorage($tmp_path, 'Onboarding/' . $year . '/' . $safeStaffName, $safe_filename);
+                    
                     // Also upload to Paperless-NGX with HR tag
                     $title = 'HR_' . $safeStaffName . '_' . $year . '_' . $safe_filename;
                     uploadToPaperless($pdo, $tmp_path, 'HR', $title);

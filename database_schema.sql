@@ -4640,6 +4640,10 @@ ADD COLUMN IF NOT EXISTS `nextcloud_path` VARCHAR(500) DEFAULT NULL COMMENT 'Nex
 INSERT IGNORE INTO `system_settings` (`setting_key`, `setting_value`, `setting_type`, `description`) VALUES
 ('nextcloud_images_dir', '/Images', 'text', 'Nextcloud directory for profile images and evaluation media');
 
+-- Default persistent storage path setting (editable from admin panel)
+INSERT IGNORE INTO `system_settings` (`setting_key`, `setting_value`, `setting_type`, `description`) VALUES
+('nextcloud_persistent_path', '', 'text', 'Custom path for persistent local storage outside the web root (leave empty for default)');
+
 -- Add nextcloud_image_path to exercise_library for persistent exercise image storage
 ALTER TABLE `exercise_library`
 ADD COLUMN IF NOT EXISTS `nextcloud_image_path` VARCHAR(500) DEFAULT NULL COMMENT 'Nextcloud path for exercise image persistence';

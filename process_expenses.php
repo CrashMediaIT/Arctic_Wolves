@@ -71,6 +71,9 @@ function uploadReceiptToNextcloud($pdo, $local_file_path, $expense_date, $vendor
         $remote_path = $folder_path . '/' . $filename;
         uploadToNextcloud($connection, $remote_path, $file_content, $content_type);
         
+        // Save to persistent local storage
+        saveToPersistentStorage($local_file_path, 'Receipts/' . $year . '/' . $month, $filename);
+        
         return [
             'success' => true,
             'cloud_path' => $remote_path,
@@ -505,6 +508,17 @@ try {
                         $ocr_data = performReceiptOCR($receipt_url);
                     }
                 }
+            } elseif (!empty($_POST['ocr_receipt_url'])) {
+                // Use receipt already saved during OCR scan
+                $ocr_receipt = trim($_POST['ocr_receipt_url']);
+                $real_path = realpath($ocr_receipt);
+                $allowed_dir = realpath('uploads/receipts');
+                if ($real_path && $allowed_dir && strpos($real_path, $allowed_dir) === 0) {
+                    $receipt_url = $ocr_receipt;
+                }
+                if (!empty($_POST['ocr_nextcloud_path'])) {
+                    $nextcloud_path = trim($_POST['ocr_nextcloud_path']);
+                }
             }
             
             $stmt = $pdo->prepare("
@@ -544,7 +558,7 @@ try {
                 }
             }
             
-            // Upload to Nextcloud if receipt exists
+            // Upload to Nextcloud if receipt exists (always upload for redundancy)
             if ($receipt_url && !empty($vendor_name)) {
                 $nc_result = uploadReceiptToNextcloud($pdo, $receipt_url, $expense_date, $vendor_name, $expense_id);
                 if ($nc_result['success']) {
