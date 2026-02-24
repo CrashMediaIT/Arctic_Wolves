@@ -43,16 +43,29 @@ $unread_count = $notif_stmt->fetchColumn();
 $pending_invitations = [];
 try {
     $inv_stmt = $pdo->prepare("
-        SELECT pi.*, GROUP_CONCAT(u.first_name, ' ', u.last_name SEPARATOR ', ') as athlete_names
+        SELECT pi.*
         FROM parent_invitations pi
-        LEFT JOIN parent_invitation_athletes pia ON pi.id = pia.invitation_id
-        LEFT JOIN users u ON pia.athlete_id = u.id
         WHERE pi.inviter_id = ? AND pi.status = 'pending' AND pi.expires_at > NOW()
-        GROUP BY pi.id
         ORDER BY pi.created_at DESC
     ");
     $inv_stmt->execute([$user_id]);
     $pending_invitations = $inv_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Build athlete names from already-decrypted $athletes array
+    $athletes_by_id = array_column($athletes, null, 'id');
+    foreach ($pending_invitations as &$inv) {
+        $pia_stmt = $pdo->prepare("SELECT athlete_id FROM parent_invitation_athletes WHERE invitation_id = ?");
+        $pia_stmt->execute([$inv['id']]);
+        $inv_athlete_ids = $pia_stmt->fetchAll(PDO::FETCH_COLUMN);
+        $names = [];
+        foreach ($inv_athlete_ids as $aid) {
+            if (isset($athletes_by_id[$aid])) {
+                $names[] = $athletes_by_id[$aid]['first_name'] . ' ' . $athletes_by_id[$aid]['last_name'];
+            }
+        }
+        $inv['athlete_names'] = implode(', ', $names);
+    }
+    unset($inv);
 } catch (PDOException $e) {
     // Table may not exist yet
     $pending_invitations = [];
@@ -66,18 +79,36 @@ try {
     $user_email = $user_email_stmt->fetchColumn();
     
     $incoming_stmt = $pdo->prepare("
-        SELECT pi.*, u.first_name as inviter_first_name, u.last_name as inviter_last_name,
-               GROUP_CONCAT(au.first_name, ' ', au.last_name SEPARATOR ', ') as athlete_names
+        SELECT pi.*, u.first_name as inviter_first_name, u.last_name as inviter_last_name
         FROM parent_invitations pi
         INNER JOIN users u ON pi.inviter_id = u.id
-        LEFT JOIN parent_invitation_athletes pia ON pi.id = pia.invitation_id
-        LEFT JOIN users au ON pia.athlete_id = au.id
         WHERE pi.email = ? AND pi.status = 'pending' AND pi.expires_at > NOW()
-        GROUP BY pi.id
         ORDER BY pi.created_at DESC
     ");
     $incoming_stmt->execute([$user_email]);
     $incoming_invitations = $incoming_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Decrypt inviter names and build athlete names
+    foreach ($incoming_invitations as &$inv) {
+        $inv['inviter_first_name'] = FieldEncryption::decrypt($inv['inviter_first_name']);
+        $inv['inviter_last_name'] = FieldEncryption::decrypt($inv['inviter_last_name']);
+
+        $pia_stmt = $pdo->prepare("
+            SELECT u.first_name, u.last_name
+            FROM parent_invitation_athletes pia
+            INNER JOIN users u ON pia.athlete_id = u.id
+            WHERE pia.invitation_id = ?
+        ");
+        $pia_stmt->execute([$inv['id']]);
+        $inv_athletes = $pia_stmt->fetchAll(PDO::FETCH_ASSOC);
+        $inv_athletes = decryptUserRows($inv_athletes);
+        $names = [];
+        foreach ($inv_athletes as $a) {
+            $names[] = $a['first_name'] . ' ' . $a['last_name'];
+        }
+        $inv['athlete_names'] = implode(', ', $names);
+    }
+    unset($inv);
 } catch (PDOException $e) {
     $incoming_invitations = [];
 }
