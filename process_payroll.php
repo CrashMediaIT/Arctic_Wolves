@@ -522,6 +522,7 @@ if ($action === 'generate_all_t4s') {
         ");
         $employeesStmt->execute([$taxYear]);
         $employees = $employeesStmt->fetchAll(PDO::FETCH_ASSOC);
+        $employees = decryptUserRows($employees);
         
         $generated = 0;
         $ncSettings = getNextcloudSettings($pdo);

@@ -239,6 +239,9 @@ function handleGet($pdo, $user_id, $is_coach) {
         die(json_encode(['success' => false, 'message' => 'Access denied']));
     }
     
+    // Decrypt PII fields before returning
+    $evaluation = decryptUserRow($evaluation);
+    
     echo json_encode([
         'success' => true,
         'evaluation' => $evaluation
