@@ -19,6 +19,7 @@ try {
     ");
     $stmt->execute();
     $newUsers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $newUsers = decryptUserRows($newUsers);
 } catch (PDOException $e) { $newUsers = []; }
 
 $onboardingRecords = [];
@@ -31,6 +32,7 @@ try {
     ");
     $stmt->execute();
     $onboardingRecords = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $onboardingRecords = decryptUserRows($onboardingRecords);
 } catch (PDOException $e) { $onboardingRecords = []; }
 ?>
 <style>
