@@ -141,3 +141,55 @@ test.describe('Calendar View Status Awareness', () => {
     expect(content).toContain("registerBtn.innerHTML = '<i class=\"fas fa-clock\"></i> Join Waitlist'");
   });
 });
+
+// =====================================================
+// 6. Private & Semi-Private Sessions from Products
+// =====================================================
+
+test.describe('Private & Semi-Private Sessions', () => {
+  test('auto-creates Sessions category and Private/Semi-Private products', () => {
+    const content = readFile('views/sessions_booking.php');
+    expect(content).toContain("INSERT IGNORE INTO merchandise_categories (name, description, is_active) VALUES ('Sessions'");
+    expect(content).toContain("INSERT IGNORE INTO merchandise_products");
+    expect(content).toContain("'SESSION-PRIVATE'");
+    expect(content).toContain("'SESSION-SEMI-PRIVATE'");
+  });
+
+  test('queries pricing from merchandise_products by SKU', () => {
+    const content = readFile('views/sessions_booking.php');
+    expect(content).toContain("SELECT price FROM merchandise_products WHERE sku = 'SESSION-PRIVATE'");
+    expect(content).toContain("SELECT price FROM merchandise_products WHERE sku = 'SESSION-SEMI-PRIVATE'");
+  });
+
+  test('queries available private and semi-private sessions from sessions table', () => {
+    const content = readFile('views/sessions_booking.php');
+    expect(content).toContain("(s.is_private = 1 OR s.is_semi_private = 1)");
+    expect(content).toContain("s.status = 'scheduled'");
+  });
+
+  test('group sessions query excludes private and semi-private sessions', () => {
+    const content = readFile('views/sessions_booking.php');
+    expect(content).toContain('(s.is_private = 0 OR s.is_private IS NULL)');
+    expect(content).toContain('(s.is_semi_private = 0 OR s.is_semi_private IS NULL)');
+  });
+
+  test('displays private/semi-private label on session cards', () => {
+    const content = readFile('views/sessions_booking.php');
+    expect(content).toContain("PRIVATE & SEMI-PRIVATE SESSIONS");
+    expect(content).toContain("is_private") ;
+    expect(content).toContain("is_semi_private");
+  });
+
+  test('no longer has free-form private session booking form', () => {
+    const content = readFile('views/sessions_booking.php');
+    expect(content).not.toContain('book_private_session');
+    expect(content).not.toContain('coach-typeahead-container');
+    expect(content).not.toContain('ArcticTypeahead');
+  });
+
+  test('database schema includes is_private and is_semi_private columns for sessions', () => {
+    const content = readFile('database_schema.sql');
+    expect(content).toContain("`is_private` TINYINT(1) DEFAULT 0");
+    expect(content).toContain("`is_semi_private` TINYINT(1) DEFAULT 0");
+  });
+});
