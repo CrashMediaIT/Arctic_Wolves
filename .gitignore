@@ -66,3 +66,7 @@ android-tv/.externalNativeBuild/
 android-tv/.cxx/
 android-tv/build-cmdline/
 android-tv/*.idsig
+
+# Update system deferred files
+.update_deferred.json
+*.pending

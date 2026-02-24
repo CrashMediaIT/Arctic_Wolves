@@ -355,3 +355,109 @@ test.describe('GitHub updater network error handling', () => {
     expect(fn).toContain('error.message');
   });
 });
+
+// =====================================================
+// 7. Deferred update mechanism for active files
+// =====================================================
+
+test.describe('Deferred update mechanism to prevent self-replacement', () => {
+
+  test('GitHubUpdater should define active_update_files that are deferred during update', () => {
+    const content = readFile('lib/github_updater.php');
+    expect(content).toContain('active_update_files');
+    expect(content).toContain("'lib/github_updater.php'");
+    expect(content).toContain("'process_settings.php'");
+  });
+
+  test('GitHubUpdater should have isActiveUpdateFile method', () => {
+    const content = readFile('lib/github_updater.php');
+    expect(content).toContain('function isActiveUpdateFile(');
+  });
+
+  test('applyUpdates should defer active update files instead of overwriting them', () => {
+    const content = readFile('lib/github_updater.php');
+    const fnStart = content.indexOf('function applyUpdates()');
+    const fnEnd = content.indexOf('function downloadFileToStaging');
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('isActiveUpdateFile($file_path)');
+    expect(fn).toContain('$deferred_files');
+    expect(fn).toContain('writeDeferredManifest');
+    expect(fn).toContain('has_deferred');
+  });
+
+  test('GitHubUpdater should have writeDeferredManifest method', () => {
+    const content = readFile('lib/github_updater.php');
+    expect(content).toContain('function writeDeferredManifest(');
+    expect(content).toContain('.update_deferred.json');
+    expect(content).toContain('.pending');
+  });
+
+  test('GitHubUpdater should have static applyDeferredUpdates method', () => {
+    const content = readFile('lib/github_updater.php');
+    expect(content).toContain('static function applyDeferredUpdates($base_path)');
+    // Should use rename() for atomic replacement
+    expect(content).toContain('rename($pending_path, $live_path)');
+  });
+
+  test('applyDeferredUpdates should clean up manifest after processing', () => {
+    const content = readFile('lib/github_updater.php');
+    const fnStart = content.indexOf('static function applyDeferredUpdates');
+    const fnEnd = content.indexOf('Make HTTP request to GitHub API');
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('@unlink($manifest_path)');
+  });
+
+  test('.update_deferred.json should be in excluded paths', () => {
+    const content = readFile('lib/github_updater.php');
+    expect(content).toContain("'.update_deferred.json'");
+    // Should be in the excluded_paths array
+    const excludeStart = content.indexOf('$excluded_paths');
+    const excludeEnd = content.indexOf('];', excludeStart);
+    const excludeBlock = content.substring(excludeStart, excludeEnd);
+    expect(excludeBlock).toContain('.update_deferred.json');
+  });
+
+  test('process_settings apply_updates should apply leftover deferred files first', () => {
+    const content = readFile('process_settings.php');
+    const fnStart = content.indexOf("case 'apply_updates':");
+    const fnEnd = content.indexOf("case 'update_nextcloud_backup':");
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('applyDeferredUpdates(__DIR__)');
+  });
+
+  test('process_settings apply_updates should use ignore_user_abort', () => {
+    const content = readFile('process_settings.php');
+    const fnStart = content.indexOf("case 'apply_updates':");
+    const fnEnd = content.indexOf("case 'update_nextcloud_backup':");
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('ignore_user_abort(true)');
+    expect(fn).toContain('set_time_limit(300)');
+  });
+
+  test('process_settings apply_updates should schedule deferred file application via shutdown function', () => {
+    const content = readFile('process_settings.php');
+    const fnStart = content.indexOf("case 'apply_updates':");
+    const fnEnd = content.indexOf("case 'update_nextcloud_backup':");
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('register_shutdown_function');
+    expect(fn).toContain('has_deferred');
+    expect(fn).toContain('applyDeferredUpdates');
+  });
+
+  test('applyUpdates Phase 3 should skip deletion of active update files', () => {
+    const content = readFile('lib/github_updater.php');
+    const fnStart = content.indexOf('Phase 3: Delete files');
+    const fnEnd = content.indexOf('Write deferred manifest');
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('isActiveUpdateFile($file_path)');
+  });
+
+  test('applyDeferredUpdates should have copy fallback if rename fails', () => {
+    const content = readFile('lib/github_updater.php');
+    const fnStart = content.indexOf('static function applyDeferredUpdates');
+    const fnEnd = content.indexOf('Make HTTP request to GitHub API');
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('copy($pending_path, $live_path)');
+    expect(fn).toContain('@unlink($pending_path)');
+  });
+});
