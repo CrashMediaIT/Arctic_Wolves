@@ -417,6 +417,22 @@ function resolvePayeeId($pdo, $payee_id_input, $new_payee_name_input, $user_id) 
     return !empty($payee_id_input) ? intval($payee_id_input) : null;
 }
 
+/**
+ * Encrypt PII fields from POST data for payee storage.
+ * Returns array of encrypted values in field order.
+ */
+function encryptPayeePiiFields($postData) {
+    $fields = ['email', 'phone', 'address_line1', 'address_line2', 'city', 'etransfer_email'];
+    $encrypted = [];
+    foreach ($fields as $field) {
+        $val = trim($postData[$field] ?? '');
+        $encrypted[$field] = $val !== '' ? FieldEncryption::encrypt($val) : '';
+    }
+    // Name is always required and handled separately
+    $encrypted['name'] = FieldEncryption::encrypt(trim($postData['name'] ?? ''));
+    return $encrypted;
+}
+
 try {
     switch ($action) {
         case 'create':
@@ -835,19 +851,7 @@ try {
             }
             
             // Encrypt PII fields before storage
-            $enc_name = FieldEncryption::encrypt($name);
-            $enc_email = trim($_POST['email'] ?? '');
-            $enc_email = $enc_email !== '' ? FieldEncryption::encrypt($enc_email) : '';
-            $enc_phone = trim($_POST['phone'] ?? '');
-            $enc_phone = $enc_phone !== '' ? FieldEncryption::encrypt($enc_phone) : '';
-            $enc_address1 = trim($_POST['address_line1'] ?? '');
-            $enc_address1 = $enc_address1 !== '' ? FieldEncryption::encrypt($enc_address1) : '';
-            $enc_address2 = trim($_POST['address_line2'] ?? '');
-            $enc_address2 = $enc_address2 !== '' ? FieldEncryption::encrypt($enc_address2) : '';
-            $enc_city = trim($_POST['city'] ?? '');
-            $enc_city = $enc_city !== '' ? FieldEncryption::encrypt($enc_city) : '';
-            $enc_etransfer = trim($_POST['etransfer_email'] ?? '');
-            $enc_etransfer = $enc_etransfer !== '' ? FieldEncryption::encrypt($enc_etransfer) : '';
+            $enc = encryptPayeePiiFields($_POST);
 
             $stmt = $pdo->prepare("
                 INSERT INTO payees (name, company_name, email, phone, address_line1, address_line2, 
@@ -856,19 +860,19 @@ try {
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
-                $enc_name,
+                $enc['name'],
                 trim($_POST['company_name'] ?? ''),
-                $enc_email,
-                $enc_phone,
-                $enc_address1,
-                $enc_address2,
-                $enc_city,
+                $enc['email'],
+                $enc['phone'],
+                $enc['address_line1'],
+                $enc['address_line2'],
+                $enc['city'],
                 trim($_POST['state_province'] ?? ''),
                 trim($_POST['postal_code'] ?? ''),
                 trim($_POST['country'] ?? 'Canada'),
                 $_POST['default_payment_method'] ?? 'bank_transfer',
                 trim($_POST['bank_name'] ?? ''),
-                $enc_etransfer,
+                $enc['etransfer_email'],
                 trim($_POST['tax_id'] ?? ''),
                 $_POST['default_currency'] ?? 'CAD',
                 trim($_POST['notes'] ?? ''),
@@ -892,19 +896,7 @@ try {
             }
             
             // Encrypt PII fields before storage
-            $enc_name = FieldEncryption::encrypt($name);
-            $enc_email = trim($_POST['email'] ?? '');
-            $enc_email = $enc_email !== '' ? FieldEncryption::encrypt($enc_email) : '';
-            $enc_phone = trim($_POST['phone'] ?? '');
-            $enc_phone = $enc_phone !== '' ? FieldEncryption::encrypt($enc_phone) : '';
-            $enc_address1 = trim($_POST['address_line1'] ?? '');
-            $enc_address1 = $enc_address1 !== '' ? FieldEncryption::encrypt($enc_address1) : '';
-            $enc_address2 = trim($_POST['address_line2'] ?? '');
-            $enc_address2 = $enc_address2 !== '' ? FieldEncryption::encrypt($enc_address2) : '';
-            $enc_city = trim($_POST['city'] ?? '');
-            $enc_city = $enc_city !== '' ? FieldEncryption::encrypt($enc_city) : '';
-            $enc_etransfer = trim($_POST['etransfer_email'] ?? '');
-            $enc_etransfer = $enc_etransfer !== '' ? FieldEncryption::encrypt($enc_etransfer) : '';
+            $enc = encryptPayeePiiFields($_POST);
 
             $stmt = $pdo->prepare("
                 UPDATE payees SET name = ?, company_name = ?, email = ?, phone = ?, 
@@ -914,19 +906,19 @@ try {
                 WHERE id = ?
             ");
             $stmt->execute([
-                $enc_name,
+                $enc['name'],
                 trim($_POST['company_name'] ?? ''),
-                $enc_email,
-                $enc_phone,
-                $enc_address1,
-                $enc_address2,
-                $enc_city,
+                $enc['email'],
+                $enc['phone'],
+                $enc['address_line1'],
+                $enc['address_line2'],
+                $enc['city'],
                 trim($_POST['state_province'] ?? ''),
                 trim($_POST['postal_code'] ?? ''),
                 trim($_POST['country'] ?? 'Canada'),
                 $_POST['default_payment_method'] ?? 'bank_transfer',
                 trim($_POST['bank_name'] ?? ''),
-                $enc_etransfer,
+                $enc['etransfer_email'],
                 trim($_POST['tax_id'] ?? ''),
                 $_POST['default_currency'] ?? 'CAD',
                 trim($_POST['notes'] ?? ''),
