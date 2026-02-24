@@ -503,7 +503,13 @@ class GitHubUpdater {
         
         if (!empty($manifest)) {
             $manifest_path = $this->base_path . '/.update_deferred.json';
-            file_put_contents($manifest_path, json_encode($manifest, JSON_PRETTY_PRINT));
+            if (file_put_contents($manifest_path, json_encode($manifest, JSON_PRETTY_PRINT)) === false) {
+                // Fallback: apply deferred files immediately if manifest write fails
+                foreach ($deferred_files as $relative_path => $staged_path) {
+                    $live_path = $this->base_path . '/' . $relative_path;
+                    @copy($staged_path, $live_path);
+                }
+            }
         }
     }
     
@@ -522,7 +528,13 @@ class GitHubUpdater {
             return ['applied' => 0, 'errors' => []];
         }
         
-        $manifest = json_decode(file_get_contents($manifest_path), true);
+        $raw = @file_get_contents($manifest_path);
+        if ($raw === false) {
+            @unlink($manifest_path);
+            return ['applied' => 0, 'errors' => ['Failed to read deferred manifest']];
+        }
+        
+        $manifest = json_decode($raw, true);
         if (!is_array($manifest) || empty($manifest)) {
             @unlink($manifest_path);
             return ['applied' => 0, 'errors' => []];
