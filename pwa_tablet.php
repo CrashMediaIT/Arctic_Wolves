@@ -503,13 +503,15 @@ try {
                 <option value="">Select Athlete</option>
                 <?php
                 $stmt = $pdo->prepare("
-                    SELECT u.id, CONCAT(u.first_name, ' ', u.last_name) as name
+                    SELECT u.id, u.first_name, u.last_name
                     FROM users u
                     INNER JOIN parent_athlete_relationships par ON u.id = par.athlete_id
                     WHERE par.parent_id = ? AND u.role = 'athlete'
                 ");
                 $stmt->execute([$user_id]);
                 while($athlete = $stmt->fetch()):
+                    $athlete = decryptUserRow($athlete);
+                    $athlete['name'] = trim(($athlete['first_name'] ?? '') . ' ' . ($athlete['last_name'] ?? ''));
                     $selected = (isset($_SESSION['viewing_athlete_id']) && $_SESSION['viewing_athlete_id'] == $athlete['id']) ? 'selected' : '';
                 ?>
                 <option value="<?= $athlete['id'] ?>" <?= $selected ?>><?= htmlspecialchars($athlete['name']) ?></option>

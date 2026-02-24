@@ -28,6 +28,7 @@ try {
     ");
     $stmt->execute();
     $athletes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $athletes = decryptUserRows($athletes);
 } catch (PDOException $e) { $athletes = []; }
 
 $totalAthletes = count($athletes);

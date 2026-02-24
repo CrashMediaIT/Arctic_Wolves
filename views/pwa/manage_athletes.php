@@ -34,6 +34,7 @@ try {
         $stmt->execute([$user_id]);
     }
     $athletes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $athletes = decryptUserRows($athletes);
 } catch (PDOException $e) { $athletes = []; }
 
 $success = isset($_GET['success']) ? $_GET['success'] : '';

@@ -22,6 +22,10 @@ if ($bookingIdParam > 0) {
         ");
         $stmt->execute([$bookingIdParam, $user_id]);
         $booking = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($booking) {
+            $booking['coach_first'] = FieldEncryption::decrypt($booking['coach_first'] ?? '');
+            $booking['coach_last'] = FieldEncryption::decrypt($booking['coach_last'] ?? '');
+        }
     } catch (PDOException $e) { $booking = null; }
 }
 ?>

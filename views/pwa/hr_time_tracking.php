@@ -35,6 +35,7 @@ try {
     ");
     $stmt->execute();
     $entries = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $entries = decryptUserRows($entries);
 } catch (PDOException $e) { $entries = []; }
 
 $activeShift = null;

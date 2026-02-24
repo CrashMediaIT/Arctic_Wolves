@@ -27,6 +27,7 @@ if ($session_id > 0) {
             ");
             $stmt->execute([$session_id]);
             $athletes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $athletes = decryptUserRows($athletes);
         } catch (PDOException $e) { $athletes = []; }
     }
 }

@@ -61,7 +61,7 @@ if ($db_connected) {
     try {
         $sessionsStmt = $pdo->query("
             SELECT tst.*, 
-                   CONCAT(u.first_name, ' ', u.last_name) as coach_name,
+                   u.first_name as coach_first_name, u.last_name as coach_last_name,
                    l.name as location_name,
                    tsd.session_date as next_date,
                    COUNT(DISTINCT tsd2.id) as total_dates,
@@ -79,6 +79,11 @@ if ($db_connected) {
             LIMIT 20
         ");
         $sessions = $sessionsStmt->fetchAll(PDO::FETCH_ASSOC);
+        $sessions = decryptUserRows($sessions);
+        foreach ($sessions as &$s) {
+            $s['coach_name'] = trim(($s['coach_first_name'] ?? '') . ' ' . ($s['coach_last_name'] ?? ''));
+        }
+        unset($s);
     } catch (PDOException $e) {
         error_log("Public sessions fetch error: " . $e->getMessage());
         $sessions = [];
@@ -99,7 +104,7 @@ if ($db_connected) {
                    s.location_id,
                    s.coach_id,
                    CONCAT(s.session_date, ' ', COALESCE(s.session_time, '00:00:00')) as next_date,
-                   CONCAT(u.first_name, ' ', u.last_name) as coach_name,
+                   u.first_name as coach_first_name, u.last_name as coach_last_name,
                    l.name as location_name,
                    1 as total_dates,
                    'session' as source_type
@@ -113,6 +118,11 @@ if ($db_connected) {
             LIMIT 20
         ");
         $regularSessions = $regularSessionsStmt->fetchAll(PDO::FETCH_ASSOC);
+        $regularSessions = decryptUserRows($regularSessions);
+        foreach ($regularSessions as &$rs) {
+            $rs['coach_name'] = trim(($rs['coach_first_name'] ?? '') . ' ' . ($rs['coach_last_name'] ?? ''));
+        }
+        unset($rs);
         
         // Merge regular sessions with template sessions
         $sessions = array_merge($sessions, $regularSessions);

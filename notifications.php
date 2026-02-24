@@ -60,6 +60,7 @@ function createNotification($pdo, $user_id, $type, $title, $message, $link = nul
             $user_stmt = $pdo->prepare("SELECT email, first_name FROM users WHERE id = ?");
             $user_stmt->execute([$user_id]);
             $user = $user_stmt->fetch();
+            $user = decryptUserRow($user);
             
             if ($user) {
                 // Send email notification

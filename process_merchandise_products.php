@@ -74,6 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             ");
             $stmt->execute([$productId]);
             $movements = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $movements = decryptUserRows($movements);
             
             header('Content-Type: application/json');
             echo json_encode(['success' => true, 'movements' => $movements]);
@@ -113,6 +114,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             ");
             $stmt->execute([$productId]);
             $audits = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $audits = decryptUserRows($audits);
             
             // Parse items_data into structured array
             foreach ($audits as &$audit) {

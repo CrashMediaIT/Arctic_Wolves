@@ -9,13 +9,17 @@ $coachAthletes = [];
 if ($isAnyCoach) {
     try {
         $stmt = $pdo->prepare("
-            SELECT DISTINCT u.id, CONCAT(u.first_name, ' ', u.last_name) as name
+            SELECT DISTINCT u.id, u.first_name, u.last_name
             FROM users u
             WHERE u.role = 'athlete' AND u.status = 'active'
             ORDER BY u.first_name, u.last_name
         ");
         $stmt->execute();
-        $coachAthletes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $coachAthletes = decryptUserRows($stmt->fetchAll(PDO::FETCH_ASSOC));
+        foreach ($coachAthletes as &$ca) {
+            $ca['name'] = trim(($ca['first_name'] ?? '') . ' ' . ($ca['last_name'] ?? ''));
+        }
+        unset($ca);
     } catch (PDOException $e) { $coachAthletes = []; }
 }
 
@@ -25,16 +29,18 @@ $statsUserName = $user_name;
 if ($isAnyCoach && !empty($_GET['athlete_id'])) {
     $statsUserId = (int)$_GET['athlete_id'];
     try {
-        $stmt = $pdo->prepare("SELECT CONCAT(first_name, ' ', last_name) FROM users WHERE id = ?");
+        $stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
         $stmt->execute([$statsUserId]);
-        $statsUserName = $stmt->fetchColumn() ?: $user_name;
+        $row = decryptUserRow($stmt->fetch(PDO::FETCH_ASSOC));
+        if ($row) $statsUserName = trim(($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? ''));
     } catch (PDOException $e) { /* keep default */ }
 } elseif ($isParent && !empty($_SESSION['viewing_athlete_id'])) {
     $statsUserId = (int)$_SESSION['viewing_athlete_id'];
     try {
-        $stmt = $pdo->prepare("SELECT CONCAT(first_name, ' ', last_name) FROM users WHERE id = ?");
+        $stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
         $stmt->execute([$statsUserId]);
-        $statsUserName = $stmt->fetchColumn() ?: $user_name;
+        $row = decryptUserRow($stmt->fetch(PDO::FETCH_ASSOC));
+        if ($row) $statsUserName = trim(($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? ''));
     } catch (PDOException $e) { /* keep default */ }
 }
 

@@ -33,6 +33,7 @@ if ($planId > 0) {
         ");
         $stmt->execute([$planId]);
         $plan = $stmt->fetch(PDO::FETCH_ASSOC);
+        $plan = decryptUserRow($plan);
     } catch (PDOException $e) { $plan = null; }
 
     if ($plan) {

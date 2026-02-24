@@ -22,6 +22,7 @@ try {
     ");
     $stmt->execute([$user_id]);
     $children = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $children = decryptUserRows($children);
 } catch (PDOException $e) { $children = []; }
 ?>
 <style>

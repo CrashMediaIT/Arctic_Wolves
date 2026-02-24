@@ -18,6 +18,7 @@ try {
     ");
     $stmt->execute([$user_id, $user_id]);
     $drillVideos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $drillVideos = decryptUserRows($drillVideos);
 } catch (PDOException $e) { $drillVideos = []; }
 
 // Coach Review videos
@@ -34,6 +35,7 @@ try {
     ");
     $stmt->execute([$user_id]);
     $coachReviewVideos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $coachReviewVideos = decryptUserRows($coachReviewVideos);
 } catch (PDOException $e) { $coachReviewVideos = []; }
 ?>
 <style>

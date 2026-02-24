@@ -191,6 +191,7 @@ if ($tv_paired) {
         ");
         $stmt->execute($videoParams);
         $recentVideos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $recentVideos = decryptUserRows($recentVideos);
     } catch (PDOException $e) { /* ignore */ }
 }
 
