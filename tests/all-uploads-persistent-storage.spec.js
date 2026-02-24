@@ -223,3 +223,153 @@ test.describe('getPersistentStoragePath is configurable', () => {
     expect(content).toContain("'nextcloud_persistent_path'");
   });
 });
+
+// =====================================================
+// 9. saveToPersistentStorage forwards $pdo to getPersistentStoragePath
+// =====================================================
+
+test.describe('saveToPersistentStorage respects persistent path setting', () => {
+  test('saveToPersistentStorage should accept optional $pdo parameter', () => {
+    const content = readFile('cloud_config.php');
+    expect(content).toContain('function saveToPersistentStorage($local_file_path, $subfolder, $filename, $pdo = null)');
+  });
+
+  test('saveToPersistentStorage should pass $pdo to getPersistentStoragePath', () => {
+    const content = readFile('cloud_config.php');
+    const fnStart = content.indexOf('function saveToPersistentStorage(');
+    const fnEnd = content.indexOf('function restoreFromPersistentStorage(');
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('getPersistentStoragePath($pdo)');
+  });
+
+  test('all callers of saveToPersistentStorage in cloud_config.php should pass $pdo', () => {
+    const content = readFile('cloud_config.php');
+    // Find all calls to saveToPersistentStorage (excluding the function definition)
+    const fnDefEnd = content.indexOf('function restoreFromPersistentStorage(');
+    const afterDef = content.substring(fnDefEnd);
+    const matches = afterDef.match(/saveToPersistentStorage\([^)]+\)/g) || [];
+    for (const call of matches) {
+      expect(call).toContain('$pdo');
+    }
+  });
+
+  test('process_expenses.php should pass $pdo to saveToPersistentStorage', () => {
+    const content = readFile('process_expenses.php');
+    const calls = content.match(/saveToPersistentStorage\([^)]+\)/g) || [];
+    expect(calls.length).toBeGreaterThan(0);
+    for (const call of calls) {
+      expect(call).toContain('$pdo');
+    }
+  });
+
+  test('process_payroll.php should pass $pdo to saveToPersistentStorage', () => {
+    const content = readFile('process_payroll.php');
+    const calls = content.match(/saveToPersistentStorage\([^)]+\)/g) || [];
+    expect(calls.length).toBeGreaterThan(0);
+    for (const call of calls) {
+      expect(call).toContain('$pdo');
+    }
+  });
+
+  test('process_profile_update.php should pass $pdo to saveToPersistentStorage', () => {
+    const content = readFile('process_profile_update.php');
+    const lines = content.split('\n').filter(l => l.includes('saveToPersistentStorage(') && !l.trim().startsWith('//'));
+    expect(lines.length).toBeGreaterThan(0);
+    for (const line of lines) {
+      expect(line).toContain('$pdo');
+    }
+  });
+
+  test('process_recurring_expenses.php should pass $pdo to saveToPersistentStorage', () => {
+    const content = readFile('process_recurring_expenses.php');
+    const calls = content.match(/saveToPersistentStorage\([^)]+\)/g) || [];
+    expect(calls.length).toBeGreaterThan(0);
+    for (const call of calls) {
+      expect(call).toContain('$pdo');
+    }
+  });
+
+  test('process_onboarding.php should pass $pdo to saveToPersistentStorage', () => {
+    const content = readFile('process_onboarding.php');
+    const calls = content.match(/saveToPersistentStorage\([^)]+\)/g) || [];
+    expect(calls.length).toBeGreaterThan(0);
+    for (const call of calls) {
+      expect(call).toContain('$pdo');
+    }
+  });
+});
+
+// =====================================================
+// 10. restoreFromPersistentStorage forwards $pdo to getPersistentStoragePath
+// =====================================================
+
+test.describe('restoreFromPersistentStorage respects persistent path setting', () => {
+  test('restoreFromPersistentStorage should accept optional $pdo parameter', () => {
+    const content = readFile('cloud_config.php');
+    expect(content).toContain('function restoreFromPersistentStorage($subfolder, $filename, $local_path, $pdo = null)');
+  });
+
+  test('restoreFromPersistentStorage should pass $pdo to getPersistentStoragePath', () => {
+    const content = readFile('cloud_config.php');
+    const fnStart = content.indexOf('function restoreFromPersistentStorage(');
+    const fnEnd = content.indexOf('function uploadImageToNextcloud(');
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('getPersistentStoragePath($pdo)');
+  });
+
+  test('restoreImageFromNextcloud should pass $pdo to restoreFromPersistentStorage', () => {
+    const content = readFile('cloud_config.php');
+    const fnStart = content.indexOf('function restoreImageFromNextcloud(');
+    const fnEnd = content.indexOf('function getDrillVideoPath(');
+    const fn = content.substring(fnStart, fnEnd);
+    const calls = fn.match(/restoreFromPersistentStorage\([^)]+\)/g) || [];
+    expect(calls.length).toBeGreaterThan(0);
+    for (const call of calls) {
+      expect(call).toContain('$pdo');
+    }
+  });
+
+  test('tryRestoreFromPersistent should accept and forward $pdo parameter', () => {
+    const content = readFile('lib/image_helper.php');
+    expect(content).toContain('function tryRestoreFromPersistent($local_path, $subfolder, $filename = null, $pdo = null)');
+    const fnStart = content.indexOf('function tryRestoreFromPersistent(');
+    const fnEnd = content.indexOf('function resolveProfileImage(');
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('restoreFromPersistentStorage($subfolder, $filename, $local_path, $pdo)');
+  });
+
+  test('resolveProfileImage should pass $pdo to tryRestoreFromPersistent', () => {
+    const content = readFile('lib/image_helper.php');
+    const fnStart = content.indexOf('function resolveProfileImage(');
+    const fnEnd = content.indexOf('function resolveEvaluationMedia(');
+    const fn = content.substring(fnStart, fnEnd);
+    const calls = fn.match(/tryRestoreFromPersistent\([^)]+\)/g) || [];
+    expect(calls.length).toBeGreaterThan(0);
+    for (const call of calls) {
+      expect(call).toContain('$pdo');
+    }
+  });
+
+  test('resolveEvaluationMedia should pass $pdo to tryRestoreFromPersistent', () => {
+    const content = readFile('lib/image_helper.php');
+    const fnStart = content.indexOf('function resolveEvaluationMedia(');
+    const fnEnd = content.indexOf('function resolveDrillImage(');
+    const fn = content.substring(fnStart, fnEnd);
+    const calls = fn.match(/tryRestoreFromPersistent\([^)]+\)/g) || [];
+    expect(calls.length).toBeGreaterThan(0);
+    for (const call of calls) {
+      expect(call).toContain('$pdo');
+    }
+  });
+
+  test('resolveDrillImage should pass $pdo to tryRestoreFromPersistent', () => {
+    const content = readFile('lib/image_helper.php');
+    const fnStart = content.indexOf('function resolveDrillImage(');
+    const fn = content.substring(fnStart);
+    const calls = fn.match(/tryRestoreFromPersistent\([^)]+\)/g) || [];
+    expect(calls.length).toBeGreaterThan(0);
+    for (const call of calls) {
+      expect(call).toContain('$pdo');
+    }
+  });
+});

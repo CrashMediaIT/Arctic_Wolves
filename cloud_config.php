@@ -469,7 +469,7 @@ function uploadTerminationDocuments($pdo, $settings, $staff_name, $termination_d
                     ];
                     
                     // Save to persistent local storage
-                    saveToPersistentStorage($tmp_path, 'Terminations/' . $year . '/' . $month . '/' . $safe_staff_name, $safe_filename);
+                    saveToPersistentStorage($tmp_path, 'Terminations/' . $year . '/' . $month . '/' . $safe_staff_name, $safe_filename, $pdo);
                     
                     // Also upload to Paperless-NGX with Termination tag
                     $title = 'Termination_' . $safe_staff_name . '_' . $date->format('Y-m-d') . '_' . $safe_filename;
@@ -658,7 +658,7 @@ function uploadDrillVideo($pdo, $settings, $session_name, $drill_name, $athlete_
         $content_type = $content_types[$ext] ?? 'video/mp4';
         
         // Save to persistent local storage first (faster restores)
-        saveToPersistentStorage($file['tmp_name'], 'DrillVideos/' . $year . '/' . $month . '/' . $day, $filename);
+        saveToPersistentStorage($file['tmp_name'], 'DrillVideos/' . $year . '/' . $month . '/' . $day, $filename, $pdo);
         
         // Upload file to Nextcloud as backup
         $remote_path = $folder_path . '/' . $filename;
@@ -717,9 +717,9 @@ function getPersistentStoragePath($pdo = null) {
  * @param string $filename Target filename
  * @return array Result with success status and persistent_path
  */
-function saveToPersistentStorage($local_file_path, $subfolder, $filename) {
+function saveToPersistentStorage($local_file_path, $subfolder, $filename, $pdo = null) {
     try {
-        $base_dir = getPersistentStoragePath();
+        $base_dir = getPersistentStoragePath($pdo);
         
         // Build path: persistent_uploads/Images/{subfolder}/{filename}
         $sub_parts = array_filter(explode('/', $subfolder), function($p) { return $p !== ''; });
@@ -760,9 +760,9 @@ function saveToPersistentStorage($local_file_path, $subfolder, $filename) {
  * @param string $local_path The local path to restore the file to
  * @return bool True if file was restored successfully
  */
-function restoreFromPersistentStorage($subfolder, $filename, $local_path) {
+function restoreFromPersistentStorage($subfolder, $filename, $local_path, $pdo = null) {
     try {
-        $base_dir = getPersistentStoragePath();
+        $base_dir = getPersistentStoragePath($pdo);
         
         $sub_parts = array_filter(explode('/', $subfolder), function($p) { return $p !== ''; });
         $persistent_path = $base_dir . '/Images/' . implode('/', $sub_parts) . '/' . $filename;
@@ -803,7 +803,7 @@ function restoreFromPersistentStorage($subfolder, $filename, $local_path) {
  */
 function uploadImageToNextcloud($pdo, $settings, $local_file_path, $subfolder, $filename) {
     // Always save to persistent local storage (survives updates)
-    saveToPersistentStorage($local_file_path, $subfolder, $filename);
+    saveToPersistentStorage($local_file_path, $subfolder, $filename, $pdo);
     
     try {
         $connection = connectNextcloud($settings);
@@ -866,7 +866,7 @@ function restoreImageFromNextcloud($pdo, $settings, $nextcloud_path, $local_path
     $filename = basename($relative_path);
     
     if (!empty($subfolder) && !empty($filename) && $subfolder !== '.') {
-        $restored = restoreFromPersistentStorage($subfolder, $filename, $local_path);
+        $restored = restoreFromPersistentStorage($subfolder, $filename, $local_path, $pdo);
         if ($restored) {
             return true;
         }
@@ -891,7 +891,7 @@ function restoreImageFromNextcloud($pdo, $settings, $nextcloud_path, $local_path
         
         // Also save to persistent storage for future restores
         if (!empty($subfolder) && !empty($filename) && $subfolder !== '.') {
-            saveToPersistentStorage($local_path, $subfolder, $filename);
+            saveToPersistentStorage($local_path, $subfolder, $filename, $pdo);
         }
         
         return true;

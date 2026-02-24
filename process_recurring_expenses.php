@@ -79,7 +79,7 @@ function uploadContractToNextcloud($pdo, $local_file_path, $vendor_name, $contra
         uploadToNextcloud($connection, $remote_path, $file_content, $content_type);
         
         // Save to persistent local storage
-        saveToPersistentStorage($local_file_path, 'Contracts/' . $safe_vendor . '/' . $purpose_folder, $safe_filename);
+        saveToPersistentStorage($local_file_path, 'Contracts/' . $safe_vendor . '/' . $purpose_folder, $safe_filename, $pdo);
         
         // Also upload to Paperless-NGX with Contract tag
         $title = 'Contract_' . $safe_vendor . '_' . $safe_type . '_' . $date_str;
