@@ -280,6 +280,12 @@ function handleVideoUpload() {
     // Send notification to athlete
     sendVideoNotification($pdo, $athlete_id, $user_id, $video_id, 'new_video');
     
+    // Return JSON for XHR requests, redirect for standard form submissions
+    if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+        echo json_encode(['success' => true, 'video_id' => $video_id, 'redirect' => 'dashboard.php?page=coaches_reviews&success=video_uploaded']);
+        exit;
+    }
+
     // Redirect back to coach reviews page
     header('Location: dashboard.php?page=coaches_reviews&success=video_uploaded');
     exit;
@@ -452,6 +458,12 @@ function handleAthleteVideoUpload() {
     // Send notification and email to coach
     sendVideoUploadNotificationToCoach($pdo, $coach_id, $athlete_id, $video_id, $title);
     
+    // Return JSON for XHR requests, redirect for standard form submissions
+    if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+        echo json_encode(['success' => true, 'video_id' => $video_id, 'redirect' => 'dashboard.php?page=coaches_reviews&success=video_uploaded']);
+        exit;
+    }
+
     // Redirect back to coach reviews page
     header('Location: dashboard.php?page=coaches_reviews&success=video_uploaded');
     exit;
