@@ -90,8 +90,7 @@ try {
 
     // Decrypt inviter names and build athlete names
     foreach ($incoming_invitations as &$inv) {
-        $inv['inviter_first_name'] = FieldEncryption::decrypt($inv['inviter_first_name']);
-        $inv['inviter_last_name'] = FieldEncryption::decrypt($inv['inviter_last_name']);
+        $inv = decryptUserRow($inv);
 
         $pia_stmt = $pdo->prepare("
             SELECT u.first_name, u.last_name
