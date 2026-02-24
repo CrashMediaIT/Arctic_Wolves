@@ -71,6 +71,9 @@ function uploadReceiptToNextcloud($pdo, $local_file_path, $expense_date, $vendor
         $remote_path = $folder_path . '/' . $filename;
         uploadToNextcloud($connection, $remote_path, $file_content, $content_type);
         
+        // Save to persistent local storage
+        saveToPersistentStorage($local_file_path, 'Receipts/' . $year . '/' . $month, $filename);
+        
         return [
             'success' => true,
             'cloud_path' => $remote_path,

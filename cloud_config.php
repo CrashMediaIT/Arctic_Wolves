@@ -468,6 +468,9 @@ function uploadTerminationDocuments($pdo, $settings, $staff_name, $termination_d
                         'content_type' => $content_type
                     ];
                     
+                    // Save to persistent local storage
+                    saveToPersistentStorage($tmp_path, 'Terminations/' . $year . '/' . $month . '/' . $safe_staff_name, $safe_filename);
+                    
                     // Also upload to Paperless-NGX with Termination tag
                     $title = 'Termination_' . $safe_staff_name . '_' . $date->format('Y-m-d') . '_' . $safe_filename;
                     uploadToPaperless($pdo, $tmp_path, 'Termination', $title);
@@ -654,7 +657,10 @@ function uploadDrillVideo($pdo, $settings, $session_name, $drill_name, $athlete_
         ];
         $content_type = $content_types[$ext] ?? 'video/mp4';
         
-        // Upload file
+        // Save to persistent local storage first (faster restores)
+        saveToPersistentStorage($file['tmp_name'], 'DrillVideos/' . $year . '/' . $month . '/' . $day, $filename);
+        
+        // Upload file to Nextcloud as backup
         $remote_path = $folder_path . '/' . $filename;
         uploadToNextcloud($connection, $remote_path, $file_content, $content_type);
         
