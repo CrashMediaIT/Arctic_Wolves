@@ -26,17 +26,31 @@ if (isset($_GET['register'])) {
         $expiresAt = date('Y-m-d H:i:s', strtotime('+24 hours'));
         
         try {
-            // Store the intent
+            // Store the intent - support both session table and template-based sessions
+            $sessionId = null;
+            $packageId = null;
+            $templateId = null;
+            $sessionDateId = null;
+            
+            if ($intentType === 'session') {
+                $sessionId = $intentId;
+            } elseif ($intentType === 'package') {
+                $packageId = $intentId;
+            } elseif ($intentType === 'template_date') {
+                $sessionDateId = $intentId;
+                // Look up the template_id from the session date
+                $tdStmt = $pdo->prepare("SELECT template_id FROM training_session_dates WHERE id = ?");
+                $tdStmt->execute([$intentId]);
+                $templateId = $tdStmt->fetchColumn() ?: null;
+            }
+            
             $stmt = $pdo->prepare("
                 INSERT INTO session_registration_intents 
-                (session_id, package_id, intent_token, expires_at) 
-                VALUES (?, ?, ?, ?)
+                (session_id, package_id, template_id, session_date_id, intent_token, expires_at) 
+                VALUES (?, ?, ?, ?, ?, ?)
             ");
             
-            $sessionId = ($intentType === 'session') ? $intentId : null;
-            $packageId = ($intentType === 'package') ? $intentId : null;
-            
-            $stmt->execute([$sessionId, $packageId, $token, $expiresAt]);
+            $stmt->execute([$sessionId, $packageId, $templateId, $sessionDateId, $token, $expiresAt]);
             
             // Redirect to login with token
             header("Location: login.php?session_intent=" . $token);
@@ -57,7 +71,7 @@ $sessions = [];
 $packages = [];
 
 if ($db_connected) {
-    // Fetch all upcoming scheduled sessions
+    // Fetch upcoming sessions from the sessions table
     try {
         $sessionsStmt = $pdo->query("
             SELECT s.id, 
@@ -75,7 +89,9 @@ if ($db_connected) {
                    u.first_name as coach_first_name, u.last_name as coach_last_name,
                    l.name as location_name,
                    1 as total_dates,
-                   'session' as source_type
+                   'session' as source_type,
+                   NULL as template_id,
+                   NULL as session_date_id
             FROM sessions s
             LEFT JOIN users u ON s.coach_id = u.id
             LEFT JOIN locations l ON s.location_id = l.id
@@ -92,6 +108,53 @@ if ($db_connected) {
     } catch (PDOException $e) {
         error_log("Public sessions fetch error: " . $e->getMessage());
         $sessions = [];
+    }
+    
+    // Fetch upcoming sessions from training_session_templates + training_session_dates
+    try {
+        $templateStmt = $pdo->query("
+            SELECT t.id as template_id,
+                   td.id as session_date_id,
+                   t.name,
+                   t.description,
+                   DATE(td.session_date) as session_date,
+                   TIME(td.session_date) as session_time,
+                   t.duration_minutes,
+                   t.price,
+                   COALESCE(td.max_participants, t.max_participants) as max_participants,
+                   t.session_type_id,
+                   t.location_id,
+                   t.coach_id,
+                   td.session_date as next_date,
+                   u.first_name as coach_first_name, u.last_name as coach_last_name,
+                   l.name as location_name,
+                   1 as total_dates,
+                   'template' as source_type,
+                   NULL as id
+            FROM training_session_templates t
+            INNER JOIN training_session_dates td ON td.template_id = t.id
+            LEFT JOIN users u ON t.coach_id = u.id
+            LEFT JOIN locations l ON t.location_id = l.id
+            WHERE t.is_active = 1
+              AND td.is_active = 1
+              AND (DATE(td.session_date) > CURDATE() OR (DATE(td.session_date) = CURDATE() AND TIME(td.session_date) > CURTIME()))
+            ORDER BY td.session_date ASC
+        ");
+        $templateSessions = $templateStmt->fetchAll(PDO::FETCH_ASSOC);
+        $templateSessions = decryptUserRows($templateSessions);
+        foreach ($templateSessions as &$ts) {
+            $ts['coach_name'] = trim(($ts['coach_first_name'] ?? '') . ' ' . ($ts['coach_last_name'] ?? ''));
+        }
+        unset($ts);
+        
+        // Merge and sort all sessions by date
+        $sessions = array_merge($sessions, $templateSessions);
+        usort($sessions, function($a, $b) {
+            return strtotime($a['next_date']) - strtotime($b['next_date']);
+        });
+    } catch (PDOException $e) {
+        error_log("Template sessions fetch error: " . $e->getMessage());
+        // Keep sessions from the first query
     }
     
     // Fetch active packages for landing page (credits, bundled, dollar_value)
@@ -767,7 +830,7 @@ $viewMode = $_GET['view'] ?? 'list';
                             </div>
                             <div class="session-actions" style="text-align: right;">
                                 <div class="session-price">$<?= number_format($session['price'], 2) ?></div>
-                                <a href="?register=1&type=session&id=<?= $session['id'] ?>" class="register-btn">
+                                <a href="?register=1&type=<?= $session['source_type'] === 'template' ? 'template_date' : 'session' ?>&id=<?= $session['source_type'] === 'template' ? $session['session_date_id'] : $session['id'] ?>" class="register-btn">
                                     <i class="fas fa-user-plus"></i> Register
                                 </a>
                             </div>
@@ -914,7 +977,9 @@ $viewMode = $_GET['view'] ?? 'list';
                             html += '</div>';
                             html += '<div style="text-align: right;">';
                             html += '<div style="font-size: 1.2rem; font-weight: 800; color: var(--primary);">$' + parseFloat(session.price).toFixed(2) + '</div>';
-                            html += '<a href="?register=1&type=session&id=' + session.id + '" class="register-btn" style="padding: 8px 16px; font-size: 12px; margin-top: 8px;"><i class="fas fa-user-plus"></i> Register</a>';
+                            var regType = session.source_type === 'template' ? 'template_date' : 'session';
+                            var regId = session.source_type === 'template' ? session.session_date_id : session.id;
+                            html += '<a href="?register=1&type=' + regType + '&id=' + regId + '" class="register-btn" style="padding: 8px 16px; font-size: 12px; margin-top: 8px;"><i class="fas fa-user-plus"></i> Register</a>';
                             html += '</div>';
                             html += '</div>';
                         });

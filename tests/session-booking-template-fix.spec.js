@@ -7,8 +7,8 @@ import * as path from 'path';
  * Tests for:
  * 1. Booking page only shows sessions from sessions table (no template UNION)
  * 2. Session update doesn't incorrectly write to session_coaches with template IDs
- * 3. Landing page shows all session dates from sessions table
- * 4. Registration intent uses session_id instead of template_id
+ * 3. Public sessions page shows sessions from both sessions table AND training_session_templates
+ * 4. Registration intent supports both session_id and template-based sessions
  */
 
 const ROOT = path.resolve(__dirname, '..');
@@ -71,24 +71,29 @@ test.describe('Admin Action - Template Update Fix', () => {
 });
 
 // =====================================================
-// 3. Landing Page - Shows all session dates
+// 3. Public Sessions Page - Shows sessions from both sources
 // =====================================================
 
-test.describe('Landing Page - Session Dates Display', () => {
-  test('sessions_public.php does not query training_session_templates for display', () => {
+test.describe('Public Sessions Page - Dual Source Display', () => {
+  test('sessions_public.php queries the sessions table', () => {
     const content = readFile('sessions_public.php');
-    // The data query section between fetching sessions and fetching packages
-    const startIdx = content.indexOf('FROM sessions s');
-    const endIdx = content.indexOf('Fetch active packages');
-    const dataSection = content.substring(startIdx, endIdx);
-    expect(dataSection).not.toContain('training_session_templates');
+    expect(content).toContain('FROM sessions s');
+    expect(content).toContain("s.status = 'scheduled'");
   });
 
-  test('sessions_public.php queries sessions table with show_on_landing', () => {
+  test('sessions_public.php also queries training_session_templates with dates', () => {
     const content = readFile('sessions_public.php');
-    expect(content).toContain("s.show_on_landing = 1");
-    expect(content).toContain("s.status = 'scheduled'");
-    expect(content).toContain('FROM sessions s');
+    expect(content).toContain('FROM training_session_templates t');
+    expect(content).toContain('INNER JOIN training_session_dates td ON td.template_id = t.id');
+    expect(content).toContain('t.is_active = 1');
+    expect(content).toContain('td.is_active = 1');
+  });
+
+  test('sessions_public.php merges and sorts both session sources by date', () => {
+    const content = readFile('sessions_public.php');
+    expect(content).toContain('array_merge');
+    expect(content).toContain('usort');
+    expect(content).toContain("strtotime(\$a['next_date'])");
   });
 
   test('sessions_public.php does not artificially limit session count', () => {
@@ -100,29 +105,36 @@ test.describe('Landing Page - Session Dates Display', () => {
     expect(dataSection).not.toContain('LIMIT');
   });
 
-  test('sessions_public.php orders sessions by date and time', () => {
+  test('sessions_public.php includes source_type to distinguish session origins', () => {
     const content = readFile('sessions_public.php');
-    expect(content).toContain('ORDER BY s.session_date ASC, s.session_time ASC');
+    expect(content).toContain("'session' as source_type");
+    expect(content).toContain("'template' as source_type");
   });
 });
 
 // =====================================================
-// 4. Registration Intent - Uses session_id
+// 4. Registration Intent - Supports both session and template types
 // =====================================================
 
 test.describe('Registration Intent Fix', () => {
-  test('sessions_public.php uses session_id for registration intent', () => {
+  test('sessions_public.php supports template_date registration type', () => {
     const content = readFile('sessions_public.php');
     const intentSection = content.substring(
       content.indexOf('INSERT INTO session_registration_intents'),
       content.indexOf('Redirect to login with token')
     );
     expect(intentSection).toContain('session_id');
-    expect(intentSection).not.toContain('template_id');
+    expect(intentSection).toContain('template_id');
+    expect(intentSection).toContain('session_date_id');
   });
 
-  test('register links use session id', () => {
+  test('register links use correct type based on source_type', () => {
     const content = readFile('sessions_public.php');
-    expect(content).toContain("register=1&type=session&id=<?= $session['id'] ?>");
+    expect(content).toContain("source_type'] === 'template' ? 'template_date' : 'session'");
+  });
+
+  test('calendar view register links also use correct type based on source_type', () => {
+    const content = readFile('sessions_public.php');
+    expect(content).toContain("session.source_type === 'template' ? 'template_date' : 'session'");
   });
 });
