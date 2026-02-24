@@ -323,6 +323,9 @@ class GitHubUpdater {
             // Restore persistent files after update
             $this->restorePersistentFiles($backup);
             
+            // Phase 4: Run database schema check to ensure tables match the updated code
+            $schema_check = $this->runSchemaCheck();
+            
             // Update current commit SHA
             $check_result = $this->checkForUpdates();
             if ($check_result['success']) {
@@ -340,6 +343,7 @@ class GitHubUpdater {
                 'updated_count' => $updated_count,
                 'deleted_count' => $deleted_count,
                 'has_deferred' => $has_deferred,
+                'schema_check' => $schema_check,
                 'errors' => $errors
             ];
             
@@ -855,6 +859,120 @@ class GitHubUpdater {
         $backup_dir = !empty($backup_values) ? dirname($backup_values[0]) : null;
         if ($backup_dir && is_dir($backup_dir)) {
             @rmdir($backup_dir);
+        }
+    }
+    
+    /**
+     * Run database schema check after update to ensure tables match the updated code.
+     * Uses DatabaseMigrator to compare the live database against database_schema.sql,
+     * creates missing tables, adds missing columns, and runs inline migrations.
+     *
+     * @return array Schema check results with applied changes and any errors
+     */
+    public function runSchemaCheck() {
+        $results = [];
+        $errors = [];
+        
+        try {
+            $schema_file = $this->base_path . '/database_schema.sql';
+            if (!file_exists($schema_file)) {
+                return ['success' => false, 'message' => 'database_schema.sql not found', 'results' => [], 'errors' => []];
+            }
+            
+            $migrator_file = $this->base_path . '/lib/database_migrator.php';
+            if (!file_exists($migrator_file)) {
+                return ['success' => false, 'message' => 'DatabaseMigrator not found', 'results' => [], 'errors' => []];
+            }
+            
+            require_once $migrator_file;
+            $migrator = new \DatabaseMigrator($this->pdo, $this->base_path);
+            
+            // Parse expected schema from the updated database_schema.sql
+            $expected_schema = $migrator->parseSchemaFile($schema_file);
+            
+            // Get current live database schema
+            $current_schema = $migrator->getCurrentSchema();
+            
+            // Compare and generate migration steps
+            $migrations = $migrator->compareSchemas($current_schema, $expected_schema);
+            
+            // Execute migrations: create missing tables and add missing columns
+            $schema_sql = file_get_contents($schema_file);
+            
+            foreach ($migrations as $migration) {
+                try {
+                    if ($migration['type'] === 'create_table') {
+                        $table_name = $migration['table'];
+                        if (preg_match('/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?`?' . preg_quote($table_name, '/') . '`?\s*\(.*?\)\s*ENGINE[^;]*;/is', $schema_sql, $match)) {
+                            $this->pdo->exec($match[0]);
+                            $results[] = "Created missing table: $table_name";
+                        }
+                    } elseif ($migration['type'] === 'add_column') {
+                        $result = $migrator->executeMigration($migration);
+                        if (!empty($result['skipped'])) {
+                            $results[] = $result['message'] . ' (skipped)';
+                        } else {
+                            $results[] = $result['message'];
+                        }
+                    }
+                } catch (\Exception $e) {
+                    $errors[] = "Schema migration error: " . $e->getMessage();
+                    error_log("Update schema check error: " . $e->getMessage());
+                }
+            }
+            
+            // Run inline migrations for columns that may not be detected by schema comparison
+            $inline_migrations = [
+                ["ALTER TABLE eval_categories ADD COLUMN display_order INT DEFAULT 0 AFTER description", "eval_categories.display_order"],
+                ["ALTER TABLE eval_skills ADD COLUMN display_order INT DEFAULT 0 AFTER description", "eval_skills.display_order"],
+                ["ALTER TABLE vr_game_plan_lines ADD COLUMN roster_player_id INT DEFAULT NULL COMMENT 'References roster_players.id for non-user players' AFTER athlete_id", "vr_game_plan_lines.roster_player_id"],
+                ["ALTER TABLE vr_game_plan_lines ADD COLUMN game_id INT DEFAULT NULL COMMENT 'NULL = default/standard lineup, set = game-specific lines' AFTER team_id", "vr_game_plan_lines.game_id"],
+                ["ALTER TABLE teams ADD COLUMN is_managed TINYINT(1) DEFAULT 1 COMMENT '1 = managed team (our teams), 0 = unmanaged (opponent teams)' AFTER is_demo", "teams.is_managed"],
+                ["ALTER TABLE teams ADD COLUMN ical_url VARCHAR(1000) DEFAULT NULL COMMENT 'Stored iCal URL for calendar re-sync' AFTER is_managed", "teams.ical_url"],
+                ["ALTER TABLE game_schedules ADD COLUMN ical_uid VARCHAR(500) DEFAULT NULL COMMENT 'UID from iCal event for sync/update tracking' AFTER season_id", "game_schedules.ical_uid"],
+                ["ALTER TABLE users ADD COLUMN sip_wss_port INT DEFAULT 7443 COMMENT 'WebSocket Secure port for SIP/WSS connection to FusionPBX' AFTER sip_password", "users.sip_wss_port"],
+            ];
+            
+            foreach ($inline_migrations as $mig) {
+                try {
+                    $this->pdo->exec($mig[0]);
+                    $results[] = "Ensured column: " . $mig[1];
+                } catch (\PDOException $e) {
+                    // Ignore "Duplicate column" errors — column already exists
+                    if ($e->getCode() !== '42S21' && strpos($e->getMessage(), 'Duplicate column') === false) {
+                        $errors[] = "Could not add " . $mig[1] . ": " . $e->getMessage();
+                    }
+                }
+            }
+            
+            // Add foreign key constraints if missing
+            try {
+                $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = 'expenses' AND CONSTRAINT_NAME = 'fk_expense_payee'");
+                $stmt->execute();
+                if ($stmt->fetchColumn() == 0) {
+                    $this->pdo->exec("ALTER TABLE expenses ADD CONSTRAINT fk_expense_payee FOREIGN KEY (payee_id) REFERENCES contacts(id) ON DELETE SET NULL ON UPDATE CASCADE");
+                    $results[] = "Added foreign key: fk_expense_payee";
+                }
+            } catch (\PDOException $e) {
+                // Non-critical — FK may already exist or tables may not be ready
+            }
+            
+            return [
+                'success' => true,
+                'message' => 'Schema check completed',
+                'results' => $results,
+                'errors' => $errors,
+                'tables_checked' => count($expected_schema['tables'] ?? []),
+                'changes_applied' => count($results)
+            ];
+            
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Schema check failed: ' . $e->getMessage(),
+                'results' => $results,
+                'errors' => $errors
+            ];
         }
     }
 }

@@ -3903,6 +3903,24 @@ async function githubApplyUpdate() {
                 }
                 
                 githubAddLogEntry('Persistent files restored.', 'success');
+                
+                // Display schema check results
+                if (data.schema_check) {
+                    githubAddLogEntry('Running database schema check...', 'info');
+                    if (data.schema_check.success) {
+                        const changes = data.schema_check.changes_applied || 0;
+                        if (changes > 0 && data.schema_check.results) {
+                            data.schema_check.results.forEach(r => githubAddLogEntry(r, 'info'));
+                        }
+                        githubAddLogEntry(`Schema check complete: ${changes} change(s) applied.`, 'success');
+                    } else {
+                        githubAddLogEntry('Schema check failed: ' + (data.schema_check.message || 'Unknown error'), 'warning');
+                    }
+                    if (data.schema_check.errors && data.schema_check.errors.length > 0) {
+                        data.schema_check.errors.forEach(err => githubAddLogEntry(err, 'warning'));
+                    }
+                }
+                
                 githubAddLogEntry('Update applied successfully!', 'success');
                 
                 document.getElementById('githubProgressTitle').innerHTML = '<i class="fas fa-check-circle" style="color: #10b981;"></i> Update Complete';

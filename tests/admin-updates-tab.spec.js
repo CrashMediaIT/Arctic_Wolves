@@ -531,3 +531,123 @@ test.describe('Deferred update mechanism to prevent self-replacement', () => {
     expect(fn).toContain('@unlink($pending_path)');
   });
 });
+
+// =====================================================
+// 8. Database schema check during updates
+// =====================================================
+
+test.describe('Database schema check during update process', () => {
+
+  test('GitHubUpdater should have runSchemaCheck method', () => {
+    const content = readFile('lib/github_updater.php');
+    expect(content).toContain('function runSchemaCheck()');
+  });
+
+  test('runSchemaCheck should use DatabaseMigrator to compare schemas', () => {
+    const content = readFile('lib/github_updater.php');
+    const fnStart = content.indexOf('function runSchemaCheck()');
+    const fnEnd = content.indexOf('}', content.indexOf("'Schema check failed:", fnStart));
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('DatabaseMigrator');
+    expect(fn).toContain('parseSchemaFile');
+    expect(fn).toContain('getCurrentSchema');
+    expect(fn).toContain('compareSchemas');
+  });
+
+  test('runSchemaCheck should load database_schema.sql', () => {
+    const content = readFile('lib/github_updater.php');
+    const fnStart = content.indexOf('function runSchemaCheck()');
+    const fnEnd = content.indexOf('}', content.indexOf("'Schema check failed:", fnStart));
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('database_schema.sql');
+  });
+
+  test('runSchemaCheck should create missing tables from schema file', () => {
+    const content = readFile('lib/github_updater.php');
+    const fnStart = content.indexOf('function runSchemaCheck()');
+    const fnEnd = content.indexOf('}', content.indexOf("'Schema check failed:", fnStart));
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('create_table');
+    expect(fn).toContain('Created missing table');
+  });
+
+  test('runSchemaCheck should add missing columns', () => {
+    const content = readFile('lib/github_updater.php');
+    const fnStart = content.indexOf('function runSchemaCheck()');
+    const fnEnd = content.indexOf('}', content.indexOf("'Schema check failed:", fnStart));
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('add_column');
+    expect(fn).toContain('executeMigration');
+  });
+
+  test('runSchemaCheck should run inline migrations matching setup.php', () => {
+    const content = readFile('lib/github_updater.php');
+    const fnStart = content.indexOf('function runSchemaCheck()');
+    const fnEnd = content.indexOf('}', content.indexOf("'Schema check failed:", fnStart));
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('inline_migrations');
+    expect(fn).toContain('eval_categories');
+    expect(fn).toContain('eval_skills');
+    expect(fn).toContain('vr_game_plan_lines');
+    expect(fn).toContain('teams');
+    expect(fn).toContain('game_schedules');
+    expect(fn).toContain('users');
+    expect(fn).toContain('sip_wss_port');
+  });
+
+  test('runSchemaCheck should handle duplicate column errors gracefully', () => {
+    const content = readFile('lib/github_updater.php');
+    const fnStart = content.indexOf('function runSchemaCheck()');
+    const fnEnd = content.indexOf('}', content.indexOf("'Schema check failed:", fnStart));
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('Duplicate column');
+    expect(fn).toContain('42S21');
+  });
+
+  test('runSchemaCheck should return structured results', () => {
+    const content = readFile('lib/github_updater.php');
+    const fnStart = content.indexOf('function runSchemaCheck()');
+    const fnEnd = content.indexOf('}', content.indexOf("'Schema check failed:", fnStart));
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain("'tables_checked'");
+    expect(fn).toContain("'changes_applied'");
+    expect(fn).toContain("'results'");
+    expect(fn).toContain("'errors'");
+  });
+
+  test('applyUpdates should call runSchemaCheck after file update', () => {
+    const content = readFile('lib/github_updater.php');
+    const fnStart = content.indexOf('function applyUpdates()');
+    const fnEnd = content.indexOf('function downloadFileToStaging');
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('runSchemaCheck()');
+    expect(fn).toContain("'schema_check'");
+  });
+
+  test('applyUpdates return value should include schema_check field', () => {
+    const content = readFile('lib/github_updater.php');
+    const fnStart = content.indexOf('function applyUpdates()');
+    const fnEnd = content.indexOf('function downloadFileToStaging');
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain("'schema_check' => $schema_check");
+  });
+
+  test('githubApplyUpdate JS should display schema check results', () => {
+    const content = readFile('views/admin_system_tools.php');
+    const fnStart = content.indexOf('async function githubApplyUpdate()');
+    const fnEnd = content.indexOf('// Stripe Library Update functions');
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('schema_check');
+    expect(fn).toContain('Running database schema check');
+    expect(fn).toContain('Schema check complete');
+    expect(fn).toContain('changes_applied');
+  });
+
+  test('runSchemaCheck should handle fk_expense_payee foreign key', () => {
+    const content = readFile('lib/github_updater.php');
+    const fnStart = content.indexOf('function runSchemaCheck()');
+    const fnEnd = content.indexOf('}', content.indexOf("'Schema check failed:", fnStart));
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('fk_expense_payee');
+  });
+});
