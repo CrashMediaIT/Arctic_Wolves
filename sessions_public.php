@@ -52,12 +52,12 @@ if (isset($_GET['register'])) {
     exit();
 }
 
-// Fetch public sessions (sessions with show_on_landing = 1)
+// Fetch public sessions (all upcoming scheduled sessions)
 $sessions = [];
 $packages = [];
 
 if ($db_connected) {
-    // Fetch upcoming sessions from the sessions table marked for landing page
+    // Fetch all upcoming scheduled sessions
     try {
         $sessionsStmt = $pdo->query("
             SELECT s.id, 
@@ -79,8 +79,7 @@ if ($db_connected) {
             FROM sessions s
             LEFT JOIN users u ON s.coach_id = u.id
             LEFT JOIN locations l ON s.location_id = l.id
-            WHERE s.show_on_landing = 1 
-              AND s.status = 'scheduled'
+            WHERE s.status = 'scheduled'
               AND (s.session_date > CURDATE() OR (s.session_date = CURDATE() AND COALESCE(s.session_time, '00:00:00') > CURTIME()))
             ORDER BY s.session_date ASC, s.session_time ASC
         ");
@@ -215,8 +214,9 @@ $viewMode = $_GET['view'] ?? 'list';
         
         .packages-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(280px, 380px));
             gap: 24px;
+            justify-content: center;
         }
         
         .package-card {
@@ -285,8 +285,9 @@ $viewMode = $_GET['view'] ?? 'list';
         
         .camps-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(300px, 400px));
             gap: 24px;
+            justify-content: center;
         }
         
         .camp-card {
@@ -739,9 +740,7 @@ $viewMode = $_GET['view'] ?? 'list';
                     <?php if (!empty($sessions)): ?>
                     <div class="sessions-list">
                         <?php 
-                        // Show only next 3 sessions in list view
-                        $displaySessions = array_slice($sessions, 0, 3);
-                        foreach ($displaySessions as $session): 
+                        foreach ($sessions as $session): 
                             $sessionDate = strtotime($session['next_date']);
                         ?>
                         <div class="session-card">
@@ -775,14 +774,6 @@ $viewMode = $_GET['view'] ?? 'list';
                         </div>
                         <?php endforeach; ?>
                     </div>
-                    
-                    <?php if (count($sessions) > 3): ?>
-                    <div style="text-align: center; margin-top: 30px;">
-                        <a href="?view=calendar" class="register-btn" style="background: transparent; border: 1px solid var(--primary); color: var(--primary);">
-                            <i class="fas fa-calendar-alt"></i> View All Sessions in Calendar
-                        </a>
-                    </div>
-                    <?php endif; ?>
                     
                     <?php else: ?>
                     <div class="empty-state">
@@ -951,8 +942,7 @@ $viewMode = $_GET['view'] ?? 'list';
                 <p class="footer-desc">High-performance athletic development.</p>
                 
                 <div class="social-tray">
-                    <a href="#" class="social-icon"><i class="fab fa-instagram"></i></a>
-                    <a href="#" class="social-icon"><i class="fab fa-twitter"></i></a>
+                    <a href="https://www.instagram.com/arcticwolveshockey/" target="_blank" rel="noopener noreferrer" class="social-icon"><i class="fab fa-instagram"></i></a>
                 </div>
             </div>
             <div class="footer-right">
