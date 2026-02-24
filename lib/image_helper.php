@@ -158,3 +158,70 @@ function resolveEvaluationMedia($pdo, $media_id, $local_path) {
     
     return null;
 }
+
+/**
+ * Resolve a drill image path, restoring from Nextcloud if needed.
+ * Call this before displaying a drill image to ensure the local file exists.
+ * 
+ * @param PDO $pdo Database connection
+ * @param int $drill_id The drill ID
+ * @param string $local_path The local file path (custom_image) from the database
+ * @return string|null The resolved local path, or null if unavailable
+ */
+function resolveDrillImage($pdo, $drill_id, $local_path) {
+    // Validate path to prevent directory traversal
+    if (!empty($local_path) && !isValidImagePath($local_path)) {
+        return null;
+    }
+    
+    // If local file exists, nothing to do
+    if (!empty($local_path) && file_exists($local_path)) {
+        return $local_path;
+    }
+    
+    // Try to restore from Nextcloud
+    try {
+        $stmt = $pdo->prepare("SELECT nextcloud_image_path FROM drills WHERE id = ?");
+        $stmt->execute([$drill_id]);
+        $nextcloud_path = $stmt->fetchColumn();
+        
+        if (empty($nextcloud_path)) {
+            return null;
+        }
+        
+        $nc_settings = getNextcloudSettings($pdo);
+        if (empty($nc_settings['nextcloud_url'])) {
+            return null;
+        }
+        
+        // Decrypt password
+        if (!empty($nc_settings['nextcloud_password'])) {
+            $decrypted = decryptPassword($nc_settings['nextcloud_password']);
+            if (!empty($decrypted)) {
+                $nc_settings['nextcloud_password'] = $decrypted;
+            }
+        }
+        
+        // Determine local path to restore to
+        if (empty($local_path)) {
+            $ext = pathinfo($nextcloud_path, PATHINFO_EXTENSION) ?: 'jpg';
+            $local_path = "uploads/drills/drill_" . intval($drill_id) . "_restored." . $ext;
+        }
+        
+        // Final safety check on restore path
+        if (!isValidImagePath($local_path)) {
+            return null;
+        }
+        
+        $restored = restoreImageFromNextcloud($pdo, $nc_settings, $nextcloud_path, $local_path);
+        if ($restored) {
+            // Update the local path in database
+            $pdo->prepare("UPDATE drills SET custom_image = ? WHERE id = ?")->execute([$local_path, $drill_id]);
+            return $local_path;
+        }
+    } catch (Exception $e) {
+        error_log("Failed to restore drill image from Nextcloud for drill $drill_id: " . $e->getMessage());
+    }
+    
+    return null;
+}
