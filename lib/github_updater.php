@@ -209,49 +209,56 @@ class GitHubUpdater {
                 return ['success' => false, 'message' => 'Failed to create staging directory'];
             }
             
-            // Phase 1: Download all files to staging directory
+            // Phase 1: Download repository to staging directory
             $downloaded_count = 0;
             $failed_count = 0;
             $errors = [];
             
-            foreach ($tree_data['tree'] as $item) {
-                if ($item['type'] !== 'blob') continue;
-                
-                $file_path = $item['path'];
-                
-                if ($this->isExcludedPath($file_path)) {
-                    continue;
+            // Try fast zipball download first (single request instead of per-file)
+            $zipResult = $this->downloadAndExtractZipball($staging_dir);
+            if ($zipResult['success']) {
+                $downloaded_count = $zipResult['file_count'];
+            } else {
+                // Fall back to per-file downloads if zipball fails
+                foreach ($tree_data['tree'] as $item) {
+                    if ($item['type'] !== 'blob') continue;
+                    
+                    $file_path = $item['path'];
+                    
+                    if ($this->isExcludedPath($file_path)) {
+                        continue;
+                    }
+                    
+                    $result = $this->downloadFileToStaging($file_path, $staging_dir);
+                    if ($result['success']) {
+                        $downloaded_count++;
+                    } else {
+                        $failed_count++;
+                        $errors[] = "Failed to download {$file_path}: {$result['message']}";
+                    }
+                    
+                    // Abort if too many downloads are failing (network likely down)
+                    if ($failed_count > 0 && $total_files > 0 && ($failed_count / ($downloaded_count + $failed_count)) > 0.5 && $failed_count >= 5) {
+                        $this->cleanupDirectory($staging_dir);
+                        $this->restorePersistentFiles($backup);
+                        return [
+                            'success' => false,
+                            'message' => "Update aborted: too many download failures ({$failed_count} failed). Site files have been preserved.",
+                            'errors' => $errors
+                        ];
+                    }
                 }
                 
-                $result = $this->downloadFileToStaging($file_path, $staging_dir);
-                if ($result['success']) {
-                    $downloaded_count++;
-                } else {
-                    $failed_count++;
-                    $errors[] = "Failed to download {$file_path}: {$result['message']}";
-                }
-                
-                // Abort if too many downloads are failing (network likely down)
-                if ($failed_count > 0 && $total_files > 0 && ($failed_count / ($downloaded_count + $failed_count)) > 0.5 && $failed_count >= 5) {
+                // If any downloads failed, abort — do not apply partial updates
+                if ($failed_count > 0) {
                     $this->cleanupDirectory($staging_dir);
                     $this->restorePersistentFiles($backup);
                     return [
                         'success' => false,
-                        'message' => "Update aborted: too many download failures ({$failed_count} failed). Site files have been preserved.",
+                        'message' => "Update aborted: {$failed_count} file(s) failed to download. No files were changed.",
                         'errors' => $errors
                     ];
                 }
-            }
-            
-            // If any downloads failed, abort — do not apply partial updates
-            if ($failed_count > 0) {
-                $this->cleanupDirectory($staging_dir);
-                $this->restorePersistentFiles($backup);
-                return [
-                    'success' => false,
-                    'message' => "Update aborted: {$failed_count} file(s) failed to download. No files were changed.",
-                    'errors' => $errors
-                ];
             }
             
             // Phase 2: Copy staged files to live site, deferring active update files
@@ -382,6 +389,114 @@ class GitHubUpdater {
         } catch (Exception $e) {
             return ['success' => false, 'message' => $e->getMessage()];
         }
+    }
+    
+    /**
+     * Download the entire repository as a zipball and extract to the staging directory.
+     * This is much faster than downloading files individually since it uses a single HTTP request.
+     *
+     * @param string $staging_dir Path to the staging directory
+     * @return array Result with success status and file count
+     */
+    private function downloadAndExtractZipball($staging_dir) {
+        if (!class_exists('ZipArchive')) {
+            return ['success' => false, 'message' => 'ZipArchive extension not available'];
+        }
+        
+        $zip_path = $staging_dir . '/repo.zip';
+        $branches = ['main', 'master'];
+        $downloaded = false;
+        
+        foreach ($branches as $branch) {
+            $url = "https://api.github.com/repos/{$this->repo_owner}/{$this->repo_name}/zipball/{$branch}";
+            $headers = ['User-Agent: Arctic-Wolves-Updater'];
+            
+            if (!empty($this->github_token)) {
+                $headers[] = "Authorization: token {$this->github_token}";
+            }
+            
+            $context = stream_context_create([
+                'http' => [
+                    'method' => 'GET',
+                    'header' => implode("\r\n", $headers),
+                    'timeout' => 120,
+                    'follow_location' => true,
+                    'ignore_errors' => true
+                ],
+                'ssl' => [
+                    'verify_peer' => true,
+                    'verify_peer_name' => true,
+                ]
+            ]);
+            
+            $content = @file_get_contents($url, false, $context);
+            
+            if ($content !== false && strlen($content) > 0) {
+                // Verify it's a valid ZIP (starts with PK magic bytes) and not an error response
+                if (substr($content, 0, 2) === "PK") {
+                    if (file_put_contents($zip_path, $content) !== false) {
+                        $downloaded = true;
+                        break;
+                    }
+                }
+            }
+        }
+        
+        if (!$downloaded) {
+            return ['success' => false, 'message' => 'Failed to download repository archive'];
+        }
+        
+        // Extract ZIP to staging
+        $zip = new \ZipArchive();
+        if ($zip->open($zip_path) !== true) {
+            @unlink($zip_path);
+            return ['success' => false, 'message' => 'Failed to open repository archive'];
+        }
+        
+        // GitHub ZIP contains a root directory prefix (e.g., "Owner-Repo-SHA/")
+        // Find and strip this prefix when extracting
+        $prefix = '';
+        if ($zip->numFiles > 0) {
+            $first_entry = $zip->getNameIndex(0);
+            $slash_pos = strpos($first_entry, '/');
+            if ($slash_pos !== false) {
+                $prefix = substr($first_entry, 0, $slash_pos + 1);
+            }
+        }
+        
+        $file_count = 0;
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $entry_name = $zip->getNameIndex($i);
+            
+            // Skip directory entries
+            if (substr($entry_name, -1) === '/') continue;
+            
+            // Strip the root prefix
+            $relative_path = $entry_name;
+            if (!empty($prefix) && strpos($entry_name, $prefix) === 0) {
+                $relative_path = substr($entry_name, strlen($prefix));
+            }
+            
+            if (empty($relative_path)) continue;
+            
+            $dest_path = $staging_dir . '/' . $relative_path;
+            $dir = dirname($dest_path);
+            
+            if (!is_dir($dir)) {
+                mkdir($dir, 0755, true);
+            }
+            
+            $entry_content = $zip->getFromIndex($i);
+            if ($entry_content !== false) {
+                file_put_contents($dest_path, $entry_content);
+                $file_count++;
+            }
+        }
+        
+        $zip->close();
+        @unlink($zip_path);
+        
+        return ['success' => true, 'file_count' => $file_count];
     }
     
     /**

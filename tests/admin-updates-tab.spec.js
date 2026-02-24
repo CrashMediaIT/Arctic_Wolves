@@ -354,6 +354,76 @@ test.describe('GitHub updater network error handling', () => {
     const fn = content.substring(fnStart, fnEnd);
     expect(fn).toContain('error.message');
   });
+
+  test('applyUpdates should try zipball download before per-file downloads', () => {
+    const content = readFile('lib/github_updater.php');
+    const fnStart = content.indexOf('function applyUpdates()');
+    const fnEnd = content.indexOf('function downloadAndExtractZipball');
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('downloadAndExtractZipball($staging_dir)');
+    expect(fn).toContain('downloadFileToStaging');
+  });
+
+  test('downloadAndExtractZipball method should exist and use zipball API', () => {
+    const content = readFile('lib/github_updater.php');
+    expect(content).toContain('function downloadAndExtractZipball($staging_dir)');
+    const fnStart = content.indexOf('function downloadAndExtractZipball');
+    const fnEnd = content.indexOf('function cleanupDirectory');
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('zipball');
+    expect(fn).toContain('ZipArchive');
+    expect(fn).toContain('file_count');
+  });
+
+  test('downloadAndExtractZipball should strip GitHub root directory prefix', () => {
+    const content = readFile('lib/github_updater.php');
+    const fnStart = content.indexOf('function downloadAndExtractZipball');
+    const fnEnd = content.indexOf('function cleanupDirectory');
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('$prefix');
+    expect(fn).toContain('getNameIndex');
+  });
+
+  test('downloadAndExtractZipball should fall back to master branch', () => {
+    const content = readFile('lib/github_updater.php');
+    const fnStart = content.indexOf('function downloadAndExtractZipball');
+    const fnEnd = content.indexOf('function cleanupDirectory');
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain("'main'");
+    expect(fn).toContain("'master'");
+  });
+
+  test('githubApplyUpdate JS should have retry logic for network errors', () => {
+    const content = readFile('views/admin_system_tools.php');
+    const fnStart = content.indexOf('async function githubApplyUpdate()');
+    const fnEnd = content.indexOf('// Stripe Library Update functions');
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('maxRetries');
+    expect(fn).toContain('attempt');
+    expect(fn).toContain('Will retry');
+  });
+
+  test('githubApplyUpdate JS should retry on 502/503/504 status codes', () => {
+    const content = readFile('views/admin_system_tools.php');
+    const fnStart = content.indexOf('async function githubApplyUpdate()');
+    const fnEnd = content.indexOf('// Stripe Library Update functions');
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('502');
+    expect(fn).toContain('503');
+    expect(fn).toContain('504');
+    expect(fn).toContain('isRetryableStatus');
+  });
+
+  test('githubApplyUpdate JS should use AbortController with timeout', () => {
+    const content = readFile('views/admin_system_tools.php');
+    const fnStart = content.indexOf('async function githubApplyUpdate()');
+    const fnEnd = content.indexOf('// Stripe Library Update functions');
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('AbortController');
+    expect(fn).toContain('controller.abort()');
+    expect(fn).toContain('signal: controller.signal');
+    expect(fn).toContain('clearTimeout(timeoutId)');
+  });
 });
 
 // =====================================================
