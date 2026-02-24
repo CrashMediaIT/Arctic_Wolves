@@ -124,6 +124,7 @@ try {
             $parent_stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
             $parent_stmt->execute([$user_id]);
             $parent = $parent_stmt->fetch();
+            $parent = decryptUserRow($parent);
             
             if ($parent) {
                 createNotification(
@@ -209,6 +210,7 @@ try {
             $parent_stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
             $parent_stmt->execute([$user_id]);
             $parent = $parent_stmt->fetch();
+            $parent = decryptUserRow($parent);
             
             sendEmail($email, 'welcome', [
                 'name' => $first_name,

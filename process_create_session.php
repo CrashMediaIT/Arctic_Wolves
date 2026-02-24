@@ -67,6 +67,7 @@ if ($action == 'create_private_session' && $_SERVER["REQUEST_METHOD"] == "POST")
         $stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
         $stmt->execute([$coach_id]);
         $coach = $stmt->fetch(PDO::FETCH_ASSOC);
+        $coach = decryptUserRow($coach);
         $coach_name = $coach['first_name'] . ' ' . $coach['last_name'];
         
         // Create the session
@@ -98,6 +99,7 @@ if ($action == 'create_private_session' && $_SERVER["REQUEST_METHOD"] == "POST")
                 $stmt = $pdo->prepare("SELECT first_name, last_name, email FROM users WHERE id = ?");
                 $stmt->execute([$athlete_id]);
                 $athlete = $stmt->fetch(PDO::FETCH_ASSOC);
+                $athlete = decryptUserRow($athlete);
                 
                 if (!$athlete) continue;
                 

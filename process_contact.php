@@ -50,6 +50,7 @@ try {
             $sender_stmt = $pdo->prepare("SELECT first_name, last_name, email FROM users WHERE id = ?");
             $sender_stmt->execute([$user_id]);
             $sender = $sender_stmt->fetch(PDO::FETCH_ASSOC);
+            $sender = decryptUserRow($sender);
             
             if (!$sender) {
                 throw new Exception('User not found');
@@ -65,6 +66,7 @@ try {
                 $rec_stmt = $pdo->prepare("SELECT id, first_name, last_name, email FROM users WHERE id = ?");
                 $rec_stmt->execute([$recipient_id]);
                 $rec = $rec_stmt->fetch(PDO::FETCH_ASSOC);
+                $rec = decryptUserRow($rec);
                 if ($rec) {
                     $recipients[] = $rec;
                 }
@@ -78,6 +80,7 @@ try {
                 ");
                 $coach_stmt->execute([$user_id]);
                 $recipients = $coach_stmt->fetchAll(PDO::FETCH_ASSOC);
+                $recipients = decryptUserRows($recipients);
                 
                 // If no assigned coach, get all active coaches
                 if (empty($recipients)) {
@@ -90,6 +93,7 @@ try {
                     ");
                     $coach_stmt->execute();
                     $recipients = $coach_stmt->fetchAll(PDO::FETCH_ASSOC);
+                    $recipients = decryptUserRows($recipients);
                 }
             } elseif ($user_role === 'parent') {
                 // Parent sending to coach - get children's coaches
@@ -102,6 +106,7 @@ try {
                 ");
                 $coach_stmt->execute([$user_id]);
                 $recipients = $coach_stmt->fetchAll(PDO::FETCH_ASSOC);
+                $recipients = decryptUserRows($recipients);
             }
             
             if (empty($recipients)) {

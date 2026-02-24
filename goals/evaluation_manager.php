@@ -122,7 +122,11 @@ class EvaluationManager {
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute($params);
             
-            return ['success' => true, 'evaluations' => $stmt->fetchAll(PDO::FETCH_ASSOC)];
+            $evaluations = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            if (function_exists('decryptUserRows')) {
+                $evaluations = decryptUserRows($evaluations);
+            }
+            return ['success' => true, 'evaluations' => $evaluations];
             
         } catch (PDOException $e) {
             error_log("EvaluationManager::getAthleteEvaluations Error: " . $e->getMessage());
@@ -149,6 +153,7 @@ class EvaluationManager {
             ");
             $stmt->execute([$evaluation_id]);
             $evaluation = $stmt->fetch(PDO::FETCH_ASSOC);
+            $evaluation = function_exists('decryptUserRow') ? decryptUserRow($evaluation) : $evaluation;
             
             if (!$evaluation) {
                 return ['success' => false, 'error' => 'Evaluation not found'];
