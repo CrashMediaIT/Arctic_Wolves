@@ -76,7 +76,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     // Verify reCAPTCHA v3 token
     $recaptcha_token = $_POST['recaptcha_token'] ?? '';
-    $recaptcha_secret = $_ENV['RECAPTCHA_SECRET_KEY'] ?? '';
+    // Load reCAPTCHA secret key from database (encrypted in system_settings)
+    $recaptcha_secret = '';
+    if ($db_connected && $pdo) {
+        try {
+            $rc_stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'recaptcha_secret_key'");
+            $rc_stmt->execute();
+            $rc_val = $rc_stmt->fetchColumn();
+            if (!empty($rc_val) && function_exists('decryptCredential')) {
+                $recaptcha_secret = decryptCredential($rc_val);
+            }
+        } catch (PDOException $e) {
+            // Setting may not exist yet
+        }
+    }
     if (!empty($recaptcha_secret)) {
         $recaptcha_valid = false;
         if (!empty($recaptcha_token)) {

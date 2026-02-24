@@ -143,7 +143,20 @@ if (isset($_GET['error'])) {
     }
 }
 
-$recaptcha_site_key = $_ENV['RECAPTCHA_SITE_KEY'] ?? '';
+// Load reCAPTCHA site key from database (encrypted in system_settings)
+$recaptcha_site_key = '';
+if ($db_connected && $pdo) {
+    try {
+        $rc_stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'recaptcha_site_key'");
+        $rc_stmt->execute();
+        $rc_val = $rc_stmt->fetchColumn();
+        if (!empty($rc_val) && function_exists('decryptCredential')) {
+            $recaptcha_site_key = decryptCredential($rc_val);
+        }
+    } catch (PDOException $e) {
+        // Setting may not exist yet
+    }
+}
 ?>
 
 <!DOCTYPE html>

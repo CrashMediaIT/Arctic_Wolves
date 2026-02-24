@@ -2686,6 +2686,57 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                 </div>
             </div>
             <?php endif; ?>
+
+            <!-- reCAPTCHA Configuration -->
+            <div class="card" style="margin-bottom: 20px;">
+                <div class="card-header">
+                    <h3><i class="fas fa-robot"></i> reCAPTCHA v3 Configuration</h3>
+                    <?php if (!empty($settings['recaptcha_site_key']) && !empty($settings['recaptcha_secret_key'])): ?>
+                        <span class="badge badge-success"><i class="fas fa-check-circle"></i> Configured</span>
+                    <?php else: ?>
+                        <span class="badge badge-warning"><i class="fas fa-exclamation-triangle"></i> Not Configured</span>
+                    <?php endif; ?>
+                </div>
+                <div class="card-body">
+                    <p style="color: var(--text-dim); margin-bottom: 16px;">
+                        Google reCAPTCHA v3 provides invisible bot protection on the registration form. Obtain keys from 
+                        <a href="https://www.google.com/recaptcha/admin" target="_blank" rel="noopener" style="color: var(--primary);">Google reCAPTCHA Admin Console</a>.
+                        When configured, registration submissions are scored automatically — no user interaction required.
+                    </p>
+                    <form method="POST" action="process_settings.php">
+                        <?php echo csrfTokenInput(); ?>
+                        <input type="hidden" name="action" value="update_recaptcha">
+                        <div class="settings-list">
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4>reCAPTCHA Site Key</h4>
+                                    <p>Public site key used in the frontend (visible to users)</p>
+                                </div>
+                                <input type="text" name="recaptcha_site_key" class="form-input"
+                                       value="<?php echo htmlspecialchars($settings['recaptcha_site_key'] ?? ''); ?>"
+                                       placeholder="6Lxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" style="min-width: 300px; font-family: monospace;"
+                                       maxlength="100" pattern="[a-zA-Z0-9_\-]{20,100}" title="Enter a valid reCAPTCHA site key">
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4>reCAPTCHA Secret Key</h4>
+                                    <p>Private secret key for server-side verification<?php echo !empty($settings['recaptcha_secret_key']) ? ' (currently set)' : ''; ?></p>
+                                </div>
+                                <input type="password" name="recaptcha_secret_key" class="form-input"
+                                       placeholder="<?php echo !empty($settings['recaptcha_secret_key']) ? 'Leave blank to keep current key' : '6Lxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'; ?>"
+                                       style="min-width: 300px; font-family: monospace;"
+                                       maxlength="100">
+                            </div>
+                        </div>
+                        <div style="margin-top: 16px; display: flex; gap: 12px; align-items: center;">
+                            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save reCAPTCHA Settings</button>
+                            <?php if (!empty($settings['recaptcha_site_key'])): ?>
+                                <span style="color: var(--text-dim); font-size: 12px;"><i class="fas fa-info-circle"></i> Leave fields blank to keep current values. Clear both fields to disable reCAPTCHA.</span>
+                            <?php endif; ?>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
 </div>
