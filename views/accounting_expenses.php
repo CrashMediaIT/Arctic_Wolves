@@ -192,6 +192,8 @@ if ($expenseStats['last_month'] > 0) {
                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
                 <input type="hidden" name="action" value="create">
                 <input type="hidden" name="line_items" id="lineItemsJson" value="[]">
+                <input type="hidden" name="ocr_receipt_url" id="ocrReceiptUrl" value="">
+                <input type="hidden" name="ocr_nextcloud_path" id="ocrNextcloudPath" value="">
                 
                 <div class="form-row three-cols">
                     <div class="form-group">
@@ -834,6 +836,14 @@ function useOCRData() {
     document.getElementById('expenseSubtotal').value = (ocrData.subtotal || 0).toFixed(2);
     document.getElementById('expenseTax').value = (ocrData.tax || 0).toFixed(2);
     document.getElementById('expenseTotal').value = (ocrData.total || 0).toFixed(2);
+
+    // Attach receipt file from OCR scan so the expense has the receipt
+    if (ocrData._receipt_url) {
+        document.getElementById('ocrReceiptUrl').value = ocrData._receipt_url;
+    }
+    if (ocrData._nextcloud_path) {
+        document.getElementById('ocrNextcloudPath').value = ocrData._nextcloud_path;
+    }
 
     // Set payee from vendor if available
     if (ocrData.vendor) {

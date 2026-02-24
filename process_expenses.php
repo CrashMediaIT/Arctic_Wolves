@@ -508,6 +508,15 @@ try {
                         $ocr_data = performReceiptOCR($receipt_url);
                     }
                 }
+            } elseif (!empty($_POST['ocr_receipt_url'])) {
+                // Use receipt already saved during OCR scan
+                $ocr_receipt = trim($_POST['ocr_receipt_url']);
+                if (strpos($ocr_receipt, 'uploads/receipts/') === 0 && file_exists($ocr_receipt)) {
+                    $receipt_url = $ocr_receipt;
+                }
+                if (!empty($_POST['ocr_nextcloud_path'])) {
+                    $nextcloud_path = trim($_POST['ocr_nextcloud_path']);
+                }
             }
             
             $stmt = $pdo->prepare("
@@ -547,8 +556,8 @@ try {
                 }
             }
             
-            // Upload to Nextcloud if receipt exists
-            if ($receipt_url && !empty($vendor_name)) {
+            // Upload to Nextcloud if receipt exists and not already uploaded during OCR scan
+            if ($receipt_url && !empty($vendor_name) && empty($nextcloud_path)) {
                 $nc_result = uploadReceiptToNextcloud($pdo, $receipt_url, $expense_date, $vendor_name, $expense_id);
                 if ($nc_result['success']) {
                     $pdo->prepare("UPDATE expenses SET nextcloud_path = ? WHERE id = ?")->execute([
