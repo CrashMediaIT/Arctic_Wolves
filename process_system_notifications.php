@@ -72,6 +72,7 @@ try {
                         ");
                         $users_stmt->execute([$batch_size, $offset]);
                         $users = $users_stmt->fetchAll(PDO::FETCH_ASSOC);
+                        $users = decryptUserRows($users);
                         
                         foreach ($users as $user) {
                             $result = sendEmail($user['email'], 'system_notification', [

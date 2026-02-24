@@ -47,6 +47,7 @@ try {
     ");
     $stmt->execute($params);
     $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $transactions = decryptUserRows($transactions);
 } catch (PDOException $e) { $transactions = []; }
 
 $totalTx = count($transactions);

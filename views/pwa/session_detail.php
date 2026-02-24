@@ -20,6 +20,10 @@ if ($sessionId > 0) {
         ");
         $stmt->execute([$sessionId]);
         $session = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($session) {
+            $session['coach_first'] = FieldEncryption::decrypt($session['coach_first'] ?? '');
+            $session['coach_last'] = FieldEncryption::decrypt($session['coach_last'] ?? '');
+        }
     } catch (PDOException $e) { $session = null; }
 
     // Check if user has a booking

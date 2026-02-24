@@ -20,6 +20,7 @@ try {
     ");
     $stmt->execute();
     $contracts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $contracts = decryptUserRows($contracts);
 } catch (PDOException $e) { $contracts = []; }
 
 $staffList = [];
@@ -27,6 +28,7 @@ try {
     $stmt = $pdo->prepare("SELECT id, first_name, last_name, email FROM users WHERE is_active = 1 ORDER BY first_name, last_name");
     $stmt->execute();
     $staffList = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $staffList = decryptUserRows($staffList);
 } catch (PDOException $e) { $staffList = []; }
 ?>
 <style>

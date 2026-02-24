@@ -23,6 +23,7 @@ try {
     ");
     $stmt->execute();
     $credits = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $credits = decryptUserRows($credits);
 } catch (PDOException $e) { $credits = []; }
 
 // Fetch summary stats

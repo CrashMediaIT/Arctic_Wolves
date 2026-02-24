@@ -288,7 +288,8 @@ class Auditor {
                 LIMIT ?
             ");
             $stmt->execute([$table_name, $record_id, $limit]);
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            return function_exists('decryptUserRows') ? decryptUserRows($rows) : $rows;
             
         } catch (PDOException $e) {
             error_log("Auditor::getLogsForRecord Error: " . $e->getMessage());

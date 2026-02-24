@@ -95,6 +95,7 @@ try {
                     $email_stmt = $pdo->prepare("SELECT email, first_name FROM users WHERE id = ?");
                     $email_stmt->execute([$user_id]);
                     $user_info = $email_stmt->fetch(PDO::FETCH_ASSOC);
+                    $user_info = decryptUserRow($user_info);
                     if ($user_info && !empty($user_info['email'])) {
                         sendEmail($user_info['email'], 'payment_receipt', [
                             'session_title' => $package['name'],
@@ -119,6 +120,7 @@ try {
             ");
             $stmt->execute([$stripe_sid]);
             $booking = $stmt->fetch();
+            $booking = decryptUserRow($booking);
 
             // Only process if payment hasn't been recorded yet
             if ($booking && $booking['payment_status'] !== 'paid') {

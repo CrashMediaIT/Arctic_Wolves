@@ -25,6 +25,7 @@ try {
     ");
     $stmt->execute();
     $refundsRaw = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $refundsRaw = decryptUserRows($refundsRaw);
 } catch (PDOException $e) { $refundsRaw = []; }
 
 // Query credits_refunds table (actionable records)
@@ -40,6 +41,7 @@ try {
     ");
     $stmt->execute();
     $creditsRefundsRaw = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $creditsRefundsRaw = decryptUserRows($creditsRefundsRaw);
 } catch (PDOException $e) { $creditsRefundsRaw = []; }
 
 // Merge and sort by date descending
