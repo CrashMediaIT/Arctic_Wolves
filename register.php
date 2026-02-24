@@ -907,7 +907,7 @@ $recaptcha_site_key = $_ENV['RECAPTCHA_SITE_KEY'] ?? '';
             }
 
             // Fetch reCAPTCHA v3 token before submitting (if configured)
-            const siteKey = '<?php echo htmlspecialchars($recaptcha_site_key); ?>';
+            const siteKey = <?php echo json_encode($recaptcha_site_key); ?>;
             if (siteKey && typeof grecaptcha !== 'undefined') {
                 grecaptcha.ready(function() {
                     grecaptcha.execute(siteKey, {action: 'register'}).then(function(token) {

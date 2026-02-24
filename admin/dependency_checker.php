@@ -15,7 +15,13 @@ class DependencyChecker {
     private $results = [];
 
     public function __construct($base_path = null) {
-        $this->base_path = $base_path ?? dirname(__DIR__);
+        $resolved = realpath($base_path ?? dirname(__DIR__));
+        $project_root = realpath(dirname(__DIR__));
+        // Ensure the path is within the project directory
+        if ($resolved === false || strpos($resolved, $project_root) !== 0) {
+            $resolved = $project_root;
+        }
+        $this->base_path = $resolved;
     }
 
     /**

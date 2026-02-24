@@ -51,6 +51,28 @@ class RowLevelSecurity {
     }
 
     /**
+     * Validate that a table name is in the allowed whitelist.
+     * Prevents SQL injection via table/column name interpolation.
+     *
+     * @param string $table Table name to validate
+     * @return bool True if the table is in the whitelist
+     */
+    private function isAllowedTable($table) {
+        return array_key_exists($table, self::TABLE_OWNER_MAP)
+            || in_array($table, ['messages', 'evaluation_scores'], true);
+    }
+
+    /**
+     * Validate that a column name matches expected format (alphanumeric + underscores only).
+     *
+     * @param string $column Column name to validate
+     * @return bool True if valid
+     */
+    private function isValidColumnName($column) {
+        return (bool) preg_match('/^[a-zA-Z_][a-zA-Z0-9_]{0,63}$/', $column);
+    }
+
+    /**
      * Check if the current user has access to a specific row in a table.
      *
      * @param string $table  Table name
@@ -59,6 +81,12 @@ class RowLevelSecurity {
      */
     public function canAccessRow($table, $row_id) {
         if ($this->user_id === null) {
+            return false;
+        }
+
+        // Validate table name against whitelist
+        if (!$this->isAllowedTable($table)) {
+            error_log("RowLevelSecurity: Rejected access to unknown table: " . $table);
             return false;
         }
 
@@ -116,6 +144,12 @@ class RowLevelSecurity {
         if ($owner_col === null) {
             $base_table = preg_replace('/\s+.*/', '', $table); // Strip alias
             $owner_col = self::TABLE_OWNER_MAP[$base_table] ?? 'user_id';
+        }
+
+        // Validate column name to prevent SQL injection
+        if (!$this->isValidColumnName($owner_col)) {
+            error_log("RowLevelSecurity: Invalid column name rejected: " . $owner_col);
+            return ['where' => '1 = 0', 'params' => []];
         }
 
         // Athletes see only their own rows
@@ -204,6 +238,11 @@ class RowLevelSecurity {
      * Check parent relationship for athlete-owned tables.
      */
     private function canAccessViaParentRelationship($table, $row_id, $owner_col) {
+        // Validate table and column names against whitelist
+        if (!$this->isAllowedTable($table) || !$this->isValidColumnName($owner_col)) {
+            return false;
+        }
+
         try {
             $athlete_ids = $this->getManagedAthleteIds();
             if (empty($athlete_ids)) {
