@@ -443,7 +443,7 @@ $reviewed_videos = array_filter($videos, function($v) {
                     <div class="upload-progress-card">
                         <div class="spinner"></div>
                         <h4>Uploading Video...</h4>
-                        <p class="upload-progress-text">Uploading your video for coach review. Please don't close this page.</p>
+                        <p class="upload-progress-text">Uploading your video for coach review. Please do not close this page.</p>
                         <div class="upload-progress-bar-container">
                             <div class="upload-progress-bar" id="uploadProgressBar"></div>
                         </div>
@@ -799,7 +799,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     bar.style.width = pct + '%';
                     percent.textContent = pct + '%';
                     if (pct < 100) {
-                        status.textContent = 'Uploading video... ' + pct + '%';
+                        status.textContent = 'Uploading video...';
                     } else {
                         status.textContent = 'Processing video...';
                     }
@@ -818,7 +818,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         } else {
                             overlay.style.display = 'none';
                             submitBtn.disabled = false;
-                            alert('Upload failed: ' + (response.error || 'Unknown error'));
+                            alert('Upload failed: ' + (response.error || 'Please try again or contact support.'));
                         }
                     } catch (err) {
                         overlay.style.display = 'none';
