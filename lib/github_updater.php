@@ -916,8 +916,8 @@ class GitHubUpdater {
                         }
                     }
                 } catch (\Exception $e) {
-                    // Ignore "Duplicate key name" errors (1061) — index already exists
-                    if (strpos($e->getMessage(), 'Duplicate key name') !== false) {
+                    // Ignore "Duplicate key name" errors (MySQL 1061 / SQLSTATE 42000) — index already exists
+                    if (strpos($e->getMessage(), '1061') !== false || strpos($e->getMessage(), 'Duplicate key name') !== false) {
                         // Non-critical: index already exists on table
                     } else {
                         $errors[] = "Schema migration error: " . $e->getMessage();

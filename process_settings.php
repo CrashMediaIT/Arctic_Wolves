@@ -827,6 +827,15 @@ try {
             $stripe_path = $real_stripe ?: ($real_base . '/stripe-php');
             $temp_path = sys_get_temp_dir() . '/stripe-php-' . time();
             
+            // Helper to recursively remove a directory
+            $removeDir = function($dir) use (&$removeDir) {
+                if (!is_dir($dir)) return;
+                $rdi = new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS);
+                $rfi = new RecursiveIteratorIterator($rdi, RecursiveIteratorIterator::CHILD_FIRST);
+                foreach ($rfi as $f) { $f->isDir() ? rmdir($f->getRealPath()) : unlink($f->getRealPath()); }
+                rmdir($dir);
+            };
+            
             // Get latest release info
             $context = stream_context_create([
                 'http' => [
@@ -889,12 +898,7 @@ try {
             }
             if (!$extracted_dir) {
                 // Cleanup temp directory
-                if (is_dir($temp_path)) {
-                    $rdi = new RecursiveDirectoryIterator($temp_path, RecursiveDirectoryIterator::SKIP_DOTS);
-                    $rfi = new RecursiveIteratorIterator($rdi, RecursiveIteratorIterator::CHILD_FIRST);
-                    foreach ($rfi as $f) { $f->isDir() ? rmdir($f->getRealPath()) : unlink($f->getRealPath()); }
-                    rmdir($temp_path);
-                }
+                $removeDir($temp_path);
                 echo json_encode(['success' => false, 'message' => 'Could not find extracted files with valid naming pattern']);
                 exit;
             }
@@ -904,7 +908,7 @@ try {
             if (is_dir($stripe_path)) {
                 $backup_path = $stripe_path . '.backup-' . date('Y-m-d-His');
                 if (!rename($stripe_path, $backup_path)) {
-                    echo json_encode(['success' => false, 'message' => 'Failed to backup existing Stripe library']);
+                    echo json_encode(['success' => false, 'message' => 'Failed to backup existing Stripe library. Check file permissions on ' . basename($stripe_path)]);
                     exit;
                 }
             }
@@ -940,31 +944,18 @@ try {
                 if ($backup_path && is_dir($backup_path)) {
                     if (is_dir($stripe_path)) {
                         // Clean partial install
-                        $rdi = new RecursiveDirectoryIterator($stripe_path, RecursiveDirectoryIterator::SKIP_DOTS);
-                        $rfi = new RecursiveIteratorIterator($rdi, RecursiveIteratorIterator::CHILD_FIRST);
-                        foreach ($rfi as $f) { $f->isDir() ? rmdir($f->getRealPath()) : unlink($f->getRealPath()); }
-                        rmdir($stripe_path);
+                        $removeDir($stripe_path);
                     }
                     rename($backup_path, $stripe_path);
                 }
                 // Cleanup temp directory
-                if (is_dir($temp_path)) {
-                    $rdi = new RecursiveDirectoryIterator($temp_path, RecursiveDirectoryIterator::SKIP_DOTS);
-                    $rfi = new RecursiveIteratorIterator($rdi, RecursiveIteratorIterator::CHILD_FIRST);
-                    foreach ($rfi as $f) { $f->isDir() ? rmdir($f->getRealPath()) : unlink($f->getRealPath()); }
-                    rmdir($temp_path);
-                }
+                $removeDir($temp_path);
                 echo json_encode(['success' => false, 'message' => 'Failed to install new Stripe library — previous version has been restored']);
                 exit;
             }
             
             // Cleanup temp directory
-            if (is_dir($temp_path)) {
-                $rdi = new RecursiveDirectoryIterator($temp_path, RecursiveDirectoryIterator::SKIP_DOTS);
-                $rfi = new RecursiveIteratorIterator($rdi, RecursiveIteratorIterator::CHILD_FIRST);
-                foreach ($rfi as $f) { $f->isDir() ? rmdir($f->getRealPath()) : unlink($f->getRealPath()); }
-                rmdir($temp_path);
-            }
+            $removeDir($temp_path);
             
             echo json_encode([
                 'success' => true, 
