@@ -652,33 +652,44 @@ function loadCredentialKey() {
 }
 
 /**
- * Encrypt a password/token using AES-256-CBC
- * Uses a persistent key resolved via loadCredentialKey() (file → DB → generate).
- * This is the single canonical implementation — all files should
- * include security.php instead of defining their own copy.
+ * Encrypt a password/token using the PII FieldEncryption library.
+ * Delegates to FieldEncryption::encrypt() so there is a single encryption
+ * implementation across the entire site.
  *
  * @param string $password Plaintext to encrypt
- * @return string Base64-encoded ciphertext (IV::encrypted)
+ * @return string Encrypted string via FieldEncryption (base64-encoded IV + ciphertext)
  */
 function encryptPassword($password) {
-    $key = loadCredentialKey();
-    
-    $key_hash = hash('sha256', $key, true);
-    $iv = random_bytes(16);
-    $encrypted = openssl_encrypt($password, 'AES-256-CBC', $key_hash, 0, $iv);
-    return base64_encode($iv . '::' . $encrypted);
+    require_once __DIR__ . '/lib/encryption.php';
+    return FieldEncryption::encrypt($password);
 }
 
 /**
- * Decrypt a password/token previously encrypted with encryptPassword()
+ * Decrypt a password/token previously encrypted with encryptPassword().
+ * Uses the PII FieldEncryption library as the primary decryption method.
+ * Falls back to the legacy IV::ciphertext format for backward compatibility
+ * with values encrypted before the PII consolidation.
  *
  * @param string $encrypted_data Base64-encoded ciphertext
  * @return string Decrypted plaintext, or empty string on failure
  */
 function decryptPassword($encrypted_data) {
-    $key_file = __DIR__ . '/.nextcloud_key';
+    if (empty($encrypted_data)) {
+        return '';
+    }
 
-    // Need the key from file or DB
+    require_once __DIR__ . '/lib/encryption.php';
+
+    // Primary path: try PII FieldEncryption
+    if (FieldEncryption::isConfigured()) {
+        $decrypted = FieldEncryption::decrypt($encrypted_data);
+        if ($decrypted !== $encrypted_data) {
+            return $decrypted;
+        }
+    }
+
+    // Legacy fallback: old IV::ciphertext format from before PII consolidation
+    $key_file = __DIR__ . '/.nextcloud_key';
     global $pdo;
     $key = null;
 
@@ -695,7 +706,7 @@ function decryptPassword($encrypted_data) {
             $db_key = $stmt->fetchColumn();
             if (!empty($db_key)) {
                 $key = $db_key;
-                // Restore the local file
+                // Restore the local file for fast future reads
                 writeKeyFile($key_file, $key);
             }
         } catch (PDOException $e) {
@@ -706,7 +717,7 @@ function decryptPassword($encrypted_data) {
     if (empty($key)) {
         return '';
     }
-    
+
     $key_hash = hash('sha256', $key, true);
     $decoded = base64_decode($encrypted_data, true);
     if ($decoded === false) {
@@ -723,13 +734,13 @@ function decryptPassword($encrypted_data) {
 }
 
 /**
- * Decrypt a credential value. Returns the decrypted value if the credential
- * is properly encrypted. If decryption fails and the value appears to be
- * encrypted (e.g. the encryption key file was lost), returns an empty string
- * so that the UI shows fields as blank rather than displaying unusable
- * ciphertext. If the value is plaintext (not yet migrated), returns it
- * as-is for backward compatibility. Run ensureCredentialsEncrypted() during
- * setup to migrate any plaintext values.
+ * Decrypt a credential value. Uses the PII FieldEncryption library as the
+ * primary decryption method, with fallback to the legacy credential format.
+ * If decryption fails and the value appears to be encrypted (e.g. the
+ * encryption key was lost), returns an empty string so that the UI shows
+ * fields as blank rather than displaying unusable ciphertext. If the value
+ * is plaintext (not yet migrated), returns it as-is for backward compatibility.
+ * Run ensureCredentialsEncrypted() during setup to migrate any plaintext values.
  *
  * @param string $value The encrypted value from system_settings
  * @return string The decrypted value, empty string if key is lost, or original plaintext
@@ -739,7 +750,7 @@ function decryptCredential($value) {
         return '';
     }
     
-    // Try decryption — if it succeeds, use the decrypted value
+    // Try decryption via decryptPassword (which now uses FieldEncryption primarily)
     if (function_exists('decryptPassword')) {
         $decrypted = decryptPassword($value);
         if (!empty($decrypted)) {
@@ -787,8 +798,10 @@ function getEncryptedSettingKeys() {
 }
 
 /**
- * Check if a value appears to be encrypted (base64-encoded with :: separator).
- * Encrypted values from encryptPassword() have the format: base64(IV::ciphertext)
+ * Check if a value appears to be encrypted.
+ * Detects both the PII FieldEncryption format (base64(IV + ciphertext)) and
+ * the legacy credential format (base64(IV::ciphertext)) so that migration
+ * and decryption code can handle both transparently.
  *
  * @param string $value The value to check
  * @return bool True if the value looks encrypted
@@ -804,18 +817,25 @@ function isValueEncrypted($value) {
         return false;
     }
     
-    // Encrypted format is IV::ciphertext after base64 decode
+    // Check PII FieldEncryption format: base64(IV + ciphertext), IV is 16 bytes
+    $ivLen = 16;
+    if (strlen($decoded) > $ivLen) {
+        require_once __DIR__ . '/lib/encryption.php';
+        if (class_exists('FieldEncryption') && FieldEncryption::isConfigured()) {
+            $decrypted = FieldEncryption::decrypt($value);
+            if ($decrypted !== $value) {
+                return true;
+            }
+        }
+    }
+    
+    // Legacy format: IV::ciphertext after base64 decode
     $parts = explode('::', $decoded, 2);
-    if (count($parts) !== 2) {
-        return false;
+    if (count($parts) === 2 && strlen($parts[0]) === 16) {
+        return true;
     }
     
-    // IV should be 16 bytes for AES-256-CBC
-    if (strlen($parts[0]) !== 16) {
-        return false;
-    }
-    
-    return true;
+    return false;
 }
 
 /**
@@ -827,6 +847,7 @@ function isValueEncrypted($value) {
  * @return array Summary of what was encrypted ['migrated' => [...], 'already_encrypted' => [...], 'empty' => [...]]
  */
 function ensureCredentialsEncrypted($pdo) {
+    require_once __DIR__ . '/lib/encryption.php';
     $keys = getEncryptedSettingKeys();
     $results = ['migrated' => [], 'already_encrypted' => [], 'empty' => []];
     
@@ -846,18 +867,30 @@ function ensureCredentialsEncrypted($pdo) {
             continue;
         }
         
-        // Check if the value is already encrypted
-        if (isValueEncrypted($value)) {
-            // Verify it actually decrypts successfully using decryptPassword() directly
-            // (not decryptCredential() which would log warnings during migration)
-            $decrypted = decryptPassword($value);
-            if (!empty($decrypted)) {
+        // Check if the value is already encrypted with PII FieldEncryption
+        if (FieldEncryption::isConfigured()) {
+            $decrypted = FieldEncryption::decrypt($value);
+            if ($decrypted !== $value && !empty($decrypted)) {
                 $results['already_encrypted'][] = $key;
                 continue;
             }
         }
         
-        // Value is plaintext — encrypt it in-place
+        // Check if the value is encrypted with the legacy format and re-encrypt with PII
+        if (isValueEncrypted($value)) {
+            // Verify it actually decrypts successfully using decryptPassword() directly
+            // (not decryptCredential() which would log warnings during migration)
+            $decrypted = decryptPassword($value);
+            if (!empty($decrypted)) {
+                // Re-encrypt with PII FieldEncryption
+                $encrypted = encryptPassword($decrypted);
+                $update_stmt->execute([$encrypted, $key]);
+                $results['migrated'][] = $key;
+                continue;
+            }
+        }
+        
+        // Value is plaintext — encrypt it in-place using PII FieldEncryption
         $encrypted = encryptPassword($value);
         $update_stmt->execute([$encrypted, $key]);
         $results['migrated'][] = $key;
