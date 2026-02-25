@@ -106,6 +106,9 @@ if ($action === 'save_drill' || $action === 'create') {
         
         // Persist: save to /config/persistent_uploads, upload to Nextcloud, cache locally
         $persist = persistUploadedFile($pdo, $file['tmp_name'], 'drills/videos', $filename, $video_upload_path);
+        if (!empty($persist['rustfs_url'])) {
+            $video_upload_path = $persist['rustfs_url'];
+        }
         if (!empty($persist['nextcloud_path'])) {
             $drill_video_nc_path = $persist['nextcloud_path'];
         }
@@ -926,6 +929,9 @@ function downloadAndSaveImage($image_url, $user_id) {
         try {
             $persist = persistUploadedFile($pdo, $tmp_file, 'drills/diagrams', $filename, $local_cache_rel);
             $nextcloud_path = $persist['nextcloud_path'] ?? null;
+            if (!empty($persist['rustfs_url'])) {
+                $local_cache_rel = $persist['rustfs_url'];
+            }
         } catch (Exception $e) {
             error_log("Nextcloud drill diagram upload failed: " . $e->getMessage());
         }

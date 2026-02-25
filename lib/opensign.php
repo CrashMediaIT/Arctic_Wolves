@@ -521,26 +521,23 @@ function processOpenSignWebhook($pdo, $webhookData) {
  */
 function uploadSignedContract($pdo, $settings, $pdfContent, $employeeName, $dateSigned, $year, $month) {
     try {
-        $connection = connectNextcloud($settings);
-        
-        // Get base HR directory from settings, default to a generic path
-        // The nextcloud_hr_dir setting should be configured in System Tools > Nextcloud
-        $hrDir = $settings['nextcloud_hr_dir'] ?? '/HR';
-        $contractsDir = $hrDir . '/Employee Contract';
-        
         // Sanitize employee name for filename
         $safeEmployeeName = preg_replace('/[^a-zA-Z0-9\-_\s]/', '', $employeeName);
         $safeEmployeeName = str_replace(' ', '_', trim($safeEmployeeName));
         
-        // Create folder structure: /HR/Employee Contract/YYYY/MM
-        $folderPath = ensureNextcloudPath($connection, $contractsDir, [$year, $month]);
-        
         // Build filename: EmployeeName_DateSigned.pdf
         $filename = $safeEmployeeName . '_' . $dateSigned . '.pdf';
-        $remotePath = $folderPath . '/' . $filename;
+        $object_key = 'Images/Contracts/' . $year . '/' . $month . '/' . $filename;
+        $remote_url = null;
         
-        // Upload the signed contract to Nextcloud
-        uploadToNextcloud($connection, $remotePath, $pdfContent, 'application/pdf');
+        // Upload to RustFS
+        $rustfs = getRustFSSettings($pdo);
+        if (isRustFSConfigured($rustfs)) {
+            $upload = uploadContentToRustFS($rustfs, $pdfContent, $object_key, 'application/pdf');
+            if ($upload['success']) {
+                $remote_url = $upload['url'];
+            }
+        }
         
         // Also upload to Paperless-NGX with Contract tag
         $tmpFile = sys_get_temp_dir() . '/' . uniqid('contract_') . '.pdf';
@@ -551,9 +548,9 @@ function uploadSignedContract($pdo, $settings, $pdfContent, $employeeName, $date
         
         return [
             'success' => true,
-            'folder_path' => $folderPath,
+            'folder_path' => 'Contracts/' . $year . '/' . $month,
             'filename' => $filename,
-            'remote_path' => $remotePath
+            'remote_path' => $remote_url ?? $object_key
         ];
         
     } catch (Exception $e) {

@@ -146,28 +146,21 @@ function calculateDeductions($grossPay, $payrollInfo, $pdo) {
  */
 function uploadPayrollDocuments($pdo, $settings, $staffName, $year, $documentType, $content, $filename) {
     try {
-        $connection = connectNextcloud($settings);
-        
-        // Base payroll directory
-        $payrollDir = $settings['nextcloud_hr_dir'] ?? '/HR';
-        $payrollDir .= '/Payroll';
-        
         // Sanitize staff name
         $safeStaffName = preg_replace('/[^a-zA-Z0-9\-_\s]/', '', $staffName);
         $safeStaffName = str_replace(' ', '_', trim($safeStaffName));
         
-        // Create folder structure: /HR/Payroll/YYYY/StaffName
-        $folderPath = ensureNextcloudPath($connection, $payrollDir, [$year, $safeStaffName]);
+        // Upload to RustFS via uploadContentToRustFS
+        $rustfs = getRustFSSettings($pdo);
+        $object_key = 'Images/Payroll/' . $year . '/' . $safeStaffName . '/' . $filename;
+        $remote_url = null;
         
-        // Upload file to Nextcloud
-        $remotePath = $folderPath . '/' . $filename;
-        uploadToNextcloud($connection, $remotePath, $content, 'application/pdf');
-        
-        // Save to persistent local storage
-        $persistTmpFile = sys_get_temp_dir() . '/' . uniqid('payroll_persist_') . '.pdf';
-        file_put_contents($persistTmpFile, $content);
-        saveToPersistentStorage($persistTmpFile, 'Payroll/' . $year . '/' . $safeStaffName, $filename, $pdo);
-        if (file_exists($persistTmpFile)) { unlink($persistTmpFile); }
+        if (isRustFSConfigured($rustfs)) {
+            $upload = uploadContentToRustFS($rustfs, $content, $object_key, 'application/pdf');
+            if ($upload['success']) {
+                $remote_url = $upload['url'];
+            }
+        }
         
         // Also upload to Paperless-NGX with HR tag
         $tmpFile = sys_get_temp_dir() . '/' . uniqid('payroll_') . '.pdf';
@@ -178,8 +171,8 @@ function uploadPayrollDocuments($pdo, $settings, $staffName, $year, $documentTyp
         
         return [
             'success' => true,
-            'folder_path' => $folderPath,
-            'file_path' => $remotePath
+            'folder_path' => 'Payroll/' . $year . '/' . $safeStaffName,
+            'file_path' => $remote_url ?? $object_key
         ];
     } catch (Exception $e) {
         ErrorLogger::error("Error uploading payroll document: " . $e->getMessage());

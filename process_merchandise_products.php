@@ -181,13 +181,9 @@ function handleProductImageUpload($file) {
     if ($pdo) {
         $persist = persistUploadedFile($pdo, $file['tmp_name'], 'merchandise/products', $safeFilename, $local_cache_rel);
         $nextcloud_path = $persist['nextcloud_path'] ?? null;
-    } else {
-        // Fallback: save to local uploads directory
-        $uploadDir = __DIR__ . '/uploads/merchandise/products/';
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
+        if (!empty($persist['rustfs_url'])) {
+            $local_cache_rel = $persist['rustfs_url'];
         }
-        move_uploaded_file($file['tmp_name'], $uploadDir . $safeFilename);
     }
     
     return ['url' => $local_cache_rel, 'nextcloud_path' => $nextcloud_path];

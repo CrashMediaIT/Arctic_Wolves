@@ -104,16 +104,12 @@ function handleFileUpload($file, $type = 'image') {
         try {
             $persist = persistUploadedFile($pdo, $file['tmp_name'], 'theme', $filename, $local_url);
             $nextcloud_path = $persist['nextcloud_path'] ?? null;
+            if (!empty($persist['rustfs_url'])) {
+                $local_url = $persist['rustfs_url'];
+            }
         } catch (\Throwable $e) {
             error_log("Theme image persist failed: " . $e->getMessage());
         }
-    } else {
-        // Fallback: save to local uploads directory only
-        $upload_dir = __DIR__ . '/uploads/theme/';
-        if (!is_dir($upload_dir)) {
-            mkdir($upload_dir, 0755, true);
-        }
-        move_uploaded_file($file['tmp_name'], $upload_dir . $filename);
     }
     
     return ['success' => true, 'url' => $local_url, 'nextcloud_path' => $nextcloud_path];

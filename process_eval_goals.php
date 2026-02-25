@@ -459,7 +459,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     // Persist: save to /config/persistent_uploads, upload to Nextcloud, cache locally
                     $persist = persistUploadedFile($pdo, $_FILES['media_file']['tmp_name'], 'eval_goals/' . $step_id, $file_name, $media_cache_rel);
-                    $media_url = $media_cache_rel;
+                    $media_url = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $media_cache_rel;
                 }
                 
                 $stmt = $pdo->prepare("

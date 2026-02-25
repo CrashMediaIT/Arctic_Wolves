@@ -958,6 +958,9 @@ function downloadAndSaveDrillImage($image_url, $user_id) {
         try {
             $persist = persistUploadedFile($pdo, $tmp_file, 'drills/diagrams', $filename, $local_cache_rel);
             $nextcloud_path = $persist['nextcloud_path'] ?? null;
+            if (!empty($persist['rustfs_url'])) {
+                $local_cache_rel = $persist['rustfs_url'];
+            }
         } catch (Exception $e) {
             error_log("Nextcloud drill diagram upload failed: " . $e->getMessage());
         }

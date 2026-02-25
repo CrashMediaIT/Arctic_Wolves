@@ -221,6 +221,7 @@ function handleVideoUpload() {
     
     // Persist: save to /config/persistent_uploads, upload to Nextcloud, cache locally
     $persist = persistUploadedFile($pdo, $file['tmp_name'], 'videos/coach', $unique_filename, $video_url, true);
+    $db_video_url = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $video_url;
     
     // Insert video record into database
     $stmt = $pdo->prepare("
@@ -241,7 +242,7 @@ function handleVideoUpload() {
         $user_id,
         $title,
         $description,
-        $video_url,
+        $db_video_url,
         $comments
     ]);
     
@@ -377,6 +378,7 @@ function handleAthleteVideoUpload() {
     
     // Persist: save to /config/persistent_uploads, upload to Nextcloud, cache locally
     $persist = persistUploadedFile($pdo, $file['tmp_name'], 'videos/athlete', $unique_filename, $video_url, true);
+    $db_video_url = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $video_url;
     
     // Insert video record into database
     $stmt = $pdo->prepare("
@@ -396,7 +398,7 @@ function handleAthleteVideoUpload() {
         $coach_id,
         $title,
         $description,
-        $video_url,
+        $db_video_url,
         $video_category,
         $game_date,
         $team_played_on,
@@ -515,6 +517,7 @@ function handleDrillVideoUpload() {
         $nextcloud_path = $persist['nextcloud_path'];
         $is_uploaded_to_cloud = 1;
     }
+    $db_local_path = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $local_path;
     
     // Insert video record into database
     $title = sprintf('%s - %s - %s (Rep %d)', $session_name, $drill_name, $athlete_name, $rep_number);
@@ -540,12 +543,12 @@ function handleDrillVideoUpload() {
         $user_id,
         $title,
         $description,
-        $local_path,
+        $db_local_path,
         $drill_id,
         $session_id,
         $rep_number,
         $nextcloud_path,
-        $local_path,
+        $db_local_path,
         $is_uploaded_to_cloud
     ]);
     
@@ -1109,6 +1112,7 @@ function handleUploadVideoSource() {
 
     // Persist: save to /config/persistent_uploads, upload to Nextcloud, cache locally
     $persist = persistUploadedFile($pdo, $file['tmp_name'], 'videos/gameplan', $unique_name, $file_path_rel, true);
+    $db_file_path = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $file_path_rel;
 
     $stmt = $pdo->prepare("
         INSERT INTO vr_video_sources (filename, file_path, camera_angle, file_size, game_id, team_id, uploaded_by)
@@ -1116,7 +1120,7 @@ function handleUploadVideoSource() {
     ");
     $stmt->execute([
         $file['name'],
-        $file_path_rel,
+        $db_file_path,
         $camera_angle,
         $file['size'],
         $game_id,
