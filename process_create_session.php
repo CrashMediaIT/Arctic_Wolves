@@ -103,11 +103,11 @@ if ($action == 'create_private_session' && $_SERVER["REQUEST_METHOD"] == "POST")
                 
                 if (!$athlete) continue;
                 
-                // Create a pending (unpaid) booking
+                // Create a confirmed booking with pending payment
                 $stmt = $pdo->prepare("
                     INSERT INTO bookings (
-                        user_id, session_id, status, payment_status, amount_due, created_at
-                    ) VALUES (?, ?, 'pending', 'pending', ?, NOW())
+                        user_id, session_id, status, payment_status, amount
+                    ) VALUES (?, ?, 'confirmed', 'pending', ?)
                 ");
                 $stmt->execute([$athlete_id, $session_id, $price]);
                 
@@ -116,7 +116,7 @@ if ($action == 'create_private_session' && $_SERVER["REQUEST_METHOD"] == "POST")
                 $formattedTime = date('g:i A', strtotime($session_time));
                 
                 $stmt = $pdo->prepare("
-                    INSERT INTO notifications (user_id, type, title, message, link, created_at)
+                    INSERT INTO notifications (user_id, type, title, message, link_url, created_at)
                     VALUES (?, 'session_assigned', ?, ?, ?, NOW())
                 ");
                 $stmt->execute([

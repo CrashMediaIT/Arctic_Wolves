@@ -137,7 +137,7 @@ try {
 
     <!-- Upload Form -->
     <div class="upload-interface" id="upload-interface" style="display: none;">
-        <form class="upload-form" method="POST" action="<?= htmlspecialchars(dirname($_SERVER['PHP_SELF'])) ?>/process_video.php" enctype="multipart/form-data" id="video-upload-form">
+        <form class="upload-form" method="POST" action="process_video.php" enctype="multipart/form-data" id="video-upload-form">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>">
             <input type="hidden" name="action" value="athlete_upload_video">
             <input type="hidden" name="coach_id" value="<?= (int)$assigned_coach_id ?>">
@@ -153,8 +153,6 @@ try {
                     <select id="video_type" name="video_category">
                         <option value="drill">Drill Practice</option>
                         <option value="game">Game Footage</option>
-                        <option value="technique">Technique Work</option>
-                        <option value="other">Other</option>
                     </select>
                 </div>
             </div>
