@@ -206,7 +206,7 @@ function handleVideoUpload() {
     
     // Use FileUploadValidator for security validation
     $validator = new FileUploadValidator();
-    $validation = $validator->validateVideoUpload($file);
+    $validation = $validator->validateVideo($file);
     
     if (!$validation['valid']) {
         throw new Exception($validation['error']);
@@ -381,7 +381,7 @@ function handleAthleteVideoUpload() {
     
     // Use FileUploadValidator for security validation
     $validator = new FileUploadValidator();
-    $validation = $validator->validateVideoUpload($file);
+    $validation = $validator->validateVideo($file);
     
     if (!$validation['valid']) {
         throw new Exception($validation['error']);
@@ -494,14 +494,14 @@ function handleDrillVideoUpload() {
     }
     
     // Get session, drill, and athlete names for file naming
-    $stmt = $pdo->prepare("SELECT title, session_date, date FROM sessions WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT title, session_date FROM sessions WHERE id = ?");
     $stmt->execute([$session_id]);
     $session = $stmt->fetch();
     if (!$session) {
         throw new Exception('Session not found');
     }
     $session_name = $session['title'] ?? 'Session';
-    $session_date = $session['session_date'] ?? $session['date'] ?? date('Y-m-d');
+    $session_date = $session['session_date'] ?? date('Y-m-d');
     
     $stmt = $pdo->prepare("SELECT title FROM drills WHERE id = ?");
     $stmt->execute([$drill_id]);
@@ -529,7 +529,7 @@ function handleDrillVideoUpload() {
     
     // Use FileUploadValidator for security validation
     $validator = new FileUploadValidator();
-    $validation = $validator->validateVideoUpload($file);
+    $validation = $validator->validateVideo($file);
     
     if (!$validation['valid']) {
         throw new Exception($validation['error']);
@@ -1167,7 +1167,7 @@ function handleUploadVideoSource() {
     $file = $_FILES['video_file'];
 
     $validator = new FileUploadValidator();
-    $validation = $validator->validateVideoUpload($file);
+    $validation = $validator->validateVideo($file);
     if (!$validation['valid']) throw new Exception($validation['error']);
 
     // Upload to separate gameplan video location
