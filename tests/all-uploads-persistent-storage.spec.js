@@ -271,13 +271,11 @@ test.describe('saveToPersistentStorage respects persistent path setting', () => 
     }
   });
 
-  test('process_profile_update.php should pass $pdo to saveToPersistentStorage', () => {
+  test('process_profile_update.php should use persistUploadedFile for Garage S3 storage', () => {
     const content = readFile('process_profile_update.php');
-    const lines = content.split('\n').filter(l => l.includes('saveToPersistentStorage(') && !l.trim().startsWith('//'));
+    // upload_photo action now uses persistUploadedFile instead of direct saveToPersistentStorage
+    const lines = content.split('\n').filter(l => l.includes('persistUploadedFile(') && !l.trim().startsWith('//'));
     expect(lines.length).toBeGreaterThan(0);
-    for (const line of lines) {
-      expect(line).toContain('$pdo');
-    }
   });
 
   test('process_recurring_expenses.php should pass $pdo to saveToPersistentStorage', () => {

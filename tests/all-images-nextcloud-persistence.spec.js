@@ -305,9 +305,9 @@ test.describe('Team logo uploads include Nextcloud persistence', () => {
     expect(content).toContain('nextcloud_logo_path');
   });
 
-  test('process_admin_action.php should handle Nextcloud team logo upload failure gracefully', () => {
+  test('process_admin_action.php should handle team logo cloud path storage failure gracefully', () => {
     const content = readFile('process_admin_action.php');
-    expect(content).toContain('Nextcloud team logo upload failed');
+    expect(content).toContain('Team logo cloud path storage failed');
   });
 });
 

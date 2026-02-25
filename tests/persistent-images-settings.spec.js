@@ -158,9 +158,9 @@ test.describe('Admin profile image upload includes Nextcloud persistence', () =>
     expect(content).toContain('cloud_config.php');
   });
 
-  test('process_admin_action.php should call uploadImageToNextcloud', () => {
+  test('process_admin_action.php should call persistUploadedFile for Garage S3 primary upload', () => {
     const content = readFile('process_admin_action.php');
-    expect(content).toContain('uploadImageToNextcloud(');
+    expect(content).toContain('persistUploadedFile(');
   });
 
   test('process_admin_action.php should save nextcloud_image_path to users table', () => {
