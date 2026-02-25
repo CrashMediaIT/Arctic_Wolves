@@ -61,7 +61,7 @@ test.describe('Theme Save Button - Form Submission Fix', () => {
     const formEnd = content.indexOf('</form>', formStart);
     const formContent = content.substring(formStart, formEnd);
     expect(formContent).toContain('type="submit"');
-    expect(formContent).toContain('Save Theme');
+    expect(formContent).toContain('Save All Settings');
   });
 
   test('process_theme.php handles save_theme action with redirect', () => {

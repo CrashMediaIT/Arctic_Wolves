@@ -1714,53 +1714,56 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                         <h4><i class="fas fa-id-card"></i> Business Card Backgrounds</h4>
                         <p class="help-text" style="margin-bottom: 16px;">Upload background images for the front and back of business cards. The logo above is automatically used on cards. Recommended: 1050×600px (3.5" × 2" at 300 DPI).</p>
                         
+                        <?php
+                        $st_bc_front_bg = $theme_settings['business_card_front_bg_url'] ?? '';
+                        $st_bc_back_bg = $theme_settings['business_card_back_bg_url'] ?? '';
+                        ?>
                         <div class="settings-list">
                             <div class="setting-item">
                                 <div class="setting-info">
                                     <h4>Front Card Background</h4>
                                     <p>PNG, JPG, WEBP (max 5MB)</p>
                                 </div>
-                                <input type="file" name="bc_front_bg" class="form-input" accept=".png,.jpg,.jpeg,.webp" style="max-width: 300px;">
+                                <input type="file" name="bc_front_bg" class="form-input" accept=".png,.jpg,.jpeg,.webp" style="max-width: 300px;" onchange="previewBcBackground(this, 'bc-front-bg-preview')">
                             </div>
                             
-                            <?php
-                            $st_bc_front_bg = $theme_settings['business_card_front_bg_url'] ?? '';
-                            $st_bc_back_bg = $theme_settings['business_card_back_bg_url'] ?? '';
-                            ?>
-                            
-                            <?php if (!empty($st_bc_front_bg)): ?>
                             <div class="setting-item">
                                 <div class="setting-info">
                                     <h4>Current Front Background</h4>
                                     <p>Preview of the current front card background</p>
                                 </div>
-                                <div style="background: #0A0A0F; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
-                                    <img src="<?php echo htmlspecialchars($st_bc_front_bg); ?>" alt="Front Card Background" 
-                                         style="max-height: 80px; max-width: 200px;" onerror="this.style.display='none'">
+                                <div id="bc-front-bg-preview" style="background: #0A0A0F; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+                                    <?php if (!empty($st_bc_front_bg)): ?>
+                                        <img src="<?php echo htmlspecialchars($st_bc_front_bg); ?>" alt="Front Card Background" 
+                                             style="max-height: 80px; max-width: 200px;" onerror="this.parentNode.innerHTML='<span style=\'color:#64748b;font-size:13px;\'>Image not found — please re-upload</span>'">
+                                    <?php else: ?>
+                                        <span style="color: #64748b; font-size: 13px;">No front background uploaded</span>
+                                    <?php endif; ?>
                                 </div>
                             </div>
-                            <?php endif; ?>
                             
                             <div class="setting-item">
                                 <div class="setting-info">
                                     <h4>Back Card Background</h4>
                                     <p>PNG, JPG, WEBP (max 5MB)</p>
                                 </div>
-                                <input type="file" name="bc_back_bg" class="form-input" accept=".png,.jpg,.jpeg,.webp" style="max-width: 300px;">
+                                <input type="file" name="bc_back_bg" class="form-input" accept=".png,.jpg,.jpeg,.webp" style="max-width: 300px;" onchange="previewBcBackground(this, 'bc-back-bg-preview')">
                             </div>
                             
-                            <?php if (!empty($st_bc_back_bg)): ?>
                             <div class="setting-item">
                                 <div class="setting-info">
                                     <h4>Current Back Background</h4>
                                     <p>Preview of the current back card background</p>
                                 </div>
-                                <div style="background: #0A0A0F; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
-                                    <img src="<?php echo htmlspecialchars($st_bc_back_bg); ?>" alt="Back Card Background" 
-                                         style="max-height: 80px; max-width: 200px;" onerror="this.style.display='none'">
+                                <div id="bc-back-bg-preview" style="background: #0A0A0F; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+                                    <?php if (!empty($st_bc_back_bg)): ?>
+                                        <img src="<?php echo htmlspecialchars($st_bc_back_bg); ?>" alt="Back Card Background" 
+                                             style="max-height: 80px; max-width: 200px;" onerror="this.parentNode.innerHTML='<span style=\'color:#64748b;font-size:13px;\'>Image not found — please re-upload</span>'">
+                                    <?php else: ?>
+                                        <span style="color: #64748b; font-size: 13px;">No back background uploaded</span>
+                                    <?php endif; ?>
                                 </div>
                             </div>
-                            <?php endif; ?>
                         </div>
                     </div>
 
@@ -3483,6 +3486,18 @@ function removeCenterIceLogo() {
         console.error('Error:', error);
         alert('Failed to remove center ice logo');
     });
+}
+
+function previewBcBackground(input, previewId) {
+    var preview = document.getElementById(previewId);
+    if (!preview) return;
+    if (input.files && input.files[0]) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            preview.innerHTML = '<img src="' + e.target.result + '" alt="Preview" style="max-height: 80px; max-width: 200px;">';
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
 }
 
 function resetThemeColors() {
