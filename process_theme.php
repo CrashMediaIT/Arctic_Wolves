@@ -116,10 +116,10 @@ function handleFileUpload($file, $type = 'image') {
                     // No Nextcloud — still save to persistent storage
                     saveToPersistentStorage($absolute_path, 'theme', $filename, $pdo);
                 }
-            } catch (Exception $e) {
+            } catch (\Throwable $e) {
                 error_log("Theme image persistent/Nextcloud upload failed: " . $e->getMessage());
                 // Try persistent storage as a fallback
-                try { saveToPersistentStorage($filepath, 'theme', $filename, $pdo); } catch (Exception $ps) { error_log("Persistent storage fallback also failed: " . $ps->getMessage()); }
+                try { saveToPersistentStorage($filepath, 'theme', $filename, $pdo); } catch (\Throwable $ps) { error_log("Persistent storage fallback also failed: " . $ps->getMessage()); }
             }
         }
         
@@ -214,15 +214,19 @@ try {
             
             // Handle business card backgrounds (from consolidated form)
             if (isset($_FILES['bc_front_bg']) && $_FILES['bc_front_bg']['error'] === UPLOAD_ERR_OK) {
-                $result = handleFileUpload($_FILES['bc_front_bg'], 'bc_front_bg');
-                if ($result['success']) {
-                    updateThemeSetting($pdo, 'business_card_front_bg_url', $result['url']);
+                $front_bg_result = handleFileUpload($_FILES['bc_front_bg'], 'bc_front_bg');
+                if ($front_bg_result['success']) {
+                    updateThemeSetting($pdo, 'business_card_front_bg_url', $front_bg_result['url']);
+                } else {
+                    ErrorLogger::error("Front card background upload failed: " . ($front_bg_result['message'] ?? 'Unknown error'));
                 }
             }
             if (isset($_FILES['bc_back_bg']) && $_FILES['bc_back_bg']['error'] === UPLOAD_ERR_OK) {
-                $result = handleFileUpload($_FILES['bc_back_bg'], 'bc_back_bg');
-                if ($result['success']) {
-                    updateThemeSetting($pdo, 'business_card_back_bg_url', $result['url']);
+                $back_bg_result = handleFileUpload($_FILES['bc_back_bg'], 'bc_back_bg');
+                if ($back_bg_result['success']) {
+                    updateThemeSetting($pdo, 'business_card_back_bg_url', $back_bg_result['url']);
+                } else {
+                    ErrorLogger::error("Back card background upload failed: " . ($back_bg_result['message'] ?? 'Unknown error'));
                 }
             }
             
@@ -255,17 +259,21 @@ try {
         case 'update_business_card_backgrounds':
             // Handle front card background upload
             if (isset($_FILES['bc_front_bg']) && $_FILES['bc_front_bg']['error'] === UPLOAD_ERR_OK) {
-                $result = handleFileUpload($_FILES['bc_front_bg'], 'bc_front_bg');
-                if ($result['success']) {
-                    updateThemeSetting($pdo, 'business_card_front_bg_url', $result['url']);
+                $front_bg_result = handleFileUpload($_FILES['bc_front_bg'], 'bc_front_bg');
+                if ($front_bg_result['success']) {
+                    updateThemeSetting($pdo, 'business_card_front_bg_url', $front_bg_result['url']);
+                } else {
+                    ErrorLogger::error("Front card background upload failed: " . ($front_bg_result['message'] ?? 'Unknown error'));
                 }
             }
             
             // Handle back card background upload
             if (isset($_FILES['bc_back_bg']) && $_FILES['bc_back_bg']['error'] === UPLOAD_ERR_OK) {
-                $result = handleFileUpload($_FILES['bc_back_bg'], 'bc_back_bg');
-                if ($result['success']) {
-                    updateThemeSetting($pdo, 'business_card_back_bg_url', $result['url']);
+                $back_bg_result = handleFileUpload($_FILES['bc_back_bg'], 'bc_back_bg');
+                if ($back_bg_result['success']) {
+                    updateThemeSetting($pdo, 'business_card_back_bg_url', $back_bg_result['url']);
+                } else {
+                    ErrorLogger::error("Back card background upload failed: " . ($back_bg_result['message'] ?? 'Unknown error'));
                 }
             }
             
@@ -458,15 +466,19 @@ try {
             
             // Handle business card background uploads (unified into theme form)
             if (isset($_FILES['bc_front_bg']) && $_FILES['bc_front_bg']['error'] === UPLOAD_ERR_OK) {
-                $result = handleFileUpload($_FILES['bc_front_bg'], 'bc_front_bg');
-                if ($result['success']) {
-                    updateThemeSetting($pdo, 'business_card_front_bg_url', $result['url']);
+                $front_bg_result = handleFileUpload($_FILES['bc_front_bg'], 'bc_front_bg');
+                if ($front_bg_result['success']) {
+                    updateThemeSetting($pdo, 'business_card_front_bg_url', $front_bg_result['url']);
+                } else {
+                    ErrorLogger::error("Front card background upload failed: " . ($front_bg_result['message'] ?? 'Unknown error'));
                 }
             }
             if (isset($_FILES['bc_back_bg']) && $_FILES['bc_back_bg']['error'] === UPLOAD_ERR_OK) {
-                $result = handleFileUpload($_FILES['bc_back_bg'], 'bc_back_bg');
-                if ($result['success']) {
-                    updateThemeSetting($pdo, 'business_card_back_bg_url', $result['url']);
+                $back_bg_result = handleFileUpload($_FILES['bc_back_bg'], 'bc_back_bg');
+                if ($back_bg_result['success']) {
+                    updateThemeSetting($pdo, 'business_card_back_bg_url', $back_bg_result['url']);
+                } else {
+                    ErrorLogger::error("Back card background upload failed: " . ($back_bg_result['message'] ?? 'Unknown error'));
                 }
             }
             
@@ -524,15 +536,19 @@ try {
             
             // Business card backgrounds
             if (isset($_FILES['bc_front_bg']) && $_FILES['bc_front_bg']['error'] === UPLOAD_ERR_OK) {
-                $result = handleFileUpload($_FILES['bc_front_bg'], 'bc_front_bg');
-                if ($result['success']) {
-                    updateThemeSetting($pdo, 'business_card_front_bg_url', $result['url']);
+                $front_bg_result = handleFileUpload($_FILES['bc_front_bg'], 'bc_front_bg');
+                if ($front_bg_result['success']) {
+                    updateThemeSetting($pdo, 'business_card_front_bg_url', $front_bg_result['url']);
+                } else {
+                    ErrorLogger::error("Front card background upload failed: " . ($front_bg_result['message'] ?? 'Unknown error'));
                 }
             }
             if (isset($_FILES['bc_back_bg']) && $_FILES['bc_back_bg']['error'] === UPLOAD_ERR_OK) {
-                $result = handleFileUpload($_FILES['bc_back_bg'], 'bc_back_bg');
-                if ($result['success']) {
-                    updateThemeSetting($pdo, 'business_card_back_bg_url', $result['url']);
+                $back_bg_result = handleFileUpload($_FILES['bc_back_bg'], 'bc_back_bg');
+                if ($back_bg_result['success']) {
+                    updateThemeSetting($pdo, 'business_card_back_bg_url', $back_bg_result['url']);
+                } else {
+                    ErrorLogger::error("Back card background upload failed: " . ($back_bg_result['message'] ?? 'Unknown error'));
                 }
             }
             
@@ -567,7 +583,7 @@ try {
             throw new Exception('Invalid action');
     }
     
-} catch (Exception $e) {
+} catch (\Throwable $e) {
     ErrorLogger::error("Theme settings error: " . $e->getMessage());
     // Check if redirect_page was set to determine where to redirect on error
     $redirect_page = $_POST['redirect_page'] ?? 'admin_theme_settings';
