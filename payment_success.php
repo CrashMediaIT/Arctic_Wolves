@@ -3,6 +3,7 @@
 session_start();
 require 'db_config.php';
 require 'mailer.php';
+require_once __DIR__ . '/lib/auditor.php';
 
 // 1. LOAD STRIPE
 if (file_exists('vendor/autoload.php')) { require 'vendor/autoload.php'; } 
@@ -108,6 +109,49 @@ try {
             }
 
             unset($_SESSION['package_purchase']);
+        } elseif (isset($checkout->metadata->type) && $checkout->metadata->type === 'template_session') {
+            // HANDLE TEMPLATE SESSION REGISTRATION (only after payment confirmed)
+            $session_date_id = intval($checkout->metadata->session_date_id ?? 0);
+            $athlete_id = intval($checkout->metadata->athlete_id ?? 0);
+
+            if ($session_date_id > 0 && $athlete_id > 0) {
+                // Idempotency: check if already registered
+                $dup_check = $pdo->prepare("SELECT id FROM session_date_athletes WHERE session_date_id = ? AND athlete_id = ?");
+                $dup_check->execute([$session_date_id, $athlete_id]);
+
+                if (!$dup_check->fetch()) {
+                    $stmt = $pdo->prepare("INSERT INTO session_date_athletes (session_date_id, athlete_id) VALUES (?, ?)");
+                    $stmt->execute([$session_date_id, $athlete_id]);
+
+                    Auditor::log($pdo, $athlete_id, 'create', 'session_date_athletes', $pdo->lastInsertId(), [
+                        'action' => 'register_template_session', 'session_date_id' => $session_date_id, 'amount' => ($checkout->amount_total / 100)
+                    ]);
+
+                    // Send confirmation email
+                    $email_stmt = $pdo->prepare("SELECT email, first_name FROM users WHERE id = ?");
+                    $email_stmt->execute([$athlete_id]);
+                    $user_info = $email_stmt->fetch(PDO::FETCH_ASSOC);
+                    $user_info = decryptUserRow($user_info);
+
+                    $tpl_stmt = $pdo->prepare("
+                        SELECT t.name, td.session_date
+                        FROM training_session_dates td
+                        JOIN training_session_templates t ON td.template_id = t.id
+                        WHERE td.id = ?
+                    ");
+                    $tpl_stmt->execute([$session_date_id]);
+                    $tpl_info = $tpl_stmt->fetch(PDO::FETCH_ASSOC);
+
+                    if ($user_info && !empty($user_info['email']) && $tpl_info) {
+                        sendEmail($user_info['email'], 'payment_receipt', [
+                            'session_title' => $tpl_info['name'],
+                            'amount'        => number_format($checkout->amount_total / 100, 2),
+                            'date'          => date('M j, Y', strtotime($tpl_info['session_date'])),
+                            'trans_id'      => $stripe_sid
+                        ]);
+                    }
+                }
+            }
         } else {
             // HANDLE REGULAR SESSION BOOKING
             // 4. FIND THE PENDING BOOKING
