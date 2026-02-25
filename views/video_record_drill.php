@@ -1071,5 +1071,79 @@ document.addEventListener('DOMContentLoaded', function() {
         selectedFileInfo.style.display = 'none';
         uploadFileBtn.disabled = true;
     });
+
+    // Upload file button click handler
+    uploadFileBtn.addEventListener('click', function() {
+        if (!videoFileInput.files.length) return;
+
+        var session = document.getElementById('sessionSelect').value;
+        var drill = document.getElementById('drillSelect').value;
+        var athlete = document.getElementById('athleteSelect').value;
+
+        if (!session || !drill || !athlete) {
+            alert('Please select a session, drill, and athlete before uploading.');
+            return;
+        }
+
+        var formData = new FormData();
+        formData.append('action', 'upload_drill_video');
+        formData.append('session_id', session);
+        formData.append('drill_id', drill);
+        formData.append('athlete_id', athlete);
+        formData.append('rep_number', document.getElementById('repNumber').value);
+        formData.append('video_file', videoFileInput.files[0]);
+
+        var csrfToken = document.querySelector('input[name="csrf_token"]')?.value;
+        if (csrfToken) formData.append('csrf_token', csrfToken);
+
+        // Show progress
+        document.getElementById('uploadProgress').style.display = 'block';
+        var progressFill = document.getElementById('progressFill');
+        var uploadPercent = document.getElementById('uploadPercent');
+        uploadFileBtn.disabled = true;
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', 'process_video.php', true);
+
+        xhr.upload.onprogress = function(e) {
+            if (e.lengthComputable) {
+                var pct = Math.round((e.loaded / e.total) * 100);
+                progressFill.style.width = pct + '%';
+                uploadPercent.textContent = pct + '%';
+            }
+        };
+
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                try {
+                    var response = JSON.parse(xhr.responseText);
+                    if (response.success) {
+                        alert('Video uploaded successfully!');
+                        videoFileInput.value = '';
+                        selectedFileInfo.style.display = 'none';
+                        uploadFileBtn.disabled = true;
+                    } else {
+                        alert('Upload failed: ' + (response.error || response.message || 'Unknown error'));
+                        uploadFileBtn.disabled = false;
+                    }
+                } catch (err) {
+                    alert('Upload failed. Please try again.');
+                    uploadFileBtn.disabled = false;
+                }
+            } else {
+                alert('Upload failed. Please try again.');
+                uploadFileBtn.disabled = false;
+            }
+            document.getElementById('uploadProgress').style.display = 'none';
+        };
+
+        xhr.onerror = function() {
+            alert('Upload failed. Please check your connection.');
+            document.getElementById('uploadProgress').style.display = 'none';
+            uploadFileBtn.disabled = false;
+        };
+
+        xhr.send(formData);
+    });
 });
 </script>

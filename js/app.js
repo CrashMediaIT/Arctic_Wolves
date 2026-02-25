@@ -860,75 +860,116 @@
     // ===================================================================
 
     /**
-     * Initialize file upload with drag and drop
+     * Initialize file upload with contextual drag and drop.
+     * Drop zones are hidden by default and only appear when a file
+     * is dragged into the browser window.
      */
     function initializeFileUploads() {
         const fileInputs = document.querySelectorAll('input[type="file"]');
-        
+        var dragZones = [];
+        var dragCounter = 0;
+
         fileInputs.forEach(input => {
-            // Create a custom upload zone if it doesn't exist
-            if (!input.closest('.file-upload-zone')) {
-                const zone = document.createElement('div');
-                zone.className = 'file-upload-zone';
-                zone.style.cssText = `
-                    border: 2px dashed #2D2D3F;
-                    border-radius: 8px;
-                    padding: 40px;
-                    text-align: center;
-                    background: #13131A;
-                    cursor: pointer;
-                    transition: all 0.3s ease;
-                `;
-                
-                zone.innerHTML = `
-                    <div class="upload-icon" style="font-size: 48px; color: #6B46C1; margin-bottom: 16px;"><i class="fas fa-folder-open"></i></div>
-                    <div class="upload-text" style="color: #E0E0E0; margin-bottom: 8px;">Click to upload or drag and drop</div>
-                    <div class="upload-hint" style="color: #9CA3AF; font-size: 12px;">Supported formats vary by field</div>
-                `;
-                
-                input.parentNode.insertBefore(zone, input);
-                input.style.display = 'none';
-                
-                zone.addEventListener('click', () => input.click());
-                
-                // Drag and drop functionality
-                zone.addEventListener('dragover', (e) => {
-                    e.preventDefault();
-                    zone.style.borderColor = '#7C3AED';
-                    zone.style.background = '#1A1A2E';
-                });
-                
-                zone.addEventListener('dragleave', () => {
-                    zone.style.borderColor = '#2D2D3F';
-                    zone.style.background = '#13131A';
-                });
-                
-                zone.addEventListener('drop', (e) => {
-                    e.preventDefault();
-                    zone.style.borderColor = '#2D2D3F';
-                    zone.style.background = '#13131A';
-                    
-                    if (e.dataTransfer.files.length > 0) {
-                        input.files = e.dataTransfer.files;
-                        const event = new Event('change', { bubbles: true });
-                        input.dispatchEvent(event);
-                    }
-                });
+            // Skip inputs that already have a custom upload UI
+            if (input.closest('.file-upload-zone') ||
+                input.closest('.file-upload-area') ||
+                input.closest('[data-component="FileUpload"]')) {
+                return;
             }
-            
+
+            // Create a choose-file button shown by default
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'file-choose-btn';
+            btn.style.cssText = 'display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:8px;background:rgba(107,70,193,0.15);color:#8B5CF6;border:1px solid rgba(107,70,193,0.3);cursor:pointer;font-size:14px;font-weight:600;font-family:Inter,sans-serif;transition:background 0.2s;';
+            btn.innerHTML = '<i class="fas fa-folder-open"></i> Choose File';
+            btn.addEventListener('click', function(e) { e.preventDefault(); input.click(); });
+
+            // Create contextual drop zone (hidden until drag enters window)
+            var zone = document.createElement('div');
+            zone.className = 'file-upload-zone';
+            zone.style.cssText = 'display:none;border:2px dashed #2D2D3F;border-radius:8px;padding:40px;text-align:center;background:#13131A;cursor:pointer;transition:all 0.3s ease;';
+            zone.innerHTML = '<div class="upload-icon" style="font-size:48px;color:#6B46C1;margin-bottom:16px;"><i class="fas fa-folder-open"></i></div>' +
+                '<div class="upload-text" style="color:#E0E0E0;margin-bottom:8px;">Drop file here</div>' +
+                '<div class="upload-hint" style="color:#9CA3AF;font-size:12px;">Supported formats vary by field</div>';
+
+            zone.addEventListener('click', function() { input.click(); });
+
+            zone.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                zone.style.borderColor = '#7C3AED';
+                zone.style.background = '#1A1A2E';
+            });
+
+            zone.addEventListener('dragleave', function() {
+                zone.style.borderColor = '#2D2D3F';
+                zone.style.background = '#13131A';
+            });
+
+            zone.addEventListener('drop', function(e) {
+                e.preventDefault();
+                zone.style.borderColor = '#2D2D3F';
+                zone.style.background = '#13131A';
+                if (e.dataTransfer.files.length > 0) {
+                    input.files = e.dataTransfer.files;
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            });
+
+            input.parentNode.insertBefore(btn, input);
+            input.parentNode.insertBefore(zone, input);
+            input.style.display = 'none';
+            dragZones.push({ zone: zone, btn: btn });
+
             // Show file name when selected
             input.addEventListener('change', function() {
-                const zone = this.previousElementSibling;
-                if (zone && zone.classList.contains('file-upload-zone')) {
-                    const fileName = this.files[0] ? this.files[0].name : 'No file selected';
-                    const textDiv = zone.querySelector('.upload-text');
-                    if (textDiv) {
-                        textDiv.textContent = fileName;
-                        textDiv.style.color = '#10B981';
-                    }
+                var fileName = this.files[0] ? this.files[0].name : '';
+                if (fileName) {
+                    btn.innerHTML = '<i class="fas fa-check" style="color:#10B981;"></i> ' + fileName;
+                } else {
+                    btn.innerHTML = '<i class="fas fa-folder-open"></i> Choose File';
+                }
+                var textDiv = zone.querySelector('.upload-text');
+                if (textDiv && fileName) {
+                    textDiv.textContent = fileName;
+                    textDiv.style.color = '#10B981';
                 }
             });
         });
+
+        // Contextual drag: show drop zones only when dragging into the window
+        if (dragZones.length > 0) {
+            document.addEventListener('dragenter', function(e) {
+                e.preventDefault();
+                dragCounter++;
+                if (dragCounter === 1) {
+                    dragZones.forEach(function(item) {
+                        item.zone.style.display = 'block';
+                        item.btn.style.display = 'none';
+                    });
+                }
+            });
+
+            document.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                dragCounter--;
+                if (dragCounter <= 0) {
+                    dragCounter = 0;
+                    dragZones.forEach(function(item) {
+                        item.zone.style.display = 'none';
+                        item.btn.style.display = 'inline-flex';
+                    });
+                }
+            });
+
+            document.addEventListener('drop', function(e) {
+                dragCounter = 0;
+                dragZones.forEach(function(item) {
+                    item.zone.style.display = 'none';
+                    item.btn.style.display = 'inline-flex';
+                });
+            });
+        }
     }
 
     // ===================================================================
