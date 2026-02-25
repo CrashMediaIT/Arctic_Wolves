@@ -186,18 +186,18 @@ test.describe('Theme branding tab has single consolidated form', () => {
     expect(formContent).toContain('name="bc_back_bg"');
   });
 
-  test('should have only one save button in branding form', () => {
+  test('should not have individual save button in branding form (uses unified save)', () => {
     const content = readFile('views/admin_theme_settings.php');
     const formStart = content.indexOf('id="brandingForm"');
     const formEnd = content.indexOf('</form>', formStart);
     const formContent = content.substring(formStart, formEnd);
     const saveButtons = formContent.match(/type="submit"/g);
-    expect(saveButtons).toHaveLength(1);
+    expect(saveButtons).toBeNull();
   });
 
-  test('save button should say "Save Branding Settings"', () => {
+  test('unified save button should say "Save All Settings"', () => {
     const content = readFile('views/admin_theme_settings.php');
-    expect(content).toContain('Save Branding Settings');
+    expect(content).toContain('Save All Settings');
   });
 });
 

@@ -510,6 +510,22 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
         box-shadow: 0 4px 12px rgba(112, 0, 164, 0.3);
     }
     
+    .unified-save-container {
+        position: sticky;
+        bottom: 0;
+        background: var(--card-bg, #16161F);
+        border-top: 1px solid var(--border, #2D2D3F);
+        padding: 16px 24px;
+        margin: 0 -24px;
+        z-index: 10;
+        text-align: center;
+    }
+    .unified-save-container .btn-save {
+        min-width: 240px;
+        padding: 14px 32px;
+        font-size: 16px;
+    }
+    
     .btn-reset {
         background: transparent;
         color: #ef4444;
@@ -923,9 +939,6 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
                 </div>
                 
                 <div class="action-buttons">
-                    <button type="submit" class="btn btn-save">
-                        <i class="fas fa-save"></i> Save Colors
-                    </button>
                     <button type="button" class="btn btn-reset" onclick="resetTheme()">
                         <i class="fas fa-undo"></i> Reset to Defaults
                     </button>
@@ -1132,9 +1145,6 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
             </div>
 
             <div class="action-buttons" style="margin-top: 30px; border-top: 1px solid #1e293b; padding-top: 20px;">
-                <button type="submit" class="btn btn-save" id="brandingSaveBtn">
-                    <i class="fas fa-save"></i> Save Branding Settings
-                </button>
             </div>
         </form>
     </div>
@@ -1210,12 +1220,25 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
             </div>
 
             <div class="action-buttons">
-                <button type="submit" class="btn btn-save" id="heroSaveBtn">
-                    <i class="fas fa-save"></i> Save Hero Section
-                </button>
             </div>
         </form>
     </div>
+</div>
+
+<!-- Unified Save Button for Colors, Branding, and Hero -->
+<div id="unifiedSaveContainer" class="unified-save-container">
+    <div id="unifiedUploadProgress" style="display:none; margin-bottom: 12px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:13px; color:#A8A8B8;">
+            <span>Saving settings...</span>
+            <span id="unifiedUploadPercent">0%</span>
+        </div>
+        <div style="width:100%; height:8px; background:#2D2D3F; border-radius:4px; overflow:hidden;">
+            <div id="unifiedUploadBar" style="width:0%; height:100%; background:linear-gradient(135deg,#6B46C1,#8B5CF6); border-radius:4px; transition:width 0.2s;"></div>
+        </div>
+    </div>
+    <button type="button" class="btn btn-save" id="unifiedSaveBtn" onclick="saveAllThemeSettings()">
+        <i class="fas fa-save"></i> Save All Settings
+    </button>
 </div>
 
 <!-- TAB 4: TRAINING PROGRAMS -->
@@ -1386,6 +1409,12 @@ function switchTab(tabName) {
     
     // Mark button as active
     event.target.closest('.tab-btn').classList.add('active');
+    
+    // Show/hide unified save button (hide for programs tab which has its own save)
+    var saveContainer = document.getElementById('unifiedSaveContainer');
+    if (saveContainer) {
+        saveContainer.style.display = (tabName === 'programs') ? 'none' : '';
+    }
 }
 
 // Color picker sync
@@ -1427,36 +1456,85 @@ function updatePreview() {
     container.style.setProperty('--warning', formData.get('warning_color'));
 }
 
-// Save colors - form already has action=update_colors via hidden input
-document.getElementById('colorsForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    var formData = new FormData(this);
-    
-    try {
-        var response = await fetch('process_theme.php', {
-            method: 'POST',
-            body: formData
-        });
-        
-        // Backend redirects on success; if followed, response is HTML not JSON
-        var text = await response.text();
+// Prevent individual form submissions (they are saved via unified button)
+document.getElementById('colorsForm').addEventListener('submit', function(e) { e.preventDefault(); });
+document.getElementById('brandingForm').addEventListener('submit', function(e) { e.preventDefault(); });
+document.getElementById('heroForm').addEventListener('submit', function(e) { e.preventDefault(); });
+
+// Unified save: merge all three forms and submit together
+function saveAllThemeSettings() {
+    var colorsForm = document.getElementById('colorsForm');
+    var brandingForm = document.getElementById('brandingForm');
+    var heroForm = document.getElementById('heroForm');
+
+    // Build a single FormData from all three forms
+    var formData = new FormData(colorsForm);
+    // Override action to unified handler
+    formData.set('action', 'update_all_theme_settings');
+
+    // Merge branding form fields (skip csrf_token and action)
+    var brandingData = new FormData(brandingForm);
+    for (var pair of brandingData.entries()) {
+        if (pair[0] !== 'csrf_token' && pair[0] !== 'action') {
+            formData.append(pair[0], pair[1]);
+        }
+    }
+    // Merge hero form fields (skip csrf_token and action)
+    var heroData = new FormData(heroForm);
+    for (var pair of heroData.entries()) {
+        if (pair[0] !== 'csrf_token' && pair[0] !== 'action') {
+            formData.append(pair[0], pair[1]);
+        }
+    }
+
+    var progressDiv = document.getElementById('unifiedUploadProgress');
+    var progressBar = document.getElementById('unifiedUploadBar');
+    var progressPct = document.getElementById('unifiedUploadPercent');
+    var saveBtn = document.getElementById('unifiedSaveBtn');
+
+    progressDiv.style.display = 'block';
+    saveBtn.disabled = true;
+
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', 'process_theme.php', true);
+
+    xhr.upload.onprogress = function(ev) {
+        if (ev.lengthComputable) {
+            var pct = Math.round((ev.loaded / ev.total) * 100);
+            progressBar.style.width = pct + '%';
+            progressPct.textContent = pct + '%';
+        }
+    };
+
+    xhr.onload = function() {
+        progressDiv.style.display = 'none';
+        saveBtn.disabled = false;
         try {
-            var data = JSON.parse(text);
+            var data = JSON.parse(xhr.responseText);
             if (data.success) {
-                persistToast(data.message || 'Colors saved!', 'success');
+                persistToast(data.message || 'All settings saved!', 'success');
                 window.location.reload();
             } else {
-                showAlert('error', data.message);
+                showAlert('error', data.message || 'Save failed');
             }
         } catch (parseErr) {
-            persistToast('Colors saved successfully!', 'success');
-            window.location.reload();
+            if (xhr.status >= 200 && xhr.status < 400) {
+                persistToast('All theme settings saved!', 'success');
+                window.location.reload();
+            } else {
+                showAlert('error', 'An error occurred while saving settings.');
+            }
         }
-    } catch (error) {
-        showAlert('error', 'An error occurred while saving colors.');
-    }
-});
+    };
+
+    xhr.onerror = function() {
+        progressDiv.style.display = 'none';
+        saveBtn.disabled = false;
+        showAlert('error', 'An error occurred while saving settings.');
+    };
+
+    xhr.send(formData);
+}
 
 // Reset theme
 async function resetTheme() {
@@ -1528,115 +1606,6 @@ function previewImage(input, previewId) {
         reader.readAsDataURL(input.files[0]);
     }
 }
-
-// Save branding (single consolidated form with XHR progress)
-document.getElementById('brandingForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    var formData = new FormData(this);
-    var progressDiv = document.getElementById('brandingUploadProgress');
-    var progressBar = document.getElementById('brandingUploadBar');
-    var progressPct = document.getElementById('brandingUploadPercent');
-    var saveBtn = document.getElementById('brandingSaveBtn');
-
-    progressDiv.style.display = 'block';
-    saveBtn.disabled = true;
-
-    var xhr = new XMLHttpRequest();
-    xhr.open('POST', 'process_theme.php', true);
-
-    xhr.upload.onprogress = function(ev) {
-        if (ev.lengthComputable) {
-            var pct = Math.round((ev.loaded / ev.total) * 100);
-            progressBar.style.width = pct + '%';
-            progressPct.textContent = pct + '%';
-        }
-    };
-
-    xhr.onload = function() {
-        progressDiv.style.display = 'none';
-        saveBtn.disabled = false;
-        // Backend redirects on success; response may be HTML
-        try {
-            var data = JSON.parse(xhr.responseText);
-            if (data.success) {
-                persistToast(data.message || 'Branding saved!', 'success');
-                window.location.reload();
-            } else {
-                showAlert('error', data.message || 'Save failed');
-            }
-        } catch (parseErr) {
-            if (xhr.status >= 200 && xhr.status < 400) {
-                persistToast('Branding settings saved!', 'success');
-                window.location.reload();
-            } else {
-                showAlert('error', 'An error occurred while saving branding.');
-            }
-        }
-    };
-
-    xhr.onerror = function() {
-        progressDiv.style.display = 'none';
-        saveBtn.disabled = false;
-        showAlert('error', 'An error occurred while saving branding.');
-    };
-
-    xhr.send(formData);
-});
-
-// Save hero section with XHR progress
-document.getElementById('heroForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    var formData = new FormData(this);
-    var progressDiv = document.getElementById('heroUploadProgress');
-    var progressBar = document.getElementById('heroUploadBar');
-    var progressPct = document.getElementById('heroUploadPercent');
-    var saveBtn = document.getElementById('heroSaveBtn');
-
-    progressDiv.style.display = 'block';
-    saveBtn.disabled = true;
-
-    var xhr = new XMLHttpRequest();
-    xhr.open('POST', 'process_theme.php', true);
-
-    xhr.upload.onprogress = function(ev) {
-        if (ev.lengthComputable) {
-            var pct = Math.round((ev.loaded / ev.total) * 100);
-            progressBar.style.width = pct + '%';
-            progressPct.textContent = pct + '%';
-        }
-    };
-
-    xhr.onload = function() {
-        progressDiv.style.display = 'none';
-        saveBtn.disabled = false;
-        try {
-            var data = JSON.parse(xhr.responseText);
-            if (data.success) {
-                persistToast(data.message || 'Hero section saved!', 'success');
-                window.location.reload();
-            } else {
-                showAlert('error', data.message || 'Save failed');
-            }
-        } catch (parseErr) {
-            if (xhr.status >= 200 && xhr.status < 400) {
-                persistToast('Hero section saved!', 'success');
-                window.location.reload();
-            } else {
-                showAlert('error', 'An error occurred while saving hero section.');
-            }
-        }
-    };
-
-    xhr.onerror = function() {
-        progressDiv.style.display = 'none';
-        saveBtn.disabled = false;
-        showAlert('error', 'An error occurred while saving hero section.');
-    };
-
-    xhr.send(formData);
-});
 
 // Program modal
 function openProgramModal(program = null) {

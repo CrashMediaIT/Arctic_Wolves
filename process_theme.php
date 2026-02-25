@@ -452,6 +452,93 @@ try {
             header('Location: dashboard.php?page=system_tools&tab=theme&success=1');
             exit;
             
+        case 'update_all_theme_settings':
+            // Unified handler: save colors + branding + hero in one request
+            
+            // 1. Process colors
+            $color_names = [
+                'primary_color', 'secondary_color', 'background_color',
+                'card_background_color', 'text_color', 'text_muted_color',
+                'border_color', 'sidebar_color', 'button_hover_color',
+                'success_color', 'error_color', 'warning_color'
+            ];
+            foreach ($color_names as $name) {
+                $value = $_POST[$name] ?? null;
+                if ($value !== null && preg_match('/^#[a-fA-F0-9]{6}$/', $value)) {
+                    updateThemeSetting($pdo, $name, $value);
+                }
+            }
+            
+            // 2. Process logo/branding
+            if (isset($_FILES['logo']) && $_FILES['logo']['error'] === UPLOAD_ERR_OK) {
+                $result = handleFileUpload($_FILES['logo'], 'logo');
+                if ($result['success']) {
+                    updateThemeSetting($pdo, 'logo_url', $result['url']);
+                    syncCenterIceLogoIfNeeded($pdo, $result['url']);
+                }
+            } elseif (!empty($_POST['logo_url_input'])) {
+                updateThemeSetting($pdo, 'logo_url', $_POST['logo_url_input']);
+                syncCenterIceLogoIfNeeded($pdo, $_POST['logo_url_input']);
+            }
+            
+            if (isset($_POST['site_title'])) {
+                updateThemeSetting($pdo, 'site_title', trim($_POST['site_title']));
+            }
+            if (isset($_POST['site_description'])) {
+                updateThemeSetting($pdo, 'site_description', trim($_POST['site_description']));
+            }
+            
+            // Center ice logo
+            if (isset($_FILES['center_ice_logo']) && $_FILES['center_ice_logo']['error'] === UPLOAD_ERR_OK) {
+                $result = handleFileUpload($_FILES['center_ice_logo'], 'center_ice');
+                if ($result['success']) {
+                    updateThemeSetting($pdo, 'center_ice_logo_url', $result['url']);
+                }
+            } elseif (!empty($_POST['center_ice_logo_url_input'])) {
+                updateThemeSetting($pdo, 'center_ice_logo_url', $_POST['center_ice_logo_url_input']);
+            }
+            
+            // Business card backgrounds
+            if (isset($_FILES['bc_front_bg']) && $_FILES['bc_front_bg']['error'] === UPLOAD_ERR_OK) {
+                $result = handleFileUpload($_FILES['bc_front_bg'], 'bc_front_bg');
+                if ($result['success']) {
+                    updateThemeSetting($pdo, 'business_card_front_bg_url', $result['url']);
+                }
+            }
+            if (isset($_FILES['bc_back_bg']) && $_FILES['bc_back_bg']['error'] === UPLOAD_ERR_OK) {
+                $result = handleFileUpload($_FILES['bc_back_bg'], 'bc_back_bg');
+                if ($result['success']) {
+                    updateThemeSetting($pdo, 'business_card_back_bg_url', $result['url']);
+                }
+            }
+            
+            // 3. Process hero section
+            if (isset($_FILES['hero_image']) && $_FILES['hero_image']['error'] === UPLOAD_ERR_OK) {
+                $result = handleFileUpload($_FILES['hero_image'], 'hero');
+                if ($result['success']) {
+                    updateThemeSetting($pdo, 'hero_image_url', $result['url']);
+                }
+            } elseif (!empty($_POST['hero_image_url'])) {
+                updateThemeSetting($pdo, 'hero_image_url', $_POST['hero_image_url']);
+            }
+            if (isset($_POST['hero_title'])) {
+                updateThemeSetting($pdo, 'hero_title', trim($_POST['hero_title']));
+            }
+            if (isset($_POST['hero_subtitle'])) {
+                updateThemeSetting($pdo, 'hero_subtitle', trim($_POST['hero_subtitle']));
+            }
+            if (isset($_POST['hero_cta_text'])) {
+                updateThemeSetting($pdo, 'hero_cta_text', trim($_POST['hero_cta_text']));
+            }
+            if (isset($_POST['hero_cta_url'])) {
+                updateThemeSetting($pdo, 'hero_cta_url', trim($_POST['hero_cta_url']));
+            }
+            
+            Auditor::log($pdo, $user_id, 'update', 'theme_settings', null, ['action' => 'All theme settings updated']);
+            
+            header('Location: dashboard.php?page=admin_theme_settings&tab=colors&success=1');
+            exit;
+            
         default:
             throw new Exception('Invalid action');
     }
