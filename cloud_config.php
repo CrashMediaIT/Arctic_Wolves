@@ -705,6 +705,11 @@ function getPersistentStoragePath($pdo = null) {
             error_log("Error reading persistent path setting: " . $e->getMessage());
         }
     }
+    // Default: /config/persistent_uploads (outside web root, survives app re-deploys)
+    // Fall back to sibling directory of project root if /config doesn't exist
+    if (is_dir('/config')) {
+        return '/config/persistent_uploads';
+    }
     return realpath(__DIR__ . '/..') . '/persistent_uploads';
 }
 
@@ -837,6 +842,83 @@ function uploadImageToNextcloud($pdo, $settings, $local_file_path, $subfolder, $
         
     } catch (Exception $e) {
         error_log("Error uploading image to Nextcloud: " . $e->getMessage());
+        return [
+            'success' => false,
+            'message' => $e->getMessage()
+        ];
+    }
+}
+
+/**
+ * Upload a large file (e.g. video) to Nextcloud using streaming to avoid memory exhaustion.
+ * Uses CURLOPT_INFILE to stream the file directly from disk without loading it into memory.
+ * Also saves a copy to persistent local storage.
+ *
+ * @param PDO $pdo Database connection
+ * @param array $settings Nextcloud settings (from getNextcloudSettings)
+ * @param string $local_file_path Absolute path to the local file
+ * @param string $subfolder Subfolder within Nextcloud images dir (e.g., 'videos/coach')
+ * @param string $filename Target filename
+ * @return array Result with success status and remote_path
+ */
+function uploadLargeFileToNextcloud($pdo, $settings, $local_file_path, $subfolder, $filename) {
+    // Always save to persistent local storage first (uses copy(), memory-safe)
+    saveToPersistentStorage($local_file_path, $subfolder, $filename, $pdo);
+
+    try {
+        $connection = connectNextcloud($settings);
+
+        $images_dir = $settings['nextcloud_images_dir'] ?? '/Images';
+
+        // Build folder path
+        $sub_parts = array_filter(explode('/', $subfolder), function($p) { return $p !== ''; });
+        $folder_path = ensureNextcloudPath($connection, $images_dir, $sub_parts);
+
+        $remote_path = $folder_path . '/' . $filename;
+        $remote_path_clean = '/' . trim($remote_path, '/');
+
+        $webdav_url = $connection['url'] . '/remote.php/dav/files/' . $connection['username'] . $remote_path_clean;
+
+        $file_size = filesize($local_file_path);
+        $fh = fopen($local_file_path, 'rb');
+        if ($fh === false) {
+            throw new Exception("Failed to open file for streaming upload: $local_file_path");
+        }
+
+        // Determine content type
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $content_type = finfo_file($finfo, $local_file_path);
+        finfo_close($finfo);
+
+        $ch = curl_init($webdav_url);
+        curl_setopt($ch, CURLOPT_PUT, true);
+        curl_setopt($ch, CURLOPT_INFILE, $fh);
+        curl_setopt($ch, CURLOPT_INFILESIZE, $file_size);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+        curl_setopt($ch, CURLOPT_USERPWD, $connection['username'] . ':' . $connection['password']);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: ' . $content_type,
+        ]);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        fclose($fh);
+
+        if ($http_code !== 201 && $http_code !== 204) {
+            throw new Exception("Failed to upload large file via streaming. HTTP Code: $http_code");
+        }
+
+        return [
+            'success' => true,
+            'remote_path' => $remote_path_clean,
+            'file_size' => $file_size
+        ];
+
+    } catch (Exception $e) {
+        error_log("Error uploading large file to Nextcloud: " . $e->getMessage());
         return [
             'success' => false,
             'message' => $e->getMessage()
