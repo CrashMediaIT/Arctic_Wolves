@@ -54,15 +54,16 @@ try {
             
             // Handle image upload
             $image_url = null;
+            $exercise_nc_path = null;
             if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
-                $uploadDir = 'uploads/exercises/';
-                if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
                 $ext = pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION);
                 $filename = uniqid('exercise_') . '.' . $ext;
-                $uploadPath = $uploadDir . $filename;
-                if (move_uploaded_file($_FILES['image']['tmp_name'], $uploadPath)) {
-                    $image_url = $uploadPath;
-                }
+                $uploadPath = 'uploads/exercises/' . $filename;
+                
+                // Persist: save to /config/persistent_uploads, upload to Nextcloud, cache locally
+                $persist = persistUploadedFile($pdo, $_FILES['image']['tmp_name'], 'exercises', $filename, $uploadPath);
+                $image_url = $uploadPath;
+                $exercise_nc_path = $persist['nextcloud_path'] ?? null;
             }
             
             $stmt = $pdo->prepare("
@@ -74,25 +75,9 @@ try {
             $exercise_id = $pdo->lastInsertId();
             Auditor::log($pdo, $user_id, 'create', 'exercise_library', $exercise_id, ['action' => 'Exercise created']);
             
-            // Upload exercise image to Nextcloud for persistent storage
-            if (!empty($image_url)) {
-                try {
-                    $nc_settings = getNextcloudSettings($pdo);
-                    if (!empty($nc_settings['nextcloud_url'])) {
-                        if (!empty($nc_settings['nextcloud_password'])) {
-                            $decrypted = decryptPassword($nc_settings['nextcloud_password']);
-                            if (!empty($decrypted)) {
-                                $nc_settings['nextcloud_password'] = $decrypted;
-                            }
-                        }
-                        $result = uploadImageToNextcloud($pdo, $nc_settings, $image_url, 'exercises', $filename);
-                        if ($result['success']) {
-                            $pdo->prepare("UPDATE exercise_library SET nextcloud_image_path = ? WHERE id = ?")->execute([$result['remote_path'], $exercise_id]);
-                        }
-                    }
-                } catch (Exception $e) {
-                    error_log("Nextcloud exercise image upload failed: " . $e->getMessage());
-                }
+            // Store Nextcloud path for persistent recovery
+            if (!empty($exercise_nc_path)) {
+                $pdo->prepare("UPDATE exercise_library SET nextcloud_image_path = ? WHERE id = ?")->execute([$exercise_nc_path, $exercise_id]);
             }
             
             echo json_encode(['success' => true, 'message' => 'Exercise created successfully']);
@@ -116,15 +101,14 @@ try {
             $params = [$name, $description ?: null, $category ?: null, $equipment_needed ?: null, $difficulty_level ?: null, $video_url ?: null];
             
             if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
-                $uploadDir = 'uploads/exercises/';
-                if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
                 $ext = pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION);
                 $filename = uniqid('exercise_') . '.' . $ext;
-                $uploadPath = $uploadDir . $filename;
-                if (move_uploaded_file($_FILES['image']['tmp_name'], $uploadPath)) {
-                    $image_sql = ', image_url = ?';
-                    $params[] = $uploadPath;
-                }
+                $uploadPath = 'uploads/exercises/' . $filename;
+                
+                // Persist: save to /config/persistent_uploads, upload to Nextcloud, cache locally
+                $persist = persistUploadedFile($pdo, $_FILES['image']['tmp_name'], 'exercises', $filename, $uploadPath);
+                $image_sql = ', image_url = ?';
+                $params[] = $uploadPath;
             }
             
             $params[] = $id;
@@ -138,25 +122,9 @@ try {
             
             Auditor::log($pdo, $user_id, 'update', 'exercise_library', $id, ['action' => 'Exercise updated']);
             
-            // Upload updated exercise image to Nextcloud for persistent storage
-            if (isset($uploadPath) && !empty($uploadPath)) {
-                try {
-                    $nc_settings = getNextcloudSettings($pdo);
-                    if (!empty($nc_settings['nextcloud_url'])) {
-                        if (!empty($nc_settings['nextcloud_password'])) {
-                            $decrypted = decryptPassword($nc_settings['nextcloud_password']);
-                            if (!empty($decrypted)) {
-                                $nc_settings['nextcloud_password'] = $decrypted;
-                            }
-                        }
-                        $result = uploadImageToNextcloud($pdo, $nc_settings, $uploadPath, 'exercises', $filename);
-                        if ($result['success']) {
-                            $pdo->prepare("UPDATE exercise_library SET nextcloud_image_path = ? WHERE id = ?")->execute([$result['remote_path'], $id]);
-                        }
-                    }
-                } catch (Exception $e) {
-                    error_log("Nextcloud exercise image upload failed: " . $e->getMessage());
-                }
+            // Store Nextcloud path for persistent recovery
+            if (isset($persist) && !empty($persist['nextcloud_path'])) {
+                $pdo->prepare("UPDATE exercise_library SET nextcloud_image_path = ? WHERE id = ?")->execute([$persist['nextcloud_path'], $id]);
             }
             
             echo json_encode(['success' => true, 'message' => 'Exercise updated successfully']);

@@ -445,11 +445,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $media_type = null;
                 
                 if (isset($_FILES['media_file']) && $_FILES['media_file']['error'] === UPLOAD_ERR_OK) {
-                    $upload_dir = __DIR__ . '/uploads/eval_media/';
-                    if (!is_dir($upload_dir)) {
-                        mkdir($upload_dir, 0755, true);
-                    }
-                    
                     $file_ext = strtolower(pathinfo($_FILES['media_file']['name'], PATHINFO_EXTENSION));
                     $allowed_extensions = ['jpg', 'jpeg', 'png', 'gif', 'mp4', 'mov', 'avi'];
                     
@@ -459,12 +454,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                     
                     $file_name = uniqid() . '.' . $file_ext;
-                    $file_path = $upload_dir . $file_name;
+                    $media_cache_rel = 'uploads/eval_media/' . $file_name;
+                    $media_type = in_array($file_ext, ['mp4', 'mov', 'avi']) ? 'video' : 'image';
                     
-                    if (move_uploaded_file($_FILES['media_file']['tmp_name'], $file_path)) {
-                        $media_url = 'uploads/eval_media/' . $file_name;
-                        $media_type = in_array($file_ext, ['mp4', 'mov', 'avi']) ? 'video' : 'image';
-                    }
+                    // Persist: save to /config/persistent_uploads, upload to Nextcloud, cache locally
+                    $persist = persistUploadedFile($pdo, $_FILES['media_file']['tmp_name'], 'eval_goals/' . $step_id, $file_name, $media_cache_rel);
+                    $media_url = $media_cache_rel;
                 }
                 
                 $stmt = $pdo->prepare("
@@ -476,25 +471,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $progress_id = $pdo->lastInsertId();
                 Auditor::log($pdo, $user_id, 'create', 'goal_eval_progress', $progress_id, ['action' => 'Added media to step', 'step_id' => $step_id]);
                 
-                // Upload evaluation goal media to Nextcloud for persistent storage
-                if (!empty($media_url)) {
-                    try {
-                        $nc_settings = getNextcloudSettings($pdo);
-                        if (!empty($nc_settings['nextcloud_url'])) {
-                            if (!empty($nc_settings['nextcloud_password'])) {
-                                $decrypted = decryptPassword($nc_settings['nextcloud_password']);
-                                if (!empty($decrypted)) {
-                                    $nc_settings['nextcloud_password'] = $decrypted;
-                                }
-                            }
-                            $result = uploadImageToNextcloud($pdo, $nc_settings, $media_url, 'eval_goals/' . $step_id, $file_name);
-                            if ($result['success']) {
-                                $pdo->prepare("UPDATE goal_eval_progress SET nextcloud_path = ? WHERE id = ?")->execute([$result['remote_path'], $progress_id]);
-                            }
-                        }
-                    } catch (Exception $e) {
-                        error_log("Nextcloud eval goal media upload failed: " . $e->getMessage());
-                    }
+                // Store Nextcloud path for persistent recovery
+                if (isset($persist) && !empty($persist['nextcloud_path'])) {
+                    $pdo->prepare("UPDATE goal_eval_progress SET nextcloud_path = ? WHERE id = ?")->execute([$persist['nextcloud_path'], $progress_id]);
                 }
                 
                 echo json_encode([

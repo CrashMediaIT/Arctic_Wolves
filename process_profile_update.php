@@ -39,33 +39,18 @@ if ($action == 'upload_avatar') {
         $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
         
         if (in_array($ext, $allowed)) {
-            if (!is_dir(__DIR__ . '/uploads')) { mkdir(__DIR__ . '/uploads'); }
+            $nc_filename = "avatar_" . $target_id . "_" . time() . "." . $ext;
             $new_name = "uploads/avatar_" . $target_id . "_" . time() . "." . $ext;
-            $absolute_path = __DIR__ . '/' . $new_name;
             
-            if (move_uploaded_file($_FILES['profile_pic']['tmp_name'], $absolute_path)) {
-                $pdo->prepare("UPDATE users SET profile_image = ? WHERE id = ?")->execute([$new_name, $target_id]);
-                
-                // Upload to Nextcloud for persistent storage
-                try {
-                    $nc_settings = getNextcloudSettings($pdo);
-                    if (!empty($nc_settings['nextcloud_url'])) {
-                        // Decrypt password if encrypted
-                        if (!empty($nc_settings['nextcloud_password'])) {
-                            $decrypted = decryptPassword($nc_settings['nextcloud_password']);
-                            if (!empty($decrypted)) {
-                                $nc_settings['nextcloud_password'] = $decrypted;
-                            }
-                        }
-                        $nc_filename = "avatar_" . $target_id . "_" . time() . "." . $ext;
-                        $result = uploadImageToNextcloud($pdo, $nc_settings, $absolute_path, 'profiles', $nc_filename);
-                        if ($result['success']) {
-                            $pdo->prepare("UPDATE users SET nextcloud_image_path = ? WHERE id = ?")->execute([$result['remote_path'], $target_id]);
-                        }
-                    }
-                } catch (Exception $e) {
-                    error_log("Nextcloud profile image upload failed: " . $e->getMessage());
-                }
+            // Persist: save to /config/persistent_uploads, upload to Nextcloud, cache locally
+            $persist = persistUploadedFile($pdo, $_FILES['profile_pic']['tmp_name'], 'profiles', $nc_filename, $new_name);
+            
+            $pdo->prepare("UPDATE users SET profile_image = ? WHERE id = ?")->execute([$new_name, $target_id]);
+            
+            // Store Nextcloud path for persistent recovery
+            if (!empty($persist['nextcloud_path'])) {
+                $pdo->prepare("UPDATE users SET nextcloud_image_path = ? WHERE id = ?")->execute([$persist['nextcloud_path'], $target_id]);
+            }
                 
                 Auditor::log($pdo, $current_user_id, 'update', 'users', $target_id, ['action' => 'uploaded_avatar']);
                 
