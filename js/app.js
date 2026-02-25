@@ -292,8 +292,12 @@
             });
         });
 
-        // Delete buttons
-        document.querySelectorAll('[data-action="delete"], .btn-delete, .delete-btn').forEach(btn => {
+        // Delete buttons — only handle elements with an explicit data-action-url.
+        // Pages with their own delete handlers (accounting_products, admin_categories,
+        // drills_library, etc.) manage confirmation and AJAX deletion themselves.
+        // Binding here without data-action-url would show a duplicate browser confirm
+        // and submit to the wrong endpoint, preventing the real delete from working.
+        document.querySelectorAll('[data-action="delete"][data-action-url], .btn-delete[data-action-url], .delete-btn[data-action-url]').forEach(btn => {
             btn.addEventListener('click', function(e) {
                 e.preventDefault();
                 const itemId = this.getAttribute('data-id');
@@ -303,7 +307,7 @@
                 if (confirm(`Are you sure you want to delete ${itemName}?`)) {
                     const form = document.createElement('form');
                     form.method = 'POST';
-                    form.action = this.getAttribute('data-action-url') || '';
+                    form.action = this.getAttribute('data-action-url');
                     
                     // Add CSRF token
                     const csrfToken = document.querySelector('[name="csrf_token"]')?.value;

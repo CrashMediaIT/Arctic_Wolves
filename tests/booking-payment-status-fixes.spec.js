@@ -147,18 +147,17 @@ test.describe('Calendar View Status Awareness', () => {
 // =====================================================
 
 test.describe('Private & Semi-Private Sessions', () => {
-  test('auto-creates Sessions category and Private/Semi-Private products', () => {
+  test('auto-creates Private and Semi-Private session templates in Sessions tab', () => {
     const content = readFile('views/sessions_booking.php');
-    expect(content).toContain("INSERT IGNORE INTO merchandise_categories (name, description, is_active) VALUES (?, ?, 1)");
-    expect(content).toContain("INSERT IGNORE INTO merchandise_products");
-    expect(content).toContain("'SESSION-PRIVATE'");
-    expect(content).toContain("'SESSION-SEMI-PRIVATE'");
+    expect(content).toContain("INSERT INTO training_session_templates");
+    expect(content).toContain("'Private Session'");
+    expect(content).toContain("'Semi-Private Session'");
   });
 
-  test('queries pricing from merchandise_products by SKU', () => {
+  test('queries hourly pricing from training_session_templates', () => {
     const content = readFile('views/sessions_booking.php');
-    expect(content).toContain("SELECT price FROM merchandise_products WHERE sku = 'SESSION-PRIVATE'");
-    expect(content).toContain("SELECT price FROM merchandise_products WHERE sku = 'SESSION-SEMI-PRIVATE'");
+    expect(content).toContain("SELECT price FROM training_session_templates WHERE name = 'Private Session'");
+    expect(content).toContain("SELECT price FROM training_session_templates WHERE name = 'Semi-Private Session'");
   });
 
   test('queries available private and semi-private sessions from sessions table', () => {
@@ -191,5 +190,12 @@ test.describe('Private & Semi-Private Sessions', () => {
     const content = readFile('database_schema.sql');
     expect(content).toContain("`is_private` TINYINT(1) DEFAULT 0");
     expect(content).toContain("`is_semi_private` TINYINT(1) DEFAULT 0");
+  });
+
+  test('coach creates private session by selecting template and price is calculated from hourly rate', () => {
+    const content = readFile('process_create_session.php');
+    expect(content).toContain('training_session_templates');
+    expect(content).toContain('hourly_price');
+    expect(content).toContain('duration_minutes / 60');
   });
 });

@@ -1041,6 +1041,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (drillId) {
             btn.addEventListener('click', function(e) {
                 e.preventDefault();
+                e.stopImmediatePropagation();
                 deleteDrill(drillId);
             });
         }

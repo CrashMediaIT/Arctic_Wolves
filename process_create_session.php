@@ -24,18 +24,19 @@ $user_id = $_SESSION['user_id'] ?? 0;
 if ($action == 'create_private_session' && $_SERVER["REQUEST_METHOD"] == "POST") {
     require_once 'mailer.php';
     
-    $session_type_id = intval($_POST['session_type_id'] ?? 0);
+    // Template ID is the selected session product (Private Session or Semi-Private Session)
+    $template_id = intval($_POST['template_id'] ?? 0);
+    
     $location_id = intval($_POST['location_id'] ?? 0);
     $session_date = $_POST['session_date'] ?? '';
     $session_time = $_POST['session_time'] ?? '';
     $duration_minutes = intval($_POST['duration_minutes'] ?? 60);
     $practice_plan_id = !empty($_POST['practice_plan_id']) ? intval($_POST['practice_plan_id']) : null;
     $description = trim($_POST['description'] ?? '');
-    $is_private = isset($_POST['is_private']) ? 1 : 0;
     $athlete_ids = isset($_POST['athlete_ids']) ? array_map('intval', $_POST['athlete_ids']) : [];
     
     // Validate required fields
-    if (!$session_type_id || !$location_id || !$session_date || !$session_time) {
+    if (!$template_id || !$location_id || !$session_date || !$session_time) {
         header("Location: dashboard.php?page=coach_calendar&error=missing_fields");
         exit();
     }
@@ -53,10 +54,24 @@ if ($action == 'create_private_session' && $_SERVER["REQUEST_METHOD"] == "POST")
         }
         $base_url = rtrim($base_url, '/');
         
-        // Get session type details for title and price
-        $stmt = $pdo->prepare("SELECT name, price FROM session_types WHERE id = ?");
-        $stmt->execute([$session_type_id]);
-        $sessionType = $stmt->fetch(PDO::FETCH_ASSOC);
+        // Get session template details — this determines private vs semi-private and hourly price
+        $stmt = $pdo->prepare("SELECT * FROM training_session_templates WHERE id = ? AND is_active = 1");
+        $stmt->execute([$template_id]);
+        $templateData = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$templateData) {
+            header("Location: dashboard.php?page=coach_calendar&error=invalid_session_type");
+            exit();
+        }
+        
+        // Determine private vs semi-private from the template name
+        $is_semi_private = (stripos($templateData['name'], 'semi') !== false) ? 1 : 0;
+        $is_private = $is_semi_private ? 0 : 1;
+        
+        $session_type_id = $templateData['session_type_id'] ?? null;
+        if (empty($practice_plan_id) && !empty($templateData['practice_plan_id'])) {
+            $practice_plan_id = $templateData['practice_plan_id'];
+        }
         
         // Get location name
         $stmt = $pdo->prepare("SELECT name, city FROM locations WHERE id = ?");
@@ -70,27 +85,45 @@ if ($action == 'create_private_session' && $_SERVER["REQUEST_METHOD"] == "POST")
         $coach = decryptUserRow($coach);
         $coach_name = $coach['first_name'] . ' ' . $coach['last_name'];
         
-        // Create the session
-        $title = ($sessionType['name'] ?? 'Private Session') . ' with ' . $coach_name;
-        $price = $sessionType['price'] ?? 0;
+        // Calculate price based on hourly rate × (duration / 60)
+        $hourly_price = floatval($templateData['price'] ?? 0);
+        $price = round($hourly_price * ($duration_minutes / 60), 2);
         
+        // Build title
+        $sessionName = $templateData['name'] ?? ($is_semi_private ? 'Semi-Private Session' : 'Private Session');
+        $title = $sessionName . ' with ' . $coach_name;
+        
+        // Create the session record
         $stmt = $pdo->prepare("
             INSERT INTO sessions (
                 session_type_id, coach_id, location_id, title, description, 
                 session_date, session_time, duration_minutes, 
-                practice_plan_id, is_private, status, max_participants, price,
+                practice_plan_id, is_private, is_semi_private, status, max_participants, price,
                 arena, city, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'scheduled', ?, ?, ?, ?, NOW())
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'scheduled', ?, ?, ?, ?, NOW())
         ");
-        $maxCapacity = count($athlete_ids) > 0 ? count($athlete_ids) : 1;
+        $maxCapacity = count($athlete_ids) > 0 ? count($athlete_ids) : ($is_semi_private ? 4 : 1);
         $stmt->execute([
             $session_type_id, $coach_id, $location_id, $title, $description,
             $session_date, $session_time, $duration_minutes,
-            $practice_plan_id, $is_private, $maxCapacity, $price,
+            $practice_plan_id, $is_private, $is_semi_private, $maxCapacity, $price,
             $location['name'] ?? '', $location['city'] ?? ''
         ]);
         
         $session_id = $pdo->lastInsertId();
+        
+        // If a template was selected, add a date entry to training_session_dates linking back
+        if ($template_id > 0) {
+            $stmt = $pdo->prepare("
+                INSERT INTO training_session_dates (template_id, session_id, session_date, max_participants, is_active)
+                VALUES (?, ?, ?, ?, 1)
+            ");
+            $stmt->execute([
+                $template_id, $session_id,
+                $session_date . ' ' . $session_time,
+                $maxCapacity
+            ]);
+        }
         
         // If athletes are assigned, create pending bookings and send email notifications
         if (!empty($athlete_ids)) {
@@ -132,8 +165,9 @@ if ($action == 'create_private_session' && $_SERVER["REQUEST_METHOD"] == "POST")
                         'name' => $athlete['first_name'],
                         'title' => 'Session Assigned - Payment Required',
                         'message' => "You have been assigned to a training session by $coach_name.\n\n" .
-                                    "Session: " . ($sessionType['name'] ?? 'Private Session') . "\n" .
+                                    "Session: " . $sessionName . "\n" .
                                     "Date: $formattedDate at $formattedTime\n" .
+                                    "Duration: $duration_minutes minutes\n" .
                                     "Location: " . ($location['name'] ?? '') . "\n" .
                                     "Price: $" . number_format($price, 2) . "\n\n" .
                                     "Please log in to your dashboard to complete payment before the session.",

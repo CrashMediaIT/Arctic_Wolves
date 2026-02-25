@@ -41,25 +41,34 @@ $tax_settings = $pdo->query("SELECT setting_key, setting_value FROM system_setti
 $booking_tax_rate = floatval($tax_settings['tax_rate'] ?? 13.00);
 $booking_tax_name = $tax_settings['tax_name'] ?? 'HST';
 
-// Auto-create "Sessions" category and Private/Semi-Private products if they don't exist
+// Auto-create Private and Semi-Private session templates in Sessions tab if they don't exist
 $default_private_price = 150.00;
 $default_semi_private_price = 100.00;
+$admin_id = $pdo->query("SELECT id FROM users WHERE role = 'admin' AND is_active = 1 ORDER BY id LIMIT 1")->fetchColumn();
+if (!$admin_id) $admin_id = $_SESSION['user_id'];
 try {
-    $pdo->prepare("INSERT IGNORE INTO merchandise_categories (name, description, is_active) VALUES (?, ?, 1)")->execute(['Sessions', 'Session pricing for private and semi-private bookings']);
-    $sessions_cat = $pdo->query("SELECT id FROM merchandise_categories WHERE name = 'Sessions' LIMIT 1")->fetchColumn();
-    if ($sessions_cat) {
-        $pdo->prepare("INSERT IGNORE INTO merchandise_products (category_id, name, description, sku, price, is_active, track_inventory) VALUES (?, 'Private Session', 'One-on-one private training session with a coach', 'SESSION-PRIVATE', ?, 1, 0)")->execute([$sessions_cat, $default_private_price]);
-        $pdo->prepare("INSERT IGNORE INTO merchandise_products (category_id, name, description, sku, price, is_active, track_inventory) VALUES (?, 'Semi-Private Session', 'Small group semi-private training session with a coach', 'SESSION-SEMI-PRIVATE', ?, 1, 0)")->execute([$sessions_cat, $default_semi_private_price]);
+    $existing = $pdo->query("SELECT name FROM training_session_templates WHERE name IN ('Private Session', 'Semi-Private Session')")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array('Private Session', $existing)) {
+        $pdo->prepare("INSERT INTO training_session_templates (name, description, price, duration_minutes, max_participants, session_type, is_active, created_by) VALUES (?, ?, ?, 60, 1, 'on_ice', 1, ?)")
+            ->execute(['Private Session', 'One-on-one private training session with a coach — price is per hour', $default_private_price, $admin_id]);
     }
-} catch (PDOException $e) { /* Products may already exist */ }
+    if (!in_array('Semi-Private Session', $existing)) {
+        $pdo->prepare("INSERT INTO training_session_templates (name, description, price, duration_minutes, max_participants, session_type, is_active, created_by) VALUES (?, ?, ?, 60, 4, 'on_ice', 1, ?)")
+            ->execute(['Semi-Private Session', 'Small group semi-private training session with a coach — price is per hour', $default_semi_private_price, $admin_id]);
+    }
+} catch (PDOException $e) { /* Templates may already exist */ }
 
-// Get pricing from products for private/semi-private sessions
-$private_product = $pdo->query("SELECT price FROM merchandise_products WHERE sku = 'SESSION-PRIVATE' AND is_active = 1 LIMIT 1")->fetch(PDO::FETCH_ASSOC);
-$semi_private_product = $pdo->query("SELECT price FROM merchandise_products WHERE sku = 'SESSION-SEMI-PRIVATE' AND is_active = 1 LIMIT 1")->fetch(PDO::FETCH_ASSOC);
-$private_session_price = $private_product['price'] ?? $default_private_price;
-$semi_private_session_price = $semi_private_product['price'] ?? $default_semi_private_price;
+// Get hourly pricing from session templates for private/semi-private sessions
+$private_tpl = $pdo->query("SELECT price FROM training_session_templates WHERE name = 'Private Session' AND is_active = 1 LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+$semi_private_tpl = $pdo->query("SELECT price FROM training_session_templates WHERE name = 'Semi-Private Session' AND is_active = 1 LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+$private_session_price = $private_tpl['price'] ?? $default_private_price;
+$semi_private_session_price = $semi_private_tpl['price'] ?? $default_semi_private_price;
 
 // Get available private and semi-private sessions (created by coaches)
+// Coaches and admins see all; athletes only see sessions from their assigned coach
+$current_user_id = intval($_SESSION['user_id']);
+$current_user_role = $user_role ?? '';
+
 $private_sessions_query = "
     SELECT s.id, s.title as session_type_name, s.description, 
            s.session_date, s.session_time,
@@ -75,11 +84,49 @@ $private_sessions_query = "
     WHERE s.session_date >= CURDATE() 
       AND s.status = 'scheduled'
       AND (s.is_private = 1 OR s.is_semi_private = 1)
+";
+
+// Filter: athletes and parents only see sessions from their assigned coach or where they have a booking
+if (!in_array($current_user_role, ['admin', 'coach', 'coach_plus', 'health_coach', 'team_coach'])) {
+    if ($current_user_role === 'parent') {
+        // Parents see sessions where their managed athletes' coaches match
+        $private_sessions_query .= "
+          AND (
+              s.coach_id IN (SELECT u2.assigned_coach_id FROM managed_athletes ma2 JOIN users u2 ON u2.id = ma2.athlete_id WHERE ma2.parent_id = ? AND u2.assigned_coach_id IS NOT NULL)
+              OR s.coach_id IN (SELECT u3.created_by_coach_id FROM managed_athletes ma3 JOIN users u3 ON u3.id = ma3.athlete_id WHERE ma3.parent_id = ? AND u3.created_by_coach_id IS NOT NULL)
+              OR s.id IN (SELECT bk.session_id FROM bookings bk JOIN managed_athletes ma4 ON bk.user_id = ma4.athlete_id WHERE ma4.parent_id = ? AND bk.status IN ('confirmed', 'waitlisted'))
+              OR s.id IN (SELECT bk2.session_id FROM bookings bk2 WHERE bk2.user_id = ? AND bk2.status IN ('confirmed', 'waitlisted'))
+          )
+        ";
+    } else {
+        // Athletes see sessions from their assigned coach or where they have a booking
+        $private_sessions_query .= "
+          AND (
+              s.coach_id IN (SELECT u2.assigned_coach_id FROM users u2 WHERE u2.id = ? AND u2.assigned_coach_id IS NOT NULL)
+              OR s.coach_id IN (SELECT u3.created_by_coach_id FROM users u3 WHERE u3.id = ? AND u3.created_by_coach_id IS NOT NULL)
+              OR s.id IN (SELECT bk.session_id FROM bookings bk WHERE bk.user_id = ? AND bk.status IN ('confirmed', 'waitlisted'))
+          )
+        ";
+    }
+}
+
+$private_sessions_query .= "
     GROUP BY s.id
     HAVING registered_count < COALESCE(s.max_participants, 1)
     ORDER BY s.session_date ASC, s.session_time ASC
 ";
-$private_sessions = $pdo->query($private_sessions_query)->fetchAll();
+
+if (!in_array($current_user_role, ['admin', 'coach', 'coach_plus', 'health_coach', 'team_coach'])) {
+    $ps_stmt = $pdo->prepare($private_sessions_query);
+    if ($current_user_role === 'parent') {
+        $ps_stmt->execute([$current_user_id, $current_user_id, $current_user_id, $current_user_id]);
+    } else {
+        $ps_stmt->execute([$current_user_id, $current_user_id, $current_user_id]);
+    }
+    $private_sessions = $ps_stmt->fetchAll();
+} else {
+    $private_sessions = $pdo->query($private_sessions_query)->fetchAll();
+}
 foreach ($private_sessions as &$ps) {
     foreach (['coach_first_name', 'coach_last_name'] as $f) {
         if (!empty($ps[$f])) $ps[$f] = FieldEncryption::decrypt($ps[$f]);

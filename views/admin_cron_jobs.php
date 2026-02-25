@@ -512,6 +512,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('[data-action="delete"]').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
+            e.stopImmediatePropagation();
             var jobId = this.getAttribute('data-id');
             if (!confirm('Are you sure you want to delete this cron job?')) return;
             

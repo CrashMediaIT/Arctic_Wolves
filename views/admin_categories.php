@@ -1962,7 +1962,8 @@ try {
     
     // Handle delete buttons
     document.querySelectorAll('[data-action="delete"]').forEach(button => {
-        button.addEventListener('click', function() {
+        button.addEventListener('click', function(e) {
+            e.stopImmediatePropagation();
             const id = this.getAttribute('data-id');
             const type = this.getAttribute('data-type');
             const name = this.getAttribute('data-name');

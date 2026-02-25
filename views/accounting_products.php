@@ -293,6 +293,22 @@ $activeTab = $_GET['tab'] ?? 'sessions';
 .product-stat-card .stat-info { display: flex; flex-direction: column; }
 .product-stat-card .stat-value { font-size: 24px; font-weight: 700; color: var(--text-white); }
 .product-stat-card .stat-label { font-size: 13px; color: var(--text-dim); }
+
+/* Bulk Select & Delete */
+.bulk-select-bar { display: flex; align-items: center; gap: 12px; margin-left: auto; }
+.bulk-select-bar label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-dim); cursor: pointer; white-space: nowrap; }
+.bulk-select-bar .btn-bulk-delete { display: none; background: var(--danger, #ef4444); color: #fff; border: none; padding: 6px 14px; border-radius: 6px; font-size: 13px; cursor: pointer; font-weight: 600; transition: opacity 0.2s; }
+.bulk-select-bar .btn-bulk-delete:hover { opacity: 0.85; }
+.bulk-select-bar .btn-bulk-delete.visible { display: inline-flex; align-items: center; gap: 6px; }
+.product-card { position: relative; }
+.bulk-card-checkbox { position: absolute; top: 10px; left: 10px; z-index: 5; width: 18px; height: 18px; cursor: pointer; accent-color: var(--primary, #6b46c1); }
+.bulk-row-checkbox { width: 18px; height: 18px; cursor: pointer; accent-color: var(--primary, #6b46c1); }
+.bulk-action-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg-card, #1e293b); border-top: 2px solid var(--primary, #6b46c1); padding: 14px 24px; display: none; align-items: center; justify-content: center; gap: 16px; z-index: 9999; box-shadow: 0 -4px 20px rgba(0,0,0,0.3); }
+.bulk-action-bar.visible { display: flex; }
+.bulk-action-bar .bulk-count { font-size: 14px; color: var(--text-white); font-weight: 600; }
+.bulk-action-bar .btn-bulk-confirm { background: var(--danger, #ef4444); color: #fff; border: none; padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: opacity 0.2s; }
+.bulk-action-bar .btn-bulk-confirm:hover { opacity: 0.85; }
+.bulk-action-bar .btn-bulk-cancel { background: transparent; color: var(--text-dim); border: 1px solid var(--border); padding: 10px 18px; border-radius: 8px; font-size: 14px; cursor: pointer; }
 </style>
 
 <!-- Product Stats -->
@@ -352,6 +368,10 @@ $activeTab = $_GET['tab'] ?? 'sessions';
         <div class="card">
             <div class="card-header">
                 <h3><i class="fas fa-calendar-day"></i> Training Sessions & Templates</h3>
+                <div class="bulk-select-bar" data-tab="sessions">
+                    <label><input type="checkbox" class="bulk-select-all" data-tab="sessions" onchange="toggleSelectAll('sessions')"> Select All</label>
+                    <button type="button" class="btn-bulk-delete" data-tab="sessions" onclick="bulkDeleteSelected('sessions')"><i class="fas fa-trash"></i> Delete <span class="bulk-delete-count"></span></button>
+                </div>
                 <button type="button" class="btn btn-primary" data-action="add" data-modal="add-session-modal"><i class="fas fa-plus"></i> Create Session</button>
             </div>
             <div class="card-body">
@@ -377,6 +397,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                             $maxParticipants = $session['max_participants'] ?? null;
                         ?>
                         <div class="product-card session-card">
+                            <input type="checkbox" class="bulk-card-checkbox bulk-item-checkbox" data-tab="sessions" data-id="<?= $session['id'] ?>" data-type="session" onchange="updateBulkBar()">
                             <div class="product-type-badge <?= $sessionType ?>">
                                 <i class="fas fa-<?= $sessionType === 'on_ice' ? 'skating' : ($sessionType === 'nutrition' ? 'utensils' : ($sessionType === 'off_ice' ? 'dumbbell' : 'calendar-check')) ?>"></i>
                             </div>
@@ -387,7 +408,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                                 <h4><?= htmlspecialchars($session['name']) ?></h4>
                                 <span class="product-status <?= $isActive ? 'active' : 'inactive' ?>"><?= $isActive ? 'Active' : 'Inactive' ?></span>
                             </div>
-                            <div class="product-price">$<?= number_format($price, 2) ?><small>/session</small></div>
+                            <div class="product-price">$<?= number_format($price, 2) ?><small>/hour</small></div>
                             <div class="product-details">
                                 <p><i class="fas fa-clock"></i> <?= $duration ?> minutes</p>
                                 <?php if ($maxParticipants): ?>
@@ -423,6 +444,10 @@ $activeTab = $_GET['tab'] ?? 'sessions';
         <div class="card">
             <div class="card-header">
                 <h3><i class="fas fa-box"></i> Training Packages</h3>
+                <div class="bulk-select-bar" data-tab="packages">
+                    <label><input type="checkbox" class="bulk-select-all" data-tab="packages" onchange="toggleSelectAll('packages')"> Select All</label>
+                    <button type="button" class="btn-bulk-delete" data-tab="packages" onclick="bulkDeleteSelected('packages')"><i class="fas fa-trash"></i> Delete <span class="bulk-delete-count"></span></button>
+                </div>
                 <button type="button" class="btn btn-primary" data-action="add" data-modal="add-package-modal"><i class="fas fa-plus"></i> Create Package</button>
             </div>
             <div class="card-body">
@@ -441,6 +466,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                             $storeCredit = $package['store_credit'] ?? 0;
                         ?>
                         <div class="product-card <?= $isActive ? 'featured' : '' ?>">
+                            <input type="checkbox" class="bulk-card-checkbox bulk-item-checkbox" data-tab="packages" data-id="<?= $package['id'] ?>" data-type="package" onchange="updateBulkBar()">
                             <?php if ($showOnLanding): ?><div class="product-badge landing">Public</div><?php endif; ?>
                             <div class="product-header">
                                 <h4><?= htmlspecialchars($package['name']) ?></h4>
@@ -482,6 +508,10 @@ $activeTab = $_GET['tab'] ?? 'sessions';
         <div class="card">
             <div class="card-header">
                 <h3><i class="fas fa-tags"></i> Discount Codes</h3>
+                <div class="bulk-select-bar" data-tab="discounts">
+                    <label><input type="checkbox" class="bulk-select-all" data-tab="discounts" onchange="toggleSelectAll('discounts')"> Select All</label>
+                    <button type="button" class="btn-bulk-delete" data-tab="discounts" onclick="bulkDeleteSelected('discounts')"><i class="fas fa-trash"></i> Delete <span class="bulk-delete-count"></span></button>
+                </div>
                 <button type="button" class="btn btn-primary" data-action="add" data-modal="add-discount-modal"><i class="fas fa-plus"></i> Create Discount</button>
             </div>
             <div class="card-body">
@@ -496,6 +526,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                     <table class="data-table">
                         <thead>
                             <tr>
+                                <th style="width:40px;"><input type="checkbox" class="bulk-select-all bulk-row-checkbox" data-tab="discounts" onchange="toggleSelectAll('discounts')"></th>
                                 <th>Code</th>
                                 <th>Description</th>
                                 <th>Type</th>
@@ -520,6 +551,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                                 $description = $discount['description'] ?? '';
                             ?>
                             <tr>
+                                <td><input type="checkbox" class="bulk-row-checkbox bulk-item-checkbox" data-tab="discounts" data-id="<?= $discount['id'] ?>" data-type="discount" onchange="updateBulkBar()"></td>
                                 <td><strong style="font-family: monospace; background: var(--bg-main); padding: 4px 8px; border-radius: 4px;"><?= htmlspecialchars($discount['code']) ?></strong></td>
                                 <td><?= htmlspecialchars($description) ?: '-' ?></td>
                                 <td>
@@ -567,6 +599,10 @@ $activeTab = $_GET['tab'] ?? 'sessions';
         <div class="card">
             <div class="card-header">
                 <h3><i class="fas fa-tshirt"></i> Merchandise Products</h3>
+                <div class="bulk-select-bar" data-tab="merchandise">
+                    <label><input type="checkbox" class="bulk-select-all" data-tab="merchandise" onchange="toggleSelectAll('merchandise')"> Select All</label>
+                    <button type="button" class="btn-bulk-delete" data-tab="merchandise" onclick="bulkDeleteSelected('merchandise')"><i class="fas fa-trash"></i> Delete <span class="bulk-delete-count"></span></button>
+                </div>
                 <button type="button" class="btn btn-primary" data-action="add" data-modal="add-merchandise-product-modal"><i class="fas fa-plus"></i> Add Product</button>
             </div>
             <div class="card-body">
@@ -581,6 +617,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                     <table class="data-table">
                         <thead>
                             <tr>
+                                <th style="width:40px;"><input type="checkbox" class="bulk-select-all bulk-row-checkbox" data-tab="merchandise" onchange="toggleSelectAll('merchandise')"></th>
                                 <th>Product</th>
                                 <th>Category</th>
                                 <th>Price</th>
@@ -592,6 +629,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                         <tbody>
                             <?php foreach ($merchProducts as $product): ?>
                             <tr>
+                                <td><input type="checkbox" class="bulk-row-checkbox bulk-item-checkbox" data-tab="merchandise" data-id="<?= $product['id'] ?>" data-type="merch-product" onchange="updateBulkBar()"></td>
                                 <td>
                                     <div class="product-info">
                                         <strong><?= htmlspecialchars($product['name']) ?></strong>
@@ -637,6 +675,10 @@ $activeTab = $_GET['tab'] ?? 'sessions';
         <div class="card">
             <div class="card-header">
                 <h3><i class="fas fa-campground"></i> Programs & Camps</h3>
+                <div class="bulk-select-bar" data-tab="programs_camps">
+                    <label><input type="checkbox" class="bulk-select-all" data-tab="programs_camps" onchange="toggleSelectAll('programs_camps')"> Select All</label>
+                    <button type="button" class="btn-bulk-delete" data-tab="programs_camps" onclick="bulkDeleteSelected('programs_camps')"><i class="fas fa-trash"></i> Delete <span class="bulk-delete-count"></span></button>
+                </div>
                 <button type="button" class="btn btn-primary" data-action="add" data-modal="add-program-modal"><i class="fas fa-plus"></i> Create Program / Camp</button>
             </div>
             <div class="card-body">
@@ -651,6 +693,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                     <table class="data-table">
                         <thead>
                             <tr>
+                                <th style="width:40px;"><input type="checkbox" class="bulk-select-all bulk-row-checkbox" data-tab="programs_camps" onchange="toggleSelectAll('programs_camps')"></th>
                                 <th>Name</th>
                                 <th>Type</th>
                                 <th>Dates</th>
@@ -664,6 +707,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                         <tbody>
                             <?php foreach ($programPackages as $prog): ?>
                             <tr>
+                                <td><input type="checkbox" class="bulk-row-checkbox bulk-item-checkbox" data-tab="programs_camps" data-id="<?= $prog['id'] ?>" data-type="package" onchange="updateBulkBar()"></td>
                                 <td><strong><?= htmlspecialchars($prog['name']) ?></strong></td>
                                 <td>
                                     <span class="type-badge <?= $prog['package_type'] ?>">
@@ -706,6 +750,13 @@ $activeTab = $_GET['tab'] ?? 'sessions';
             </div>
         </div>
     </div>
+</div>
+
+<!-- Bulk Action Bar (floating bottom) -->
+<div class="bulk-action-bar" id="bulk-action-bar">
+    <span class="bulk-count"><span id="bulk-total-count">0</span> items selected</span>
+    <button type="button" class="btn-bulk-confirm" onclick="bulkDeleteAllSelected()"><i class="fas fa-trash"></i> Delete Selected</button>
+    <button type="button" class="btn-bulk-cancel" onclick="clearAllSelections()">Cancel</button>
 </div>
 
 <!-- Add Program / Camp Modal -->
@@ -2380,6 +2431,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('[data-action="delete"]').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
+            e.stopImmediatePropagation();
             var itemId = this.getAttribute('data-id');
             var itemType = this.getAttribute('data-type');
             
@@ -3774,5 +3826,106 @@ function updateSelectedSessionsList() {
     });
     
     container.innerHTML = html;
+}
+
+// ========== Bulk Select & Delete Functions ==========
+
+function toggleSelectAll(tab) {
+    var selectAllBoxes = document.querySelectorAll('.bulk-select-all[data-tab="' + tab + '"]');
+    var isChecked = false;
+    selectAllBoxes.forEach(function(box) { isChecked = box.checked; });
+    var checkboxes = document.querySelectorAll('.bulk-item-checkbox[data-tab="' + tab + '"]');
+    checkboxes.forEach(function(cb) { cb.checked = isChecked; });
+    // Sync all select-all checkboxes for this tab
+    selectAllBoxes.forEach(function(box) { box.checked = isChecked; });
+    updateBulkBar();
+}
+
+function updateBulkBar() {
+    var totalSelected = document.querySelectorAll('.bulk-item-checkbox:checked').length;
+    var bar = document.getElementById('bulk-action-bar');
+    var countEl = document.getElementById('bulk-total-count');
+    countEl.textContent = totalSelected;
+    if (totalSelected > 0) {
+        bar.classList.add('visible');
+    } else {
+        bar.classList.remove('visible');
+    }
+    // Update per-tab delete buttons
+    ['sessions', 'packages', 'discounts', 'merchandise', 'programs_camps'].forEach(function(tab) {
+        var checked = document.querySelectorAll('.bulk-item-checkbox[data-tab="' + tab + '"]:checked').length;
+        var allItems = document.querySelectorAll('.bulk-item-checkbox[data-tab="' + tab + '"]').length;
+        var btns = document.querySelectorAll('.btn-bulk-delete[data-tab="' + tab + '"]');
+        btns.forEach(function(btn) {
+            var countSpan = btn.querySelector('.bulk-delete-count');
+            if (checked > 0) {
+                btn.classList.add('visible');
+                if (countSpan) countSpan.textContent = '(' + checked + ')';
+            } else {
+                btn.classList.remove('visible');
+                if (countSpan) countSpan.textContent = '';
+            }
+        });
+        // Sync select-all checkbox state
+        var selectAlls = document.querySelectorAll('.bulk-select-all[data-tab="' + tab + '"]');
+        selectAlls.forEach(function(sa) {
+            sa.checked = allItems > 0 && checked === allItems;
+        });
+    });
+}
+
+function bulkDeleteSelected(tab) {
+    var checked = document.querySelectorAll('.bulk-item-checkbox[data-tab="' + tab + '"]:checked');
+    if (checked.length === 0) return;
+    performBulkDelete(checked);
+}
+
+function bulkDeleteAllSelected() {
+    var checked = document.querySelectorAll('.bulk-item-checkbox:checked');
+    if (checked.length === 0) return;
+    performBulkDelete(checked);
+}
+
+function performBulkDelete(checkedItems) {
+    var count = checkedItems.length;
+    if (!confirm('Are you sure you want to delete ' + count + ' item(s)? This cannot be undone.')) return;
+
+    var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '';
+    var items = [];
+    checkedItems.forEach(function(cb) {
+        items.push({ id: cb.getAttribute('data-id'), type: cb.getAttribute('data-type') });
+    });
+
+    fetch('process_admin_action.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({
+            action: 'bulk_delete',
+            csrf_token: csrfToken,
+            items: items
+        })
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+        if (data.success) {
+            persistToast(data.deleted_count + ' item(s) deleted successfully!', 'success');
+            location.reload();
+        } else {
+            showNotification('Error: ' + (data.message || 'Bulk delete failed'), 'error');
+        }
+    })
+    .catch(function(error) {
+        console.error('Bulk delete error:', error);
+        showNotification('An error occurred during bulk delete.', 'error');
+    });
+}
+
+function clearAllSelections() {
+    document.querySelectorAll('.bulk-item-checkbox:checked').forEach(function(cb) { cb.checked = false; });
+    document.querySelectorAll('.bulk-select-all:checked').forEach(function(cb) { cb.checked = false; });
+    updateBulkBar();
 }
 </script>
