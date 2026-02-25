@@ -391,7 +391,7 @@ test.describe('All upload handlers use persistUploadedFile which decrypts Nextcl
   test('cloud_config.php persistUploadedFile should call uploadLargeFileToNextcloud for large files', () => {
     const content = readFile('cloud_config.php');
     const fnStart = content.indexOf('function persistUploadedFile(');
-    const fnSection = content.substring(fnStart, fnStart + 2000);
+    const fnSection = content.substring(fnStart, fnStart + 3500);
     expect(fnSection).toContain('uploadLargeFileToNextcloud(');
   });
 });

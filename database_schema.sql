@@ -4673,3 +4673,14 @@ ADD COLUMN IF NOT EXISTS `nextcloud_logo_path` VARCHAR(500) DEFAULT NULL COMMENT
 -- Add nextcloud_path to vr_video_sources for persistent gameplan video storage
 ALTER TABLE `vr_video_sources`
 ADD COLUMN IF NOT EXISTS `nextcloud_path` VARCHAR(500) DEFAULT NULL COMMENT 'Nextcloud path for gameplan video persistence';
+
+-- ─── Garage S3 Object Storage Settings ───────────────────────────────────────
+-- Garage (https://garagehq.deuxfleurs.fr/) S3-compatible storage replaces local file storage.
+-- All images and videos are uploaded to Garage S3 buckets. Secret key is encrypted at rest.
+INSERT IGNORE INTO `system_settings` (`setting_key`, `setting_value`, `setting_type`, `description`) VALUES
+('garage_endpoint', '', 'text', 'Garage S3 API endpoint URL (e.g., https://s3.garage.example.com)'),
+('garage_access_key', '', 'text', 'Garage S3 access key ID'),
+('garage_secret_key', '', 'password', 'Garage S3 secret access key (encrypted at rest)'),
+('garage_region', 'garage', 'text', 'Garage S3 region identifier'),
+('garage_bucket_images', 'arctic-wolves-images', 'text', 'S3 bucket for images (profiles, evaluations, drills, theme)'),
+('garage_bucket_videos', 'arctic-wolves-videos', 'text', 'S3 bucket for video uploads (coach reviews, athlete videos, drills)');
