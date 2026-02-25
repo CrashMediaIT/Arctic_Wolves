@@ -222,9 +222,6 @@ try {
             }
             
             if (!empty($_FILES['documents']['name'][0])) {
-                if (!is_dir('uploads/contracts')) {
-                    mkdir('uploads/contracts', 0755, true);
-                }
                 
                 for ($i = 0; $i < count($_FILES['documents']['name']); $i++) {
                     if ($_FILES['documents']['error'][$i] !== UPLOAD_ERR_OK) continue;
