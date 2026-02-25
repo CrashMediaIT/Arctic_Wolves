@@ -405,7 +405,6 @@ $cartCount = $cartData['item_count'];
             
             <div class="nav-menu">
                 <a href="index.php">Home</a>
-                <a href="sessions_public.php">Sessions</a>
                 <a href="shop.php">Shop</a>
                 <a href="shop_cart.php" style="position: relative; color: var(--primary);">
                     <i class="fas fa-shopping-cart"></i>

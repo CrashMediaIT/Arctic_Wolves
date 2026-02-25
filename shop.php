@@ -566,7 +566,6 @@ $cartCount = array_sum(array_column($_SESSION['shop_cart'], 'quantity'));
             
             <div class="nav-menu">
                 <a href="index.php">Home</a>
-                <a href="sessions_public.php">Sessions</a>
                 <a href="shop.php" style="color: var(--primary);">Shop</a>
                 <a href="shop_cart.php" style="position: relative;">
                     <i class="fas fa-shopping-cart"></i>

@@ -1469,23 +1469,20 @@ function saveAllThemeSettings() {
 
     // Build a single FormData from all three forms
     var formData = new FormData(colorsForm);
-    // Override action to unified handler
     formData.set('action', 'update_all_theme_settings');
+    formData.set('_ajax', '1');
 
-    // Merge branding form fields (skip csrf_token and action)
-    var brandingData = new FormData(brandingForm);
-    for (var pair of brandingData.entries()) {
-        if (pair[0] !== 'csrf_token' && pair[0] !== 'action') {
-            formData.append(pair[0], pair[1]);
+    // Merge form fields: use set() for files (avoids empty File duplicates), append() for text
+    function mergeForm(srcForm) {
+        var src = new FormData(srcForm);
+        for (var pair of src.entries()) {
+            if (pair[0] === 'csrf_token' || pair[0] === 'action') continue;
+            if (pair[1] instanceof File) { if (pair[1].size > 0) formData.set(pair[0], pair[1], pair[1].name); }
+            else formData.append(pair[0], pair[1]);
         }
     }
-    // Merge hero form fields (skip csrf_token and action)
-    var heroData = new FormData(heroForm);
-    for (var pair of heroData.entries()) {
-        if (pair[0] !== 'csrf_token' && pair[0] !== 'action') {
-            formData.append(pair[0], pair[1]);
-        }
-    }
+    mergeForm(brandingForm);
+    mergeForm(heroForm);
 
     var progressDiv = document.getElementById('unifiedUploadProgress');
     var progressBar = document.getElementById('unifiedUploadBar');
@@ -1512,7 +1509,11 @@ function saveAllThemeSettings() {
         try {
             var data = JSON.parse(xhr.responseText);
             if (data.success) {
-                persistToast(data.message || 'All settings saved!', 'success');
+                if (data.warnings && data.warnings.length > 0) {
+                    persistToast(data.message, 'warning');
+                } else {
+                    persistToast(data.message || 'All settings saved!', 'success');
+                }
                 window.location.reload();
             } else {
                 showAlert('error', data.message || 'Save failed');
