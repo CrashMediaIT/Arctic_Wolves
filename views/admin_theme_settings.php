@@ -977,7 +977,7 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
     <div class="full-width-panel">
         <form id="brandingForm" method="POST" action="process_theme.php" enctype="multipart/form-data">
             <?= csrfTokenInput() ?>
-            <input type="hidden" name="action" value="update_branding">
+            <input type="hidden" name="action" value="update_branding_all">
             
             <h3 class="section-title">
                 <i class="fas fa-image"></i>
@@ -1020,18 +1020,8 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
                 <?php endif; ?>
             </div>
             
-            <div class="action-buttons">
-                <button type="submit" class="btn btn-save">
-                    <i class="fas fa-save"></i> Save Logo
-                </button>
-            </div>
-        </form>
-        
-        <!-- Center Ice Logo Section -->
-        <form id="centerIceLogoForm" method="POST" action="process_theme.php" enctype="multipart/form-data" style="margin-top: 40px; border-top: 1px solid #1e293b; padding-top: 30px;">
-            <?= csrfTokenInput() ?>
-            <input type="hidden" name="action" value="update_center_ice_logo">
-            
+            <!-- Center Ice Logo Section -->
+            <div style="margin-top: 40px; border-top: 1px solid #1e293b; padding-top: 30px;">
             <h3 class="section-title">
                 <i class="fas fa-hockey-puck"></i>
                 Center Ice Logo
@@ -1076,24 +1066,17 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
                     </div>
                 <?php endif; ?>
             </div>
-            
-            <div class="action-buttons">
-                <button type="submit" class="btn btn-save">
-                    <i class="fas fa-save"></i> Save Center Ice Logo
+            <?php if ($center_ice_logo_url): ?>
+            <div style="margin-top: 8px;">
+                <button type="button" class="btn btn-secondary" onclick="removeCenterIceLogo()" style="font-size: 13px;">
+                    <i class="fas fa-trash"></i> Remove Center Ice Logo
                 </button>
-                <?php if ($center_ice_logo_url): ?>
-                <button type="button" class="btn btn-secondary" onclick="removeCenterIceLogo()" style="margin-left: 10px;">
-                    <i class="fas fa-trash"></i> Remove Logo
-                </button>
-                <?php endif; ?>
             </div>
-        </form>
-        
-        <!-- Business Card Backgrounds Section -->
-        <form id="businessCardBgForm" method="POST" action="process_theme.php" enctype="multipart/form-data" style="margin-top: 40px; border-top: 1px solid #1e293b; padding-top: 30px;">
-            <?= csrfTokenInput() ?>
-            <input type="hidden" name="action" value="update_business_card_backgrounds">
-            
+            <?php endif; ?>
+            </div>
+
+            <!-- Business Card Backgrounds Section -->
+            <div style="margin-top: 40px; border-top: 1px solid #1e293b; padding-top: 30px;">
             <h3 class="section-title">
                 <i class="fas fa-id-card"></i>
                 Business Card Backgrounds
@@ -1135,10 +1118,22 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
                     </div>
                 </div>
             </div>
+            </div>
             
-            <div class="action-buttons">
-                <button type="submit" class="btn btn-save">
-                    <i class="fas fa-save"></i> Save Business Card Backgrounds
+            <!-- Upload progress bar -->
+            <div id="brandingUploadProgress" style="display:none; margin-top: 16px;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:13px; color:#A8A8B8;">
+                    <span>Uploading...</span>
+                    <span id="brandingUploadPercent">0%</span>
+                </div>
+                <div style="width:100%; height:8px; background:#2D2D3F; border-radius:4px; overflow:hidden;">
+                    <div id="brandingUploadBar" style="width:0%; height:100%; background:linear-gradient(135deg,#6B46C1,#8B5CF6); border-radius:4px; transition:width 0.2s;"></div>
+                </div>
+            </div>
+
+            <div class="action-buttons" style="margin-top: 30px; border-top: 1px solid #1e293b; padding-top: 20px;">
+                <button type="submit" class="btn btn-save" id="brandingSaveBtn">
+                    <i class="fas fa-save"></i> Save Branding Settings
                 </button>
             </div>
         </form>
@@ -1203,8 +1198,19 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
                 <textarea class="form-control" name="hero_subtitle" required><?= htmlspecialchars($hero_subtitle) ?></textarea>
             </div>
             
+            <!-- Upload progress bar -->
+            <div id="heroUploadProgress" style="display:none; margin-top: 16px;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:13px; color:#A8A8B8;">
+                    <span>Uploading...</span>
+                    <span id="heroUploadPercent">0%</span>
+                </div>
+                <div style="width:100%; height:8px; background:#2D2D3F; border-radius:4px; overflow:hidden;">
+                    <div id="heroUploadBar" style="width:0%; height:100%; background:linear-gradient(135deg,#6B46C1,#8B5CF6); border-radius:4px; transition:width 0.2s;"></div>
+                </div>
+            </div>
+
             <div class="action-buttons">
-                <button type="submit" class="btn btn-save">
+                <button type="submit" class="btn btn-save" id="heroSaveBtn">
                     <i class="fas fa-save"></i> Save Hero Section
                 </button>
             </div>
@@ -1421,26 +1427,31 @@ function updatePreview() {
     container.style.setProperty('--warning', formData.get('warning_color'));
 }
 
-// Save colors
+// Save colors - form already has action=update_colors via hidden input
 document.getElementById('colorsForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     
-    const formData = new FormData(this);
-    formData.append('action', 'save');
+    var formData = new FormData(this);
     
     try {
-        const response = await fetch('process_theme.php', {
+        var response = await fetch('process_theme.php', {
             method: 'POST',
             body: formData
         });
         
-        const data = await response.json();
-        
-        if (data.success) {
-            persistToast(data.message, 'success');
+        // Backend redirects on success; if followed, response is HTML not JSON
+        var text = await response.text();
+        try {
+            var data = JSON.parse(text);
+            if (data.success) {
+                persistToast(data.message || 'Colors saved!', 'success');
+                window.location.reload();
+            } else {
+                showAlert('error', data.message);
+            }
+        } catch (parseErr) {
+            persistToast('Colors saved successfully!', 'success');
             window.location.reload();
-        } else {
-            showAlert('error', data.message);
         }
     } catch (error) {
         showAlert('error', 'An error occurred while saving colors.');
@@ -1453,23 +1464,28 @@ async function resetTheme() {
         return;
     }
     
-    const formData = new FormData();
-    formData.append('action', 'reset');
+    var formData = new FormData();
+    formData.append('action', 'reset_colors');
     formData.append('csrf_token', document.querySelector('input[name="csrf_token"]').value);
     
     try {
-        const response = await fetch('process_theme.php', {
+        var response = await fetch('process_theme.php', {
             method: 'POST',
             body: formData
         });
         
-        const data = await response.json();
-        
-        if (data.success) {
-            persistToast(data.message, 'success');
+        var text = await response.text();
+        try {
+            var data = JSON.parse(text);
+            if (data.success) {
+                persistToast(data.message || 'Theme reset!', 'success');
+                window.location.reload();
+            } else {
+                showAlert('error', data.message);
+            }
+        } catch (parseErr) {
+            persistToast('Theme reset to defaults!', 'success');
             window.location.reload();
-        } else {
-            showAlert('error', data.message);
         }
     } catch (error) {
         showAlert('error', 'An error occurred while resetting the theme.');
@@ -1513,56 +1529,113 @@ function previewImage(input, previewId) {
     }
 }
 
-// Save branding
-document.getElementById('brandingForm').addEventListener('submit', async function(e) {
+// Save branding (single consolidated form with XHR progress)
+document.getElementById('brandingForm').addEventListener('submit', function(e) {
     e.preventDefault();
     
-    const formData = new FormData(this);
-    formData.append('action', 'save_logo');
-    
-    try {
-        const response = await fetch('process_theme.php', {
-            method: 'POST',
-            body: formData
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            persistToast(data.message, 'success');
-            window.location.reload();
-        } else {
-            showAlert('error', data.message);
+    var formData = new FormData(this);
+    var progressDiv = document.getElementById('brandingUploadProgress');
+    var progressBar = document.getElementById('brandingUploadBar');
+    var progressPct = document.getElementById('brandingUploadPercent');
+    var saveBtn = document.getElementById('brandingSaveBtn');
+
+    progressDiv.style.display = 'block';
+    saveBtn.disabled = true;
+
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', 'process_theme.php', true);
+
+    xhr.upload.onprogress = function(ev) {
+        if (ev.lengthComputable) {
+            var pct = Math.round((ev.loaded / ev.total) * 100);
+            progressBar.style.width = pct + '%';
+            progressPct.textContent = pct + '%';
         }
-    } catch (error) {
+    };
+
+    xhr.onload = function() {
+        progressDiv.style.display = 'none';
+        saveBtn.disabled = false;
+        // Backend redirects on success; response may be HTML
+        try {
+            var data = JSON.parse(xhr.responseText);
+            if (data.success) {
+                persistToast(data.message || 'Branding saved!', 'success');
+                window.location.reload();
+            } else {
+                showAlert('error', data.message || 'Save failed');
+            }
+        } catch (parseErr) {
+            if (xhr.status >= 200 && xhr.status < 400) {
+                persistToast('Branding settings saved!', 'success');
+                window.location.reload();
+            } else {
+                showAlert('error', 'An error occurred while saving branding.');
+            }
+        }
+    };
+
+    xhr.onerror = function() {
+        progressDiv.style.display = 'none';
+        saveBtn.disabled = false;
         showAlert('error', 'An error occurred while saving branding.');
-    }
+    };
+
+    xhr.send(formData);
 });
 
-// Save hero section
-document.getElementById('heroForm').addEventListener('submit', async function(e) {
+// Save hero section with XHR progress
+document.getElementById('heroForm').addEventListener('submit', function(e) {
     e.preventDefault();
     
-    const formData = new FormData(this);
-    formData.append('action', 'save_hero');
-    
-    try {
-        const response = await fetch('process_theme.php', {
-            method: 'POST',
-            body: formData
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            persistToast(data.message, 'success');
-            window.location.reload();
-        } else {
-            showAlert('error', data.message);
+    var formData = new FormData(this);
+    var progressDiv = document.getElementById('heroUploadProgress');
+    var progressBar = document.getElementById('heroUploadBar');
+    var progressPct = document.getElementById('heroUploadPercent');
+    var saveBtn = document.getElementById('heroSaveBtn');
+
+    progressDiv.style.display = 'block';
+    saveBtn.disabled = true;
+
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', 'process_theme.php', true);
+
+    xhr.upload.onprogress = function(ev) {
+        if (ev.lengthComputable) {
+            var pct = Math.round((ev.loaded / ev.total) * 100);
+            progressBar.style.width = pct + '%';
+            progressPct.textContent = pct + '%';
         }
-    } catch (error) {
+    };
+
+    xhr.onload = function() {
+        progressDiv.style.display = 'none';
+        saveBtn.disabled = false;
+        try {
+            var data = JSON.parse(xhr.responseText);
+            if (data.success) {
+                persistToast(data.message || 'Hero section saved!', 'success');
+                window.location.reload();
+            } else {
+                showAlert('error', data.message || 'Save failed');
+            }
+        } catch (parseErr) {
+            if (xhr.status >= 200 && xhr.status < 400) {
+                persistToast('Hero section saved!', 'success');
+                window.location.reload();
+            } else {
+                showAlert('error', 'An error occurred while saving hero section.');
+            }
+        }
+    };
+
+    xhr.onerror = function() {
+        progressDiv.style.display = 'none';
+        saveBtn.disabled = false;
         showAlert('error', 'An error occurred while saving hero section.');
-    }
+    };
+
+    xhr.send(formData);
 });
 
 // Program modal
@@ -1599,23 +1672,28 @@ function editProgram(program) {
 document.getElementById('programForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     
-    const formData = new FormData(this);
-    formData.append('action', 'save_program');
+    var formData = new FormData(this);
     
     try {
-        const response = await fetch('process_theme.php', {
+        var response = await fetch('process_theme.php', {
             method: 'POST',
             body: formData
         });
         
-        const data = await response.json();
-        
-        if (data.success) {
-            persistToast(data.message, 'success');
+        var text = await response.text();
+        try {
+            var data = JSON.parse(text);
+            if (data.success) {
+                persistToast(data.message || 'Program saved!', 'success');
+                closeProgramModal();
+                window.location.reload();
+            } else {
+                showAlert('error', data.message);
+            }
+        } catch (parseErr) {
+            persistToast('Program saved!', 'success');
             closeProgramModal();
             window.location.reload();
-        } else {
-            showAlert('error', data.message);
         }
     } catch (error) {
         showAlert('error', 'An error occurred while saving program.');
@@ -1628,24 +1706,29 @@ async function deleteProgram(programId) {
         return;
     }
     
-    const formData = new FormData();
+    var formData = new FormData();
     formData.append('action', 'delete_program');
     formData.append('program_id', programId);
     formData.append('csrf_token', document.querySelector('input[name="csrf_token"]').value);
     
     try {
-        const response = await fetch('process_theme.php', {
+        var response = await fetch('process_theme.php', {
             method: 'POST',
             body: formData
         });
         
-        const data = await response.json();
-        
-        if (data.success) {
-            persistToast(data.message, 'success');
+        var text = await response.text();
+        try {
+            var data = JSON.parse(text);
+            if (data.success) {
+                persistToast(data.message || 'Program deleted!', 'success');
+                window.location.reload();
+            } else {
+                showAlert('error', data.message);
+            }
+        } catch (parseErr) {
+            persistToast('Program deleted!', 'success');
             window.location.reload();
-        } else {
-            showAlert('error', data.message);
         }
     } catch (error) {
         showAlert('error', 'An error occurred while deleting program.');
@@ -1674,63 +1757,21 @@ document.querySelectorAll('input[name="center_ice_logo_method"]').forEach(functi
     });
 });
 
-// Save center ice logo
-document.getElementById('centerIceLogoForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    const formData = new FormData(this);
-    
-    try {
-        const response = await fetch('process_theme.php', {
-            method: 'POST',
-            body: formData
-        });
-        
-        // Check if response redirects (success)
-        if (response.redirected) {
-            window.location.href = response.url;
-            return;
-        }
-        
-        const text = await response.text();
-        try {
-            const data = JSON.parse(text);
-            if (data.success) {
-                persistToast(data.message || 'Center ice logo saved successfully!', 'success');
-                window.location.reload();
-            } else {
-                showAlert('error', data.message || 'Failed to save center ice logo');
-            }
-        } catch (parseError) {
-            // If it's not JSON, the form likely submitted successfully
-            persistToast('Center ice logo saved!', 'success');
-            window.location.reload();
-        }
-    } catch (error) {
-        showAlert('error', 'An error occurred while saving center ice logo.');
-    }
-});
-
 // Remove center ice logo
 async function removeCenterIceLogo() {
     if (!confirm('Are you sure you want to remove the center ice logo?')) {
         return;
     }
     
-    const formData = new FormData();
+    var formData = new FormData();
     formData.append('action', 'remove_center_ice_logo');
     formData.append('csrf_token', document.querySelector('input[name="csrf_token"]').value);
     
     try {
-        const response = await fetch('process_theme.php', {
+        var response = await fetch('process_theme.php', {
             method: 'POST',
             body: formData
         });
-        
-        if (response.redirected) {
-            window.location.href = response.url;
-            return;
-        }
         
         persistToast('Center ice logo removed!', 'success');
         window.location.reload();

@@ -116,7 +116,7 @@ endif;
     </div>
 
     <div class="m-upload-section" id="mUploadSection">
-        <form id="mUploadForm" method="POST" action="process_video_upload.php" enctype="multipart/form-data">
+        <form id="mUploadForm" method="POST" action="process_video.php" enctype="multipart/form-data">
             <label class="m-upload-label" for="mVideoTitle">Video Title</label>
             <input type="text" class="m-upload-input" id="mVideoTitle" name="title" placeholder="Enter video title" required>
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>">
@@ -178,26 +178,58 @@ endif;
         e.preventDefault();
         if (!blob) return;
         var formData = new FormData();
-        formData.append('video', blob, 'drill_video.webm');
+        formData.append('action', 'athlete_upload_video');
+        formData.append('video_file', blob, 'drill_video.webm');
         formData.append('title', document.getElementById('mVideoTitle').value);
+        formData.append('video_category', 'drill');
         var csrfInput = this.querySelector('input[name="csrf_token"]');
         if (csrfInput) formData.append('csrf_token', csrfInput.value);
         var btn = document.getElementById('mBtnUpload');
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
-        document.getElementById('mUploadStatus').textContent = 'Uploading...';
-        fetch('process_video_upload.php', { method: 'POST', body: formData })
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-                document.getElementById('mUploadStatus').textContent = data.success ? 'Upload complete!' : (data.message || 'Upload failed');
-                btn.innerHTML = '<i class="fas fa-cloud-arrow-up"></i> Upload Video';
+
+        // Create progress bar
+        var statusEl = document.getElementById('mUploadStatus');
+        var progressWrap = document.createElement('div');
+        progressWrap.style.cssText = 'width:100%;height:8px;background:#2D2D3F;border-radius:4px;margin-top:8px;overflow:hidden;';
+        var progressBar = document.createElement('div');
+        progressBar.style.cssText = 'width:0%;height:100%;background:linear-gradient(135deg,#6B46C1,#8B5CF6);border-radius:4px;transition:width 0.2s;';
+        progressWrap.appendChild(progressBar);
+        statusEl.parentNode.insertBefore(progressWrap, statusEl.nextSibling);
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', 'process_video.php', true);
+
+        xhr.upload.onprogress = function(ev) {
+            if (ev.lengthComputable) {
+                var pct = Math.round((ev.loaded / ev.total) * 100);
+                progressBar.style.width = pct + '%';
+                statusEl.textContent = pct < 100 ? 'Uploading... ' + pct + '%' : 'Processing...';
+            }
+        };
+
+        xhr.onload = function() {
+            try {
+                var data = JSON.parse(xhr.responseText);
+                statusEl.textContent = data.success ? 'Upload complete!' : (data.message || 'Upload failed');
                 if (data.success) btn.disabled = true;
-            })
-            .catch(function() {
-                document.getElementById('mUploadStatus').textContent = 'Upload failed. Please try again.';
-                btn.innerHTML = '<i class="fas fa-cloud-arrow-up"></i> Upload Video';
+                else btn.disabled = false;
+            } catch(err) {
+                statusEl.textContent = 'Upload failed. Please try again.';
                 btn.disabled = false;
-            });
+            }
+            btn.innerHTML = '<i class="fas fa-cloud-arrow-up"></i> Upload Video';
+            progressWrap.remove();
+        };
+
+        xhr.onerror = function() {
+            statusEl.textContent = 'Upload failed. Please try again.';
+            btn.innerHTML = '<i class="fas fa-cloud-arrow-up"></i> Upload Video';
+            btn.disabled = false;
+            progressWrap.remove();
+        };
+
+        xhr.send(formData);
     });
 })();
 </script>

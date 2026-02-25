@@ -158,6 +158,7 @@ try {
             exit;
             
         case 'update_branding':
+        case 'update_branding_all':
             // Handle logo upload
             if (isset($_FILES['logo']) && $_FILES['logo']['error'] === UPLOAD_ERR_OK) {
                 $result = handleFileUpload($_FILES['logo'], 'logo');
@@ -165,6 +166,9 @@ try {
                     updateThemeSetting($pdo, 'logo_url', $result['url']);
                     syncCenterIceLogoIfNeeded($pdo, $result['url']);
                 }
+            } elseif (!empty($_POST['logo_url_input'])) {
+                updateThemeSetting($pdo, 'logo_url', $_POST['logo_url_input']);
+                syncCenterIceLogoIfNeeded($pdo, $_POST['logo_url_input']);
             } elseif (!empty($_POST['logo_url'])) {
                 updateThemeSetting($pdo, 'logo_url', $_POST['logo_url']);
                 syncCenterIceLogoIfNeeded($pdo, $_POST['logo_url']);
@@ -186,6 +190,30 @@ try {
             }
             if (isset($_POST['site_description'])) {
                 updateThemeSetting($pdo, 'site_description', trim($_POST['site_description']));
+            }
+            
+            // Handle center ice logo (from consolidated form)
+            if (isset($_FILES['center_ice_logo']) && $_FILES['center_ice_logo']['error'] === UPLOAD_ERR_OK) {
+                $result = handleFileUpload($_FILES['center_ice_logo'], 'center_ice');
+                if ($result['success']) {
+                    updateThemeSetting($pdo, 'center_ice_logo_url', $result['url']);
+                }
+            } elseif (!empty($_POST['center_ice_logo_url_input'])) {
+                updateThemeSetting($pdo, 'center_ice_logo_url', $_POST['center_ice_logo_url_input']);
+            }
+            
+            // Handle business card backgrounds (from consolidated form)
+            if (isset($_FILES['bc_front_bg']) && $_FILES['bc_front_bg']['error'] === UPLOAD_ERR_OK) {
+                $result = handleFileUpload($_FILES['bc_front_bg'], 'bc_front_bg');
+                if ($result['success']) {
+                    updateThemeSetting($pdo, 'business_card_front_bg_url', $result['url']);
+                }
+            }
+            if (isset($_FILES['bc_back_bg']) && $_FILES['bc_back_bg']['error'] === UPLOAD_ERR_OK) {
+                $result = handleFileUpload($_FILES['bc_back_bg'], 'bc_back_bg');
+                if ($result['success']) {
+                    updateThemeSetting($pdo, 'business_card_back_bg_url', $result['url']);
+                }
             }
             
             Auditor::log($pdo, $user_id, 'update', 'theme_settings', null, ['action' => 'Branding settings updated']);
