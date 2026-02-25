@@ -65,18 +65,17 @@ test.describe('Cron backup Nextcloud function collision fix', () => {
 
   test('cron_database_backup.php primary upload should read file content before uploading', () => {
     const content = readFile('cron_database_backup.php');
-    // Should read file contents for primary upload
-    const primarySection = content.substring(
-      content.indexOf('Upload to primary Nextcloud'),
-      content.indexOf('Upload to secondary Nextcloud')
-    );
+    // Should read file contents for primary upload (now uploads to RustFS)
+    const primaryStart = content.indexOf('Upload to primary');
+    const secondaryStart = content.indexOf('secondary copy');
+    const primarySection = content.substring(primaryStart, secondaryStart > -1 ? secondaryStart : primaryStart + 2000);
     expect(primarySection).toContain('file_get_contents');
   });
 
   test('cron_database_backup.php secondary upload should read file content before uploading', () => {
     const content = readFile('cron_database_backup.php');
-    // Should read file contents for secondary upload
-    const secondaryStart = content.indexOf('Upload to secondary Nextcloud');
+    // Should read file contents for secondary upload (now uploads to RustFS)
+    const secondaryStart = content.indexOf('secondary');
     const secondaryEnd = content.indexOf('Upload to SMB', secondaryStart);
     const secondarySection = content.substring(secondaryStart, secondaryEnd > -1 ? secondaryEnd : secondaryStart + 2000);
     expect(secondarySection).toContain('file_get_contents');

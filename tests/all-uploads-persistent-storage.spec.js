@@ -1,19 +1,18 @@
 /**
- * Tests for All Uploads to Persistent Storage
+ * Tests for All Uploads to RustFS S3 Storage
  *
- * Verifies that ALL upload functions save to persistent storage first,
- * then backup to Nextcloud. This ensures faster local reads and data
- * durability across updates.
+ * Verifies that ALL upload functions store files in RustFS S3 storage.
+ * Zero local file storage — all files go directly to RustFS.
  *
  * Upload functions tested:
- * 1. uploadImageToNextcloud() - images (already had persistent storage)
- * 2. uploadDrillVideo() - drill videos
- * 3. uploadReceiptToNextcloud() - receipts
- * 4. uploadContractToNextcloud() - contracts
- * 5. uploadPayrollDocuments() - payroll documents
- * 6. uploadOnboardingDocuments() - onboarding documents
- * 7. uploadTerminationDocuments() - termination documents
- * 8. getPersistentStoragePath() - configurable persistent path
+ * 1. uploadImageToNextcloud() - images (now uses RustFS)
+ * 2. uploadDrillVideo() - drill videos (now uses RustFS)
+ * 3. uploadReceiptToNextcloud() - receipts (now uses persistUploadedFile)
+ * 4. uploadContractToNextcloud() - contracts (now uses persistUploadedFile)
+ * 5. uploadPayrollDocuments() - payroll documents (now uses uploadContentToRustFS)
+ * 6. uploadOnboardingDocuments() - onboarding documents (now uses persistUploadedFile)
+ * 7. uploadTerminationDocuments() - termination documents (now uses RustFS)
+ * 8. getPersistentStoragePath() - configurable persistent path (legacy)
  */
 
 import { test, expect } from '@playwright/test';
@@ -27,30 +26,30 @@ function readFile(relativePath) {
 }
 
 // =====================================================
-// 1. uploadImageToNextcloud saves to persistent storage
+// 1. uploadImageToNextcloud uses RustFS
 // =====================================================
 
 test.describe('uploadImageToNextcloud saves to persistent storage', () => {
-  test('uploadImageToNextcloud should call saveToPersistentStorage', () => {
+  test('uploadImageToNextcloud should upload to RustFS', () => {
     const content = readFile('cloud_config.php');
     const fnStart = content.indexOf('function uploadImageToNextcloud(');
     const fnEnd = content.indexOf('function restoreImageFromNextcloud(');
     const fn = content.substring(fnStart, fnEnd);
-    expect(fn).toContain('saveToPersistentStorage(');
+    expect(fn).toContain('uploadToRustFS(');
   });
 });
 
 // =====================================================
-// 2. uploadDrillVideo saves to persistent storage
+// 2. uploadDrillVideo uses RustFS
 // =====================================================
 
 test.describe('uploadDrillVideo saves to persistent storage', () => {
-  test('uploadDrillVideo should call saveToPersistentStorage', () => {
+  test('uploadDrillVideo should upload to RustFS', () => {
     const content = readFile('cloud_config.php');
     const fnStart = content.indexOf('function uploadDrillVideo(');
     const fnEnd = content.indexOf('function getPersistentStoragePath(');
     const fn = content.substring(fnStart, fnEnd);
-    expect(fn).toContain('saveToPersistentStorage(');
+    expect(fn).toContain('uploadLargeFileToRustFS(');
   });
 
   test('uploadDrillVideo should save to DrillVideos subfolder in persistent storage', () => {
@@ -61,30 +60,27 @@ test.describe('uploadDrillVideo saves to persistent storage', () => {
     expect(fn).toContain("'DrillVideos/'");
   });
 
-  test('uploadDrillVideo should save to persistent storage before uploading to Nextcloud', () => {
+  test('uploadDrillVideo should use RustFS for storage', () => {
     const content = readFile('cloud_config.php');
     const fnStart = content.indexOf('function uploadDrillVideo(');
     const fnEnd = content.indexOf('function getPersistentStoragePath(');
     const fn = content.substring(fnStart, fnEnd);
-    const persistentIdx = fn.indexOf('saveToPersistentStorage(');
-    const uploadIdx = fn.indexOf('uploadToNextcloud(');
-    expect(persistentIdx).toBeGreaterThan(-1);
-    expect(uploadIdx).toBeGreaterThan(-1);
-    expect(persistentIdx).toBeLessThan(uploadIdx);
+    expect(fn).toContain('getRustFSSettings');
+    expect(fn).toContain('isRustFSConfigured');
   });
 });
 
 // =====================================================
-// 3. uploadReceiptToNextcloud saves to persistent storage
+// 3. uploadReceiptToNextcloud uses RustFS via persistUploadedFile
 // =====================================================
 
 test.describe('uploadReceiptToNextcloud saves to persistent storage', () => {
-  test('uploadReceiptToNextcloud should call saveToPersistentStorage', () => {
+  test('uploadReceiptToNextcloud should use persistUploadedFile for RustFS', () => {
     const content = readFile('process_expenses.php');
     const fnStart = content.indexOf('function uploadReceiptToNextcloud(');
     const fnEnd = content.indexOf('function performReceiptOCR(');
     const fn = content.substring(fnStart, fnEnd);
-    expect(fn).toContain('saveToPersistentStorage(');
+    expect(fn).toContain('persistUploadedFile(');
   });
 
   test('uploadReceiptToNextcloud should save to Receipts subfolder in persistent storage', () => {
@@ -97,16 +93,16 @@ test.describe('uploadReceiptToNextcloud saves to persistent storage', () => {
 });
 
 // =====================================================
-// 4. uploadContractToNextcloud saves to persistent storage
+// 4. uploadContractToNextcloud uses RustFS via persistUploadedFile
 // =====================================================
 
 test.describe('uploadContractToNextcloud saves to persistent storage', () => {
-  test('uploadContractToNextcloud should call saveToPersistentStorage', () => {
+  test('uploadContractToNextcloud should use persistUploadedFile for RustFS', () => {
     const content = readFile('process_recurring_expenses.php');
     const fnStart = content.indexOf('function uploadContractToNextcloud(');
     const fnEnd = content.indexOf('\ntry {', fnStart);
     const fn = content.substring(fnStart, fnEnd);
-    expect(fn).toContain('saveToPersistentStorage(');
+    expect(fn).toContain('persistUploadedFile(');
   });
 
   test('uploadContractToNextcloud should save to Contracts subfolder in persistent storage', () => {
@@ -119,16 +115,16 @@ test.describe('uploadContractToNextcloud saves to persistent storage', () => {
 });
 
 // =====================================================
-// 5. uploadPayrollDocuments saves to persistent storage
+// 5. uploadPayrollDocuments uses RustFS via uploadContentToRustFS
 // =====================================================
 
 test.describe('uploadPayrollDocuments saves to persistent storage', () => {
-  test('uploadPayrollDocuments should call saveToPersistentStorage', () => {
+  test('uploadPayrollDocuments should use RustFS for uploads', () => {
     const content = readFile('process_payroll.php');
     const fnStart = content.indexOf('function uploadPayrollDocuments(');
     const fnEnd = content.indexOf('// Handle Add Employee');
     const fn = content.substring(fnStart, fnEnd);
-    expect(fn).toContain('saveToPersistentStorage(');
+    expect(fn).toContain('uploadContentToRustFS(');
   });
 
   test('uploadPayrollDocuments should save to Payroll subfolder in persistent storage', () => {
@@ -141,16 +137,16 @@ test.describe('uploadPayrollDocuments saves to persistent storage', () => {
 });
 
 // =====================================================
-// 6. uploadOnboardingDocuments saves to persistent storage
+// 6. uploadOnboardingDocuments uses RustFS
 // =====================================================
 
 test.describe('uploadOnboardingDocuments saves to persistent storage', () => {
-  test('uploadOnboardingDocuments should call saveToPersistentStorage', () => {
+  test('uploadOnboardingDocuments should use persistUploadedFile for RustFS', () => {
     const content = readFile('process_onboarding.php');
     const fnStart = content.indexOf('function uploadOnboardingDocuments(');
     const fnEnd = content.indexOf('function exportOnboardingData(');
     const fn = content.substring(fnStart, fnEnd);
-    expect(fn).toContain('saveToPersistentStorage(');
+    expect(fn).toContain('persistUploadedFile(');
   });
 
   test('uploadOnboardingDocuments should save to Onboarding subfolder in persistent storage', () => {
@@ -163,16 +159,16 @@ test.describe('uploadOnboardingDocuments saves to persistent storage', () => {
 });
 
 // =====================================================
-// 7. uploadTerminationDocuments saves to persistent storage
+// 7. uploadTerminationDocuments uses RustFS
 // =====================================================
 
 test.describe('uploadTerminationDocuments saves to persistent storage', () => {
-  test('uploadTerminationDocuments should call saveToPersistentStorage', () => {
+  test('uploadTerminationDocuments should use RustFS for uploads', () => {
     const content = readFile('cloud_config.php');
     const fnStart = content.indexOf('function uploadTerminationDocuments(');
     const fnEnd = content.indexOf('function exportTerminationData(');
     const fn = content.substring(fnStart, fnEnd);
-    expect(fn).toContain('saveToPersistentStorage(');
+    expect(fn).toContain('uploadToRustFS(');
   });
 
   test('uploadTerminationDocuments should save to Terminations subfolder in persistent storage', () => {
@@ -180,7 +176,7 @@ test.describe('uploadTerminationDocuments saves to persistent storage', () => {
     const fnStart = content.indexOf('function uploadTerminationDocuments(');
     const fnEnd = content.indexOf('function exportTerminationData(');
     const fn = content.substring(fnStart, fnEnd);
-    expect(fn).toContain("'Terminations/'");
+    expect(fn).toContain("'HR/Terminations/'");
   });
 });
 
@@ -225,7 +221,7 @@ test.describe('getPersistentStoragePath is configurable', () => {
 });
 
 // =====================================================
-// 9. saveToPersistentStorage forwards $pdo to getPersistentStoragePath
+// 9. saveToPersistentStorage uses RustFS
 // =====================================================
 
 test.describe('saveToPersistentStorage respects persistent path setting', () => {
@@ -234,73 +230,43 @@ test.describe('saveToPersistentStorage respects persistent path setting', () => 
     expect(content).toContain('function saveToPersistentStorage($local_file_path, $subfolder, $filename, $pdo = null)');
   });
 
-  test('saveToPersistentStorage should pass $pdo to getPersistentStoragePath', () => {
+  test('saveToPersistentStorage should use RustFS for uploads', () => {
     const content = readFile('cloud_config.php');
     const fnStart = content.indexOf('function saveToPersistentStorage(');
     const fnEnd = content.indexOf('function restoreFromPersistentStorage(');
     const fn = content.substring(fnStart, fnEnd);
-    expect(fn).toContain('getPersistentStoragePath($pdo)');
+    expect(fn).toContain('getRustFSSettings');
+    expect(fn).toContain('uploadToRustFS');
   });
 
-  test('all callers of saveToPersistentStorage in cloud_config.php should pass $pdo', () => {
-    const content = readFile('cloud_config.php');
-    // Find all calls to saveToPersistentStorage (excluding the function definition)
-    const fnDefEnd = content.indexOf('function restoreFromPersistentStorage(');
-    const afterDef = content.substring(fnDefEnd);
-    const matches = afterDef.match(/saveToPersistentStorage\([^)]+\)/g) || [];
-    for (const call of matches) {
-      expect(call).toContain('$pdo');
-    }
-  });
-
-  test('process_expenses.php should pass $pdo to saveToPersistentStorage', () => {
+  test('process_expenses.php should use persistUploadedFile (not direct saveToPersistentStorage)', () => {
     const content = readFile('process_expenses.php');
-    const calls = content.match(/saveToPersistentStorage\([^)]+\)/g) || [];
-    expect(calls.length).toBeGreaterThan(0);
-    for (const call of calls) {
-      expect(call).toContain('$pdo');
-    }
+    expect(content).toContain('persistUploadedFile(');
   });
 
-  test('process_payroll.php should pass $pdo to saveToPersistentStorage', () => {
+  test('process_payroll.php should use uploadContentToRustFS (not direct saveToPersistentStorage)', () => {
     const content = readFile('process_payroll.php');
-    const calls = content.match(/saveToPersistentStorage\([^)]+\)/g) || [];
-    expect(calls.length).toBeGreaterThan(0);
-    for (const call of calls) {
-      expect(call).toContain('$pdo');
-    }
+    expect(content).toContain('uploadContentToRustFS(');
   });
 
-  test('process_profile_update.php should pass $pdo to saveToPersistentStorage', () => {
+  test('process_profile_update.php should use persistUploadedFile for profile uploads', () => {
     const content = readFile('process_profile_update.php');
-    const lines = content.split('\n').filter(l => l.includes('saveToPersistentStorage(') && !l.trim().startsWith('//'));
-    expect(lines.length).toBeGreaterThan(0);
-    for (const line of lines) {
-      expect(line).toContain('$pdo');
-    }
+    expect(content).toContain('persistUploadedFile(');
   });
 
-  test('process_recurring_expenses.php should pass $pdo to saveToPersistentStorage', () => {
+  test('process_recurring_expenses.php should use persistUploadedFile (not direct saveToPersistentStorage)', () => {
     const content = readFile('process_recurring_expenses.php');
-    const calls = content.match(/saveToPersistentStorage\([^)]+\)/g) || [];
-    expect(calls.length).toBeGreaterThan(0);
-    for (const call of calls) {
-      expect(call).toContain('$pdo');
-    }
+    expect(content).toContain('persistUploadedFile(');
   });
 
-  test('process_onboarding.php should pass $pdo to saveToPersistentStorage', () => {
+  test('process_onboarding.php should use persistUploadedFile (not direct saveToPersistentStorage)', () => {
     const content = readFile('process_onboarding.php');
-    const calls = content.match(/saveToPersistentStorage\([^)]+\)/g) || [];
-    expect(calls.length).toBeGreaterThan(0);
-    for (const call of calls) {
-      expect(call).toContain('$pdo');
-    }
+    expect(content).toContain('persistUploadedFile(');
   });
 });
 
 // =====================================================
-// 10. restoreFromPersistentStorage forwards $pdo to getPersistentStoragePath
+// 10. restoreFromPersistentStorage uses RustFS
 // =====================================================
 
 test.describe('restoreFromPersistentStorage respects persistent path setting', () => {
@@ -309,24 +275,13 @@ test.describe('restoreFromPersistentStorage respects persistent path setting', (
     expect(content).toContain('function restoreFromPersistentStorage($subfolder, $filename, $local_path, $pdo = null)');
   });
 
-  test('restoreFromPersistentStorage should pass $pdo to getPersistentStoragePath', () => {
+  test('restoreFromPersistentStorage should use RustFS to check file existence', () => {
     const content = readFile('cloud_config.php');
     const fnStart = content.indexOf('function restoreFromPersistentStorage(');
     const fnEnd = content.indexOf('function uploadImageToNextcloud(');
     const fn = content.substring(fnStart, fnEnd);
-    expect(fn).toContain('getPersistentStoragePath($pdo)');
-  });
-
-  test('restoreImageFromNextcloud should pass $pdo to restoreFromPersistentStorage', () => {
-    const content = readFile('cloud_config.php');
-    const fnStart = content.indexOf('function restoreImageFromNextcloud(');
-    const fnEnd = content.indexOf('function getDrillVideoPath(');
-    const fn = content.substring(fnStart, fnEnd);
-    const calls = fn.match(/restoreFromPersistentStorage\([^)]+\)/g) || [];
-    expect(calls.length).toBeGreaterThan(0);
-    for (const call of calls) {
-      expect(call).toContain('$pdo');
-    }
+    expect(fn).toContain('getRustFSSettings');
+    expect(fn).toContain('rustfsObjectExists');
   });
 
   test('tryRestoreFromPersistent should accept and forward $pdo parameter', () => {
