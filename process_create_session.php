@@ -24,18 +24,35 @@ $user_id = $_SESSION['user_id'] ?? 0;
 if ($action == 'create_private_session' && $_SERVER["REQUEST_METHOD"] == "POST") {
     require_once 'mailer.php';
     
+    // Parse privacy type from new form
+    $privacy_type = $_POST['privacy_type'] ?? 'private';
+    $is_private = ($privacy_type === 'private') ? 1 : 0;
+    $is_semi_private = ($privacy_type === 'semi_private') ? 1 : 0;
+    
+    // Parse template_id - could be a numeric template ID or "st_<id>" for session type fallback
+    $template_id_raw = $_POST['template_id'] ?? '';
+    $template_id = 0;
     $session_type_id = intval($_POST['session_type_id'] ?? 0);
+    
+    if (!empty($template_id_raw)) {
+        if (strpos($template_id_raw, 'st_') === 0) {
+            // Session type fallback (no templates exist)
+            $session_type_id = intval(substr($template_id_raw, 3));
+        } else {
+            $template_id = intval($template_id_raw);
+        }
+    }
+    
     $location_id = intval($_POST['location_id'] ?? 0);
     $session_date = $_POST['session_date'] ?? '';
     $session_time = $_POST['session_time'] ?? '';
     $duration_minutes = intval($_POST['duration_minutes'] ?? 60);
     $practice_plan_id = !empty($_POST['practice_plan_id']) ? intval($_POST['practice_plan_id']) : null;
     $description = trim($_POST['description'] ?? '');
-    $is_private = isset($_POST['is_private']) ? 1 : 0;
     $athlete_ids = isset($_POST['athlete_ids']) ? array_map('intval', $_POST['athlete_ids']) : [];
     
     // Validate required fields
-    if (!$session_type_id || !$location_id || !$session_date || !$session_time) {
+    if ((!$template_id && !$session_type_id) || !$location_id || !$session_date || !$session_time) {
         header("Location: dashboard.php?page=coach_calendar&error=missing_fields");
         exit();
     }
@@ -53,10 +70,27 @@ if ($action == 'create_private_session' && $_SERVER["REQUEST_METHOD"] == "POST")
         }
         $base_url = rtrim($base_url, '/');
         
+        // If a template was selected, get details from the template
+        $templateData = null;
+        if ($template_id > 0) {
+            $stmt = $pdo->prepare("SELECT * FROM training_session_templates WHERE id = ? AND is_active = 1");
+            $stmt->execute([$template_id]);
+            $templateData = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($templateData) {
+                $session_type_id = $templateData['session_type_id'] ?? $session_type_id;
+                if (empty($practice_plan_id) && !empty($templateData['practice_plan_id'])) {
+                    $practice_plan_id = $templateData['practice_plan_id'];
+                }
+            }
+        }
+        
         // Get session type details for title and price
-        $stmt = $pdo->prepare("SELECT name, price FROM session_types WHERE id = ?");
-        $stmt->execute([$session_type_id]);
-        $sessionType = $stmt->fetch(PDO::FETCH_ASSOC);
+        $sessionType = null;
+        if ($session_type_id) {
+            $stmt = $pdo->prepare("SELECT name, price FROM session_types WHERE id = ?");
+            $stmt->execute([$session_type_id]);
+            $sessionType = $stmt->fetch(PDO::FETCH_ASSOC);
+        }
         
         // Get location name
         $stmt = $pdo->prepare("SELECT name, city FROM locations WHERE id = ?");
@@ -70,27 +104,53 @@ if ($action == 'create_private_session' && $_SERVER["REQUEST_METHOD"] == "POST")
         $coach = decryptUserRow($coach);
         $coach_name = $coach['first_name'] . ' ' . $coach['last_name'];
         
-        // Create the session
-        $title = ($sessionType['name'] ?? 'Private Session') . ' with ' . $coach_name;
-        $price = $sessionType['price'] ?? 0;
+        // Determine title and price
+        $sessionName = $templateData['name'] ?? ($sessionType['name'] ?? ($is_semi_private ? 'Semi-Private Session' : 'Private Session'));
+        $title = $sessionName . ' with ' . $coach_name;
+        $price = $templateData['price'] ?? ($sessionType['price'] ?? 0);
         
+        // Use product pricing if available
+        try {
+            $sku = $is_semi_private ? 'SESSION-SEMI-PRIVATE' : 'SESSION-PRIVATE';
+            $prodPrice = $pdo->prepare("SELECT price FROM merchandise_products WHERE sku = ? AND is_active = 1 LIMIT 1");
+            $prodPrice->execute([$sku]);
+            $prodRow = $prodPrice->fetch(PDO::FETCH_ASSOC);
+            if ($prodRow && $prodRow['price'] > 0) {
+                $price = $prodRow['price'];
+            }
+        } catch (PDOException $e) { /* Fall back to template/session type price */ }
+        
+        // Create the session record
         $stmt = $pdo->prepare("
             INSERT INTO sessions (
                 session_type_id, coach_id, location_id, title, description, 
                 session_date, session_time, duration_minutes, 
-                practice_plan_id, is_private, status, max_participants, price,
+                practice_plan_id, is_private, is_semi_private, status, max_participants, price,
                 arena, city, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'scheduled', ?, ?, ?, ?, NOW())
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'scheduled', ?, ?, ?, ?, NOW())
         ");
-        $maxCapacity = count($athlete_ids) > 0 ? count($athlete_ids) : 1;
+        $maxCapacity = count($athlete_ids) > 0 ? count($athlete_ids) : ($is_semi_private ? 4 : 1);
         $stmt->execute([
             $session_type_id, $coach_id, $location_id, $title, $description,
             $session_date, $session_time, $duration_minutes,
-            $practice_plan_id, $is_private, $maxCapacity, $price,
+            $practice_plan_id, $is_private, $is_semi_private, $maxCapacity, $price,
             $location['name'] ?? '', $location['city'] ?? ''
         ]);
         
         $session_id = $pdo->lastInsertId();
+        
+        // If a template was selected, add a date entry to training_session_dates linking back
+        if ($template_id > 0) {
+            $stmt = $pdo->prepare("
+                INSERT INTO training_session_dates (template_id, session_id, session_date, max_participants, is_active)
+                VALUES (?, ?, ?, ?, 1)
+            ");
+            $stmt->execute([
+                $template_id, $session_id,
+                $session_date . ' ' . $session_time,
+                $maxCapacity
+            ]);
+        }
         
         // If athletes are assigned, create pending bookings and send email notifications
         if (!empty($athlete_ids)) {

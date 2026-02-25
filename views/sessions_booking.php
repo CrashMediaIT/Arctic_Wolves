@@ -60,6 +60,10 @@ $private_session_price = $private_product['price'] ?? $default_private_price;
 $semi_private_session_price = $semi_private_product['price'] ?? $default_semi_private_price;
 
 // Get available private and semi-private sessions (created by coaches)
+// Coaches and admins see all; athletes only see sessions from their assigned coach
+$current_user_id = intval($_SESSION['user_id']);
+$current_user_role = $user_role ?? '';
+
 $private_sessions_query = "
     SELECT s.id, s.title as session_type_name, s.description, 
            s.session_date, s.session_time,
@@ -75,11 +79,49 @@ $private_sessions_query = "
     WHERE s.session_date >= CURDATE() 
       AND s.status = 'scheduled'
       AND (s.is_private = 1 OR s.is_semi_private = 1)
+";
+
+// Filter: athletes and parents only see sessions from their assigned coach or where they have a booking
+if (!in_array($current_user_role, ['admin', 'coach', 'coach_plus', 'health_coach', 'team_coach'])) {
+    if ($current_user_role === 'parent') {
+        // Parents see sessions where their managed athletes' coaches match
+        $private_sessions_query .= "
+          AND (
+              s.coach_id IN (SELECT u2.assigned_coach_id FROM managed_athletes ma2 JOIN users u2 ON u2.id = ma2.athlete_id WHERE ma2.parent_id = ? AND u2.assigned_coach_id IS NOT NULL)
+              OR s.coach_id IN (SELECT u3.created_by_coach_id FROM managed_athletes ma3 JOIN users u3 ON u3.id = ma3.athlete_id WHERE ma3.parent_id = ? AND u3.created_by_coach_id IS NOT NULL)
+              OR s.id IN (SELECT bk.session_id FROM bookings bk JOIN managed_athletes ma4 ON bk.user_id = ma4.athlete_id WHERE ma4.parent_id = ? AND bk.status IN ('confirmed', 'waitlisted'))
+              OR s.id IN (SELECT bk2.session_id FROM bookings bk2 WHERE bk2.user_id = ? AND bk2.status IN ('confirmed', 'waitlisted'))
+          )
+        ";
+    } else {
+        // Athletes see sessions from their assigned coach or where they have a booking
+        $private_sessions_query .= "
+          AND (
+              s.coach_id IN (SELECT u2.assigned_coach_id FROM users u2 WHERE u2.id = ? AND u2.assigned_coach_id IS NOT NULL)
+              OR s.coach_id IN (SELECT u3.created_by_coach_id FROM users u3 WHERE u3.id = ? AND u3.created_by_coach_id IS NOT NULL)
+              OR s.id IN (SELECT bk.session_id FROM bookings bk WHERE bk.user_id = ? AND bk.status IN ('confirmed', 'waitlisted'))
+          )
+        ";
+    }
+}
+
+$private_sessions_query .= "
     GROUP BY s.id
     HAVING registered_count < COALESCE(s.max_participants, 1)
     ORDER BY s.session_date ASC, s.session_time ASC
 ";
-$private_sessions = $pdo->query($private_sessions_query)->fetchAll();
+
+if (!in_array($current_user_role, ['admin', 'coach', 'coach_plus', 'health_coach', 'team_coach'])) {
+    $ps_stmt = $pdo->prepare($private_sessions_query);
+    if ($current_user_role === 'parent') {
+        $ps_stmt->execute([$current_user_id, $current_user_id, $current_user_id, $current_user_id]);
+    } else {
+        $ps_stmt->execute([$current_user_id, $current_user_id, $current_user_id]);
+    }
+    $private_sessions = $ps_stmt->fetchAll();
+} else {
+    $private_sessions = $pdo->query($private_sessions_query)->fetchAll();
+}
 foreach ($private_sessions as &$ps) {
     foreach (['coach_first_name', 'coach_last_name'] as $f) {
         if (!empty($ps[$f])) $ps[$f] = FieldEncryption::decrypt($ps[$f]);

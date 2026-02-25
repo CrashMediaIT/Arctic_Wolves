@@ -189,6 +189,22 @@ $locations = $pdo->query("SELECT * FROM locations WHERE is_active = 1 ORDER BY n
 $practice_plans = $pdo->query("SELECT id, name FROM practice_plans ORDER BY created_at DESC LIMIT 50")->fetchAll();
 $session_types = $pdo->query("SELECT * FROM session_types ORDER BY name")->fetchAll();
 
+// Fetch admin-created private/semi-private session templates (from Products > Sessions)
+$private_templates = [];
+try {
+    $pt_stmt = $pdo->query("
+        SELECT tst.id, tst.name, tst.description, tst.duration_minutes, tst.price,
+               tst.max_participants, tst.session_type_id, tst.practice_plan_id,
+               'private' as privacy_type
+        FROM training_session_templates tst
+        WHERE tst.is_active = 1
+        ORDER BY tst.name
+    ");
+    $private_templates = $pt_stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log("Private templates fetch note: " . $e->getMessage());
+}
+
 // Get users assigned to this coach (any role can receive session assignments)
 $assigned_athletes_stmt = $pdo->prepare("SELECT u.id, u.first_name, u.last_name, u.role FROM users u WHERE u.is_active = 1 AND (u.assigned_coach_id = ? OR u.created_by_coach_id = ?) ORDER BY u.last_name, u.first_name");
 $assigned_athletes_stmt->execute([$user_id, $user_id]);
@@ -375,25 +391,46 @@ $is_demo_data = false;
     <div class="session-modal session-modal-large">
         <div class="session-modal-header"><h2><i class="fas fa-user-lock"></i> Create Private Session</h2><button class="session-modal-close" onclick="closePrivateSessionModal()">&times;</button></div>
         <div class="session-modal-body">
-            <p class="modal-description">Create a private session for your assigned athletes.</p>
+            <p class="modal-description">Create a private or semi-private session for your assigned athletes.</p>
             <form id="privateSessionForm" method="POST" action="process_create_session.php">
                 <?= csrfTokenInput() ?>
                 <input type="hidden" name="action" value="create_private_session">
-                <input type="hidden" name="is_private" value="1">
                 <div class="form-row">
-                    <div class="form-group"><label>Session Type <span class="required">*</span></label><select name="session_type_id" class="form-select" required><option value="">-- Select Type --</option><?php foreach ($session_types as $type): ?><option value="<?= $type['id'] ?>"><?= htmlspecialchars($type['name']) ?></option><?php endforeach; ?></select></div>
+                    <div class="form-group"><label>Session Privacy <span class="required">*</span></label>
+                        <select name="privacy_type" id="privacyTypeSelect" class="form-select" required>
+                            <option value="">-- Select Type --</option>
+                            <option value="private">Private (1-on-1)</option>
+                            <option value="semi_private">Semi-Private (Small Group)</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Session Product <span class="required">*</span></label>
+                        <select name="template_id" id="templateSelect" class="form-select" required>
+                            <option value="">-- Select Session --</option>
+                            <?php foreach ($private_templates as $tpl): ?>
+                            <option value="<?= $tpl['id'] ?>" data-price="<?= $tpl['price'] ?? 0 ?>" data-duration="<?= $tpl['duration_minutes'] ?? 60 ?>" data-max="<?= $tpl['max_participants'] ?? '' ?>" data-session-type="<?= $tpl['session_type_id'] ?? '' ?>" data-plan="<?= $tpl['practice_plan_id'] ?? '' ?>"><?= htmlspecialchars($tpl['name']) ?> ($<?= number_format($tpl['price'] ?? 0, 2) ?>)</option>
+                            <?php endforeach; ?>
+                            <?php if (empty($private_templates)): ?>
+                            <?php foreach ($session_types as $type): ?>
+                            <option value="st_<?= $type['id'] ?>" data-price="<?= $type['price'] ?? $type['default_price'] ?? 0 ?>" data-duration="60"><?= htmlspecialchars($type['name']) ?> ($<?= number_format($type['price'] ?? $type['default_price'] ?? 0, 2) ?>)</option>
+                            <?php endforeach; ?>
+                            <?php endif; ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
                     <div class="form-group"><label>Location <span class="required">*</span></label><select name="location_id" class="form-select" required><option value="">-- Select --</option><?php foreach ($locations as $loc): ?><option value="<?= $loc['id'] ?>"><?= htmlspecialchars($loc['name']) ?></option><?php endforeach; ?></select></div>
-                </div>
-                <div class="form-row">
                     <div class="form-group"><label>Date <span class="required">*</span></label><input type="date" name="session_date" class="form-input" required min="<?= date('Y-m-d') ?>"></div>
-                    <div class="form-group"><label>Time <span class="required">*</span></label><select name="session_time" class="form-select" required><option value="">-- Select --</option><?php for ($h = 6; $h <= 21; $h++): ?><option value="<?= sprintf('%02d:00', $h) ?>"><?= date('g:i A', strtotime("$h:00")) ?></option><?php endfor; ?></select></div>
                 </div>
                 <div class="form-row">
-                    <div class="form-group"><label>Duration</label><select name="duration_minutes" class="form-select"><option value="30">30 min</option><option value="45">45 min</option><option value="60" selected>60 min</option><option value="90">90 min</option></select></div>
+                    <div class="form-group"><label>Time <span class="required">*</span></label><select name="session_time" class="form-select" required><option value="">-- Select --</option><?php for ($h = 6; $h <= 21; $h++): ?><option value="<?= sprintf('%02d:00', $h) ?>"><?= date('g:i A', strtotime("$h:00")) ?></option><?php endfor; ?></select></div>
+                    <div class="form-group"><label>Duration</label><select name="duration_minutes" id="durationSelect" class="form-select"><option value="30">30 min</option><option value="45">45 min</option><option value="60" selected>60 min</option><option value="90">90 min</option></select></div>
+                </div>
+                <div class="form-row">
                     <div class="form-group"><label>Practice Plan</label><select name="practice_plan_id" class="form-select"><option value="">-- No Plan --</option><?php foreach ($practice_plans as $plan): ?><option value="<?= $plan['id'] ?>"><?= htmlspecialchars($plan['name']) ?></option><?php endforeach; ?></select></div>
+                    <div class="form-group"></div>
                 </div>
                 <div class="form-group"><label>Select Athletes (Optional)</label>
-                    <p class="help-text" style="font-size: 12px; color: var(--text-dim); margin-bottom: 8px;">Optionally pre-assign athletes to this session. Leave empty for an open private session.</p>
+                    <p class="help-text" style="font-size: 12px; color: var(--text-dim); margin-bottom: 8px;">Optionally pre-assign athletes to this session. Leave empty for an open session.</p>
                     <div class="athlete-selection-grid">
                         <?php if (count($assigned_athletes) > 0): foreach ($assigned_athletes as $athlete): ?>
                             <label class="athlete-checkbox"><input type="checkbox" name="athlete_ids[]" value="<?= $athlete['id'] ?>"><span><?= htmlspecialchars($athlete['first_name'] . ' ' . $athlete['last_name']) ?></span></label>
@@ -638,6 +675,22 @@ function openAssignPlanModal(sessionId, currentPlanId) {
 function closeAssignPlanModal() { document.getElementById('assignPlanModal').classList.remove('active'); }
 function openPrivateSessionModal() { document.getElementById('privateSessionModal').classList.add('active'); }
 function closePrivateSessionModal() { document.getElementById('privateSessionModal').classList.remove('active'); }
+
+// Auto-fill duration when a template is selected
+document.getElementById('templateSelect')?.addEventListener('change', function() {
+    var opt = this.options[this.selectedIndex];
+    if (opt && opt.dataset.duration) {
+        var durSel = document.getElementById('durationSelect');
+        if (durSel) {
+            for (var i = 0; i < durSel.options.length; i++) {
+                if (durSel.options[i].value === opt.dataset.duration) {
+                    durSel.selectedIndex = i;
+                    break;
+                }
+            }
+        }
+    }
+});
 
 
 document.addEventListener('keydown', function(e) { if (e.key === 'Escape') document.querySelectorAll('.session-modal-overlay.active').forEach(m => m.classList.remove('active')); });
