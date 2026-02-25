@@ -160,6 +160,115 @@ if ($action === 'cancel_booking' || $action === 'cancel') {
     }
 }
 
+// REGISTER FOR TEMPLATE SESSION (from training_session_templates)
+if ($action === 'register_template_session') {
+    try {
+        $session_date_id = intval($_POST['session_date_id'] ?? 0);
+        
+        if ($session_date_id <= 0) {
+            die("Invalid session date ID.");
+        }
+        
+        // Fetch session date and template info
+        $stmt = $pdo->prepare("
+            SELECT td.id as session_date_id, td.template_id, td.session_date, td.max_participants,
+                   t.name, t.price, t.max_participants as template_max_participants, t.duration_minutes
+            FROM training_session_dates td
+            JOIN training_session_templates t ON td.template_id = t.id
+            WHERE td.id = ? AND td.is_active = 1 AND t.is_active = 1
+        ");
+        $stmt->execute([$session_date_id]);
+        $session_date = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$session_date) {
+            die("Session not found or is no longer available.");
+        }
+        
+        // Check if user is already registered
+        $dup_check = $pdo->prepare("SELECT id FROM session_date_athletes WHERE session_date_id = ? AND athlete_id = ?");
+        $dup_check->execute([$session_date_id, $user_id]);
+        if ($dup_check->fetch()) {
+            header("Location: dashboard.php?page=sessions&error=already_booked");
+            exit();
+        }
+        
+        // Check capacity
+        $max_participants = $session_date['max_participants'] ?? $session_date['template_max_participants'];
+        if (!empty($max_participants)) {
+            $count_stmt = $pdo->prepare("SELECT COUNT(*) FROM session_date_athletes WHERE session_date_id = ?");
+            $count_stmt->execute([$session_date_id]);
+            $registered_count = (int)$count_stmt->fetchColumn();
+            if ($registered_count >= (int)$max_participants) {
+                header("Location: dashboard.php?page=sessions&error=session_full");
+                exit();
+            }
+        }
+        
+        $original_price = $session_date['price'] ?? 0;
+        $final_price = $original_price;
+        
+        if ($final_price > 0) {
+            // Create Stripe checkout session for paid template sessions
+            $email_stmt = $pdo->prepare("SELECT email FROM users WHERE id = ?");
+            $email_stmt->execute([$user_id]);
+            $customer_email = $email_stmt->fetchColumn();
+            
+            $stripe_params = [
+                'payment_method_types' => ['card'],
+                'line_items' => [[
+                    'price_data' => [
+                        'currency' => $currency,
+                        'unit_amount' => round($final_price * 100),
+                        'product_data' => [
+                            'name' => 'Training Session: ' . $session_date['name'],
+                            'description' => 'Session on ' . date('M j, Y', strtotime($session_date['session_date'])),
+                        ],
+                    ],
+                    'quantity' => 1,
+                ]],
+                'mode' => 'payment',
+                'success_url' => $domain . '/payment_success.php?session_id={CHECKOUT_SESSION_ID}',
+                'cancel_url'  => $domain . '/dashboard.php?page=schedule&error=cancelled',
+                'client_reference_id' => $user_id,
+                'metadata' => [
+                    'type' => 'template_session',
+                    'session_date_id' => $session_date_id,
+                    'athlete_id' => $user_id,
+                ],
+            ];
+            if (!empty($customer_email)) {
+                $stripe_params['customer_email'] = $customer_email;
+            }
+            $checkout_session = \Stripe\Checkout\Session::create($stripe_params);
+            
+            // Register the athlete for the session date
+            $stmt = $pdo->prepare("INSERT INTO session_date_athletes (session_date_id, athlete_id) VALUES (?, ?)");
+            $stmt->execute([$session_date_id, $user_id]);
+            
+            Auditor::log($pdo, $user_id, 'create', 'session_date_athletes', $pdo->lastInsertId(), [
+                'action' => 'register_template_session', 'session_date_id' => $session_date_id, 'amount' => $final_price
+            ]);
+            
+            header("Location: " . $checkout_session->url);
+            exit();
+        } else {
+            // Free session - register directly
+            $stmt = $pdo->prepare("INSERT INTO session_date_athletes (session_date_id, athlete_id) VALUES (?, ?)");
+            $stmt->execute([$session_date_id, $user_id]);
+            
+            Auditor::log($pdo, $user_id, 'create', 'session_date_athletes', $pdo->lastInsertId(), [
+                'action' => 'register_template_session', 'session_date_id' => $session_date_id, 'amount' => 0
+            ]);
+            
+            header("Location: dashboard.php?page=sessions&status=booked");
+            exit();
+        }
+    } catch (Exception $e) {
+        ErrorLogger::error("Template session registration error: " . $e->getMessage(), ['session_date_id' => $session_date_id ?? 0, 'user_id' => $user_id]);
+        die("Registration error: " . $e->getMessage());
+    }
+}
+
 // JOIN WAITLIST
 if ($action === 'join_waitlist') {
     header('Content-Type: application/json');

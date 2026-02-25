@@ -207,8 +207,7 @@ for ($i = 1; $i <= 4; $i++) {
                 <p class="footer-desc">High-performance athletic development.</p>
                 
                 <div class="social-tray">
-                    <a href="#" class="social-icon"><i class="fab fa-instagram"></i></a>
-                    <a href="#" class="social-icon"><i class="fab fa-twitter"></i></a>
+                    <a href="https://www.instagram.com/arcticwolveshockey/" target="_blank" rel="noopener noreferrer" class="social-icon"><i class="fab fa-instagram"></i></a>
                 </div>
             </div>
             <div class="footer-right">
