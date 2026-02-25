@@ -1227,7 +1227,7 @@ function handleUploadVideoSource() {
     $source_id_new = $pdo->lastInsertId();
     Auditor::log($pdo, $user_id, 'create', 'vr_video_sources', $source_id_new, ['action' => 'Video source uploaded']);
 
-    // Upload gameplan video to Nextcloud for persistent storage
+    // Upload gameplan video to Nextcloud using streaming (no RAM loading for large files)
     try {
         $nc_settings = getNextcloudSettings($pdo);
         if (!empty($nc_settings['nextcloud_url'])) {
@@ -1237,16 +1237,22 @@ function handleUploadVideoSource() {
                     $nc_settings['nextcloud_password'] = $decrypted;
                 }
             }
-            $result = uploadImageToNextcloud($pdo, $nc_settings, $upload_path, 'videos/gameplan', $unique_name);
+            $result = uploadLargeFileToNextcloud($pdo, $nc_settings, $upload_path, 'videos/gameplan', $unique_name);
             if ($result['success']) {
                 $pdo->prepare("UPDATE vr_video_sources SET nextcloud_path = ? WHERE id = ?")->execute([$result['remote_path'], $source_id_new]);
             }
+        } else {
+            // No Nextcloud — still save to persistent storage
+            saveToPersistentStorage($upload_path, 'videos/gameplan', $unique_name, $pdo);
         }
     } catch (Exception $e) {
         error_log("Nextcloud gameplan video upload failed: " . $e->getMessage());
+        try { saveToPersistentStorage($upload_path, 'videos/gameplan', $unique_name, $pdo); } catch (Exception $ps) {}
     }
 
-    logSecurityEvent($pdo, 'video_source_uploaded', "Video source uploaded: " . $file['name'], $user_id);
+    try {
+        logSecurityEvent($pdo, 'video_source_uploaded', "Video source uploaded: " . $file['name'], $user_id);
+    } catch (Exception $e) { error_log("logSecurityEvent failed: " . $e->getMessage()); }
     header('Location: /gameplan.php?page=film_room&tab=upload&success=source_uploaded');
     exit;
 }
