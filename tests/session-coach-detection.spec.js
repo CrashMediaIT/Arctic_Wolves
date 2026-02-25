@@ -133,7 +133,7 @@ test.describe('Unified Session Terminology', () => {
 
   test('public page list view uses session_date_id for registration links', () => {
     const content = readFile('sessions_public.php');
-    expect(content).toContain("session_date_id") ;
+    expect(content).toContain("session_date_id");
     // Should not use source_type to determine template_date type
     expect(content).not.toContain("source_type'] === 'template'");
   });

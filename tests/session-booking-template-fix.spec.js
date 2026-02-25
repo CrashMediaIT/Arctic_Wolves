@@ -150,7 +150,7 @@ test.describe('Registration Intent Fix', () => {
   test('register links use session_date_id to determine registration type', () => {
     const content = readFile('sessions_public.php');
     // Registration type is now determined by session_date_id presence, not source_type
-    expect(content).toContain("session_date_id") ;
+    expect(content).toContain("session_date_id");
     expect(content).toContain("template_date");
   });
 

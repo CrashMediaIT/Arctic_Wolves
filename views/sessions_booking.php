@@ -245,7 +245,7 @@ $user_booked_template_dates = $tpl_booked_stmt->fetchAll(PDO::FETCH_COLUMN);
                     $spots_left = ($session['max_participants'] ?? 10) - ($session['registered_count'] ?? 0);
                     $is_almost_full = $spots_left > 0 && $spots_left <= 3;
                     $is_full = $spots_left <= 0 && !empty($session['max_participants']);
-                    $already_booked = ($session['source_type'] === 'session' && empty($session['date_id'])) ? in_array($session['id'], $user_booked_sessions) : in_array($session['date_id'] ?? '', $user_booked_template_dates);
+                    $already_booked = empty($session['date_id']) ? in_array($session['id'], $user_booked_sessions) : in_array($session['date_id'], $user_booked_template_dates);
                     $is_session_coach = !empty($session['coach_id']) && intval($session['coach_id']) === intval($_SESSION['user_id']);
                 ?>
                 <div class="session-list-card" data-session-id="<?= $session['id'] ?>" data-source-type="<?= $session['source_type'] ?>" data-date-id="<?= $session['date_id'] ?? '' ?>" data-date="<?= date('Y-m-d', $session_datetime) ?>" data-booked="<?= $already_booked ? '1' : '0' ?>" data-full="<?= $is_full ? '1' : '0' ?>" data-spots="<?= $spots_left ?>" data-coach="<?= $is_session_coach ? '1' : '0' ?>">
