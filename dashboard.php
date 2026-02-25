@@ -48,13 +48,16 @@ $isActualAdmin = (($user_role === 'admin') || (isset($_SESSION['persona_original
 $personaActive = !empty($_SESSION['persona_active']);
 $personaOriginalRole = $_SESSION['persona_original_role'] ?? null;
 
-// Restore theme images from persistent storage if they're missing locally (e.g., after re-deploy).
-// Only runs once per session to avoid unnecessary disk checks on every page load.
-if (!isset($_SESSION['theme_images_checked'])) {
+// Restore ALL files from persistent storage if they're missing locally (e.g., after re-deploy).
+// Persistent storage lives outside the web root and survives when the Arctic_Wolves directory
+// is deleted and re-created. This covers theme images, profile avatars, videos, drill images,
+// evaluation media, team logos, merchandise images, receipts, contracts, and all other uploads.
+// Only runs once per session to avoid unnecessary disk/DB checks on every page load.
+if (!isset($_SESSION['persistent_files_checked'])) {
     try {
         require_once __DIR__ . '/cloud_config.php';
-        restoreThemeImagesFromPersistentStorage($pdo);
-        $_SESSION['theme_images_checked'] = true;
+        restoreAllFilesFromPersistentStorage($pdo);
+        $_SESSION['persistent_files_checked'] = true;
     } catch (Exception $e) {
         // Silently continue - restoration is best-effort
     }

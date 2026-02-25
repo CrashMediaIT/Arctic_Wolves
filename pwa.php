@@ -53,12 +53,12 @@ if (!isset($_SESSION['last_activity_update']) || (time() - $_SESSION['last_activ
     } catch (PDOException $e) { /* ignore */ }
 }
 
-// Restore theme images from persistent storage if missing (e.g., after re-deploy)
-if (!isset($_SESSION['theme_images_checked'])) {
+// Restore ALL files from persistent storage if missing (e.g., after re-deploy)
+if (!isset($_SESSION['persistent_files_checked'])) {
     try {
         require_once __DIR__ . '/cloud_config.php';
-        restoreThemeImagesFromPersistentStorage($pdo);
-        $_SESSION['theme_images_checked'] = true;
+        restoreAllFilesFromPersistentStorage($pdo);
+        $_SESSION['persistent_files_checked'] = true;
     } catch (Exception $e) { /* silently continue */ }
 }
 
