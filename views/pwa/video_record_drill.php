@@ -116,7 +116,7 @@ endif;
     </div>
 
     <div class="m-upload-section" id="mUploadSection">
-        <form id="mUploadForm" method="POST" action="process_video_upload.php" enctype="multipart/form-data">
+        <form id="mUploadForm" method="POST" action="process_video.php" enctype="multipart/form-data">
             <label class="m-upload-label" for="mVideoTitle">Video Title</label>
             <input type="text" class="m-upload-input" id="mVideoTitle" name="title" placeholder="Enter video title" required>
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>">
@@ -178,9 +178,10 @@ endif;
         e.preventDefault();
         if (!blob) return;
         var formData = new FormData();
-        formData.append('action', 'upload_drill_video');
+        formData.append('action', 'athlete_upload_video');
         formData.append('video_file', blob, 'drill_video.webm');
         formData.append('title', document.getElementById('mVideoTitle').value);
+        formData.append('video_category', 'drill');
         var csrfInput = this.querySelector('input[name="csrf_token"]');
         if (csrfInput) formData.append('csrf_token', csrfInput.value);
         var btn = document.getElementById('mBtnUpload');
