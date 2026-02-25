@@ -2380,6 +2380,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('[data-action="delete"]').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
+            e.stopImmediatePropagation();
             var itemId = this.getAttribute('data-id');
             var itemType = this.getAttribute('data-type');
             
