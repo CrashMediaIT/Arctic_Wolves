@@ -79,10 +79,15 @@ $isHealthCoach = in_array('health_coach', $user_roles_list);
 $isTeamCoach   = in_array('team_coach', $user_roles_list);
 $isParent      = in_array('parent', $user_roles_list);
 $isFrontDesk   = in_array('front_desk_staff', $user_roles_list);
+$isHR          = in_array('hr', $user_roles_list);
+$isAccounting  = in_array('accounting', $user_roles_list);
 $isAnyCoach    = ($isCoach || $isAdmin);
 $isTeamStaff   = ($isTeamCoach);
 $canAccessPOS  = ($isAdmin || $isFrontDesk);
 $canAccessHealthManagement = ($isHealthCoach || $isAdmin);
+$canAccessHR   = ($isHR || $isAdmin);
+$canAccessAccounting = ($isAccounting || $isAdmin);
+$isStaff       = ($isAdmin || $isCoach || $isHealthCoach || $isFrontDesk || $isHR || $isAccounting);
 
 // Persona mode
 $isActualAdmin = (($user_role === 'admin') || (isset($_SESSION['persona_original_role']) && $_SESSION['persona_original_role'] === 'admin'));
@@ -154,6 +159,7 @@ $allowed_pages = [
     'merchandise_categories'  => 'views/merchandise_categories.php',
     'merchandise_products'    => 'views/merchandise_products.php',
     'pos_terminal'            => 'views/pos_terminal.php',
+    'inventory_management'    => 'views/inventory_management.php',
     'pos_online_orders'       => 'views/pos_online_orders.php',
     'shop_orders'             => 'views/shop_orders.php',
     'pos_transactions'        => 'views/pos_transactions.php',
@@ -168,6 +174,8 @@ $allowed_pages = [
     'employee_contracts'      => 'views/hr_employee_contracts.php',
     'hr_time_tracking'        => 'views/hr_time_tracking.php',
     'complaints'              => 'views/hr_complaints.php',
+    'phone_directory'         => 'views/phone_directory.php',
+    'sip_settings'            => 'views/sip_settings.php',
     'all_users'               => 'views/admin_users.php',
     'categories'              => 'views/admin_categories.php',
     'admin_age_skill'         => 'views/admin_age_skill.php',
@@ -209,6 +217,7 @@ $allowed_pages = [
     'evaluations_skills'      => 'views/evaluations_skills.php',
     'notifications'           => 'views/notifications.php',
     'reports_athlete'         => 'views/reports_athlete.php',
+    'reports_user'            => 'views/reports_user.php',
     'reports_income'          => 'views/reports_income.php',
     'scheduled_reports'       => 'views/scheduled_reports.php',
     'report_view'             => 'views/report_view.php',
@@ -386,12 +395,13 @@ try {
     <?php endif; ?>
 
     <!-- ACCOUNTING & REPORTS -->
-    <?php if($isAdmin): ?>
+    <?php if($canAccessAccounting): ?>
     <div class="nav-group">
         <span class="nav-label">Accounting & Reports</span>
         <nav class="nav-menu">
             <a href="?page=finance_dashboard" class="nav-link <?= in_array($page, ['finance_dashboard', 'accounting_dashboard', 'billing_dashboard', 'pos_transactions', 'shop_orders'])?'active':'' ?>"><i class="fa-solid fa-chart-pie"></i> Finance Dashboard</a>
-            <a href="?page=financial_reports" class="nav-link <?= in_array($page, ['reports', 'schedules', 'financial_reports'])?'active':'' ?>"><i class="fa-solid fa-chart-pie"></i> Financial Reports</a>
+            <a href="?page=financial_reports" class="nav-link <?= in_array($page, ['reports', 'schedules', 'financial_reports'])?'active':'' ?>"><i class="fa-solid fa-chart-pie"></i> Financial Reports Hub</a>
+            <a href="?page=reports_user" class="nav-link <?= $page=='reports_user'?'active':'' ?>"><i class="fa-solid fa-users-gear"></i> User Reports</a>
             <a href="?page=credits_refunds" class="nav-link <?= $page=='credits_refunds'?'active':'' ?>"><i class="fa-solid fa-money-bill-transfer"></i> Credits & Refunds</a>
             <a href="?page=expenses" class="nav-link <?= $page=='expenses'?'active':'' ?>"><i class="fa-solid fa-receipt"></i> Expenses</a>
             <a href="?page=products" class="nav-link <?= $page=='products'?'active':'' ?>"><i class="fa-solid fa-box-open"></i> Products</a>
@@ -405,15 +415,17 @@ try {
         <span class="nav-label">Point of Sale</span>
         <nav class="nav-menu">
             <a href="?page=pos_terminal" class="nav-link <?= $page=='pos_terminal'?'active':'' ?>"><i class="fa-solid fa-cash-register"></i> POS Terminal</a>
+            <a href="?page=inventory_management" class="nav-link <?= $page=='inventory_management'?'active':'' ?>"><i class="fa-solid fa-warehouse"></i> Inventory & Orders</a>
             <a href="?page=pos_online_orders" class="nav-link <?= $page=='pos_online_orders'?'active':'' ?>"><i class="fa-solid fa-shipping-fast"></i> Online Orders</a>
             <a href="?page=pos_time_tracking" class="nav-link <?= $page=='pos_time_tracking'?'active':'' ?>"><i class="fa-solid fa-clock"></i> Time Tracking</a>
             <a href="?page=pos_schedule" class="nav-link <?= $page=='pos_schedule'?'active':'' ?>"><i class="fa-solid fa-calendar-alt"></i> My Schedule</a>
+            <a href="?page=sip_settings" class="nav-link <?= $page=='sip_settings'?'active':'' ?>"><i class="fa-solid fa-address-book"></i> Company Directory</a>
         </nav>
     </div>
     <?php endif; ?>
 
     <!-- HR -->
-    <?php if($isAdmin): ?>
+    <?php if($canAccessHR): ?>
     <div class="nav-group">
         <span class="nav-label">HR</span>
         <nav class="nav-menu">
@@ -447,6 +459,9 @@ try {
 
     <!-- SIDEBAR FOOTER -->
     <div class="sidebar-footer">
+        <?php if($isStaff): ?>
+        <a href="?page=sip_settings" class="nav-link <?= $page=='sip_settings'?'active':'' ?>"><i class="fa-solid fa-address-book"></i> Company Directory</a>
+        <?php endif; ?>
         <a href="?page=profile" class="nav-link <?= $page=='profile'?'active':'' ?>"><i class="fa-solid fa-user-gear"></i> Profile Settings</a>
         <a href="?view=desktop" class="nav-link"><i class="fa-solid fa-desktop"></i> Desktop View</a>
         <a href="logout.php" class="nav-link" style="color:#ef4444;"><i class="fa-solid fa-power-off"></i> Sign Out</a>

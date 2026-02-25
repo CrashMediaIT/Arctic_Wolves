@@ -70,10 +70,15 @@ $isHealthCoach = in_array('health_coach', $user_roles_list);
 $isTeamCoach   = in_array('team_coach', $user_roles_list);
 $isParent      = in_array('parent', $user_roles_list);
 $isFrontDesk   = in_array('front_desk_staff', $user_roles_list);
+$isHR          = in_array('hr', $user_roles_list);
+$isAccounting  = in_array('accounting', $user_roles_list);
 $isAnyCoach    = ($isCoach || $isAdmin);
 $isTeamStaff   = ($isTeamCoach);
 $canAccessPOS  = ($isAdmin || $isFrontDesk);
 $canAccessHealthManagement = ($isHealthCoach || $isAdmin);
+$canAccessHR   = ($isHR || $isAdmin);
+$canAccessAccounting = ($isAccounting || $isAdmin);
+$isStaff       = ($isAdmin || $isCoach || $isHealthCoach || $isFrontDesk || $isHR || $isAccounting);
 
 // Persona mode
 $isActualAdmin = (($user_role === 'admin') || (isset($_SESSION['persona_original_role']) && $_SESSION['persona_original_role'] === 'admin'));
@@ -84,6 +89,10 @@ $page = $_GET['page'] ?? 'home';
 
 if ($page === 'home' && $isFrontDesk) {
     $page = 'front_desk_home';
+}
+if ($page === 'admin_settings') {
+    header("Location: pwa.php?page=system_tools&tab=landing");
+    exit();
 }
 if ($page === 'gameplan_settings') {
     header("Location: pwa.php?page=system_tools&tab=gameplan");
@@ -141,6 +150,7 @@ $allowed_pages = [
     'merchandise_categories'  => 'views/merchandise_categories.php',
     'merchandise_products'    => 'views/merchandise_products.php',
     'pos_terminal'            => 'views/pos_terminal.php',
+    'inventory_management'    => 'views/inventory_management.php',
     'pos_online_orders'       => 'views/pos_online_orders.php',
     'shop_orders'             => 'views/shop_orders.php',
     'pos_transactions'        => 'views/pos_transactions.php',
@@ -155,6 +165,8 @@ $allowed_pages = [
     'employee_contracts'      => 'views/hr_employee_contracts.php',
     'hr_time_tracking'        => 'views/hr_time_tracking.php',
     'complaints'              => 'views/hr_complaints.php',
+    'phone_directory'         => 'views/phone_directory.php',
+    'sip_settings'            => 'views/sip_settings.php',
     'all_users'               => 'views/admin_users.php',
     'categories'              => 'views/admin_categories.php',
     'admin_age_skill'         => 'views/admin_age_skill.php',
@@ -196,6 +208,7 @@ $allowed_pages = [
     'evaluations_skills'      => 'views/evaluations_skills.php',
     'notifications'           => 'views/notifications.php',
     'reports_athlete'         => 'views/reports_athlete.php',
+    'reports_user'            => 'views/reports_user.php',
     'reports_income'          => 'views/reports_income.php',
     'scheduled_reports'       => 'views/scheduled_reports.php',
     'report_view'             => 'views/report_view.php',
