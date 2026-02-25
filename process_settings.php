@@ -19,7 +19,7 @@ $action = $_POST['action'] ?? '';
 $user_id = $_SESSION['user_id'] ?? 0;
 
 // Determine if we should return JSON or redirect
-$json_actions = ['test_nextcloud', 'test_smtp', 'test_github', 'check_updates', 'apply_updates', 'test_nextcloud_backup', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library', 'test_docuseal', 'test_stallion', 'test_google_maps', 'create_restriction', 'remove_restriction', 'add_blocklist_entry', 'remove_blocklist_entry', 'add_pos_whitelist_entry', 'remove_pos_whitelist_entry', 'toggle_pos_whitelist_entry', 'get_ndi_camera', 'update_ndi_camera', 'delete_ndi_camera', 'toggle_ndi_camera', 'get_cluster_status', 'test_cluster_node', 'add_cluster_node', 'remove_cluster_node', 'save_cluster_settings', 'test_paperless'];
+$json_actions = ['test_nextcloud', 'test_smtp', 'test_github', 'check_updates', 'apply_updates', 'test_nextcloud_backup', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library', 'test_docuseal', 'test_stallion', 'test_google_maps', 'create_restriction', 'remove_restriction', 'add_blocklist_entry', 'remove_blocklist_entry', 'add_pos_whitelist_entry', 'remove_pos_whitelist_entry', 'toggle_pos_whitelist_entry', 'get_ndi_camera', 'update_ndi_camera', 'delete_ndi_camera', 'toggle_ndi_camera', 'get_cluster_status', 'test_cluster_node', 'add_cluster_node', 'remove_cluster_node', 'save_cluster_settings', 'test_paperless', 'test_garage'];
 $is_json = in_array($action, $json_actions);
 
 if ($is_json) {
@@ -291,6 +291,64 @@ try {
             echo json_encode($result);
             exit;
             
+        case 'update_garage':
+            $garage_endpoint = trim($_POST['garage_endpoint'] ?? '');
+            $garage_access_key = trim($_POST['garage_access_key'] ?? '');
+            $garage_secret_key = trim($_POST['garage_secret_key'] ?? '');
+            $garage_region = trim($_POST['garage_region'] ?? 'garage');
+            $garage_bucket_images = trim($_POST['garage_bucket_images'] ?? 'arctic-wolves-images');
+            $garage_bucket_videos = trim($_POST['garage_bucket_videos'] ?? 'arctic-wolves-videos');
+
+            updateSetting($pdo, 'garage_endpoint', $garage_endpoint);
+            updateSetting($pdo, 'garage_access_key', $garage_access_key);
+            // Only update secret key if a new one is provided
+            if (!empty($garage_secret_key)) {
+                $encrypted_secret = encryptPassword($garage_secret_key);
+                updateSetting($pdo, 'garage_secret_key', $encrypted_secret);
+            }
+            updateSetting($pdo, 'garage_region', $garage_region);
+            updateSetting($pdo, 'garage_bucket_images', $garage_bucket_images);
+            updateSetting($pdo, 'garage_bucket_videos', $garage_bucket_videos);
+
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
+                'action' => 'update_garage',
+                'settings' => ['garage_endpoint' => $garage_endpoint, 'garage_region' => $garage_region, 'garage_bucket_images' => $garage_bucket_images, 'garage_bucket_videos' => $garage_bucket_videos]
+            ]);
+
+            header('Location: dashboard.php?page=system_tools&tab=garage&success=1');
+            exit;
+
+        case 'test_garage':
+            $endpoint = trim($_POST['garage_endpoint'] ?? '');
+            $access_key = trim($_POST['garage_access_key'] ?? '');
+            $secret_key = trim($_POST['garage_secret_key'] ?? '');
+            $region = trim($_POST['garage_region'] ?? 'garage');
+            $bucket = trim($_POST['garage_bucket_images'] ?? 'arctic-wolves-images');
+
+            // If no secret key provided, use stored encrypted one
+            if (empty($secret_key)) {
+                $stored_stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'garage_secret_key'");
+                $stored_stmt->execute();
+                $encrypted = $stored_stmt->fetchColumn();
+                if (!empty($encrypted)) {
+                    $decrypted = decryptPassword($encrypted);
+                    if (!empty($decrypted)) {
+                        $secret_key = $decrypted;
+                    }
+                }
+            }
+
+            if (empty($endpoint) || empty($access_key) || empty($secret_key)) {
+                echo json_encode(['success' => false, 'message' => 'Endpoint, Access Key, and Secret Key are required']);
+                exit;
+            }
+
+            require_once __DIR__ . '/lib/garage_s3.php';
+            $client = new GarageS3($endpoint, $access_key, $secret_key, $region, $bucket);
+            $result = $client->testConnection($bucket);
+            echo json_encode($result);
+            exit;
+
         case 'update_paperless':
             $paperless_url = trim($_POST['paperless_url'] ?? '');
             $paperless_api_token = trim($_POST['paperless_api_token'] ?? '');

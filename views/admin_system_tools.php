@@ -110,6 +110,9 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
     <a href="?page=system_tools&tab=nextcloud" class="page-tab <?php echo $activeTab === 'nextcloud' ? 'active' : ''; ?>">
         <i class="fas fa-cloud"></i> Nextcloud
     </a>
+    <a href="?page=system_tools&tab=garage" class="page-tab <?php echo $activeTab === 'garage' ? 'active' : ''; ?>">
+        <i class="fas fa-warehouse"></i> Garage S3
+    </a>
     <a href="?page=system_tools&tab=docuseal" class="page-tab <?php echo $activeTab === 'docuseal' ? 'active' : ''; ?>">
         <i class="fas fa-file-signature"></i> DocuSeal
     </a>
@@ -880,6 +883,106 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                         </button>
                         <button type="submit" class="btn btn-primary" data-action="save">
                             <i class="fas fa-save"></i> Save Backup Settings
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Garage S3 Storage Tab -->
+    <div class="tab-content <?php echo $activeTab === 'garage' ? 'active' : ''; ?>" id="garage-tab">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-warehouse"></i> Garage S3 Object Storage</h3>
+                <span class="badge <?php echo !empty($settings['garage_endpoint']) ? 'badge-primary' : 'badge-secondary'; ?>">
+                    <?php echo !empty($settings['garage_endpoint']) ? 'Configured' : 'Not Configured'; ?>
+                </span>
+            </div>
+            <div class="card-body">
+                <div class="info-box" style="margin-bottom: 24px;">
+                    <i class="fas fa-info-circle"></i>
+                    <div>
+                        <p><strong>Garage S3 Storage:</strong> All images and videos are stored in <a href="https://garagehq.deuxfleurs.fr/" target="_blank" rel="noopener">Garage</a>, an S3-compatible distributed object storage system. No files are stored inside the application directory. Credentials are encrypted in the database.</p>
+                    </div>
+                </div>
+
+                <div class="integration-status <?php echo !empty($settings['garage_endpoint']) ? 'connected' : 'disconnected'; ?>">
+                    <div class="status-icon">
+                        <i class="fas <?php echo !empty($settings['garage_endpoint']) ? 'fa-check-circle' : 'fa-times-circle'; ?>"></i>
+                    </div>
+                    <div class="status-info">
+                        <h4><?php echo !empty($settings['garage_endpoint']) ? 'Garage S3 Configured' : 'Not Connected'; ?></h4>
+                        <p><?php echo !empty($settings['garage_endpoint']) ? htmlspecialchars($settings['garage_endpoint']) : 'Configure Garage S3 settings to enable object storage for all uploads'; ?></p>
+                    </div>
+                </div>
+
+                <form id="garage-form" method="POST" action="process_settings.php" data-form-type="garage">
+                    <?php echo csrfTokenInput(); ?>
+                    <input type="hidden" name="action" value="update_garage">
+                    <input type="hidden" name="redirect_page" value="system_tools">
+                    <div class="settings-list">
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4><i class="fas fa-globe" style="color: #3b82f6; margin-right: 8px;"></i>S3 API Endpoint</h4>
+                                <p>Garage S3 API endpoint URL (e.g., https://s3.garage.example.com)</p>
+                            </div>
+                            <input type="url" name="garage_endpoint" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['garage_endpoint'] ?? ''); ?>"
+                                   placeholder="https://s3.garage.example.com">
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4><i class="fas fa-key" style="color: #f59e0b; margin-right: 8px;"></i>Access Key ID</h4>
+                                <p>Garage API access key identifier</p>
+                            </div>
+                            <input type="text" name="garage_access_key" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['garage_access_key'] ?? ''); ?>"
+                                   placeholder="GKxxxxxxxxxxxxxxxx">
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4><i class="fas fa-lock" style="color: #ef4444; margin-right: 8px;"></i>Secret Access Key</h4>
+                                <p>Garage API secret key (encrypted at rest)<?php echo !empty($settings['garage_secret_key']) ? ' — currently set' : ''; ?></p>
+                            </div>
+                            <input type="password" name="garage_secret_key" class="form-input" 
+                                   placeholder="<?php echo !empty($settings['garage_secret_key']) ? 'Leave blank to keep current key' : 'Enter secret access key'; ?>">
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4><i class="fas fa-map-marker-alt" style="color: #8B5CF6; margin-right: 8px;"></i>Region</h4>
+                                <p>S3 region identifier (default: garage)</p>
+                            </div>
+                            <input type="text" name="garage_region" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['garage_region'] ?? 'garage'); ?>"
+                                   placeholder="garage">
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4><i class="fas fa-image" style="color: #6366f1; margin-right: 8px;"></i>Images Bucket</h4>
+                                <p>S3 bucket for images (profiles, evaluations, drills, theme, etc.)</p>
+                            </div>
+                            <input type="text" name="garage_bucket_images" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['garage_bucket_images'] ?? 'arctic-wolves-images'); ?>"
+                                   placeholder="arctic-wolves-images">
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4><i class="fas fa-video" style="color: #10b981; margin-right: 8px;"></i>Videos Bucket</h4>
+                                <p>S3 bucket for video uploads (coach reviews, athlete videos, drills)</p>
+                            </div>
+                            <input type="text" name="garage_bucket_videos" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['garage_bucket_videos'] ?? 'arctic-wolves-videos'); ?>"
+                                   placeholder="arctic-wolves-videos">
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="testGarageConnection()">
+                            <i class="fas fa-vial"></i> Test Connection
+                        </button>
+                        <button type="submit" class="btn btn-primary" data-action="save">
+                            <i class="fas fa-save"></i> Save Garage Settings
                         </button>
                     </div>
                 </form>
@@ -3731,6 +3834,39 @@ function syncToBackup() {
         btn.disabled = false;
         btn.innerHTML = originalText;
         alert('Error syncing files');
+        console.error('Error:', error);
+    });
+}
+
+// Garage S3 Connection Test
+function testGarageConnection() {
+    const btn = event.target.closest('button');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
+    
+    const formData = new FormData(document.getElementById('garage-form'));
+    formData.append('action', 'test_garage');
+    
+    fetch('process_settings.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        
+        if (data.success) {
+            alert('Success: Garage S3 Connection Successful!\n\n' + (data.message || 'Connected successfully.'));
+        } else {
+            alert('Error: Garage S3 Connection Failed\n\n' + (data.message || 'Could not connect to Garage S3'));
+        }
+    })
+    .catch(error => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        alert('Error testing Garage S3 connection');
         console.error('Error:', error);
     });
 }

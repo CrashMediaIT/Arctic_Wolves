@@ -794,6 +794,7 @@ function getEncryptedSettingKeys() {
         'stallion_api_secret',
         'recaptcha_site_key',
         'recaptcha_secret_key',
+        'garage_secret_key',
     ];
 }
 

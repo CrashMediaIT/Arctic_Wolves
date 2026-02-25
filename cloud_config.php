@@ -1,10 +1,231 @@
 <?php
 /**
- * Nextcloud WebDAV Connection Helper
- * Provides functions for connecting to Nextcloud and managing files
+ * Cloud Storage Connection Helper
+ * Provides functions for connecting to Garage S3 and Nextcloud and managing files
  */
 
 require_once __DIR__ . '/db_config.php';
+require_once __DIR__ . '/lib/garage_s3.php';
+
+// ─── Garage S3 Storage Functions ─────────────────────────────────────────────
+
+/**
+ * Get Garage S3 settings from database.
+ * All sensitive values (secret key) are stored encrypted.
+ *
+ * @param PDO $pdo Database connection
+ * @return array Garage settings keyed by setting name
+ */
+function getGarageSettings($pdo) {
+    $keys = [
+        'garage_endpoint', 'garage_access_key', 'garage_secret_key',
+        'garage_region', 'garage_bucket_images', 'garage_bucket_videos'
+    ];
+    $placeholders = implode(',', array_fill(0, count($keys), '?'));
+    $stmt = $pdo->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ($placeholders)");
+    $stmt->execute($keys);
+    $settings = [];
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $settings[$row['setting_key']] = $row['setting_value'];
+    }
+    return $settings;
+}
+
+/**
+ * Create a GarageS3 client instance from database settings.
+ *
+ * @param PDO         $pdo    Database connection
+ * @param string|null $bucket Override bucket name
+ * @return GarageS3|null Client instance or null if not configured
+ */
+function connectGarage($pdo, $bucket = null) {
+    $settings = getGarageSettings($pdo);
+    if (empty($settings['garage_endpoint']) || empty($settings['garage_access_key']) || empty($settings['garage_secret_key'])) {
+        return null;
+    }
+
+    // Decrypt the secret key
+    $secretKey = $settings['garage_secret_key'];
+    if (function_exists('decryptPassword')) {
+        $decrypted = decryptPassword($secretKey);
+        if (!empty($decrypted)) {
+            $secretKey = $decrypted;
+        }
+    }
+
+    $defaultBucket = $bucket ?: ($settings['garage_bucket_images'] ?? 'arctic-wolves');
+    $region = $settings['garage_region'] ?? 'garage';
+
+    return new GarageS3(
+        $settings['garage_endpoint'],
+        $settings['garage_access_key'],
+        $secretKey,
+        $region,
+        $defaultBucket
+    );
+}
+
+/**
+ * Upload a file to Garage S3 storage.
+ *
+ * @param PDO    $pdo        Database connection
+ * @param string $filePath   Local file path to upload
+ * @param string $subfolder  Logical subfolder (e.g., 'profiles', 'videos/coach')
+ * @param string $filename   Target filename
+ * @param bool   $isVideo    Whether this is a video file (uses video bucket + streaming)
+ * @return array ['success'=>bool, 'remote_path'=>string|null, 'message'=>string]
+ */
+function uploadToGarage($pdo, $filePath, $subfolder, $filename, $isVideo = false) {
+    try {
+        $settings = getGarageSettings($pdo);
+        $bucket = $isVideo
+            ? ($settings['garage_bucket_videos'] ?? $settings['garage_bucket_images'] ?? 'arctic-wolves')
+            : ($settings['garage_bucket_images'] ?? 'arctic-wolves');
+
+        $client = connectGarage($pdo, $bucket);
+        if ($client === null) {
+            return ['success' => false, 'remote_path' => null, 'message' => 'Garage S3 not configured'];
+        }
+
+        // Build object key: {subfolder}/{filename}
+        $objectKey = trim($subfolder, '/') . '/' . $filename;
+
+        // Use streaming for large files (videos) to save memory
+        if ($isVideo || filesize($filePath) > 10 * 1024 * 1024) {
+            $result = $client->putObjectStreaming($objectKey, $filePath, null, $bucket);
+        } else {
+            $result = $client->putObject($objectKey, $filePath, null, $bucket);
+        }
+
+        if (!empty($result['success'])) {
+            return [
+                'success'     => true,
+                'remote_path' => $objectKey,
+                'bucket'      => $bucket,
+                'message'     => 'Uploaded to Garage S3',
+            ];
+        }
+
+        return ['success' => false, 'remote_path' => null, 'message' => $result['message'] ?? 'Upload failed'];
+
+    } catch (\Throwable $e) {
+        error_log("uploadToGarage: " . $e->getMessage());
+        return ['success' => false, 'remote_path' => null, 'message' => $e->getMessage()];
+    }
+}
+
+/**
+ * Get a pre-signed URL for serving a file from Garage S3.
+ *
+ * @param PDO    $pdo       Database connection
+ * @param string $objectKey S3 object key
+ * @param int    $expires   Seconds until URL expires (default: 3600)
+ * @param bool   $isVideo   Whether this is a video file (uses video bucket)
+ * @return string|null Pre-signed URL or null if not configured
+ */
+function getGarageFileUrl($pdo, $objectKey, $expires = 3600, $isVideo = false) {
+    try {
+        $settings = getGarageSettings($pdo);
+        $bucket = $isVideo
+            ? ($settings['garage_bucket_videos'] ?? $settings['garage_bucket_images'] ?? 'arctic-wolves')
+            : ($settings['garage_bucket_images'] ?? 'arctic-wolves');
+
+        $client = connectGarage($pdo, $bucket);
+        if ($client === null) {
+            return null;
+        }
+
+        return $client->getPresignedUrl($objectKey, $expires, 'GET', $bucket);
+    } catch (\Throwable $e) {
+        error_log("getGarageFileUrl: " . $e->getMessage());
+        return null;
+    }
+}
+
+/**
+ * Download a file from Garage S3 to a local path.
+ *
+ * @param PDO    $pdo       Database connection
+ * @param string $objectKey S3 object key
+ * @param string $savePath  Local path to save the file
+ * @param bool   $isVideo   Whether this is a video file
+ * @return bool True if downloaded successfully
+ */
+function downloadFromGarage($pdo, $objectKey, $savePath, $isVideo = false) {
+    try {
+        $settings = getGarageSettings($pdo);
+        $bucket = $isVideo
+            ? ($settings['garage_bucket_videos'] ?? $settings['garage_bucket_images'] ?? 'arctic-wolves')
+            : ($settings['garage_bucket_images'] ?? 'arctic-wolves');
+
+        $client = connectGarage($pdo, $bucket);
+        if ($client === null) {
+            return false;
+        }
+
+        $result = $client->getObject($objectKey, $savePath, $bucket);
+        return !empty($result['success']);
+    } catch (\Throwable $e) {
+        error_log("downloadFromGarage: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Check if a file exists in Garage S3.
+ *
+ * @param PDO    $pdo       Database connection
+ * @param string $objectKey S3 object key
+ * @param bool   $isVideo   Whether this is a video file
+ * @return bool
+ */
+function garageFileExists($pdo, $objectKey, $isVideo = false) {
+    try {
+        $settings = getGarageSettings($pdo);
+        $bucket = $isVideo
+            ? ($settings['garage_bucket_videos'] ?? $settings['garage_bucket_images'] ?? 'arctic-wolves')
+            : ($settings['garage_bucket_images'] ?? 'arctic-wolves');
+
+        $client = connectGarage($pdo, $bucket);
+        if ($client === null) {
+            return false;
+        }
+
+        $result = $client->headObject($objectKey, $bucket);
+        return !empty($result['exists']);
+    } catch (\Throwable $e) {
+        error_log("garageFileExists: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Delete a file from Garage S3.
+ *
+ * @param PDO    $pdo       Database connection
+ * @param string $objectKey S3 object key
+ * @param bool   $isVideo   Whether this is a video file
+ * @return bool
+ */
+function deleteFromGarage($pdo, $objectKey, $isVideo = false) {
+    try {
+        $settings = getGarageSettings($pdo);
+        $bucket = $isVideo
+            ? ($settings['garage_bucket_videos'] ?? $settings['garage_bucket_images'] ?? 'arctic-wolves')
+            : ($settings['garage_bucket_images'] ?? 'arctic-wolves');
+
+        $client = connectGarage($pdo, $bucket);
+        if ($client === null) {
+            return false;
+        }
+
+        $result = $client->deleteObject($objectKey, $bucket);
+        return !empty($result['success']);
+    } catch (\Throwable $e) {
+        error_log("deleteFromGarage: " . $e->getMessage());
+        return false;
+    }
+}
 
 /**
  * Get Nextcloud settings from database
@@ -927,14 +1148,14 @@ function uploadLargeFileToNextcloud($pdo, $settings, $local_file_path, $subfolde
 }
 
 /**
- * Persist an uploaded file: saves to /config/persistent_uploads AND uploads to Nextcloud.
+ * Persist an uploaded file: uploads to Garage S3 as the primary storage.
+ * Falls back to Nextcloud and/or persistent local storage if Garage is not configured.
  * This is the single entry-point every upload handler should call.
  *
  * Flow:
- *  1. Save file to persistent local storage (/config/persistent_uploads/Images/{subfolder}/{filename})
- *  2. Upload to Nextcloud (if configured)
- *  3. Also copy to project-local uploads/ dir as a serving cache
- *  4. Return both local cache URL and Nextcloud remote path
+ *  1. Upload to Garage S3 (primary — no local files inside the project directory)
+ *  2. Fall back to persistent local storage + Nextcloud if Garage is not configured
+ *  3. Return the S3 object key (or Nextcloud path) for database storage
  *
  * @param PDO    $pdo              Database connection
  * @param string $source_path      Absolute path to the source file (e.g., PHP tmp_name or downloaded file)
@@ -942,7 +1163,7 @@ function uploadLargeFileToNextcloud($pdo, $settings, $local_file_path, $subfolde
  * @param string $filename         Target filename
  * @param string $local_cache_rel  Relative path for local cache (e.g., 'uploads/theme/logo.png') – used for serving
  * @param bool   $use_large_upload Use streaming upload for large files (videos)
- * @return array ['success'=>bool, 'nextcloud_path'=>string|null, 'persistent_path'=>string|null, 'local_cache'=>string]
+ * @return array ['success'=>bool, 'nextcloud_path'=>string|null, 'persistent_path'=>string|null, 'local_cache'=>string, 'garage_path'=>string|null]
  */
 function persistUploadedFile($pdo, $source_path, $subfolder, $filename, $local_cache_rel, $use_large_upload = false) {
     $result = [
@@ -950,9 +1171,26 @@ function persistUploadedFile($pdo, $source_path, $subfolder, $filename, $local_c
         'nextcloud_path' => null,
         'persistent_path' => null,
         'local_cache' => $local_cache_rel,
+        'garage_path' => null,
     ];
 
-    // 1. Save to persistent local storage (/config/persistent_uploads)
+    $isVideo = $use_large_upload || preg_match('/\.(mp4|mov|avi|webm|mkv)$/i', $filename);
+
+    // 1. Upload to Garage S3 (primary storage — no local files)
+    try {
+        $garage = uploadToGarage($pdo, $source_path, $subfolder, $filename, $isVideo);
+        if (!empty($garage['success']) && !empty($garage['remote_path'])) {
+            $result['garage_path'] = $garage['remote_path'];
+            // Also populate nextcloud_path for backward compatibility with DB columns
+            $result['nextcloud_path'] = 'garage://' . ($garage['bucket'] ?? '') . '/' . $garage['remote_path'];
+            $result['success'] = true;
+            return $result;
+        }
+    } catch (\Throwable $e) {
+        error_log("persistUploadedFile: Garage S3 upload failed for $subfolder/$filename: " . $e->getMessage());
+    }
+
+    // 2. Fallback: Save to persistent local storage (/config/persistent_uploads)
     try {
         $ps = saveToPersistentStorage($source_path, $subfolder, $filename, $pdo);
         if (!empty($ps['success'])) {
@@ -962,7 +1200,7 @@ function persistUploadedFile($pdo, $source_path, $subfolder, $filename, $local_c
         error_log("persistUploadedFile: persistent storage failed for $subfolder/$filename: " . $e->getMessage());
     }
 
-    // 2. Upload to Nextcloud
+    // 3. Fallback: Upload to Nextcloud
     try {
         $nc_settings = getNextcloudSettings($pdo);
         if (!empty($nc_settings['nextcloud_url'])) {
@@ -985,7 +1223,7 @@ function persistUploadedFile($pdo, $source_path, $subfolder, $filename, $local_c
         error_log("persistUploadedFile: Nextcloud upload failed for $subfolder/$filename: " . $e->getMessage());
     }
 
-    // 3. Copy to project-local cache directory so the file can be served immediately
+    // 4. Copy to project-local cache directory as last resort
     try {
         $project_root = defined('PROJECT_ROOT') ? PROJECT_ROOT : realpath(__DIR__);
         $cache_path = $project_root . '/' . $local_cache_rel;

@@ -2,9 +2,9 @@
 /**
  * Image Helper - Handles persistent image resolution
  * 
- * When images are stored both locally and in Nextcloud, this helper
- * ensures images are available locally by restoring from persistent
- * local storage first, then falling back to Nextcloud when needed.
+ * When images are stored in Garage S3 (primary), Nextcloud (legacy), or
+ * persistent local storage, this helper ensures images are available by
+ * generating pre-signed S3 URLs or restoring from fallback sources.
  */
 
 require_once __DIR__ . '/../cloud_config.php';
@@ -17,13 +17,58 @@ require_once __DIR__ . '/../cloud_config.php';
  */
 function isValidImagePath($path) {
     if (empty($path)) return false;
-    // Must start with uploads/ and not contain path traversal
-    if (strpos($path, 'uploads/') !== 0) return false;
+    // Allow garage:// paths (S3 stored files)
+    if (strpos($path, 'garage://') === 0) return true;
+    // Must start with uploads/ or videos/ and not contain path traversal
+    if (strpos($path, 'uploads/') !== 0 && strpos($path, 'videos/') !== 0) return false;
     if (strpos($path, '..') !== false) return false;
     // Must have a valid image/video extension
     $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
     $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'mov', 'avi', 'webm'];
     return in_array($ext, $allowed);
+}
+
+/**
+ * Resolve a Garage S3 object key from a stored path.
+ * Handles both garage:// URIs and plain object keys.
+ *
+ * @param string $storedPath Path stored in database (may be garage://bucket/key or plain key)
+ * @return array ['key'=>string, 'bucket'=>string|null, 'is_garage'=>bool]
+ */
+function parseGaragePath($storedPath) {
+    if (strpos($storedPath, 'garage://') === 0) {
+        $rest = substr($storedPath, 9); // after garage://
+        $slashPos = strpos($rest, '/');
+        if ($slashPos !== false) {
+            return [
+                'key' => substr($rest, $slashPos + 1),
+                'bucket' => substr($rest, 0, $slashPos),
+                'is_garage' => true,
+            ];
+        }
+        return ['key' => $rest, 'bucket' => null, 'is_garage' => true];
+    }
+    return ['key' => $storedPath, 'bucket' => null, 'is_garage' => false];
+}
+
+/**
+ * Get a serving URL for a file stored in Garage S3.
+ * Returns a serve_file.php proxy URL if Garage is configured, null otherwise.
+ *
+ * @param PDO    $pdo        Database connection
+ * @param string $objectKey  S3 object key
+ * @param bool   $isVideo    Whether this is a video file
+ * @return string|null URL to serve the file
+ */
+function getGarageServingUrl($pdo, $objectKey, $isVideo = false) {
+    $url = getGarageFileUrl($pdo, $objectKey, 3600, $isVideo);
+    if ($url) {
+        return $url;
+    }
+    // Fallback: use serve_file.php proxy
+    $params = 'path=' . urlencode($objectKey);
+    if ($isVideo) $params .= '&video=1';
+    return 'serve_file.php?' . $params;
 }
 
 /**
@@ -46,20 +91,40 @@ function tryRestoreFromPersistent($local_path, $subfolder, $filename = null, $pd
 }
 
 /**
- * Resolve a profile image path, restoring from persistent storage or Nextcloud if needed.
- * Call this before displaying a profile image to ensure the local file exists.
+ * Resolve a profile image path, restoring from Garage S3, persistent storage, or Nextcloud.
+ * Call this before displaying a profile image to ensure the file is available.
  * 
  * @param PDO $pdo Database connection
  * @param int $user_id The user ID
  * @param string $local_path The local file path from the database
- * @return string|null The resolved local path, or null if unavailable
+ * @return string|null The resolved path/URL, or null if unavailable
  */
 function resolveProfileImage($pdo, $user_id, $local_path) {
     // Validate path to prevent directory traversal
     if (!empty($local_path) && !isValidImagePath($local_path)) {
         return null;
     }
-    
+
+    // Check if this is a Garage S3 path — return pre-signed URL
+    if (!empty($local_path) && strpos($local_path, 'garage://') === 0) {
+        $parsed = parseGaragePath($local_path);
+        $url = getGarageServingUrl($pdo, $parsed['key'], false);
+        return $url;
+    }
+
+    // Check Garage S3 via nextcloud_image_path field (may store garage:// URI)
+    try {
+        $stmt = $pdo->prepare("SELECT nextcloud_image_path FROM users WHERE id = ?");
+        $stmt->execute([$user_id]);
+        $nc_path = $stmt->fetchColumn();
+        if (!empty($nc_path) && strpos($nc_path, 'garage://') === 0) {
+            $parsed = parseGaragePath($nc_path);
+            return getGarageServingUrl($pdo, $parsed['key'], false);
+        }
+    } catch (\Throwable $e) {
+        // Fall through to legacy resolution
+    }
+
     // If local file exists, nothing to do
     if (!empty($local_path) && file_exists($local_path)) {
         return $local_path;
