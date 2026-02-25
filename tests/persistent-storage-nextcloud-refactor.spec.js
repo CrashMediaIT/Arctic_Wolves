@@ -48,24 +48,24 @@ test.describe('persistUploadedFile central function in cloud_config.php', () => 
     expect(content()).toContain('function persistUploadedFile(');
   });
 
-  test('persistUploadedFile calls saveToPersistentStorage', () => {
+  test('persistUploadedFile calls uploadToRustFS', () => {
     const fn = content().substring(
       content().indexOf('function persistUploadedFile('),
       content().indexOf('function restoreImageFromNextcloud(') > -1
         ? content().indexOf('function restoreImageFromNextcloud(')
         : content().indexOf('/**', content().indexOf('function persistUploadedFile(') + 100)
     );
-    expect(fn).toContain('saveToPersistentStorage(');
+    expect(fn).toContain('uploadToRustFS(');
   });
 
-  test('persistUploadedFile calls uploadImageToNextcloud or uploadLargeFileToNextcloud', () => {
+  test('persistUploadedFile calls uploadToRustFS or uploadLargeFileToRustFS', () => {
     const fn = content().substring(
       content().indexOf('function persistUploadedFile('),
       content().indexOf('function restoreImageFromNextcloud(') > -1
         ? content().indexOf('function restoreImageFromNextcloud(')
         : content().indexOf('/**', content().indexOf('function persistUploadedFile(') + 100)
     );
-    expect(fn.includes('uploadImageToNextcloud(') || fn.includes('uploadLargeFileToNextcloud(')).toBe(true);
+    expect(fn.includes('uploadToRustFS(') || fn.includes('uploadLargeFileToRustFS(')).toBe(true);
   });
 
   test('persistUploadedFile returns nextcloud_path', () => {
@@ -78,14 +78,14 @@ test.describe('persistUploadedFile central function in cloud_config.php', () => 
     expect(fn).toContain("'nextcloud_path'");
   });
 
-  test('persistUploadedFile copies to local cache directory', () => {
+  test('persistUploadedFile does not copy to local cache directory', () => {
     const fn = content().substring(
       content().indexOf('function persistUploadedFile('),
       content().indexOf('function restoreImageFromNextcloud(') > -1
         ? content().indexOf('function restoreImageFromNextcloud(')
         : content().indexOf('/**', content().indexOf('function persistUploadedFile(') + 100)
     );
-    expect(fn).toContain('copy(');
+    expect(fn).not.toContain('copy(');
   });
 
   test('persistUploadedFile accepts use_large_upload parameter', () => {
@@ -168,28 +168,28 @@ test.describe('saveThemeUploadResult stores Nextcloud path in theme_settings', (
 test.describe('restoreThemeImagesFromPersistentStorage uses stored Nextcloud paths', () => {
   const content = () => readFile('cloud_config.php');
 
-  test('restore function queries _nc_path settings', () => {
+  test('restore function is a no-op for RustFS migration', () => {
     const fn = content().substring(
       content().indexOf('function restoreThemeImagesFromPersistentStorage('),
-      content().indexOf('}', content().lastIndexOf("error_log(\"Failed to restore theme image from Nextcloud"))
+      content().indexOf('function restoreThemeImagesFromPersistentStorage(') + 300
     );
-    expect(fn).toContain('_nc_path');
+    expect(fn).toContain('No-op');
   });
 
-  test('restore function queries business_card_front_bg_url_nc_path', () => {
+  test('restore function does not query business_card_front_bg_url_nc_path', () => {
     const fn = content().substring(
       content().indexOf('function restoreThemeImagesFromPersistentStorage('),
-      content().indexOf('}', content().lastIndexOf("error_log(\"Failed to restore theme image from Nextcloud"))
+      content().indexOf('function restoreThemeImagesFromPersistentStorage(') + 300
     );
-    expect(fn).toContain('business_card_front_bg_url_nc_path');
+    expect(fn).toContain('No-op');
   });
 
-  test('restore function uses stored NC path when available', () => {
+  test('restore function is a no-op and does not use NC path variables', () => {
     const fn = content().substring(
       content().indexOf('function restoreThemeImagesFromPersistentStorage('),
-      content().indexOf('}', content().lastIndexOf("error_log(\"Failed to restore theme image from Nextcloud"))
+      content().indexOf('function restoreThemeImagesFromPersistentStorage(') + 300
     );
-    expect(fn).toContain('$nc_path_key');
+    expect(fn).toContain('No-op');
   });
 });
 

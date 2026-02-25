@@ -92,12 +92,13 @@ test.describe('Image upload and restore functions in cloud_config.php', () => {
     expect(fnMatch[1]).toContain('$filename');
   });
 
-  test('uploadImageToNextcloud should use nextcloud_images_dir setting', () => {
+  test('uploadImageToNextcloud should use RustFS storage', () => {
     const content = readFile('cloud_config.php');
     const fnStart = content.indexOf('function uploadImageToNextcloud(');
     const fnEnd = content.indexOf('function restoreImageFromNextcloud(');
     const fn = content.substring(fnStart, fnEnd);
-    expect(fn).toContain("nextcloud_images_dir");
+    expect(fn).toContain("getRustFSSettings");
+    expect(fn).toContain("uploadToRustFS");
   });
 
   test('cloud_config.php should define restoreImageFromNextcloud function', () => {
@@ -105,11 +106,11 @@ test.describe('Image upload and restore functions in cloud_config.php', () => {
     expect(content).toContain('function restoreImageFromNextcloud(');
   });
 
-  test('restoreImageFromNextcloud should use downloadNextcloudFile', () => {
+  test('restoreImageFromNextcloud should use rustfsObjectExists', () => {
     const content = readFile('cloud_config.php');
     const fnStart = content.indexOf('function restoreImageFromNextcloud(');
     const fnSection = content.substring(fnStart, fnStart + 1000);
-    expect(fnSection).toContain('downloadNextcloudFile');
+    expect(fnSection).toContain('rustfsObjectExists');
   });
 
   test('getNextcloudSettings should include nextcloud_images_dir', () => {
@@ -158,9 +159,9 @@ test.describe('Admin profile image upload includes Nextcloud persistence', () =>
     expect(content).toContain('cloud_config.php');
   });
 
-  test('process_admin_action.php should call uploadImageToNextcloud', () => {
+  test('process_admin_action.php should call persistUploadedFile', () => {
     const content = readFile('process_admin_action.php');
-    expect(content).toContain('uploadImageToNextcloud(');
+    expect(content).toContain('persistUploadedFile(');
   });
 
   test('process_admin_action.php should save nextcloud_image_path to users table', () => {
@@ -348,9 +349,8 @@ test.describe('Persistent local storage functions in cloud_config.php', () => {
     const fnStart = content.indexOf('function saveToPersistentStorage(');
     const fnEnd = content.indexOf('function restoreFromPersistentStorage(');
     const fn = content.substring(fnStart, fnEnd);
-    expect(fn).toContain("'/Images/'");
+    expect(fn).toContain("'Images/' . implode");
     expect(fn).toContain('$subfolder');
-    expect(fn).toContain('copy(');
   });
 
   test('cloud_config.php should define restoreFromPersistentStorage function', () => {
@@ -358,13 +358,12 @@ test.describe('Persistent local storage functions in cloud_config.php', () => {
     expect(content).toContain('function restoreFromPersistentStorage(');
   });
 
-  test('restoreFromPersistentStorage should check file_exists before copy', () => {
+  test('restoreFromPersistentStorage should check rustfsObjectExists', () => {
     const content = readFile('cloud_config.php');
     const fnStart = content.indexOf('function restoreFromPersistentStorage(');
     const fnEnd = content.indexOf('function uploadImageToNextcloud(');
     const fn = content.substring(fnStart, fnEnd);
-    expect(fn).toContain('file_exists($persistent_path)');
-    expect(fn).toContain('copy($persistent_path');
+    expect(fn).toContain('rustfsObjectExists(');
   });
 });
 
@@ -373,12 +372,12 @@ test.describe('Persistent local storage functions in cloud_config.php', () => {
 // =====================================================
 
 test.describe('uploadImageToNextcloud saves to persistent storage', () => {
-  test('uploadImageToNextcloud should call saveToPersistentStorage', () => {
+  test('uploadImageToNextcloud should call uploadToRustFS', () => {
     const content = readFile('cloud_config.php');
     const fnStart = content.indexOf('function uploadImageToNextcloud(');
     const fnEnd = content.indexOf('function restoreImageFromNextcloud(');
     const fn = content.substring(fnStart, fnEnd);
-    expect(fn).toContain('saveToPersistentStorage(');
+    expect(fn).toContain('uploadToRustFS(');
   });
 });
 
@@ -387,25 +386,22 @@ test.describe('uploadImageToNextcloud saves to persistent storage', () => {
 // =====================================================
 
 test.describe('restoreImageFromNextcloud tries persistent storage first', () => {
-  test('restoreImageFromNextcloud should try restoreFromPersistentStorage before Nextcloud', () => {
+  test('restoreImageFromNextcloud should use rustfsObjectExists', () => {
     const content = readFile('cloud_config.php');
     const fnStart = content.indexOf('function restoreImageFromNextcloud(');
     const fnEnd = content.indexOf('function getDrillVideoPath(');
     const fn = content.substring(fnStart, fnEnd);
-    expect(fn).toContain('restoreFromPersistentStorage');
-    // persistent storage should be tried BEFORE connectNextcloud
-    const persistentIdx = fn.indexOf('restoreFromPersistentStorage');
-    const connectIdx = fn.indexOf('connectNextcloud');
-    expect(persistentIdx).toBeLessThan(connectIdx);
+    expect(fn).toContain('rustfsObjectExists');
   });
 
-  test('restoreImageFromNextcloud should save to persistent after Nextcloud download', () => {
+  test('restoreImageFromNextcloud should return a boolean', () => {
     const content = readFile('cloud_config.php');
     const fnStart = content.indexOf('function restoreImageFromNextcloud(');
     const fnEnd = content.indexOf('function getDrillVideoPath(');
     const fn = content.substring(fnStart, fnEnd);
-    // After downloading from Nextcloud, should also save to persistent storage
-    expect(fn).toContain('saveToPersistentStorage($local_path');
+    // The function returns true/false based on whether the file is accessible
+    expect(fn).toContain('return true');
+    expect(fn).toContain('return false');
   });
 });
 
