@@ -24,7 +24,7 @@ test.describe('Stripe Booking Status ENUM Fix', () => {
   test('process_booking.php private session uses confirmed status (not pending)', () => {
     const content = readFile('process_booking.php');
     // The private session INSERT should use 'confirmed' for status column
-    const privateSessionInsert = content.match(/INSERT INTO bookings \(session_id, user_id, amount, payment_status, status, notes\)\s*VALUES\s*\(\?, \?, \?, '[^']+', '[^']+', \?\)/s);
+    const privateSessionInsert = content.match(/INSERT INTO bookings \(session_id, user_id, stripe_session_id, amount_paid, payment_status, status, notes\)\s*VALUES\s*\(\?, \?, \?, \?, '[^']+', '[^']+', \?\)/s);
     expect(privateSessionInsert).not.toBeNull();
     expect(privateSessionInsert[0]).toContain("'confirmed'");
     // payment_status should be pending, status should be confirmed
@@ -115,7 +115,7 @@ test.describe('OCR Scan Upload to Cloud Services', () => {
     const startIdx = content.indexOf("case 'ocr_scan':");
     const nextCase = content.indexOf("case '", startIdx + 20);
     const ocrSection = content.substring(startIdx, nextCase > -1 ? nextCase : undefined);
-    expect(ocrSection).toContain('uploadReceiptToNextcloud');
+    expect(ocrSection).toContain('persistUploadedFile');
     expect(ocrSection).toContain('nextcloud_path');
   });
 
