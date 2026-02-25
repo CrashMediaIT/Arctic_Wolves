@@ -396,8 +396,8 @@
         document.querySelectorAll('[data-action]').forEach(btn => {
             const action = btn.getAttribute('data-action');
             
-            // Skip if already handled by specific handlers above
-            if (['add', 'edit', 'delete', 'export', 'upload', 'save', 'cancel', 'switch-tab'].includes(action)) {
+            // Skip if already handled by specific handlers above or by page-level handlers
+            if (['add', 'edit', 'delete', 'export', 'upload', 'save', 'cancel', 'switch-tab', 'register-session', 'join-waitlist', 'purchase-package'].includes(action)) {
                 return;
             }
             

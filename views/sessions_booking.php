@@ -184,7 +184,22 @@ usort($available_sessions, function($a, $b) {
 // No demo data - show empty state when no real data exists
 $is_demo_packages = false;
 $is_demo_sessions = false;
+
+// Get template session date IDs the current user (and their athletes) are already registered for
+$user_booked_template_dates = [];
+$tpl_booked_ids = [intval($_SESSION['user_id'])];
+if (($user_role ?? '') === 'parent') {
+    $tpl_parent_stmt = $pdo->prepare("SELECT athlete_id FROM managed_athletes WHERE parent_id = ? AND can_book = 1");
+    $tpl_parent_stmt->execute([$_SESSION['user_id']]);
+    $tpl_booked_ids = array_merge($tpl_booked_ids, array_map('intval', $tpl_parent_stmt->fetchAll(PDO::FETCH_COLUMN)));
+}
+$tpl_placeholders = implode(',', array_fill(0, count($tpl_booked_ids), '?'));
+$tpl_booked_stmt = $pdo->prepare("SELECT session_date_id FROM session_date_athletes WHERE athlete_id IN ($tpl_placeholders)");
+$tpl_booked_stmt->execute($tpl_booked_ids);
+$user_booked_template_dates = $tpl_booked_stmt->fetchAll(PDO::FETCH_COLUMN);
 ?>
+
+<?= csrfTokenInput() ?>
 
 <!-- Session Booking View - Two Section Layout -->
 <div class="page-header">
@@ -230,7 +245,7 @@ $is_demo_sessions = false;
                     $spots_left = ($session['max_participants'] ?? 10) - ($session['registered_count'] ?? 0);
                     $is_almost_full = $spots_left > 0 && $spots_left <= 3;
                     $is_full = $spots_left <= 0 && !empty($session['max_participants']);
-                    $already_booked = ($session['source_type'] === 'session') ? in_array($session['id'], $user_booked_sessions) : false;
+                    $already_booked = ($session['source_type'] === 'session') ? in_array($session['id'], $user_booked_sessions) : in_array($session['date_id'] ?? '', $user_booked_template_dates);
                 ?>
                 <div class="session-list-card" data-session-id="<?= $session['id'] ?>" data-source-type="<?= $session['source_type'] ?>" data-date-id="<?= $session['date_id'] ?? '' ?>" data-date="<?= date('Y-m-d', $session_datetime) ?>" data-booked="<?= $already_booked ? '1' : '0' ?>" data-full="<?= $is_full ? '1' : '0' ?>" data-spots="<?= $spots_left ?>">
                     <div class="session-date-column">
