@@ -214,21 +214,13 @@ function handleVideoUpload() {
         throw new Exception($validation['error']);
     }
     
-    // Create videos directory if it doesn't exist
-    $upload_dir = __DIR__ . '/videos/';
-    if (!is_dir($upload_dir)) {
-        mkdir($upload_dir, 0755, true);
-    }
-    
     // Generate unique filename
     $file_extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
     $unique_filename = uniqid('video_', true) . '_' . time() . '.' . $file_extension;
-    $upload_path = $upload_dir . $unique_filename;
+    $video_url = 'videos/' . $unique_filename;
     
-    // Move uploaded file
-    if (!move_uploaded_file($file['tmp_name'], $upload_path)) {
-        throw new Exception('Failed to save video file');
-    }
+    // Persist: save to /config/persistent_uploads, upload to Nextcloud, cache locally
+    $persist = persistUploadedFile($pdo, $file['tmp_name'], 'videos/coach', $unique_filename, $video_url, true);
     
     // Insert video record into database
     $stmt = $pdo->prepare("
@@ -241,7 +233,6 @@ function handleVideoUpload() {
         )
     ");
     
-    $video_url = 'videos/' . $unique_filename;
     $title = $drill_name . ' - ' . $drill_type;
     $description = 'Session Date: ' . $session_date . ' | Drill Type: ' . $drill_type;
     
@@ -257,30 +248,9 @@ function handleVideoUpload() {
     $video_id = $pdo->lastInsertId();
     Auditor::log($pdo, $user_id, 'create', 'videos', $video_id, ['action' => 'Coach video uploaded']);
     
-    // Save to persistent storage and upload to Nextcloud using streaming (no RAM loading).
-    // Videos can be up to 10GB — uploadLargeFileToNextcloud uses CURLOPT_INFILE
-    // which streams directly from disk to Nextcloud without loading into memory.
-    try {
-        $nc_settings = getNextcloudSettings($pdo);
-        if (!empty($nc_settings['nextcloud_url'])) {
-            if (!empty($nc_settings['nextcloud_password'])) {
-                $decrypted = decryptPassword($nc_settings['nextcloud_password']);
-                if (!empty($decrypted)) {
-                    $nc_settings['nextcloud_password'] = $decrypted;
-                }
-            }
-            $result = uploadLargeFileToNextcloud($pdo, $nc_settings, $upload_path, 'videos/coach', $unique_filename);
-            if ($result['success']) {
-                $pdo->prepare("UPDATE videos SET nextcloud_path = ? WHERE id = ?")->execute([$result['remote_path'], $video_id]);
-            }
-        } else {
-            // No Nextcloud configured — still save to persistent storage
-            saveToPersistentStorage($upload_path, 'videos/coach', $unique_filename, $pdo);
-        }
-    } catch (Exception $e) {
-        error_log("Nextcloud coach video upload failed: " . $e->getMessage());
-        // Still try persistent storage even if Nextcloud fails
-        try { saveToPersistentStorage($upload_path, 'videos/coach', $unique_filename, $pdo); } catch (Exception $ps) { error_log("Persistent storage fallback also failed: " . $ps->getMessage()); }
+    // Store Nextcloud path for persistent recovery
+    if (!empty($persist['nextcloud_path'])) {
+        $pdo->prepare("UPDATE videos SET nextcloud_path = ? WHERE id = ?")->execute([$persist['nextcloud_path'], $video_id]);
     }
     
     // Log and notify — wrapped in try-catch so failures don't break the upload response
@@ -400,21 +370,13 @@ function handleAthleteVideoUpload() {
         throw new Exception($validation['error']);
     }
     
-    // Create videos directory if it doesn't exist
-    $upload_dir = __DIR__ . '/videos/';
-    if (!is_dir($upload_dir)) {
-        mkdir($upload_dir, 0755, true);
-    }
-    
     // Generate unique filename
     $file_extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
     $unique_filename = uniqid('athlete_video_', true) . '_' . time() . '.' . $file_extension;
-    $upload_path = $upload_dir . $unique_filename;
+    $video_url = 'videos/' . $unique_filename;
     
-    // Move uploaded file
-    if (!move_uploaded_file($file['tmp_name'], $upload_path)) {
-        throw new Exception('Failed to save video file');
-    }
+    // Persist: save to /config/persistent_uploads, upload to Nextcloud, cache locally
+    $persist = persistUploadedFile($pdo, $file['tmp_name'], 'videos/athlete', $unique_filename, $video_url, true);
     
     // Insert video record into database
     $stmt = $pdo->prepare("
@@ -428,8 +390,6 @@ function handleAthleteVideoUpload() {
             'pending_review', NOW()
         )
     ");
-    
-    $video_url = 'videos/' . $unique_filename;
     
     $stmt->execute([
         $athlete_id,
@@ -446,30 +406,9 @@ function handleAthleteVideoUpload() {
     $video_id = $pdo->lastInsertId();
     Auditor::log($pdo, $user_id, 'create', 'videos', $video_id, ['action' => 'Athlete video uploaded']);
     
-    // Save to persistent storage and upload to Nextcloud using streaming (no RAM loading).
-    // Videos can be up to 10GB — uploadLargeFileToNextcloud uses CURLOPT_INFILE
-    // which streams directly from disk to Nextcloud without loading into memory.
-    try {
-        $nc_settings = getNextcloudSettings($pdo);
-        if (!empty($nc_settings['nextcloud_url'])) {
-            if (!empty($nc_settings['nextcloud_password'])) {
-                $decrypted = decryptPassword($nc_settings['nextcloud_password']);
-                if (!empty($decrypted)) {
-                    $nc_settings['nextcloud_password'] = $decrypted;
-                }
-            }
-            $result = uploadLargeFileToNextcloud($pdo, $nc_settings, $upload_path, 'videos/athlete', $unique_filename);
-            if ($result['success']) {
-                $pdo->prepare("UPDATE videos SET nextcloud_path = ? WHERE id = ?")->execute([$result['remote_path'], $video_id]);
-            }
-        } else {
-            // No Nextcloud configured — still save to persistent storage
-            saveToPersistentStorage($upload_path, 'videos/athlete', $unique_filename, $pdo);
-        }
-    } catch (Exception $e) {
-        error_log("Nextcloud athlete video upload failed: " . $e->getMessage());
-        // Still try persistent storage even if Nextcloud fails
-        try { saveToPersistentStorage($upload_path, 'videos/athlete', $unique_filename, $pdo); } catch (Exception $ps) { error_log("Persistent storage fallback also failed: " . $ps->getMessage()); }
+    // Store Nextcloud path for persistent recovery
+    if (!empty($persist['nextcloud_path'])) {
+        $pdo->prepare("UPDATE videos SET nextcloud_path = ? WHERE id = ?")->execute([$persist['nextcloud_path'], $video_id]);
     }
     
     // Log and notify — wrapped in try-catch so failures don't break the upload response
@@ -559,12 +498,6 @@ function handleDrillVideoUpload() {
         throw new Exception($validation['error']);
     }
     
-    // Create local videos directory if it doesn't exist
-    $upload_dir = __DIR__ . '/videos/drills/';
-    if (!is_dir($upload_dir)) {
-        mkdir($upload_dir, 0755, true);
-    }
-    
     // Generate filename based on naming convention
     $safe_session = str_replace(' ', '_', preg_replace('/[^a-zA-Z0-9\-_\s]/', '', $session_name));
     $safe_drill = str_replace(' ', '_', preg_replace('/[^a-zA-Z0-9\-_\s]/', '', $drill_name));
@@ -572,42 +505,15 @@ function handleDrillVideoUpload() {
     $file_extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
     
     $filename = sprintf('%s-%s-%s-Rep%d.%s', $safe_session, $safe_drill, $safe_athlete, $rep_number, $file_extension);
-    $upload_path = $upload_dir . $filename;
-    
-    // Move uploaded file locally first
-    if (!move_uploaded_file($file['tmp_name'], $upload_path)) {
-        throw new Exception('Failed to save video file');
-    }
-    
     $local_path = 'videos/drills/' . $filename;
     $nextcloud_path = null;
     $is_uploaded_to_cloud = 0;
     
-    // Try to upload to Nextcloud
-    try {
-        require_once __DIR__ . '/cloud_config.php';
-        $nc_settings = getNextcloudSettings($pdo);
-        
-        if (!empty($nc_settings['nextcloud_url']) && !empty($nc_settings['nextcloud_username'])) {
-            $upload_result = uploadDrillVideo(
-                $pdo,
-                $nc_settings,
-                $session_name,
-                $drill_name,
-                $athlete_name,
-                $rep_number,
-                ['name' => $filename, 'tmp_name' => $upload_path],
-                $session_date
-            );
-            
-            if ($upload_result['success']) {
-                $nextcloud_path = $upload_result['remote_path'];
-                $is_uploaded_to_cloud = 1;
-            }
-        }
-    } catch (Exception $e) {
-        // Log error but continue - file is saved locally
-        ErrorLogger::error('Nextcloud upload failed: ' . $e->getMessage());
+    // Persist: save to /config/persistent_uploads, upload to Nextcloud, cache locally
+    $persist = persistUploadedFile($pdo, $file['tmp_name'], 'DrillVideos', $filename, $local_path, true);
+    if (!empty($persist['nextcloud_path'])) {
+        $nextcloud_path = $persist['nextcloud_path'];
+        $is_uploaded_to_cloud = 1;
     }
     
     // Insert video record into database
@@ -1197,19 +1103,12 @@ function handleUploadVideoSource() {
     $validation = $validator->validateVideo($file);
     if (!$validation['valid']) throw new Exception($validation['error']);
 
-    // Upload to separate gameplan video location
-    $upload_dir = __DIR__ . '/videos/gameplan/';
-    if (!is_dir($upload_dir)) {
-        mkdir($upload_dir, 0755, true);
-    }
-
     $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
     $unique_name = 'gp_source_' . uniqid('', true) . '_' . time() . '.' . $ext;
-    $upload_path = $upload_dir . $unique_name;
+    $file_path_rel = 'videos/gameplan/' . $unique_name;
 
-    if (!move_uploaded_file($file['tmp_name'], $upload_path)) {
-        throw new Exception('Failed to save video file');
-    }
+    // Persist: save to /config/persistent_uploads, upload to Nextcloud, cache locally
+    $persist = persistUploadedFile($pdo, $file['tmp_name'], 'videos/gameplan', $unique_name, $file_path_rel, true);
 
     $stmt = $pdo->prepare("
         INSERT INTO vr_video_sources (filename, file_path, camera_angle, file_size, game_id, team_id, uploaded_by)
@@ -1217,7 +1116,7 @@ function handleUploadVideoSource() {
     ");
     $stmt->execute([
         $file['name'],
-        'videos/gameplan/' . $unique_name,
+        $file_path_rel,
         $camera_angle,
         $file['size'],
         $game_id,
@@ -1227,27 +1126,9 @@ function handleUploadVideoSource() {
     $source_id_new = $pdo->lastInsertId();
     Auditor::log($pdo, $user_id, 'create', 'vr_video_sources', $source_id_new, ['action' => 'Video source uploaded']);
 
-    // Upload gameplan video to Nextcloud using streaming (no RAM loading for large files)
-    try {
-        $nc_settings = getNextcloudSettings($pdo);
-        if (!empty($nc_settings['nextcloud_url'])) {
-            if (!empty($nc_settings['nextcloud_password'])) {
-                $decrypted = decryptPassword($nc_settings['nextcloud_password']);
-                if (!empty($decrypted)) {
-                    $nc_settings['nextcloud_password'] = $decrypted;
-                }
-            }
-            $result = uploadLargeFileToNextcloud($pdo, $nc_settings, $upload_path, 'videos/gameplan', $unique_name);
-            if ($result['success']) {
-                $pdo->prepare("UPDATE vr_video_sources SET nextcloud_path = ? WHERE id = ?")->execute([$result['remote_path'], $source_id_new]);
-            }
-        } else {
-            // No Nextcloud — still save to persistent storage
-            saveToPersistentStorage($upload_path, 'videos/gameplan', $unique_name, $pdo);
-        }
-    } catch (Exception $e) {
-        error_log("Nextcloud gameplan video upload failed: " . $e->getMessage());
-        try { saveToPersistentStorage($upload_path, 'videos/gameplan', $unique_name, $pdo); } catch (Exception $ps) {}
+    // Store Nextcloud path for persistent recovery
+    if (!empty($persist['nextcloud_path'])) {
+        $pdo->prepare("UPDATE vr_video_sources SET nextcloud_path = ? WHERE id = ?")->execute([$persist['nextcloud_path'], $source_id_new]);
     }
 
     try {

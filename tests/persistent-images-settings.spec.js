@@ -131,9 +131,9 @@ test.describe('Profile image upload includes Nextcloud persistence', () => {
     expect(content).toContain('cloud_config.php');
   });
 
-  test('process_profile_update.php should call uploadImageToNextcloud', () => {
+  test('process_profile_update.php should call persistUploadedFile for Nextcloud persistence', () => {
     const content = readFile('process_profile_update.php');
-    expect(content).toContain('uploadImageToNextcloud(');
+    expect(content).toContain('persistUploadedFile(');
   });
 
   test('process_profile_update.php should save nextcloud_image_path to users table', () => {
@@ -141,10 +141,10 @@ test.describe('Profile image upload includes Nextcloud persistence', () => {
     expect(content).toContain('nextcloud_image_path');
   });
 
-  test('process_profile_update.php should handle Nextcloud upload failure gracefully', () => {
+  test('process_profile_update.php should handle Nextcloud upload result', () => {
     const content = readFile('process_profile_update.php');
-    // Should catch exceptions and log errors
-    expect(content).toContain('Nextcloud profile image upload failed');
+    // Should check persist result for nextcloud_path
+    expect(content).toContain("persist['nextcloud_path']");
   });
 });
 
@@ -179,9 +179,9 @@ test.describe('Evaluation media upload includes Nextcloud persistence', () => {
     expect(content).toContain('cloud_config.php');
   });
 
-  test('process_eval_skills.php should call uploadImageToNextcloud', () => {
+  test('process_eval_skills.php should call persistUploadedFile for Nextcloud persistence', () => {
     const content = readFile('process_eval_skills.php');
-    expect(content).toContain('uploadImageToNextcloud(');
+    expect(content).toContain('persistUploadedFile(');
   });
 
   test('process_eval_skills.php should save nextcloud_path to evaluation_media', () => {
@@ -189,9 +189,10 @@ test.describe('Evaluation media upload includes Nextcloud persistence', () => {
     expect(content).toContain("nextcloud_path = ? WHERE id = ?");
   });
 
-  test('process_eval_skills.php should handle Nextcloud upload failure gracefully', () => {
+  test('process_eval_skills.php should handle Nextcloud upload result', () => {
     const content = readFile('process_eval_skills.php');
-    expect(content).toContain('Nextcloud evaluation media upload failed');
+    // Should check persist result for nextcloud_path
+    expect(content).toContain("persist['nextcloud_path']");
   });
 });
 
@@ -325,7 +326,7 @@ test.describe('Persistent local storage functions in cloud_config.php', () => {
     const content = readFile('cloud_config.php');
     const fnStart = content.indexOf('function getPersistentStoragePath($pdo = null)');
     const fnBody = content.substring(fnStart, fnStart + 800);
-    expect(fnBody).toContain("realpath(__DIR__ . '/..')");
+    expect(fnBody).toContain('/config/persistent_uploads');
     expect(fnBody).toContain('persistent_uploads');
   });
 

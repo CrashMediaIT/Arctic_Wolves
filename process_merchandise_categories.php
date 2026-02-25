@@ -40,22 +40,24 @@ function handleCategoryImageUpload($file) {
     
     // Generate safe filename
     $safeFilename = FileUploadValidator::generateUniqueFilename($file['name']);
+    $local_cache_rel = 'uploads/merchandise/categories/' . $safeFilename;
     
-    // Create upload directory if it doesn't exist
-    $uploadDir = __DIR__ . '/uploads/merchandise/categories/';
-    if (!is_dir($uploadDir)) {
-        mkdir($uploadDir, 0755, true);
+    // Persist: save to /config/persistent_uploads, upload to Nextcloud, cache locally
+    global $pdo;
+    $nextcloud_path = null;
+    if ($pdo) {
+        $persist = persistUploadedFile($pdo, $file['tmp_name'], 'merchandise/categories', $safeFilename, $local_cache_rel);
+        $nextcloud_path = $persist['nextcloud_path'] ?? null;
+    } else {
+        // Fallback: save to local uploads directory
+        $uploadDir = __DIR__ . '/uploads/merchandise/categories/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+        move_uploaded_file($file['tmp_name'], $uploadDir . $safeFilename);
     }
     
-    $targetPath = $uploadDir . $safeFilename;
-    
-    // Move uploaded file
-    if (!move_uploaded_file($file['tmp_name'], $targetPath)) {
-        throw new Exception('Failed to save uploaded image');
-    }
-    
-    // Return the relative URL path
-    return 'uploads/merchandise/categories/' . $safeFilename;
+    return ['url' => $local_cache_rel, 'nextcloud_path' => $nextcloud_path];
 }
 
 try {
@@ -80,8 +82,13 @@ try {
             
             // Handle image upload
             $imageUrl = null;
+            $cat_nc_path = null;
             if (isset($_FILES['image']) && $_FILES['image']['error'] !== UPLOAD_ERR_NO_FILE) {
-                $imageUrl = handleCategoryImageUpload($_FILES['image']);
+                $imgResult = handleCategoryImageUpload($_FILES['image']);
+                if ($imgResult) {
+                    $imageUrl = $imgResult['url'];
+                    $cat_nc_path = $imgResult['nextcloud_path'] ?? null;
+                }
             }
             
             $stmt = $pdo->prepare("
@@ -98,29 +105,12 @@ try {
                 $isActive,
                 $_SESSION['user_id']
             ]);
-            Auditor::log($pdo, $user_id, 'CREATE', 'merchandise_categories', $pdo->lastInsertId(), ['action' => 'Created merchandise category', 'name' => $name]);
+            $categoryId = $pdo->lastInsertId();
+            Auditor::log($pdo, $user_id, 'CREATE', 'merchandise_categories', $categoryId, ['action' => 'Created merchandise category', 'name' => $name]);
             
-            // Upload category image to Nextcloud for persistent storage
-            if (!empty($imageUrl)) {
-                try {
-                    $nc_settings = getNextcloudSettings($pdo);
-                    if (!empty($nc_settings['nextcloud_url'])) {
-                        if (!empty($nc_settings['nextcloud_password'])) {
-                            $decrypted = decryptPassword($nc_settings['nextcloud_password']);
-                            if (!empty($decrypted)) {
-                                $nc_settings['nextcloud_password'] = $decrypted;
-                            }
-                        }
-                        $nc_filename = basename($imageUrl);
-                        $categoryId = $pdo->lastInsertId();
-                        $result = uploadImageToNextcloud($pdo, $nc_settings, $imageUrl, 'merchandise/categories', $nc_filename);
-                        if ($result['success']) {
-                            $pdo->prepare("UPDATE merchandise_categories SET nextcloud_image_path = ? WHERE id = ?")->execute([$result['remote_path'], $categoryId]);
-                        }
-                    }
-                } catch (Exception $e) {
-                    error_log("Nextcloud category image upload failed: " . $e->getMessage());
-                }
+            // Store Nextcloud path for persistent recovery (already uploaded by persistUploadedFile)
+            if (!empty($cat_nc_path)) {
+                $pdo->prepare("UPDATE merchandise_categories SET nextcloud_image_path = ? WHERE id = ?")->execute([$cat_nc_path, $categoryId]);
             }
             
             if ($isAjax) {
@@ -177,10 +167,15 @@ try {
             
             // Handle image upload
             $imageUrl = null;
+            $cat_nc_path = null;
             $updateImage = false;
             if (isset($_FILES['image']) && $_FILES['image']['error'] !== UPLOAD_ERR_NO_FILE) {
-                $imageUrl = handleCategoryImageUpload($_FILES['image']);
-                $updateImage = true;
+                $imgResult = handleCategoryImageUpload($_FILES['image']);
+                if ($imgResult) {
+                    $imageUrl = $imgResult['url'];
+                    $cat_nc_path = $imgResult['nextcloud_path'] ?? null;
+                    $updateImage = true;
+                }
             }
             
             if ($updateImage) {
@@ -200,26 +195,9 @@ try {
             }
             Auditor::log($pdo, $user_id, 'UPDATE', 'merchandise_categories', $id, ['action' => 'Updated merchandise category', 'name' => $name]);
             
-            // Upload updated category image to Nextcloud for persistent storage
-            if ($updateImage && !empty($imageUrl)) {
-                try {
-                    $nc_settings = getNextcloudSettings($pdo);
-                    if (!empty($nc_settings['nextcloud_url'])) {
-                        if (!empty($nc_settings['nextcloud_password'])) {
-                            $decrypted = decryptPassword($nc_settings['nextcloud_password']);
-                            if (!empty($decrypted)) {
-                                $nc_settings['nextcloud_password'] = $decrypted;
-                            }
-                        }
-                        $nc_filename = basename($imageUrl);
-                        $result = uploadImageToNextcloud($pdo, $nc_settings, $imageUrl, 'merchandise/categories', $nc_filename);
-                        if ($result['success']) {
-                            $pdo->prepare("UPDATE merchandise_categories SET nextcloud_image_path = ? WHERE id = ?")->execute([$result['remote_path'], $id]);
-                        }
-                    }
-                } catch (Exception $e) {
-                    error_log("Nextcloud category image upload failed: " . $e->getMessage());
-                }
+            // Store Nextcloud path for persistent recovery (already uploaded by persistUploadedFile)
+            if ($updateImage && !empty($cat_nc_path)) {
+                $pdo->prepare("UPDATE merchandise_categories SET nextcloud_image_path = ? WHERE id = ?")->execute([$cat_nc_path, $id]);
             }
             
             if ($isAjax) {

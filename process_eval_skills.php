@@ -285,20 +285,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new Exception('Invalid file type. Allowed: jpg, png, gif, mp4, mov');
                 }
                 
-                // Create upload directory if needed
-                $upload_dir = 'uploads/evaluations/' . $eval['evaluation_id'];
-                if (!is_dir($upload_dir)) {
-                    mkdir($upload_dir, 0755, true);
-                }
-                
                 // Generate unique filename with random bytes
                 $filename = bin2hex(random_bytes(16)) . '.' . $file_ext;
-                $filepath = $upload_dir . '/' . $filename;
+                $subfolder = 'evaluations/' . $eval['evaluation_id'];
+                $filepath = 'uploads/evaluations/' . $eval['evaluation_id'] . '/' . $filename;
                 
-                // Move file
-                if (!move_uploaded_file($file['tmp_name'], $filepath)) {
-                    throw new Exception('Failed to upload file');
-                }
+                // Persist: save to /config/persistent_uploads, upload to Nextcloud, cache locally
+                $persist = persistUploadedFile($pdo, $file['tmp_name'], $subfolder, $filename, $filepath);
                 
                 // Save to database
                 $stmt = $pdo->prepare("
@@ -309,26 +302,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $media_id = $pdo->lastInsertId();
                 Auditor::log($pdo, $user_id, 'create', 'evaluation_media', $media_id, ['action' => 'Uploaded evaluation media']);
                 
-                // Upload to Nextcloud for persistent storage
+                // Store Nextcloud path for persistent recovery
                 $nextcloud_path = null;
-                try {
-                    $nc_settings = getNextcloudSettings($pdo);
-                    if (!empty($nc_settings['nextcloud_url'])) {
-                        if (!empty($nc_settings['nextcloud_password'])) {
-                            $decrypted = decryptPassword($nc_settings['nextcloud_password']);
-                            if (!empty($decrypted)) {
-                                $nc_settings['nextcloud_password'] = $decrypted;
-                            }
-                        }
-                        $subfolder = 'evaluations/' . $eval['evaluation_id'];
-                        $result = uploadImageToNextcloud($pdo, $nc_settings, $filepath, $subfolder, $filename);
-                        if ($result['success']) {
-                            $nextcloud_path = $result['remote_path'];
-                            $pdo->prepare("UPDATE evaluation_media SET nextcloud_path = ? WHERE id = ?")->execute([$nextcloud_path, $media_id]);
-                        }
-                    }
-                } catch (Exception $e) {
-                    error_log("Nextcloud evaluation media upload failed: " . $e->getMessage());
+                if (!empty($persist['nextcloud_path'])) {
+                    $nextcloud_path = $persist['nextcloud_path'];
+                    $pdo->prepare("UPDATE evaluation_media SET nextcloud_path = ? WHERE id = ?")->execute([$nextcloud_path, $media_id]);
                 }
                 
                 echo json_encode([
