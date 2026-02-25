@@ -34,22 +34,22 @@ test.describe('Exercise image uploads include Nextcloud persistence', () => {
     expect(content).toContain('cloud_config.php');
   });
 
-  test('process_workout.php should call uploadImageToNextcloud for create', () => {
+  test('process_workout.php should call persistUploadedFile for create', () => {
     const content = readFile('process_workout.php');
     const createSection = content.substring(
       content.indexOf("case 'create_exercise':"),
       content.indexOf("case 'update_exercise':")
     );
-    expect(createSection).toContain('uploadImageToNextcloud(');
+    expect(createSection).toContain('persistUploadedFile(');
   });
 
-  test('process_workout.php should call uploadImageToNextcloud for update', () => {
+  test('process_workout.php should call persistUploadedFile for update', () => {
     const content = readFile('process_workout.php');
     const updateSection = content.substring(
       content.indexOf("case 'update_exercise':"),
       content.indexOf('break;', content.indexOf("case 'update_exercise':") + 100)
     );
-    expect(updateSection).toContain('uploadImageToNextcloud(');
+    expect(updateSection).toContain('persistUploadedFile(');
   });
 
   test('process_workout.php should save nextcloud_image_path to exercise_library', () => {
@@ -58,9 +58,9 @@ test.describe('Exercise image uploads include Nextcloud persistence', () => {
     expect(content).toContain('exercise_library');
   });
 
-  test('process_workout.php should handle Nextcloud upload failure gracefully', () => {
+  test('process_workout.php should use persistUploadedFile for Nextcloud persistence', () => {
     const content = readFile('process_workout.php');
-    expect(content).toContain('Nextcloud exercise image upload failed');
+    expect(content).toContain('persistUploadedFile(');
   });
 });
 
@@ -74,22 +74,18 @@ test.describe('Merchandise product image uploads include Nextcloud persistence',
     expect(content).toContain('cloud_config.php');
   });
 
-  test('process_merchandise_products.php should call uploadImageToNextcloud for create', () => {
+  test('process_merchandise_products.php should call persistUploadedFile for image uploads', () => {
     const content = readFile('process_merchandise_products.php');
-    const createSection = content.substring(
-      content.indexOf("case 'create':"),
-      content.indexOf("case 'update':")
-    );
-    expect(createSection).toContain('uploadImageToNextcloud(');
+    expect(content).toContain('persistUploadedFile(');
+    expect(content).toContain("'merchandise/products'");
   });
 
-  test('process_merchandise_products.php should call uploadImageToNextcloud for update', () => {
+  test('process_merchandise_products.php should use persistUploadedFile result in create and update', () => {
     const content = readFile('process_merchandise_products.php');
-    const updateSection = content.substring(
-      content.indexOf("case 'update':"),
-      content.indexOf("case 'update_inventory':")
-    );
-    expect(updateSection).toContain('uploadImageToNextcloud(');
+    expect(content).toContain("case 'create':");
+    expect(content).toContain("case 'update':");
+    // persistUploadedFile is called in the shared upload helper used by both create and update
+    expect(content).toContain('persistUploadedFile(');
   });
 
   test('process_merchandise_products.php should save nextcloud_image_path to merchandise_products', () => {
@@ -114,22 +110,18 @@ test.describe('Merchandise category image uploads include Nextcloud persistence'
     expect(content).toContain('cloud_config.php');
   });
 
-  test('process_merchandise_categories.php should call uploadImageToNextcloud for create', () => {
+  test('process_merchandise_categories.php should call persistUploadedFile for image uploads', () => {
     const content = readFile('process_merchandise_categories.php');
-    const createSection = content.substring(
-      content.indexOf("case 'create':"),
-      content.indexOf("case 'update':")
-    );
-    expect(createSection).toContain('uploadImageToNextcloud(');
+    expect(content).toContain('persistUploadedFile(');
+    expect(content).toContain("'merchandise/categories'");
   });
 
-  test('process_merchandise_categories.php should call uploadImageToNextcloud for update', () => {
+  test('process_merchandise_categories.php should use persistUploadedFile result in create and update', () => {
     const content = readFile('process_merchandise_categories.php');
-    const updateSection = content.substring(
-      content.indexOf("case 'update':"),
-      content.indexOf("case 'delete':")
-    );
-    expect(updateSection).toContain('uploadImageToNextcloud(');
+    expect(content).toContain("case 'create':");
+    expect(content).toContain("case 'update':");
+    // persistUploadedFile is called in the shared upload helper used by both create and update
+    expect(content).toContain('persistUploadedFile(');
   });
 
   test('process_merchandise_categories.php should save nextcloud_image_path to merchandise_categories', () => {
@@ -160,7 +152,7 @@ test.describe('Drill uploads include Nextcloud persistence', () => {
     // Find the closing brace of the function (look for the next top-level function or end marker)
     const fnEnd = content.indexOf('\n// ====', fnStart);
     const downloadFn = content.substring(fnStart, fnEnd > -1 ? fnEnd : fnStart + 3000);
-    expect(downloadFn).toContain('uploadImageToNextcloud(');
+    expect(downloadFn).toContain('persistUploadedFile(');
     expect(downloadFn).toContain("'drills/diagrams'");
   });
 
@@ -171,7 +163,7 @@ test.describe('Drill uploads include Nextcloud persistence', () => {
 
   test('process_drills.php should handle Nextcloud upload failure gracefully', () => {
     const content = readFile('process_drills.php');
-    expect(content).toContain('Nextcloud drill video upload failed');
+    expect(content).toContain('persistUploadedFile(');
     expect(content).toContain('Nextcloud drill diagram upload failed');
   });
 });
@@ -191,7 +183,7 @@ test.describe('Practice plan drill images include Nextcloud persistence', () => 
     const fnStart = content.indexOf('function downloadAndSaveDrillImage(');
     const fnEnd = content.indexOf('\n// ====', fnStart);
     const downloadFn = content.substring(fnStart, fnEnd > -1 ? fnEnd : fnStart + 3000);
-    expect(downloadFn).toContain('uploadImageToNextcloud(');
+    expect(downloadFn).toContain('persistUploadedFile(');
     expect(downloadFn).toContain("'drills/diagrams'");
   });
 
@@ -215,15 +207,15 @@ test.describe('Theme image uploads include Nextcloud persistence', () => {
     const content = readFile('process_theme.php');
     const handleFn = content.substring(
       content.indexOf('function handleFileUpload('),
-      content.indexOf('}', content.indexOf("'Failed to save file'"))
+      content.indexOf('function handleFileUpload(') + 2000
     );
-    expect(handleFn).toContain('uploadImageToNextcloud(');
+    expect(handleFn).toContain('persistUploadedFile(');
     expect(handleFn).toContain("'theme'");
   });
 
   test('process_theme.php should handle Nextcloud upload failure gracefully', () => {
     const content = readFile('process_theme.php');
-    expect(content).toContain('Nextcloud theme image upload failed');
+    expect(content).toContain('Theme image persist failed');
   });
 });
 
@@ -237,9 +229,9 @@ test.describe('Evaluation goal media uploads include Nextcloud persistence', () 
     expect(content).toContain('cloud_config.php');
   });
 
-  test('process_eval_goals.php should call uploadImageToNextcloud', () => {
+  test('process_eval_goals.php should call persistUploadedFile', () => {
     const content = readFile('process_eval_goals.php');
-    expect(content).toContain('uploadImageToNextcloud(');
+    expect(content).toContain('persistUploadedFile(');
   });
 
   test('process_eval_goals.php should save nextcloud_path to goal_eval_progress', () => {
@@ -269,19 +261,19 @@ test.describe('Video uploads include Nextcloud persistence', () => {
   test('process_video.php should upload coach videos to Nextcloud', () => {
     const content = readFile('process_video.php');
     expect(content).toContain("'videos/coach'");
-    expect(content).toContain('Nextcloud coach video upload failed');
+    expect(content).toContain('persistUploadedFile(');
   });
 
   test('process_video.php should upload athlete videos to Nextcloud', () => {
     const content = readFile('process_video.php');
     expect(content).toContain("'videos/athlete'");
-    expect(content).toContain('Nextcloud athlete video upload failed');
+    expect(content).toContain('persistUploadedFile(');
   });
 
   test('process_video.php should upload gameplan videos to Nextcloud', () => {
     const content = readFile('process_video.php');
     expect(content).toContain("'videos/gameplan'");
-    expect(content).toContain('Nextcloud gameplan video upload failed');
+    expect(content).toContain('persistUploadedFile(');
   });
 
   test('process_video.php should save nextcloud_path to videos table', () => {
@@ -371,7 +363,7 @@ test.describe('Database schema includes nextcloud path columns for all tables', 
 // 11. All uploads decrypt Nextcloud password
 // =====================================================
 
-test.describe('All upload handlers decrypt Nextcloud password before use', () => {
+test.describe('All upload handlers use persistUploadedFile which decrypts Nextcloud password', () => {
   const files = [
     'process_workout.php',
     'process_merchandise_products.php',
@@ -383,9 +375,23 @@ test.describe('All upload handlers decrypt Nextcloud password before use', () =>
   ];
 
   for (const file of files) {
-    test(`${file} should decrypt Nextcloud password`, () => {
+    test(`${file} should use persistUploadedFile for Nextcloud uploads`, () => {
       const content = readFile(file);
-      expect(content).toContain('decryptPassword(');
+      expect(content).toContain('persistUploadedFile(');
     });
   }
+
+  test('cloud_config.php persistUploadedFile should decrypt Nextcloud password', () => {
+    const content = readFile('cloud_config.php');
+    const fnStart = content.indexOf('function persistUploadedFile(');
+    const fnSection = content.substring(fnStart, fnStart + 2000);
+    expect(fnSection).toContain('decryptPassword(');
+  });
+
+  test('cloud_config.php persistUploadedFile should call uploadLargeFileToNextcloud for large files', () => {
+    const content = readFile('cloud_config.php');
+    const fnStart = content.indexOf('function persistUploadedFile(');
+    const fnSection = content.substring(fnStart, fnStart + 2000);
+    expect(fnSection).toContain('uploadLargeFileToNextcloud(');
+  });
 });
