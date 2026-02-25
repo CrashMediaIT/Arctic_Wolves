@@ -55,6 +55,7 @@ if ($action === 'save_drill' || $action === 'create') {
     // Handle video - support YouTube, external URL, and uploads
     $video_url = '';
     $video_upload_path = '';
+    $drill_video_nc_path = null;
     $video_type = $_POST['video_type'] ?? '';
     
     if ($video_type === 'youtube') {
@@ -101,10 +102,12 @@ if ($action === 'save_drill' || $action === 'create') {
         // Generate unique filename
         $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
         $filename = 'drill_video_' . bin2hex(random_bytes(16)) . '.' . $extension;
-        $filepath = $upload_dir . $filename;
+        $video_upload_path = 'uploads/drill_videos/' . $filename;
         
-        if (move_uploaded_file($file['tmp_name'], $filepath)) {
-            $video_upload_path = 'uploads/drill_videos/' . $filename;
+        // Persist: save to /config/persistent_uploads, upload to Nextcloud, cache locally
+        $persist = persistUploadedFile($pdo, $file['tmp_name'], 'drills/videos', $filename, $video_upload_path);
+        if (!empty($persist['nextcloud_path'])) {
+            $drill_video_nc_path = $persist['nextcloud_path'];
         }
     } else {
         // Legacy support - check for direct video_url field
@@ -190,24 +193,12 @@ if ($action === 'save_drill' || $action === 'create') {
         
         Auditor::log($pdo, $user_id, isset($_POST['drill_id']) && !empty($_POST['drill_id']) ? 'update' : 'create', 'drills', $drill_id, ['action' => 'drill_saved', 'title' => $title]);
 
-        // Upload drill video to Nextcloud for persistent storage
-        if (!empty($video_upload_path)) {
+        // Store Nextcloud path for persistent recovery (already uploaded by persistUploadedFile)
+        if (!empty($video_upload_path) && !empty($drill_video_nc_path)) {
             try {
-                $nc_settings = getNextcloudSettings($pdo);
-                if (!empty($nc_settings['nextcloud_url'])) {
-                    if (!empty($nc_settings['nextcloud_password'])) {
-                        $decrypted = decryptPassword($nc_settings['nextcloud_password']);
-                        if (!empty($decrypted)) {
-                            $nc_settings['nextcloud_password'] = $decrypted;
-                        }
-                    }
-                    $result = uploadImageToNextcloud($pdo, $nc_settings, $video_upload_path, 'drills/videos', $filename);
-                    if ($result['success']) {
-                        $pdo->prepare("UPDATE drills SET nextcloud_image_path = ? WHERE id = ?")->execute([$result['remote_path'], $drill_id]);
-                    }
-                }
+                $pdo->prepare("UPDATE drills SET nextcloud_image_path = ? WHERE id = ?")->execute([$drill_video_nc_path, $drill_id]);
             } catch (Exception $e) {
-                error_log("Nextcloud drill video upload failed: " . $e->getMessage());
+                error_log("Failed to save drill video Nextcloud path: " . $e->getMessage());
             }
         }
 
@@ -877,15 +868,10 @@ function parseIHSDrillPage($html, $url) {
 }
 
 /**
- * Download an image from URL and save it locally
+ * Download an image from URL, persist to /config/persistent_uploads + Nextcloud,
+ * and cache locally for serving.
  */
 function downloadAndSaveImage($image_url, $user_id) {
-    // Create upload directory if it doesn't exist
-    $upload_dir = __DIR__ . '/uploads/drills/';
-    if (!is_dir($upload_dir)) {
-        mkdir($upload_dir, 0750, true);
-    }
-    
     // Download the image first to validate its content
     $ch = curl_init();
     curl_setopt_array($ch, [
@@ -902,7 +888,7 @@ function downloadAndSaveImage($image_url, $user_id) {
     curl_close($ch);
     
     if ($http_code !== 200 || empty($image_data)) {
-        return '';
+        return ['local_path' => '', 'nextcloud_path' => null];
     }
     
     // Validate it's actually an image and determine the extension from content
@@ -918,46 +904,43 @@ function downloadAndSaveImage($image_url, $user_id) {
     ];
     
     if (!isset($mime_to_ext[$mime])) {
-        // Not a supported image type
-        return '';
+        return ['local_path' => '', 'nextcloud_path' => null];
     }
     
     $extension = $mime_to_ext[$mime];
     
     // Generate a unique filename using only random bytes for security
     $filename = 'drill_' . bin2hex(random_bytes(16)) . '.' . $extension;
-    $filepath = $upload_dir . $filename;
+    $local_cache_rel = 'uploads/drills/' . $filename;
+    $nextcloud_path = null;
     
-    if (file_put_contents($filepath, $image_data)) {
-        $local_path = 'uploads/drills/' . $filename;
-        $nextcloud_path = null;
-        
-        // Upload drill diagram image to Nextcloud for persistent storage
-        global $pdo;
-        if ($pdo) {
-            try {
-                $nc_settings = getNextcloudSettings($pdo);
-                if (!empty($nc_settings['nextcloud_url'])) {
-                    if (!empty($nc_settings['nextcloud_password'])) {
-                        $decrypted = decryptPassword($nc_settings['nextcloud_password']);
-                        if (!empty($decrypted)) {
-                            $nc_settings['nextcloud_password'] = $decrypted;
-                        }
-                    }
-                    $result = uploadImageToNextcloud($pdo, $nc_settings, $filepath, 'drills/diagrams', $filename);
-                    if (!empty($result['success']) && !empty($result['remote_path'])) {
-                        $nextcloud_path = $result['remote_path'];
-                    }
-                }
-            } catch (Exception $e) {
-                error_log("Nextcloud drill diagram upload failed: " . $e->getMessage());
-            }
-        }
-        
-        return ['local_path' => $local_path, 'nextcloud_path' => $nextcloud_path];
+    // Write to a temp file first so persistUploadedFile can read it
+    $tmp_file = sys_get_temp_dir() . '/' . $filename;
+    if (!file_put_contents($tmp_file, $image_data)) {
+        return ['local_path' => '', 'nextcloud_path' => null];
     }
     
-    return ['local_path' => '', 'nextcloud_path' => null];
+    // Persist: save to /config/persistent_uploads, upload to Nextcloud, cache locally
+    global $pdo;
+    if ($pdo) {
+        try {
+            $persist = persistUploadedFile($pdo, $tmp_file, 'drills/diagrams', $filename, $local_cache_rel);
+            $nextcloud_path = $persist['nextcloud_path'] ?? null;
+        } catch (Exception $e) {
+            error_log("Nextcloud drill diagram upload failed: " . $e->getMessage());
+        }
+    } else {
+        // Fallback: copy to local uploads directory
+        $upload_dir = __DIR__ . '/uploads/drills/';
+        if (!is_dir($upload_dir)) {
+            mkdir($upload_dir, 0750, true);
+        }
+        copy($tmp_file, $upload_dir . $filename);
+    }
+    
+    @unlink($tmp_file);
+    
+    return ['local_path' => $local_cache_rel, 'nextcloud_path' => $nextcloud_path];
 }
 
 // =========================================================

@@ -69,7 +69,8 @@ function syncCenterIceLogoIfNeeded($pdo, $logoUrl) {
 }
 
 /**
- * Handle file upload
+ * Handle file upload - validates, persists to /config/persistent_uploads + Nextcloud,
+ * and caches locally in uploads/theme/ for serving.
  */
 function handleFileUpload($file, $type = 'image') {
     $allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
@@ -91,56 +92,31 @@ function handleFileUpload($file, $type = 'image') {
         return ['success' => false, 'message' => 'Invalid file type. Allowed: JPG, PNG, GIF, WEBP, SVG'];
     }
     
-    // Create uploads directory if not exists
-    $upload_dir = __DIR__ . '/uploads/theme/';
-    if (!is_dir($upload_dir)) {
-        mkdir($upload_dir, 0755, true);
-    }
-    
     // Generate unique filename
     $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
     $filename = $type . '_' . time() . '_' . bin2hex(random_bytes(8)) . '.' . $ext;
-    $filepath = $upload_dir . $filename;
+    $local_url = 'uploads/theme/' . $filename;
+    $nextcloud_path = null;
     
-    if (move_uploaded_file($file['tmp_name'], $filepath)) {
-        $local_url = 'uploads/theme/' . $filename;
-        $nextcloud_path = null;
-        
-        // Always upload to Nextcloud for persistent storage (survives app re-deploys)
-        global $pdo;
-        if ($pdo) {
-            try {
-                // Use absolute path for persistent storage and Nextcloud upload
-                $absolute_path = $filepath;
-                
-                $nc_settings = getNextcloudSettings($pdo);
-                if (!empty($nc_settings['nextcloud_url'])) {
-                    if (!empty($nc_settings['nextcloud_password'])) {
-                        $decrypted = decryptPassword($nc_settings['nextcloud_password']);
-                        if (!empty($decrypted)) {
-                            $nc_settings['nextcloud_password'] = $decrypted;
-                        }
-                    }
-                    // uploadImageToNextcloud also saves to persistent storage
-                    $nc_result = uploadImageToNextcloud($pdo, $nc_settings, $absolute_path, 'theme', $filename);
-                    if (!empty($nc_result['success']) && !empty($nc_result['remote_path'])) {
-                        $nextcloud_path = $nc_result['remote_path'];
-                    }
-                } else {
-                    // No Nextcloud — still save to persistent storage
-                    saveToPersistentStorage($absolute_path, 'theme', $filename, $pdo);
-                }
-            } catch (\Throwable $e) {
-                error_log("Theme image persistent/Nextcloud upload failed: " . $e->getMessage());
-                // Try persistent storage as a fallback
-                try { saveToPersistentStorage($filepath, 'theme', $filename, $pdo); } catch (\Throwable $ps) { error_log("Persistent storage fallback also failed: " . $ps->getMessage()); }
-            }
+    // Persist: save to /config/persistent_uploads, upload to Nextcloud, cache locally
+    global $pdo;
+    if ($pdo) {
+        try {
+            $persist = persistUploadedFile($pdo, $file['tmp_name'], 'theme', $filename, $local_url);
+            $nextcloud_path = $persist['nextcloud_path'] ?? null;
+        } catch (\Throwable $e) {
+            error_log("Theme image persist failed: " . $e->getMessage());
         }
-        
-        return ['success' => true, 'url' => $local_url, 'nextcloud_path' => $nextcloud_path];
+    } else {
+        // Fallback: save to local uploads directory only
+        $upload_dir = __DIR__ . '/uploads/theme/';
+        if (!is_dir($upload_dir)) {
+            mkdir($upload_dir, 0755, true);
+        }
+        move_uploaded_file($file['tmp_name'], $upload_dir . $filename);
     }
     
-    return ['success' => false, 'message' => 'Failed to save file'];
+    return ['success' => true, 'url' => $local_url, 'nextcloud_path' => $nextcloud_path];
 }
 
 try {

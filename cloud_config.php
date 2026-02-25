@@ -927,6 +927,85 @@ function uploadLargeFileToNextcloud($pdo, $settings, $local_file_path, $subfolde
 }
 
 /**
+ * Persist an uploaded file: saves to /config/persistent_uploads AND uploads to Nextcloud.
+ * This is the single entry-point every upload handler should call.
+ *
+ * Flow:
+ *  1. Save file to persistent local storage (/config/persistent_uploads/Images/{subfolder}/{filename})
+ *  2. Upload to Nextcloud (if configured)
+ *  3. Also copy to project-local uploads/ dir as a serving cache
+ *  4. Return both local cache URL and Nextcloud remote path
+ *
+ * @param PDO    $pdo              Database connection
+ * @param string $source_path      Absolute path to the source file (e.g., PHP tmp_name or downloaded file)
+ * @param string $subfolder        Logical subfolder  (e.g., 'theme', 'drills/diagrams', 'videos/coach')
+ * @param string $filename         Target filename
+ * @param string $local_cache_rel  Relative path for local cache (e.g., 'uploads/theme/logo.png') – used for serving
+ * @param bool   $use_large_upload Use streaming upload for large files (videos)
+ * @return array ['success'=>bool, 'nextcloud_path'=>string|null, 'persistent_path'=>string|null, 'local_cache'=>string]
+ */
+function persistUploadedFile($pdo, $source_path, $subfolder, $filename, $local_cache_rel, $use_large_upload = false) {
+    $result = [
+        'success' => false,
+        'nextcloud_path' => null,
+        'persistent_path' => null,
+        'local_cache' => $local_cache_rel,
+    ];
+
+    // 1. Save to persistent local storage (/config/persistent_uploads)
+    try {
+        $ps = saveToPersistentStorage($source_path, $subfolder, $filename, $pdo);
+        if (!empty($ps['success'])) {
+            $result['persistent_path'] = $ps['persistent_path'];
+        }
+    } catch (\Throwable $e) {
+        error_log("persistUploadedFile: persistent storage failed for $subfolder/$filename: " . $e->getMessage());
+    }
+
+    // 2. Upload to Nextcloud
+    try {
+        $nc_settings = getNextcloudSettings($pdo);
+        if (!empty($nc_settings['nextcloud_url'])) {
+            if (!empty($nc_settings['nextcloud_password'])) {
+                $decrypted = function_exists('decryptPassword') ? decryptPassword($nc_settings['nextcloud_password']) : '';
+                if (!empty($decrypted)) {
+                    $nc_settings['nextcloud_password'] = $decrypted;
+                }
+            }
+            if ($use_large_upload) {
+                $nc = uploadLargeFileToNextcloud($pdo, $nc_settings, $source_path, $subfolder, $filename);
+            } else {
+                $nc = uploadImageToNextcloud($pdo, $nc_settings, $source_path, $subfolder, $filename);
+            }
+            if (!empty($nc['success']) && !empty($nc['remote_path'])) {
+                $result['nextcloud_path'] = $nc['remote_path'];
+            }
+        }
+    } catch (\Throwable $e) {
+        error_log("persistUploadedFile: Nextcloud upload failed for $subfolder/$filename: " . $e->getMessage());
+    }
+
+    // 3. Copy to project-local cache directory so the file can be served immediately
+    try {
+        $project_root = defined('PROJECT_ROOT') ? PROJECT_ROOT : realpath(__DIR__);
+        $cache_path = $project_root . '/' . $local_cache_rel;
+        $cache_dir = dirname($cache_path);
+        if (!is_dir($cache_dir)) {
+            mkdir($cache_dir, 0755, true);
+        }
+        // Only copy if source is different from destination
+        if (realpath($source_path) !== realpath($cache_path)) {
+            copy($source_path, $cache_path);
+        }
+    } catch (\Throwable $e) {
+        error_log("persistUploadedFile: local cache copy failed for $local_cache_rel: " . $e->getMessage());
+    }
+
+    $result['success'] = true;
+    return $result;
+}
+
+/**
  * Download an image from Nextcloud and restore it locally.
  * First tries to restore from persistent local storage (faster, no network needed).
  * Falls back to Nextcloud if persistent copy is not available.
