@@ -189,15 +189,15 @@ $locations = $pdo->query("SELECT * FROM locations WHERE is_active = 1 ORDER BY n
 $practice_plans = $pdo->query("SELECT id, name FROM practice_plans ORDER BY created_at DESC LIMIT 50")->fetchAll();
 $session_types = $pdo->query("SELECT * FROM session_types ORDER BY name")->fetchAll();
 
-// Fetch admin-created private/semi-private session templates (from Products > Sessions)
+// Fetch Private and Semi-Private session templates (created by admins in Products > Sessions)
 $private_templates = [];
 try {
     $pt_stmt = $pdo->query("
         SELECT tst.id, tst.name, tst.description, tst.duration_minutes, tst.price,
-               tst.max_participants, tst.session_type_id, tst.practice_plan_id,
-               'private' as privacy_type
+               tst.max_participants, tst.session_type_id, tst.practice_plan_id
         FROM training_session_templates tst
         WHERE tst.is_active = 1
+          AND tst.name IN ('Private Session', 'Semi-Private Session')
         ORDER BY tst.name
     ");
     $private_templates = $pt_stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -391,39 +391,30 @@ $is_demo_data = false;
     <div class="session-modal session-modal-large">
         <div class="session-modal-header"><h2><i class="fas fa-user-lock"></i> Create Private Session</h2><button class="session-modal-close" onclick="closePrivateSessionModal()">&times;</button></div>
         <div class="session-modal-body">
-            <p class="modal-description">Create a private or semi-private session for your assigned athletes.</p>
+            <p class="modal-description">Select a session type, set the location, date, time and duration. Price is calculated from the hourly rate set by admins.</p>
             <form id="privateSessionForm" method="POST" action="process_create_session.php">
                 <?= csrfTokenInput() ?>
                 <input type="hidden" name="action" value="create_private_session">
                 <div class="form-row">
-                    <div class="form-group"><label>Session Privacy <span class="required">*</span></label>
-                        <select name="privacy_type" id="privacyTypeSelect" class="form-select" required>
-                            <option value="">-- Select Type --</option>
-                            <option value="private">Private (1-on-1)</option>
-                            <option value="semi_private">Semi-Private (Small Group)</option>
-                        </select>
-                    </div>
-                    <div class="form-group"><label>Session Product <span class="required">*</span></label>
+                    <div class="form-group"><label>Session Type <span class="required">*</span></label>
                         <select name="template_id" id="templateSelect" class="form-select" required>
                             <option value="">-- Select Session --</option>
                             <?php foreach ($private_templates as $tpl): ?>
-                            <option value="<?= $tpl['id'] ?>" data-price="<?= $tpl['price'] ?? 0 ?>" data-duration="<?= $tpl['duration_minutes'] ?? 60 ?>" data-max="<?= $tpl['max_participants'] ?? '' ?>" data-session-type="<?= $tpl['session_type_id'] ?? '' ?>" data-plan="<?= $tpl['practice_plan_id'] ?? '' ?>"><?= htmlspecialchars($tpl['name']) ?> ($<?= number_format($tpl['price'] ?? 0, 2) ?>)</option>
+                            <option value="<?= $tpl['id'] ?>" data-hourly-price="<?= $tpl['price'] ?? 0 ?>" data-name="<?= htmlspecialchars($tpl['name']) ?>"><?= htmlspecialchars($tpl['name']) ?> ($<?= number_format($tpl['price'] ?? 0, 2) ?>/hr)</option>
                             <?php endforeach; ?>
-                            <?php if (empty($private_templates)): ?>
-                            <?php foreach ($session_types as $type): ?>
-                            <option value="st_<?= $type['id'] ?>" data-price="<?= $type['price'] ?? $type['default_price'] ?? 0 ?>" data-duration="60"><?= htmlspecialchars($type['name']) ?> ($<?= number_format($type['price'] ?? $type['default_price'] ?? 0, 2) ?>)</option>
-                            <?php endforeach; ?>
-                            <?php endif; ?>
                         </select>
                     </div>
-                </div>
-                <div class="form-row">
                     <div class="form-group"><label>Location <span class="required">*</span></label><select name="location_id" class="form-select" required><option value="">-- Select --</option><?php foreach ($locations as $loc): ?><option value="<?= $loc['id'] ?>"><?= htmlspecialchars($loc['name']) ?></option><?php endforeach; ?></select></div>
-                    <div class="form-group"><label>Date <span class="required">*</span></label><input type="date" name="session_date" class="form-input" required min="<?= date('Y-m-d') ?>"></div>
                 </div>
                 <div class="form-row">
+                    <div class="form-group"><label>Date <span class="required">*</span></label><input type="date" name="session_date" class="form-input" required min="<?= date('Y-m-d') ?>"></div>
                     <div class="form-group"><label>Time <span class="required">*</span></label><select name="session_time" class="form-select" required><option value="">-- Select --</option><?php for ($h = 6; $h <= 21; $h++): ?><option value="<?= sprintf('%02d:00', $h) ?>"><?= date('g:i A', strtotime("$h:00")) ?></option><?php endfor; ?></select></div>
+                </div>
+                <div class="form-row">
                     <div class="form-group"><label>Duration</label><select name="duration_minutes" id="durationSelect" class="form-select"><option value="30">30 min</option><option value="45">45 min</option><option value="60" selected>60 min</option><option value="90">90 min</option></select></div>
+                    <div class="form-group"><label>Estimated Cost</label>
+                        <div id="calculatedPriceDisplay" style="padding: 10px 14px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; font-size: 16px; font-weight: 700; color: var(--text-white); line-height: 1.4;">Select a session type</div>
+                    </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group"><label>Practice Plan</label><select name="practice_plan_id" class="form-select"><option value="">-- No Plan --</option><?php foreach ($practice_plans as $plan): ?><option value="<?= $plan['id'] ?>"><?= htmlspecialchars($plan['name']) ?></option><?php endforeach; ?></select></div>
@@ -676,21 +667,26 @@ function closeAssignPlanModal() { document.getElementById('assignPlanModal').cla
 function openPrivateSessionModal() { document.getElementById('privateSessionModal').classList.add('active'); }
 function closePrivateSessionModal() { document.getElementById('privateSessionModal').classList.remove('active'); }
 
-// Auto-fill duration when a template is selected
-document.getElementById('templateSelect')?.addEventListener('change', function() {
-    var opt = this.options[this.selectedIndex];
-    if (opt && opt.dataset.duration) {
-        var durSel = document.getElementById('durationSelect');
-        if (durSel) {
-            for (var i = 0; i < durSel.options.length; i++) {
-                if (durSel.options[i].value === opt.dataset.duration) {
-                    durSel.selectedIndex = i;
-                    break;
-                }
-            }
-        }
+// Calculate and display price based on hourly rate and duration
+function updateCalculatedPrice() {
+    var sel = document.getElementById('templateSelect');
+    var durSel = document.getElementById('durationSelect');
+    var display = document.getElementById('calculatedPriceDisplay');
+    if (!sel || !durSel || !display) return;
+    var opt = sel.options[sel.selectedIndex];
+    var hourlyPrice = parseFloat(opt?.dataset?.hourlyPrice || 0);
+    var duration = parseInt(durSel.value || 60);
+    if (hourlyPrice > 0) {
+        var total = hourlyPrice * (duration / 60);
+        display.textContent = '$' + total.toFixed(2) + ' (' + duration + ' min @ $' + hourlyPrice.toFixed(2) + '/hr)';
+        display.style.color = '#00ff88';
+    } else {
+        display.textContent = 'Select a session type';
+        display.style.color = 'var(--text-white)';
     }
-});
+}
+document.getElementById('templateSelect')?.addEventListener('change', updateCalculatedPrice);
+document.getElementById('durationSelect')?.addEventListener('change', updateCalculatedPrice);
 
 
 document.addEventListener('keydown', function(e) { if (e.key === 'Escape') document.querySelectorAll('.session-modal-overlay.active').forEach(m => m.classList.remove('active')); });

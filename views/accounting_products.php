@@ -408,7 +408,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                                 <h4><?= htmlspecialchars($session['name']) ?></h4>
                                 <span class="product-status <?= $isActive ? 'active' : 'inactive' ?>"><?= $isActive ? 'Active' : 'Inactive' ?></span>
                             </div>
-                            <div class="product-price">$<?= number_format($price, 2) ?><small>/session</small></div>
+                            <div class="product-price">$<?= number_format($price, 2) ?><small>/hour</small></div>
                             <div class="product-details">
                                 <p><i class="fas fa-clock"></i> <?= $duration ?> minutes</p>
                                 <?php if ($maxParticipants): ?>
