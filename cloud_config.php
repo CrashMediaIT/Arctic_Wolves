@@ -1399,11 +1399,25 @@ function restoreThemeImagesFromPersistentStorage($pdo) {
     try {
         $stmt = $pdo->query("SELECT setting_name, setting_value FROM theme_settings WHERE setting_name IN (
             'logo_url', 'favicon_url', 'hero_image_url', 'center_ice_logo_url',
-            'business_card_front_bg_url', 'business_card_back_bg_url'
+            'business_card_front_bg_url', 'business_card_back_bg_url',
+            'logo_url_nc_path', 'favicon_url_nc_path', 'hero_image_url_nc_path',
+            'center_ice_logo_url_nc_path', 'business_card_front_bg_url_nc_path',
+            'business_card_back_bg_url_nc_path'
         )");
-        $theme_images = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+        $all_settings = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
     } catch (Exception $e) {
         return; // Table may not exist yet
+    }
+
+    // Separate URL settings from Nextcloud path settings
+    $theme_images = [];
+    $nc_paths = [];
+    foreach ($all_settings as $key => $val) {
+        if (str_ends_with($key, '_nc_path')) {
+            $nc_paths[$key] = $val;
+        } else {
+            $theme_images[$key] = $val;
+        }
     }
 
     $project_root = realpath(__DIR__);
@@ -1430,7 +1444,7 @@ function restoreThemeImagesFromPersistentStorage($pdo) {
         if ($restored) {
             error_log("Restored theme image from persistent storage: $filename -> $local_path");
         } else {
-            // Try Nextcloud as last resort
+            // Try Nextcloud using stored Nextcloud path first, then guess path as fallback
             try {
                 $nc_settings = getNextcloudSettings($pdo);
                 if (!empty($nc_settings['nextcloud_url'])) {
@@ -1440,8 +1454,13 @@ function restoreThemeImagesFromPersistentStorage($pdo) {
                             $nc_settings['nextcloud_password'] = $decrypted;
                         }
                     }
-                    $images_dir = $nc_settings['nextcloud_images_dir'] ?? '/Images';
-                    $remote_path = $images_dir . '/theme/' . $filename;
+                    // Use stored Nextcloud path if available, otherwise guess
+                    $nc_path_key = $setting_name . '_nc_path';
+                    $remote_path = $nc_paths[$nc_path_key] ?? null;
+                    if (empty($remote_path)) {
+                        $images_dir = $nc_settings['nextcloud_images_dir'] ?? '/Images';
+                        $remote_path = $images_dir . '/theme/' . $filename;
+                    }
                     $nc_restored = restoreImageFromNextcloud($pdo, $nc_settings, $remote_path, $local_path);
                     if ($nc_restored) {
                         error_log("Restored theme image from Nextcloud: $filename -> $local_path");

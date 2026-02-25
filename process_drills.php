@@ -647,8 +647,11 @@ if ($action === 'import_ihs_url') {
         
         // Download and save the rink image if available
         $custom_image = '';
+        $drill_nc_path = null;
         if (!empty($rink_image_url) && filter_var($rink_image_url, FILTER_VALIDATE_URL)) {
-            $custom_image = downloadAndSaveImage($rink_image_url, $user_id);
+            $img_result = downloadAndSaveImage($rink_image_url, $user_id);
+            $custom_image = $img_result['local_path'] ?? '';
+            $drill_nc_path = $img_result['nextcloud_path'] ?? null;
         }
         
         // Insert the drill with sections in their own columns
@@ -659,6 +662,12 @@ if ($action === 'import_ihs_url') {
         $stmt->execute([$title, $description, $setup, $coaching_points, $progression, $category_id, $custom_image, $ihs_url, $user_id]);
         
         $ihs_url_drill_id = $pdo->lastInsertId();
+        
+        // Store Nextcloud path for persistent recovery
+        if (!empty($drill_nc_path)) {
+            $pdo->prepare("UPDATE drills SET nextcloud_image_path = ? WHERE id = ?")->execute([$drill_nc_path, $ihs_url_drill_id]);
+        }
+        
         Auditor::log($pdo, $user_id, 'create', 'drills', $ihs_url_drill_id, ['action' => 'drill_imported_ihs_url', 'title' => $title]);
 
         header("Location: dashboard.php?page=drill_library&status=drill_imported");
@@ -921,6 +930,7 @@ function downloadAndSaveImage($image_url, $user_id) {
     
     if (file_put_contents($filepath, $image_data)) {
         $local_path = 'uploads/drills/' . $filename;
+        $nextcloud_path = null;
         
         // Upload drill diagram image to Nextcloud for persistent storage
         global $pdo;
@@ -934,17 +944,20 @@ function downloadAndSaveImage($image_url, $user_id) {
                             $nc_settings['nextcloud_password'] = $decrypted;
                         }
                     }
-                    $result = uploadImageToNextcloud($pdo, $nc_settings, $local_path, 'drills/diagrams', $filename);
+                    $result = uploadImageToNextcloud($pdo, $nc_settings, $filepath, 'drills/diagrams', $filename);
+                    if (!empty($result['success']) && !empty($result['remote_path'])) {
+                        $nextcloud_path = $result['remote_path'];
+                    }
                 }
             } catch (Exception $e) {
                 error_log("Nextcloud drill diagram upload failed: " . $e->getMessage());
             }
         }
         
-        return $local_path;
+        return ['local_path' => $local_path, 'nextcloud_path' => $nextcloud_path];
     }
     
-    return '';
+    return ['local_path' => '', 'nextcloud_path' => null];
 }
 
 // =========================================================

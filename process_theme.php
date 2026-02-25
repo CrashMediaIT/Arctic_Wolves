@@ -46,6 +46,17 @@ function updateThemeSetting($pdo, $name, $value) {
 }
 
 /**
+ * Save theme file upload result: stores local URL and Nextcloud path in theme_settings.
+ * The Nextcloud path is stored as {setting_name}_nc_path for restore operations.
+ */
+function saveThemeUploadResult($pdo, $setting_name, $upload_result) {
+    updateThemeSetting($pdo, $setting_name, $upload_result['url']);
+    if (!empty($upload_result['nextcloud_path'])) {
+        updateThemeSetting($pdo, $setting_name . '_nc_path', $upload_result['nextcloud_path']);
+    }
+}
+
+/**
  * Sync center_ice_logo_url with logo_url if not separately set
  */
 function syncCenterIceLogoIfNeeded($pdo, $logoUrl) {
@@ -93,9 +104,9 @@ function handleFileUpload($file, $type = 'image') {
     
     if (move_uploaded_file($file['tmp_name'], $filepath)) {
         $local_url = 'uploads/theme/' . $filename;
+        $nextcloud_path = null;
         
-        // Always save to persistent storage (survives app re-deploys)
-        // Also upload to Nextcloud if configured
+        // Always upload to Nextcloud for persistent storage (survives app re-deploys)
         global $pdo;
         if ($pdo) {
             try {
@@ -111,7 +122,10 @@ function handleFileUpload($file, $type = 'image') {
                         }
                     }
                     // uploadImageToNextcloud also saves to persistent storage
-                    uploadImageToNextcloud($pdo, $nc_settings, $absolute_path, 'theme', $filename);
+                    $nc_result = uploadImageToNextcloud($pdo, $nc_settings, $absolute_path, 'theme', $filename);
+                    if (!empty($nc_result['success']) && !empty($nc_result['remote_path'])) {
+                        $nextcloud_path = $nc_result['remote_path'];
+                    }
                 } else {
                     // No Nextcloud — still save to persistent storage
                     saveToPersistentStorage($absolute_path, 'theme', $filename, $pdo);
@@ -123,7 +137,7 @@ function handleFileUpload($file, $type = 'image') {
             }
         }
         
-        return ['success' => true, 'url' => $local_url];
+        return ['success' => true, 'url' => $local_url, 'nextcloud_path' => $nextcloud_path];
     }
     
     return ['success' => false, 'message' => 'Failed to save file'];
@@ -173,7 +187,7 @@ try {
             if (isset($_FILES['logo']) && $_FILES['logo']['error'] === UPLOAD_ERR_OK) {
                 $result = handleFileUpload($_FILES['logo'], 'logo');
                 if ($result['success']) {
-                    updateThemeSetting($pdo, 'logo_url', $result['url']);
+                    saveThemeUploadResult($pdo, 'logo_url', $result);
                     syncCenterIceLogoIfNeeded($pdo, $result['url']);
                 }
             } elseif (!empty($_POST['logo_url_input'])) {
@@ -188,7 +202,7 @@ try {
             if (isset($_FILES['favicon']) && $_FILES['favicon']['error'] === UPLOAD_ERR_OK) {
                 $result = handleFileUpload($_FILES['favicon'], 'favicon');
                 if ($result['success']) {
-                    updateThemeSetting($pdo, 'favicon_url', $result['url']);
+                    saveThemeUploadResult($pdo, 'favicon_url', $result);
                 }
             } elseif (!empty($_POST['favicon_url'])) {
                 updateThemeSetting($pdo, 'favicon_url', $_POST['favicon_url']);
@@ -206,7 +220,7 @@ try {
             if (isset($_FILES['center_ice_logo']) && $_FILES['center_ice_logo']['error'] === UPLOAD_ERR_OK) {
                 $result = handleFileUpload($_FILES['center_ice_logo'], 'center_ice');
                 if ($result['success']) {
-                    updateThemeSetting($pdo, 'center_ice_logo_url', $result['url']);
+                    saveThemeUploadResult($pdo, 'center_ice_logo_url', $result);
                 }
             } elseif (!empty($_POST['center_ice_logo_url_input'])) {
                 updateThemeSetting($pdo, 'center_ice_logo_url', $_POST['center_ice_logo_url_input']);
@@ -216,7 +230,7 @@ try {
             if (isset($_FILES['bc_front_bg']) && $_FILES['bc_front_bg']['error'] === UPLOAD_ERR_OK) {
                 $front_bg_result = handleFileUpload($_FILES['bc_front_bg'], 'bc_front_bg');
                 if ($front_bg_result['success']) {
-                    updateThemeSetting($pdo, 'business_card_front_bg_url', $front_bg_result['url']);
+                    saveThemeUploadResult($pdo, 'business_card_front_bg_url', $front_bg_result);
                 } else {
                     ErrorLogger::error("Front card background upload failed: " . ($front_bg_result['message'] ?? 'Unknown error'));
                 }
@@ -224,7 +238,7 @@ try {
             if (isset($_FILES['bc_back_bg']) && $_FILES['bc_back_bg']['error'] === UPLOAD_ERR_OK) {
                 $back_bg_result = handleFileUpload($_FILES['bc_back_bg'], 'bc_back_bg');
                 if ($back_bg_result['success']) {
-                    updateThemeSetting($pdo, 'business_card_back_bg_url', $back_bg_result['url']);
+                    saveThemeUploadResult($pdo, 'business_card_back_bg_url', $back_bg_result);
                 } else {
                     ErrorLogger::error("Back card background upload failed: " . ($back_bg_result['message'] ?? 'Unknown error'));
                 }
@@ -240,7 +254,7 @@ try {
             if (isset($_FILES['center_ice_logo']) && $_FILES['center_ice_logo']['error'] === UPLOAD_ERR_OK) {
                 $result = handleFileUpload($_FILES['center_ice_logo'], 'center_ice');
                 if ($result['success']) {
-                    updateThemeSetting($pdo, 'center_ice_logo_url', $result['url']);
+                    saveThemeUploadResult($pdo, 'center_ice_logo_url', $result);
                 }
             } elseif (!empty($_POST['center_ice_logo_url_input'])) {
                 updateThemeSetting($pdo, 'center_ice_logo_url', $_POST['center_ice_logo_url_input']);
@@ -261,7 +275,7 @@ try {
             if (isset($_FILES['bc_front_bg']) && $_FILES['bc_front_bg']['error'] === UPLOAD_ERR_OK) {
                 $front_bg_result = handleFileUpload($_FILES['bc_front_bg'], 'bc_front_bg');
                 if ($front_bg_result['success']) {
-                    updateThemeSetting($pdo, 'business_card_front_bg_url', $front_bg_result['url']);
+                    saveThemeUploadResult($pdo, 'business_card_front_bg_url', $front_bg_result);
                 } else {
                     ErrorLogger::error("Front card background upload failed: " . ($front_bg_result['message'] ?? 'Unknown error'));
                 }
@@ -271,7 +285,7 @@ try {
             if (isset($_FILES['bc_back_bg']) && $_FILES['bc_back_bg']['error'] === UPLOAD_ERR_OK) {
                 $back_bg_result = handleFileUpload($_FILES['bc_back_bg'], 'bc_back_bg');
                 if ($back_bg_result['success']) {
-                    updateThemeSetting($pdo, 'business_card_back_bg_url', $back_bg_result['url']);
+                    saveThemeUploadResult($pdo, 'business_card_back_bg_url', $back_bg_result);
                 } else {
                     ErrorLogger::error("Back card background upload failed: " . ($back_bg_result['message'] ?? 'Unknown error'));
                 }
@@ -293,7 +307,7 @@ try {
             if (isset($_FILES['hero_image']) && $_FILES['hero_image']['error'] === UPLOAD_ERR_OK) {
                 $result = handleFileUpload($_FILES['hero_image'], 'hero');
                 if ($result['success']) {
-                    updateThemeSetting($pdo, 'hero_image_url', $result['url']);
+                    saveThemeUploadResult($pdo, 'hero_image_url', $result);
                 }
             } elseif (!empty($_POST['hero_image_url'])) {
                 updateThemeSetting($pdo, 'hero_image_url', $_POST['hero_image_url']);
@@ -422,7 +436,7 @@ try {
             if (isset($_FILES['logo']) && $_FILES['logo']['error'] === UPLOAD_ERR_OK) {
                 $result = handleFileUpload($_FILES['logo'], 'logo');
                 if ($result['success']) {
-                    updateThemeSetting($pdo, 'logo_url', $result['url']);
+                    saveThemeUploadResult($pdo, 'logo_url', $result);
                     updateThemeSetting($pdo, 'logo_method', 'upload');
                     syncCenterIceLogoIfNeeded($pdo, $result['url']);
                 }
@@ -449,7 +463,7 @@ try {
             if ($center_ice_upload_attempted && $_FILES['center_ice_logo']['error'] === UPLOAD_ERR_OK) {
                 $result = handleFileUpload($_FILES['center_ice_logo'], 'center_ice');
                 if ($result['success']) {
-                    updateThemeSetting($pdo, 'center_ice_logo_url', $result['url']);
+                    saveThemeUploadResult($pdo, 'center_ice_logo_url', $result);
                     updateThemeSetting($pdo, 'center_ice_logo_method', 'upload');
                 }
                 // If upload failed, don't fall through to URL - let user know via no change
@@ -468,7 +482,7 @@ try {
             if (isset($_FILES['bc_front_bg']) && $_FILES['bc_front_bg']['error'] === UPLOAD_ERR_OK) {
                 $front_bg_result = handleFileUpload($_FILES['bc_front_bg'], 'bc_front_bg');
                 if ($front_bg_result['success']) {
-                    updateThemeSetting($pdo, 'business_card_front_bg_url', $front_bg_result['url']);
+                    saveThemeUploadResult($pdo, 'business_card_front_bg_url', $front_bg_result);
                 } else {
                     ErrorLogger::error("Front card background upload failed: " . ($front_bg_result['message'] ?? 'Unknown error'));
                 }
@@ -478,7 +492,7 @@ try {
             if (isset($_FILES['bc_back_bg']) && $_FILES['bc_back_bg']['error'] === UPLOAD_ERR_OK) {
                 $back_bg_result = handleFileUpload($_FILES['bc_back_bg'], 'bc_back_bg');
                 if ($back_bg_result['success']) {
-                    updateThemeSetting($pdo, 'business_card_back_bg_url', $back_bg_result['url']);
+                    saveThemeUploadResult($pdo, 'business_card_back_bg_url', $back_bg_result);
                 } else {
                     ErrorLogger::error("Back card background upload failed: " . ($back_bg_result['message'] ?? 'Unknown error'));
                 }
@@ -511,7 +525,7 @@ try {
             if (isset($_FILES['logo']) && $_FILES['logo']['error'] === UPLOAD_ERR_OK) {
                 $result = handleFileUpload($_FILES['logo'], 'logo');
                 if ($result['success']) {
-                    updateThemeSetting($pdo, 'logo_url', $result['url']);
+                    saveThemeUploadResult($pdo, 'logo_url', $result);
                     syncCenterIceLogoIfNeeded($pdo, $result['url']);
                 }
             } elseif (!empty($_POST['logo_url_input'])) {
@@ -530,7 +544,7 @@ try {
             if (isset($_FILES['center_ice_logo']) && $_FILES['center_ice_logo']['error'] === UPLOAD_ERR_OK) {
                 $result = handleFileUpload($_FILES['center_ice_logo'], 'center_ice');
                 if ($result['success']) {
-                    updateThemeSetting($pdo, 'center_ice_logo_url', $result['url']);
+                    saveThemeUploadResult($pdo, 'center_ice_logo_url', $result);
                 }
             } elseif (!empty($_POST['center_ice_logo_url_input'])) {
                 updateThemeSetting($pdo, 'center_ice_logo_url', $_POST['center_ice_logo_url_input']);
@@ -541,7 +555,7 @@ try {
             if (isset($_FILES['bc_front_bg']) && $_FILES['bc_front_bg']['error'] === UPLOAD_ERR_OK) {
                 $front_bg_result = handleFileUpload($_FILES['bc_front_bg'], 'bc_front_bg');
                 if ($front_bg_result['success']) {
-                    updateThemeSetting($pdo, 'business_card_front_bg_url', $front_bg_result['url']);
+                    saveThemeUploadResult($pdo, 'business_card_front_bg_url', $front_bg_result);
                 } else {
                     $msg = "Front card background upload failed: " . ($front_bg_result['message'] ?? 'Unknown error');
                     ErrorLogger::error($msg);
@@ -564,7 +578,7 @@ try {
             if (isset($_FILES['bc_back_bg']) && $_FILES['bc_back_bg']['error'] === UPLOAD_ERR_OK) {
                 $back_bg_result = handleFileUpload($_FILES['bc_back_bg'], 'bc_back_bg');
                 if ($back_bg_result['success']) {
-                    updateThemeSetting($pdo, 'business_card_back_bg_url', $back_bg_result['url']);
+                    saveThemeUploadResult($pdo, 'business_card_back_bg_url', $back_bg_result);
                 } else {
                     $msg = "Back card background upload failed: " . ($back_bg_result['message'] ?? 'Unknown error');
                     ErrorLogger::error($msg);
@@ -581,7 +595,7 @@ try {
             if (isset($_FILES['hero_image']) && $_FILES['hero_image']['error'] === UPLOAD_ERR_OK) {
                 $result = handleFileUpload($_FILES['hero_image'], 'hero');
                 if ($result['success']) {
-                    updateThemeSetting($pdo, 'hero_image_url', $result['url']);
+                    saveThemeUploadResult($pdo, 'hero_image_url', $result);
                 }
             } elseif (!empty($_POST['hero_image_url'])) {
                 updateThemeSetting($pdo, 'hero_image_url', $_POST['hero_image_url']);
