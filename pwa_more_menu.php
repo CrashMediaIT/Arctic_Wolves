@@ -7,7 +7,8 @@
 
 // These variables are available from pwa.php:
 // $user_name, $user_role, $isAdmin, $isCoach, $isAnyCoach, $isHealthCoach,
-// $isTeamCoach, $isTeamStaff, $isParent, $isFrontDesk, $canAccessPOS, $canAccessHealthManagement
+// $isTeamCoach, $isTeamStaff, $isParent, $isFrontDesk, $isHR, $isAccounting,
+// $canAccessPOS, $canAccessHealthManagement, $canAccessHR, $canAccessAccounting, $isStaff
 ?>
 
 <!-- User Info -->
@@ -139,7 +140,7 @@
 <?php endif; ?>
 
 <!-- Finance (Admin) -->
-<?php if ($isAdmin): ?>
+<?php if ($canAccessAccounting): ?>
 <div class="pwa-menu-group">
     <div class="pwa-section-label">Accounting & Reports</div>
     <ul class="pwa-menu-list">
@@ -149,6 +150,10 @@
         </a>
         <a href="?page=financial_reports" class="pwa-menu-item">
             <i class="fas fa-chart-bar"></i> Financial Reports
+            <i class="fas fa-chevron-right menu-chevron"></i>
+        </a>
+        <a href="?page=reports_user" class="pwa-menu-item">
+            <i class="fas fa-users-gear"></i> User Reports
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
         <a href="?page=credits_refunds" class="pwa-menu-item">
@@ -176,6 +181,10 @@
             <i class="fas fa-cash-register"></i> POS Terminal
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
+        <a href="?page=inventory_management" class="pwa-menu-item">
+            <i class="fas fa-warehouse"></i> Inventory & Orders
+            <i class="fas fa-chevron-right menu-chevron"></i>
+        </a>
         <a href="?page=pos_online_orders" class="pwa-menu-item">
             <i class="fas fa-shipping-fast"></i> Online Orders
             <i class="fas fa-chevron-right menu-chevron"></i>
@@ -188,12 +197,16 @@
             <i class="fas fa-calendar-alt"></i> My Schedule
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
+        <a href="?page=sip_settings" class="pwa-menu-item">
+            <i class="fas fa-address-book"></i> Company Directory
+            <i class="fas fa-chevron-right menu-chevron"></i>
+        </a>
     </ul>
 </div>
 <?php endif; ?>
 
-<!-- HR (Admin) -->
-<?php if ($isAdmin): ?>
+<!-- HR (Admin + HR) -->
+<?php if ($canAccessHR): ?>
 <div class="pwa-menu-group">
     <div class="pwa-section-label">HR</div>
     <ul class="pwa-menu-list">
