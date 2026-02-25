@@ -209,8 +209,8 @@ try {
         <h1 style="margin: 0 0 10px 0;">Booking Confirmed!</h1>
         <p style="color: #94a3b8; margin-bottom: 30px;">A receipt has been sent to your email.</p>
         
-        <a href="dashboard.php?page=schedule" class="btn-primary" style="text-decoration:none; padding:12px 30px; border-radius:6px; display:inline-block;">
-            Return to Schedule
+        <a href="dashboard.php?page=upcoming_sessions" class="btn-primary" style="text-decoration:none; padding:12px 30px; border-radius:6px; display:inline-block;">
+            Return to Upcoming Sessions
         </a>
     </div>
 

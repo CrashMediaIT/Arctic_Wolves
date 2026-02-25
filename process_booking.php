@@ -228,7 +228,7 @@ if ($action === 'register_template_session') {
                 ]],
                 'mode' => 'payment',
                 'success_url' => $domain . '/payment_success.php?session_id={CHECKOUT_SESSION_ID}',
-                'cancel_url'  => $domain . '/dashboard.php?page=schedule&error=cancelled',
+                'cancel_url'  => $domain . '/dashboard.php?page=booking&error=cancelled',
                 'client_reference_id' => $user_id,
                 'metadata' => [
                     'type' => 'template_session',
@@ -473,10 +473,10 @@ if ($action === 'book_private_session') {
         
         // Save booking with confirmed status, payment_status='pending' until Stripe confirms payment
         $stmt = $pdo->prepare("
-            INSERT INTO bookings (session_id, user_id, amount, payment_status, status, notes) 
-            VALUES (?, ?, ?, 'pending', 'confirmed', ?)
+            INSERT INTO bookings (session_id, user_id, stripe_session_id, amount_paid, payment_status, status, notes) 
+            VALUES (?, ?, ?, ?, 'pending', 'confirmed', ?)
         ");
-        $stmt->execute([$session_id, $user_id, $final_price, $notes]);
+        $stmt->execute([$session_id, $user_id, $checkout_session->id, $final_price, $notes]);
         $new_booking_id = $pdo->lastInsertId();
         
         Auditor::log($pdo, $user_id, 'create', 'bookings', $new_booking_id, ['action' => 'book_private_session', 'session_id' => $session_id, 'amount' => $final_price]);
@@ -578,7 +578,7 @@ try {
         ]],
         'mode' => 'payment',
         'success_url' => $domain . '/payment_success.php?session_id={CHECKOUT_SESSION_ID}',
-        'cancel_url'  => $domain . '/dashboard.php?page=schedule&error=cancelled',
+        'cancel_url'  => $domain . '/dashboard.php?page=booking&error=cancelled',
         'client_reference_id' => $user_id,
     ];
     if (!empty($customer_email)) {
