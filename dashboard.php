@@ -48,6 +48,18 @@ $isActualAdmin = (($user_role === 'admin') || (isset($_SESSION['persona_original
 $personaActive = !empty($_SESSION['persona_active']);
 $personaOriginalRole = $_SESSION['persona_original_role'] ?? null;
 
+// Restore theme images from persistent storage if they're missing locally (e.g., after re-deploy).
+// Only runs once per session to avoid unnecessary disk checks on every page load.
+if (!isset($_SESSION['theme_images_checked'])) {
+    try {
+        require_once __DIR__ . '/cloud_config.php';
+        restoreThemeImagesFromPersistentStorage($pdo);
+        $_SESSION['theme_images_checked'] = true;
+    } catch (Exception $e) {
+        // Silently continue - restoration is best-effort
+    }
+}
+
 // Check if user needs to accept agreements (for users created by admin/coach)
 $showAgreementsModal = false;
 $agreementTemplates = [];

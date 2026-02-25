@@ -94,10 +94,14 @@ function handleFileUpload($file, $type = 'image') {
     if (move_uploaded_file($file['tmp_name'], $filepath)) {
         $local_url = 'uploads/theme/' . $filename;
         
-        // Upload theme image to Nextcloud for persistent storage
+        // Always save to persistent storage (survives app re-deploys)
+        // Also upload to Nextcloud if configured
         global $pdo;
         if ($pdo) {
             try {
+                // Use absolute path for persistent storage and Nextcloud upload
+                $absolute_path = $filepath;
+                
                 $nc_settings = getNextcloudSettings($pdo);
                 if (!empty($nc_settings['nextcloud_url'])) {
                     if (!empty($nc_settings['nextcloud_password'])) {
@@ -106,10 +110,16 @@ function handleFileUpload($file, $type = 'image') {
                             $nc_settings['nextcloud_password'] = $decrypted;
                         }
                     }
-                    uploadImageToNextcloud($pdo, $nc_settings, $local_url, 'theme', $filename);
+                    // uploadImageToNextcloud also saves to persistent storage
+                    uploadImageToNextcloud($pdo, $nc_settings, $absolute_path, 'theme', $filename);
+                } else {
+                    // No Nextcloud — still save to persistent storage
+                    saveToPersistentStorage($absolute_path, 'theme', $filename, $pdo);
                 }
             } catch (Exception $e) {
-                error_log("Nextcloud theme image upload failed: " . $e->getMessage());
+                error_log("Theme image persistent/Nextcloud upload failed: " . $e->getMessage());
+                // Try persistent storage as a fallback
+                try { saveToPersistentStorage($filepath, 'theme', $filename, $pdo); } catch (Exception $ps) { error_log("Persistent storage fallback also failed: " . $ps->getMessage()); }
             }
         }
         

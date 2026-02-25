@@ -1387,4 +1387,70 @@ function uploadToPaperless($pdo, $file_path, $tag_name, $title = '') {
     error_log('Paperless-NGX upload failed: HTTP ' . $http_code . ' - ' . $response);
     return ['success' => false, 'message' => 'Upload failed (HTTP ' . $http_code . ')'];
 }
+
+/**
+ * Restore theme images from persistent storage when local files are missing.
+ * Called during page load to ensure theme images survive re-deploys.
+ * Checks logo, favicon, hero image, center ice logo, and business card backgrounds.
+ *
+ * @param PDO $pdo Database connection
+ */
+function restoreThemeImagesFromPersistentStorage($pdo) {
+    try {
+        $stmt = $pdo->query("SELECT setting_name, setting_value FROM theme_settings WHERE setting_name IN (
+            'logo_url', 'favicon_url', 'hero_image_url', 'center_ice_logo_url',
+            'business_card_front_bg_url', 'business_card_back_bg_url'
+        )");
+        $theme_images = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+    } catch (Exception $e) {
+        return; // Table may not exist yet
+    }
+
+    $project_root = realpath(__DIR__);
+
+    foreach ($theme_images as $setting_name => $url) {
+        if (empty($url)) continue;
+
+        // Only process local upload paths (not external URLs)
+        if (strpos($url, 'http://') === 0 || strpos($url, 'https://') === 0) continue;
+        if (strpos($url, 'uploads/') !== 0) continue;
+
+        $local_path = $project_root . '/' . $url;
+
+        // If the file already exists locally, nothing to do
+        if (file_exists($local_path)) continue;
+
+        // Extract filename and determine subfolder for persistent storage lookup
+        $filename = basename($url);
+        // Theme images are stored under 'theme' subfolder in persistent storage
+        $subfolder = 'theme';
+
+        // Try to restore from persistent storage
+        $restored = restoreFromPersistentStorage($subfolder, $filename, $local_path, $pdo);
+        if ($restored) {
+            error_log("Restored theme image from persistent storage: $filename -> $local_path");
+        } else {
+            // Try Nextcloud as last resort
+            try {
+                $nc_settings = getNextcloudSettings($pdo);
+                if (!empty($nc_settings['nextcloud_url'])) {
+                    if (!empty($nc_settings['nextcloud_password'])) {
+                        $decrypted = function_exists('decryptPassword') ? decryptPassword($nc_settings['nextcloud_password']) : '';
+                        if (!empty($decrypted)) {
+                            $nc_settings['nextcloud_password'] = $decrypted;
+                        }
+                    }
+                    $images_dir = $nc_settings['nextcloud_images_dir'] ?? '/Images';
+                    $remote_path = $images_dir . '/theme/' . $filename;
+                    $nc_restored = restoreImageFromNextcloud($pdo, $nc_settings, $remote_path, $local_path);
+                    if ($nc_restored) {
+                        error_log("Restored theme image from Nextcloud: $filename -> $local_path");
+                    }
+                }
+            } catch (Exception $e) {
+                error_log("Failed to restore theme image from Nextcloud: " . $e->getMessage());
+            }
+        }
+    }
+}
 ?>
