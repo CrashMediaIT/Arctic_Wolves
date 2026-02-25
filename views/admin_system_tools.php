@@ -110,6 +110,9 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
     <a href="?page=system_tools&tab=nextcloud" class="page-tab <?php echo $activeTab === 'nextcloud' ? 'active' : ''; ?>">
         <i class="fas fa-cloud"></i> Nextcloud
     </a>
+    <a href="?page=system_tools&tab=rustfs" class="page-tab <?php echo $activeTab === 'rustfs' ? 'active' : ''; ?>">
+        <i class="fas fa-box-open"></i> RustFS Storage
+    </a>
     <a href="?page=system_tools&tab=docuseal" class="page-tab <?php echo $activeTab === 'docuseal' ? 'active' : ''; ?>">
         <i class="fas fa-file-signature"></i> DocuSeal
     </a>
@@ -561,6 +564,120 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                         </button>
                         <button type="submit" class="btn btn-primary" data-action="save">
                             <i class="fas fa-save"></i> Save SMTP Settings
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- RustFS S3 Storage Tab -->
+    <div class="tab-content <?php echo $activeTab === 'rustfs' ? 'active' : ''; ?>" id="rustfs-tab">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-box-open"></i> RustFS S3 Storage</h3>
+                <span class="badge badge-primary">Object Storage</span>
+            </div>
+            <div class="card-body">
+                <div class="integration-status <?php echo !empty($settings['rustfs_endpoint']) ? 'connected' : 'disconnected'; ?>">
+                    <div class="status-icon">
+                        <i class="fas <?php echo !empty($settings['rustfs_endpoint']) ? 'fa-check-circle' : 'fa-times-circle'; ?>"></i>
+                    </div>
+                    <div class="status-info">
+                        <h4><?php echo !empty($settings['rustfs_endpoint']) ? 'RustFS Configured' : 'Not Configured'; ?></h4>
+                        <p><?php echo !empty($settings['rustfs_endpoint']) ? htmlspecialchars($settings['rustfs_endpoint']) : 'Configure RustFS S3 settings for persistent file storage'; ?></p>
+                    </div>
+                </div>
+
+                <div class="info-box" style="margin-bottom: 24px;">
+                    <div class="info-box-content">
+                        <p><strong>About RustFS S3 Storage:</strong></p>
+                        <p>RustFS is an S3-compatible object storage server. All uploaded files (images, videos, documents) are stored directly in RustFS. No files are saved locally on the web server.</p>
+                        <p style="color: var(--text-dim);">Ensure your RustFS server is running and the bucket exists before saving settings.</p>
+                    </div>
+                </div>
+
+                <form id="rustfs-form" method="POST" action="process_settings.php" data-form-type="rustfs">
+                    <?php echo csrfTokenInput(); ?>
+                    <input type="hidden" name="action" value="update_rustfs">
+                    <input type="hidden" name="redirect_page" value="system_tools">
+                    <div class="settings-list">
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>RustFS Endpoint URL</h4>
+                                <p>Your RustFS server address (e.g., https://rustfs.example.com or http://localhost:9000)</p>
+                            </div>
+                            <input type="text" name="rustfs_endpoint" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['rustfs_endpoint'] ?? ''); ?>"
+                                   placeholder="https://rustfs.example.com">
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Access Key</h4>
+                                <p>S3-compatible access key ID</p>
+                            </div>
+                            <input type="text" name="rustfs_access_key" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['rustfs_access_key'] ?? ''); ?>"
+                                   placeholder="Enter access key">
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Secret Key</h4>
+                                <p>S3-compatible secret key<?php echo !empty($settings['rustfs_secret_key']) ? ' (currently set)' : ''; ?></p>
+                            </div>
+                            <input type="password" name="rustfs_secret_key" class="form-input" 
+                                   placeholder="<?php echo !empty($settings['rustfs_secret_key']) ? 'Leave blank to keep current key' : 'Enter secret key'; ?>">
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Bucket Name</h4>
+                                <p>The S3 bucket where all files will be stored</p>
+                            </div>
+                            <input type="text" name="rustfs_bucket" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['rustfs_bucket'] ?? ''); ?>"
+                                   placeholder="arctic-wolves">
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Region</h4>
+                                <p>S3 region (default: us-east-1)</p>
+                            </div>
+                            <input type="text" name="rustfs_region" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['rustfs_region'] ?? 'us-east-1'); ?>"
+                                   placeholder="us-east-1">
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Use SSL</h4>
+                                <p>Enable HTTPS for RustFS connections</p>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" name="rustfs_use_ssl" 
+                                       <?php echo ($settings['rustfs_use_ssl'] ?? '1') === '1' ? 'checked' : ''; ?>
+                                       value="1">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Path Style Access</h4>
+                                <p>Use path-style URLs (recommended for self-hosted RustFS). Disable for virtual-hosted style.</p>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" name="rustfs_path_style" 
+                                       <?php echo ($settings['rustfs_path_style'] ?? '1') === '1' ? 'checked' : ''; ?>
+                                       value="1">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-actions" style="margin-top: 24px;">
+                        <button type="button" class="btn btn-secondary" onclick="testRustFSConnection()">
+                            <i class="fas fa-plug"></i> Test Connection
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Save RustFS Settings
                         </button>
                     </div>
                 </form>
@@ -3697,6 +3814,38 @@ function testNextcloudConnection(serverType = 'primary') {
         btn.disabled = false;
         btn.innerHTML = originalText;
         alert('Error testing Nextcloud connection');
+        console.error('Error:', error);
+    });
+}
+
+function testRustFSConnection() {
+    const btn = event.target.closest('button');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
+
+    const formData = new FormData(document.getElementById('rustfs-form'));
+    formData.append('action', 'test_rustfs');
+
+    fetch('process_settings.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+
+        if (data.success) {
+            alert('Success: RustFS Connection Successful!\n\n' + (data.message || 'Connected successfully.'));
+        } else {
+            alert('Error: RustFS Connection Failed\n\n' + (data.message || 'Could not connect to server'));
+        }
+    })
+    .catch(error => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        alert('Error testing RustFS connection');
         console.error('Error:', error);
     });
 }
