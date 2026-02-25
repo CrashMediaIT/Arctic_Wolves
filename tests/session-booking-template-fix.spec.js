@@ -121,10 +121,13 @@ test.describe('Public Sessions Page - Dual Source Display', () => {
     expect(dataSection).not.toContain('LIMIT');
   });
 
-  test('sessions_public.php includes source_type to distinguish session origins', () => {
+  test('sessions_public.php uses unified session source_type for all sessions', () => {
     const content = readFile('sessions_public.php');
+    // Both queries now use 'session' as source_type (unified terminology)
     expect(content).toContain("'session' as source_type");
-    expect(content).toContain("'template' as source_type");
+    // Template sessions also use 'session' source_type - no 'template' distinction
+    // Routing is based on session_date_id presence instead
+    expect(content).toContain('session_date_id');
   });
 });
 
@@ -144,14 +147,17 @@ test.describe('Registration Intent Fix', () => {
     expect(intentSection).toContain('session_date_id');
   });
 
-  test('register links use correct type based on source_type', () => {
+  test('register links use session_date_id to determine registration type', () => {
     const content = readFile('sessions_public.php');
-    expect(content).toContain("source_type'] === 'template' ? 'template_date' : 'session'");
+    // Registration type is now determined by session_date_id presence, not source_type
+    expect(content).toContain("session_date_id") ;
+    expect(content).toContain("template_date");
   });
 
-  test('calendar view register links also use correct type based on source_type', () => {
+  test('calendar view register links use session_date_id to determine type', () => {
     const content = readFile('sessions_public.php');
-    expect(content).toContain("session.source_type === 'template' ? 'template_date' : 'session'");
+    // Calendar JS now uses session.session_date_id instead of source_type
+    expect(content).toContain("session.session_date_id ? 'template_date' : 'session'");
   });
 });
 

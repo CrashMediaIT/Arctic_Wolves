@@ -64,7 +64,7 @@ $private_sessions_query = "
     SELECT s.id, s.title as session_type_name, s.description, 
            s.session_date, s.session_time,
            s.duration_minutes, s.price as session_price,
-           s.max_participants, s.is_private, s.is_semi_private,
+           s.max_participants, s.is_private, s.is_semi_private, s.coach_id,
            c.first_name as coach_first_name, c.last_name as coach_last_name,
            l.name as location_name,
            COUNT(DISTINCT b.id) as registered_count
@@ -122,7 +122,7 @@ $available_sessions_query = "
     SELECT CONCAT('session_', s.id) as unique_id, s.id, s.title as session_type_name, s.description, 
            s.session_date, s.session_time,
            s.duration_minutes, COALESCE(s.price, st.default_price, 0) as session_price,
-           s.max_participants, 'session' as source_type, NULL as date_id,
+           s.max_participants, 'session' as source_type, NULL as date_id, s.coach_id,
            c.first_name as coach_first_name, c.last_name as coach_last_name,
            l.name as location_name,
            COUNT(DISTINCT b.id) as registered_count
@@ -152,7 +152,7 @@ $template_sessions_query = "
     SELECT CONCAT('template_', td.id) as unique_id, td.id as id, t.name as session_type_name, t.description,
            DATE(td.session_date) as session_date, TIME(td.session_date) as session_time,
            t.duration_minutes, COALESCE(t.price, 0) as session_price,
-           COALESCE(td.max_participants, t.max_participants) as max_participants, 'template' as source_type, td.id as date_id,
+           COALESCE(td.max_participants, t.max_participants) as max_participants, 'session' as source_type, td.id as date_id, t.coach_id,
            c.first_name as coach_first_name, c.last_name as coach_last_name,
            l.name as location_name,
            (SELECT COUNT(*) FROM session_date_athletes sda WHERE sda.session_date_id = td.id) as registered_count
@@ -245,9 +245,10 @@ $user_booked_template_dates = $tpl_booked_stmt->fetchAll(PDO::FETCH_COLUMN);
                     $spots_left = ($session['max_participants'] ?? 10) - ($session['registered_count'] ?? 0);
                     $is_almost_full = $spots_left > 0 && $spots_left <= 3;
                     $is_full = $spots_left <= 0 && !empty($session['max_participants']);
-                    $already_booked = ($session['source_type'] === 'session') ? in_array($session['id'], $user_booked_sessions) : in_array($session['date_id'] ?? '', $user_booked_template_dates);
+                    $already_booked = ($session['source_type'] === 'session' && empty($session['date_id'])) ? in_array($session['id'], $user_booked_sessions) : in_array($session['date_id'] ?? '', $user_booked_template_dates);
+                    $is_session_coach = !empty($session['coach_id']) && intval($session['coach_id']) === intval($_SESSION['user_id']);
                 ?>
-                <div class="session-list-card" data-session-id="<?= $session['id'] ?>" data-source-type="<?= $session['source_type'] ?>" data-date-id="<?= $session['date_id'] ?? '' ?>" data-date="<?= date('Y-m-d', $session_datetime) ?>" data-booked="<?= $already_booked ? '1' : '0' ?>" data-full="<?= $is_full ? '1' : '0' ?>" data-spots="<?= $spots_left ?>">
+                <div class="session-list-card" data-session-id="<?= $session['id'] ?>" data-source-type="<?= $session['source_type'] ?>" data-date-id="<?= $session['date_id'] ?? '' ?>" data-date="<?= date('Y-m-d', $session_datetime) ?>" data-booked="<?= $already_booked ? '1' : '0' ?>" data-full="<?= $is_full ? '1' : '0' ?>" data-spots="<?= $spots_left ?>" data-coach="<?= $is_session_coach ? '1' : '0' ?>">
                     <div class="session-date-column">
                         <div class="date-badge">
                             <span class="date-month"><?= date('M', $session_datetime) ?></span>
@@ -270,7 +271,16 @@ $user_booked_template_dates = $tpl_booked_stmt->fetchAll(PDO::FETCH_COLUMN);
                         <?php endif; ?>
                     </div>
                     <div class="session-action-column">
-                        <?php if ($already_booked): ?>
+                        <?php if ($is_session_coach): ?>
+                        <div class="spots-indicator">
+                            <span class="spots-number" style="color:#6B46C1;"><i class="fas fa-whistle"></i></span>
+                            <span class="spots-text">coaching</span>
+                        </div>
+                        <div class="session-price-tag">$<?= number_format($session['session_price'] ?? 0, 0) ?></div>
+                        <button class="btn-register" disabled style="background:rgba(107,70,193,0.15);color:#6B46C1;cursor:default;opacity:0.8;">
+                            <i class="fas fa-user-shield"></i> You're Coaching
+                        </button>
+                        <?php elseif ($already_booked): ?>
                         <div class="spots-indicator">
                             <span class="spots-number" style="color:#00ff88;"><i class="fas fa-check"></i></span>
                             <span class="spots-text">registered</span>
@@ -345,6 +355,7 @@ $user_booked_template_dates = $tpl_booked_stmt->fetchAll(PDO::FETCH_COLUMN);
                     $ps_datetime = strtotime($ps['session_date']);
                     $ps_spots_left = ($ps['max_participants'] ?? 1) - ($ps['registered_count'] ?? 0);
                     $ps_already_booked = in_array($ps['id'], $user_booked_sessions);
+                    $ps_is_coach = !empty($ps['coach_id']) && intval($ps['coach_id']) === intval($_SESSION['user_id']);
                     $ps_label = !empty($ps['is_private']) ? 'Private' : 'Semi-Private';
                     $ps_price = !empty($ps['is_private']) ? $private_session_price : $semi_private_session_price;
                     // Use session price if coach set one, otherwise fall back to product price
@@ -376,7 +387,16 @@ $user_booked_template_dates = $tpl_booked_stmt->fetchAll(PDO::FETCH_COLUMN);
                         <?php endif; ?>
                     </div>
                     <div class="session-action-column">
-                        <?php if ($ps_already_booked): ?>
+                        <?php if ($ps_is_coach): ?>
+                        <div class="spots-indicator">
+                            <span class="spots-number" style="color:#6B46C1;"><i class="fas fa-whistle"></i></span>
+                            <span class="spots-text">coaching</span>
+                        </div>
+                        <div class="session-price-tag">$<?= number_format($ps_price, 0) ?></div>
+                        <button class="btn-register" disabled style="background:rgba(107,70,193,0.15);color:#6B46C1;cursor:default;opacity:0.8;">
+                            <i class="fas fa-user-shield"></i> You're Coaching
+                        </button>
+                        <?php elseif ($ps_already_booked): ?>
                         <div class="spots-indicator">
                             <span class="spots-number" style="color:#00ff88;"><i class="fas fa-check"></i></span>
                             <span class="spots-text">registered</span>
@@ -1721,6 +1741,7 @@ document.addEventListener('DOMContentLoaded', function() {
             booked: card.dataset.booked === '1',
             full: card.dataset.full === '1',
             spots: parseInt(card.dataset.spots, 10) || 0,
+            isCoach: card.dataset.coach === '1',
             element: card
         });
     });
@@ -1864,6 +1885,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 const spotsSpan = document.createElement('span');
                 if (session.booked) {
                     spotsSpan.textContent = 'registered';
+                } else if (session.isCoach) {
+                    spotsSpan.textContent = 'coaching';
                 } else {
                     spotsSpan.textContent = spots + ' spots left';
                 }
@@ -1875,7 +1898,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 registerBtn.className = 'btn-register';
                 registerBtn.style.cssText = 'width: 100%; justify-content: center;';
                 
-                if (session.booked) {
+                if (session.isCoach) {
+                    registerBtn.disabled = true;
+                    registerBtn.style.cssText += 'background:rgba(107,70,193,0.15);color:#6B46C1;cursor:default;opacity:0.8;';
+                    registerBtn.innerHTML = '<i class="fas fa-user-shield"></i> You\'re Coaching';
+                } else if (session.booked) {
                     registerBtn.disabled = true;
                     registerBtn.style.cssText += 'background:rgba(0,255,136,0.1);color:#00ff88;cursor:default;opacity:0.8;';
                     registerBtn.innerHTML = '<i class="fas fa-check-circle"></i> Registered';
@@ -2015,10 +2042,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const actionInput = document.createElement('input');
             actionInput.type = 'hidden';
             actionInput.name = 'action';
-            actionInput.value = sourceType === 'template' ? 'register_template_session' : 'register_session';
+            actionInput.value = dateId ? 'register_template_session' : 'register_session';
             form.appendChild(actionInput);
             
-            if (sourceType === 'template') {
+            if (dateId) {
                 const dateIdInput = document.createElement('input');
                 dateIdInput.type = 'hidden';
                 dateIdInput.name = 'session_date_id';
