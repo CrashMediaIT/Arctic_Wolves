@@ -230,13 +230,9 @@ test.describe('cloud_config.php uses RustFS for all uploads', () => {
     expect(fn).not.toContain('mkdir(');
   });
 
-  test('saveToPersistentStorage should upload to RustFS', () => {
+  test('saveToPersistentStorage should be removed (no longer needed with RustFS)', () => {
     const content = readFile('cloud_config.php');
-    const fnStart = content.indexOf('function saveToPersistentStorage(');
-    const fnEnd = content.indexOf('\n}\n', fnStart) + 3;
-    const fn = content.substring(fnStart, fnEnd);
-    expect(fn).toContain('getRustFSSettings');
-    expect(fn).toContain('uploadToRustFS');
+    expect(content).not.toContain('function saveToPersistentStorage(');
   });
 
   test('uploadImageToNextcloud should upload to RustFS', () => {
@@ -275,20 +271,14 @@ test.describe('cloud_config.php uses RustFS for all uploads', () => {
     expect(fn).toContain('uploadToRustFS');
   });
 
-  test('restoreThemeImagesFromPersistentStorage should be a no-op', () => {
+  test('restoreThemeImagesFromPersistentStorage should be removed (no longer needed with RustFS)', () => {
     const content = readFile('cloud_config.php');
-    const fnStart = content.indexOf('function restoreThemeImagesFromPersistentStorage(');
-    const fnEnd = content.indexOf('\n}\n', fnStart) + 3;
-    const fn = content.substring(fnStart, fnEnd);
-    expect(fn).toContain('No-op');
+    expect(content).not.toContain('function restoreThemeImagesFromPersistentStorage(');
   });
 
-  test('restoreAllFilesFromPersistentStorage should be a no-op', () => {
+  test('restoreAllFilesFromPersistentStorage should be removed (no longer needed with RustFS)', () => {
     const content = readFile('cloud_config.php');
-    const fnStart = content.indexOf('function restoreAllFilesFromPersistentStorage(');
-    const fnEnd = content.indexOf('\n}\n', fnStart) + 3;
-    const fn = content.substring(fnStart, fnEnd);
-    expect(fn).toContain('No-op');
+    expect(content).not.toContain('function restoreAllFilesFromPersistentStorage(');
   });
 });
 
