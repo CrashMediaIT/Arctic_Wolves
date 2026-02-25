@@ -158,9 +158,12 @@ $sessions_stmt = $pdo->prepare($sessions_query);
 $sessions_stmt->execute($params);
 $sessions = $sessions_stmt->fetchAll();
 
-// Also fetch sessions from training_session_templates that have show_on_landing = 1
-// These are sessions created via the Products tab
+// Also fetch sessions from training_session_templates
+// For athletes: show only template sessions they are registered for (via session_date_athletes)
+// For coaches/admins: show all active template sessions with show_on_landing = 1
 if (!$show_history) {
+    $template_params = [];
+
     $template_sessions_query = "
         SELECT 
             tst.id,
@@ -188,16 +191,27 @@ if (!$show_history) {
             'template' as source_type
         FROM training_session_templates tst
         INNER JOIN training_session_dates tsd ON tsd.template_id = tst.id AND tsd.is_active = 1
+    ";
+
+    // For athletes: only show template session dates they are registered for
+    if ($user_role === 'athlete') {
+        $template_sessions_query .= " INNER JOIN session_date_athletes sda ON sda.session_date_id = tsd.id AND sda.athlete_id = ?";
+        $template_params[] = $user_id;
+    }
+
+    $template_sessions_query .= "
         LEFT JOIN users c ON tst.coach_id = c.id
         LEFT JOIN session_types st ON tst.session_type_id = st.id
         LEFT JOIN locations l ON tst.location_id = l.id
         LEFT JOIN practice_plans pp ON tst.practice_plan_id = pp.id
         WHERE tst.is_active = 1
-          AND tst.show_on_landing = 1
           AND tsd.session_date >= NOW()
     ";
-    
-    $template_params = [];
+
+    // For non-athletes, only show template sessions marked as visible on landing page
+    if ($user_role !== 'athlete') {
+        $template_sessions_query .= " AND tst.show_on_landing = 1";
+    }
     
     // Apply period filter for template sessions
     if ($filter_period === 'week') {

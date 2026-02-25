@@ -121,6 +121,85 @@ try {
     unset($_s);
 } catch (PDOException $e) { $upcomingSessions = []; }
 
+// Also fetch sessions from training session templates (registered sessions for athletes, all for coaches)
+if (!$showHistory) {
+    try {
+        $tplParams = [];
+        $tplJoin = '';
+        $tplExtraCols = '';
+        $tplWhere = 'tst.is_active = 1 AND tsd.is_active = 1 AND tsd.session_date >= CURDATE()';
+
+        if ($isAnyCoach) {
+            $tplExtraCols = "(SELECT COUNT(*) FROM session_date_athletes sda2 WHERE sda2.session_date_id = tsd.id) as attendee_count,
+                   0 as waitlist_count";
+        } else {
+            // For athletes: only show template sessions they are registered for
+            $tplJoin = "INNER JOIN session_date_athletes sda ON sda.session_date_id = tsd.id AND sda.athlete_id = ?";
+            $tplParams[] = $user_id;
+            $tplExtraCols = "sda.id as booking_id, 'confirmed' as booking_status,
+                   (SELECT COUNT(*) FROM session_date_athletes sda2 WHERE sda2.session_date_id = tsd.id) as attendee_count,
+                   NULL as waitlist_id, NULL as waitlist_position";
+        }
+
+        // Apply filters
+        if ($filterPeriod === 'week') {
+            $tplWhere .= ' AND tsd.session_date <= DATE_ADD(CURDATE(), INTERVAL 1 WEEK)';
+        } elseif ($filterPeriod === 'month') {
+            $tplWhere .= ' AND tsd.session_date <= DATE_ADD(CURDATE(), INTERVAL 1 MONTH)';
+        }
+        if ($filterSkill !== '') {
+            $tplWhere .= ' AND tst.session_type_id = ?';
+            $tplParams[] = $filterSkill;
+        }
+        if ($filterCoach !== '') {
+            $tplWhere .= ' AND tst.coach_id = ?';
+            $tplParams[] = $filterCoach;
+        }
+
+        $tplStmt = $pdo->prepare("
+            SELECT tst.id, tst.name as title, tst.description,
+                   DATE(tsd.session_date) as session_date, TIME(tsd.session_date) as session_time,
+                   tst.duration_minutes, 'scheduled' as status, NULL as arena,
+                   tst.session_type, tst.price, tst.max_participants,
+                   c.first_name as coach_first_name, c.last_name as coach_last_name,
+                   st.name as session_type_name,
+                   l.name as location_name,
+                   pp.name as practice_plan_name, pp.description as practice_plan_desc,
+                   $tplExtraCols
+            FROM training_session_templates tst
+            INNER JOIN training_session_dates tsd ON tsd.template_id = tst.id AND tsd.is_active = 1
+            $tplJoin
+            LEFT JOIN users c ON tst.coach_id = c.id
+            LEFT JOIN session_types st ON tst.session_type_id = st.id
+            LEFT JOIN locations l ON tst.location_id = l.id
+            LEFT JOIN practice_plans pp ON tst.practice_plan_id = pp.id
+            WHERE $tplWhere
+            ORDER BY tsd.session_date ASC, TIME(tsd.session_date) ASC
+            LIMIT 50
+        ");
+        $tplStmt->execute($tplParams);
+        $tplSessions = $tplStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($tplSessions as &$_ts) {
+            foreach (['coach_first_name', 'coach_last_name'] as $_f) {
+                if (!empty($_ts[$_f])) $_ts[$_f] = FieldEncryption::decrypt($_ts[$_f]);
+            }
+        }
+        unset($_ts);
+
+        if (!empty($tplSessions)) {
+            $upcomingSessions = array_merge($upcomingSessions, $tplSessions);
+            usort($upcomingSessions, function($a, $b) {
+                return strtotime(($a['session_date'] ?? '') . ' ' . ($a['session_time'] ?? '00:00'))
+                     - strtotime(($b['session_date'] ?? '') . ' ' . ($b['session_time'] ?? '00:00'));
+            });
+            $upcomingSessions = array_slice($upcomingSessions, 0, 50);
+        }
+    } catch (PDOException $e) {
+        // Template tables may not exist yet - continue with regular sessions
+    }
+}
+
 // Build calendar date map (Y-m-d => count)
 $calendarDates = [];
 foreach ($upcomingSessions as $cs) {

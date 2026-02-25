@@ -30,6 +30,46 @@ try {
     $upcomingSessions = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { $upcomingSessions = []; }
 
+// Also include registered training session template dates
+try {
+    if ($isAnyCoach) {
+        $tplStmt = $pdo->prepare("
+            SELECT tst.id, tst.name as title, DATE(tsd.session_date) as session_date,
+                   TIME(tsd.session_date) as session_time, tst.duration_minutes,
+                   'scheduled' as status, NULL as arena, tst.session_type, tst.coach_id
+            FROM training_session_templates tst
+            INNER JOIN training_session_dates tsd ON tsd.template_id = tst.id AND tsd.is_active = 1
+            WHERE tst.is_active = 1 AND tsd.session_date >= CURDATE()
+            ORDER BY tsd.session_date ASC
+            LIMIT 5
+        ");
+        $tplStmt->execute();
+    } else {
+        // For athletes: only show template sessions they are registered for
+        $tplStmt = $pdo->prepare("
+            SELECT tst.id, tst.name as title, DATE(tsd.session_date) as session_date,
+                   TIME(tsd.session_date) as session_time, tst.duration_minutes,
+                   'scheduled' as status, NULL as arena, tst.session_type, tst.coach_id
+            FROM training_session_templates tst
+            INNER JOIN training_session_dates tsd ON tsd.template_id = tst.id AND tsd.is_active = 1
+            INNER JOIN session_date_athletes sda ON sda.session_date_id = tsd.id AND sda.athlete_id = ?
+            WHERE tst.is_active = 1 AND tsd.session_date >= CURDATE()
+            ORDER BY tsd.session_date ASC
+            LIMIT 5
+        ");
+        $tplStmt->execute([$user_id]);
+    }
+    $tplSessions = $tplStmt->fetchAll(PDO::FETCH_ASSOC);
+    if (!empty($tplSessions)) {
+        $upcomingSessions = array_merge($upcomingSessions, $tplSessions);
+        usort($upcomingSessions, function($a, $b) {
+            return strtotime(($a['session_date'] ?? '') . ' ' . ($a['session_time'] ?? '00:00'))
+                 - strtotime(($b['session_date'] ?? '') . ' ' . ($b['session_time'] ?? '00:00'));
+        });
+        $upcomingSessions = array_slice($upcomingSessions, 0, 5);
+    }
+} catch (PDOException $e) { /* Template tables may not exist yet */ }
+
 // Role-specific stats
 $sessionsCompleted = 0;
 $activeGoals = 0;
