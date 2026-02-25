@@ -538,34 +538,29 @@ if ($action == 'upload_photo') {
         $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
         
         if (in_array($ext, $allowed)) {
-            $relative_dir = 'uploads/profiles/';
-            $upload_dir = __DIR__ . '/' . $relative_dir;
-            if (!is_dir($upload_dir)) { 
-                mkdir($upload_dir, 0755, true); 
-            }
             $profile_filename = "profile_" . $current_user_id . "_" . time() . "." . $ext;
-            $absolute_path = $upload_dir . $profile_filename;
-            $relative_path = $relative_dir . $profile_filename;
+            $relative_path = 'uploads/profiles/' . $profile_filename;
             
-            if (move_uploaded_file($_FILES['profile_photo']['tmp_name'], $absolute_path)) {
-                // Save to persistent storage (survives updates)
-                try {
-                    saveToPersistentStorage($absolute_path, 'profiles', $profile_filename, $pdo);
-                } catch (Exception $e) {
-                    error_log("Persistent storage save failed: " . $e->getMessage());
-                }
-                
-                // Delete old profile image if exists
+            // Persist via Garage S3 (primary) with Nextcloud/local fallback
+            $persist = persistUploadedFile($pdo, $_FILES['profile_photo']['tmp_name'], 'profiles', $profile_filename, $relative_path);
+            
+            if ($persist['success']) {
+                // Delete old profile image if exists locally
                 $stmt = $pdo->prepare("SELECT profile_image FROM users WHERE id = ?");
                 $stmt->execute([$current_user_id]);
                 $old_image = $stmt->fetchColumn();
                 if ($old_image && file_exists(__DIR__ . '/' . $old_image)) {
-                    unlink(__DIR__ . '/' . $old_image);
+                    @unlink(__DIR__ . '/' . $old_image);
                 }
                 
                 // Update database with relative path for web access
                 $pdo->prepare("UPDATE users SET profile_image = ? WHERE id = ?")
                     ->execute([$relative_path, $current_user_id]);
+                
+                // Store cloud path for persistent recovery
+                if (!empty($persist['nextcloud_path'])) {
+                    $pdo->prepare("UPDATE users SET nextcloud_image_path = ? WHERE id = ?")->execute([$persist['nextcloud_path'], $current_user_id]);
+                }
                 
                 header("Location: dashboard.php?page=profile&msg=photo_uploaded");
                 exit();

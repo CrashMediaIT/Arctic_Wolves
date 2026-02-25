@@ -162,20 +162,12 @@ try {
                 $mime_type = finfo_file($finfo, $tmp_path);
                 finfo_close($finfo);
                 
-                // Upload to Nextcloud
-                $upload_result = null;
-                if (function_exists('getNextcloudSettings')) {
-                    $upload_result = uploadContractToNextcloud($pdo, $tmp_path, $vendor_name, $contract_type, $contract_start_date, $original_name);
-                }
+                // Upload via Garage S3 (primary) with Nextcloud/local fallback
+                $contract_filename = $recurring_id . '_' . basename($original_name);
+                $local_path = 'uploads/contracts/' . $contract_filename;
+                $persist = persistUploadedFile($pdo, $tmp_path, 'contracts', $contract_filename, $local_path);
                 
-                // Save to local uploads as fallback
-                $local_path = 'uploads/contracts/' . $recurring_id . '_' . basename($original_name);
-                if (!is_dir('uploads/contracts')) {
-                    mkdir('uploads/contracts', 0755, true);
-                }
-                move_uploaded_file($tmp_path, $local_path);
-                
-                $nc_path = ($upload_result && $upload_result['success']) ? $upload_result['cloud_path'] : null;
+                $nc_path = $persist['nextcloud_path'] ?? null;
                 if ($nc_path) $nextcloud_path = $nc_path;
                 
                 $doc_stmt = $pdo->prepare("INSERT INTO recurring_expense_documents 
@@ -200,15 +192,11 @@ try {
                     $file_size = $_FILES['additional_files']['size'][$i];
                     $mime_type = $detected_mime;
                     
-                    $upload_result = null;
-                    if (function_exists('getNextcloudSettings')) {
-                        $upload_result = uploadContractToNextcloud($pdo, $tmp_path, $vendor_name, $contract_type, $contract_start_date, $original_name);
-                    }
+                    $add_filename = $recurring_id . '_' . $i . '_' . basename($original_name);
+                    $local_path = 'uploads/contracts/' . $add_filename;
+                    $persist = persistUploadedFile($pdo, $tmp_path, 'contracts', $add_filename, $local_path);
                     
-                    $local_path = 'uploads/contracts/' . $recurring_id . '_' . $i . '_' . basename($original_name);
-                    move_uploaded_file($tmp_path, $local_path);
-                    
-                    $nc_path = ($upload_result && $upload_result['success']) ? $upload_result['cloud_path'] : null;
+                    $nc_path = $persist['nextcloud_path'] ?? null;
                     
                     $doc_stmt = $pdo->prepare("INSERT INTO recurring_expense_documents 
                         (recurring_expense_id, document_type, file_name, file_path, nextcloud_path, file_size, mime_type, uploaded_by) 
@@ -268,21 +256,11 @@ try {
                     $file_size = $_FILES['documents']['size'][$i];
                     $mime_type = $detected_mime;
                     
-                    $upload_result = null;
-                    if (function_exists('getNextcloudSettings')) {
-                        $upload_result = uploadContractToNextcloud(
-                            $pdo, $tmp_path, 
-                            $recurring_expense['vendor_name'], 
-                            $recurring_expense['contract_type'], 
-                            $recurring_expense['contract_start_date'], 
-                            $original_name
-                        );
-                    }
+                    $doc_filename = $recurring_expense_id . '_' . time() . '_' . $i . '_' . basename($original_name);
+                    $local_path = 'uploads/contracts/' . $doc_filename;
+                    $persist = persistUploadedFile($pdo, $tmp_path, 'contracts', $doc_filename, $local_path);
                     
-                    $local_path = 'uploads/contracts/' . $recurring_expense_id . '_' . time() . '_' . $i . '_' . basename($original_name);
-                    move_uploaded_file($tmp_path, $local_path);
-                    
-                    $nc_path = ($upload_result && $upload_result['success']) ? $upload_result['cloud_path'] : null;
+                    $nc_path = $persist['nextcloud_path'] ?? null;
                     
                     $doc_stmt = $pdo->prepare("INSERT INTO recurring_expense_documents 
                         (recurring_expense_id, document_type, file_name, file_path, nextcloud_path, file_size, mime_type, uploaded_by) 

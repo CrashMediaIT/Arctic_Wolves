@@ -500,8 +500,12 @@ try {
                 $allowed_exts = ['jpg', 'jpeg', 'png', 'pdf'];
                 
                 if (in_array($file_ext, $allowed_exts)) {
-                    $receipt_url = 'uploads/receipts/' . uniqid('receipt_') . '.' . $file_ext;
-                    move_uploaded_file($_FILES['receipt_file']['tmp_name'], $receipt_url);
+                    $receipt_filename = uniqid('receipt_') . '.' . $file_ext;
+                    $receipt_url = 'uploads/receipts/' . $receipt_filename;
+                    $persist = persistUploadedFile($pdo, $_FILES['receipt_file']['tmp_name'], 'receipts', $receipt_filename, $receipt_url);
+                    if (!empty($persist['nextcloud_path'])) {
+                        $nextcloud_path = $persist['nextcloud_path'];
+                    }
                     
                     // Perform OCR on images
                     if (in_array($file_ext, ['jpg', 'jpeg', 'png'])) {
@@ -627,8 +631,9 @@ try {
                 $allowed_exts = ['jpg', 'jpeg', 'png', 'pdf'];
                 
                 if (in_array($file_ext, $allowed_exts)) {
-                    $receipt_url = 'uploads/receipts/' . uniqid('receipt_') . '.' . $file_ext;
-                    move_uploaded_file($_FILES['receipt_file']['tmp_name'], $receipt_url);
+                    $receipt_filename = uniqid('receipt_') . '.' . $file_ext;
+                    $receipt_url = 'uploads/receipts/' . $receipt_filename;
+                    $persist = persistUploadedFile($pdo, $_FILES['receipt_file']['tmp_name'], 'receipts', $receipt_filename, $receipt_url);
                     
                     // Update with new file
                     $stmt = $pdo->prepare("
@@ -644,16 +649,15 @@ try {
                         $payment_method, $reference_number, $currency, $expense_id
                     ]);
                     
-                    // Upload to Nextcloud
+                    // Store cloud path for persistent recovery
+                    if (!empty($persist['nextcloud_path'])) {
+                        $pdo->prepare("UPDATE expenses SET nextcloud_path = ? WHERE id = ?")->execute([
+                            $persist['nextcloud_path'], $expense_id
+                        ]);
+                    }
+                    
+                    // Also upload to Paperless-NGX with Receipt tag
                     if (!empty($vendor_name)) {
-                        $nc_result = uploadReceiptToNextcloud($pdo, $receipt_url, $expense_date, $vendor_name, $expense_id);
-                        if ($nc_result['success']) {
-                            $pdo->prepare("UPDATE expenses SET nextcloud_path = ? WHERE id = ?")->execute([
-                                $nc_result['cloud_path'], $expense_id
-                            ]);
-                        }
-                        
-                        // Also upload to Paperless-NGX with Receipt tag
                         $receipt_title = $expense_date . '_' . $vendor_name . '_' . $expense_id;
                         uploadToPaperless($pdo, $receipt_url, 'Receipt', $receipt_title);
                     }
@@ -806,28 +810,15 @@ try {
             
             // Save file permanently so it can be attached to an expense
             $ext = ($mime_type === 'image/png') ? '.png' : (($mime_type === 'application/pdf') ? '.pdf' : '.jpg');
-            $upload_dir = 'uploads/receipts/';
-            if (!is_dir($upload_dir)) {
-                mkdir($upload_dir, 0755, true);
-            }
-            $saved_file = $upload_dir . uniqid('receipt_') . $ext;
-            move_uploaded_file($_FILES['receipt_file']['tmp_name'], $saved_file);
+            $receipt_filename = uniqid('receipt_') . $ext;
+            $saved_file = 'uploads/receipts/' . $receipt_filename;
+            $persist = persistUploadedFile($pdo, $_FILES['receipt_file']['tmp_name'], 'receipts', $receipt_filename, $saved_file);
             
             // Perform OCR via Paperless-NGX (handles all file types including PDFs natively)
             $ocr_data = performReceiptOCR($saved_file);
             
-            // Upload to Nextcloud for cloud storage
-            $nextcloud_path = null;
-            $vendor_name = $ocr_data['vendor'] ?? 'Unknown';
-            $expense_date = $ocr_data['date'] ?? date('Y-m-d');
-            try {
-                $nc_result = uploadReceiptToNextcloud($pdo, $saved_file, $expense_date, $vendor_name, 'ocr_scan_' . uniqid());
-                if ($nc_result['success']) {
-                    $nextcloud_path = $nc_result['cloud_path'];
-                }
-            } catch (Exception $ncErr) {
-                error_log("OCR scan Nextcloud upload error: " . $ncErr->getMessage());
-            }
+            // Cloud path from Garage S3 / Nextcloud
+            $nextcloud_path = $persist['nextcloud_path'] ?? null;
             
             // Upload to Paperless-NGX for document storage
             try {
