@@ -10,12 +10,13 @@
 // Fetch real data from database
 try {
     if ($user_role === 'athlete' || $user_role === 'parent') {
-        // Get upcoming sessions - including both regular sessions and training session templates
+        // Get upcoming sessions - including both regular booked sessions and registered training session templates
         $stmt = $pdo->prepare("
             SELECT CONCAT('session_', s.id) as unique_id, s.id, s.title as session_name, st.name as session_type_name, st.duration,
                    s.session_date, s.session_time as start_time, 'session' as source_type, NULL as date_id
             FROM sessions s
             LEFT JOIN session_types st ON s.session_type_id = st.id
+            INNER JOIN bookings b ON b.session_id = s.id AND b.user_id = ? AND b.status != 'cancelled'
             WHERE s.session_date >= CURDATE()
             AND s.status = 'scheduled'
             
@@ -25,13 +26,14 @@ try {
                    DATE(tsd.session_date) as session_date, TIME(tsd.session_date) as start_time, 'template' as source_type, tsd.id as date_id
             FROM training_session_templates tst
             INNER JOIN training_session_dates tsd ON tsd.template_id = tst.id AND tsd.is_active = 1
+            INNER JOIN session_date_athletes sda ON sda.session_date_id = tsd.id AND sda.athlete_id = ?
             WHERE tst.is_active = 1
               AND DATE(tsd.session_date) >= CURDATE()
             
             ORDER BY session_date ASC, start_time ASC
             LIMIT 5
         ");
-        $stmt->execute();
+        $stmt->execute([$user_id, $user_id]);
         $upcomingSessions = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         // Get recent notifications
