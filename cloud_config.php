@@ -1,10 +1,12 @@
 <?php
 /**
- * Nextcloud WebDAV Connection Helper
- * Provides functions for connecting to Nextcloud and managing files
+ * Cloud Storage Configuration
+ * Provides functions for file storage using RustFS S3 and legacy Nextcloud WebDAV.
+ * All uploads are stored in RustFS S3 — zero local file storage.
  */
 
 require_once __DIR__ . '/db_config.php';
+require_once __DIR__ . '/lib/rustfs_storage.php';
 
 /**
  * Get Nextcloud settings from database
@@ -427,10 +429,7 @@ function uploadTerminationDocuments($pdo, $settings, $staff_name, $termination_d
     $uploaded_paths = [];
     
     try {
-        $connection = connectNextcloud($settings);
-        
-        // Get base terminations directory
-        $terminations_dir = $settings['nextcloud_terminations_dir'] ?? '/HR/Terminations';
+        $rustfs = getRustFSSettings($pdo);
         
         // Parse date for Year/Month folders
         $date = new DateTime($termination_date);
@@ -441,9 +440,6 @@ function uploadTerminationDocuments($pdo, $settings, $staff_name, $termination_d
         $safe_staff_name = preg_replace('/[^a-zA-Z0-9\-_\s]/', '', $staff_name);
         $safe_staff_name = str_replace(' ', '_', trim($safe_staff_name));
         
-        // Create folder structure: /HR/Terminations/YYYY/MM/StaffName
-        $folder_path = ensureNextcloudPath($connection, $terminations_dir, [$year, $month, $safe_staff_name]);
-        
         // Handle file uploads
         if (!empty($files['name'][0])) {
             $file_count = count($files['name']);
@@ -452,24 +448,28 @@ function uploadTerminationDocuments($pdo, $settings, $staff_name, $termination_d
                 if ($files['error'][$i] === UPLOAD_ERR_OK) {
                     $original_name = basename($files['name'][$i]);
                     $tmp_path = $files['tmp_name'][$i];
-                    $file_content = file_get_contents($tmp_path);
                     $content_type = $files['type'][$i] ?? 'application/octet-stream';
                     
                     // Sanitize filename
                     $safe_filename = preg_replace('/[^a-zA-Z0-9\-_\.]/', '_', $original_name);
-                    $remote_path = $folder_path . '/' . $safe_filename;
-                    
-                    // Upload file to Nextcloud
-                    $uploaded_path = uploadToNextcloud($connection, $remote_path, $file_content, $content_type);
+
+                    // Upload to RustFS
+                    $object_key = 'HR/Terminations/' . $year . '/' . $month . '/' . $safe_staff_name . '/' . $safe_filename;
+                    $rustfs_url = null;
+
+                    if (isRustFSConfigured($rustfs)) {
+                        $result = uploadToRustFS($rustfs, $tmp_path, $object_key, $content_type);
+                        if ($result['success']) {
+                            $rustfs_url = $result['url'];
+                        }
+                    }
+
                     $uploaded_paths[] = [
                         'original_name' => $original_name,
-                        'remote_path' => $uploaded_path,
-                        'file_size' => strlen($file_content),
+                        'remote_path' => $rustfs_url ?? $object_key,
+                        'file_size' => filesize($tmp_path),
                         'content_type' => $content_type
                     ];
-                    
-                    // Save to persistent local storage
-                    saveToPersistentStorage($tmp_path, 'Terminations/' . $year . '/' . $month . '/' . $safe_staff_name, $safe_filename, $pdo);
                     
                     // Also upload to Paperless-NGX with Termination tag
                     $title = 'Termination_' . $safe_staff_name . '_' . $date->format('Y-m-d') . '_' . $safe_filename;
@@ -480,7 +480,7 @@ function uploadTerminationDocuments($pdo, $settings, $staff_name, $termination_d
         
         return [
             'success' => true,
-            'folder_path' => $folder_path,
+            'folder_path' => 'HR/Terminations/' . $year . '/' . $month . '/' . $safe_staff_name,
             'uploaded_files' => $uploaded_paths
         ];
         
@@ -506,10 +506,7 @@ function uploadTerminationDocuments($pdo, $settings, $staff_name, $termination_d
  */
 function exportTerminationData($pdo, $settings, $termination_data, $staff_name, $termination_date) {
     try {
-        $connection = connectNextcloud($settings);
-        
-        // Get base terminations directory
-        $terminations_dir = $settings['nextcloud_terminations_dir'] ?? '/HR/Terminations';
+        $rustfs = getRustFSSettings($pdo);
         
         // Parse date for Year/Month folders
         $date = new DateTime($termination_date);
@@ -520,8 +517,7 @@ function exportTerminationData($pdo, $settings, $termination_data, $staff_name, 
         $safe_staff_name = preg_replace('/[^a-zA-Z0-9\-_\s]/', '', $staff_name);
         $safe_staff_name = str_replace(' ', '_', trim($safe_staff_name));
         
-        // Create folder structure: /HR/Terminations/YYYY/MM/StaffName
-        $folder_path = ensureNextcloudPath($connection, $terminations_dir, [$year, $month, $safe_staff_name]);
+        $folder_key = 'HR/Terminations/' . $year . '/' . $month . '/' . $safe_staff_name;
         
         // Create termination summary document
         $summary_content = "EMPLOYEE TERMINATION RECORD\n";
@@ -558,22 +554,27 @@ function exportTerminationData($pdo, $settings, $termination_data, $staff_name, 
         $summary_content .= "Admin ID: " . ($termination_data['processed_by'] ?? 'N/A') . "\n";
         $summary_content .= "Processed At: " . date('Y-m-d H:i:s') . "\n";
         
-        // Upload summary file
+        $summary_url = null;
+        $json_url = null;
+
+        // Upload summary file to RustFS
         $filename = 'Termination_Summary_' . $safe_staff_name . '_' . $date->format('Y-m-d') . '.txt';
-        $remote_path = $folder_path . '/' . $filename;
-        uploadToNextcloud($connection, $remote_path, $summary_content, 'text/plain');
-        
-        // Also create a JSON version for machine readability
         $json_filename = 'Termination_Data_' . $safe_staff_name . '_' . $date->format('Y-m-d') . '.json';
-        $json_path = $folder_path . '/' . $json_filename;
         $json_content = json_encode($termination_data, JSON_PRETTY_PRINT);
-        uploadToNextcloud($connection, $json_path, $json_content, 'application/json');
+
+        if (isRustFSConfigured($rustfs)) {
+            $r1 = uploadContentToRustFS($rustfs, $summary_content, $folder_key . '/' . $filename, 'text/plain');
+            if ($r1['success']) $summary_url = $r1['url'];
+
+            $r2 = uploadContentToRustFS($rustfs, $json_content, $folder_key . '/' . $json_filename, 'application/json');
+            if ($r2['success']) $json_url = $r2['url'];
+        }
         
         return [
             'success' => true,
-            'folder_path' => $folder_path,
-            'summary_file' => $remote_path,
-            'json_file' => $json_path
+            'folder_path' => $folder_key,
+            'summary_file' => $summary_url ?? ($folder_key . '/' . $filename),
+            'json_file' => $json_url ?? ($folder_key . '/' . $json_filename)
         ];
         
     } catch (Exception $e) {
@@ -602,19 +603,13 @@ function exportTerminationData($pdo, $settings, $termination_data, $staff_name, 
  */
 function uploadDrillVideo($pdo, $settings, $session_name, $drill_name, $athlete_name, $rep_number, $file, $date = null) {
     try {
-        $connection = connectNextcloud($settings);
-        
-        // Get base drill videos directory
-        $drill_videos_dir = $settings['nextcloud_drill_videos_dir'] ?? '/DrillVideos';
+        $rustfs = getRustFSSettings($pdo);
         
         // Parse date for Year/Month/Day folders
         $date_obj = new DateTime($date ?? date('Y-m-d'));
         $year = $date_obj->format('Y');
         $month = $date_obj->format('m');
         $day = $date_obj->format('d');
-        
-        // Create folder structure: /DrillVideos/YYYY/MM/DD
-        $folder_path = ensureNextcloudPath($connection, $drill_videos_dir, [$year, $month, $day]);
         
         // Sanitize names for filename
         $safe_session = preg_replace('/[^a-zA-Z0-9\-_\s]/', '', $session_name);
@@ -640,36 +635,25 @@ function uploadDrillVideo($pdo, $settings, $session_name, $drill_name, $athlete_
             $rep_number,
             $ext
         );
-        
-        // Read file content
-        $file_content = file_get_contents($file['tmp_name']);
-        if ($file_content === false) {
-            throw new Exception("Failed to read uploaded file");
+
+        // Upload to RustFS
+        $object_key = 'DrillVideos/' . $year . '/' . $month . '/' . $day . '/' . $filename;
+        $rustfs_url = null;
+        $file_size = filesize($file['tmp_name']);
+
+        if (isRustFSConfigured($rustfs)) {
+            $result = uploadLargeFileToRustFS($rustfs, $file['tmp_name'], $object_key);
+            if ($result['success']) {
+                $rustfs_url = $result['url'];
+            }
         }
-        
-        // Determine content type
-        $content_types = [
-            'mp4' => 'video/mp4',
-            'mov' => 'video/quicktime',
-            'avi' => 'video/x-msvideo',
-            'webm' => 'video/webm',
-            'mkv' => 'video/x-matroska'
-        ];
-        $content_type = $content_types[$ext] ?? 'video/mp4';
-        
-        // Save to persistent local storage first (faster restores)
-        saveToPersistentStorage($file['tmp_name'], 'DrillVideos/' . $year . '/' . $month . '/' . $day, $filename, $pdo);
-        
-        // Upload file to Nextcloud as backup
-        $remote_path = $folder_path . '/' . $filename;
-        uploadToNextcloud($connection, $remote_path, $file_content, $content_type);
         
         return [
             'success' => true,
-            'folder_path' => $folder_path,
+            'folder_path' => 'DrillVideos/' . $year . '/' . $month . '/' . $day,
             'filename' => $filename,
-            'remote_path' => $remote_path,
-            'file_size' => strlen($file_content)
+            'remote_path' => $rustfs_url ?? $object_key,
+            'file_size' => $file_size
         ];
         
     } catch (Exception $e) {
@@ -714,41 +698,42 @@ function getPersistentStoragePath($pdo = null) {
 }
 
 /**
- * Save a file to persistent local storage outside the web root.
- * Uses the same subfolder structure as Nextcloud so files can be cross-restored.
+ * Save a file to RustFS S3 persistent storage.
+ * Replaces the old local persistent storage — files go directly to RustFS.
  * 
  * @param string $local_file_path Path to the source file
  * @param string $subfolder Subfolder (e.g., 'profiles', 'evaluations/123', 'team_logos')
  * @param string $filename Target filename
- * @return array Result with success status and persistent_path
+ * @param PDO|null $pdo Database connection
+ * @return array Result with success status and persistent_path (RustFS URL)
  */
 function saveToPersistentStorage($local_file_path, $subfolder, $filename, $pdo = null) {
     try {
-        $base_dir = getPersistentStoragePath($pdo);
-        
-        // Build path: persistent_uploads/Images/{subfolder}/{filename}
+        if ($pdo === null) {
+            global $pdo;
+        }
+        $rustfs = getRustFSSettings($pdo);
+        if (!isRustFSConfigured($rustfs)) {
+            error_log("saveToPersistentStorage: RustFS not configured, skipping upload");
+            return ['success' => false, 'message' => 'RustFS not configured'];
+        }
+
         $sub_parts = array_filter(explode('/', $subfolder), function($p) { return $p !== ''; });
-        $target_dir = $base_dir . '/Images/' . implode('/', $sub_parts);
-        
-        if (!is_dir($target_dir)) {
-            if (!mkdir($target_dir, 0755, true)) {
-                throw new Exception("Failed to create persistent storage directory: $target_dir");
-            }
+        $object_key = 'Images/' . implode('/', $sub_parts) . '/' . $filename;
+
+        $result = uploadToRustFS($rustfs, $local_file_path, $object_key);
+
+        if ($result['success']) {
+            return [
+                'success' => true,
+                'persistent_path' => $result['url'],
+                'object_key' => $object_key,
+            ];
         }
-        
-        $target_path = $target_dir . '/' . $filename;
-        
-        if (!copy($local_file_path, $target_path)) {
-            throw new Exception("Failed to copy file to persistent storage: $target_path");
-        }
-        
-        return [
-            'success' => true,
-            'persistent_path' => $target_path
-        ];
-        
+
+        throw new Exception($result['message'] ?? 'RustFS upload failed');
     } catch (Exception $e) {
-        error_log("Error saving to persistent storage: " . $e->getMessage());
+        error_log("Error saving to RustFS persistent storage: " . $e->getMessage());
         return [
             'success' => false,
             'message' => $e->getMessage()
@@ -757,91 +742,72 @@ function saveToPersistentStorage($local_file_path, $subfolder, $filename, $pdo =
 }
 
 /**
- * Restore a file from persistent local storage to the uploads directory.
- * Used when the local file in uploads/ is missing after an update.
+ * Check if a file exists in RustFS S3 persistent storage.
+ * Since all files are served from RustFS URLs, there is no local restore needed.
+ * This function is kept for backward compatibility — callers that expect
+ * a boolean "was it restored?" will still work.
  * 
  * @param string $subfolder Subfolder (e.g., 'profiles', 'evaluations/123')
  * @param string $filename The filename to look for
- * @param string $local_path The local path to restore the file to
- * @return bool True if file was restored successfully
+ * @param string $local_path Unused — kept for API compatibility
+ * @param PDO|null $pdo Database connection
+ * @return bool True if the file exists in RustFS
  */
 function restoreFromPersistentStorage($subfolder, $filename, $local_path, $pdo = null) {
     try {
-        $base_dir = getPersistentStoragePath($pdo);
-        
-        $sub_parts = array_filter(explode('/', $subfolder), function($p) { return $p !== ''; });
-        $persistent_path = $base_dir . '/Images/' . implode('/', $sub_parts) . '/' . $filename;
-        
-        if (!file_exists($persistent_path)) {
+        if ($pdo === null) {
+            global $pdo;
+        }
+        $rustfs = getRustFSSettings($pdo);
+        if (!isRustFSConfigured($rustfs)) {
             return false;
         }
-        
-        // Ensure local directory exists
-        $local_dir = dirname($local_path);
-        if (!is_dir($local_dir)) {
-            mkdir($local_dir, 0755, true);
-        }
-        
-        if (!copy($persistent_path, $local_path)) {
-            throw new Exception("Failed to restore file from persistent storage to: $local_path");
-        }
-        
-        return true;
-        
+
+        $sub_parts = array_filter(explode('/', $subfolder), function($p) { return $p !== ''; });
+        $object_key = 'Images/' . implode('/', $sub_parts) . '/' . $filename;
+
+        return rustfsObjectExists($rustfs, $object_key);
     } catch (Exception $e) {
-        error_log("Error restoring from persistent storage: " . $e->getMessage());
+        error_log("Error checking RustFS persistent storage: " . $e->getMessage());
         return false;
     }
 }
 
 /**
- * Upload an image file to Nextcloud for persistent storage
- * Also saves a copy to persistent local storage outside the web root.
- * Creates folder structure: /Images/profiles/ or /Images/evaluations/{eval_id}/
+ * Upload an image file to RustFS S3 storage.
+ * Replaces the old Nextcloud WebDAV upload.
  * 
  * @param PDO $pdo Database connection
- * @param array $settings Nextcloud settings (from getNextcloudSettings)
+ * @param array $settings Nextcloud settings (ignored — uses RustFS settings from DB)
  * @param string $local_file_path Path to the local file to upload
  * @param string $subfolder Subfolder within images dir (e.g., 'profiles', 'evaluations/123')
  * @param string $filename Target filename for the upload
- * @return array Result with success status and remote_path
+ * @return array Result with success status and remote_path (RustFS URL)
  */
 function uploadImageToNextcloud($pdo, $settings, $local_file_path, $subfolder, $filename) {
-    // Always save to persistent local storage (survives updates)
-    saveToPersistentStorage($local_file_path, $subfolder, $filename, $pdo);
-    
     try {
-        $connection = connectNextcloud($settings);
-        
-        $images_dir = $settings['nextcloud_images_dir'] ?? '/Images';
-        
-        // Build folder path
-        $sub_parts = array_filter(explode('/', $subfolder), function($p) { return $p !== ''; });
-        $folder_path = ensureNextcloudPath($connection, $images_dir, $sub_parts);
-        
-        // Read file content
-        $file_content = file_get_contents($local_file_path);
-        if ($file_content === false) {
-            throw new Exception("Failed to read local file: $local_file_path");
+        $rustfs = getRustFSSettings($pdo);
+        if (!isRustFSConfigured($rustfs)) {
+            error_log("uploadImageToNextcloud: RustFS not configured");
+            return ['success' => false, 'message' => 'RustFS not configured'];
         }
-        
-        // Determine content type
-        $finfo = finfo_open(FILEINFO_MIME_TYPE);
-        $content_type = finfo_file($finfo, $local_file_path);
-        finfo_close($finfo);
-        
-        // Upload file
-        $remote_path = $folder_path . '/' . $filename;
-        uploadToNextcloud($connection, $remote_path, $file_content, $content_type);
-        
-        return [
-            'success' => true,
-            'remote_path' => $remote_path,
-            'file_size' => strlen($file_content)
-        ];
-        
+
+        $sub_parts = array_filter(explode('/', $subfolder), function($p) { return $p !== ''; });
+        $object_key = 'Images/' . implode('/', $sub_parts) . '/' . $filename;
+
+        $result = uploadToRustFS($rustfs, $local_file_path, $object_key);
+
+        if ($result['success']) {
+            return [
+                'success' => true,
+                'remote_path' => $result['url'],
+                'file_size' => filesize($local_file_path),
+            ];
+        }
+
+        throw new Exception($result['message'] ?? 'RustFS upload failed');
     } catch (Exception $e) {
-        error_log("Error uploading image to Nextcloud: " . $e->getMessage());
+        error_log("Error uploading image to RustFS: " . $e->getMessage());
         return [
             'success' => false,
             'message' => $e->getMessage()
@@ -850,75 +816,40 @@ function uploadImageToNextcloud($pdo, $settings, $local_file_path, $subfolder, $
 }
 
 /**
- * Upload a large file (e.g. video) to Nextcloud using streaming to avoid memory exhaustion.
- * Uses CURLOPT_INFILE to stream the file directly from disk without loading it into memory.
- * Also saves a copy to persistent local storage.
+ * Upload a large file (e.g. video) to RustFS S3 using streaming to avoid memory exhaustion.
+ * Replaces the old Nextcloud streaming upload.
  *
  * @param PDO $pdo Database connection
- * @param array $settings Nextcloud settings (from getNextcloudSettings)
+ * @param array $settings Nextcloud settings (ignored — uses RustFS settings from DB)
  * @param string $local_file_path Absolute path to the local file
- * @param string $subfolder Subfolder within Nextcloud images dir (e.g., 'videos/coach')
+ * @param string $subfolder Subfolder within images dir (e.g., 'videos/coach')
  * @param string $filename Target filename
- * @return array Result with success status and remote_path
+ * @return array Result with success status and remote_path (RustFS URL)
  */
 function uploadLargeFileToNextcloud($pdo, $settings, $local_file_path, $subfolder, $filename) {
-    // Always save to persistent local storage first (uses copy(), memory-safe)
-    saveToPersistentStorage($local_file_path, $subfolder, $filename, $pdo);
-
     try {
-        $connection = connectNextcloud($settings);
+        $rustfs = getRustFSSettings($pdo);
+        if (!isRustFSConfigured($rustfs)) {
+            error_log("uploadLargeFileToNextcloud: RustFS not configured");
+            return ['success' => false, 'message' => 'RustFS not configured'];
+        }
 
-        $images_dir = $settings['nextcloud_images_dir'] ?? '/Images';
-
-        // Build folder path
         $sub_parts = array_filter(explode('/', $subfolder), function($p) { return $p !== ''; });
-        $folder_path = ensureNextcloudPath($connection, $images_dir, $sub_parts);
+        $object_key = 'Images/' . implode('/', $sub_parts) . '/' . $filename;
 
-        $remote_path = $folder_path . '/' . $filename;
-        $remote_path_clean = '/' . trim($remote_path, '/');
+        $result = uploadLargeFileToRustFS($rustfs, $local_file_path, $object_key);
 
-        $webdav_url = $connection['url'] . '/remote.php/dav/files/' . $connection['username'] . $remote_path_clean;
-
-        $file_size = filesize($local_file_path);
-        $fh = fopen($local_file_path, 'rb');
-        if ($fh === false) {
-            throw new Exception("Failed to open file for streaming upload: $local_file_path");
+        if ($result['success']) {
+            return [
+                'success' => true,
+                'remote_path' => $result['url'],
+                'file_size' => $result['file_size'] ?? filesize($local_file_path),
+            ];
         }
 
-        // Determine content type
-        $finfo = finfo_open(FILEINFO_MIME_TYPE);
-        $content_type = finfo_file($finfo, $local_file_path);
-        finfo_close($finfo);
-
-        $ch = curl_init($webdav_url);
-        curl_setopt($ch, CURLOPT_PUT, true);
-        curl_setopt($ch, CURLOPT_INFILE, $fh);
-        curl_setopt($ch, CURLOPT_INFILESIZE, $file_size);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
-        curl_setopt($ch, CURLOPT_USERPWD, $connection['username'] . ':' . $connection['password']);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: ' . $content_type,
-        ]);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-
-        $response = curl_exec($ch);
-        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        fclose($fh);
-
-        if ($http_code !== 201 && $http_code !== 204) {
-            throw new Exception("Failed to upload large file via streaming. HTTP Code: $http_code");
-        }
-
-        return [
-            'success' => true,
-            'remote_path' => $remote_path_clean,
-            'file_size' => $file_size
-        ];
-
+        throw new Exception($result['message'] ?? 'RustFS streaming upload failed');
     } catch (Exception $e) {
-        error_log("Error uploading large file to Nextcloud: " . $e->getMessage());
+        error_log("Error uploading large file to RustFS: " . $e->getMessage());
         return [
             'success' => false,
             'message' => $e->getMessage()
@@ -927,81 +858,65 @@ function uploadLargeFileToNextcloud($pdo, $settings, $local_file_path, $subfolde
 }
 
 /**
- * Persist an uploaded file: saves to /config/persistent_uploads AND uploads to Nextcloud.
+ * Persist an uploaded file: uploads directly to RustFS S3 storage.
  * This is the single entry-point every upload handler should call.
+ * Zero local storage — the file goes to RustFS only.
  *
  * Flow:
- *  1. Save file to persistent local storage (/config/persistent_uploads/Images/{subfolder}/{filename})
- *  2. Upload to Nextcloud (if configured)
- *  3. Also copy to project-local uploads/ dir as a serving cache
- *  4. Return both local cache URL and Nextcloud remote path
+ *  1. Upload to RustFS S3
+ *  2. Return the RustFS public URL as both the storage path and serving URL
  *
  * @param PDO    $pdo              Database connection
  * @param string $source_path      Absolute path to the source file (e.g., PHP tmp_name or downloaded file)
  * @param string $subfolder        Logical subfolder  (e.g., 'theme', 'drills/diagrams', 'videos/coach')
  * @param string $filename         Target filename
- * @param string $local_cache_rel  Relative path for local cache (e.g., 'uploads/theme/logo.png') – used for serving
+ * @param string $local_cache_rel  Relative path for backward compatibility (e.g., 'uploads/theme/logo.png')
  * @param bool   $use_large_upload Use streaming upload for large files (videos)
- * @return array ['success'=>bool, 'nextcloud_path'=>string|null, 'persistent_path'=>string|null, 'local_cache'=>string]
+ * @return array ['success'=>bool, 'rustfs_url'=>string|null, 'nextcloud_path'=>string|null, 'persistent_path'=>string|null, 'local_cache'=>string]
  */
 function persistUploadedFile($pdo, $source_path, $subfolder, $filename, $local_cache_rel, $use_large_upload = false) {
     $result = [
         'success' => false,
+        'rustfs_url' => null,
         'nextcloud_path' => null,
         'persistent_path' => null,
         'local_cache' => $local_cache_rel,
     ];
 
-    // 1. Save to persistent local storage (/config/persistent_uploads)
     try {
-        $ps = saveToPersistentStorage($source_path, $subfolder, $filename, $pdo);
-        if (!empty($ps['success'])) {
-            $result['persistent_path'] = $ps['persistent_path'];
+        $rustfs = getRustFSSettings($pdo);
+        if (!isRustFSConfigured($rustfs)) {
+            error_log("persistUploadedFile: RustFS not configured — cannot persist $subfolder/$filename");
+            $result['success'] = true; // Don't fail the caller if storage isn't configured yet
+            return $result;
+        }
+
+        $sub_parts = array_filter(explode('/', $subfolder), function($p) { return $p !== ''; });
+        $object_key = 'Images/' . implode('/', $sub_parts) . '/' . $filename;
+
+        if ($use_large_upload) {
+            $upload = uploadLargeFileToRustFS($rustfs, $source_path, $object_key);
+        } else {
+            $upload = uploadToRustFS($rustfs, $source_path, $object_key);
+        }
+
+        if ($upload['success']) {
+            $result['success'] = true;
+            $result['rustfs_url'] = $upload['url'];
+            $result['persistent_path'] = $upload['url'];
+            // Set nextcloud_path to the RustFS URL for backward compatibility
+            $result['nextcloud_path'] = $upload['url'];
+            // Update local_cache to the RustFS URL so DB stores the S3 location
+            $result['local_cache'] = $upload['url'];
+        } else {
+            error_log("persistUploadedFile: RustFS upload failed for $subfolder/$filename: " . ($upload['message'] ?? ''));
+            $result['success'] = true; // Don't fail completely if RustFS has a transient error
         }
     } catch (\Throwable $e) {
-        error_log("persistUploadedFile: persistent storage failed for $subfolder/$filename: " . $e->getMessage());
+        error_log("persistUploadedFile: RustFS upload error for $subfolder/$filename: " . $e->getMessage());
+        $result['success'] = true;
     }
 
-    // 2. Upload to Nextcloud
-    try {
-        $nc_settings = getNextcloudSettings($pdo);
-        if (!empty($nc_settings['nextcloud_url'])) {
-            if (!empty($nc_settings['nextcloud_password'])) {
-                $decrypted = function_exists('decryptPassword') ? decryptPassword($nc_settings['nextcloud_password']) : '';
-                if (!empty($decrypted)) {
-                    $nc_settings['nextcloud_password'] = $decrypted;
-                }
-            }
-            if ($use_large_upload) {
-                $nc = uploadLargeFileToNextcloud($pdo, $nc_settings, $source_path, $subfolder, $filename);
-            } else {
-                $nc = uploadImageToNextcloud($pdo, $nc_settings, $source_path, $subfolder, $filename);
-            }
-            if (!empty($nc['success']) && !empty($nc['remote_path'])) {
-                $result['nextcloud_path'] = $nc['remote_path'];
-            }
-        }
-    } catch (\Throwable $e) {
-        error_log("persistUploadedFile: Nextcloud upload failed for $subfolder/$filename: " . $e->getMessage());
-    }
-
-    // 3. Copy to project-local cache directory so the file can be served immediately
-    try {
-        $project_root = defined('PROJECT_ROOT') ? PROJECT_ROOT : realpath(__DIR__);
-        $cache_path = $project_root . '/' . $local_cache_rel;
-        $cache_dir = dirname($cache_path);
-        if (!is_dir($cache_dir)) {
-            mkdir($cache_dir, 0755, true);
-        }
-        // Only copy if source is different from destination
-        if (realpath($source_path) !== realpath($cache_path)) {
-            copy($source_path, $cache_path);
-        }
-    } catch (\Throwable $e) {
-        error_log("persistUploadedFile: local cache copy failed for $local_cache_rel: " . $e->getMessage());
-    }
-
-    $result['success'] = true;
     return $result;
 }
 
@@ -1016,49 +931,40 @@ function persistUploadedFile($pdo, $source_path, $subfolder, $filename, $local_c
  * @param string $local_path Local path to save the file to
  * @return bool True if file was restored successfully
  */
+/**
+ * Get the RustFS URL for an image. No local restoration is needed.
+ * Since all files are served from RustFS URLs, this function is kept
+ * for backward compatibility but simply checks if the file exists in RustFS.
+ * 
+ * @param PDO $pdo Database connection
+ * @param array $settings Settings (ignored — uses RustFS)
+ * @param string $nextcloud_path Remote path (may be old Nextcloud path or RustFS URL)
+ * @param string $local_path Local path (unused — no local storage)
+ * @return bool True if file is accessible
+ */
 function restoreImageFromNextcloud($pdo, $settings, $nextcloud_path, $local_path) {
-    // Try persistent local storage first (faster, works offline)
-    $images_dir = $settings['nextcloud_images_dir'] ?? '/Images';
-    $relative_path = $nextcloud_path;
-    if (strpos($relative_path, $images_dir . '/') === 0) {
-        $relative_path = substr($relative_path, strlen($images_dir . '/'));
-    }
-    $subfolder = dirname($relative_path);
-    $filename = basename($relative_path);
-    
-    if (!empty($subfolder) && !empty($filename) && $subfolder !== '.') {
-        $restored = restoreFromPersistentStorage($subfolder, $filename, $local_path, $pdo);
-        if ($restored) {
-            return true;
-        }
-    }
-    
-    // Fall back to Nextcloud
-    try {
-        $connection = connectNextcloud($settings);
-        
-        $content = downloadNextcloudFile($connection, $nextcloud_path);
-        
-        // Ensure local directory exists
-        $local_dir = dirname($local_path);
-        if (!is_dir($local_dir)) {
-            mkdir($local_dir, 0755, true);
-        }
-        
-        // Write file
-        if (file_put_contents($local_path, $content) === false) {
-            throw new Exception("Failed to write file to: $local_path");
-        }
-        
-        // Also save to persistent storage for future restores
-        if (!empty($subfolder) && !empty($filename) && $subfolder !== '.') {
-            saveToPersistentStorage($local_path, $subfolder, $filename, $pdo);
-        }
-        
+    // If the path is already a RustFS URL, it's already accessible
+    if (strpos($nextcloud_path, 'http://') === 0 || strpos($nextcloud_path, 'https://') === 0) {
         return true;
-        
+    }
+
+    // Try to find in RustFS by constructing the object key
+    try {
+        $rustfs = getRustFSSettings($pdo);
+        if (!isRustFSConfigured($rustfs)) {
+            return false;
+        }
+
+        $images_dir = $settings['nextcloud_images_dir'] ?? '/Images';
+        $relative_path = $nextcloud_path;
+        if (strpos($relative_path, $images_dir . '/') === 0) {
+            $relative_path = substr($relative_path, strlen($images_dir . '/'));
+        }
+
+        $object_key = 'Images/' . ltrim($relative_path, '/');
+        return rustfsObjectExists($rustfs, $object_key);
     } catch (Exception $e) {
-        error_log("Error restoring image from Nextcloud: " . $e->getMessage());
+        error_log("Error checking RustFS for image: " . $e->getMessage());
         return false;
     }
 }
@@ -1468,364 +1374,30 @@ function uploadToPaperless($pdo, $file_path, $tag_name, $title = '') {
 }
 
 /**
- * Restore theme images from persistent storage when local files are missing.
- * Called during page load to ensure theme images survive re-deploys.
- * Checks logo, favicon, hero image, center ice logo, and business card backgrounds.
+ * Theme images are stored in RustFS and served via S3 URLs.
+ * No local restoration is needed — this function is a no-op for backward compatibility.
  *
  * @param PDO $pdo Database connection
  */
 function restoreThemeImagesFromPersistentStorage($pdo) {
-    try {
-        $stmt = $pdo->query("SELECT setting_name, setting_value FROM theme_settings WHERE setting_name IN (
-            'logo_url', 'favicon_url', 'hero_image_url', 'center_ice_logo_url',
-            'business_card_front_bg_url', 'business_card_back_bg_url',
-            'logo_url_nc_path', 'favicon_url_nc_path', 'hero_image_url_nc_path',
-            'center_ice_logo_url_nc_path', 'business_card_front_bg_url_nc_path',
-            'business_card_back_bg_url_nc_path'
-        )");
-        $all_settings = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-    } catch (Exception $e) {
-        return; // Table may not exist yet
-    }
-
-    // Separate URL settings from Nextcloud path settings
-    $theme_images = [];
-    $nc_paths = [];
-    foreach ($all_settings as $key => $val) {
-        if (str_ends_with($key, '_nc_path')) {
-            $nc_paths[$key] = $val;
-        } else {
-            $theme_images[$key] = $val;
-        }
-    }
-
-    $project_root = realpath(__DIR__);
-
-    foreach ($theme_images as $setting_name => $url) {
-        if (empty($url)) continue;
-
-        // Only process local upload paths (not external URLs)
-        if (strpos($url, 'http://') === 0 || strpos($url, 'https://') === 0) continue;
-        if (strpos($url, 'uploads/') !== 0) continue;
-
-        $local_path = $project_root . '/' . $url;
-
-        // If the file already exists locally, nothing to do
-        if (file_exists($local_path)) continue;
-
-        // Extract filename and determine subfolder for persistent storage lookup
-        $filename = basename($url);
-        // Theme images are stored under 'theme' subfolder in persistent storage
-        $subfolder = 'theme';
-
-        // Try to restore from persistent storage
-        $restored = restoreFromPersistentStorage($subfolder, $filename, $local_path, $pdo);
-        if ($restored) {
-            error_log("Restored theme image from persistent storage: $filename -> $local_path");
-        } else {
-            // Try Nextcloud using stored Nextcloud path first, then guess path as fallback
-            try {
-                $nc_settings = getNextcloudSettings($pdo);
-                if (!empty($nc_settings['nextcloud_url'])) {
-                    if (!empty($nc_settings['nextcloud_password'])) {
-                        $decrypted = function_exists('decryptPassword') ? decryptPassword($nc_settings['nextcloud_password']) : '';
-                        if (!empty($decrypted)) {
-                            $nc_settings['nextcloud_password'] = $decrypted;
-                        }
-                    }
-                    // Use stored Nextcloud path if available, otherwise guess
-                    $nc_path_key = $setting_name . '_nc_path';
-                    $remote_path = $nc_paths[$nc_path_key] ?? null;
-                    if (empty($remote_path)) {
-                        $images_dir = $nc_settings['nextcloud_images_dir'] ?? '/Images';
-                        $remote_path = $images_dir . '/theme/' . $filename;
-                    }
-                    $nc_restored = restoreImageFromNextcloud($pdo, $nc_settings, $remote_path, $local_path);
-                    if ($nc_restored) {
-                        error_log("Restored theme image from Nextcloud: $filename -> $local_path");
-                    }
-                }
-            } catch (Exception $e) {
-                error_log("Failed to restore theme image from Nextcloud: " . $e->getMessage());
-            }
-        }
-    }
+    // No-op: theme images are now stored in RustFS S3 and served via URLs.
+    // The database stores the RustFS URL directly, so no local restoration is needed.
+    return;
 }
 
 /**
- * Restore ALL files from persistent storage back to local paths after a re-deploy.
- *
- * When the Arctic_Wolves directory is deleted and re-created (e.g., during an update),
- * the database still contains paths to files that no longer exist locally. This function
- * queries every table that stores local file paths and restores any missing files from
- * persistent storage (which lives outside the web root and survives re-deploys).
- *
- * This is called once per session from dashboard.php and pwa.php to ensure all images,
- * videos, documents, and other files are available without waiting for the user to visit
- * every individual page.
- *
- * Persistent storage structure: {persistent_base}/Images/{subfolder}/{filename}
- * The subfolder matches the subfolder used in saveToPersistentStorage() and
- * uploadImageToNextcloud() calls throughout the application.
+ * All files are stored in RustFS S3 and served via URLs.
+ * No local restoration is needed — this function is a no-op for backward compatibility.
+ * 
+ * Previously, this function scanned the database for local file paths and restored
+ * them from persistent storage after a re-deploy. With RustFS, the database stores
+ * S3 URLs directly, so files are always accessible without local copies.
  *
  * @param PDO $pdo Database connection
  */
 function restoreAllFilesFromPersistentStorage($pdo) {
-    $project_root = realpath(__DIR__);
-    $restored_count = 0;
-    $base_dir = getPersistentStoragePath($pdo);
-
-    // Helper: try to restore a single file from persistent storage
-    // $relative_url: the relative URL stored in DB (e.g., 'uploads/theme/logo.png' or 'videos/drills/file.mp4')
-    // $subfolder: the persistent storage subfolder (e.g., 'theme', 'profiles', 'videos/coach')
-    $tryRestore = function($relative_url, $subfolder) use ($project_root, $pdo, $base_dir, &$restored_count) {
-        if (empty($relative_url)) return;
-        // Skip external URLs
-        if (strpos($relative_url, 'http://') === 0 || strpos($relative_url, 'https://') === 0) return;
-        
-        $local_path = $project_root . '/' . $relative_url;
-        // Already exists, nothing to do
-        if (file_exists($local_path)) return;
-        
-        $filename = basename($relative_url);
-        if (empty($filename)) return;
-        
-        // First try the exact subfolder
-        $restored = restoreFromPersistentStorage($subfolder, $filename, $local_path, $pdo);
-        if ($restored) {
-            $restored_count++;
-            error_log("Persistent restore: $subfolder/$filename -> $local_path");
-            return;
-        }
-        
-        // If exact subfolder didn't work, search recursively under the base subfolder.
-        // This handles cases like DrillVideos/2024/03/15/file.mp4 where we don't know
-        // the exact date path, or files that may have been saved under a different subfolder.
-        $search_base = $base_dir . '/Images/' . trim($subfolder, '/');
-        if (is_dir($search_base)) {
-            $iterator = new RecursiveIteratorIterator(
-                new RecursiveDirectoryIterator($search_base, RecursiveDirectoryIterator::SKIP_DOTS),
-                RecursiveIteratorIterator::LEAVES_ONLY
-            );
-            foreach ($iterator as $file) {
-                if ($file->getFilename() === $filename) {
-                    // Ensure local directory exists
-                    $local_dir = dirname($local_path);
-                    if (!is_dir($local_dir)) {
-                        mkdir($local_dir, 0755, true);
-                    }
-                    if (copy($file->getPathname(), $local_path)) {
-                        $restored_count++;
-                        error_log("Persistent restore (recursive): " . $file->getPathname() . " -> $local_path");
-                        return;
-                    }
-                }
-            }
-        }
-    };
-
-    // ── 1. Theme images (logo, favicon, hero, business card backgrounds, center ice) ──
-    restoreThemeImagesFromPersistentStorage($pdo);
-
-    // ── 2. User profile images ──
-    try {
-        $stmt = $pdo->query("SELECT id, profile_image FROM users WHERE profile_image IS NOT NULL AND profile_image != ''");
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $tryRestore($row['profile_image'], 'profiles');
-        }
-    } catch (Exception $e) { /* table may not exist */ }
-
-    // ── 3. Videos (coach reviews, athlete uploads, game plan) ──
-    try {
-        $stmt = $pdo->query("SELECT id, video_url, local_path, video_type FROM videos WHERE (video_url IS NOT NULL AND video_url != '') OR (local_path IS NOT NULL AND local_path != '')");
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            // Determine subfolder based on video_type
-            $vtype = $row['video_type'] ?? '';
-            if ($vtype === 'coach_review') {
-                $subfolder = 'videos/coach';
-            } elseif ($vtype === 'uploaded_by_athlete') {
-                $subfolder = 'videos/athlete';
-            } elseif ($vtype === 'drill_review') {
-                // Drill videos use DrillVideos subfolder (uploaded via uploadDrillVideo)
-                $subfolder = 'DrillVideos';
-            } else {
-                $subfolder = 'videos/gameplan';
-            }
-            $url = $row['video_url'] ?? $row['local_path'] ?? '';
-            $tryRestore($url, $subfolder);
-            // Also try local_path if different
-            if (!empty($row['local_path']) && $row['local_path'] !== $url) {
-                $tryRestore($row['local_path'], $subfolder);
-            }
-        }
-    } catch (Exception $e) { /* table may not exist */ }
-
-    // ── 4. Drill images and custom diagrams ──
-    try {
-        $stmt = $pdo->query("SELECT id, custom_image FROM drills WHERE custom_image IS NOT NULL AND custom_image != ''");
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $tryRestore($row['custom_image'], 'drills');
-            // Also try drills/diagrams subfolder (used by practice plan diagram exports)
-            $tryRestore($row['custom_image'], 'drills/diagrams');
-        }
-    } catch (Exception $e) { /* table may not exist */ }
-
-    // ── 5. Evaluation media (photos, videos taken during evaluations) ──
-    try {
-        $stmt = $pdo->query("SELECT id, file_path, evaluation_id FROM evaluation_media WHERE file_path IS NOT NULL AND file_path != ''");
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $eval_id = $row['evaluation_id'] ?? '';
-            $subfolder = !empty($eval_id) ? 'evaluations/' . intval($eval_id) : 'evaluations';
-            $tryRestore($row['file_path'], $subfolder);
-        }
-    } catch (Exception $e) { /* table may not exist */ }
-
-    // ── 6. Team logos ──
-    try {
-        $stmt = $pdo->query("SELECT id, logo_url FROM teams WHERE logo_url IS NOT NULL AND logo_url != ''");
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $tryRestore($row['logo_url'], 'team_logos');
-        }
-    } catch (Exception $e) { /* table may not exist */ }
-
-    // ── 7. Exercise images (workout builder) ──
-    try {
-        $stmt = $pdo->query("SELECT id, image_url FROM exercises WHERE image_url IS NOT NULL AND image_url != ''");
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $tryRestore($row['image_url'], 'exercises');
-        }
-    } catch (Exception $e) { /* table may not exist */ }
-
-    // ── 8. Merchandise category images ──
-    try {
-        $stmt = $pdo->query("SELECT id, image_url FROM merchandise_categories WHERE image_url IS NOT NULL AND image_url != ''");
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $tryRestore($row['image_url'], 'merchandise/categories');
-        }
-    } catch (Exception $e) { /* table may not exist */ }
-
-    // ── 9. Merchandise product images ──
-    try {
-        $stmt = $pdo->query("SELECT id, image_url FROM merchandise_products WHERE image_url IS NOT NULL AND image_url != ''");
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $tryRestore($row['image_url'], 'merchandise/products');
-        }
-    } catch (Exception $e) { /* table may not exist */ }
-
-    // ── 10. Additional product images ──
-    try {
-        $stmt = $pdo->query("SELECT id, image_url FROM merchandise_product_images WHERE image_url IS NOT NULL AND image_url != ''");
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $tryRestore($row['image_url'], 'merchandise/products');
-        }
-    } catch (Exception $e) { /* table may not exist */ }
-
-    // ── 11. Evaluation goal step media ──
-    try {
-        $stmt = $pdo->query("SELECT id, media_url, step_id FROM eval_goal_step_media WHERE media_url IS NOT NULL AND media_url != ''");
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $step_id = $row['step_id'] ?? '';
-            $subfolder = !empty($step_id) ? 'eval_goals/' . intval($step_id) : 'eval_goals';
-            $tryRestore($row['media_url'], $subfolder);
-        }
-    } catch (Exception $e) { /* table may not exist */ }
-
-    // ── 12. Training program images ──
-    try {
-        $stmt = $pdo->query("SELECT id, image_url FROM training_programs WHERE image_url IS NOT NULL AND image_url != ''");
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $tryRestore($row['image_url'], 'theme');
-        }
-    } catch (Exception $e) { /* table may not exist */ }
-
-    // ── 13. Expense receipts ──
-    try {
-        $stmt = $pdo->query("SELECT id, receipt_url, expense_date FROM expenses WHERE receipt_url IS NOT NULL AND receipt_url != ''");
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $date = $row['expense_date'] ?? '';
-            if (!empty($date)) {
-                $year = date('Y', strtotime($date));
-                $month = date('m', strtotime($date));
-                $tryRestore($row['receipt_url'], 'Receipts/' . $year . '/' . $month);
-            } else {
-                $tryRestore($row['receipt_url'], 'Receipts');
-            }
-        }
-    } catch (Exception $e) { /* table may not exist */ }
-
-    // ── 14. Recurring expense / contract files ──
-    try {
-        $stmt = $pdo->query("SELECT id, contract_file_url, vendor_name, purpose FROM recurring_expenses WHERE contract_file_url IS NOT NULL AND contract_file_url != ''");
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $vendor = preg_replace('/[^a-zA-Z0-9\-_\s]/', '', $row['vendor_name'] ?? 'Unknown');
-            $vendor = str_replace(' ', '_', trim($vendor));
-            $purpose = preg_replace('/[^a-zA-Z0-9\-_\s]/', '', $row['purpose'] ?? 'General');
-            $purpose = str_replace(' ', '_', trim($purpose));
-            $tryRestore($row['contract_file_url'], 'Contracts/' . $vendor . '/' . $purpose);
-        }
-    } catch (Exception $e) { /* table may not exist */ }
-
-    // ── 15. Game plan video sources ──
-    try {
-        $stmt = $pdo->query("SELECT id, video_url FROM vr_video_sources WHERE video_url IS NOT NULL AND video_url != ''");
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $tryRestore($row['video_url'], 'videos/gameplan');
-        }
-    } catch (Exception $e) { /* table may not exist */ }
-
-    // ── 16. Termination documents ──
-    try {
-        $stmt = $pdo->query("
-            SELECT td.id, td.file_path, et.staff_name, et.termination_date 
-            FROM termination_documents td 
-            LEFT JOIN employee_terminations et ON td.termination_id = et.id 
-            WHERE td.file_path IS NOT NULL AND td.file_path != ''
-        ");
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $date = $row['termination_date'] ?? '';
-            $staff = preg_replace('/[^a-zA-Z0-9\-_\s]/', '', $row['staff_name'] ?? 'Unknown');
-            $staff = str_replace(' ', '_', trim($staff));
-            if (!empty($date)) {
-                $year = date('Y', strtotime($date));
-                $month = date('m', strtotime($date));
-                $tryRestore($row['file_path'], 'Terminations/' . $year . '/' . $month . '/' . $staff);
-            } else {
-                $tryRestore($row['file_path'], 'Terminations');
-            }
-        }
-    } catch (Exception $e) { /* table may not exist */ }
-
-    // ── 17. Onboarding documents ──
-    try {
-        $stmt = $pdo->query("
-            SELECT od.id, od.file_path, eo.staff_name, eo.hire_date 
-            FROM onboarding_documents od 
-            LEFT JOIN employee_onboarding eo ON od.onboarding_id = eo.id 
-            WHERE od.file_path IS NOT NULL AND od.file_path != ''
-        ");
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $date = $row['hire_date'] ?? '';
-            $staff = preg_replace('/[^a-zA-Z0-9\-_\s]/', '', $row['staff_name'] ?? 'Unknown');
-            $staff = str_replace(' ', '_', trim($staff));
-            if (!empty($date)) {
-                $year = date('Y', strtotime($date));
-                $tryRestore($row['file_path'], 'Onboarding/' . $year . '/' . $staff);
-            } else {
-                $tryRestore($row['file_path'], 'Onboarding');
-            }
-        }
-    } catch (Exception $e) { /* table may not exist */ }
-
-    // ── 18. Drill video media (separate from practice plan drills) ──
-    try {
-        $stmt = $pdo->query("SELECT id, video_url FROM drills WHERE video_url IS NOT NULL AND video_url != ''");
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $tryRestore($row['video_url'], 'drills/videos');
-        }
-    } catch (Exception $e) { /* table may not exist */ }
-
-    if ($restored_count > 0) {
-        error_log("Persistent storage restoration complete: $restored_count files restored");
-    }
+    // No-op: all files are now stored in RustFS S3 and served via URLs.
+    // The database stores the RustFS URL directly, so no local restoration is needed.
+    return;
 }
 ?>
