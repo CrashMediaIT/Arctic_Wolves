@@ -161,13 +161,15 @@ try {
             throw new Exception('Invalid action');
     }
 } catch (PDOException $e) {
-    logSecurityEvent($pdo, 'video_error', $e->getMessage(), $user_id);
+    try { logSecurityEvent($pdo, 'video_error', $e->getMessage(), $user_id); } catch (Exception $le) {}
     ErrorLogger::error('process_video PDO error: ' . $e->getMessage());
+    header('Content-Type: application/json');
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => 'A database error occurred. Please try again.']);
     exit;
 } catch (Exception $e) {
-    logSecurityEvent($pdo, 'video_error', $e->getMessage(), $user_id);
+    try { logSecurityEvent($pdo, 'video_error', $e->getMessage(), $user_id); } catch (Exception $le) {}
+    header('Content-Type: application/json');
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     exit;
@@ -255,7 +257,9 @@ function handleVideoUpload() {
     $video_id = $pdo->lastInsertId();
     Auditor::log($pdo, $user_id, 'create', 'videos', $video_id, ['action' => 'Coach video uploaded']);
     
-    // Upload video to Nextcloud for persistent storage
+    // Save to persistent storage and upload to Nextcloud using streaming (no RAM loading).
+    // Videos can be up to 10GB — uploadLargeFileToNextcloud uses CURLOPT_INFILE
+    // which streams directly from disk to Nextcloud without loading into memory.
     try {
         $nc_settings = getNextcloudSettings($pdo);
         if (!empty($nc_settings['nextcloud_url'])) {
@@ -265,23 +269,32 @@ function handleVideoUpload() {
                     $nc_settings['nextcloud_password'] = $decrypted;
                 }
             }
-            $result = uploadImageToNextcloud($pdo, $nc_settings, $upload_path, 'videos/coach', $unique_filename);
+            $result = uploadLargeFileToNextcloud($pdo, $nc_settings, $upload_path, 'videos/coach', $unique_filename);
             if ($result['success']) {
                 $pdo->prepare("UPDATE videos SET nextcloud_path = ? WHERE id = ?")->execute([$result['remote_path'], $video_id]);
             }
+        } else {
+            // No Nextcloud configured — still save to persistent storage
+            saveToPersistentStorage($upload_path, 'videos/coach', $unique_filename, $pdo);
         }
     } catch (Exception $e) {
         error_log("Nextcloud coach video upload failed: " . $e->getMessage());
+        // Still try persistent storage even if Nextcloud fails
+        try { saveToPersistentStorage($upload_path, 'videos/coach', $unique_filename, $pdo); } catch (Exception $ps) { error_log("Persistent storage fallback also failed: " . $ps->getMessage()); }
     }
     
-    // Log the action
-    logSecurityEvent($pdo, 'video_upload', "Video uploaded for athlete ID: $athlete_id", $user_id);
+    // Log and notify — wrapped in try-catch so failures don't break the upload response
+    try {
+        logSecurityEvent($pdo, 'video_upload', "Video uploaded for athlete ID: $athlete_id", $user_id);
+    } catch (Exception $e) { error_log("logSecurityEvent failed: " . $e->getMessage()); }
     
-    // Send notification to athlete
-    sendVideoNotification($pdo, $athlete_id, $user_id, $video_id, 'new_video');
+    try {
+        sendVideoNotification($pdo, $athlete_id, $user_id, $video_id, 'new_video');
+    } catch (Exception $e) { error_log("sendVideoNotification failed: " . $e->getMessage()); }
     
     // Return JSON for XHR requests, redirect for standard form submissions
     if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+        header('Content-Type: application/json');
         echo json_encode(['success' => true, 'video_id' => $video_id, 'redirect' => 'dashboard.php?page=coaches_reviews&success=video_uploaded']);
         exit;
     }
@@ -433,7 +446,9 @@ function handleAthleteVideoUpload() {
     $video_id = $pdo->lastInsertId();
     Auditor::log($pdo, $user_id, 'create', 'videos', $video_id, ['action' => 'Athlete video uploaded']);
     
-    // Upload video to Nextcloud for persistent storage
+    // Save to persistent storage and upload to Nextcloud using streaming (no RAM loading).
+    // Videos can be up to 10GB — uploadLargeFileToNextcloud uses CURLOPT_INFILE
+    // which streams directly from disk to Nextcloud without loading into memory.
     try {
         $nc_settings = getNextcloudSettings($pdo);
         if (!empty($nc_settings['nextcloud_url'])) {
@@ -443,23 +458,32 @@ function handleAthleteVideoUpload() {
                     $nc_settings['nextcloud_password'] = $decrypted;
                 }
             }
-            $result = uploadImageToNextcloud($pdo, $nc_settings, $upload_path, 'videos/athlete', $unique_filename);
+            $result = uploadLargeFileToNextcloud($pdo, $nc_settings, $upload_path, 'videos/athlete', $unique_filename);
             if ($result['success']) {
                 $pdo->prepare("UPDATE videos SET nextcloud_path = ? WHERE id = ?")->execute([$result['remote_path'], $video_id]);
             }
+        } else {
+            // No Nextcloud configured — still save to persistent storage
+            saveToPersistentStorage($upload_path, 'videos/athlete', $unique_filename, $pdo);
         }
     } catch (Exception $e) {
         error_log("Nextcloud athlete video upload failed: " . $e->getMessage());
+        // Still try persistent storage even if Nextcloud fails
+        try { saveToPersistentStorage($upload_path, 'videos/athlete', $unique_filename, $pdo); } catch (Exception $ps) { error_log("Persistent storage fallback also failed: " . $ps->getMessage()); }
     }
     
-    // Log the action
-    logSecurityEvent($pdo, 'athlete_video_upload', "Athlete video uploaded for review, ID: $video_id", $athlete_id);
+    // Log and notify — wrapped in try-catch so failures don't break the upload response
+    try {
+        logSecurityEvent($pdo, 'athlete_video_upload', "Athlete video uploaded for review, ID: $video_id", $athlete_id);
+    } catch (Exception $e) { error_log("logSecurityEvent failed: " . $e->getMessage()); }
     
-    // Send notification and email to coach
-    sendVideoUploadNotificationToCoach($pdo, $coach_id, $athlete_id, $video_id, $title);
+    try {
+        sendVideoUploadNotificationToCoach($pdo, $coach_id, $athlete_id, $video_id, $title);
+    } catch (Exception $e) { error_log("sendVideoUploadNotificationToCoach failed: " . $e->getMessage()); }
     
     // Return JSON for XHR requests, redirect for standard form submissions
     if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+        header('Content-Type: application/json');
         echo json_encode(['success' => true, 'video_id' => $video_id, 'redirect' => 'dashboard.php?page=coaches_reviews&success=video_uploaded']);
         exit;
     }
@@ -622,9 +646,12 @@ function handleDrillVideoUpload() {
     $video_id = $pdo->lastInsertId();
     Auditor::log($pdo, $user_id, 'create', 'videos', $video_id, ['action' => 'Drill video uploaded']);
     
-    // Log the action
-    logSecurityEvent($pdo, 'drill_video_upload', "Drill video uploaded: $title (ID: $video_id)", $user_id);
+    // Log the action - wrapped to not break upload response
+    try {
+        logSecurityEvent($pdo, 'drill_video_upload', "Drill video uploaded: $title (ID: $video_id)", $user_id);
+    } catch (Exception $e) { error_log("logSecurityEvent failed: " . $e->getMessage()); }
     
+    header('Content-Type: application/json');
     echo json_encode([
         'success' => true, 
         'message' => 'Video uploaded successfully',
@@ -1200,7 +1227,7 @@ function handleUploadVideoSource() {
     $source_id_new = $pdo->lastInsertId();
     Auditor::log($pdo, $user_id, 'create', 'vr_video_sources', $source_id_new, ['action' => 'Video source uploaded']);
 
-    // Upload gameplan video to Nextcloud for persistent storage
+    // Upload gameplan video to Nextcloud using streaming (no RAM loading for large files)
     try {
         $nc_settings = getNextcloudSettings($pdo);
         if (!empty($nc_settings['nextcloud_url'])) {
@@ -1210,16 +1237,22 @@ function handleUploadVideoSource() {
                     $nc_settings['nextcloud_password'] = $decrypted;
                 }
             }
-            $result = uploadImageToNextcloud($pdo, $nc_settings, $upload_path, 'videos/gameplan', $unique_name);
+            $result = uploadLargeFileToNextcloud($pdo, $nc_settings, $upload_path, 'videos/gameplan', $unique_name);
             if ($result['success']) {
                 $pdo->prepare("UPDATE vr_video_sources SET nextcloud_path = ? WHERE id = ?")->execute([$result['remote_path'], $source_id_new]);
             }
+        } else {
+            // No Nextcloud — still save to persistent storage
+            saveToPersistentStorage($upload_path, 'videos/gameplan', $unique_name, $pdo);
         }
     } catch (Exception $e) {
         error_log("Nextcloud gameplan video upload failed: " . $e->getMessage());
+        try { saveToPersistentStorage($upload_path, 'videos/gameplan', $unique_name, $pdo); } catch (Exception $ps) {}
     }
 
-    logSecurityEvent($pdo, 'video_source_uploaded', "Video source uploaded: " . $file['name'], $user_id);
+    try {
+        logSecurityEvent($pdo, 'video_source_uploaded', "Video source uploaded: " . $file['name'], $user_id);
+    } catch (Exception $e) { error_log("logSecurityEvent failed: " . $e->getMessage()); }
     header('Location: /gameplan.php?page=film_room&tab=upload&success=source_uploaded');
     exit;
 }

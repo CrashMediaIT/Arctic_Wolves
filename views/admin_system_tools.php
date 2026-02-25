@@ -1709,23 +1709,8 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                         </div>
                     </div>
                     
-                    <div class="form-actions">
-                        <button type="button" class="btn btn-secondary" onclick="resetThemeColors()">
-                            <i class="fas fa-undo"></i> Reset Colors
-                        </button>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save"></i> Save Theme
-                        </button>
-                    </div>
-                </form>
-                
-                <!-- Business Card Backgrounds -->
-                <form id="bc-bg-form" method="POST" action="process_theme.php" enctype="multipart/form-data" style="margin-top: 24px; border-top: 1px solid var(--border); padding-top: 24px;">
-                    <?php echo csrfTokenInput(); ?>
-                    <input type="hidden" name="action" value="update_business_card_backgrounds">
-                    <input type="hidden" name="redirect_page" value="system_tools">
-                    
-                    <div class="sync-options" style="margin-bottom: 24px;">
+                    <!-- Business Card Backgrounds Section (inside main theme form) -->
+                    <div class="sync-options" style="margin-bottom: 24px; margin-top: 24px; border-top: 1px solid var(--border); padding-top: 24px;">
                         <h4><i class="fas fa-id-card"></i> Business Card Backgrounds</h4>
                         <p class="help-text" style="margin-bottom: 16px;">Upload background images for the front and back of business cards. The logo above is automatically used on cards. Recommended: 1050×600px (3.5" × 2" at 300 DPI).</p>
                         
@@ -1778,10 +1763,13 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                             <?php endif; ?>
                         </div>
                     </div>
-                    
+
                     <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="resetThemeColors()">
+                            <i class="fas fa-undo"></i> Reset Colors
+                        </button>
                         <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save"></i> Save Business Card Backgrounds
+                            <i class="fas fa-save"></i> Save All Settings
                         </button>
                     </div>
                 </form>

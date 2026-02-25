@@ -39,10 +39,11 @@ if ($action == 'upload_avatar') {
         $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
         
         if (in_array($ext, $allowed)) {
-            if (!is_dir('uploads')) { mkdir('uploads'); }
+            if (!is_dir(__DIR__ . '/uploads')) { mkdir(__DIR__ . '/uploads'); }
             $new_name = "uploads/avatar_" . $target_id . "_" . time() . "." . $ext;
+            $absolute_path = __DIR__ . '/' . $new_name;
             
-            if (move_uploaded_file($_FILES['profile_pic']['tmp_name'], $new_name)) {
+            if (move_uploaded_file($_FILES['profile_pic']['tmp_name'], $absolute_path)) {
                 $pdo->prepare("UPDATE users SET profile_image = ? WHERE id = ?")->execute([$new_name, $target_id]);
                 
                 // Upload to Nextcloud for persistent storage
@@ -57,7 +58,7 @@ if ($action == 'upload_avatar') {
                             }
                         }
                         $nc_filename = "avatar_" . $target_id . "_" . time() . "." . $ext;
-                        $result = uploadImageToNextcloud($pdo, $nc_settings, $new_name, 'profiles', $nc_filename);
+                        $result = uploadImageToNextcloud($pdo, $nc_settings, $absolute_path, 'profiles', $nc_filename);
                         if ($result['success']) {
                             $pdo->prepare("UPDATE users SET nextcloud_image_path = ? WHERE id = ?")->execute([$result['remote_path'], $target_id]);
                         }
@@ -552,16 +553,19 @@ if ($action == 'upload_photo') {
         $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
         
         if (in_array($ext, $allowed)) {
-            $upload_dir = 'uploads/profiles/';
+            $relative_dir = 'uploads/profiles/';
+            $upload_dir = __DIR__ . '/' . $relative_dir;
             if (!is_dir($upload_dir)) { 
                 mkdir($upload_dir, 0755, true); 
             }
-            $new_name = $upload_dir . "profile_" . $current_user_id . "_" . time() . "." . $ext;
+            $profile_filename = "profile_" . $current_user_id . "_" . time() . "." . $ext;
+            $absolute_path = $upload_dir . $profile_filename;
+            $relative_path = $relative_dir . $profile_filename;
             
-            if (move_uploaded_file($_FILES['profile_photo']['tmp_name'], $new_name)) {
+            if (move_uploaded_file($_FILES['profile_photo']['tmp_name'], $absolute_path)) {
                 // Save to persistent storage (survives updates)
                 try {
-                    saveToPersistentStorage($new_name, 'profiles', basename($new_name), $pdo);
+                    saveToPersistentStorage($absolute_path, 'profiles', $profile_filename, $pdo);
                 } catch (Exception $e) {
                     error_log("Persistent storage save failed: " . $e->getMessage());
                 }
@@ -570,13 +574,13 @@ if ($action == 'upload_photo') {
                 $stmt = $pdo->prepare("SELECT profile_image FROM users WHERE id = ?");
                 $stmt->execute([$current_user_id]);
                 $old_image = $stmt->fetchColumn();
-                if ($old_image && file_exists($old_image)) {
-                    unlink($old_image);
+                if ($old_image && file_exists(__DIR__ . '/' . $old_image)) {
+                    unlink(__DIR__ . '/' . $old_image);
                 }
                 
-                // Update database
+                // Update database with relative path for web access
                 $pdo->prepare("UPDATE users SET profile_image = ? WHERE id = ?")
-                    ->execute([$new_name, $current_user_id]);
+                    ->execute([$relative_path, $current_user_id]);
                 
                 header("Location: dashboard.php?page=profile&msg=photo_uploaded");
                 exit();

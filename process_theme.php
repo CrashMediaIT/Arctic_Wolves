@@ -94,10 +94,14 @@ function handleFileUpload($file, $type = 'image') {
     if (move_uploaded_file($file['tmp_name'], $filepath)) {
         $local_url = 'uploads/theme/' . $filename;
         
-        // Upload theme image to Nextcloud for persistent storage
+        // Always save to persistent storage (survives app re-deploys)
+        // Also upload to Nextcloud if configured
         global $pdo;
         if ($pdo) {
             try {
+                // Use absolute path for persistent storage and Nextcloud upload
+                $absolute_path = $filepath;
+                
                 $nc_settings = getNextcloudSettings($pdo);
                 if (!empty($nc_settings['nextcloud_url'])) {
                     if (!empty($nc_settings['nextcloud_password'])) {
@@ -106,10 +110,16 @@ function handleFileUpload($file, $type = 'image') {
                             $nc_settings['nextcloud_password'] = $decrypted;
                         }
                     }
-                    uploadImageToNextcloud($pdo, $nc_settings, $local_url, 'theme', $filename);
+                    // uploadImageToNextcloud also saves to persistent storage
+                    uploadImageToNextcloud($pdo, $nc_settings, $absolute_path, 'theme', $filename);
+                } else {
+                    // No Nextcloud — still save to persistent storage
+                    saveToPersistentStorage($absolute_path, 'theme', $filename, $pdo);
                 }
             } catch (Exception $e) {
-                error_log("Nextcloud theme image upload failed: " . $e->getMessage());
+                error_log("Theme image persistent/Nextcloud upload failed: " . $e->getMessage());
+                // Try persistent storage as a fallback
+                try { saveToPersistentStorage($filepath, 'theme', $filename, $pdo); } catch (Exception $ps) { error_log("Persistent storage fallback also failed: " . $ps->getMessage()); }
             }
         }
         
@@ -444,6 +454,20 @@ try {
             // Save center ice logo method preference
             if (isset($_POST['center_ice_logo_method'])) {
                 updateThemeSetting($pdo, 'center_ice_logo_method', $_POST['center_ice_logo_method']);
+            }
+            
+            // Handle business card background uploads (unified into theme form)
+            if (isset($_FILES['bc_front_bg']) && $_FILES['bc_front_bg']['error'] === UPLOAD_ERR_OK) {
+                $result = handleFileUpload($_FILES['bc_front_bg'], 'bc_front_bg');
+                if ($result['success']) {
+                    updateThemeSetting($pdo, 'business_card_front_bg_url', $result['url']);
+                }
+            }
+            if (isset($_FILES['bc_back_bg']) && $_FILES['bc_back_bg']['error'] === UPLOAD_ERR_OK) {
+                $result = handleFileUpload($_FILES['bc_back_bg'], 'bc_back_bg');
+                if ($result['success']) {
+                    updateThemeSetting($pdo, 'business_card_back_bg_url', $result['url']);
+                }
             }
             
             Auditor::log($pdo, $user_id, 'update', 'theme_settings', null, ['action' => 'Theme settings updated']);

@@ -705,6 +705,11 @@ function getPersistentStoragePath($pdo = null) {
             error_log("Error reading persistent path setting: " . $e->getMessage());
         }
     }
+    // Default: /config/persistent_uploads (outside web root, survives app re-deploys)
+    // Fall back to sibling directory of project root if /config doesn't exist
+    if (is_dir('/config')) {
+        return '/config/persistent_uploads';
+    }
     return realpath(__DIR__ . '/..') . '/persistent_uploads';
 }
 
@@ -837,6 +842,83 @@ function uploadImageToNextcloud($pdo, $settings, $local_file_path, $subfolder, $
         
     } catch (Exception $e) {
         error_log("Error uploading image to Nextcloud: " . $e->getMessage());
+        return [
+            'success' => false,
+            'message' => $e->getMessage()
+        ];
+    }
+}
+
+/**
+ * Upload a large file (e.g. video) to Nextcloud using streaming to avoid memory exhaustion.
+ * Uses CURLOPT_INFILE to stream the file directly from disk without loading it into memory.
+ * Also saves a copy to persistent local storage.
+ *
+ * @param PDO $pdo Database connection
+ * @param array $settings Nextcloud settings (from getNextcloudSettings)
+ * @param string $local_file_path Absolute path to the local file
+ * @param string $subfolder Subfolder within Nextcloud images dir (e.g., 'videos/coach')
+ * @param string $filename Target filename
+ * @return array Result with success status and remote_path
+ */
+function uploadLargeFileToNextcloud($pdo, $settings, $local_file_path, $subfolder, $filename) {
+    // Always save to persistent local storage first (uses copy(), memory-safe)
+    saveToPersistentStorage($local_file_path, $subfolder, $filename, $pdo);
+
+    try {
+        $connection = connectNextcloud($settings);
+
+        $images_dir = $settings['nextcloud_images_dir'] ?? '/Images';
+
+        // Build folder path
+        $sub_parts = array_filter(explode('/', $subfolder), function($p) { return $p !== ''; });
+        $folder_path = ensureNextcloudPath($connection, $images_dir, $sub_parts);
+
+        $remote_path = $folder_path . '/' . $filename;
+        $remote_path_clean = '/' . trim($remote_path, '/');
+
+        $webdav_url = $connection['url'] . '/remote.php/dav/files/' . $connection['username'] . $remote_path_clean;
+
+        $file_size = filesize($local_file_path);
+        $fh = fopen($local_file_path, 'rb');
+        if ($fh === false) {
+            throw new Exception("Failed to open file for streaming upload: $local_file_path");
+        }
+
+        // Determine content type
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $content_type = finfo_file($finfo, $local_file_path);
+        finfo_close($finfo);
+
+        $ch = curl_init($webdav_url);
+        curl_setopt($ch, CURLOPT_PUT, true);
+        curl_setopt($ch, CURLOPT_INFILE, $fh);
+        curl_setopt($ch, CURLOPT_INFILESIZE, $file_size);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+        curl_setopt($ch, CURLOPT_USERPWD, $connection['username'] . ':' . $connection['password']);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: ' . $content_type,
+        ]);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        fclose($fh);
+
+        if ($http_code !== 201 && $http_code !== 204) {
+            throw new Exception("Failed to upload large file via streaming. HTTP Code: $http_code");
+        }
+
+        return [
+            'success' => true,
+            'remote_path' => $remote_path_clean,
+            'file_size' => $file_size
+        ];
+
+    } catch (Exception $e) {
+        error_log("Error uploading large file to Nextcloud: " . $e->getMessage());
         return [
             'success' => false,
             'message' => $e->getMessage()
@@ -1304,5 +1386,348 @@ function uploadToPaperless($pdo, $file_path, $tag_name, $title = '') {
     
     error_log('Paperless-NGX upload failed: HTTP ' . $http_code . ' - ' . $response);
     return ['success' => false, 'message' => 'Upload failed (HTTP ' . $http_code . ')'];
+}
+
+/**
+ * Restore theme images from persistent storage when local files are missing.
+ * Called during page load to ensure theme images survive re-deploys.
+ * Checks logo, favicon, hero image, center ice logo, and business card backgrounds.
+ *
+ * @param PDO $pdo Database connection
+ */
+function restoreThemeImagesFromPersistentStorage($pdo) {
+    try {
+        $stmt = $pdo->query("SELECT setting_name, setting_value FROM theme_settings WHERE setting_name IN (
+            'logo_url', 'favicon_url', 'hero_image_url', 'center_ice_logo_url',
+            'business_card_front_bg_url', 'business_card_back_bg_url'
+        )");
+        $theme_images = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+    } catch (Exception $e) {
+        return; // Table may not exist yet
+    }
+
+    $project_root = realpath(__DIR__);
+
+    foreach ($theme_images as $setting_name => $url) {
+        if (empty($url)) continue;
+
+        // Only process local upload paths (not external URLs)
+        if (strpos($url, 'http://') === 0 || strpos($url, 'https://') === 0) continue;
+        if (strpos($url, 'uploads/') !== 0) continue;
+
+        $local_path = $project_root . '/' . $url;
+
+        // If the file already exists locally, nothing to do
+        if (file_exists($local_path)) continue;
+
+        // Extract filename and determine subfolder for persistent storage lookup
+        $filename = basename($url);
+        // Theme images are stored under 'theme' subfolder in persistent storage
+        $subfolder = 'theme';
+
+        // Try to restore from persistent storage
+        $restored = restoreFromPersistentStorage($subfolder, $filename, $local_path, $pdo);
+        if ($restored) {
+            error_log("Restored theme image from persistent storage: $filename -> $local_path");
+        } else {
+            // Try Nextcloud as last resort
+            try {
+                $nc_settings = getNextcloudSettings($pdo);
+                if (!empty($nc_settings['nextcloud_url'])) {
+                    if (!empty($nc_settings['nextcloud_password'])) {
+                        $decrypted = function_exists('decryptPassword') ? decryptPassword($nc_settings['nextcloud_password']) : '';
+                        if (!empty($decrypted)) {
+                            $nc_settings['nextcloud_password'] = $decrypted;
+                        }
+                    }
+                    $images_dir = $nc_settings['nextcloud_images_dir'] ?? '/Images';
+                    $remote_path = $images_dir . '/theme/' . $filename;
+                    $nc_restored = restoreImageFromNextcloud($pdo, $nc_settings, $remote_path, $local_path);
+                    if ($nc_restored) {
+                        error_log("Restored theme image from Nextcloud: $filename -> $local_path");
+                    }
+                }
+            } catch (Exception $e) {
+                error_log("Failed to restore theme image from Nextcloud: " . $e->getMessage());
+            }
+        }
+    }
+}
+
+/**
+ * Restore ALL files from persistent storage back to local paths after a re-deploy.
+ *
+ * When the Arctic_Wolves directory is deleted and re-created (e.g., during an update),
+ * the database still contains paths to files that no longer exist locally. This function
+ * queries every table that stores local file paths and restores any missing files from
+ * persistent storage (which lives outside the web root and survives re-deploys).
+ *
+ * This is called once per session from dashboard.php and pwa.php to ensure all images,
+ * videos, documents, and other files are available without waiting for the user to visit
+ * every individual page.
+ *
+ * Persistent storage structure: {persistent_base}/Images/{subfolder}/{filename}
+ * The subfolder matches the subfolder used in saveToPersistentStorage() and
+ * uploadImageToNextcloud() calls throughout the application.
+ *
+ * @param PDO $pdo Database connection
+ */
+function restoreAllFilesFromPersistentStorage($pdo) {
+    $project_root = realpath(__DIR__);
+    $restored_count = 0;
+    $base_dir = getPersistentStoragePath($pdo);
+
+    // Helper: try to restore a single file from persistent storage
+    // $relative_url: the relative URL stored in DB (e.g., 'uploads/theme/logo.png' or 'videos/drills/file.mp4')
+    // $subfolder: the persistent storage subfolder (e.g., 'theme', 'profiles', 'videos/coach')
+    $tryRestore = function($relative_url, $subfolder) use ($project_root, $pdo, $base_dir, &$restored_count) {
+        if (empty($relative_url)) return;
+        // Skip external URLs
+        if (strpos($relative_url, 'http://') === 0 || strpos($relative_url, 'https://') === 0) return;
+        
+        $local_path = $project_root . '/' . $relative_url;
+        // Already exists, nothing to do
+        if (file_exists($local_path)) return;
+        
+        $filename = basename($relative_url);
+        if (empty($filename)) return;
+        
+        // First try the exact subfolder
+        $restored = restoreFromPersistentStorage($subfolder, $filename, $local_path, $pdo);
+        if ($restored) {
+            $restored_count++;
+            error_log("Persistent restore: $subfolder/$filename -> $local_path");
+            return;
+        }
+        
+        // If exact subfolder didn't work, search recursively under the base subfolder.
+        // This handles cases like DrillVideos/2024/03/15/file.mp4 where we don't know
+        // the exact date path, or files that may have been saved under a different subfolder.
+        $search_base = $base_dir . '/Images/' . trim($subfolder, '/');
+        if (is_dir($search_base)) {
+            $iterator = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($search_base, RecursiveDirectoryIterator::SKIP_DOTS),
+                RecursiveIteratorIterator::LEAVES_ONLY
+            );
+            foreach ($iterator as $file) {
+                if ($file->getFilename() === $filename) {
+                    // Ensure local directory exists
+                    $local_dir = dirname($local_path);
+                    if (!is_dir($local_dir)) {
+                        mkdir($local_dir, 0755, true);
+                    }
+                    if (copy($file->getPathname(), $local_path)) {
+                        $restored_count++;
+                        error_log("Persistent restore (recursive): " . $file->getPathname() . " -> $local_path");
+                        return;
+                    }
+                }
+            }
+        }
+    };
+
+    // ── 1. Theme images (logo, favicon, hero, business card backgrounds, center ice) ──
+    restoreThemeImagesFromPersistentStorage($pdo);
+
+    // ── 2. User profile images ──
+    try {
+        $stmt = $pdo->query("SELECT id, profile_image FROM users WHERE profile_image IS NOT NULL AND profile_image != ''");
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $tryRestore($row['profile_image'], 'profiles');
+        }
+    } catch (Exception $e) { /* table may not exist */ }
+
+    // ── 3. Videos (coach reviews, athlete uploads, game plan) ──
+    try {
+        $stmt = $pdo->query("SELECT id, video_url, local_path, video_type FROM videos WHERE (video_url IS NOT NULL AND video_url != '') OR (local_path IS NOT NULL AND local_path != '')");
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            // Determine subfolder based on video_type
+            $vtype = $row['video_type'] ?? '';
+            if ($vtype === 'coach_review') {
+                $subfolder = 'videos/coach';
+            } elseif ($vtype === 'uploaded_by_athlete') {
+                $subfolder = 'videos/athlete';
+            } elseif ($vtype === 'drill_review') {
+                // Drill videos use DrillVideos subfolder (uploaded via uploadDrillVideo)
+                $subfolder = 'DrillVideos';
+            } else {
+                $subfolder = 'videos/gameplan';
+            }
+            $url = $row['video_url'] ?? $row['local_path'] ?? '';
+            $tryRestore($url, $subfolder);
+            // Also try local_path if different
+            if (!empty($row['local_path']) && $row['local_path'] !== $url) {
+                $tryRestore($row['local_path'], $subfolder);
+            }
+        }
+    } catch (Exception $e) { /* table may not exist */ }
+
+    // ── 4. Drill images and custom diagrams ──
+    try {
+        $stmt = $pdo->query("SELECT id, custom_image FROM drills WHERE custom_image IS NOT NULL AND custom_image != ''");
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $tryRestore($row['custom_image'], 'drills');
+            // Also try drills/diagrams subfolder (used by practice plan diagram exports)
+            $tryRestore($row['custom_image'], 'drills/diagrams');
+        }
+    } catch (Exception $e) { /* table may not exist */ }
+
+    // ── 5. Evaluation media (photos, videos taken during evaluations) ──
+    try {
+        $stmt = $pdo->query("SELECT id, file_path, evaluation_id FROM evaluation_media WHERE file_path IS NOT NULL AND file_path != ''");
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $eval_id = $row['evaluation_id'] ?? '';
+            $subfolder = !empty($eval_id) ? 'evaluations/' . intval($eval_id) : 'evaluations';
+            $tryRestore($row['file_path'], $subfolder);
+        }
+    } catch (Exception $e) { /* table may not exist */ }
+
+    // ── 6. Team logos ──
+    try {
+        $stmt = $pdo->query("SELECT id, logo_url FROM teams WHERE logo_url IS NOT NULL AND logo_url != ''");
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $tryRestore($row['logo_url'], 'team_logos');
+        }
+    } catch (Exception $e) { /* table may not exist */ }
+
+    // ── 7. Exercise images (workout builder) ──
+    try {
+        $stmt = $pdo->query("SELECT id, image_url FROM exercises WHERE image_url IS NOT NULL AND image_url != ''");
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $tryRestore($row['image_url'], 'exercises');
+        }
+    } catch (Exception $e) { /* table may not exist */ }
+
+    // ── 8. Merchandise category images ──
+    try {
+        $stmt = $pdo->query("SELECT id, image_url FROM merchandise_categories WHERE image_url IS NOT NULL AND image_url != ''");
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $tryRestore($row['image_url'], 'merchandise/categories');
+        }
+    } catch (Exception $e) { /* table may not exist */ }
+
+    // ── 9. Merchandise product images ──
+    try {
+        $stmt = $pdo->query("SELECT id, image_url FROM merchandise_products WHERE image_url IS NOT NULL AND image_url != ''");
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $tryRestore($row['image_url'], 'merchandise/products');
+        }
+    } catch (Exception $e) { /* table may not exist */ }
+
+    // ── 10. Additional product images ──
+    try {
+        $stmt = $pdo->query("SELECT id, image_url FROM merchandise_product_images WHERE image_url IS NOT NULL AND image_url != ''");
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $tryRestore($row['image_url'], 'merchandise/products');
+        }
+    } catch (Exception $e) { /* table may not exist */ }
+
+    // ── 11. Evaluation goal step media ──
+    try {
+        $stmt = $pdo->query("SELECT id, media_url, step_id FROM eval_goal_step_media WHERE media_url IS NOT NULL AND media_url != ''");
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $step_id = $row['step_id'] ?? '';
+            $subfolder = !empty($step_id) ? 'eval_goals/' . intval($step_id) : 'eval_goals';
+            $tryRestore($row['media_url'], $subfolder);
+        }
+    } catch (Exception $e) { /* table may not exist */ }
+
+    // ── 12. Training program images ──
+    try {
+        $stmt = $pdo->query("SELECT id, image_url FROM training_programs WHERE image_url IS NOT NULL AND image_url != ''");
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $tryRestore($row['image_url'], 'theme');
+        }
+    } catch (Exception $e) { /* table may not exist */ }
+
+    // ── 13. Expense receipts ──
+    try {
+        $stmt = $pdo->query("SELECT id, receipt_url, expense_date FROM expenses WHERE receipt_url IS NOT NULL AND receipt_url != ''");
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $date = $row['expense_date'] ?? '';
+            if (!empty($date)) {
+                $year = date('Y', strtotime($date));
+                $month = date('m', strtotime($date));
+                $tryRestore($row['receipt_url'], 'Receipts/' . $year . '/' . $month);
+            } else {
+                $tryRestore($row['receipt_url'], 'Receipts');
+            }
+        }
+    } catch (Exception $e) { /* table may not exist */ }
+
+    // ── 14. Recurring expense / contract files ──
+    try {
+        $stmt = $pdo->query("SELECT id, contract_file_url, vendor_name, purpose FROM recurring_expenses WHERE contract_file_url IS NOT NULL AND contract_file_url != ''");
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $vendor = preg_replace('/[^a-zA-Z0-9\-_\s]/', '', $row['vendor_name'] ?? 'Unknown');
+            $vendor = str_replace(' ', '_', trim($vendor));
+            $purpose = preg_replace('/[^a-zA-Z0-9\-_\s]/', '', $row['purpose'] ?? 'General');
+            $purpose = str_replace(' ', '_', trim($purpose));
+            $tryRestore($row['contract_file_url'], 'Contracts/' . $vendor . '/' . $purpose);
+        }
+    } catch (Exception $e) { /* table may not exist */ }
+
+    // ── 15. Game plan video sources ──
+    try {
+        $stmt = $pdo->query("SELECT id, video_url FROM vr_video_sources WHERE video_url IS NOT NULL AND video_url != ''");
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $tryRestore($row['video_url'], 'videos/gameplan');
+        }
+    } catch (Exception $e) { /* table may not exist */ }
+
+    // ── 16. Termination documents ──
+    try {
+        $stmt = $pdo->query("
+            SELECT td.id, td.file_path, et.staff_name, et.termination_date 
+            FROM termination_documents td 
+            LEFT JOIN employee_terminations et ON td.termination_id = et.id 
+            WHERE td.file_path IS NOT NULL AND td.file_path != ''
+        ");
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $date = $row['termination_date'] ?? '';
+            $staff = preg_replace('/[^a-zA-Z0-9\-_\s]/', '', $row['staff_name'] ?? 'Unknown');
+            $staff = str_replace(' ', '_', trim($staff));
+            if (!empty($date)) {
+                $year = date('Y', strtotime($date));
+                $month = date('m', strtotime($date));
+                $tryRestore($row['file_path'], 'Terminations/' . $year . '/' . $month . '/' . $staff);
+            } else {
+                $tryRestore($row['file_path'], 'Terminations');
+            }
+        }
+    } catch (Exception $e) { /* table may not exist */ }
+
+    // ── 17. Onboarding documents ──
+    try {
+        $stmt = $pdo->query("
+            SELECT od.id, od.file_path, eo.staff_name, eo.hire_date 
+            FROM onboarding_documents od 
+            LEFT JOIN employee_onboarding eo ON od.onboarding_id = eo.id 
+            WHERE od.file_path IS NOT NULL AND od.file_path != ''
+        ");
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $date = $row['hire_date'] ?? '';
+            $staff = preg_replace('/[^a-zA-Z0-9\-_\s]/', '', $row['staff_name'] ?? 'Unknown');
+            $staff = str_replace(' ', '_', trim($staff));
+            if (!empty($date)) {
+                $year = date('Y', strtotime($date));
+                $tryRestore($row['file_path'], 'Onboarding/' . $year . '/' . $staff);
+            } else {
+                $tryRestore($row['file_path'], 'Onboarding');
+            }
+        }
+    } catch (Exception $e) { /* table may not exist */ }
+
+    // ── 18. Drill video media (separate from practice plan drills) ──
+    try {
+        $stmt = $pdo->query("SELECT id, video_url FROM drills WHERE video_url IS NOT NULL AND video_url != ''");
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $tryRestore($row['video_url'], 'drills/videos');
+        }
+    } catch (Exception $e) { /* table may not exist */ }
+
+    if ($restored_count > 0) {
+        error_log("Persistent storage restoration complete: $restored_count files restored");
+    }
 }
 ?>
