@@ -446,6 +446,20 @@ try {
                 updateThemeSetting($pdo, 'center_ice_logo_method', $_POST['center_ice_logo_method']);
             }
             
+            // Handle business card background uploads (unified into theme form)
+            if (isset($_FILES['bc_front_bg']) && $_FILES['bc_front_bg']['error'] === UPLOAD_ERR_OK) {
+                $result = handleFileUpload($_FILES['bc_front_bg'], 'bc_front_bg');
+                if ($result['success']) {
+                    updateThemeSetting($pdo, 'business_card_front_bg_url', $result['url']);
+                }
+            }
+            if (isset($_FILES['bc_back_bg']) && $_FILES['bc_back_bg']['error'] === UPLOAD_ERR_OK) {
+                $result = handleFileUpload($_FILES['bc_back_bg'], 'bc_back_bg');
+                if ($result['success']) {
+                    updateThemeSetting($pdo, 'business_card_back_bg_url', $result['url']);
+                }
+            }
+            
             Auditor::log($pdo, $user_id, 'update', 'theme_settings', null, ['action' => 'Theme settings updated']);
             
             // Redirect back to system_tools theme tab
