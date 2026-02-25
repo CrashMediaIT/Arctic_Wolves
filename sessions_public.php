@@ -129,7 +129,7 @@ if ($db_connected) {
                    u.first_name as coach_first_name, u.last_name as coach_last_name,
                    l.name as location_name,
                    1 as total_dates,
-                   'template' as source_type,
+                   'session' as source_type,
                    NULL as id
             FROM training_session_templates t
             INNER JOIN training_session_dates td ON td.template_id = t.id
@@ -830,7 +830,7 @@ $viewMode = $_GET['view'] ?? 'list';
                             </div>
                             <div class="session-actions" style="text-align: right;">
                                 <div class="session-price">$<?= number_format($session['price'], 2) ?></div>
-                                <a href="?register=1&type=<?= $session['source_type'] === 'template' ? 'template_date' : 'session' ?>&id=<?= $session['source_type'] === 'template' ? $session['session_date_id'] : $session['id'] ?>" class="register-btn">
+                                <a href="?register=1&type=<?= !empty($session['session_date_id']) ? 'template_date' : 'session' ?>&id=<?= !empty($session['session_date_id']) ? $session['session_date_id'] : $session['id'] ?>" class="register-btn">
                                     <i class="fas fa-user-plus"></i> Register
                                 </a>
                             </div>
@@ -977,8 +977,8 @@ $viewMode = $_GET['view'] ?? 'list';
                             html += '</div>';
                             html += '<div style="text-align: right;">';
                             html += '<div style="font-size: 1.2rem; font-weight: 800; color: var(--primary);">$' + parseFloat(session.price).toFixed(2) + '</div>';
-                            var regType = session.source_type === 'template' ? 'template_date' : 'session';
-                            var regId = session.source_type === 'template' ? session.session_date_id : session.id;
+                            var regType = session.session_date_id ? 'template_date' : 'session';
+                            var regId = session.session_date_id ? session.session_date_id : session.id;
                             html += '<a href="?register=1&type=' + regType + '&id=' + regId + '" class="register-btn" style="padding: 8px 16px; font-size: 12px; margin-top: 8px;"><i class="fas fa-user-plus"></i> Register</a>';
                             html += '</div>';
                             html += '</div>';
