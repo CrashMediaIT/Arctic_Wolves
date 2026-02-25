@@ -346,11 +346,7 @@ foreach ($users as $u) {
                                             <?php 
                                             // Validate profile image path
                                             $profile_img = $user['profile_image'] ?? '';
-                                            $is_valid_image = !empty($profile_img) && (
-                                                              preg_match('#^https?://#', $profile_img) ||
-                                                              (strpos($profile_img, 'uploads/profiles/') === 0 && 
-                                                              preg_match('/\.(jpg|jpeg|png|gif|webp)$/i', $profile_img) && 
-                                                              file_exists($profile_img)));
+                                            $is_valid_image = !empty($profile_img) && preg_match('#^https?://#', $profile_img);
                                             $user_is_online = !empty($user['is_online']) && $user['is_online'] > 0;
                                             ?>
                                             <div class="avatar-wrapper">

@@ -175,7 +175,7 @@ function handleProductImageUpload($file) {
     $safeFilename = FileUploadValidator::generateUniqueFilename($file['name']);
     $local_cache_rel = 'uploads/merchandise/products/' . $safeFilename;
     
-    // Persist: save to /config/persistent_uploads, upload to Nextcloud, cache locally
+    // Upload to RustFS
     global $pdo;
     $nextcloud_path = null;
     if ($pdo) {

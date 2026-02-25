@@ -42,7 +42,7 @@ if ($action == 'upload_avatar') {
             $nc_filename = "avatar_" . $target_id . "_" . time() . "." . $ext;
             $new_name = "uploads/avatar_" . $target_id . "_" . time() . "." . $ext;
             
-            // Persist: save to /config/persistent_uploads, upload to Nextcloud, cache locally
+            // Upload to RustFS
             $persist = persistUploadedFile($pdo, $_FILES['profile_pic']['tmp_name'], 'profiles', $nc_filename, $new_name);
             $db_path = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $new_name;
             
@@ -546,7 +546,7 @@ if ($action == 'upload_photo') {
             $db_path = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $relative_path;
             
             if ($persist['success']) {
-                // Delete old profile image (RustFS URL or legacy local file)
+                // Delete old profile image from RustFS
                 $stmt = $pdo->prepare("SELECT profile_image FROM users WHERE id = ?");
                 $stmt->execute([$current_user_id]);
                 $old_image = $stmt->fetchColumn();
@@ -563,8 +563,6 @@ if ($action == 'upload_photo') {
                     } catch (Exception $delErr) {
                         error_log("RustFS delete old profile image: " . $delErr->getMessage());
                     }
-                } elseif ($old_image && file_exists(__DIR__ . '/' . $old_image)) {
-                    unlink(__DIR__ . '/' . $old_image);
                 }
                 
                 // Update database with RustFS URL or relative path

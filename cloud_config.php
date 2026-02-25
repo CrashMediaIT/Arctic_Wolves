@@ -666,114 +666,6 @@ function uploadDrillVideo($pdo, $settings, $session_name, $drill_name, $athlete_
 }
 
 /**
- * Get the persistent storage base directory (outside the web root).
- * This directory survives application updates because it lives outside the project folder.
- * Structure mirrors Nextcloud: persistent_uploads/Images/{subfolder}/{filename}
- * 
- * If a PDO connection is provided, checks the database for a custom path
- * configured via the 'nextcloud_persistent_path' setting.
- * 
- * @param PDO|null $pdo Optional database connection to read custom path from settings
- * @return string Absolute path to the persistent storage directory
- */
-function getPersistentStoragePath($pdo = null) {
-    if ($pdo !== null) {
-        try {
-            $stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = ?");
-            $stmt->execute(['nextcloud_persistent_path']);
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            if ($row && !empty(trim($row['setting_value']))) {
-                return rtrim(trim($row['setting_value']), '/');
-            }
-        } catch (Exception $e) {
-            error_log("Error reading persistent path setting: " . $e->getMessage());
-        }
-    }
-    // Default: /config/persistent_uploads (outside web root, survives app re-deploys)
-    // Fall back to sibling directory of project root if /config doesn't exist
-    if (is_dir('/config')) {
-        return '/config/persistent_uploads';
-    }
-    return realpath(__DIR__ . '/..') . '/persistent_uploads';
-}
-
-/**
- * Save a file to RustFS S3 persistent storage.
- * Replaces the old local persistent storage — files go directly to RustFS.
- * 
- * @param string $local_file_path Path to the source file
- * @param string $subfolder Subfolder (e.g., 'profiles', 'evaluations/123', 'team_logos')
- * @param string $filename Target filename
- * @param PDO|null $pdo Database connection
- * @return array Result with success status and persistent_path (RustFS URL)
- */
-function saveToPersistentStorage($local_file_path, $subfolder, $filename, $pdo = null) {
-    try {
-        if ($pdo === null) {
-            global $pdo;
-        }
-        $rustfs = getRustFSSettings($pdo);
-        if (!isRustFSConfigured($rustfs)) {
-            error_log("saveToPersistentStorage: RustFS not configured, skipping upload");
-            return ['success' => false, 'message' => 'RustFS not configured'];
-        }
-
-        $sub_parts = array_filter(explode('/', $subfolder), function($p) { return $p !== ''; });
-        $object_key = 'Images/' . implode('/', $sub_parts) . '/' . $filename;
-
-        $result = uploadToRustFS($rustfs, $local_file_path, $object_key);
-
-        if ($result['success']) {
-            return [
-                'success' => true,
-                'persistent_path' => $result['url'],
-                'object_key' => $object_key,
-            ];
-        }
-
-        throw new Exception($result['message'] ?? 'RustFS upload failed');
-    } catch (Exception $e) {
-        error_log("Error saving to RustFS persistent storage: " . $e->getMessage());
-        return [
-            'success' => false,
-            'message' => $e->getMessage()
-        ];
-    }
-}
-
-/**
- * Check if a file exists in RustFS S3 persistent storage.
- * Since all files are served from RustFS URLs, there is no local restore needed.
- * This function is kept for backward compatibility — callers that expect
- * a boolean "was it restored?" will still work.
- * 
- * @param string $subfolder Subfolder (e.g., 'profiles', 'evaluations/123')
- * @param string $filename The filename to look for
- * @param string $local_path Unused — kept for API compatibility
- * @param PDO|null $pdo Database connection
- * @return bool True if the file exists in RustFS
- */
-function restoreFromPersistentStorage($subfolder, $filename, $local_path, $pdo = null) {
-    try {
-        if ($pdo === null) {
-            global $pdo;
-        }
-        $rustfs = getRustFSSettings($pdo);
-        if (!isRustFSConfigured($rustfs)) {
-            return false;
-        }
-
-        $sub_parts = array_filter(explode('/', $subfolder), function($p) { return $p !== ''; });
-        $object_key = 'Images/' . implode('/', $sub_parts) . '/' . $filename;
-
-        return rustfsObjectExists($rustfs, $object_key);
-    } catch (Exception $e) {
-        error_log("Error checking RustFS persistent storage: " . $e->getMessage());
-        return false;
-    }
-}
-
-/**
  * Upload an image file to RustFS S3 storage.
  * Replaces the old Nextcloud WebDAV upload.
  * 
@@ -921,56 +813,7 @@ function persistUploadedFile($pdo, $source_path, $subfolder, $filename, $local_c
 }
 
 /**
- * Download an image from Nextcloud and restore it locally.
- * First tries to restore from persistent local storage (faster, no network needed).
- * Falls back to Nextcloud if persistent copy is not available.
- * 
- * @param PDO $pdo Database connection
- * @param array $settings Nextcloud settings (from getNextcloudSettings)
- * @param string $nextcloud_path Remote path in Nextcloud
- * @param string $local_path Local path to save the file to
- * @return bool True if file was restored successfully
- */
-/**
- * Get the RustFS URL for an image. No local restoration is needed.
- * Since all files are served from RustFS URLs, this function is kept
- * for backward compatibility but simply checks if the file exists in RustFS.
- * 
- * @param PDO $pdo Database connection
- * @param array $settings Settings (ignored — uses RustFS)
- * @param string $nextcloud_path Remote path (may be old Nextcloud path or RustFS URL)
- * @param string $local_path Local path (unused — no local storage)
- * @return bool True if file is accessible
- */
-function restoreImageFromNextcloud($pdo, $settings, $nextcloud_path, $local_path) {
-    // If the path is already a RustFS URL, it's already accessible
-    if (strpos($nextcloud_path, 'http://') === 0 || strpos($nextcloud_path, 'https://') === 0) {
-        return true;
-    }
-
-    // Try to find in RustFS by constructing the object key
-    try {
-        $rustfs = getRustFSSettings($pdo);
-        if (!isRustFSConfigured($rustfs)) {
-            return false;
-        }
-
-        $images_dir = $settings['nextcloud_images_dir'] ?? '/Images';
-        $relative_path = $nextcloud_path;
-        if (strpos($relative_path, $images_dir . '/') === 0) {
-            $relative_path = substr($relative_path, strlen($images_dir . '/'));
-        }
-
-        $object_key = 'Images/' . ltrim($relative_path, '/');
-        return rustfsObjectExists($rustfs, $object_key);
-    } catch (Exception $e) {
-        error_log("Error checking RustFS for image: " . $e->getMessage());
-        return false;
-    }
-}
-
-/**
- * 
+ * Generate the expected Nextcloud-style path for a drill video.
  * @param array $settings Nextcloud settings
  * @param string $session_name Session title
  * @param string $drill_name Drill title
@@ -1371,33 +1214,5 @@ function uploadToPaperless($pdo, $file_path, $tag_name, $title = '') {
     
     error_log('Paperless-NGX upload failed: HTTP ' . $http_code . ' - ' . $response);
     return ['success' => false, 'message' => 'Upload failed (HTTP ' . $http_code . ')'];
-}
-
-/**
- * Theme images are stored in RustFS and served via S3 URLs.
- * No local restoration is needed — this function is a no-op for backward compatibility.
- *
- * @param PDO $pdo Database connection
- */
-function restoreThemeImagesFromPersistentStorage($pdo) {
-    // No-op: theme images are now stored in RustFS S3 and served via URLs.
-    // The database stores the RustFS URL directly, so no local restoration is needed.
-    return;
-}
-
-/**
- * All files are stored in RustFS S3 and served via URLs.
- * No local restoration is needed — this function is a no-op for backward compatibility.
- * 
- * Previously, this function scanned the database for local file paths and restored
- * them from persistent storage after a re-deploy. With RustFS, the database stores
- * S3 URLs directly, so files are always accessible without local copies.
- *
- * @param PDO $pdo Database connection
- */
-function restoreAllFilesFromPersistentStorage($pdo) {
-    // No-op: all files are now stored in RustFS S3 and served via URLs.
-    // The database stores the RustFS URL directly, so no local restoration is needed.
-    return;
 }
 ?>

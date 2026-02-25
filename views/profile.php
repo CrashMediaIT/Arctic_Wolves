@@ -14,25 +14,7 @@ try {
     $userData = $stmt->fetch(PDO::FETCH_ASSOC);
     $userData = $userData ? decryptUserRow($userData) : $userData;
     
-    // Restore profile image from Nextcloud if local file is missing
-    if ($userData && !empty($userData['profile_image'])) {
-        $img_path = $userData['profile_image'];
-        // RustFS URLs are valid — no local restoration needed
-        if (preg_match('#^https?://#', $img_path)) {
-            // Already a remote URL, use as-is
-        } else {
-            // Legacy local path — validate and try restore
-            $real_base = realpath(__DIR__ . '/../uploads');
-            $is_safe_path = $real_base !== false && strpos($img_path, 'uploads/') === 0 
-                            && strpos($img_path, '..') === false;
-            if ($is_safe_path && !file_exists($img_path)) {
-                $restored = resolveProfileImage($pdo, $user_id, $img_path);
-                if ($restored) {
-                    $userData['profile_image'] = $restored;
-                }
-            }
-        }
-    }
+    // Profile images are served from RustFS URLs — no local restoration needed
     
     // Get additional player data (available for ALL users, not just athletes)
     $playerData = null;

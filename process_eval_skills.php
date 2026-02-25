@@ -290,7 +290,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $subfolder = 'evaluations/' . $eval['evaluation_id'];
                 $filepath = 'uploads/evaluations/' . $eval['evaluation_id'] . '/' . $filename;
                 
-                // Persist: save to /config/persistent_uploads, upload to Nextcloud, cache locally
+                // Upload to RustFS
                 $persist = persistUploadedFile($pdo, $file['tmp_name'], $subfolder, $filename, $filepath);
                 $db_filepath = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $filepath;
                 

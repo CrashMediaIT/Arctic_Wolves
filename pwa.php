@@ -53,14 +53,7 @@ if (!isset($_SESSION['last_activity_update']) || (time() - $_SESSION['last_activ
     } catch (PDOException $e) { /* ignore */ }
 }
 
-// Restore ALL files from persistent storage if missing (e.g., after re-deploy)
-if (!isset($_SESSION['persistent_files_checked'])) {
-    try {
-        require_once __DIR__ . '/cloud_config.php';
-        restoreAllFilesFromPersistentStorage($pdo);
-        $_SESSION['persistent_files_checked'] = true;
-    } catch (Exception $e) { /* silently continue */ }
-}
+// All files are served from RustFS — no local file restoration needed
 
 // Role checks (same as dashboard.php)
 $user_roles_list = [$user_role];

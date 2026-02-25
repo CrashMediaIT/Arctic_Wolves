@@ -97,7 +97,7 @@ function handleFileUpload($file, $type = 'image') {
     $local_url = 'uploads/theme/' . $filename;
     $nextcloud_path = null;
     
-    // Persist: save to /config/persistent_uploads, upload to Nextcloud, cache locally
+    // Upload to RustFS
     global $pdo;
     if ($pdo) {
         try {

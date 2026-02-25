@@ -219,7 +219,7 @@ function handleVideoUpload() {
     $unique_filename = uniqid('video_', true) . '_' . time() . '.' . $file_extension;
     $video_url = 'videos/' . $unique_filename;
     
-    // Persist: save to /config/persistent_uploads, upload to Nextcloud, cache locally
+    // Upload to RustFS
     $persist = persistUploadedFile($pdo, $file['tmp_name'], 'videos/coach', $unique_filename, $video_url, true);
     $db_video_url = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $video_url;
     
@@ -376,7 +376,7 @@ function handleAthleteVideoUpload() {
     $unique_filename = uniqid('athlete_video_', true) . '_' . time() . '.' . $file_extension;
     $video_url = 'videos/' . $unique_filename;
     
-    // Persist: save to /config/persistent_uploads, upload to Nextcloud, cache locally
+    // Upload to RustFS
     $persist = persistUploadedFile($pdo, $file['tmp_name'], 'videos/athlete', $unique_filename, $video_url, true);
     $db_video_url = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $video_url;
     
@@ -511,7 +511,7 @@ function handleDrillVideoUpload() {
     $nextcloud_path = null;
     $is_uploaded_to_cloud = 0;
     
-    // Persist: save to /config/persistent_uploads, upload to Nextcloud, cache locally
+    // Upload to RustFS
     $persist = persistUploadedFile($pdo, $file['tmp_name'], 'DrillVideos', $filename, $local_path, true);
     if (!empty($persist['nextcloud_path'])) {
         $nextcloud_path = $persist['nextcloud_path'];
@@ -1110,7 +1110,7 @@ function handleUploadVideoSource() {
     $unique_name = 'gp_source_' . uniqid('', true) . '_' . time() . '.' . $ext;
     $file_path_rel = 'videos/gameplan/' . $unique_name;
 
-    // Persist: save to /config/persistent_uploads, upload to Nextcloud, cache locally
+    // Upload to RustFS
     $persist = persistUploadedFile($pdo, $file['tmp_name'], 'videos/gameplan', $unique_name, $file_path_rel, true);
     $db_file_path = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $file_path_rel;
 

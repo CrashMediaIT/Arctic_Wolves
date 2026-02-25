@@ -86,11 +86,7 @@ try {
                                     <div class="user-cell">
                                         <?php
                                         $profile_img = $staff['profile_image'] ?? '';
-                                        $is_valid_image = !empty($profile_img) &&
-                                                          (preg_match('#^https?://#', $profile_img) ||
-                                                          (strpos($profile_img, 'uploads/profiles/') === 0 &&
-                                                          preg_match('/\.(jpg|jpeg|png|gif|webp)$/i', $profile_img) &&
-                                                          file_exists($profile_img)));
+                                        $is_valid_image = !empty($profile_img) && preg_match('#^https?://#', $profile_img);
                                         ?>
                                         <?php if ($is_valid_image): ?>
                                             <img src="<?php echo htmlspecialchars($profile_img); ?>" alt="Profile" class="user-avatar-img" style="width: 32px; height: 32px; border-radius: 50%;">

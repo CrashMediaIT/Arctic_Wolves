@@ -460,16 +460,9 @@ try {
             } elseif (!empty($_POST['ocr_receipt_url'])) {
                 // Use receipt already saved to RustFS during OCR scan
                 $ocr_receipt = trim($_POST['ocr_receipt_url']);
-                // Accept RustFS URLs (http/https) or validated local paths
+                // Accept RustFS URLs only
                 if (preg_match('#^https?://#', $ocr_receipt)) {
                     $receipt_url = $ocr_receipt;
-                } else {
-                    // Legacy local path validation
-                    $real_path = realpath($ocr_receipt);
-                    $allowed_dir = realpath('uploads/receipts');
-                    if ($real_path && $allowed_dir && strpos($real_path, $allowed_dir) === 0) {
-                        $receipt_url = $ocr_receipt;
-                    }
                 }
                 if (!empty($_POST['ocr_nextcloud_path'])) {
                     $nextcloud_path = trim($_POST['ocr_nextcloud_path']);
@@ -651,13 +644,6 @@ try {
                     }
                 } catch (Exception $delErr) {
                     error_log("RustFS delete error on expense delete: " . $delErr->getMessage());
-                }
-            } elseif ($receipt && strpos($receipt, 'uploads/receipts/') === 0 && file_exists($receipt)) {
-                // Legacy local file — clean up
-                $real_path = realpath($receipt);
-                $uploads_path = realpath('uploads/receipts/');
-                if ($real_path && $uploads_path && strpos($real_path, $uploads_path) === 0) {
-                    unlink($receipt);
                 }
             }
             

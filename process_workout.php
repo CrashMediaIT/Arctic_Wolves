@@ -60,7 +60,7 @@ try {
                 $filename = uniqid('exercise_') . '.' . $ext;
                 $uploadPath = 'uploads/exercises/' . $filename;
                 
-                // Persist: save to /config/persistent_uploads, upload to Nextcloud, cache locally
+                // Upload to RustFS
                 $persist = persistUploadedFile($pdo, $_FILES['image']['tmp_name'], 'exercises', $filename, $uploadPath);
                 $image_url = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $uploadPath;
                 $exercise_nc_path = $persist['nextcloud_path'] ?? null;
@@ -105,7 +105,7 @@ try {
                 $filename = uniqid('exercise_') . '.' . $ext;
                 $uploadPath = 'uploads/exercises/' . $filename;
                 
-                // Persist: save to /config/persistent_uploads, upload to Nextcloud, cache locally
+                // Upload to RustFS
                 $persist = persistUploadedFile($pdo, $_FILES['image']['tmp_name'], 'exercises', $filename, $uploadPath);
                 $db_image_path = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $uploadPath;
                 $image_sql = ', image_url = ?';

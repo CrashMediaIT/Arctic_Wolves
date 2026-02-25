@@ -2283,7 +2283,7 @@ if ($action == 'admin_update_profile_image') {
             $stmt = $pdo->prepare("SELECT profile_image FROM users WHERE id = ?");
             $stmt->execute([$user_id_to_update]);
             $old_image = $stmt->fetchColumn();
-            // Clean up old image (RustFS URL or legacy local file)
+            // Clean up old image from RustFS
             if ($old_image && preg_match('#^https?://#', $old_image)) {
                 try {
                     $rustfs = getRustFSSettings($pdo);
@@ -2297,11 +2297,9 @@ if ($action == 'admin_update_profile_image') {
                 } catch (Exception $delErr) {
                     error_log("RustFS delete old profile image: " . $delErr->getMessage());
                 }
-            } elseif ($old_image && file_exists($old_image)) {
-                unlink($old_image);
             }
             
-            // Update database with RustFS URL or local path
+            // Update database with RustFS URL
             $pdo->prepare("UPDATE users SET profile_image = ? WHERE id = ?")->execute([$db_path, $user_id_to_update]);
             
             // Store persistent path for recovery
