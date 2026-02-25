@@ -472,6 +472,8 @@ try {
                 } else {
                     ErrorLogger::error("Front card background upload failed: " . ($front_bg_result['message'] ?? 'Unknown error'));
                 }
+            } elseif (isset($_FILES['bc_front_bg']) && $_FILES['bc_front_bg']['error'] !== UPLOAD_ERR_NO_FILE) {
+                ErrorLogger::error("Front card background file error code: " . $_FILES['bc_front_bg']['error']);
             }
             if (isset($_FILES['bc_back_bg']) && $_FILES['bc_back_bg']['error'] === UPLOAD_ERR_OK) {
                 $back_bg_result = handleFileUpload($_FILES['bc_back_bg'], 'bc_back_bg');
@@ -535,21 +537,44 @@ try {
             }
             
             // Business card backgrounds
+            $bc_upload_warnings = [];
             if (isset($_FILES['bc_front_bg']) && $_FILES['bc_front_bg']['error'] === UPLOAD_ERR_OK) {
                 $front_bg_result = handleFileUpload($_FILES['bc_front_bg'], 'bc_front_bg');
                 if ($front_bg_result['success']) {
                     updateThemeSetting($pdo, 'business_card_front_bg_url', $front_bg_result['url']);
                 } else {
-                    ErrorLogger::error("Front card background upload failed: " . ($front_bg_result['message'] ?? 'Unknown error'));
+                    $msg = "Front card background upload failed: " . ($front_bg_result['message'] ?? 'Unknown error');
+                    ErrorLogger::error($msg);
+                    $bc_upload_warnings[] = $msg;
                 }
+            } elseif (isset($_FILES['bc_front_bg']) && $_FILES['bc_front_bg']['error'] !== UPLOAD_ERR_NO_FILE) {
+                $err = $_FILES['bc_front_bg']['error'];
+                $msg = "Front card background file error (code $err): " . match($err) {
+                    UPLOAD_ERR_INI_SIZE => 'File exceeds server upload_max_filesize',
+                    UPLOAD_ERR_FORM_SIZE => 'File exceeds form MAX_FILE_SIZE',
+                    UPLOAD_ERR_PARTIAL => 'File was only partially uploaded',
+                    UPLOAD_ERR_NO_TMP_DIR => 'Missing server temp folder',
+                    UPLOAD_ERR_CANT_WRITE => 'Failed to write to disk',
+                    UPLOAD_ERR_EXTENSION => 'Upload stopped by PHP extension',
+                    default => 'Unknown upload error'
+                };
+                ErrorLogger::error($msg);
+                $bc_upload_warnings[] = $msg;
             }
             if (isset($_FILES['bc_back_bg']) && $_FILES['bc_back_bg']['error'] === UPLOAD_ERR_OK) {
                 $back_bg_result = handleFileUpload($_FILES['bc_back_bg'], 'bc_back_bg');
                 if ($back_bg_result['success']) {
                     updateThemeSetting($pdo, 'business_card_back_bg_url', $back_bg_result['url']);
                 } else {
-                    ErrorLogger::error("Back card background upload failed: " . ($back_bg_result['message'] ?? 'Unknown error'));
+                    $msg = "Back card background upload failed: " . ($back_bg_result['message'] ?? 'Unknown error');
+                    ErrorLogger::error($msg);
+                    $bc_upload_warnings[] = $msg;
                 }
+            } elseif (isset($_FILES['bc_back_bg']) && $_FILES['bc_back_bg']['error'] !== UPLOAD_ERR_NO_FILE) {
+                $err = $_FILES['bc_back_bg']['error'];
+                $msg = "Back card background file error (code $err)";
+                ErrorLogger::error($msg);
+                $bc_upload_warnings[] = $msg;
             }
             
             // 3. Process hero section
@@ -576,7 +601,18 @@ try {
             
             Auditor::log($pdo, $user_id, 'update', 'theme_settings', null, ['action' => 'All theme settings updated']);
             
-            header('Location: dashboard.php?page=admin_theme_settings&tab=colors&success=1');
+            // Return JSON for AJAX requests, redirect otherwise
+            if (!empty($_POST['_ajax'])) {
+                header('Content-Type: application/json');
+                $response = ['success' => true, 'message' => 'All theme settings saved!'];
+                if (!empty($bc_upload_warnings)) {
+                    $response['warnings'] = $bc_upload_warnings;
+                    $response['message'] = 'Settings saved with warnings: ' . implode('; ', $bc_upload_warnings);
+                }
+                echo json_encode($response);
+            } else {
+                header('Location: dashboard.php?page=admin_theme_settings&tab=colors&success=1');
+            }
             exit;
             
         default:
@@ -585,6 +621,12 @@ try {
     
 } catch (\Throwable $e) {
     ErrorLogger::error("Theme settings error: " . $e->getMessage());
+    // Return JSON for AJAX requests
+    if (!empty($_POST['_ajax'])) {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        exit;
+    }
     // Check if redirect_page was set to determine where to redirect on error
     $redirect_page = $_POST['redirect_page'] ?? 'admin_theme_settings';
     if ($redirect_page === 'system_tools') {
