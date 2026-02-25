@@ -164,7 +164,7 @@ test.describe('Drill uploads include Nextcloud persistence', () => {
   test('process_drills.php should handle Nextcloud upload failure gracefully', () => {
     const content = readFile('process_drills.php');
     expect(content).toContain('persistUploadedFile(');
-    expect(content).toContain('Nextcloud drill diagram upload failed');
+    expect(content).toContain('RustFS drill diagram upload failed');
   });
 });
 
@@ -189,7 +189,7 @@ test.describe('Practice plan drill images include Nextcloud persistence', () => 
 
   test('process_practice_plans.php should handle Nextcloud upload failure gracefully', () => {
     const content = readFile('process_practice_plans.php');
-    expect(content).toContain('Nextcloud drill diagram upload failed');
+    expect(content).toContain('RustFS drill diagram upload failed');
   });
 });
 
