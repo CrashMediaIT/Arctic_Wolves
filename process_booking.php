@@ -241,13 +241,9 @@ if ($action === 'register_template_session') {
             }
             $checkout_session = \Stripe\Checkout\Session::create($stripe_params);
             
-            // Register the athlete for the session date
-            $stmt = $pdo->prepare("INSERT INTO session_date_athletes (session_date_id, athlete_id) VALUES (?, ?)");
-            $stmt->execute([$session_date_id, $user_id]);
-            
-            Auditor::log($pdo, $user_id, 'create', 'session_date_athletes', $pdo->lastInsertId(), [
-                'action' => 'register_template_session', 'session_date_id' => $session_date_id, 'amount' => $final_price
-            ]);
+            // Do NOT register the athlete here — registration happens in payment_success.php
+            // after Stripe confirms payment. This prevents marking sessions as registered
+            // when the user clicks Register but then navigates back without paying.
             
             header("Location: " . $checkout_session->url);
             exit();
