@@ -37,48 +37,6 @@ $allowed_mime_types = [
     'image/png'
 ];
 
-/**
- * Upload contract document to Nextcloud
- * Structure: /accounting/contracts/{CompanyName}/{ContractPurpose}_{StartDate}/
- */
-function uploadContractToNextcloud($pdo, $local_file_path, $vendor_name, $contract_type, $start_date, $original_filename) {
-    try {
-        // Sanitize vendor name for subfolder
-        $safe_vendor = preg_replace('/[^a-zA-Z0-9\-_ ]/', '', $vendor_name);
-        $safe_vendor = trim(substr($safe_vendor, 0, 50));
-        if (empty($safe_vendor)) $safe_vendor = 'Unknown_Vendor';
-        
-        // Create contract purpose folder name
-        $safe_type = preg_replace('/[^a-zA-Z0-9\-_ ]/', '', $contract_type ?: 'General');
-        $safe_type = trim(substr($safe_type, 0, 50));
-        $date_str = date('Y-m-d', strtotime($start_date ?: 'now'));
-        $purpose_folder = $safe_type . '_' . $date_str;
-        
-        // Sanitize filename
-        $safe_filename = preg_replace('/[^a-zA-Z0-9\-_.]/', '_', $original_filename);
-        
-        // Upload to RustFS via persistUploadedFile
-        $subfolder = 'Contracts/' . $safe_vendor . '/' . $purpose_folder;
-        $local_cache_rel = 'uploads/contracts/' . $safe_filename;
-        $persist = persistUploadedFile($pdo, $local_file_path, $subfolder, $safe_filename, $local_cache_rel);
-        $cloud_path = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $local_cache_rel;
-        
-        // Also upload to Paperless-NGX with Contract tag
-        $title = 'Contract_' . $safe_vendor . '_' . $safe_type . '_' . $date_str;
-        uploadToPaperless($pdo, $local_file_path, 'Contract', $title);
-        
-        return [
-            'success' => true,
-            'cloud_path' => $cloud_path,
-            'filename' => $safe_filename
-        ];
-        
-    } catch (Exception $e) {
-        ErrorLogger::error("Contract upload error: " . $e->getMessage());
-        return ['success' => false, 'message' => $e->getMessage()];
-    }
-}
-
 try {
     switch ($action) {
         case 'create':

@@ -546,11 +546,24 @@ if ($action == 'upload_photo') {
             $db_path = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $relative_path;
             
             if ($persist['success']) {
-                // Delete old profile image if exists
+                // Delete old profile image (RustFS URL or legacy local file)
                 $stmt = $pdo->prepare("SELECT profile_image FROM users WHERE id = ?");
                 $stmt->execute([$current_user_id]);
                 $old_image = $stmt->fetchColumn();
-                if ($old_image && file_exists(__DIR__ . '/' . $old_image)) {
+                if ($old_image && preg_match('#^https?://#', $old_image)) {
+                    try {
+                        $rustfs = getRustFSSettings($pdo);
+                        if (isRustFSConfigured($rustfs)) {
+                            $base_url = getRustFSBaseUrl($rustfs);
+                            if (strpos($old_image, $base_url) === 0) {
+                                $object_key = substr($old_image, strlen($base_url) + 1);
+                                deleteFromRustFS($rustfs, $object_key);
+                            }
+                        }
+                    } catch (Exception $delErr) {
+                        error_log("RustFS delete old profile image: " . $delErr->getMessage());
+                    }
+                } elseif ($old_image && file_exists(__DIR__ . '/' . $old_image)) {
                     unlink(__DIR__ . '/' . $old_image);
                 }
                 

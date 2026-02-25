@@ -66,23 +66,27 @@ try {
         
         $new_count++;
         
-        // Save file locally
-        $upload_dir = __DIR__ . '/uploads/receipts/';
-        if (!is_dir($upload_dir)) {
-            mkdir($upload_dir, 0755, true);
-        }
-        
+        // Save file to temp location for OCR processing, then upload to RustFS
         $local_filename = 'cloud_' . uniqid() . '_' . basename($file['filename']);
-        file_put_contents($upload_dir . $local_filename, $content);
+        $tmp_file = sys_get_temp_dir() . '/' . $local_filename;
+        file_put_contents($tmp_file, $content);
         
-        // Run OCR via Paperless-NGX
-        $ocr_text = performOCR($upload_dir . $local_filename);
+        // Upload to RustFS
+        $receipt_local = 'uploads/receipts/' . $local_filename;
+        $persist = persistUploadedFile($pdo, $tmp_file, 'receipts', $local_filename, $receipt_local);
+        $receipt_url = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $receipt_local;
+        
+        // Run OCR via Paperless-NGX (needs the temp file)
+        $ocr_text = performOCR($tmp_file);
+        
+        // Clean up temp file
+        @unlink($tmp_file);
         
         // Parse receipt data from OCR
         $parsed_data = parseReceiptOCR($ocr_text);
         
         // Create expense record
-        $expense_id = createExpenseFromReceipt($pdo, $parsed_data, $local_filename);
+        $expense_id = createExpenseFromReceipt($pdo, $parsed_data, $receipt_url);
         
         // Record in cloud_receipts table
         $stmt = $pdo->prepare("

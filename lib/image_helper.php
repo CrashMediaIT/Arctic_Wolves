@@ -17,6 +17,8 @@ require_once __DIR__ . '/../cloud_config.php';
  */
 function isValidImagePath($path) {
     if (empty($path)) return false;
+    // Accept RustFS URLs (http/https)
+    if (preg_match('#^https?://#', $path)) return true;
     // Must start with uploads/ and not contain path traversal
     if (strpos($path, 'uploads/') !== 0) return false;
     if (strpos($path, '..') !== false) return false;

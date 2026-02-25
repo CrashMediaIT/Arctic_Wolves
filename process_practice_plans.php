@@ -952,7 +952,7 @@ function downloadAndSaveDrillImage($image_url, $user_id) {
         return ['local_path' => '', 'nextcloud_path' => null];
     }
     
-    // Persist: save to /config/persistent_uploads, upload to Nextcloud, cache locally
+    // Persist: upload to RustFS
     global $pdo;
     if ($pdo) {
         try {
@@ -962,15 +962,8 @@ function downloadAndSaveDrillImage($image_url, $user_id) {
                 $local_cache_rel = $persist['rustfs_url'];
             }
         } catch (Exception $e) {
-            error_log("Nextcloud drill diagram upload failed: " . $e->getMessage());
+            error_log("RustFS drill diagram upload failed: " . $e->getMessage());
         }
-    } else {
-        // Fallback: copy to local uploads directory
-        $upload_dir = __DIR__ . '/uploads/drills/';
-        if (!is_dir($upload_dir)) {
-            mkdir($upload_dir, 0750, true);
-        }
-        copy($tmp_file, $upload_dir . $filename);
     }
     
     @unlink($tmp_file);

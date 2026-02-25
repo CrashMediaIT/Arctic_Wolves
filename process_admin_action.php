@@ -2270,18 +2270,11 @@ if ($action == 'admin_update_profile_image') {
             exit();
         }
         
-        $upload_dir = 'uploads/profiles/';
-        if (!is_dir($upload_dir)) {
-            mkdir($upload_dir, 0755, true);
-            // Create .htaccess to prevent PHP execution
-            file_put_contents($upload_dir . '.htaccess', "Options -Indexes\n<FilesMatch \"\\.(php|phtml|php3|php4|php5|phps|shtml|pl|py|cgi)$\">\n    Order Deny,Allow\n    Deny from all\n</FilesMatch>");
-        }
-        
         // Generate secure random filename
         $random_suffix = bin2hex(random_bytes(8));
-        $new_name = $upload_dir . "profile_" . $user_id_to_update . "_" . $random_suffix . "." . $ext;
-        
         $nc_filename = "profile_" . $user_id_to_update . "_" . $random_suffix . "." . $ext;
+        $new_name = 'uploads/profiles/' . $nc_filename;
+        
         $persist = persistUploadedFile($pdo, $_FILES['profile_image']['tmp_name'], 'profiles', $nc_filename, $new_name);
         $db_path = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $new_name;
         
@@ -2290,7 +2283,21 @@ if ($action == 'admin_update_profile_image') {
             $stmt = $pdo->prepare("SELECT profile_image FROM users WHERE id = ?");
             $stmt->execute([$user_id_to_update]);
             $old_image = $stmt->fetchColumn();
-            if ($old_image && file_exists($old_image)) {
+            // Clean up old image (RustFS URL or legacy local file)
+            if ($old_image && preg_match('#^https?://#', $old_image)) {
+                try {
+                    $rustfs = getRustFSSettings($pdo);
+                    if (isRustFSConfigured($rustfs)) {
+                        $base_url = getRustFSBaseUrl($rustfs);
+                        if (strpos($old_image, $base_url) === 0) {
+                            $object_key = substr($old_image, strlen($base_url) + 1);
+                            deleteFromRustFS($rustfs, $object_key);
+                        }
+                    }
+                } catch (Exception $delErr) {
+                    error_log("RustFS delete old profile image: " . $delErr->getMessage());
+                }
+            } elseif ($old_image && file_exists($old_image)) {
                 unlink($old_image);
             }
             
@@ -3197,10 +3204,6 @@ if ($action == 'create_team') {
         
         $ext = strtolower(pathinfo($_FILES['team_logo']['name'], PATHINFO_EXTENSION));
         if (in_array($mime, $allowed_types) && in_array($ext, $allowed_extensions) && $_FILES['team_logo']['size'] <= $max_size) {
-            $upload_dir = __DIR__ . '/uploads/team_logos/';
-            if (!is_dir($upload_dir)) {
-                mkdir($upload_dir, 0755, true);
-            }
             $filename = 'team_' . time() . '_' . bin2hex(random_bytes(8)) . '.' . $ext;
             $local_logo_path = 'uploads/team_logos/' . $filename;
             $persist = persistUploadedFile($pdo, $_FILES['team_logo']['tmp_name'], 'team_logos', $filename, $local_logo_path);
@@ -3290,10 +3293,6 @@ if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'team') {
             
             $ext = strtolower(pathinfo($_FILES['team_logo']['name'], PATHINFO_EXTENSION));
             if (in_array($mime, $allowed_types) && in_array($ext, $allowed_extensions) && $_FILES['team_logo']['size'] <= $max_size) {
-                $upload_dir = __DIR__ . '/uploads/team_logos/';
-                if (!is_dir($upload_dir)) {
-                    mkdir($upload_dir, 0755, true);
-                }
                 $filename = 'team_' . time() . '_' . bin2hex(random_bytes(8)) . '.' . $ext;
                 $local_logo_path = 'uploads/team_logos/' . $filename;
                 $persist = persistUploadedFile($pdo, $_FILES['team_logo']['tmp_name'], 'team_logos', $filename, $local_logo_path);

@@ -69,8 +69,7 @@ function syncCenterIceLogoIfNeeded($pdo, $logoUrl) {
 }
 
 /**
- * Handle file upload - validates, persists to /config/persistent_uploads + Nextcloud,
- * and caches locally in uploads/theme/ for serving.
+ * Handle file upload - validates and persists to RustFS.
  */
 function handleFileUpload($file, $type = 'image') {
     $allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];

@@ -36,21 +36,6 @@ if (in_array($action, $json_actions)) {
  * Upload receipt to Nextcloud with year/month directory structure
  */
 /**
- * Upload receipt to RustFS (legacy wrapper — kept for backward compat).
- * Receipts are already uploaded to RustFS via persistUploadedFile() at the
- * point of upload.  This function is now a no-op that returns the existing
- * RustFS URL so callers don't break.
- */
-function uploadReceiptToNextcloud($pdo, $receipt_url, $expense_date, $vendor_name, $expense_id) {
-    // Receipt is already stored in RustFS — return the existing URL
-    return [
-        'success' => true,
-        'cloud_path' => $receipt_url,
-        'filename' => basename(parse_url($receipt_url, PHP_URL_PATH) ?: $receipt_url)
-    ];
-}
-
-/**
  * Perform OCR on receipt image or PDF
  * Uses Paperless-NGX API for all OCR processing
  */

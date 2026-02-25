@@ -92,13 +92,6 @@ if ($action === 'save_drill' || $action === 'create') {
             exit();
         }
         
-        // Create upload directory if it doesn't exist
-        // Use 0755 for better compatibility with various web server configurations
-        $upload_dir = __DIR__ . '/uploads/drill_videos/';
-        if (!is_dir($upload_dir)) {
-            mkdir($upload_dir, 0755, true);
-        }
-        
         // Generate unique filename
         $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
         $filename = 'drill_video_' . bin2hex(random_bytes(16)) . '.' . $extension;
@@ -933,15 +926,8 @@ function downloadAndSaveImage($image_url, $user_id) {
                 $local_cache_rel = $persist['rustfs_url'];
             }
         } catch (Exception $e) {
-            error_log("Nextcloud drill diagram upload failed: " . $e->getMessage());
+            error_log("RustFS drill diagram upload failed: " . $e->getMessage());
         }
-    } else {
-        // Fallback: copy to local uploads directory
-        $upload_dir = __DIR__ . '/uploads/drills/';
-        if (!is_dir($upload_dir)) {
-            mkdir($upload_dir, 0750, true);
-        }
-        copy($tmp_file, $upload_dir . $filename);
     }
     
     @unlink($tmp_file);
