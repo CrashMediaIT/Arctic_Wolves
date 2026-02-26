@@ -62,6 +62,14 @@ try {
         case 'athlete_upload_video':
             handleAthleteVideoUpload();
             break;
+
+        case 'get_athlete_upload_url':
+            handleGetAthleteUploadUrl();
+            break;
+
+        case 'confirm_athlete_upload':
+            handleConfirmAthleteUpload();
+            break;
         
         case 'upload_drill_video':
             handleDrillVideoUpload();
@@ -438,6 +446,200 @@ function handleAthleteVideoUpload() {
 
     // Redirect back to coach reviews page
     header('Location: dashboard.php?page=coaches_reviews&success=video_uploaded');
+    exit;
+}
+
+/**
+ * Generate a presigned RustFS URL so the browser can upload a video directly
+ * to object storage, bypassing the PHP server for the file transfer.
+ * Returns the presigned PUT URL along with the object key and a session nonce.
+ */
+function handleGetAthleteUploadUrl() {
+    global $pdo, $user_id, $user_role;
+
+    header('Content-Type: application/json');
+
+    // Validate coach assignment (same logic as handleAthleteVideoUpload)
+    $coach_id = filter_input(INPUT_POST, 'coach_id', FILTER_VALIDATE_INT);
+    $allowed_roles = ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'];
+    $is_coach = in_array($user_role, $allowed_roles);
+
+    if ($is_coach) {
+        $coach_id = $user_id;
+    } else {
+        if (!$coach_id) {
+            $stmt = $pdo->prepare("SELECT assigned_coach_id FROM users WHERE id = ?");
+            $stmt->execute([$user_id]);
+            $user = $stmt->fetch();
+            $coach_id = $user['assigned_coach_id'] ?? null;
+        }
+        if (!$coach_id) {
+            throw new Exception('You do not have an assigned coach. Please contact an administrator.');
+        }
+    }
+
+    // Validate required fields
+    $title = trim($_POST['title'] ?? '');
+    if (empty($title)) {
+        throw new Exception('Video title is required');
+    }
+
+    $video_category = $_POST['video_category'] ?? 'drill';
+    if (!in_array($video_category, ['drill', 'game'])) {
+        throw new Exception('Invalid video type');
+    }
+
+    // Validate file metadata sent from the client
+    $file_name = $_POST['file_name'] ?? '';
+    $file_size = filter_input(INPUT_POST, 'file_size', FILTER_VALIDATE_INT);
+    $file_type = $_POST['file_type'] ?? 'video/mp4';
+
+    if (empty($file_name) || !$file_size) {
+        throw new Exception('File information is required');
+    }
+
+    // 10 GB limit
+    if ($file_size > 10 * 1024 * 1024 * 1024) {
+        throw new Exception('File size exceeds the maximum limit of 10GB');
+    }
+
+    // Validate extension
+    $file_extension = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
+    $allowed_extensions = ['mp4', 'mkv', 'mov', 'avi', 'webm'];
+    if (!in_array($file_extension, $allowed_extensions)) {
+        throw new Exception('Invalid video file type. Allowed: ' . implode(', ', $allowed_extensions));
+    }
+
+    // Validate MIME type
+    $allowed_mimes = ['video/mp4', 'video/x-matroska', 'video/quicktime', 'video/x-msvideo', 'video/webm', 'video/avi'];
+    if (!in_array($file_type, $allowed_mimes)) {
+        // Fall back to a safe default based on extension
+        $ext_to_mime = [
+            'mp4' => 'video/mp4', 'mkv' => 'video/x-matroska', 'mov' => 'video/quicktime',
+            'avi' => 'video/x-msvideo', 'webm' => 'video/webm',
+        ];
+        $file_type = $ext_to_mime[$file_extension] ?? 'application/octet-stream';
+    }
+
+    // Generate unique filename and object key
+    $unique_filename = uniqid('athlete_video_', true) . '_' . time() . '.' . $file_extension;
+    $object_key = 'Images/videos/athlete/' . $unique_filename;
+
+    // Generate presigned URL
+    $rustfs = getRustFSSettings($pdo);
+    if (!isRustFSConfigured($rustfs)) {
+        throw new Exception('Cloud storage is not configured. Please contact an administrator.');
+    }
+
+    $presigned = generatePresignedUploadUrl($rustfs, $object_key, $file_type, 3600);
+    if (!$presigned['success']) {
+        throw new Exception('Failed to generate upload URL: ' . ($presigned['message'] ?? 'Unknown error'));
+    }
+
+    // Store pending upload in session for confirmation step
+    $upload_nonce = bin2hex(random_bytes(16));
+    $_SESSION['pending_video_upload'] = [
+        'nonce'          => $upload_nonce,
+        'object_key'     => $object_key,
+        'filename'       => $unique_filename,
+        'content_type'   => $file_type,
+        'coach_id'       => $coach_id,
+        'athlete_id'     => filter_input(INPUT_POST, 'athlete_id', FILTER_VALIDATE_INT) ?: $user_id,
+        'title'          => $title,
+        'description'    => $_POST['description'] ?? '',
+        'video_category' => $video_category,
+        'game_date'      => $_POST['game_date'] ?? null,
+        'team_played_on' => trim($_POST['team_played_on'] ?? ''),
+        'opponent_team'  => trim($_POST['opponent_team'] ?? ''),
+        'created_at'     => time(),
+    ];
+
+    echo json_encode([
+        'success'       => true,
+        'presigned_url' => $presigned['url'],
+        'object_key'    => $object_key,
+        'content_type'  => $file_type,
+        'upload_nonce'  => $upload_nonce,
+    ]);
+    exit;
+}
+
+/**
+ * Confirm that a direct-to-RustFS upload completed and create the video
+ * database record.  The client calls this after the presigned PUT succeeds.
+ */
+function handleConfirmAthleteUpload() {
+    global $pdo, $user_id;
+
+    header('Content-Type: application/json');
+
+    $upload_nonce = $_POST['upload_nonce'] ?? '';
+    $pending = $_SESSION['pending_video_upload'] ?? null;
+
+    if (!$pending || !hash_equals($pending['nonce'], $upload_nonce)) {
+        throw new Exception('Invalid or expired upload session. Please try again.');
+    }
+
+    // Expire sessions older than 2 hours
+    if ((time() - $pending['created_at']) > 7200) {
+        unset($_SESSION['pending_video_upload']);
+        throw new Exception('Upload session expired. Please try again.');
+    }
+
+    $object_key     = $pending['object_key'];
+    $coach_id       = $pending['coach_id'];
+    $athlete_id     = $pending['athlete_id'];
+    $title          = $pending['title'];
+    $description    = $pending['description'];
+    $video_category = $pending['video_category'];
+    $game_date      = $pending['game_date'] ?: null;
+    $team_played_on = $pending['team_played_on'] ?: null;
+    $opponent_team  = $pending['opponent_team'] ?: null;
+
+    // Verify the object actually exists in RustFS
+    $rustfs = getRustFSSettings($pdo);
+    if (!rustfsObjectExists($rustfs, $object_key)) {
+        throw new Exception('Video file was not found in storage. The upload may have failed — please try again.');
+    }
+
+    // Build the proxy URL
+    $proxy_url = 'api/media.php?key=' . rawurlencode($object_key);
+
+    // Insert the video record
+    $stmt = $pdo->prepare("
+        INSERT INTO videos (
+            athlete_id, coach_id, title, description, video_url,
+            video_type, video_category, game_date, team_played_on, opponent_team,
+            status, upload_date
+        ) VALUES (
+            ?, ?, ?, ?, ?,
+            'uploaded_by_athlete', ?, ?, ?, ?,
+            'pending_review', NOW()
+        )
+    ");
+    $stmt->execute([
+        $athlete_id, $coach_id, $title, $description, $proxy_url,
+        $video_category, $game_date, $team_played_on, $opponent_team,
+    ]);
+
+    $video_id = $pdo->lastInsertId();
+    Auditor::log($pdo, $user_id, 'create', 'videos', $video_id, ['action' => 'Athlete video uploaded (direct)']);
+
+    // Store the nextcloud_path (proxy URL) for persistent recovery
+    $pdo->prepare("UPDATE videos SET nextcloud_path = ? WHERE id = ?")->execute([$proxy_url, $video_id]);
+
+    // Clean up the session
+    unset($_SESSION['pending_video_upload']);
+
+    // Log and notify
+    try { logSecurityEvent($pdo, 'athlete_video_upload', "Athlete video uploaded (direct) for review, ID: $video_id", $athlete_id); } catch (Exception $e) { error_log("logSecurityEvent failed: " . $e->getMessage()); }
+    try { sendVideoUploadNotificationToCoach($pdo, $coach_id, $athlete_id, $video_id, $title); } catch (Exception $e) { error_log("sendVideoUploadNotificationToCoach failed: " . $e->getMessage()); }
+
+    echo json_encode([
+        'success'  => true,
+        'video_id' => $video_id,
+        'redirect' => 'dashboard.php?page=coaches_reviews&success=video_uploaded',
+    ]);
     exit;
 }
 

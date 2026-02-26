@@ -674,3 +674,98 @@ function listRustFSObjects($settings, $prefix = '', $max_keys = 1000) {
         return ['success' => false, 'objects' => [], 'message' => $e->getMessage()];
     }
 }
+
+/**
+ * Generate a presigned PUT URL for direct browser-to-RustFS uploads.
+ * Uses AWS Signature V4 query-string authentication so the client can
+ * PUT a file directly to S3-compatible storage without knowing the secret key.
+ *
+ * @param array  $settings     RustFS settings
+ * @param string $object_key   S3 object key (e.g., 'Images/videos/athlete/video_123.mp4')
+ * @param string $content_type MIME type the client will send (e.g., 'video/mp4')
+ * @param int    $expires      URL validity in seconds (default: 3600)
+ * @return array ['success'=>bool, 'url'=>string|null, 'object_key'=>string, 'message'=>string|null]
+ */
+function generatePresignedUploadUrl($settings, $object_key, $content_type = 'application/octet-stream', $expires = 3600) {
+    if (!isRustFSConfigured($settings)) {
+        return ['success' => false, 'url' => null, 'object_key' => $object_key, 'message' => 'RustFS is not configured'];
+    }
+
+    try {
+        $object_key = ltrim($object_key, '/');
+        $url = getRustFSPublicUrl($settings, $object_key);
+        $parsed = parse_url($url);
+
+        $host = $parsed['host'] . (isset($parsed['port']) ? ':' . $parsed['port'] : '');
+        $path = $parsed['path'] ?? '/';
+        $scheme = $parsed['scheme'] ?? 'https';
+
+        $region = $settings['rustfs_region'] ?? 'us-east-1';
+        $access_key = $settings['rustfs_access_key'];
+        $secret_key = $settings['rustfs_secret_key'];
+
+        $now = new DateTime('UTC');
+        $date_stamp = $now->format('Ymd');
+        $amz_date = $now->format('Ymd\THis\Z');
+
+        $credential_scope = $date_stamp . '/' . $region . '/s3/aws4_request';
+        $credential = $access_key . '/' . $credential_scope;
+
+        // Canonical query string parameters (sorted alphabetically)
+        $query_params = [
+            'X-Amz-Algorithm'     => 'AWS4-HMAC-SHA256',
+            'X-Amz-Credential'    => $credential,
+            'X-Amz-Date'          => $amz_date,
+            'X-Amz-Expires'       => (string)$expires,
+            'X-Amz-SignedHeaders'  => 'content-type;host',
+        ];
+        ksort($query_params);
+        $canonical_querystring = http_build_query($query_params, '', '&', PHP_QUERY_RFC3986);
+
+        // Canonical headers
+        $canonical_headers = 'content-type:' . $content_type . "\n" . 'host:' . $host . "\n";
+        $signed_headers = 'content-type;host';
+
+        // For presigned URLs the payload hash is always UNSIGNED-PAYLOAD
+        $payload_hash = 'UNSIGNED-PAYLOAD';
+
+        $canonical_request = implode("\n", [
+            'PUT',
+            $path,
+            $canonical_querystring,
+            $canonical_headers,
+            $signed_headers,
+            $payload_hash,
+        ]);
+
+        $string_to_sign = implode("\n", [
+            'AWS4-HMAC-SHA256',
+            $amz_date,
+            $credential_scope,
+            hash('sha256', $canonical_request),
+        ]);
+
+        // Derive signing key
+        $k_date    = hash_hmac('sha256', $date_stamp, 'AWS4' . $secret_key, true);
+        $k_region  = hash_hmac('sha256', $region, $k_date, true);
+        $k_service = hash_hmac('sha256', 's3', $k_region, true);
+        $k_signing = hash_hmac('sha256', 'aws4_request', $k_service, true);
+
+        $signature = hash_hmac('sha256', $string_to_sign, $k_signing);
+
+        // Build the final presigned URL
+        $presigned_url = $scheme . '://' . $host . $path
+            . '?' . $canonical_querystring
+            . '&X-Amz-Signature=' . $signature;
+
+        return [
+            'success'    => true,
+            'url'        => $presigned_url,
+            'object_key' => $object_key,
+            'message'    => null,
+        ];
+    } catch (Exception $e) {
+        error_log("RustFS presigned URL error: " . $e->getMessage());
+        return ['success' => false, 'url' => null, 'object_key' => $object_key, 'message' => $e->getMessage()];
+    }
+}
