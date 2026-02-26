@@ -21,17 +21,16 @@ function readFile(relativePath) {
 // 1. Shop pages should NOT show Sessions link
 // =====================================================
 
-test.describe('Shop pages do not show Sessions', () => {
+test.describe('Shop sub-pages do not show Sessions', () => {
 
-  const shopPages = [
-    { file: 'shop.php', name: 'Shop main page' },
+  const shopSubPages = [
     { file: 'shop_product.php', name: 'Shop product page' },
     { file: 'shop_cart.php', name: 'Shop cart page' },
     { file: 'shop_checkout.php', name: 'Shop checkout page' },
     { file: 'shop_success.php', name: 'Shop success page' },
   ];
 
-  for (const page of shopPages) {
+  for (const page of shopSubPages) {
     test(`${page.name} (${page.file}) does not contain Sessions nav link`, () => {
       const content = readFile(page.file);
       // Find the nav-menu section
@@ -54,6 +53,36 @@ test.describe('Shop pages do not show Sessions', () => {
       expect(navContent).toContain('href="login.php"');
     });
   }
+});
+
+test.describe('Shop main page has correct navigation matching sessions_public.php', () => {
+
+  test('shop.php contains Sessions nav link', () => {
+    const content = readFile('shop.php');
+    const navStart = content.indexOf('class="nav-menu"');
+    expect(navStart).toBeGreaterThan(-1);
+    const navEnd = content.indexOf('</nav>', navStart);
+    const navContent = content.substring(navStart, navEnd);
+    expect(navContent).toContain('sessions_public.php');
+    expect(navContent).toContain('>Sessions<');
+  });
+
+  test('shop.php has Home, Sessions, Shop, and Login nav links', () => {
+    const content = readFile('shop.php');
+    const navStart = content.indexOf('class="nav-menu"');
+    const navEnd = content.indexOf('</nav>', navStart);
+    const navContent = content.substring(navStart, navEnd);
+    expect(navContent).toContain('href="index.php"');
+    expect(navContent).toContain('href="sessions_public.php"');
+    expect(navContent).toContain('href="shop.php"');
+    expect(navContent).toContain('href="login.php"');
+  });
+
+  test('shop.php logo area uses anchor tag directly like sessions_public.php', () => {
+    const content = readFile('shop.php');
+    // Should use <a> tag with class="logo-area" directly, not a wrapping <div>
+    expect(content).toContain('<a href="index.php" class="logo-area"');
+  });
 });
 
 // =====================================================
