@@ -460,7 +460,7 @@
             const action = btn.getAttribute('data-action');
             
             // Skip if already handled by specific handlers above or by page-level handlers
-            if (['add', 'edit', 'delete', 'export', 'upload', 'save', 'cancel', 'switch-tab', 'register-session', 'join-waitlist', 'purchase-package'].includes(action)) {
+            if (['add', 'edit', 'delete', 'export', 'upload', 'save', 'cancel', 'switch-tab', 'register-session', 'join-waitlist', 'purchase-package', 'play-video', 'view-video', 'delete-video'].includes(action)) {
                 return;
             }
             
@@ -1291,6 +1291,179 @@
     }
 
     // ===================================================================
+    // VIDEO PLAYER MODAL (Video.js)
+    // ===================================================================
+
+    /**
+     * Open a global Video.js-powered player modal.
+     * Lazily injects the Video.js CDN and creates the modal DOM on first use.
+     * Handles multiple video formats that browsers may not natively support.
+     *
+     * @param {string} videoUrl  - URL of the video to play (may be a proxy URL)
+     * @param {string} title     - Display title for the modal header
+     * @param {string} videoId   - Optional video DB id (for future use)
+     */
+    function openVideoPlayerModal(videoUrl, title, videoId) {
+        // Lazy-load Video.js CSS + JS
+        if (!document.getElementById('videojs-css')) {
+            var link = document.createElement('link');
+            link.id = 'videojs-css';
+            link.rel = 'stylesheet';
+            link.href = 'https://vjs.zencdn.net/8.10.0/video-js.css';
+            document.head.appendChild(link);
+        }
+
+        function setupModal() {
+            // Create modal DOM if it doesn't exist
+            var modal = document.getElementById('aw-video-player-modal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'aw-video-player-modal';
+                modal.className = 'aw-vp-modal';
+                modal.innerHTML =
+                    '<div class="aw-vp-overlay"></div>' +
+                    '<div class="aw-vp-content">' +
+                        '<div class="aw-vp-header">' +
+                            '<h3 id="aw-vp-title"><i class="fas fa-play-circle"></i> Video Player</h3>' +
+                            '<button class="aw-vp-close" aria-label="Close"><i class="fas fa-times"></i></button>' +
+                        '</div>' +
+                        '<div class="aw-vp-body">' +
+                            '<video id="aw-vp-video" class="video-js vjs-big-play-centered vjs-theme-forest" controls preload="auto" width="100%">' +
+                                '<p class="vjs-no-js">Please enable JavaScript to view this video.</p>' +
+                            '</video>' +
+                        '</div>' +
+                    '</div>';
+                document.body.appendChild(modal);
+
+                // Inject scoped styles
+                if (!document.getElementById('aw-vp-styles')) {
+                    var s = document.createElement('style');
+                    s.id = 'aw-vp-styles';
+                    s.textContent =
+                        '.aw-vp-modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;z-index:10000;align-items:center;justify-content:center;}' +
+                        '.aw-vp-modal.active{display:flex;}' +
+                        '.aw-vp-overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.92);}' +
+                        '.aw-vp-content{position:relative;width:95%;max-width:960px;background:#0d1117;border:1px solid #1e293b;border-radius:14px;overflow:hidden;}' +
+                        '.aw-vp-header{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #1e293b;}' +
+                        '.aw-vp-header h3{font-size:16px;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px;margin:0;}' +
+                        '.aw-vp-header h3 i{color:#7c3aed;}' +
+                        '.aw-vp-close{width:36px;height:36px;background:transparent;border:1px solid #1e293b;color:#fff;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;}' +
+                        '.aw-vp-close:hover{background:#7c3aed;border-color:#7c3aed;}' +
+                        '.aw-vp-body{padding:0;background:#000;}' +
+                        '.aw-vp-body .video-js{width:100%;max-height:75vh;}' +
+                        '.aw-vp-body .video-js .vjs-big-play-button{background:rgba(124,58,237,.85);border:none;border-radius:50%;width:80px;height:80px;line-height:80px;font-size:36px;}';
+                    document.head.appendChild(s);
+                }
+
+                // Close handlers
+                modal.querySelector('.aw-vp-overlay').addEventListener('click', closeVideoPlayerModal);
+                modal.querySelector('.aw-vp-close').addEventListener('click', closeVideoPlayerModal);
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape' && modal.classList.contains('active')) {
+                        closeVideoPlayerModal();
+                    }
+                });
+            }
+
+            // Set title
+            document.getElementById('aw-vp-title').innerHTML = '<i class="fas fa-play-circle"></i> ' + (title || 'Video Player');
+
+            // Determine MIME type from URL
+            var mimeType = 'video/mp4';
+            if (videoUrl) {
+                var urlLower = videoUrl.toLowerCase();
+                if (urlLower.indexOf('.webm') !== -1) mimeType = 'video/webm';
+                else if (urlLower.indexOf('.mov') !== -1) mimeType = 'video/mp4';
+                else if (urlLower.indexOf('.mkv') !== -1) mimeType = 'video/x-matroska';
+                else if (urlLower.indexOf('.avi') !== -1) mimeType = 'video/x-msvideo';
+            }
+
+            // Dispose previous Video.js instance if any
+            var vjsEl = document.getElementById('aw-vp-video');
+            if (vjsEl && typeof videojs !== 'undefined' && videojs.getPlayer && videojs.getPlayer('aw-vp-video')) {
+                videojs.getPlayer('aw-vp-video').dispose();
+                // Re-create the <video> element after dispose
+                var newVid = document.createElement('video');
+                newVid.id = 'aw-vp-video';
+                newVid.className = 'video-js vjs-big-play-centered vjs-theme-forest';
+                newVid.setAttribute('controls', '');
+                newVid.setAttribute('preload', 'auto');
+                newVid.setAttribute('width', '100%');
+                newVid.innerHTML = '<p class="vjs-no-js">Please enable JavaScript to view this video.</p>';
+                modal.querySelector('.aw-vp-body').innerHTML = '';
+                modal.querySelector('.aw-vp-body').appendChild(newVid);
+            }
+
+            // Show modal
+            modal.classList.add('active');
+
+            if (!videoUrl) {
+                showToast('No video URL available', 'error');
+                return;
+            }
+
+            // Initialize Video.js player
+            if (typeof videojs !== 'undefined') {
+                var player = videojs('aw-vp-video', {
+                    controls: true,
+                    autoplay: false,
+                    preload: 'auto',
+                    fluid: true,
+                    responsive: true,
+                    playbackRates: [0.25, 0.5, 1, 1.5, 2],
+                    html5: {
+                        vhs: { overrideNative: true },
+                        nativeVideoTracks: false,
+                        nativeAudioTracks: false
+                    },
+                    sources: [{ src: videoUrl, type: mimeType }]
+                });
+
+                // If the browser can't play the assigned type, fall back to
+                // application/octet-stream so Video.js attempts native playback
+                player.on('error', function() {
+                    if (player.error() && player.error().code === 4) {
+                        player.src({ src: videoUrl, type: 'application/octet-stream' });
+                        player.load();
+                    }
+                });
+            } else {
+                // Video.js not loaded yet — fallback to plain HTML5 <video>
+                vjsEl = document.getElementById('aw-vp-video');
+                if (vjsEl) {
+                    vjsEl.innerHTML = '<source src="' + videoUrl + '" type="' + mimeType + '">Your browser does not support this video format.';
+                    vjsEl.load();
+                }
+            }
+        }
+
+        // Load Video.js script if not present
+        if (typeof videojs === 'undefined' && !document.getElementById('videojs-script')) {
+            var script = document.createElement('script');
+            script.id = 'videojs-script';
+            script.src = 'https://vjs.zencdn.net/8.10.0/video.min.js';
+            script.onload = setupModal;
+            document.head.appendChild(script);
+        } else {
+            setupModal();
+        }
+    }
+
+    /**
+     * Close the global video player modal and clean up resources
+     */
+    function closeVideoPlayerModal() {
+        var modal = document.getElementById('aw-video-player-modal');
+        if (!modal) return;
+        modal.classList.remove('active');
+
+        // Dispose Video.js player to stop playback and free memory
+        if (typeof videojs !== 'undefined' && videojs.getPlayer && videojs.getPlayer('aw-vp-video')) {
+            try { videojs.getPlayer('aw-vp-video').pause(); } catch (e) { /* ignore */ }
+        }
+    }
+
+    // ===================================================================
     // VIDEO FUNCTIONALITY
     // ===================================================================
 
@@ -1360,15 +1533,15 @@
             });
         });
         
-        // View video action
-        document.querySelectorAll('[data-action="view-video"]').forEach(btn => {
+        // View video / Play video action — open Video.js modal
+        document.querySelectorAll('[data-action="view-video"], [data-action="play-video"]').forEach(btn => {
             btn.addEventListener('click', function() {
+                const videoUrl = this.getAttribute('data-video-url');
                 const videoId = this.getAttribute('data-video-id');
-                // Validate videoId is numeric
-                if (videoId && /^\d+$/.test(videoId)) {
-                    // Navigate to video detail page or open modal
-                    window.location.href = `?page=video_detail&id=${encodeURIComponent(videoId)}`;
-                }
+                const title = this.getAttribute('data-title')
+                    || this.closest('.video-card, .video-list-item')?.querySelector('.video-title, h4')?.textContent
+                    || 'Video';
+                openVideoPlayerModal(videoUrl, title, videoId);
             });
         });
         
@@ -1394,7 +1567,7 @@
                     return;
                 }
                 
-                showConfirmModal('Are you sure you want to delete this video?', 'Delete', 'Cancel').then(function(confirmed) {
+                showConfirmModal('Are you sure you want to delete this video? This will also remove any associated review.', 'Delete', 'Cancel').then(function(confirmed) {
                     if (confirmed) {
                         const csrfToken = document.querySelector('[name="csrf_token"]')?.value;
                         if (!csrfToken) {
@@ -1408,7 +1581,7 @@
                             headers: {
                                 'Content-Type': 'application/x-www-form-urlencoded',
                             },
-                            body: `action=delete&video_id=${encodeURIComponent(videoId)}&csrf_token=${encodeURIComponent(csrfToken)}`
+                            body: `action=delete_video&video_id=${encodeURIComponent(videoId)}&csrf_token=${encodeURIComponent(csrfToken)}`
                         })
                         .then(response => response.json())
                         .then(data => {
