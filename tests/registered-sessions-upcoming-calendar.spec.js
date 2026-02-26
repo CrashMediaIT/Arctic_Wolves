@@ -23,17 +23,18 @@ function readFile(relativePath) {
 // =====================================================
 
 test.describe('Desktop Upcoming Sessions - Athlete Registration Filter', () => {
-  test('sessions_upcoming.php joins session_date_athletes for athlete role', () => {
+  test('sessions_upcoming.php joins session_date_athletes for all users', () => {
     const content = readFile('views/sessions_upcoming.php');
     expect(content).toContain('session_date_athletes sda');
     expect(content).toContain('sda.session_date_id = tsd.id');
     expect(content).toContain('sda.athlete_id');
   });
 
-  test('sessions_upcoming.php conditionally joins session_date_athletes only for athletes', () => {
+  test('sessions_upcoming.php LEFT JOINs session_date_athletes for all users not just athletes', () => {
     const content = readFile('views/sessions_upcoming.php');
-    expect(content).toContain("user_role === 'athlete'");
     expect(content).toContain('LEFT JOIN session_date_athletes sda');
+    // The LEFT JOIN is applied for all users, not conditionally for athletes only
+    expect(content).toContain('For all users: LEFT JOIN session_date_athletes');
   });
 
   test('sessions_upcoming.php also checks package_sessions with template_id for athletes', () => {
@@ -43,15 +44,14 @@ test.describe('Desktop Upcoming Sessions - Athlete Registration Filter', () => {
     expect(content).toContain("up.payment_status = 'paid'");
   });
 
-  test('sessions_upcoming.php passes athlete user_id as template param for registration filter', () => {
+  test('sessions_upcoming.php passes user_id as template param for registration filter', () => {
     const content = readFile('views/sessions_upcoming.php');
     expect(content).toContain('$template_params[] = $user_id');
   });
 
-  test('sessions_upcoming.php does not require show_on_landing for athletes', () => {
+  test('sessions_upcoming.php shows registered sessions for coaches/admins alongside show_on_landing', () => {
     const content = readFile('views/sessions_upcoming.php');
-    expect(content).toContain("user_role !== 'athlete'");
-    expect(content).toContain('show_on_landing = 1');
+    expect(content).toContain('sda.id IS NOT NULL OR tst.show_on_landing = 1');
   });
 
   test('sessions_upcoming.php still shows show_on_landing sessions for non-athletes', () => {
@@ -62,6 +62,19 @@ test.describe('Desktop Upcoming Sessions - Athlete Registration Filter', () => {
   test('sessions_upcoming.php merges template sessions with regular sessions', () => {
     const content = readFile('views/sessions_upcoming.php');
     expect(content).toContain('array_merge($sessions, $template_sessions)');
+  });
+
+  test('sessions_upcoming.php supports parent role for template sessions with managed athletes', () => {
+    const content = readFile('views/sessions_upcoming.php');
+    expect(content).toContain("user_role === 'parent'");
+    expect(content).toContain('managed_athletes ma ON sda2.athlete_id = ma.athlete_id');
+    expect(content).toContain('ma.parent_id = ?');
+  });
+
+  test('sessions_upcoming.php parent main query includes bookings from managed athletes', () => {
+    const content = readFile('views/sessions_upcoming.php');
+    expect(content).toContain("user_role === 'parent'");
+    expect(content).toContain('INNER JOIN managed_athletes ma ON bk.user_id = ma.athlete_id');
   });
 });
 

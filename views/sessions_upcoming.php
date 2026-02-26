@@ -77,6 +77,64 @@ if ($user_role === 'athlete') {
         ";
     }
     $params = [$user_id, $user_id];
+} elseif ($user_role === 'parent') {
+    if ($show_history) {
+        $sessions_query = "
+            SELECT s.*, 
+                   c.first_name as coach_first_name, c.last_name as coach_last_name,
+                   st.name as session_type_name,
+                   st.id as skill_id,
+                   l.name as location_name,
+                   pp.name as practice_plan_name,
+                   pp.description as practice_plan_description,
+                   spp.practice_plan_id,
+                   b.id as booking_id,
+                   b.status as booking_status
+            FROM sessions s
+            LEFT JOIN users c ON s.coach_id = c.id
+            LEFT JOIN session_types st ON s.session_type_id = st.id
+            LEFT JOIN locations l ON s.location_id = l.id
+            LEFT JOIN session_practice_plans spp ON spp.session_id = s.id
+            LEFT JOIN practice_plans pp ON spp.practice_plan_id = pp.id
+            LEFT JOIN bookings b ON b.session_id = s.id AND b.user_id = ?
+            WHERE (b.user_id IS NOT NULL OR s.id IN (
+                SELECT bk.session_id FROM bookings bk
+                INNER JOIN managed_athletes ma ON bk.user_id = ma.athlete_id
+                WHERE ma.parent_id = ? AND bk.status != 'cancelled'
+            ))
+              AND s.session_date < CURDATE()
+              AND s.status IN ('scheduled', 'completed')
+        ";
+    } else {
+        $sessions_query = "
+            SELECT s.*, 
+                   c.first_name as coach_first_name, c.last_name as coach_last_name,
+                   st.name as session_type_name,
+                   st.id as skill_id,
+                   l.name as location_name,
+                   pp.name as practice_plan_name,
+                   pp.description as practice_plan_description,
+                   spp.practice_plan_id,
+                   b.id as booking_id,
+                   b.status as booking_status
+            FROM sessions s
+            LEFT JOIN users c ON s.coach_id = c.id
+            LEFT JOIN session_types st ON s.session_type_id = st.id
+            LEFT JOIN locations l ON s.location_id = l.id
+            LEFT JOIN session_practice_plans spp ON spp.session_id = s.id
+            LEFT JOIN practice_plans pp ON spp.practice_plan_id = pp.id
+            LEFT JOIN bookings b ON b.session_id = s.id AND b.user_id = ?
+            WHERE (b.user_id IS NOT NULL OR s.id IN (
+                SELECT bk.session_id FROM bookings bk
+                INNER JOIN managed_athletes ma ON bk.user_id = ma.athlete_id
+                WHERE ma.parent_id = ? AND bk.status != 'cancelled'
+            ))
+              AND s.session_date >= CURDATE()
+              AND s.status = 'scheduled'
+              AND (b.id IS NULL OR b.status != 'cancelled')
+        ";
+    }
+    $params = [$user_id, $user_id];
 } else {
     if ($show_history) {
         $sessions_query = "
@@ -193,11 +251,9 @@ if (!$show_history) {
         INNER JOIN training_session_dates tsd ON tsd.template_id = tst.id AND tsd.is_active = 1
     ";
 
-    // For athletes: show template session dates they are registered for directly or via purchased packages
-    if ($user_role === 'athlete') {
-        $template_sessions_query .= " LEFT JOIN session_date_athletes sda ON sda.session_date_id = tsd.id AND sda.athlete_id = ?";
-        $template_params[] = $user_id;
-    }
+    // For all users: LEFT JOIN session_date_athletes to check direct registrations
+    $template_sessions_query .= " LEFT JOIN session_date_athletes sda ON sda.session_date_id = tsd.id AND sda.athlete_id = ?";
+    $template_params[] = $user_id;
 
     $template_sessions_query .= "
         LEFT JOIN users c ON tst.coach_id = c.id
@@ -216,11 +272,22 @@ if (!$show_history) {
             WHERE ps.template_id = tst.id AND up.user_id = ? AND up.payment_status = 'paid'
         ))";
         $template_params[] = $user_id;
-    }
-
-    // For non-athletes, only show template sessions marked as visible on landing page
-    if ($user_role !== 'athlete') {
-        $template_sessions_query .= " AND tst.show_on_landing = 1";
+    } elseif ($user_role === 'parent') {
+        // Parents: show sessions they registered for, their managed athletes' registrations, or via packages
+        $template_sessions_query .= " AND (sda.id IS NOT NULL OR EXISTS (
+            SELECT 1 FROM session_date_athletes sda2
+            INNER JOIN managed_athletes ma ON sda2.athlete_id = ma.athlete_id
+            WHERE sda2.session_date_id = tsd.id AND ma.parent_id = ?
+        ) OR EXISTS (
+            SELECT 1 FROM package_sessions ps
+            INNER JOIN user_packages up ON up.package_id = ps.package_id
+            WHERE ps.template_id = tst.id AND up.user_id = ? AND up.payment_status = 'paid'
+        ))";
+        $template_params[] = $user_id;
+        $template_params[] = $user_id;
+    } else {
+        // Coaches/admins: show sessions they registered for or marked as visible on landing page
+        $template_sessions_query .= " AND (sda.id IS NOT NULL OR tst.show_on_landing = 1)";
     }
     
     // Apply period filter for template sessions
