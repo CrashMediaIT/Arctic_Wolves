@@ -69,7 +69,8 @@
 </div>
 <?php endif; ?>
 
-<!-- Coaches Corner — visible to all users -->
+<!-- Coaches Corner -->
+<?php if ($isAnyCoach): ?>
 <div class="pwa-menu-group">
     <div class="pwa-section-label">Coaches Corner</div>
     <ul class="pwa-menu-list">
@@ -115,6 +116,7 @@
         </a>
     </ul>
 </div>
+<?php endif; ?>
 
 <!-- Health Management -->
 <?php if ($canAccessHealthManagement): ?>

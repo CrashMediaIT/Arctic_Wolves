@@ -177,8 +177,8 @@ try {
             <?php endif; ?>
 
             <div class="form-group">
-                <label for="video_description">Description / Notes for Coach</label>
-                <textarea id="video_description" name="description" rows="3" 
+                <label for="video_description">Description / Notes for Coach <span class="required">*</span></label>
+                <textarea id="video_description" name="description" rows="3" required
                           placeholder="Describe what you're working on or what feedback you'd like..."></textarea>
             </div>
 
@@ -838,13 +838,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     cameraInterface.style.display = 'none';
                     uploadInterface.style.display = 'block';
                     showSelectedFile(file);
-                    
-                    // Pre-fill the upload form's title from the camera name field
-                    var cameraName = document.getElementById('camera_recording_name');
-                    var titleField = document.getElementById('video_title');
-                    if (cameraName && titleField && cameraName.value.trim()) {
-                        titleField.value = cameraName.value.trim();
-                    }
                 };
                 
                 mediaRecorder.start();

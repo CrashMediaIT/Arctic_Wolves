@@ -429,8 +429,8 @@ $reviewed_videos = array_filter($videos, function($v) {
                 </div>
 
                 <div class="form-group">
-                    <label>Notes for Coach</label>
-                    <textarea name="description" class="form-textarea" rows="4" placeholder="Describe what you'd like feedback on..."></textarea>
+                    <label>Notes for Coach *</label>
+                    <textarea name="description" class="form-textarea" rows="4" required placeholder="Describe what you'd like feedback on..."></textarea>
                 </div>
 
                 <div class="form-actions">

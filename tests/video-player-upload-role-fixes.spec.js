@@ -240,11 +240,16 @@ test.describe('Camera recording name field', () => {
     expect(content).toContain('Recording Name');
   });
 
-  test('should pre-fill upload form title from camera name', () => {
+  test('should NOT auto-fill upload form title from camera name', () => {
     const content = readFile('views/video_record_athlete.php');
-    expect(content).toContain("getElementById('camera_recording_name')");
-    expect(content).toContain("getElementById('video_title')");
-    expect(content).toContain('titleField.value = cameraName.value.trim()');
+    // Title must not be auto-filled — athletes must enter it manually
+    expect(content).not.toContain('titleField.value = cameraName.value.trim()');
+  });
+
+  test('should require description for coach', () => {
+    const content = readFile('views/video_record_athlete.php');
+    // The description textarea must be required
+    expect(content).toMatch(/name="description"[^>]*required/);
   });
 });
 
@@ -252,16 +257,11 @@ test.describe('Camera recording name field', () => {
 // 8. Coaches Corner menu has no role restriction
 // =====================================================
 
-test.describe('Coaches Corner menu restriction removed', () => {
-  test('should not have isAnyCoach guard around Coaches Corner', () => {
+test.describe('Coaches Corner menu has role restriction', () => {
+  test('should have isAnyCoach guard around Coaches Corner', () => {
     const content = readFile('pwa_more_menu.php');
-    // Find the Coaches Corner section
-    const coachesIdx = content.indexOf('Coaches Corner');
-    expect(coachesIdx).toBeGreaterThan(-1);
-
-    // Check the 100 chars before "Coaches Corner" — should NOT have isAnyCoach
-    const before = content.substring(Math.max(0, coachesIdx - 100), coachesIdx);
-    expect(before).not.toContain('$isAnyCoach');
+    // The Coaches Corner section should be preceded by a PHP if ($isAnyCoach) guard
+    expect(content).toMatch(/if\s*\(\$isAnyCoach\)[\s\S]*?Coaches Corner/);
   });
 
   test('should still contain Coaches Corner section', () => {
@@ -318,5 +318,65 @@ test.describe('View-video buttons include video URL', () => {
     // Both view-video buttons should have data-video-url attributes on the same line
     const lines = content.split('\n').filter(l => l.includes('view-video') && l.includes('data-video-url'));
     expect(lines.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+// =====================================================
+// 12. Athlete name subfolder in upload path
+// =====================================================
+
+test.describe('Athlete name subfolder in upload path', () => {
+  test('handleAthleteVideoUpload should include athlete name in folder path', () => {
+    const content = readFile('process_video.php');
+    const funcStart = content.indexOf('function handleAthleteVideoUpload()');
+    const funcEnd = content.indexOf('\nfunction ', funcStart + 1);
+    const funcBody = content.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
+
+    // Should look up athlete name
+    expect(funcBody).toContain('first_name, last_name');
+    expect(funcBody).toContain('decryptUserRow');
+    // Should use the athlete folder in the upload path
+    expect(funcBody).toContain("'videos/athlete/' . $athlete_folder");
+    // Should NOT use the flat path without subfolder
+    expect(funcBody).not.toMatch(/persistUploadedFile\([^)]*'videos\/athlete',/);
+  });
+
+  test('handleGetAthleteUploadUrl should include athlete name in object key', () => {
+    const content = readFile('process_video.php');
+    const funcStart = content.indexOf('function handleGetAthleteUploadUrl()');
+    const funcEnd = content.indexOf('\nfunction ', funcStart + 1);
+    const funcBody = content.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
+
+    // Should look up athlete name for the presigned path
+    expect(funcBody).toContain('first_name, last_name');
+    expect(funcBody).toContain('decryptUserRow');
+    // Should include athlete folder in object key
+    expect(funcBody).toContain("'Images/videos/athlete/' . $athlete_folder . '/' . $unique_filename");
+    // Should NOT use the flat path without subfolder
+    expect(funcBody).not.toMatch(/'Images\/videos\/athlete\/' \. \$unique_filename/);
+  });
+
+  test('should sanitize athlete folder name', () => {
+    const content = readFile('process_video.php');
+    // The folder name is sanitized with a regex to only allow safe characters
+    expect(content).toContain("preg_replace('/[^a-zA-Z0-9_-]/', '_'");
+  });
+
+  test('should fallback to athlete_id if name is empty', () => {
+    const content = readFile('process_video.php');
+    expect(content).toContain("'athlete_' . $athlete_id");
+  });
+});
+
+// =====================================================
+// 13. Description is required in coach reviews upload
+// =====================================================
+
+test.describe('Description required in upload forms', () => {
+  test('coach reviews form description should be required', () => {
+    const content = readFile('views/video_coach_reviews.php');
+    // Find the Notes for Coach textarea and verify it has required
+    const descLines = content.split('\\n').filter(l => l.includes('name="description"'));
+    expect(content).toMatch(/name="description"[^>]*required/);
   });
 });
