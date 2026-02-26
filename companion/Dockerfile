@@ -32,4 +32,4 @@ EXPOSE 5100
 # settings are configured through the web UI setup page on first start and
 # stored on the persistent /config volume.
 
-CMD ["gunicorn", "--bind", "0.0.0.0:5100", "--workers", "2", "--timeout", "7200", "app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5100", "--workers", "1", "--threads", "4", "--timeout", "7200", "app:app"]

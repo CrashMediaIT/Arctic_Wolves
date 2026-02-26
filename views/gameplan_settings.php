@@ -422,8 +422,8 @@ function showTestAlert(type, message) {
     if (!container) {
         container = document.createElement('div');
         container.id = 'testAlertContainer';
-        var cardBody = document.getElementById('testCompanionBtn').closest('.card-body');
-        cardBody.insertBefore(container, cardBody.querySelector('.form-actions'));
+        var formActions = document.getElementById('testCompanionBtn').closest('.form-actions');
+        formActions.parentNode.insertBefore(container, formActions);
     }
     var cls = (type === 'success') ? 'alert-success' : 'alert-danger';
     var icon = (type === 'success') ? 'fa-check-circle' : 'fa-exclamation-circle';
