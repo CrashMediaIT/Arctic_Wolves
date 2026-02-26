@@ -53,7 +53,7 @@ $drills_query = "
     LEFT JOIN session_types st ON s.session_type_id = st.id
     LEFT JOIN drills d ON v.drill_id = d.id
     LEFT JOIN drill_categories dc ON d.category_id = dc.id
-    WHERE v.athlete_id = ?
+    WHERE v.athlete_id = ? AND v.video_type != 'uploaded_by_athlete'
 ";
 
 $drills_params = [$user_id];

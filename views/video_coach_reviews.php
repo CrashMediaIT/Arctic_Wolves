@@ -227,16 +227,16 @@ $reviewed_videos = array_filter($videos, function($v) {
             <?php if (count($pending_videos) > 0): ?>
                 <?php foreach ($pending_videos as $video): ?>
                 <div class="video-list-item" data-video-id="<?= $video['id'] ?>">
-                    <div class="video-thumbnail-small">
+                    <a href="?page=video_review_detail&video_id=<?= $video['id'] ?>" class="video-thumbnail-small" style="text-decoration:none;">
                         <?php if (!empty($video['thumbnail_url'])): ?>
                             <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['thumbnail_url']) ?? '') ?>" alt="Thumbnail">
                         <?php else: ?>
                             <i class="fas fa-video"></i>
                         <?php endif; ?>
                         <span class="play-overlay"><i class="fas fa-play"></i></span>
-                    </div>
+                    </a>
                     <div class="video-details">
-                        <h4><?= htmlspecialchars($video['title']) ?></h4>
+                        <h4><a href="?page=video_review_detail&video_id=<?= $video['id'] ?>" style="color:inherit; text-decoration:none;"><?= htmlspecialchars($video['title']) ?></a></h4>
                         <?php if (!empty($video['description'])): ?>
                             <div class="athlete-notes-preview">
                                 <i class="fas fa-comment-alt"></i> <?= htmlspecialchars(mb_strimwidth($video['description'], 0, 150, '...')) ?>
@@ -258,11 +258,11 @@ $reviewed_videos = array_filter($videos, function($v) {
                         <span class="badge-warning"><i class="fas fa-clock"></i> Pending</span>
                     </div>
                     <div class="video-actions-inline">
-                        <button class="btn-icon" title="View" data-action="view-video" data-video-id="<?= $video['id'] ?>" data-video-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['video_url'] ?? '') ?? '') ?>"><i class="fas fa-eye"></i></button>
+                        <button class="btn-icon" title="Watch Video" data-action="view-video" data-video-id="<?= $video['id'] ?>" data-video-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['video_url'] ?? '') ?? '') ?>"><i class="fas fa-play"></i></button>
                         <?php if ($isAnyCoach): ?>
                         <button class="btn-icon btn-review" title="Review" data-action="review-video" data-video-id="<?= $video['id'] ?>"><i class="fas fa-check"></i></button>
                         <?php endif; ?>
-                        <button class="btn-icon" title="Delete" data-action="delete-video" data-video-id="<?= $video['id'] ?>"><i class="fas fa-trash"></i></button>
+                        <button class="btn-icon" title="Delete" data-action="delete-video" data-video-id="<?= $video['id'] ?>" data-video-title="<?= htmlspecialchars($video['title']) ?>"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>
                 <?php endforeach; ?>
@@ -288,16 +288,16 @@ $reviewed_videos = array_filter($videos, function($v) {
             <?php if (count($reviewed_videos) > 0): ?>
                 <?php foreach ($reviewed_videos as $video): ?>
                 <div class="video-list-item" data-video-id="<?= $video['id'] ?>">
-                    <div class="video-thumbnail-small">
+                    <a href="?page=video_review_detail&video_id=<?= $video['id'] ?>" class="video-thumbnail-small" style="text-decoration:none;">
                         <?php if (!empty($video['thumbnail_url'])): ?>
                             <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['thumbnail_url']) ?? '') ?>" alt="Thumbnail">
                         <?php else: ?>
                             <i class="fas fa-video"></i>
                         <?php endif; ?>
                         <span class="play-overlay"><i class="fas fa-play"></i></span>
-                    </div>
+                    </a>
                     <div class="video-details">
-                        <h4><?= htmlspecialchars($video['title']) ?></h4>
+                        <h4><a href="?page=video_review_detail&video_id=<?= $video['id'] ?>" style="color:inherit; text-decoration:none;"><?= htmlspecialchars($video['title']) ?></a></h4>
                         <?php if (!empty($video['description'])): ?>
                             <div class="athlete-notes-preview">
                                 <i class="fas fa-comment-alt"></i> <?= htmlspecialchars(mb_strimwidth($video['description'], 0, 150, '...')) ?>
@@ -324,8 +324,8 @@ $reviewed_videos = array_filter($videos, function($v) {
                         <span class="badge-success"><i class="fas fa-check-circle"></i> Reviewed</span>
                     </div>
                     <div class="video-actions-inline">
-                        <button class="btn-icon" title="View" data-action="view-video" data-video-id="<?= $video['id'] ?>" data-video-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['video_url'] ?? '') ?? '') ?>"><i class="fas fa-eye"></i></button>
-                        <button class="btn-icon" title="View Feedback" data-action="view-feedback" data-video-id="<?= $video['id'] ?>"><i class="fas fa-comments"></i></button>
+                        <button class="btn-icon" title="Watch Video" data-action="view-video" data-video-id="<?= $video['id'] ?>" data-video-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['video_url'] ?? '') ?? '') ?>"><i class="fas fa-play"></i></button>
+                        <a href="?page=video_review_detail&video_id=<?= $video['id'] ?>" class="btn-icon" title="View Details"><i class="fas fa-comments"></i></a>
                     </div>
                 </div>
                 <?php endforeach; ?>
@@ -511,6 +511,25 @@ $reviewed_videos = array_filter($videos, function($v) {
                     <source src="" type="video/mp4">
                     Your browser does not support the video tag.
                 </video>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal" id="deleteModal" style="display: none;">
+    <div class="modal-overlay" data-action="close-modal"></div>
+    <div class="modal-content" style="max-width: 480px;">
+        <div class="modal-header">
+            <h3><i class="fas fa-trash" style="color: #EF4444;"></i> Delete Video</h3>
+            <button class="modal-close" aria-label="Close modal" data-action="close-modal"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <p style="color: var(--text-dim); margin-bottom: 16px;">Are you sure you want to delete <strong id="deleteVideoTitle" style="color: var(--text-white);"></strong>? This action cannot be undone.</p>
+            <input type="hidden" id="deleteVideoId">
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" data-action="close-modal">Cancel</button>
+                <button type="button" class="btn-primary" id="confirmDeleteBtn" style="background: #EF4444;"><i class="fas fa-trash"></i> Delete</button>
             </div>
         </div>
     </div>
@@ -812,6 +831,53 @@ document.addEventListener('DOMContentLoaded', function() {
             this.closest('.modal').style.display = 'none';
         });
     });
+
+    // ── Delete Video ──
+    document.querySelectorAll('[data-action="delete-video"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var videoId = this.dataset.videoId;
+            var videoTitle = this.dataset.videoTitle || 'this video';
+            document.getElementById('deleteVideoId').value = videoId;
+            document.getElementById('deleteVideoTitle').textContent = videoTitle;
+            document.getElementById('deleteModal').style.display = 'flex';
+        });
+    });
+
+    var confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+    if (confirmDeleteBtn) {
+        confirmDeleteBtn.addEventListener('click', function() {
+            var videoId = document.getElementById('deleteVideoId').value;
+            var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '';
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
+
+            var formData = new FormData();
+            formData.append('action', 'delete_video');
+            formData.append('video_id', videoId);
+            formData.append('csrf_token', csrfToken);
+
+            fetch('process_video.php', { method: 'POST', body: formData })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        document.getElementById('deleteModal').style.display = 'none';
+                        var card = document.querySelector('.video-list-item[data-video-id="' + videoId + '"]');
+                        if (card) card.remove();
+                        if (typeof showToast === 'function') showToast('Video deleted successfully.', 'success');
+                    } else {
+                        if (typeof showToast === 'function') showToast('Delete failed: ' + (data.error || data.message || 'Unknown error'), 'error');
+                    }
+                })
+                .catch(function(err) {
+                    if (typeof showToast === 'function') showToast('Delete failed: ' + err.message, 'error');
+                })
+                .finally(function() {
+                    confirmDeleteBtn.disabled = false;
+                    confirmDeleteBtn.innerHTML = '<i class="fas fa-trash"></i> Delete';
+                });
+        });
+    }
     
     document.querySelectorAll('[data-action="review-video"]').forEach(btn => {
         btn.addEventListener('click', function() {
