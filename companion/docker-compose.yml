@@ -7,6 +7,10 @@
 #   3. Visit http://localhost:5100 → Settings to generate an API key
 #   4. Enter that API key in the main app's Game Plan Settings
 #
+# All other configuration (RustFS credentials, hardware acceleration, etc.)
+# is managed through the companion's web UI and stored in an encrypted config
+# file on the persistent volume.  No other environment variables are needed.
+#
 # To build locally instead of pulling from GHCR, uncomment "build" and comment "image":
 #   build: .
 
@@ -20,12 +24,8 @@ services:
       - "5100:5100"
     volumes:
       - companion_config:/config  # Persistent encrypted config (survives updates)
-    environment:
-      - TZ=${TZ:-America/Toronto}
-      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-}
-      - HW_ACCEL=${HW_ACCEL:-auto}
-      - MAX_CONCURRENT_JOBS=${MAX_CONCURRENT_JOBS:-2}
-      - COMPANION_PORT=5100
+    env_file:
+      - .env                      # Only ENCRYPTION_KEY is required
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5100/api/health')"]
       interval: 30s

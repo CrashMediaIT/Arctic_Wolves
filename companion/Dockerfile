@@ -28,11 +28,8 @@ USER companion
 
 EXPOSE 5100
 
-ENV COMPANION_HOST=0.0.0.0
-ENV COMPANION_PORT=5100
-ENV VIDEO_BASE_PATH=/videos
-ENV HW_ACCEL=auto
-ENV MAX_CONCURRENT_JOBS=2
-ENV TEMP_DIR=/tmp/companion
+# Only ENCRYPTION_KEY is required at runtime (set via .env file).
+# All other settings are managed in the companion web UI and persisted
+# in the encrypted config file on the /config volume.
 
 CMD ["gunicorn", "--bind", "0.0.0.0:5100", "--workers", "2", "--timeout", "7200", "app:app"]

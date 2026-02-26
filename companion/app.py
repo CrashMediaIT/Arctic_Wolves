@@ -144,45 +144,43 @@ def _save_persistent_config(cfg: dict) -> bool:
         return False
 
 
-# Load persisted settings, then overlay with environment variables.
-# Environment variables take precedence (for CI/headless overrides).
+# Load all settings from the encrypted persistent config file.
+# The ONLY environment variable required is ENCRYPTION_KEY (needed to
+# decrypt the config).  Everything else is entered through the companion
+# web UI (Settings tab) and persisted in the encrypted config file on the
+# Docker volume.
 _persisted = _load_persistent_config()
 
-def _cfg(env_name: str, persist_key: str, default: str = "") -> str:
-    """Return config value: env-var > persisted > default."""
-    env_val = os.getenv(env_name, "")
-    if env_val:
-        return env_val
-    return _persisted.get(persist_key, default)
+def _pcfg(key: str, default: str = "") -> str:
+    """Return a value from the persisted config, or *default*."""
+    return _persisted.get(key, default)
 
 # ---------------------------------------------------------------------------
-# Configuration
+# Configuration — all values come from the encrypted config file
 # ---------------------------------------------------------------------------
-API_KEY = _cfg("API_KEY", "api_key", "")
-MAIN_APP_URL = _cfg("MAIN_APP_URL", "main_app_url", "")
-HW_ACCEL = _cfg("HW_ACCEL", "hw_accel", "auto")
-FFMPEG_PATH = os.getenv("FFMPEG_PATH", "ffmpeg")
-FFPROBE_PATH = os.getenv("FFPROBE_PATH", "ffprobe")
-MAX_CONCURRENT_JOBS = int(_cfg("MAX_CONCURRENT_JOBS", "max_concurrent_jobs", "2"))
-TEMP_DIR = os.getenv("TEMP_DIR", "/tmp/companion")
-COMPANION_HOST = os.getenv("COMPANION_HOST", "0.0.0.0")
-COMPANION_PORT = int(os.getenv("COMPANION_PORT", "5100"))
+API_KEY = _pcfg("api_key")
+MAIN_APP_URL = _pcfg("main_app_url")
+HW_ACCEL = _pcfg("hw_accel", "auto")
+MAX_CONCURRENT_JOBS = int(_pcfg("max_concurrent_jobs", "2"))
 
-# Internal: local path for legacy clip/probe endpoints (not user-configurable;
-# storage locations are controlled by the main application).
-VIDEO_BASE_PATH = os.getenv("VIDEO_BASE_PATH", "/videos")
-
-# S3 / RustFS connection — credentials pushed from the main app or entered in
-# the companion web UI.  The companion uses these to download source videos and
+# S3 / RustFS connection — entered in the companion Settings UI or pushed
+# from the main app.  The companion uses these to download source videos and
 # upload transcoded output.  Storage *paths* are determined by the main app.
-S3_ENDPOINT = _cfg("S3_ENDPOINT", "s3_endpoint", "")
-S3_ACCESS_KEY = _cfg("S3_ACCESS_KEY", "s3_access_key", "")
-S3_SECRET_KEY = _cfg("S3_SECRET_KEY", "s3_secret_key", "")
-S3_BUCKET = _cfg("S3_BUCKET", "s3_bucket", "")
-S3_REGION = _cfg("S3_REGION", "s3_region", "us-east-1")
-S3_USE_SSL = _cfg("S3_USE_SSL", "s3_use_ssl", "true").lower() in ("true", "1", "yes")
-S3_VERIFY_SSL = _cfg("S3_VERIFY_SSL", "s3_verify_ssl", "false").lower() in ("true", "1", "yes")
+S3_ENDPOINT = _pcfg("s3_endpoint")
+S3_ACCESS_KEY = _pcfg("s3_access_key")
+S3_SECRET_KEY = _pcfg("s3_secret_key")
+S3_BUCKET = _pcfg("s3_bucket")
+S3_REGION = _pcfg("s3_region", "us-east-1")
+S3_USE_SSL = _pcfg("s3_use_ssl", "true").lower() in ("true", "1", "yes")
+S3_VERIFY_SSL = _pcfg("s3_verify_ssl", "false").lower() in ("true", "1", "yes")
 
+# Internal constants (not user-configurable)
+FFMPEG_PATH = "ffmpeg"
+FFPROBE_PATH = "ffprobe"
+TEMP_DIR = "/tmp/companion"
+VIDEO_BASE_PATH = "/videos"
+COMPANION_HOST = "0.0.0.0"
+COMPANION_PORT = int(os.getenv("COMPANION_PORT", "5100"))
 VERSION = "1.2.0"
 
 Path(TEMP_DIR).mkdir(parents=True, exist_ok=True)

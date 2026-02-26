@@ -2693,20 +2693,24 @@ function handleNavigatePair() {
 
 
 /**
- * Trigger HLS transcoding via the companion server (fire-and-forget).
+ * Trigger HLS transcoding via the companion server.
+ * The main app controls storage locations — it tells the companion where the
+ * source file is (source_key) and where to put the HLS output (output_prefix).
+ * The companion calls back to /api/v1/companion/callback when done.
  * Non-blocking: if the companion is unavailable the upload still succeeds.
  */
 function triggerHlsTranscode($pdo, $video_id, $object_key) {
     try {
-        // Load companion settings from system_settings
-        $stmt = $pdo->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('companion_url', 'companion_api_key')");
+        // Load companion settings from system_settings (correct key names)
+        $stmt = $pdo->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('gameplan_companion_url', 'gameplan_companion_api_key', 'gameplan_app_url')");
         $stmt->execute();
         $settings = [];
         while ($row = $stmt->fetch()) {
             $settings[$row['setting_key']] = $row['setting_value'] ?? '';
         }
-        $companion_url = $settings['companion_url'] ?? '';
-        $companion_key = $settings['companion_api_key'] ?? '';
+        $companion_url = $settings['gameplan_companion_url'] ?? '';
+        $companion_key = $settings['gameplan_companion_api_key'] ?? '';
+        $app_url       = $settings['gameplan_app_url'] ?? '';
 
         if (empty($companion_url)) {
             return; // Companion not configured – skip
@@ -2717,16 +2721,28 @@ function triggerHlsTranscode($pdo, $video_id, $object_key) {
         $hls_dir    = pathinfo($object_key, PATHINFO_DIRNAME);
         $output_prefix = $hls_dir . "/" . $hls_prefix . "/hls";
 
+        // Build callback URL so the companion can notify us when done
+        $callback_url = '';
+        if (!empty($app_url)) {
+            $callback_url = rtrim($app_url, '/') . '/api/v1/companion/callback';
+        }
+
+        // Pre-build the HLS URL so the frontend can show a pending player
+        $hls_manifest_url = "api/media.php?key=" . rawurlencode($output_prefix . "/master.m3u8");
+
         $payload = json_encode([
             "source_key"      => $object_key,
             "output_prefix"   => $output_prefix,
             "delete_original" => true,
+            "video_id"        => $video_id,
+            "callback_url"    => $callback_url,
         ]);
 
-        // Mark video as pending HLS transcode
-        $pdo->prepare("UPDATE videos SET hls_status = 'pending' WHERE id = ?")->execute([$video_id]);
+        // Mark video as pending HLS transcode and pre-set the expected HLS URL
+        $pdo->prepare("UPDATE videos SET hls_status = 'pending', hls_url = ?, hls_master_url = ?, hls_segments_path = ? WHERE id = ?")
+            ->execute([$hls_manifest_url, $output_prefix . "/master.m3u8", $output_prefix, $video_id]);
 
-        // Fire-and-forget POST to companion /api/hls
+        // POST to companion /api/hls
         $ch = curl_init($companion_url . "/api/hls");
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
@@ -2735,8 +2751,8 @@ function triggerHlsTranscode($pdo, $video_id, $object_key) {
             "X-API-Key: " . $companion_key,
         ]);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 5); // Short timeout – fire and forget
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 
         $response = curl_exec($ch);
@@ -2746,10 +2762,9 @@ function triggerHlsTranscode($pdo, $video_id, $object_key) {
         if ($http_code === 202 && $response) {
             $data = json_decode($response, true);
             if (!empty($data["id"])) {
-                // Store the HLS manifest URL and job ID
-                $hls_manifest_url = "api/media.php?key=" . rawurlencode($output_prefix . "/master.m3u8");
-                $pdo->prepare("UPDATE videos SET hls_url = ?, hls_job_id = ?, hls_status = 'processing' WHERE id = ?")
-                    ->execute([$hls_manifest_url, $data["id"], $video_id]);
+                // Store the companion job ID so the callback can match it
+                $pdo->prepare("UPDATE videos SET hls_job_id = ?, hls_status = 'processing' WHERE id = ?")
+                    ->execute([$data["id"], $video_id]);
             }
         }
     } catch (Exception $e) {
