@@ -1074,6 +1074,7 @@ CREATE TABLE IF NOT EXISTS `backup_history` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `backup_job_id` INT DEFAULT NULL,
     `filename` VARCHAR(255) NOT NULL,
+    `file_path` VARCHAR(500) DEFAULT NULL,
     `file_size` BIGINT DEFAULT NULL,
     `destination` VARCHAR(255) DEFAULT NULL,
     `backup_date` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -4674,3 +4675,7 @@ INSERT IGNORE INTO `system_settings` (`setting_key`, `setting_value`, `setting_t
 ('rustfs_region',     'us-east-1', 'text', 'RustFS S3 region'),
 ('rustfs_use_ssl',    '1', 'boolean',  'Use SSL/HTTPS for RustFS connections'),
 ('rustfs_path_style', '1', 'boolean',  'Use path-style access (recommended for self-hosted RustFS)');
+
+-- Add file_path column to backup_history for storing RustFS URLs
+ALTER TABLE `backup_history`
+ADD COLUMN IF NOT EXISTS `file_path` VARCHAR(500) DEFAULT NULL COMMENT 'RustFS URL or local path for the backup file' AFTER `filename`;

@@ -141,12 +141,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new Exception('Permission denied');
                 }
                 
-                // Delete media files first
+                // Delete media files first (RustFS URLs - no local files to delete)
                 $media = $pdo->prepare("SELECT media_url FROM evaluation_media WHERE evaluation_id = ?");
                 $media->execute([$eval_id]);
                 foreach ($media->fetchAll() as $row) {
-                    if (file_exists($row['media_url'])) {
-                        unlink($row['media_url']);
+                    if (!empty($row['media_url']) && !preg_match('#^https?://#', $row['media_url'])) {
+                        // Only attempt local deletion for non-URL paths (legacy data)
+                        if (file_exists($row['media_url'])) {
+                            unlink($row['media_url']);
+                        }
                     }
                 }
                 
@@ -334,9 +337,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new Exception('Media not found');
                 }
                 
-                // Delete file
-                if (file_exists($media['media_url'])) {
-                    unlink($media['media_url']);
+                // Delete file (skip for RustFS URLs - only delete local files)
+                if (!empty($media['media_url']) && !preg_match('#^https?://#', $media['media_url'])) {
+                    if (file_exists($media['media_url'])) {
+                        unlink($media['media_url']);
+                    }
                 }
                 
                 // Delete from database

@@ -808,10 +808,20 @@ $csrf_token = $_SESSION['csrf_token'];
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <?php if ($item['status'] === 'success' && $item['file_path']): ?>
+                                <?php
+                                $bk_file_path = $item['file_path'] ?? '';
+                                $bk_is_remote = preg_match('#^https?://#', $bk_file_path);
+                                ?>
+                                <?php if ($item['status'] === 'success' && !empty($bk_file_path)): ?>
+                                    <?php if ($bk_is_remote): ?>
+                                    <a href="<?= htmlspecialchars($bk_file_path) ?>" class="btn-icon" title="Download" download>
+                                        <i class="fas fa-download"></i> Download
+                                    </a>
+                                    <?php else: ?>
                                     <button class="btn-icon" onclick="downloadBackup('<?= htmlspecialchars($item['filename']) ?>')" title="Download">
                                         <i class="fas fa-download"></i> Download
                                     </button>
+                                    <?php endif; ?>
                                 <?php else: ?>
                                     <span style="color: #94a3b8; font-size: 12px;">N/A</span>
                                 <?php endif; ?>

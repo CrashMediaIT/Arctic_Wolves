@@ -140,8 +140,18 @@ $report_type_display = ucwords(str_replace('_', ' ', $report['report_type']));
     </div>
     
     <div class="report-actions">
-        <?php if ($report['file_path'] && file_exists(__DIR__ . '/../' . $report['file_path'])): ?>
-        <a href="<?= htmlspecialchars($report['file_path']) ?>" class="btn btn-primary" download>
+        <?php
+        $report_file_path = $report['file_path'] ?? '';
+        $is_remote_url = preg_match('#^https?://#', $report_file_path);
+        $file_available = false;
+        if ($is_remote_url) {
+            $file_available = true;
+        } elseif ($report_file_path && file_exists(__DIR__ . '/../' . $report_file_path)) {
+            $file_available = true;
+        }
+        ?>
+        <?php if ($file_available): ?>
+        <a href="<?= htmlspecialchars($report_file_path) ?>" class="btn btn-primary" download>
             <i class="fas fa-download"></i> Download Report
         </a>
         <?php endif; ?>
@@ -157,12 +167,12 @@ $report_type_display = ucwords(str_replace('_', ' ', $report['report_type']));
     </div>
     
     <div class="report-content">
-        <?php if ($report['file_path'] && file_exists(__DIR__ . '/../' . $report['file_path'])): ?>
-            <?php if ($report['format'] === 'csv'): ?>
+        <?php if ($file_available): ?>
+            <?php if ($report['format'] === 'csv' && !$is_remote_url): ?>
                 <div style="overflow-x: auto;">
                     <table style="width: 100%; border-collapse: collapse;">
                         <?php
-                        $csv_file = fopen(__DIR__ . '/../' . $report['file_path'], 'r');
+                        $csv_file = fopen(__DIR__ . '/../' . $report_file_path, 'r');
                         $is_header = true;
                         while (($row = fgetcsv($csv_file)) !== false) {
                             echo '<tr>';
@@ -179,7 +189,7 @@ $report_type_display = ucwords(str_replace('_', ' ', $report['report_type']));
                     </table>
                 </div>
             <?php else: ?>
-                <iframe src="<?= htmlspecialchars($report['file_path']) ?>"></iframe>
+                <iframe src="<?= htmlspecialchars($report_file_path) ?>"></iframe>
             <?php endif; ?>
         <?php else: ?>
             <p style="text-align: center; color: #64748b; padding: 60px 0;">

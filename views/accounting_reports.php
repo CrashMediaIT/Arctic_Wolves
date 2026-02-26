@@ -283,9 +283,14 @@ exit;
                             <span class="report-meta-text">Generated on <?= date('M j, Y', strtotime($report['created_at'])) ?> by <?= htmlspecialchars(($report['first_name'] ?? '') . ' ' . ($report['last_name'] ?? '')) ?></span>
                         </div>
                         <div class="report-actions">
-                            <?php if (!empty($report['file_path']) && file_exists(__DIR__ . '/../' . $report['file_path'])): ?>
-                            <a href="<?= htmlspecialchars($report['file_path']) ?>" download class="btn-icon" title="Download"><i class="fas fa-download"></i></a>
-                            <a href="<?= htmlspecialchars($report['file_path']) ?>" target="_blank" class="btn-icon" title="View"><i class="fas fa-eye"></i></a>
+                            <?php
+                            $rpt_file_path = $report['file_path'] ?? '';
+                            $rpt_is_remote = preg_match('#^https?://#', $rpt_file_path);
+                            $rpt_available = $rpt_is_remote || (!empty($rpt_file_path) && file_exists(__DIR__ . '/../' . $rpt_file_path));
+                            ?>
+                            <?php if ($rpt_available): ?>
+                            <a href="<?= htmlspecialchars($rpt_file_path) ?>" download class="btn-icon" title="Download"><i class="fas fa-download"></i></a>
+                            <a href="<?= htmlspecialchars($rpt_file_path) ?>" target="_blank" class="btn-icon" title="View"><i class="fas fa-eye"></i></a>
                             <?php endif; ?>
                             <form method="POST" action="process_reports.php" style="display: inline;">
                                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">

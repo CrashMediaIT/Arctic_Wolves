@@ -570,6 +570,7 @@ function performBackup($pdo, $job) {
         }
         
         // Upload to RustFS if configured
+        $rustfs_url = null;
         if ($file_content !== null && ($job['destination_type'] === 's3' || $job['destination_type'] === 'both')) {
             try {
                 $rustfs = getRustFSSettings($pdo);
@@ -578,6 +579,7 @@ function performBackup($pdo, $job) {
                     $result = uploadContentToRustFS($rustfs, $file_content, $object_key, 'application/gzip');
                     
                     if ($result['success']) {
+                        $rustfs_url = $result['url'];
                         $success_destinations[] = 'RustFS: ' . $result['url'];
                     } else {
                         $errors[] = 'RustFS upload failed: ' . ($result['message'] ?? '');
@@ -617,11 +619,14 @@ function performBackup($pdo, $job) {
             $destinations = implode(', ', $success_destinations);
             $error_msg = empty($errors) ? null : implode('; ', $errors);
             
+            // Determine file_path: prefer RustFS URL, fallback to local path
+            $backup_file_path = $rustfs_url ?? (($job['destination_type'] === 'local') ? ('backups/' . $filename) : null);
+            
             $stmt = $pdo->prepare("
-                INSERT INTO backup_history (backup_job_id, filename, file_size, destination, status, error_message)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO backup_history (backup_job_id, filename, file_path, file_size, destination, status, error_message)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
             ");
-            $stmt->execute([$job['id'], $filename, $file_size, $destinations, $backup_status, $error_msg]);
+            $stmt->execute([$job['id'], $filename, $backup_file_path, $file_size, $destinations, $backup_status, $error_msg]);
             
             // Update last_backup time
             $stmt = $pdo->prepare("UPDATE backup_jobs SET last_backup = NOW() WHERE id = ?");
