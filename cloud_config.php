@@ -233,11 +233,11 @@ function persistUploadedFile($pdo, $source_path, $subfolder, $filename, $local_c
             $result['local_cache'] = $upload['url'];
         } else {
             error_log("persistUploadedFile: RustFS upload failed for $subfolder/$filename: " . ($upload['message'] ?? ''));
-            $result['success'] = true; // Don't fail completely if RustFS has a transient error
+            $result['success'] = false;
         }
     } catch (\Throwable $e) {
         error_log("persistUploadedFile: RustFS upload error for $subfolder/$filename: " . $e->getMessage());
-        $result['success'] = true;
+        $result['success'] = false;
     }
 
     return $result;

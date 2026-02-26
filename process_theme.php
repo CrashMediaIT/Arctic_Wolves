@@ -73,7 +73,7 @@ function syncCenterIceLogoIfNeeded($pdo, $logoUrl) {
  */
 function handleFileUpload($file, $type = 'image') {
     $allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
-    $max_size = 5 * 1024 * 1024; // 5MB
+    $max_size = 100 * 1024 * 1024; // 100MB
     
     if ($file['error'] !== UPLOAD_ERR_OK) {
         error_log("handleFileUpload($type): Upload error code " . $file['error']);
@@ -82,7 +82,7 @@ function handleFileUpload($file, $type = 'image') {
     
     if ($file['size'] > $max_size) {
         error_log("handleFileUpload($type): File too large: " . $file['size'] . " bytes");
-        return ['success' => false, 'message' => 'File too large. Maximum size is 5MB.'];
+        return ['success' => false, 'message' => 'File too large. Maximum size is 100MB.'];
     }
     
     $finfo = finfo_open(FILEINFO_MIME_TYPE);
@@ -109,10 +109,12 @@ function handleFileUpload($file, $type = 'image') {
             if (!empty($persist['rustfs_url'])) {
                 $local_url = $persist['rustfs_url'];
             } else {
-                error_log("handleFileUpload($type): persistUploadedFile returned no rustfs_url — stored local path: $local_url");
+                error_log("handleFileUpload($type): persistUploadedFile returned no rustfs_url — upload failed");
+                return ['success' => false, 'message' => 'Failed to upload file to storage'];
             }
         } catch (\Throwable $e) {
             error_log("Theme image persist failed ($type): " . $e->getMessage());
+            return ['success' => false, 'message' => 'Failed to upload file to storage'];
         }
     }
     

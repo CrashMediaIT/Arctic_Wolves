@@ -2264,9 +2264,9 @@ if ($action == 'admin_update_profile_image') {
             exit();
         }
         
-        // Check file size (5MB max)
-        if ($_FILES['profile_image']['size'] > 5 * 1024 * 1024) {
-            echo json_encode(['success' => false, 'message' => 'File too large. Maximum size is 5MB']);
+        // Check file size (100MB max)
+        if ($_FILES['profile_image']['size'] > 100 * 1024 * 1024) {
+            echo json_encode(['success' => false, 'message' => 'File too large. Maximum size is 100MB']);
             exit();
         }
         
@@ -3195,7 +3195,7 @@ if ($action == 'create_team') {
     if (!empty($_FILES['team_logo']) && $_FILES['team_logo']['error'] === UPLOAD_ERR_OK) {
         $allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
         $allowed_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
-        $max_size = 5 * 1024 * 1024;
+        $max_size = 100 * 1024 * 1024;
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
         $mime = finfo_file($finfo, $_FILES['team_logo']['tmp_name']);
         finfo_close($finfo);
@@ -3284,7 +3284,7 @@ if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'team') {
         if (!empty($_FILES['team_logo']) && $_FILES['team_logo']['error'] === UPLOAD_ERR_OK) {
             $allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
             $allowed_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
-            $max_size = 5 * 1024 * 1024;
+            $max_size = 100 * 1024 * 1024;
             $finfo = finfo_open(FILEINFO_MIME_TYPE);
             $mime = finfo_file($finfo, $_FILES['team_logo']['tmp_name']);
             finfo_close($finfo);
