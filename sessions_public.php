@@ -261,15 +261,92 @@ $viewMode = $_GET['view'] ?? 'list';
             color: #fff;
         }
         
-        /* Packages Section */
-        .packages-section {
+        /* Products Row - Side by Side Layout */
+        .products-row {
+            display: flex;
+            gap: 24px;
             margin-bottom: 60px;
         }
         
-        .section-title {
-            font-size: 1.5rem;
+        .product-column {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .scroll-wrapper {
+            position: relative;
+        }
+        
+        .scroll-container {
+            display: flex;
+            gap: 20px;
+            overflow-x: auto;
+            scroll-behavior: smooth;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            padding: 16px 0;
+        }
+        
+        .scroll-container::-webkit-scrollbar {
+            display: none;
+        }
+        
+        .scroll-container > * {
+            min-width: 280px;
+            flex-shrink: 0;
+        }
+        
+        .scroll-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 10;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            background: var(--bg-card);
             color: #fff;
-            margin-bottom: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        
+        .scroll-btn:hover {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+        
+        .scroll-btn.scroll-left {
+            left: -12px;
+        }
+        
+        .scroll-btn.scroll-right {
+            right: -12px;
+        }
+        
+        .scroll-btn.hidden {
+            display: none;
+        }
+        
+        @media (max-width: 992px) {
+            .products-row {
+                flex-direction: column;
+            }
+        }
+        
+        /* Packages Section */
+        .packages-section {
+            margin-bottom: 0;
+        }
+        
+        .section-title {
+            font-size: 1.3rem;
+            color: #fff;
+            margin-bottom: 12px;
             display: flex;
             align-items: center;
             gap: 12px;
@@ -347,7 +424,7 @@ $viewMode = $_GET['view'] ?? 'list';
         
         /* Camps & Programs Section */
         .camps-section {
-            margin-bottom: 60px;
+            margin-bottom: 0;
         }
         
         .camps-grid {
@@ -697,6 +774,113 @@ $viewMode = $_GET['view'] ?? 'list';
 
     <section class="sessions-page-content">
         <div class="container">
+            
+            <!-- Products Row: Packages and Camps & Programs side by side -->
+            <div class="products-row">
+                <!-- Packages Column -->
+                <div class="product-column">
+                    <div class="packages-section">
+                        <h2 class="section-title"><i class="fas fa-box"></i> Packages</h2>
+                        <?php if (!empty($packages)): ?>
+                        <div class="scroll-wrapper">
+                            <button class="scroll-btn scroll-left hidden" onclick="scrollSection(this, -1)" aria-label="Scroll left"><i class="fas fa-chevron-left"></i></button>
+                            <div class="scroll-container" data-scroll-container>
+                                <?php foreach ($packages as $package): 
+                                    $storeCredit = $package['store_credit'] ?? 0;
+                                ?>
+                                <div class="package-card">
+                                    <div class="package-badge"><i class="fas fa-star"></i> Package</div>
+                                    <h3 class="package-name"><?= htmlspecialchars($package['name']) ?></h3>
+                                    <div class="package-price">$<?= number_format($package['price'], 2) ?></div>
+                                    <div class="package-details">
+                                        <?php if ($package['credits'] > 0): ?>
+                                        <p><i class="fas fa-calendar-check"></i> <?= $package['credits'] ?> sessions included</p>
+                                        <?php endif; ?>
+                                        <?php if ($storeCredit > 0): ?>
+                                        <p><i class="fas fa-wallet"></i> $<?= number_format($storeCredit, 2) ?> store credit</p>
+                                        <?php endif; ?>
+                                        <?php if (!empty($package['valid_days'])): ?>
+                                        <p><i class="fas fa-clock"></i> Valid for <?= $package['valid_days'] ?> days</p>
+                                        <?php endif; ?>
+                                        <?php if (!empty($package['description'])): ?>
+                                        <p><i class="fas fa-info-circle"></i> <?= htmlspecialchars($package['description']) ?></p>
+                                        <?php endif; ?>
+                                    </div>
+                                    <a href="?register=1&type=package&id=<?= $package['id'] ?>" class="register-btn">
+                                        <i class="fas fa-user-plus"></i> Register Now
+                                    </a>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                            <button class="scroll-btn scroll-right hidden" onclick="scrollSection(this, 1)" aria-label="Scroll right"><i class="fas fa-chevron-right"></i></button>
+                        </div>
+                        <?php else: ?>
+                        <p style="color: var(--text-dim); font-size: 14px;">No packages available.</p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                
+                <!-- Camps & Programs Column -->
+                <div class="product-column">
+                    <div class="camps-section">
+                        <h2 class="section-title"><i class="fas fa-campground"></i> Camps & Programs</h2>
+                        <?php if (!empty($camps_programs)): ?>
+                        <div class="scroll-wrapper">
+                            <button class="scroll-btn scroll-left hidden" onclick="scrollSection(this, -1)" aria-label="Scroll left"><i class="fas fa-chevron-left"></i></button>
+                            <div class="scroll-container" data-scroll-container>
+                                <?php foreach ($camps_programs as $cp): ?>
+                                <div class="camp-card <?= $cp['package_type'] === 'camp' ? 'camp-type' : 'program-type' ?>">
+                                    <div class="camp-badge" style="background: <?= $cp['package_type'] === 'camp' ? '#10b981' : '#f59e0b' ?>;">
+                                        <i class="fas fa-<?= $cp['package_type'] === 'camp' ? 'campground' : 'calendar-alt' ?>"></i>
+                                        <?= $cp['package_type'] === 'camp' ? 'Camp' : 'Weekly Program' ?>
+                                    </div>
+                                    <h3 class="camp-name"><?= htmlspecialchars($cp['name']) ?></h3>
+                                    <div class="camp-price">$<?= number_format($cp['price'], 2) ?></div>
+                                    <div class="camp-details">
+                                        <?php if ($cp['package_type'] === 'camp' && $cp['camp_start_date'] && $cp['camp_end_date']): ?>
+                                        <p><i class="fas fa-calendar-day"></i> <?= date('M j', strtotime($cp['camp_start_date'])) ?> – <?= date('M j, Y', strtotime($cp['camp_end_date'])) ?></p>
+                                        <?php endif; ?>
+                                        <?php if ($cp['daily_start_time'] && $cp['daily_end_time']): ?>
+                                        <p><i class="fas fa-clock"></i> <?= date('g:i A', strtotime($cp['daily_start_time'])) ?> – <?= date('g:i A', strtotime($cp['daily_end_time'])) ?></p>
+                                        <?php endif; ?>
+                                        <?php if ($cp['package_type'] === 'multi_week'): 
+                                            try {
+                                                $mwCount = $pdo->prepare("SELECT COUNT(*) FROM multiweek_program_dates WHERE package_id = ?");
+                                                $mwCount->execute([$cp['id']]);
+                                                $sessionCount = $mwCount->fetchColumn();
+                                            } catch (PDOException $e) { $sessionCount = 0; }
+                                        ?>
+                                        <p><i class="fas fa-list-ol"></i> <?= $sessionCount ?> sessions over multiple weeks</p>
+                                        <?php if ($cp['allow_individual_sessions']): ?>
+                                        <p style="color: #10b981;"><i class="fas fa-check-circle"></i> Individual sessions available</p>
+                                        <?php endif; ?>
+                                        <?php endif; ?>
+                                        <?php if (!empty($cp['age_group_name'])): ?>
+                                        <p><i class="fas fa-users"></i> <?= htmlspecialchars($cp['age_group_name']) ?></p>
+                                        <?php endif; ?>
+                                        <?php if (!empty($cp['description'])): ?>
+                                        <p><i class="fas fa-info-circle"></i> <?= htmlspecialchars($cp['description']) ?></p>
+                                        <?php endif; ?>
+                                        <?php if ($cp['enable_child_checkin']): ?>
+                                        <p style="color: #8B5CF6;"><i class="fas fa-child"></i> Child pickup enabled</p>
+                                        <?php endif; ?>
+                                    </div>
+                                    <a href="?register=1&type=package&id=<?= $cp['id'] ?>" class="register-btn camp-register-btn">
+                                        <i class="fas fa-user-plus"></i> <?= $cp['package_type'] === 'camp' ? 'Register for Camp' : 'Enroll Now' ?>
+                                    </a>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                            <button class="scroll-btn scroll-right hidden" onclick="scrollSection(this, 1)" aria-label="Scroll right"><i class="fas fa-chevron-right"></i></button>
+                        </div>
+                        <?php else: ?>
+                        <p style="color: var(--text-dim); font-size: 14px;">No camps or programs available.</p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Training Sessions Header + View Toggle (below products) -->
             <div class="page-header-section">
                 <h1><i class="fas fa-calendar-check" style="color: var(--primary);"></i> Training Sessions</h1>
                 <p>Browse our upcoming training sessions and packages. Register to secure your spot!</p>
@@ -711,92 +895,6 @@ $viewMode = $_GET['view'] ?? 'list';
                     <i class="fas fa-calendar-alt"></i> Calendar View
                 </a>
             </div>
-            
-            <?php if (!empty($packages)): ?>
-            <!-- Packages Section -->
-            <div class="packages-section">
-                <h2 class="section-title"><i class="fas fa-box"></i> Training Packages</h2>
-                <div class="packages-grid">
-                    <?php foreach ($packages as $package): 
-                        $storeCredit = $package['store_credit'] ?? 0;
-                    ?>
-                    <div class="package-card">
-                        <div class="package-badge"><i class="fas fa-star"></i> Package</div>
-                        <h3 class="package-name"><?= htmlspecialchars($package['name']) ?></h3>
-                        <div class="package-price">$<?= number_format($package['price'], 2) ?></div>
-                        <div class="package-details">
-                            <?php if ($package['credits'] > 0): ?>
-                            <p><i class="fas fa-calendar-check"></i> <?= $package['credits'] ?> sessions included</p>
-                            <?php endif; ?>
-                            <?php if ($storeCredit > 0): ?>
-                            <p><i class="fas fa-wallet"></i> $<?= number_format($storeCredit, 2) ?> store credit</p>
-                            <?php endif; ?>
-                            <?php if (!empty($package['valid_days'])): ?>
-                            <p><i class="fas fa-clock"></i> Valid for <?= $package['valid_days'] ?> days</p>
-                            <?php endif; ?>
-                            <?php if (!empty($package['description'])): ?>
-                            <p><i class="fas fa-info-circle"></i> <?= htmlspecialchars($package['description']) ?></p>
-                            <?php endif; ?>
-                        </div>
-                        <a href="?register=1&type=package&id=<?= $package['id'] ?>" class="register-btn">
-                            <i class="fas fa-user-plus"></i> Register Now
-                        </a>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-            <?php endif; ?>
-            
-            <?php if (!empty($camps_programs)): ?>
-            <!-- Camps & Programs Section -->
-            <div class="camps-section">
-                <h2 class="section-title"><i class="fas fa-campground"></i> Camps & Programs</h2>
-                <div class="camps-grid">
-                    <?php foreach ($camps_programs as $cp): ?>
-                    <div class="camp-card <?= $cp['package_type'] === 'camp' ? 'camp-type' : 'program-type' ?>">
-                        <div class="camp-badge" style="background: <?= $cp['package_type'] === 'camp' ? '#10b981' : '#f59e0b' ?>;">
-                            <i class="fas fa-<?= $cp['package_type'] === 'camp' ? 'campground' : 'calendar-alt' ?>"></i>
-                            <?= $cp['package_type'] === 'camp' ? 'Camp' : 'Weekly Program' ?>
-                        </div>
-                        <h3 class="camp-name"><?= htmlspecialchars($cp['name']) ?></h3>
-                        <div class="camp-price">$<?= number_format($cp['price'], 2) ?></div>
-                        <div class="camp-details">
-                            <?php if ($cp['package_type'] === 'camp' && $cp['camp_start_date'] && $cp['camp_end_date']): ?>
-                            <p><i class="fas fa-calendar-day"></i> <?= date('M j', strtotime($cp['camp_start_date'])) ?> – <?= date('M j, Y', strtotime($cp['camp_end_date'])) ?></p>
-                            <?php endif; ?>
-                            <?php if ($cp['daily_start_time'] && $cp['daily_end_time']): ?>
-                            <p><i class="fas fa-clock"></i> <?= date('g:i A', strtotime($cp['daily_start_time'])) ?> – <?= date('g:i A', strtotime($cp['daily_end_time'])) ?></p>
-                            <?php endif; ?>
-                            <?php if ($cp['package_type'] === 'multi_week'): 
-                                try {
-                                    $mwCount = $pdo->prepare("SELECT COUNT(*) FROM multiweek_program_dates WHERE package_id = ?");
-                                    $mwCount->execute([$cp['id']]);
-                                    $sessionCount = $mwCount->fetchColumn();
-                                } catch (PDOException $e) { $sessionCount = 0; }
-                            ?>
-                            <p><i class="fas fa-list-ol"></i> <?= $sessionCount ?> sessions over multiple weeks</p>
-                            <?php if ($cp['allow_individual_sessions']): ?>
-                            <p style="color: #10b981;"><i class="fas fa-check-circle"></i> Individual sessions available</p>
-                            <?php endif; ?>
-                            <?php endif; ?>
-                            <?php if (!empty($cp['age_group_name'])): ?>
-                            <p><i class="fas fa-users"></i> <?= htmlspecialchars($cp['age_group_name']) ?></p>
-                            <?php endif; ?>
-                            <?php if (!empty($cp['description'])): ?>
-                            <p><i class="fas fa-info-circle"></i> <?= htmlspecialchars($cp['description']) ?></p>
-                            <?php endif; ?>
-                            <?php if ($cp['enable_child_checkin']): ?>
-                            <p style="color: #8B5CF6;"><i class="fas fa-child"></i> Child pickup enabled</p>
-                            <?php endif; ?>
-                        </div>
-                        <a href="?register=1&type=package&id=<?= $cp['id'] ?>" class="register-btn camp-register-btn">
-                            <i class="fas fa-user-plus"></i> <?= $cp['package_type'] === 'camp' ? 'Register for Camp' : 'Enroll Now' ?>
-                        </a>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-            <?php endif; ?>
             
             <!-- Sessions Section -->
             <div class="sessions-section">
@@ -999,6 +1097,40 @@ $viewMode = $_GET['view'] ?? 'list';
             </div>
         </div>
     </section>
+
+    <script>
+    // Horizontal scroll button functionality
+    function scrollSection(btn, direction) {
+        var wrapper = btn.closest('.scroll-wrapper');
+        var container = wrapper.querySelector('.scroll-container');
+        var scrollAmount = 300;
+        container.scrollBy({ left: direction * scrollAmount, behavior: 'smooth' });
+    }
+
+    function updateScrollButtons() {
+        document.querySelectorAll('.scroll-wrapper').forEach(function(wrapper) {
+            var container = wrapper.querySelector('.scroll-container');
+            var leftBtn = wrapper.querySelector('.scroll-left');
+            var rightBtn = wrapper.querySelector('.scroll-right');
+            if (!container || !leftBtn || !rightBtn) return;
+
+            var atStart = container.scrollLeft <= 0;
+            var atEnd = container.scrollLeft + container.clientWidth >= container.scrollWidth - 1;
+
+            leftBtn.classList.toggle('hidden', atStart);
+            rightBtn.classList.toggle('hidden', atEnd);
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.scroll-container').forEach(function(container) {
+            container.addEventListener('scroll', updateScrollButtons);
+        });
+        updateScrollButtons();
+        // Re-check after fonts/images load
+        window.addEventListener('load', updateScrollButtons);
+    });
+    </script>
 
     <footer class="site-footer">
         <div class="container footer-flex">
