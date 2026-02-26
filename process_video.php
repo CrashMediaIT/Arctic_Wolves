@@ -223,6 +223,9 @@ function handleVideoUpload() {
     
     // Upload to RustFS
     $persist = persistUploadedFile($pdo, $file['tmp_name'], 'videos/coach', $unique_filename, '', true);
+    if (!$persist['success']) {
+        throw new Exception('Video upload to storage failed. Please try again.');
+    }
     $db_video_url = $persist['rustfs_url'] ?? null;
     
     // Insert video record into database
@@ -379,6 +382,9 @@ function handleAthleteVideoUpload() {
     
     // Upload to RustFS
     $persist = persistUploadedFile($pdo, $file['tmp_name'], 'videos/athlete', $unique_filename, '', true);
+    if (!$persist['success']) {
+        throw new Exception('Video upload to storage failed. Please try again.');
+    }
     $db_video_url = $persist['rustfs_url'] ?? null;
     
     // Insert video record into database
@@ -513,6 +519,9 @@ function handleDrillVideoUpload() {
     
     // Upload to RustFS
     $persist = persistUploadedFile($pdo, $file['tmp_name'], 'DrillVideos', $filename, '', true);
+    if (!$persist['success']) {
+        throw new Exception('Video upload to storage failed. Please try again.');
+    }
     if (!empty($persist['nextcloud_path'])) {
         $nextcloud_path = $persist['nextcloud_path'];
         $is_uploaded_to_cloud = 1;
@@ -1114,6 +1123,9 @@ function handleUploadVideoSource() {
 
     // Upload to RustFS
     $persist = persistUploadedFile($pdo, $file['tmp_name'], 'videos/gameplan', $unique_name, '', true);
+    if (!$persist['success']) {
+        throw new Exception('Video upload to storage failed. Please try again.');
+    }
     $db_file_path = $persist['rustfs_url'] ?? null;
 
     $stmt = $pdo->prepare("
