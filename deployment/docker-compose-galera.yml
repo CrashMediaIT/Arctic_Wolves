@@ -17,6 +17,7 @@ x-galera-common: &galera-common
   image: mariadb:lts
   restart: unless-stopped
   environment:
+    TZ: "${TZ:-America/Toronto}"
     MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD}"
     MYSQL_DATABASE: "${MYSQL_DATABASE:-arctic_wolves}"
     MYSQL_USER: "${MYSQL_USER:-arctic_wolves_user}"
@@ -39,6 +40,7 @@ services:
     container_name: galera-node-1
     hostname: galera-node-1
     environment:
+      TZ: "${TZ:-America/Toronto}"
       MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD}"
       MYSQL_DATABASE: "${MYSQL_DATABASE:-arctic_wolves}"
       MYSQL_USER: "${MYSQL_USER:-arctic_wolves_user}"
@@ -59,6 +61,7 @@ services:
     container_name: galera-node-2
     hostname: galera-node-2
     environment:
+      TZ: "${TZ:-America/Toronto}"
       MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD}"
       MYSQL_DATABASE: "${MYSQL_DATABASE:-arctic_wolves}"
       MYSQL_USER: "${MYSQL_USER:-arctic_wolves_user}"
@@ -80,6 +83,7 @@ services:
     container_name: galera-node-3
     hostname: galera-node-3
     environment:
+      TZ: "${TZ:-America/Toronto}"
       MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD}"
       MYSQL_DATABASE: "${MYSQL_DATABASE:-arctic_wolves}"
       MYSQL_USER: "${MYSQL_USER:-arctic_wolves_user}"
