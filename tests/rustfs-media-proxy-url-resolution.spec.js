@@ -280,7 +280,7 @@ test.describe('video upload stores proxy-compatible URLs', () => {
 
     test('process_video.php uses persistUploadedFile for athlete videos', () => {
         const content = readFile('process_video.php');
-        expect(content).toContain("persistUploadedFile($pdo, $file['tmp_name'], 'videos/athlete'");
+        expect(content).toContain("persistUploadedFile($pdo, $file['tmp_name'], 'videos/athlete/' . $athlete_folder");
     });
 
     test('process_video.php uses persistUploadedFile for gameplan sources', () => {
