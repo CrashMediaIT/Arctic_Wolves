@@ -2,7 +2,7 @@
 /**
  * HR Onboarding Management View
  * Staff onboarding with user creation, payroll setup, equipment & perks tracking
- * Uploads to Nextcloud per Canada best practices
+ * Uploads to cloud storage per Canada best practices
  */
 
 // Pagination settings
@@ -112,7 +112,7 @@ $perkTypes = [
     <i class="fas fa-info-circle"></i>
     <div>
         <strong>Canadian Onboarding Best Practices</strong>
-        <p style="margin: 4px 0 0 0;">This module follows Canadian employment standards for onboarding. Collect SIN, TD1 forms, banking details, and emergency contacts. All documents are securely uploaded to Nextcloud organized by year and employee name.</p>
+        <p style="margin: 4px 0 0 0;">This module follows Canadian employment standards for onboarding. Collect SIN, TD1 forms, banking details, and emergency contacts. All documents are securely uploaded to cloud storage organized by year and employee name.</p>
     </div>
 </div>
 
@@ -177,7 +177,7 @@ $perkTypes = [
                                 </td>
                                 <td>
                                     <?php if(!empty($ob['nextcloud_folder'])): ?>
-                                        <span class="doc-indicator has-docs" title="Documents in Nextcloud"><i class="fas fa-cloud"></i></span>
+                                        <span class="doc-indicator has-docs" title="Documents uploaded"><i class="fas fa-cloud"></i></span>
                                     <?php else: ?>
                                         <span class="doc-indicator no-docs"><i class="fas fa-file-excel"></i></span>
                                     <?php endif; ?>
@@ -196,7 +196,7 @@ $perkTypes = [
                                             <i class="fas fa-file-signature"></i>
                                         </a>
                                         <?php if(!empty($ob['nextcloud_folder'])): ?>
-                                        <a href="<?= htmlspecialchars($ob['nextcloud_folder']) ?>" target="_blank" class="btn-icon" title="Open in Nextcloud">
+                                        <a href="<?= htmlspecialchars($ob['nextcloud_folder']) ?>" target="_blank" class="btn-icon" title="View Documents">
                                             <i class="fas fa-external-link-alt"></i>
                                         </a>
                                         <?php endif; ?>
@@ -521,7 +521,7 @@ $perkTypes = [
                             <i class="fas fa-cloud-upload-alt"></i>
                         </div>
                         <p class="upload-text">Drag & drop files or click to browse</p>
-                        <span class="upload-hint">ID, SIN Card, TD1 Forms, Banking Void Cheque, Certifications - Will be uploaded to Nextcloud</span>
+                        <span class="upload-hint">ID, SIN Card, TD1 Forms, Banking Void Cheque, Certifications - Will be uploaded to cloud storage</span>
                         <input type="file" name="documents[]" id="onboardingDocuments" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style="display: none;">
                         <div class="upload-buttons">
                             <button type="button" class="btn-secondary btn-small" onclick="document.getElementById('onboardingDocuments').click()">
@@ -610,7 +610,7 @@ $perkTypes = [
                 <div class="alert-card info">
                     <i class="fas fa-info-circle"></i>
                     <div class="alert-content">
-                        <p>All information collected will be stored securely. Documents will be uploaded to Nextcloud under the Onboarding directory organized by year and employee name. The complete form details will also be exported to Nextcloud for record keeping.</p>
+                        <p>All information collected will be stored securely. Documents will be uploaded to cloud storage under the Onboarding directory organized by year and employee name. The complete form details will also be exported to cloud storage for record keeping.</p>
                     </div>
                 </div>
 

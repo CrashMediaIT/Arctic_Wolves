@@ -133,7 +133,7 @@ $statusColors = [
 <div class="page-header">
     <div class="page-header-content">
         <h1 class="page-title"><i class="fas fa-file-signature"></i> Employee Contracts</h1>
-        <p class="page-description">Create and manage employee contracts with e-signature workflow using DocuSeal. Signed contracts are automatically stored in Nextcloud.</p>
+        <p class="page-description">Create and manage employee contracts with e-signature workflow using DocuSeal. Signed contracts are automatically stored in cloud storage.</p>
     </div>
 </div>
 
@@ -153,7 +153,7 @@ $statusColors = [
     <i class="fas fa-info-circle"></i>
     <div>
         <strong>E-Signature Workflow</strong>
-        <p style="margin: 4px 0 0 0;">Create contracts, select a DocuSeal template, and send for e-signature. DocuSeal handles the signing process and once signed, contracts are automatically saved to Nextcloud in the HR/Employee Contract folder organized by year, month, and employee name.</p>
+        <p style="margin: 4px 0 0 0;">Create contracts, select a DocuSeal template, and send for e-signature. DocuSeal handles the signing process and once signed, contracts are automatically saved to cloud storage in the HR/Employee Contract folder organized by year, month, and employee name.</p>
     </div>
 </div>
 <?php endif; ?>
@@ -244,7 +244,7 @@ $statusColors = [
                                     <?php endif; ?>
                                     
                                     <?php if ($contract['status'] === 'signed' && !empty($contract['nextcloud_path'])): ?>
-                                    <span class="btn-icon nextcloud-path-btn" title="<?= htmlspecialchars($contract['nextcloud_path']) ?>" data-path="<?= htmlspecialchars($contract['nextcloud_path']) ?>">
+                                    <span class="btn-icon cloud-path-btn" title="<?= htmlspecialchars($contract['nextcloud_path']) ?>" data-path="<?= htmlspecialchars($contract['nextcloud_path']) ?>">
                                         <i class="fas fa-cloud"></i>
                                     </span>
                                     <?php endif; ?>
@@ -1030,12 +1030,12 @@ if (!empty($promo_search)) {
     background: rgba(239, 68, 68, 0.1) !important;
 }
 
-.nextcloud-path-btn {
+.cloud-path-btn {
     position: relative;
     cursor: help;
 }
 
-.nextcloud-path-btn:hover::after {
+.cloud-path-btn:hover::after {
     content: attr(data-path);
     position: absolute;
     bottom: 100%;
