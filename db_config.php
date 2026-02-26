@@ -179,7 +179,7 @@ if ($db_connected && $pdo) {
             $hours     = str_pad((int)($abs / 3600), 2, '0', STR_PAD_LEFT);
             $minutes   = str_pad((int)(($abs % 3600) / 60), 2, '0', STR_PAD_LEFT);
             $mysql_tz  = $sign . $hours . ':' . $minutes;
-            $pdo->exec("SET time_zone = '{$mysql_tz}'");
+            $pdo->exec("SET time_zone = " . $pdo->quote($mysql_tz));
         }
     } catch (Exception $e) {
         // Silently fail — table may not exist yet (pre-setup)
