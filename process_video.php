@@ -805,6 +805,8 @@ function handleVideoUpdate() {
     
     $video_id = filter_input(INPUT_POST, 'video_id', FILTER_VALIDATE_INT);
     $comments = $_POST['comments'] ?? '';
+    $title = isset($_POST['title']) ? trim($_POST['title']) : null;
+    $description = isset($_POST['description']) ? trim($_POST['description']) : null;
     
     if (!$video_id) {
         throw new Exception('Invalid video ID');
@@ -821,7 +823,7 @@ function handleVideoUpdate() {
         throw new Exception('Video not found or access denied');
     }
     
-    // Update video
+    // Update video notes based on role
     $allowed_roles = ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'];
     if (in_array($user_role, $allowed_roles)) {
         $stmt = $pdo->prepare("
@@ -838,10 +840,20 @@ function handleVideoUpdate() {
         ");
         $stmt->execute([$comments, $video_id]);
     }
+
+    // Update title and description if provided (allowed for the athlete who uploaded or any coach)
+    if ($title !== null && $title !== '') {
+        $can_edit_meta = (int)$video['athlete_id'] === (int)$user_id || in_array($user_role, $allowed_roles);
+        if ($can_edit_meta) {
+            $stmt = $pdo->prepare("UPDATE videos SET title = ?, description = ?, updated_at = NOW() WHERE id = ?");
+            $stmt->execute([$title, $description ?? '', $video_id]);
+        }
+    }
     
     logSecurityEvent('video_update', "Video ID: $video_id updated", $user_id);
     Auditor::log($pdo, $user_id, 'update', 'videos', $video_id, ['action' => 'Video updated']);
     
+    header('Content-Type: application/json');
     echo json_encode(['success' => true, 'message' => 'Video updated successfully']);
 }
 
