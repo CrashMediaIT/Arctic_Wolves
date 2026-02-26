@@ -193,9 +193,9 @@ if (!$show_history) {
         INNER JOIN training_session_dates tsd ON tsd.template_id = tst.id AND tsd.is_active = 1
     ";
 
-    // For athletes: only show template session dates they are registered for
+    // For athletes: show template session dates they are registered for directly or via purchased packages
     if ($user_role === 'athlete') {
-        $template_sessions_query .= " INNER JOIN session_date_athletes sda ON sda.session_date_id = tsd.id AND sda.athlete_id = ?";
+        $template_sessions_query .= " LEFT JOIN session_date_athletes sda ON sda.session_date_id = tsd.id AND sda.athlete_id = ?";
         $template_params[] = $user_id;
     }
 
@@ -207,6 +207,16 @@ if (!$show_history) {
         WHERE tst.is_active = 1
           AND tsd.session_date >= NOW()
     ";
+
+    // For athletes: include sessions registered directly or via purchased packages
+    if ($user_role === 'athlete') {
+        $template_sessions_query .= " AND (sda.id IS NOT NULL OR tst.id IN (
+            SELECT ps.template_id FROM package_sessions ps
+            INNER JOIN user_packages up ON up.package_id = ps.package_id
+            WHERE up.user_id = ? AND up.payment_status = 'paid' AND ps.template_id IS NOT NULL
+        ))";
+        $template_params[] = $user_id;
+    }
 
     // For non-athletes, only show template sessions marked as visible on landing page
     if ($user_role !== 'athlete') {
