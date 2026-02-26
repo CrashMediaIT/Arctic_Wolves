@@ -2,6 +2,13 @@
 Arctic Wolves Video Companion Server
 Hardware-accelerated video encoding, decoding, clip extraction,
 and HLS transcoding with S3/RustFS integration.
+
+The companion is a worker/integration service for the main Arctic Wolves
+application.  It generates its own API key which must be entered in the
+main application's Game Plan settings.  RustFS / S3 storage credentials
+and video-path settings are pushed from the main app or entered in the
+companion web UI and persisted in an AES-256-CBC encrypted config file
+(matching the main app's PII encryption scheme).
 """
 
 import os
@@ -12,12 +19,24 @@ import subprocess
 import threading
 import time
 import logging
+import hashlib
+import secrets
+import base64
 from pathlib import Path
 
 import boto3
+import requests as http_requests
 from botocore.config import Config as BotoConfig
 from flask import Flask, request, jsonify, render_template
 from dotenv import load_dotenv
+
+# Optional: cryptography for AES-256-CBC (fallback to a pure-Python impl)
+try:
+    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+    from cryptography.hazmat.primitives import padding as sym_padding
+    _HAS_CRYPTO = True
+except ImportError:
+    _HAS_CRYPTO = False
 
 load_dotenv()
 
@@ -26,31 +45,143 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger("companion")
 
 # ---------------------------------------------------------------------------
+# Persistent Encrypted Configuration
+# ---------------------------------------------------------------------------
+# Settings are stored in an AES-256-CBC encrypted JSON file on a persistent
+# Docker volume so they survive container updates.  The encryption matches the
+# main application's PII FieldEncryption scheme.
+
+CONFIG_DIR = os.getenv("CONFIG_DIR", "/config")
+CONFIG_FILE = os.path.join(CONFIG_DIR, "companion_config.enc")
+ENCRYPTION_KEY_HEX = os.getenv("ENCRYPTION_KEY", "")
+
+
+def _get_cipher_key() -> bytes | None:
+    """Return the raw 32-byte key derived from the hex ENCRYPTION_KEY, or None."""
+    if not ENCRYPTION_KEY_HEX or len(ENCRYPTION_KEY_HEX) < 64:
+        return None
+    try:
+        return bytes.fromhex(ENCRYPTION_KEY_HEX)
+    except ValueError:
+        return None
+
+
+def _encrypt_config(plaintext: str) -> str:
+    """Encrypt *plaintext* with AES-256-CBC and return base64 (IV + ciphertext).
+
+    Compatible with the main app's FieldEncryption::encrypt().
+    """
+    key = _get_cipher_key()
+    if key is None:
+        return plaintext  # no key – store as-is (dev mode)
+
+    iv = os.urandom(16)
+    if _HAS_CRYPTO:
+        padder = sym_padding.PKCS7(128).padder()
+        padded = padder.update(plaintext.encode()) + padder.finalize()
+        encryptor = Cipher(algorithms.AES(key), modes.CBC(iv)).encryptor()
+        ct = encryptor.update(padded) + encryptor.finalize()
+    else:
+        # Pure-Python fallback using subprocess + openssl
+        import subprocess as _sp
+        proc = _sp.run(
+            ["openssl", "enc", "-aes-256-cbc", "-nosalt", "-K", key.hex(), "-iv", iv.hex()],
+            input=plaintext.encode(), capture_output=True,
+        )
+        ct = proc.stdout
+
+    return base64.b64encode(iv + ct).decode()
+
+
+def _decrypt_config(blob: str) -> str:
+    """Decrypt a base64 blob produced by _encrypt_config."""
+    key = _get_cipher_key()
+    if key is None:
+        return blob
+
+    raw = base64.b64decode(blob)
+    iv = raw[:16]
+    ct = raw[16:]
+
+    if _HAS_CRYPTO:
+        decryptor = Cipher(algorithms.AES(key), modes.CBC(iv)).decryptor()
+        padded = decryptor.update(ct) + decryptor.finalize()
+        unpadder = sym_padding.PKCS7(128).unpadder()
+        return (unpadder.update(padded) + unpadder.finalize()).decode()
+    else:
+        import subprocess as _sp
+        proc = _sp.run(
+            ["openssl", "enc", "-d", "-aes-256-cbc", "-nosalt", "-K", key.hex(), "-iv", iv.hex()],
+            input=ct, capture_output=True,
+        )
+        return proc.stdout.decode()
+
+
+def _load_persistent_config() -> dict:
+    """Load the encrypted config file, returning a dict (empty if missing)."""
+    if not os.path.isfile(CONFIG_FILE):
+        return {}
+    try:
+        with open(CONFIG_FILE, "r") as f:
+            blob = f.read().strip()
+        plaintext = _decrypt_config(blob)
+        return json.loads(plaintext)
+    except Exception as exc:
+        logger.warning("Could not load persistent config: %s", exc)
+        return {}
+
+
+def _save_persistent_config(cfg: dict) -> bool:
+    """Encrypt and write config to the persistent volume."""
+    try:
+        Path(CONFIG_DIR).mkdir(parents=True, exist_ok=True)
+        blob = _encrypt_config(json.dumps(cfg))
+        with open(CONFIG_FILE, "w") as f:
+            f.write(blob)
+        return True
+    except Exception as exc:
+        logger.error("Failed to save persistent config: %s", exc)
+        return False
+
+
+# Load persisted settings, then overlay with environment variables.
+# Environment variables take precedence (for CI/headless overrides).
+_persisted = _load_persistent_config()
+
+def _cfg(env_name: str, persist_key: str, default: str = "") -> str:
+    """Return config value: env-var > persisted > default."""
+    env_val = os.getenv(env_name, "")
+    if env_val:
+        return env_val
+    return _persisted.get(persist_key, default)
+
+# ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-API_KEY = os.getenv("API_KEY", "")
-VIDEO_BASE_PATH = os.getenv("VIDEO_BASE_PATH", "/videos")
-HW_ACCEL = os.getenv("HW_ACCEL", "auto")
+API_KEY = _cfg("API_KEY", "api_key", "")
+MAIN_APP_URL = _cfg("MAIN_APP_URL", "main_app_url", "")
+VIDEO_BASE_PATH = _cfg("VIDEO_BASE_PATH", "video_base_path", "/videos")
+HW_ACCEL = _cfg("HW_ACCEL", "hw_accel", "auto")
 FFMPEG_PATH = os.getenv("FFMPEG_PATH", "ffmpeg")
 FFPROBE_PATH = os.getenv("FFPROBE_PATH", "ffprobe")
-MAX_CONCURRENT_JOBS = int(os.getenv("MAX_CONCURRENT_JOBS", "2"))
+MAX_CONCURRENT_JOBS = int(_cfg("MAX_CONCURRENT_JOBS", "max_concurrent_jobs", "2"))
 TEMP_DIR = os.getenv("TEMP_DIR", "/tmp/companion")
 COMPANION_HOST = os.getenv("COMPANION_HOST", "0.0.0.0")
 COMPANION_PORT = int(os.getenv("COMPANION_PORT", "5100"))
 
-# S3 / RustFS configuration
-S3_ENDPOINT = os.getenv("S3_ENDPOINT", "")
-S3_ACCESS_KEY = os.getenv("S3_ACCESS_KEY", "")
-S3_SECRET_KEY = os.getenv("S3_SECRET_KEY", "")
-S3_BUCKET = os.getenv("S3_BUCKET", "")
-S3_REGION = os.getenv("S3_REGION", "us-east-1")
-S3_USE_SSL = os.getenv("S3_USE_SSL", "true").lower() in ("true", "1", "yes")
-S3_VERIFY_SSL = os.getenv("S3_VERIFY_SSL", "false").lower() in ("true", "1", "yes")
+# S3 / RustFS configuration — typically pushed from the main app's RustFS settings
+S3_ENDPOINT = _cfg("S3_ENDPOINT", "s3_endpoint", "")
+S3_ACCESS_KEY = _cfg("S3_ACCESS_KEY", "s3_access_key", "")
+S3_SECRET_KEY = _cfg("S3_SECRET_KEY", "s3_secret_key", "")
+S3_BUCKET = _cfg("S3_BUCKET", "s3_bucket", "")
+S3_REGION = _cfg("S3_REGION", "s3_region", "us-east-1")
+S3_USE_SSL = _cfg("S3_USE_SSL", "s3_use_ssl", "true").lower() in ("true", "1", "yes")
+S3_VERIFY_SSL = _cfg("S3_VERIFY_SSL", "s3_verify_ssl", "false").lower() in ("true", "1", "yes")
 
-# HLS staging configuration
-HLS_STAGING_PREFIX = os.getenv("HLS_STAGING_PREFIX", "Images/videos/")
-HLS_POLL_INTERVAL = int(os.getenv("HLS_POLL_INTERVAL", "30"))
-VERSION = "1.1.0"
+# HLS staging configuration — derived from RustFS video storage path
+HLS_STAGING_PREFIX = _cfg("HLS_STAGING_PREFIX", "hls_staging_prefix", "Images/videos/")
+HLS_POLL_INTERVAL = int(_cfg("HLS_POLL_INTERVAL", "hls_poll_interval", "30"))
+VERSION = "1.2.0"
 
 Path(TEMP_DIR).mkdir(parents=True, exist_ok=True)
 
@@ -647,6 +778,7 @@ def get_config():
 
     return jsonify({
         "api_key_set": bool(API_KEY),
+        "main_app_url": MAIN_APP_URL,
         "hw_accel": HW_ACCEL,
         "video_base_path": VIDEO_BASE_PATH,
         "max_concurrent_jobs": MAX_CONCURRENT_JOBS,
@@ -659,6 +791,8 @@ def get_config():
         "s3_verify_ssl": S3_VERIFY_SSL,
         "hls_staging_prefix": HLS_STAGING_PREFIX,
         "hls_poll_interval": HLS_POLL_INTERVAL,
+        "config_encrypted": _get_cipher_key() is not None,
+        "config_persisted": os.path.isfile(CONFIG_FILE),
     })
 
 
@@ -668,14 +802,14 @@ def update_config():
 
     Accepts a JSON object whose keys match the configuration names.
     Only the fields present in the request body are updated.
-    Changes take effect immediately but are **not** persisted across restarts
-    unless the caller also updates the .env / environment.
+    Changes take effect immediately and are persisted to the encrypted
+    config file so they survive container restarts.
     """
     auth_err = _require_api_key()
     if auth_err:
         return auth_err
 
-    global API_KEY, HW_ACCEL, VIDEO_BASE_PATH, MAX_CONCURRENT_JOBS
+    global API_KEY, MAIN_APP_URL, HW_ACCEL, VIDEO_BASE_PATH, MAX_CONCURRENT_JOBS
     global S3_ENDPOINT, S3_ACCESS_KEY, S3_SECRET_KEY, S3_BUCKET, S3_REGION
     global S3_USE_SSL, S3_VERIFY_SSL
     global HLS_STAGING_PREFIX, HLS_POLL_INTERVAL
@@ -686,6 +820,10 @@ def update_config():
     if "api_key" in data:
         API_KEY = str(data["api_key"])
         updated.append("api_key")
+
+    if "main_app_url" in data:
+        MAIN_APP_URL = str(data["main_app_url"]).rstrip("/")
+        updated.append("main_app_url")
 
     if "hw_accel" in data:
         allowed = ("auto", "nvenc", "qsv", "vaapi", "amf", "none")
@@ -748,8 +886,73 @@ def update_config():
     if not updated:
         return jsonify({"error": "No recognized configuration fields in request"}), 400
 
-    logger.info("Configuration updated: %s", ", ".join(updated))
-    return jsonify({"updated": updated})
+    # Persist to encrypted config file
+    cfg = {
+        "api_key": API_KEY,
+        "main_app_url": MAIN_APP_URL,
+        "hw_accel": HW_ACCEL,
+        "video_base_path": VIDEO_BASE_PATH,
+        "max_concurrent_jobs": str(MAX_CONCURRENT_JOBS),
+        "s3_endpoint": S3_ENDPOINT,
+        "s3_access_key": S3_ACCESS_KEY,
+        "s3_secret_key": S3_SECRET_KEY,
+        "s3_bucket": S3_BUCKET,
+        "s3_region": S3_REGION,
+        "s3_use_ssl": str(S3_USE_SSL).lower(),
+        "s3_verify_ssl": str(S3_VERIFY_SSL).lower(),
+        "hls_staging_prefix": HLS_STAGING_PREFIX,
+        "hls_poll_interval": str(HLS_POLL_INTERVAL),
+    }
+    persisted = _save_persistent_config(cfg)
+
+    logger.info("Configuration updated: %s (persisted=%s)", ", ".join(updated), persisted)
+    return jsonify({"updated": updated, "persisted": persisted})
+
+
+@app.route("/api/generate-key", methods=["POST"])
+def generate_key():
+    """Generate a new API key for authenticating requests from the main app.
+
+    The companion creates the key; the admin then copies it into the main
+    application's Game Plan Settings → Companion Server → API Key field.
+    """
+    # If an API key is already set, require it to generate a new one
+    auth_err = _require_api_key()
+    if auth_err:
+        return auth_err
+
+    global API_KEY
+    new_key = secrets.token_hex(32)  # 64-char hex string, same as main app's bin2hex(random_bytes(32))
+    API_KEY = new_key
+
+    # Persist the new key
+    cfg = _load_persistent_config()
+    cfg["api_key"] = new_key
+    _save_persistent_config(cfg)
+
+    logger.info("New API key generated")
+    return jsonify({
+        "api_key": new_key,
+        "message": "Copy this key into the main application's Game Plan Settings → Companion Server → API Key.",
+    })
+
+
+# ---------------------------------------------------------------------------
+# Callback — notify the main app when a job completes
+# ---------------------------------------------------------------------------
+
+def _send_callback(callback_url: str, payload: dict):
+    """POST job results back to the main application (fire-and-forget)."""
+    if not callback_url:
+        return
+    try:
+        headers = {"Content-Type": "application/json"}
+        if API_KEY:
+            headers["X-API-Key"] = API_KEY
+        http_requests.post(callback_url, json=payload, headers=headers, timeout=10, verify=False)
+        logger.info("Callback sent to %s for job %s", callback_url, payload.get("job_id"))
+    except Exception as exc:
+        logger.warning("Callback to %s failed: %s", callback_url, exc)
 
 
 # ---------------------------------------------------------------------------
@@ -766,7 +969,7 @@ HLS_VARIANTS = [
 
 
 def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
-                       delete_original: bool = True):
+                       delete_original: bool = True, callback_url: str = ""):
     """Download source from S3, transcode to HLS, upload output, optionally
     delete original.  Runs inside _run_job with the job semaphore."""
     s3 = _get_s3_client()
@@ -880,12 +1083,33 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
             jobs[job_id]["finished_at"] = time.time()
             jobs[job_id]["variants"] = [v["label"] for v in variants]
 
+        # Notify the main application that transcoding is complete
+        cb_url = callback_url or (MAIN_APP_URL + "/api/v1/companion/callback" if MAIN_APP_URL else "")
+        variant_playlists = {v["label"]: f"{output_prefix}/{v['label']}/playlist.m3u8" for v in variants}
+        _send_callback(cb_url, {
+            "job_id": job_id,
+            "status": "completed",
+            "source_key": s3_source_key,
+            "hls_manifest": f"{output_prefix}/master.m3u8",
+            "hls_segments_path": output_prefix,
+            "variants": variant_playlists,
+        })
+
     except Exception as exc:
         logger.error("HLS transcode job %s failed: %s", job_id, exc)
         with job_lock:
             jobs[job_id]["status"] = "failed"
             jobs[job_id]["error"] = str(exc)[:2000]
             jobs[job_id]["finished_at"] = time.time()
+
+        # Notify the main application about failure too
+        cb_url = callback_url or (MAIN_APP_URL + "/api/v1/companion/callback" if MAIN_APP_URL else "")
+        _send_callback(cb_url, {
+            "job_id": job_id,
+            "status": "failed",
+            "source_key": s3_source_key,
+            "error": str(exc)[:2000],
+        })
     finally:
         # Clean up temp files
         shutil.rmtree(work_dir, ignore_errors=True)
@@ -897,10 +1121,10 @@ def _resolution_width(height: int) -> int:
 
 
 def _run_hls_job(job_id: str, s3_source_key: str, s3_output_prefix: str,
-                 delete_original: bool):
+                 delete_original: bool, callback_url: str = ""):
     """Wrapper that acquires the semaphore and runs HLS transcode."""
     with job_semaphore:
-        _hls_transcode_s3(job_id, s3_source_key, s3_output_prefix, delete_original)
+        _hls_transcode_s3(job_id, s3_source_key, s3_output_prefix, delete_original, callback_url)
 
 
 @app.route("/api/hls", methods=["POST"])
