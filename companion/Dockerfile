@@ -19,11 +19,11 @@ COPY app.py .
 COPY templates/ templates/
 
 # Create default directories
-RUN mkdir -p /videos /tmp/companion
+RUN mkdir -p /videos /tmp/companion /config
 
 # Non-root user
 RUN groupadd -r companion && useradd -r -g companion -d /app companion
-RUN chown -R companion:companion /app /tmp/companion
+RUN chown -R companion:companion /app /tmp/companion /config
 USER companion
 
 EXPOSE 5100

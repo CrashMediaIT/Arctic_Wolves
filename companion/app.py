@@ -160,7 +160,6 @@ def _cfg(env_name: str, persist_key: str, default: str = "") -> str:
 # ---------------------------------------------------------------------------
 API_KEY = _cfg("API_KEY", "api_key", "")
 MAIN_APP_URL = _cfg("MAIN_APP_URL", "main_app_url", "")
-VIDEO_BASE_PATH = _cfg("VIDEO_BASE_PATH", "video_base_path", "/videos")
 HW_ACCEL = _cfg("HW_ACCEL", "hw_accel", "auto")
 FFMPEG_PATH = os.getenv("FFMPEG_PATH", "ffmpeg")
 FFPROBE_PATH = os.getenv("FFPROBE_PATH", "ffprobe")
@@ -169,7 +168,13 @@ TEMP_DIR = os.getenv("TEMP_DIR", "/tmp/companion")
 COMPANION_HOST = os.getenv("COMPANION_HOST", "0.0.0.0")
 COMPANION_PORT = int(os.getenv("COMPANION_PORT", "5100"))
 
-# S3 / RustFS configuration — typically pushed from the main app's RustFS settings
+# Internal: local path for legacy clip/probe endpoints (not user-configurable;
+# storage locations are controlled by the main application).
+VIDEO_BASE_PATH = os.getenv("VIDEO_BASE_PATH", "/videos")
+
+# S3 / RustFS connection — credentials pushed from the main app or entered in
+# the companion web UI.  The companion uses these to download source videos and
+# upload transcoded output.  Storage *paths* are determined by the main app.
 S3_ENDPOINT = _cfg("S3_ENDPOINT", "s3_endpoint", "")
 S3_ACCESS_KEY = _cfg("S3_ACCESS_KEY", "s3_access_key", "")
 S3_SECRET_KEY = _cfg("S3_SECRET_KEY", "s3_secret_key", "")
@@ -178,9 +183,6 @@ S3_REGION = _cfg("S3_REGION", "s3_region", "us-east-1")
 S3_USE_SSL = _cfg("S3_USE_SSL", "s3_use_ssl", "true").lower() in ("true", "1", "yes")
 S3_VERIFY_SSL = _cfg("S3_VERIFY_SSL", "s3_verify_ssl", "false").lower() in ("true", "1", "yes")
 
-# HLS staging configuration — derived from RustFS video storage path
-HLS_STAGING_PREFIX = _cfg("HLS_STAGING_PREFIX", "hls_staging_prefix", "Images/videos/")
-HLS_POLL_INTERVAL = int(_cfg("HLS_POLL_INTERVAL", "hls_poll_interval", "30"))
 VERSION = "1.2.0"
 
 Path(TEMP_DIR).mkdir(parents=True, exist_ok=True)
@@ -497,9 +499,6 @@ def health():
 
     hw = _detect_hw_accel()
 
-    # Check video base path accessibility
-    base_accessible = os.path.isdir(VIDEO_BASE_PATH)
-
     active_jobs = sum(1 for j in jobs.values() if j["status"] in ("queued", "running"))
 
     # Check S3/RustFS connectivity
@@ -517,15 +516,14 @@ def health():
     return jsonify({
         "status": "ok",
         "version": VERSION,
-        "video_base_path": VIDEO_BASE_PATH,
-        "video_base_accessible": base_accessible,
         "hw_accel": hw,
         "active_jobs": active_jobs,
         "max_concurrent_jobs": MAX_CONCURRENT_JOBS,
         "s3_configured": s3_configured,
         "s3_connected": s3_connected,
         "s3_bucket": S3_BUCKET if s3_configured else None,
-        "hls_staging_watcher": _watcher_running,
+        "main_app_url": MAIN_APP_URL or None,
+        "config_encrypted": _get_cipher_key() is not None,
     })
 
 
@@ -780,7 +778,6 @@ def get_config():
         "api_key_set": bool(API_KEY),
         "main_app_url": MAIN_APP_URL,
         "hw_accel": HW_ACCEL,
-        "video_base_path": VIDEO_BASE_PATH,
         "max_concurrent_jobs": MAX_CONCURRENT_JOBS,
         "s3_endpoint": S3_ENDPOINT,
         "s3_bucket": S3_BUCKET,
@@ -789,8 +786,6 @@ def get_config():
         "s3_secret_key_set": bool(S3_SECRET_KEY),
         "s3_use_ssl": S3_USE_SSL,
         "s3_verify_ssl": S3_VERIFY_SSL,
-        "hls_staging_prefix": HLS_STAGING_PREFIX,
-        "hls_poll_interval": HLS_POLL_INTERVAL,
         "config_encrypted": _get_cipher_key() is not None,
         "config_persisted": os.path.isfile(CONFIG_FILE),
     })
@@ -804,15 +799,18 @@ def update_config():
     Only the fields present in the request body are updated.
     Changes take effect immediately and are persisted to the encrypted
     config file so they survive container restarts.
+
+    Storage *paths* (where videos live, HLS prefixes) are NOT configurable
+    here — they are controlled by the main application which tells the
+    companion exactly where each source file is and where to write output.
     """
     auth_err = _require_api_key()
     if auth_err:
         return auth_err
 
-    global API_KEY, MAIN_APP_URL, HW_ACCEL, VIDEO_BASE_PATH, MAX_CONCURRENT_JOBS
+    global API_KEY, MAIN_APP_URL, HW_ACCEL, MAX_CONCURRENT_JOBS
     global S3_ENDPOINT, S3_ACCESS_KEY, S3_SECRET_KEY, S3_BUCKET, S3_REGION
     global S3_USE_SSL, S3_VERIFY_SSL
-    global HLS_STAGING_PREFIX, HLS_POLL_INTERVAL
 
     data = request.get_json(silent=True) or {}
     updated = []
@@ -832,10 +830,6 @@ def update_config():
             return jsonify({"error": f"hw_accel must be one of {allowed}"}), 400
         HW_ACCEL = val
         updated.append("hw_accel")
-
-    if "video_base_path" in data:
-        VIDEO_BASE_PATH = str(data["video_base_path"])
-        updated.append("video_base_path")
 
     if "max_concurrent_jobs" in data:
         try:
@@ -872,17 +866,6 @@ def update_config():
         S3_VERIFY_SSL = str(data["s3_verify_ssl"]).lower() in ("true", "1", "yes")
         updated.append("s3_verify_ssl")
 
-    if "hls_staging_prefix" in data:
-        HLS_STAGING_PREFIX = str(data["hls_staging_prefix"])
-        updated.append("hls_staging_prefix")
-
-    if "hls_poll_interval" in data:
-        try:
-            HLS_POLL_INTERVAL = max(5, int(data["hls_poll_interval"]))
-        except (ValueError, TypeError):
-            return jsonify({"error": "hls_poll_interval must be an integer >= 5"}), 400
-        updated.append("hls_poll_interval")
-
     if not updated:
         return jsonify({"error": "No recognized configuration fields in request"}), 400
 
@@ -891,7 +874,6 @@ def update_config():
         "api_key": API_KEY,
         "main_app_url": MAIN_APP_URL,
         "hw_accel": HW_ACCEL,
-        "video_base_path": VIDEO_BASE_PATH,
         "max_concurrent_jobs": str(MAX_CONCURRENT_JOBS),
         "s3_endpoint": S3_ENDPOINT,
         "s3_access_key": S3_ACCESS_KEY,
@@ -900,8 +882,6 @@ def update_config():
         "s3_region": S3_REGION,
         "s3_use_ssl": str(S3_USE_SSL).lower(),
         "s3_verify_ssl": str(S3_VERIFY_SSL).lower(),
-        "hls_staging_prefix": HLS_STAGING_PREFIX,
-        "hls_poll_interval": str(HLS_POLL_INTERVAL),
     }
     persisted = _save_persistent_config(cfg)
 
@@ -1086,8 +1066,11 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
         # Notify the main application that transcoding is complete
         cb_url = callback_url or (MAIN_APP_URL + "/api/v1/companion/callback" if MAIN_APP_URL else "")
         variant_playlists = {v["label"]: f"{output_prefix}/{v['label']}/playlist.m3u8" for v in variants}
+        with job_lock:
+            vid_id = jobs[job_id].get("video_id")
         _send_callback(cb_url, {
             "job_id": job_id,
+            "video_id": vid_id,
             "status": "completed",
             "source_key": s3_source_key,
             "hls_manifest": f"{output_prefix}/master.m3u8",
@@ -1104,8 +1087,11 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
 
         # Notify the main application about failure too
         cb_url = callback_url or (MAIN_APP_URL + "/api/v1/companion/callback" if MAIN_APP_URL else "")
+        with job_lock:
+            vid_id = jobs[job_id].get("video_id")
         _send_callback(cb_url, {
             "job_id": job_id,
+            "video_id": vid_id,
             "status": "failed",
             "source_key": s3_source_key,
             "error": str(exc)[:2000],
@@ -1131,11 +1117,19 @@ def _run_hls_job(job_id: str, s3_source_key: str, s3_output_prefix: str,
 def hls_transcode():
     """Transcode a video from S3/RustFS to multi-quality HLS and upload back.
 
+    The main application controls storage locations — it specifies both the
+    source_key (where the uploaded video lives) and output_prefix (where the
+    transcoded HLS segments should be written).  When transcoding finishes
+    the companion POSTs results to callback_url so the main app can update
+    the database with the final file locations.
+
     POST JSON body:
-        source_key:       S3 object key of the source video
-        output_prefix:    S3 prefix where HLS files are written
+        source_key:       S3 object key of the source video (required)
+        output_prefix:    S3 prefix where HLS files are written (required)
         delete_original:  (optional, default true) delete source after transcoding
-        callback_url:     (optional) URL to POST result when complete
+        callback_url:     (optional) URL to POST result when complete;
+                          falls back to MAIN_APP_URL/api/v1/companion/callback
+        video_id:         (optional) main-app video row ID, echoed in the callback
     """
     auth_err = _require_api_key()
     if auth_err:
@@ -1149,6 +1143,8 @@ def hls_transcode():
     source_key = data.get("source_key", "")
     output_prefix = data.get("output_prefix", "")
     delete_original = data.get("delete_original", True)
+    callback_url = data.get("callback_url", "")
+    video_id = data.get("video_id")
 
     if not source_key:
         return jsonify({"error": "source_key is required"}), 400
@@ -1166,6 +1162,7 @@ def hls_transcode():
         "output_prefix": output_prefix,
         "hls_manifest": None,
         "variants": [],
+        "video_id": video_id,
         "created_at": time.time(),
         "started_at": None,
         "finished_at": None,
@@ -1176,7 +1173,7 @@ def hls_transcode():
 
     thread = threading.Thread(
         target=_run_hls_job,
-        args=(job_id, source_key, output_prefix, delete_original),
+        args=(job_id, source_key, output_prefix, delete_original, callback_url),
         daemon=True,
     )
     thread.start()
@@ -1184,99 +1181,12 @@ def hls_transcode():
 
 
 # ---------------------------------------------------------------------------
-# HLS Staging Watcher
-# ---------------------------------------------------------------------------
-
-_watcher_running = False
-
-
-def _start_staging_watcher():
-    """Start a background thread that watches for new video uploads in S3 and
-    automatically queues HLS transcoding jobs."""
-    global _watcher_running
-    if _watcher_running:
-        return
-    _watcher_running = True
-
-    s3 = _get_s3_client()
-    if not s3:
-        logger.warning("S3 not configured – HLS staging watcher disabled")
-        _watcher_running = False
-        return
-
-    processed_keys: set = set()
-    video_extensions = {".mp4", ".mkv", ".mov", ".avi", ".webm"}
-
-    def _watcher_loop():
-        nonlocal processed_keys
-        logger.info("HLS staging watcher started (prefix=%s, interval=%ds)",
-                     HLS_STAGING_PREFIX, HLS_POLL_INTERVAL)
-        while True:
-            try:
-                objects = _s3_list_objects(s3, HLS_STAGING_PREFIX)
-                for key in objects:
-                    ext = os.path.splitext(key)[1].lower()
-                    if ext not in video_extensions:
-                        continue
-                    # Skip if already processed or HLS output
-                    if key in processed_keys:
-                        continue
-                    if "/hls/" in key:
-                        continue
-
-                    # Check if HLS output already exists
-                    hls_prefix = os.path.splitext(key)[0] + "/hls/"
-                    existing_hls = _s3_list_objects(s3, hls_prefix)
-                    if any(k.endswith("master.m3u8") for k in existing_hls):
-                        processed_keys.add(key)
-                        continue
-
-                    logger.info("Staging watcher: queuing HLS transcode for %s", key)
-                    processed_keys.add(key)
-
-                    # Queue a transcode job
-                    job_id = str(uuid.uuid4())
-                    output_prefix = os.path.splitext(key)[0] + "/hls"
-                    job = {
-                        "id": job_id,
-                        "status": "queued",
-                        "description": f"Auto HLS: {os.path.basename(key)}",
-                        "source_key": key,
-                        "output_prefix": output_prefix,
-                        "hls_manifest": None,
-                        "variants": [],
-                        "created_at": time.time(),
-                        "started_at": None,
-                        "finished_at": None,
-                        "error": None,
-                    }
-                    with job_lock:
-                        jobs[job_id] = job
-
-                    thread = threading.Thread(
-                        target=_run_hls_job,
-                        args=(job_id, key, output_prefix, True),
-                        daemon=True,
-                    )
-                    thread.start()
-
-            except Exception as exc:
-                logger.error("Staging watcher error: %s", exc)
-
-            time.sleep(HLS_POLL_INTERVAL)
-
-    watcher = threading.Thread(target=_watcher_loop, daemon=True)
-    watcher.start()
-
-
-# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
     print(f"Arctic Wolves Video Companion Server v{VERSION}")
-    print(f"Video base path: {VIDEO_BASE_PATH}")
     print(f"Hardware acceleration: {HW_ACCEL}")
     print(f"S3 endpoint: {S3_ENDPOINT or '(not configured)'}")
+    print(f"Config encrypted: {_get_cipher_key() is not None}")
     print(f"Listening on {COMPANION_HOST}:{COMPANION_PORT}")
-    _start_staging_watcher()
     app.run(host=COMPANION_HOST, port=COMPANION_PORT, debug=False)
