@@ -378,15 +378,15 @@ function handleAthleteVideoUpload() {
     $unique_filename = uniqid('athlete_video_', true) . '_' . time() . '.' . $file_extension;
     
     // Look up athlete name for folder structure
-    $athlete_folder = 'unknown';
+    $athlete_folder = 'athlete_' . $athlete_id;
     $stmt_name = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
     $stmt_name->execute([$athlete_id]);
     $athlete_row = $stmt_name->fetch();
     if ($athlete_row) {
         $athlete_row = decryptUserRow($athlete_row);
-        $athlete_folder = preg_replace('/[^a-zA-Z0-9_-]/', '_', trim(($athlete_row['first_name'] ?? '') . '_' . ($athlete_row['last_name'] ?? '')));
-        if (empty($athlete_folder) || $athlete_folder === '_') {
-            $athlete_folder = 'athlete_' . $athlete_id;
+        $safe_name = preg_replace('/[^a-zA-Z0-9_-]/', '_', trim(($athlete_row['first_name'] ?? '') . '_' . ($athlete_row['last_name'] ?? '')));
+        if (!empty($safe_name) && $safe_name !== '_') {
+            $athlete_folder = $safe_name;
         }
     }
     
@@ -527,15 +527,15 @@ function handleGetAthleteUploadUrl() {
 
     // Look up athlete name for folder structure
     $presign_athlete_id = filter_input(INPUT_POST, 'athlete_id', FILTER_VALIDATE_INT) ?: $user_id;
-    $athlete_folder = 'unknown';
+    $athlete_folder = 'athlete_' . $presign_athlete_id;
     $stmt_name = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
     $stmt_name->execute([$presign_athlete_id]);
     $athlete_row = $stmt_name->fetch();
     if ($athlete_row) {
         $athlete_row = decryptUserRow($athlete_row);
-        $athlete_folder = preg_replace('/[^a-zA-Z0-9_-]/', '_', trim(($athlete_row['first_name'] ?? '') . '_' . ($athlete_row['last_name'] ?? '')));
-        if (empty($athlete_folder) || $athlete_folder === '_') {
-            $athlete_folder = 'athlete_' . $presign_athlete_id;
+        $safe_name = preg_replace('/[^a-zA-Z0-9_-]/', '_', trim(($athlete_row['first_name'] ?? '') . '_' . ($athlete_row['last_name'] ?? '')));
+        if (!empty($safe_name) && $safe_name !== '_') {
+            $athlete_folder = $safe_name;
         }
     }
 

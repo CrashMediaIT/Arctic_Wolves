@@ -375,8 +375,6 @@ test.describe('Athlete name subfolder in upload path', () => {
 test.describe('Description required in upload forms', () => {
   test('coach reviews form description should be required', () => {
     const content = readFile('views/video_coach_reviews.php');
-    // Find the Notes for Coach textarea and verify it has required
-    const descLines = content.split('\\n').filter(l => l.includes('name="description"'));
     expect(content).toMatch(/name="description"[^>]*required/);
   });
 });
