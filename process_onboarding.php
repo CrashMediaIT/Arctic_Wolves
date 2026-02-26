@@ -418,20 +418,17 @@ if ($action === 'create') {
                 }
             }
             
-            // Upload documents and data to Nextcloud
+            // Upload documents and data to RustFS
             $nextcloudFolder = null;
             $uploadedDocs = [];
             
             try {
-                $ncSettings = getNextcloudSettings($pdo);
-                
-                if (!empty($ncSettings['nextcloud_url']) && !empty($ncSettings['nextcloud_username'])) {
                     $staffName = $firstName . ' ' . $lastName;
                     $year = date('Y');
                     
                     // Upload documents if provided
                     if (!empty($_FILES['documents']) && !empty($_FILES['documents']['name'][0])) {
-                        $uploadResult = uploadOnboardingDocuments($pdo, $ncSettings, $staffName, $year, $_FILES['documents']);
+                        $uploadResult = uploadOnboardingDocuments($pdo, [], $staffName, $year, $_FILES['documents']);
                         
                         if ($uploadResult['success']) {
                             $nextcloudFolder = $uploadResult['folder_path'];
@@ -449,7 +446,7 @@ if ($action === 'create') {
                         }
                     }
                     
-                    // Export form data to Nextcloud
+                    // Export form data to RustFS
                     $onboardingData = [
                         'first_name' => $firstName,
                         'last_name' => $lastName,
@@ -475,15 +472,14 @@ if ($action === 'create') {
                         'payroll_setup' => $setupPayroll ? 'Yes' : 'No'
                     ];
                     
-                    $exportResult = exportOnboardingData($pdo, $ncSettings, $onboardingData, $staffName, $year);
+                    $exportResult = exportOnboardingData($pdo, [], $onboardingData, $staffName, $year);
                     
                     if ($exportResult['success'] && empty($nextcloudFolder)) {
                         $nextcloudFolder = $exportResult['folder_path'];
                     }
-                }
             } catch (Exception $ncError) {
-                ErrorLogger::error("Nextcloud upload error: " . $ncError->getMessage());
-                // Continue without Nextcloud - not critical
+                ErrorLogger::error("Document upload error: " . $ncError->getMessage());
+                // Continue without upload - not critical
             }
             
             // Update onboarding record with Nextcloud folder

@@ -523,7 +523,6 @@ if ($action === 'generate_all_t4s') {
         $employees = $employeesStmt->fetchAll(PDO::FETCH_ASSOC);
         
         $generated = 0;
-        $ncSettings = getNextcloudSettings($pdo);
         
         foreach ($employees as $emp) {
             // Get year totals
@@ -568,26 +567,24 @@ if ($action === 'generate_all_t4s') {
                 $emp['tax_province'], $address, $user_id
             ]);
             
-            // Upload to Nextcloud if configured
-            if (!empty($ncSettings['nextcloud_url'])) {
-                $staffName = $emp['first_name'] . ' ' . $emp['last_name'];
-                $filename = 'T4_' . str_replace(' ', '_', $staffName) . '_' . $taxYear . '.txt';
-                $content = "T4 STATEMENT OF REMUNERATION PAID\n";
-                $content .= "Tax Year: $taxYear\n\n";
-                $content .= "Employee: $staffName\n";
-                $content .= "Address: " . str_replace("\n", ", ", $address) . "\n\n";
-                $content .= "Box 14 - Employment Income: $" . number_format($totals['total_income'], 2) . "\n";
-                $content .= "Box 16 - CPP Contributions: $" . number_format($totals['total_cpp'], 2) . "\n";
-                $content .= "Box 18 - EI Premiums: $" . number_format($totals['total_ei'], 2) . "\n";
-                $content .= "Box 20 - RPP Contributions: $" . number_format($totals['total_pension'], 2) . "\n";
-                $content .= "Box 22 - Income Tax Deducted: $" . number_format($totals['total_tax'], 2) . "\n";
-                
-                $uploadResult = uploadPayrollDocuments($pdo, $ncSettings, $staffName, $taxYear, 'T4', $content, $filename);
-                
-                if ($uploadResult['success']) {
-                    $updatePath = $pdo->prepare("UPDATE t4_slips SET nextcloud_path = ? WHERE user_id = ? AND tax_year = ?");
-                    $updatePath->execute([$uploadResult['file_path'], $emp['user_id'], $taxYear]);
-                }
+            // Upload to RustFS
+            $staffName = $emp['first_name'] . ' ' . $emp['last_name'];
+            $filename = 'T4_' . str_replace(' ', '_', $staffName) . '_' . $taxYear . '.txt';
+            $content = "T4 STATEMENT OF REMUNERATION PAID\n";
+            $content .= "Tax Year: $taxYear\n\n";
+            $content .= "Employee: $staffName\n";
+            $content .= "Address: " . str_replace("\n", ", ", $address) . "\n\n";
+            $content .= "Box 14 - Employment Income: $" . number_format($totals['total_income'], 2) . "\n";
+            $content .= "Box 16 - CPP Contributions: $" . number_format($totals['total_cpp'], 2) . "\n";
+            $content .= "Box 18 - EI Premiums: $" . number_format($totals['total_ei'], 2) . "\n";
+            $content .= "Box 20 - RPP Contributions: $" . number_format($totals['total_pension'], 2) . "\n";
+            $content .= "Box 22 - Income Tax Deducted: $" . number_format($totals['total_tax'], 2) . "\n";
+            
+            $uploadResult = uploadPayrollDocuments($pdo, [], $staffName, $taxYear, 'T4', $content, $filename);
+            
+            if ($uploadResult['success']) {
+                $updatePath = $pdo->prepare("UPDATE t4_slips SET nextcloud_path = ? WHERE user_id = ? AND tax_year = ?");
+                $updatePath->execute([$uploadResult['file_path'], $emp['user_id'], $taxYear]);
             }
             
             $generated++;

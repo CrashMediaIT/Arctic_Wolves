@@ -482,11 +482,10 @@ function processDocuSealWebhook($pdo, $webhookData) {
         error_log("Failed to download signed document: " . $downloadResult['message']);
     }
     
-    // Upload to Nextcloud if download was successful
+    // Upload to RustFS if download was successful
     $nextcloudPath = null;
     if ($downloadResult['success']) {
         require_once __DIR__ . '/../cloud_config.php';
-        $ncSettings = getNextcloudSettings($pdo);
         
         $employeeName = str_replace(' ', '_', $contract['employee_name'] ?? 'Unknown');
         $dateSigned = date('Y-m-d');
@@ -495,7 +494,7 @@ function processDocuSealWebhook($pdo, $webhookData) {
         
         $uploadResult = uploadSignedContract(
             $pdo, 
-            $ncSettings, 
+            [], 
             $downloadResult['content'],
             $employeeName,
             $dateSigned,
