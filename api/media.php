@@ -34,8 +34,8 @@ if ($object_key === '') {
     exit;
 }
 
-// ── Security: prevent path traversal ────────────────────────────────────
-if (preg_match('/\.\.[\\/]/', $object_key) || strpos($object_key, '..') !== false) {
+// ── Security: prevent path traversal and control characters ─────────────
+if (strpos($object_key, '..') !== false || preg_match('/[\x00-\x1f]/', $object_key)) {
     http_response_code(400);
     header('Content-Type: application/json');
     echo json_encode(['error' => 'Invalid key']);
@@ -84,6 +84,7 @@ $curl_headers = [
 $ch = curl_init($url);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, $curl_headers);
+// Matches existing RustFS storage pattern (self-signed certs in internal networks)
 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
 curl_setopt($ch, CURLOPT_TIMEOUT, 120);
