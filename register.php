@@ -100,6 +100,9 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
                         header("Location: dashboard.php?page=packages&package_id=" . $intent['package_id']);
                     }
                     exit();
+                } elseif ($intent['session_id']) {
+                    header("Location: dashboard.php?page=booking&session_id=" . intval($intent['session_id']));
+                    exit();
                 }
             }
         } catch (PDOException $e) {

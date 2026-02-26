@@ -44,7 +44,7 @@ if ($user_role === 'athlete') {
                 INNER JOIN user_packages up ON up.package_id = ps.package_id
                 WHERE up.user_id = ? AND up.payment_status = 'paid' AND ps.session_id IS NOT NULL
             ))
-              AND s.session_date < NOW()
+              AND s.session_date < CURDATE()
               AND s.status IN ('scheduled', 'completed')
         ";
     } else {
@@ -71,7 +71,7 @@ if ($user_role === 'athlete') {
                 INNER JOIN user_packages up ON up.package_id = ps.package_id
                 WHERE up.user_id = ? AND up.payment_status = 'paid' AND ps.session_id IS NOT NULL
             ))
-              AND s.session_date >= NOW()
+              AND s.session_date >= CURDATE()
               AND s.status = 'scheduled'
               AND (b.id IS NULL OR b.status != 'cancelled')
         ";
@@ -95,7 +95,7 @@ if ($user_role === 'athlete') {
             LEFT JOIN session_practice_plans spp ON spp.session_id = s.id
             LEFT JOIN practice_plans pp ON spp.practice_plan_id = pp.id
             WHERE s.coach_id = ? 
-              AND s.session_date < NOW()
+              AND s.session_date < CURDATE()
               AND s.status IN ('scheduled', 'completed')
         ";
     } else {
@@ -115,7 +115,7 @@ if ($user_role === 'athlete') {
             LEFT JOIN session_practice_plans spp ON spp.session_id = s.id
             LEFT JOIN practice_plans pp ON spp.practice_plan_id = pp.id
             WHERE s.coach_id = ? 
-              AND s.session_date >= NOW()
+              AND s.session_date >= CURDATE()
               AND s.status = 'scheduled'
         ";
     }
