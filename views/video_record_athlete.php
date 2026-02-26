@@ -996,7 +996,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Legacy fallback: upload through the PHP server (original flow)
+    // Legacy fallback: upload through the PHP server when direct upload is unavailable.
+    // Progress shows 0-50% for browser→server, then stays at 50% while server→RustFS runs.
     function fallbackServerUpload(uploadForm, overlay, bar, percent, status, submitBtn) {
         overlay.style.display = 'flex';
         submitBtn.disabled = true;
@@ -1011,10 +1012,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
         xhr.upload.onprogress = function(e) {
             if (e.lengthComputable) {
-                var pct = Math.round((e.loaded / e.total) * 50);
-                bar.style.width = pct + '%';
-                percent.textContent = pct + '%';
-                if (pct < 50) {
+                // Scale to 0-50% — the remaining 50% covers server→RustFS (no client visibility)
+                var rawPct = Math.round((e.loaded / e.total) * 100);
+                var scaledPct = Math.round(rawPct / 2);
+                bar.style.width = scaledPct + '%';
+                percent.textContent = scaledPct + '%';
+                if (rawPct < 100) {
                     status.textContent = 'Uploading video to server...';
                 } else {
                     status.textContent = 'Saving to cloud storage...';
