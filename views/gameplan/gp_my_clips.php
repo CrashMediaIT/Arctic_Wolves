@@ -244,15 +244,21 @@ document.addEventListener('DOMContentLoaded', function() {
     var video = document.getElementById('gpModalVideo');
     var source = document.getElementById('gpModalSource');
     var titleEl = document.getElementById('gpPlayerTitle');
+    var gpClipsHls = null;
 
     document.querySelectorAll('.gp-clip-item').forEach(function(card) {
         card.addEventListener('click', function() {
             var src = card.dataset.source || '';
             var titleNode = card.querySelector('[style*="font-weight:700"]');
             titleEl.innerHTML = '<i class="fas fa-play-circle"></i> ' + (titleNode ? titleNode.textContent.trim() : 'Clip');
+            if (gpClipsHls) { gpClipsHls.destroy(); gpClipsHls = null; }
             if (src) {
-                source.src = src;
-                video.load();
+                if (typeof window.awInitHlsPlayer === 'function') {
+                    gpClipsHls = window.awInitHlsPlayer(video, src);
+                } else {
+                    source.src = src;
+                    video.load();
+                }
                 video.style.display = 'block';
             } else {
                 video.style.display = 'none';
@@ -261,8 +267,15 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    document.getElementById('gpClosePlayer').addEventListener('click', function() { modal.style.display = 'none'; video.pause(); });
-    modal.addEventListener('click', function(e) { if (e.target === modal) { modal.style.display = 'none'; video.pause(); } });
-    document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && modal.style.display === 'flex') { modal.style.display = 'none'; video.pause(); } });
+    function closeGpClipModal() {
+        modal.style.display = 'none';
+        if (gpClipsHls) { gpClipsHls.destroy(); gpClipsHls = null; }
+        video.pause();
+        video.removeAttribute('src');
+    }
+
+    document.getElementById('gpClosePlayer').addEventListener('click', closeGpClipModal);
+    modal.addEventListener('click', function(e) { if (e.target === modal) closeGpClipModal(); });
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && modal.style.display === 'flex') closeGpClipModal(); });
 });
 </script>
