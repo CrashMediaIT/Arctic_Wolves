@@ -252,7 +252,7 @@ $reviewed_videos = array_filter($videos, function($v) {
                         <span class="badge-warning"><i class="fas fa-clock"></i> Pending</span>
                     </div>
                     <div class="video-actions-inline">
-                        <button class="btn-icon" title="View" data-action="view-video" data-video-id="<?= $video['id'] ?>"><i class="fas fa-eye"></i></button>
+                        <button class="btn-icon" title="View" data-action="view-video" data-video-id="<?= $video['id'] ?>" data-video-url="<?= htmlspecialchars($video['video_url'] ?? '') ?>"><i class="fas fa-eye"></i></button>
                         <?php if ($isAnyCoach): ?>
                         <button class="btn-icon btn-review" title="Review" data-action="review-video" data-video-id="<?= $video['id'] ?>"><i class="fas fa-check"></i></button>
                         <?php endif; ?>
@@ -313,7 +313,7 @@ $reviewed_videos = array_filter($videos, function($v) {
                         <span class="badge-success"><i class="fas fa-check-circle"></i> Reviewed</span>
                     </div>
                     <div class="video-actions-inline">
-                        <button class="btn-icon" title="View" data-action="view-video" data-video-id="<?= $video['id'] ?>"><i class="fas fa-eye"></i></button>
+                        <button class="btn-icon" title="View" data-action="view-video" data-video-id="<?= $video['id'] ?>" data-video-url="<?= htmlspecialchars($video['video_url'] ?? '') ?>"><i class="fas fa-eye"></i></button>
                         <button class="btn-icon" title="View Feedback" data-action="view-feedback" data-video-id="<?= $video['id'] ?>"><i class="fas fa-comments"></i></button>
                     </div>
                 </div>
