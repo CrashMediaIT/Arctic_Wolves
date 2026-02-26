@@ -97,7 +97,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $verify_data = http_build_query([
                 'secret' => $recaptcha_secret,
                 'response' => $recaptcha_token,
-                'remoteip' => $_SERVER['REMOTE_ADDR'] ?? ''
+                'remoteip' => getClientIP()
             ]);
             $verify_opts = ['http' => [
                 'method' => 'POST',
@@ -191,7 +191,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 
     // 2. CHECK BLOCKLIST (email, name, or IP)
-    $clientIp = $_SERVER['REMOTE_ADDR'] ?? null;
+    $clientIp = getClientIP();
     $blockCheck = Blocklist::checkRegistration($pdo, $email, $first, $last, $clientIp);
     if ($blockCheck['blocked']) {
         header("Location: register.php?error=blocked");
@@ -225,7 +225,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $new_user_id = $pdo->lastInsertId();
 
             // Record agreement acceptance
-            $client_ip = $_SERVER['REMOTE_ADDR'] ?? null;
+            $client_ip = getClientIP();
             $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? null;
 
             $agree_sql = "INSERT INTO user_agreements (user_id, agreement_type, agreement_version, accepted_at, ip_address, user_agent, signature_status, promotional_opt_in, share_evaluations_potential_teams) VALUES (?, ?, '1.0', NOW(), ?, ?, 'signed', ?, ?)";
@@ -244,7 +244,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $parent_id = $pdo->lastInsertId();
 
             // Record agreement acceptance for parent
-            $client_ip = $_SERVER['REMOTE_ADDR'] ?? null;
+            $client_ip = getClientIP();
             $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? null;
 
             $agree_sql = "INSERT INTO user_agreements (user_id, agreement_type, agreement_version, accepted_at, ip_address, user_agent, signature_status, promotional_opt_in, share_evaluations_potential_teams) VALUES (?, ?, '1.0', NOW(), ?, ?, 'signed', ?, ?)";

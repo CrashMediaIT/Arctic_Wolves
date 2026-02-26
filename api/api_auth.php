@@ -8,6 +8,7 @@
 require_once __DIR__ . '/../db_config.php';
 require_once __DIR__ . '/../lib/encryption.php';
 require_once __DIR__ . '/../lib/rate_limiter.php';
+require_once __DIR__ . '/../security.php';
 
 /**
  * Authenticate an API request using API key or bearer token.
@@ -205,7 +206,7 @@ function logApiAccess($action, $description, $user_id = null) {
             $user_id,
             'api_' . $action,
             $description,
-            $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+            getClientIP(),
             $_SERVER['HTTP_USER_AGENT'] ?? 'unknown',
             json_encode(['endpoint' => $_SERVER['REQUEST_URI'] ?? ''])
         ]);

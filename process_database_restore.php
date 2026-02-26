@@ -356,7 +356,7 @@ function logAction($pdo, $user_id, $action, $details) {
             INSERT INTO security_logs (user_id, event_type, ip_address, description, created_at)
             VALUES (?, ?, ?, ?, NOW())
         ");
-        $stmt->execute([$user_id, $action, $_SERVER['REMOTE_ADDR'] ?? 'unknown', $details]);
+        $stmt->execute([$user_id, $action, getClientIP(), $details]);
     } catch (Exception $e) {
         // Ignore logging errors
     }

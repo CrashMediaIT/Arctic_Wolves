@@ -122,7 +122,7 @@ try {
                 $user_id,
                 $contractId,
                 json_encode(['employee_name' => $employeeName, 'template_id' => $templateId]),
-                $_SERVER['REMOTE_ADDR'] ?? null
+                getClientIP()
             ]);
             Auditor::log($pdo, $user_id, 'create', 'employee_contracts', $contractId, ['action' => 'Created contract', 'employee_name' => $employeeName]);
             
@@ -203,7 +203,7 @@ try {
                 $user_id,
                 $contractId,
                 json_encode(['action' => 'sent_for_signature', 'docuseal_template_id' => $templateId]),
-                $_SERVER['REMOTE_ADDR'] ?? null
+                getClientIP()
             ]);
             Auditor::log($pdo, $user_id, 'update', 'employee_contracts', $contractId, ['action' => 'Sent for signature']);
             
@@ -408,7 +408,7 @@ try {
                 $user_id,
                 $contractId,
                 json_encode(['action' => 'cancelled']),
-                $_SERVER['REMOTE_ADDR'] ?? null
+                getClientIP()
             ]);
             Auditor::log($pdo, $user_id, 'update', 'employee_contracts', $contractId, ['action' => 'Contract cancelled']);
             
@@ -470,7 +470,7 @@ try {
                 $user_id,
                 $docusealTemplateId,
                 json_encode(['name' => $templateName, 'file' => $file['name']]),
-                $_SERVER['REMOTE_ADDR'] ?? null
+                getClientIP()
             ]);
             Auditor::log($pdo, $user_id, 'create', 'docuseal_templates', $docusealTemplateId, ['action' => 'Created DocuSeal template', 'name' => $templateName]);
             
@@ -531,7 +531,7 @@ try {
                 $user_id,
                 $templateId,
                 json_encode($updateData),
-                $_SERVER['REMOTE_ADDR'] ?? null
+                getClientIP()
             ]);
             Auditor::log($pdo, $user_id, 'update', 'docuseal_templates', $templateId, ['action' => 'Updated DocuSeal template']);
             
@@ -576,7 +576,7 @@ try {
                 $user_id,
                 $templateId,
                 json_encode(['action' => 'deleted']),
-                $_SERVER['REMOTE_ADDR'] ?? null
+                getClientIP()
             ]);
             Auditor::log($pdo, $user_id, 'delete', 'docuseal_templates', $templateId, ['action' => 'Deleted DocuSeal template']);
             
@@ -626,7 +626,7 @@ try {
                 $user_id,
                 $newTemplateId,
                 json_encode(['cloned_from' => $templateId, 'new_name' => $newName]),
-                $_SERVER['REMOTE_ADDR'] ?? null
+                getClientIP()
             ]);
             Auditor::log($pdo, $user_id, 'create', 'docuseal_templates', $newTemplateId, ['action' => 'Cloned DocuSeal template', 'cloned_from' => $templateId]);
             

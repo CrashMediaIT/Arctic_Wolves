@@ -35,6 +35,33 @@ class ErrorLogger {
     }
     
     /**
+     * Resolve the real client IP behind a reverse proxy.
+     * Checks standard proxy headers before falling back to REMOTE_ADDR.
+     */
+    private static function resolveClientIP() {
+        $proxyHeaders = [
+            'HTTP_CLIENT_IP',
+            'HTTP_X_FORWARDED_FOR',
+            'HTTP_X_FORWARDED',
+            'HTTP_X_CLUSTER_CLIENT_IP',
+            'HTTP_FORWARDED_FOR',
+            'HTTP_FORWARDED',
+        ];
+        foreach ($proxyHeaders as $header) {
+            if (!empty($_SERVER[$header])) {
+                $ip = $_SERVER[$header];
+                if (strpos($ip, ',') !== false) {
+                    $ip = trim(explode(',', $ip)[0]);
+                }
+                if (filter_var($ip, FILTER_VALIDATE_IP)) {
+                    return $ip;
+                }
+            }
+        }
+        return isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : null;
+    }
+    
+    /**
      * Initialize error handling
      */
     public static function init() {
@@ -103,7 +130,7 @@ class ErrorLogger {
             
             $userId = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : null;
             $url = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : null;
-            $ip = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : null;
+            $ip = self::resolveClientIP();
             $userAgent = isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : null;
             
             $stmt->execute([

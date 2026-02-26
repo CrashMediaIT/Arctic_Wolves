@@ -286,7 +286,7 @@ if ($action === 'add_employee') {
             ");
             $auditStmt->execute([
                 $user_id, $employeeUserId, json_encode($auditData),
-                $_SERVER['REMOTE_ADDR'] ?? null, $_SERVER['HTTP_USER_AGENT'] ?? null
+                getClientIP(), $_SERVER['HTTP_USER_AGENT'] ?? null
             ]);
             
             $pdo->commit();

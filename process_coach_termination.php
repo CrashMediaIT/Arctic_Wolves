@@ -205,7 +205,7 @@ if ($action === 'create') {
                 $user_id,
                 $termination_id,
                 json_encode($audit_data),
-                $_SERVER['REMOTE_ADDR'] ?? null,
+                getClientIP(),
                 $_SERVER['HTTP_USER_AGENT'] ?? null
             ]);
             
@@ -426,7 +426,7 @@ try {
             $user_id,
             $coach_to_terminate,
             json_encode($audit_data),
-            $_SERVER['REMOTE_ADDR'] ?? null,
+            getClientIP(),
             $_SERVER['HTTP_USER_AGENT'] ?? null
         ]);
         

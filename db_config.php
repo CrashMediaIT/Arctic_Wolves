@@ -158,7 +158,22 @@ if ($db_config_valid) {
     }
 }
 
-// 5. DEFINE GLOBAL CONSTANT FOR EASY CHECKING
+// 5. APPLY TIMEZONE FROM SYSTEM SETTINGS
+// Load the configured timezone early so ALL PHP date/time functions use it,
+// not just the Logger / ErrorLogger classes.
+if ($db_connected && $pdo) {
+    try {
+        $tz_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'timezone' LIMIT 1");
+        $tz_value = $tz_stmt->fetchColumn();
+        if (!empty($tz_value) && in_array($tz_value, timezone_identifiers_list())) {
+            date_default_timezone_set($tz_value);
+        }
+    } catch (Exception $e) {
+        // Silently fail — table may not exist yet (pre-setup)
+    }
+}
+
+// 6. DEFINE GLOBAL CONSTANT FOR EASY CHECKING
 if (!defined('DB_CONNECTED')) {
     define('DB_CONNECTED', $db_connected);
 }

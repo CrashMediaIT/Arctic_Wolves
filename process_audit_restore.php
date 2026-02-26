@@ -137,7 +137,7 @@ try {
                 $record_id,
                 $current_values, // old (current state before restore)
                 $log['old_values'], // new (restored state)
-                $_SERVER['REMOTE_ADDR'] ?? null,
+                getClientIP(),
                 $_SERVER['HTTP_USER_AGENT'] ?? null
             ]);
             
