@@ -5,6 +5,7 @@
  */
 
 require_once __DIR__ . '/../security.php';
+require_once __DIR__ . '/../lib/image_helper.php';
 
 $can_create = hasPermission($pdo, $user_id, $user_role, 'create_practice_plans');
 $can_delete = hasPermission($pdo, $user_id, $user_role, 'delete_practice_plans');
@@ -74,7 +75,7 @@ try {
     $logoStmt->execute();
     $logoResult = $logoStmt->fetch(PDO::FETCH_ASSOC);
     if ($logoResult && !empty($logoResult['logo_url'])) {
-        $centerLogoUrl = $logoResult['logo_url'];
+        $centerLogoUrl = resolveRustfsUrl($pdo, $logoResult['logo_url']);
     }
 } catch (PDOException $e) {
     error_log("Error fetching center ice logo URL: " . $e->getMessage());
@@ -998,7 +999,7 @@ try {
                                  data-title="<?= htmlspecialchars(strtolower($drill['title'])); ?>">
                                 <div class="drill-image" data-ice-view="<?= htmlspecialchars($drillIceView); ?>">
                                     <?php if (!empty($drill['custom_image'])): ?>
-                                        <img src="<?= htmlspecialchars($drill['custom_image']); ?>" alt="<?= htmlspecialchars($drill['title']); ?>">
+                                        <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $drill['custom_image'])); ?>" alt="<?= htmlspecialchars($drill['title']); ?>">
                                     <?php else: ?>
                                         <div class="drill-diagram-preview" data-diagram='<?= htmlspecialchars($drill['diagram_data'] ?? '[]'); ?>' data-center-logo="<?= htmlspecialchars($centerLogoUrl); ?>">
                                             <canvas class="drill-thumbnail-canvas"></canvas>

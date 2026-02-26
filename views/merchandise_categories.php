@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../lib/image_helper.php';
 // Merchandise Categories Management View
 // Fetch all merchandise categories from database with parent relationship
 try {
@@ -132,7 +133,7 @@ $subcategoryCount = $totalCategories - $parentCount;
                         <div class="category-card" style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 20px; position: relative;">
                             <?php if (!empty($category['image_url'])): ?>
                                 <div class="category-image" style="height: 120px; border-radius: 8px; overflow: hidden; margin-bottom: 16px;">
-                                    <img src="<?= htmlspecialchars($category['image_url']) ?>" alt="<?= htmlspecialchars($category['name']) ?>" style="width: 100%; height: 100%; object-fit: cover;">
+                                    <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $category['image_url'])) ?>" alt="<?= htmlspecialchars($category['name']) ?>" style="width: 100%; height: 100%; object-fit: cover;">
                                 </div>
                             <?php else: ?>
                                 <div class="category-image-placeholder" style="height: 120px; border-radius: 8px; background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%); display: flex; align-items: center; justify-content: center; margin-bottom: 16px;">

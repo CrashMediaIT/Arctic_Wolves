@@ -4,6 +4,7 @@
  * Three tabs: Clips / By Game / Opponent Scouting
  * Athletes see clips they're tagged in; coaches see all clips.
  */
+require_once __DIR__ . '/../../lib/image_helper.php';
 
 // ── Tab & Filter parameters ───────────────────────────────────
 $vr_tab = isset($_GET['tab']) ? preg_replace('/[^a-z_]/', '', $_GET['tab']) : 'clips';
@@ -238,7 +239,7 @@ if (!function_exists('vr_format_duration')) {
     <div class="gp-card" data-clip-id="<?= (int)$clip['id'] ?>">
         <div class="gp-card-thumb">
             <?php if (!empty($clip['thumbnail_path'])): ?>
-            <img src="<?= htmlspecialchars($clip['thumbnail_path']) ?>" alt="Clip thumbnail" loading="lazy">
+            <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $clip['thumbnail_path'])) ?>" alt="Clip thumbnail" loading="lazy">
             <?php else: ?>
             <i class="fas fa-play-circle"></i>
             <?php endif; ?>
@@ -282,7 +283,7 @@ ksort($grouped);
     <div class="vr-video-row" data-clip-id="<?= (int)$clip['id'] ?>">
         <div class="vr-thumb">
             <?php if (!empty($clip['thumbnail_path'])): ?>
-            <img src="<?= htmlspecialchars($clip['thumbnail_path']) ?>" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;border-radius:10px">
+            <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $clip['thumbnail_path'])) ?>" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;border-radius:10px">
             <?php else: ?>
             <i class="fas fa-play-circle"></i>
             <?php endif; ?>
@@ -404,7 +405,7 @@ ksort($grouped);
     <div class="gp-card">
         <div class="gp-card-thumb">
             <?php if (!empty($sc['thumbnail_path'])): ?>
-            <img src="<?= htmlspecialchars($sc['thumbnail_path']) ?>" alt="" loading="lazy">
+            <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $sc['thumbnail_path'])) ?>" alt="" loading="lazy">
             <?php else: ?>
             <i class="fas fa-play-circle"></i>
             <?php endif; ?>

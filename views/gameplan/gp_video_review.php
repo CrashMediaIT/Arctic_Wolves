@@ -9,6 +9,8 @@
  * Variables $isAnyCoach, $user_id, $pdo are already available.
  * Rendered inside standalone gameplan.php shell.
  */
+require_once __DIR__ . '/../../lib/image_helper.php';
+ */
 
 // -- Tab & Filter parameters -----------------------------------------------
 $vr_tab = isset($_GET['tab']) ? preg_replace('/[^a-z_]/', '', $_GET['tab']) : 'by_game';
@@ -387,7 +389,7 @@ if (!function_exists('vr_safe_color')) {
     <div class="card" data-clip-id="<?= (int)$clip['id'] ?>">
         <div style="position: relative; background: var(--bg-card); border-bottom: 1px solid var(--border); aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 8px 8px 0 0;">
             <?php if (!empty($clip['thumbnail_path'])): ?>
-            <img src="<?= htmlspecialchars($clip['thumbnail_path']) ?>" alt="Clip thumbnail" loading="lazy" style="width: 100%; height: 100%; object-fit: cover;">
+            <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $clip['thumbnail_path'])) ?>" alt="Clip thumbnail" loading="lazy" style="width: 100%; height: 100%; object-fit: cover;">
             <?php else: ?>
             <i class="fas fa-play-circle" style="font-size: 36px; color: var(--text-muted); opacity: 0.4;"></i>
             <?php endif; ?>
@@ -435,7 +437,7 @@ ksort($grouped);
         <div data-clip-id="<?= (int)$clip['id'] ?>" style="display: grid; grid-template-columns: 80px 1fr; align-items: center; gap: 16px; padding: 14px 20px; border-bottom: 1px solid var(--border); transition: background .2s; cursor: pointer;" onmouseover="this.style.background='var(--bg-hover, rgba(255,255,255,0.02))'" onmouseout="this.style.background='transparent'">
             <div style="width: 80px; height: 56px; background: rgba(var(--primary-rgb, 107,70,193), 0.12); border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid var(--border);">
                 <?php if (!empty($clip['thumbnail_path'])): ?>
-                <img src="<?= htmlspecialchars($clip['thumbnail_path']) ?>" alt="" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
+                <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $clip['thumbnail_path'])) ?>" alt="" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
                 <?php else: ?>
                 <i class="fas fa-play-circle" style="font-size: 22px; color: var(--primary);"></i>
                 <?php endif; ?>
@@ -559,7 +561,7 @@ ksort($grouped);
             <div data-clip-id="<?= (int)$gc['id'] ?>" style="display: grid; grid-template-columns: 80px 1fr; align-items: center; gap: 16px; padding: 14px 20px; border-bottom: 1px solid var(--border); transition: background .2s; cursor: pointer;" onmouseover="this.style.background='var(--bg-hover, rgba(255,255,255,0.02))'" onmouseout="this.style.background='transparent'">
                 <div style="width: 80px; height: 56px; background: rgba(var(--primary-rgb, 107,70,193), 0.12); border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid var(--border);">
                     <?php if (!empty($gc['thumbnail_path'])): ?>
-                    <img src="<?= htmlspecialchars($gc['thumbnail_path']) ?>" alt="" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
+                    <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $gc['thumbnail_path'])) ?>" alt="" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
                     <?php else: ?>
                     <i class="fas fa-play-circle" style="font-size: 22px; color: var(--primary);"></i>
                     <?php endif; ?>
@@ -729,7 +731,7 @@ ksort($grouped);
             <div class="card">
                 <div style="position: relative; background: var(--bg-card); border-bottom: 1px solid var(--border); aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 8px 8px 0 0;">
                     <?php if (!empty($sc['thumbnail_path'])): ?>
-                    <img src="<?= htmlspecialchars($sc['thumbnail_path']) ?>" alt="" loading="lazy" style="width: 100%; height: 100%; object-fit: cover;">
+                    <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $sc['thumbnail_path'])) ?>" alt="" loading="lazy" style="width: 100%; height: 100%; object-fit: cover;">
                     <?php else: ?>
                     <i class="fas fa-play-circle" style="font-size: 36px; color: var(--text-muted); opacity: 0.4;"></i>
                     <?php endif; ?>

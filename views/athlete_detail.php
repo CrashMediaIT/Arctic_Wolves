@@ -5,6 +5,7 @@
  */
 
 require_once __DIR__ . '/../security.php';
+require_once __DIR__ . '/../lib/image_helper.php';
 
 $athlete_id = isset($_GET['id']) ? intval($_GET['id']) : $user_id;
 
@@ -232,7 +233,7 @@ $teams = $teams_stmt->fetchAll();
                     <tr>
                         <td>
                             <?php if (!empty($team['team_id']) && !empty($team_logos[$team['team_id']])): ?>
-                                <img src="<?= htmlspecialchars($team_logos[$team['team_id']]) ?>" alt="" style="width: 24px; height: 24px; border-radius: 4px; object-fit: contain; vertical-align: middle; margin-right: 8px;">
+                                <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $team_logos[$team['team_id']])) ?>" alt="" style="width: 24px; height: 24px; border-radius: 4px; object-fit: contain; vertical-align: middle; margin-right: 8px;">
                             <?php endif; ?>
                             <?= htmlspecialchars($team['team_name']) ?>
                         </td>

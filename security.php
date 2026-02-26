@@ -33,7 +33,7 @@ function setSecurityHeaders() {
            "connect-src 'self' wss: https://maps.googleapis.com https://places.googleapis.com https://www.google.com; " .
            "worker-src 'self'; " .
            "manifest-src 'self'; " .
-           "media-src 'self' blob: mediastream:; " .
+           "media-src 'self' blob: mediastream: https:; " .
            "frame-src 'self' https://www.google.com https://www.gstatic.com; " .
            "frame-ancestors 'self';";
     header("Content-Security-Policy: $csp");

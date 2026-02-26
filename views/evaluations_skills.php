@@ -6,6 +6,7 @@
  */
 
 require_once __DIR__ . '/../security.php';
+require_once __DIR__ . '/../lib/image_helper.php';
 
 $current_user_id = $user_id;
 $current_user_role = $user_role;
@@ -1026,9 +1027,9 @@ if ($eval_id && $evaluation) {
                                             <?php foreach ($media_by_score[$skill['id']] as $media): ?>
                                                 <div class="media-item" data-media-id="<?= $media['id'] ?>">
                                                     <?php if ($media['media_type'] === 'image'): ?>
-                                                        <img src="<?= htmlspecialchars($media['media_url']) ?>" alt="<?= htmlspecialchars($media['caption'] ?? '') ?>">
+                                                        <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $media['media_url'])) ?>" alt="<?= htmlspecialchars($media['caption'] ?? '') ?>">
                                                     <?php else: ?>
-                                                        <video src="<?= htmlspecialchars($media['media_url']) ?>" controls></video>
+                                                        <video src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $media['media_url'])) ?>" controls></video>
                                                     <?php endif; ?>
                                                     <?php if ($isCoach): ?>
                                                         <button class="media-delete" onclick="deleteMedia(<?= $media['id'] ?>)">

@@ -3,6 +3,7 @@
  * Game Plan - My Clips View (Athlete Only)
  * Restyled with site-standard classes: card, btn, form-input, form-select, filter-box.
  */
+require_once __DIR__ . '/../../lib/image_helper.php';
 
 if ($isAnyCoach) {
     echo '<div class="empty-state" style="text-align:center;padding:40px"><i class="fas fa-info-circle" style="font-size:40px;color:var(--text-muted);display:block;margin-bottom:16px"></i><h3>Athlete View</h3><p style="color:var(--text-muted)">This page is for athletes. Visit <a href="/gameplan.php?page=video_review">Video Review</a> to see all clips.</p></div>';
@@ -185,10 +186,10 @@ if (!function_exists('gp_format_duration')) {
 <?php else: ?>
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;">
     <?php foreach ($mc_clips as $clip): ?>
-    <div class="card gp-clip-item" style="margin-bottom:0;cursor:pointer;transition:transform .15s,border-color .2s;" data-clip-id="<?= (int)$clip['id'] ?>" data-source="<?= htmlspecialchars($clip['source_path'] ?? '') ?>">
+    <div class="card gp-clip-item" style="margin-bottom:0;cursor:pointer;transition:transform .15s,border-color .2s;" data-clip-id="<?= (int)$clip['id'] ?>" data-source="<?= htmlspecialchars(resolveRustfsUrl($pdo, $clip['source_path'] ?? '') ?? '') ?>">
         <div style="position:relative;background:#0a0a0f;border-radius:12px 12px 0 0;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;overflow:hidden;">
             <?php if (!empty($clip['thumbnail_path'])): ?>
-            <img src="<?= htmlspecialchars($clip['thumbnail_path']) ?>" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;">
+            <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $clip['thumbnail_path'])) ?>" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;">
             <?php else: ?>
             <i class="fas fa-play-circle" style="font-size:40px;color:var(--text-muted);"></i>
             <?php endif; ?>

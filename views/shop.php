@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../lib/image_helper.php';
 /**
  * Dashboard Shop View
  * Displays merchandise products within the dashboard interface
@@ -255,7 +256,7 @@ function buildShopUrl($params = []) {
                     <div class="product-card <?= !$inStock ? 'out-of-stock' : '' ?>">
                         <?php if (!empty($product['image_url'])): ?>
                             <div class="product-image">
-                                <img src="<?= htmlspecialchars($product['image_url']) ?>" alt="<?= htmlspecialchars($product['name']) ?>">
+                                <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $product['image_url'])) ?>" alt="<?= htmlspecialchars($product['name']) ?>">
                                 <?php if (!$inStock): ?>
                                     <span class="product-badge out-of-stock-badge">Out of Stock</span>
                                 <?php endif; ?>

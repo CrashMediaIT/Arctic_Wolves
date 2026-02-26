@@ -1,6 +1,7 @@
 <!-- Admin System Tools View -->
 <?php
 $activeTab = $_GET['tab'] ?? 'settings';
+require_once __DIR__ . '/../lib/image_helper.php';
 
 // Fetch system settings from database
 try {
@@ -87,6 +88,14 @@ foreach ($theme_defaults as $key => $value) {
 
 // Helper for favicon checkbox
 $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_settings['use_logo_as_favicon'] !== '0';
+
+// Resolve RustFS URLs through the media proxy so the browser can load them
+$url_keys = ['logo_url', 'center_ice_logo_url', 'business_card_front_bg_url', 'business_card_back_bg_url'];
+foreach ($url_keys as $uk) {
+    if (!empty($theme_settings[$uk])) {
+        $theme_settings[$uk] = resolveRustfsUrl($pdo, $theme_settings[$uk]);
+    }
+}
 ?>
 
 <div class="page-header">
