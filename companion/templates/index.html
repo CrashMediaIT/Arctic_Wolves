@@ -249,11 +249,11 @@
                     <div class="card-value"><span id="active-jobs">—</span> <span style="font-size:1rem;color:var(--text-dim)">/ <span id="max-jobs">—</span></span></div>
                     <div class="card-label">Concurrent processing slots</div>
                 </div>
-                <!-- Video Storage Card -->
+                <!-- Main App Card -->
                 <div class="card">
-                    <h3>Video Storage</h3>
-                    <div id="storage-status" class="card-value" style="font-size:1.2rem;">—</div>
-                    <div class="card-label" id="storage-path">&nbsp;</div>
+                    <h3>Main App</h3>
+                    <div id="main-app-status" class="card-value" style="font-size:1.2rem;">—</div>
+                    <div class="card-label" id="main-app-detail">&nbsp;</div>
                 </div>
                 <!-- S3 / RustFS Card -->
                 <div class="card">
@@ -323,23 +323,6 @@
         </div>
     </section>
 
-    <!-- HLS WATCHER SECTION -->
-    <section class="section" style="padding-top:0;">
-        <div class="container">
-            <div class="section-header">
-                <span class="eyebrow">Automation</span>
-                <h2>HLS Staging Watcher</h2>
-            </div>
-            <div class="cards-grid">
-                <div class="card">
-                    <h3>Watcher Status</h3>
-                    <div id="watcher-status" class="card-value" style="font-size:1.2rem;">—</div>
-                    <div class="card-label">Automatic HLS transcoding</div>
-                </div>
-            </div>
-        </div>
-    </section>
-
     <!-- SETTINGS SECTION -->
     <section id="settings" class="section" style="padding-top:0;">
         <div class="container">
@@ -355,9 +338,16 @@
                         <div class="form-section-title">Server</div>
 
                         <div class="form-group">
-                            <label for="cfg-api-key">API Key</label>
-                            <input id="cfg-api-key" name="api_key" type="password" class="form-input" placeholder="Enter API key" autocomplete="off">
-                            <div class="form-hint" id="cfg-api-key-hint">Not set</div>
+                            <label>API Key</label>
+                            <div id="cfg-api-key-display" class="form-input" role="status" aria-live="polite" style="background:var(--surface);cursor:default;color:var(--text-dim);">Not set</div>
+                            <div style="margin-top:8px;">
+                                <button type="button" class="btn-secondary" onclick="generateApiKey()">Generate API Key</button>
+                            </div>
+                            <div class="form-hint" id="cfg-api-key-hint">Generated here, then enter in the main app's Game Plan Settings</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-main-app-url">Main App URL</label>
+                            <input id="cfg-main-app-url" name="main_app_url" type="text" class="form-input" placeholder="https://your-app-domain.com" autocomplete="off">
                         </div>
                         <div class="form-group">
                             <label for="cfg-hw-accel">Hardware Acceleration</label>
@@ -371,16 +361,13 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="cfg-video-base">Video Base Path</label>
-                            <input id="cfg-video-base" name="video_base_path" type="text" class="form-input" placeholder="/videos">
-                        </div>
-                        <div class="form-group">
                             <label for="cfg-max-jobs">Max Concurrent Jobs</label>
                             <input id="cfg-max-jobs" name="max_concurrent_jobs" type="number" class="form-input" min="1" max="16" placeholder="2">
                         </div>
 
                         <!-- S3 / RustFS -->
                         <div class="form-section-title">S3 / RustFS</div>
+                        <div class="form-hint" style="grid-column:1/-1;margin-bottom:4px;">These credentials are typically pushed from the main app's RustFS settings. You can also enter them manually below.</div>
 
                         <div class="form-group">
                             <label for="cfg-s3-endpoint">Endpoint URL</label>
@@ -418,18 +405,6 @@
                             </div>
                         </div>
 
-                        <!-- HLS Staging -->
-                        <div class="form-section-title">HLS Staging Watcher</div>
-
-                        <div class="form-group">
-                            <label for="cfg-hls-prefix">Staging Prefix</label>
-                            <input id="cfg-hls-prefix" name="hls_staging_prefix" type="text" class="form-input" placeholder="Images/videos/">
-                            <div class="form-hint">S3 key prefix to watch for new uploads</div>
-                        </div>
-                        <div class="form-group">
-                            <label for="cfg-hls-interval">Poll Interval (seconds)</label>
-                            <input id="cfg-hls-interval" name="hls_poll_interval" type="number" class="form-input" min="5" placeholder="30">
-                        </div>
                     </div>
 
                     <div class="form-actions">
@@ -438,7 +413,7 @@
                         <span id="save-msg" class="save-msg"></span>
                     </div>
 
-                    <div class="form-hint" style="margin-top:16px;">Changes take effect immediately. To persist across restarts, update the environment variables or <code>.env</code> file.</div>
+                    <div class="form-hint" style="margin-top:16px;">All settings are saved to the encrypted persistent config file and survive container restarts.</div>
                 </form>
             </div>
         </div>
@@ -484,13 +459,14 @@
                 document.getElementById('active-jobs').textContent = d.active_jobs ?? '—';
                 document.getElementById('max-jobs').textContent = d.max_concurrent_jobs ?? '—';
 
-                // Storage
-                if (d.video_base_accessible) {
-                    document.getElementById('storage-status').innerHTML = '<span style="color:#22c55e">Connected</span>';
+                // Main App
+                if (d.main_app_url) {
+                    document.getElementById('main-app-status').innerHTML = '<span style="color:#22c55e">Configured</span>';
+                    document.getElementById('main-app-detail').textContent = d.main_app_url;
                 } else {
-                    document.getElementById('storage-status').innerHTML = '<span style="color:#ef4444">Unavailable</span>';
+                    document.getElementById('main-app-status').innerHTML = '<span style="color:var(--text-dim)">Not Configured</span>';
+                    document.getElementById('main-app-detail').textContent = '';
                 }
-                document.getElementById('storage-path').textContent = d.video_base_path || '';
 
                 // S3
                 if (d.s3_configured) {
@@ -517,11 +493,6 @@
                 document.getElementById('hw-decoders').innerHTML = (hw.decoders || []).length
                     ? hw.decoders.map(e => '<span>' + e + '</span>').join('')
                     : '<span style="color:var(--text-dim);">software only</span>';
-
-                // Watcher
-                document.getElementById('watcher-status').innerHTML = d.hls_staging_watcher
-                    ? '<span style="color:#22c55e">Active</span>'
-                    : '<span style="color:var(--text-dim)">Inactive</span>';
 
                 // Health badge
                 const badge = document.getElementById('health-badge');
@@ -581,12 +552,20 @@
                 const c = await res.json();
 
                 document.getElementById('cfg-hw-accel').value = c.hw_accel || 'auto';
-                document.getElementById('cfg-video-base').value = c.video_base_path || '';
+                document.getElementById('cfg-main-app-url').value = c.main_app_url || '';
                 document.getElementById('cfg-max-jobs').value = c.max_concurrent_jobs ?? '';
 
-                // Secrets: show hint but don't fill value
-                document.getElementById('cfg-api-key').value = '';
-                document.getElementById('cfg-api-key-hint').textContent = c.api_key_set ? 'Currently set (leave blank to keep)' : 'Not set';
+                // API key status display
+                document.getElementById('cfg-api-key-display').textContent = c.api_key_set ? '••••••••••••••••' : 'Not set';
+                document.getElementById('cfg-api-key-hint').textContent = c.api_key_set
+                    ? 'API key is set. Generate a new one if needed.'
+                    : 'Generated here, then enter in the main app\'s Game Plan Settings';
+
+                // Config encryption status
+                if (c.config_encrypted) {
+                    document.getElementById('cfg-api-key-hint').textContent += ' 🔒 Config is encrypted.';
+                }
+
                 document.getElementById('cfg-s3-access-key').value = '';
                 document.getElementById('cfg-s3-access-hint').textContent = c.s3_access_key_set ? 'Currently set (leave blank to keep)' : 'Not set';
                 document.getElementById('cfg-s3-secret-key').value = '';
@@ -597,8 +576,6 @@
                 document.getElementById('cfg-s3-region').value = c.s3_region || '';
                 document.getElementById('cfg-s3-use-ssl').checked = !!c.s3_use_ssl;
                 document.getElementById('cfg-s3-verify-ssl').checked = !!c.s3_verify_ssl;
-                document.getElementById('cfg-hls-prefix').value = c.hls_staging_prefix || '';
-                document.getElementById('cfg-hls-interval').value = c.hls_poll_interval ?? '';
             } catch { /* silently ignore on load failure */ }
         }
 
@@ -611,10 +588,8 @@
             const payload = {};
             const val = (id) => document.getElementById(id).value.trim();
 
-            // Only send secret fields if user typed something
-            if (val('cfg-api-key')) payload.api_key = val('cfg-api-key');
             payload.hw_accel = val('cfg-hw-accel');
-            payload.video_base_path = val('cfg-video-base');
+            payload.main_app_url = val('cfg-main-app-url');
             if (val('cfg-max-jobs')) payload.max_concurrent_jobs = parseInt(val('cfg-max-jobs'), 10);
             payload.s3_endpoint = val('cfg-s3-endpoint');
             payload.s3_bucket = val('cfg-s3-bucket');
@@ -623,8 +598,6 @@
             if (val('cfg-s3-secret-key')) payload.s3_secret_key = val('cfg-s3-secret-key');
             payload.s3_use_ssl = document.getElementById('cfg-s3-use-ssl').checked;
             payload.s3_verify_ssl = document.getElementById('cfg-s3-verify-ssl').checked;
-            payload.hls_staging_prefix = val('cfg-hls-prefix');
-            if (val('cfg-hls-interval')) payload.hls_poll_interval = parseInt(val('cfg-hls-interval'), 10);
 
             try {
                 const res = await fetch(API_BASE + '/api/config', {
@@ -634,8 +607,6 @@
                 if (res.ok) {
                     msgEl.style.color = '#22c55e';
                     msgEl.textContent = '✓ Settings saved';
-                    // If API key was changed, update localStorage so subsequent calls work
-                    if (payload.api_key) { localStorage.setItem('companion_api_key', payload.api_key); }
                     loadConfig();
                     refreshHealth();
                 } else {
@@ -647,6 +618,27 @@
                 msgEl.textContent = 'Network error';
             }
             return false;
+        }
+
+        /* --- Generate API Key --- */
+        async function generateApiKey() {
+            if (!confirm('Generate a new API key? This will replace the current key.')) return;
+            try {
+                const res = await fetch(API_BASE + '/api/generate-key', {
+                    method: 'POST', headers: apiHeaders()
+                });
+                const d = await res.json();
+                if (res.ok && d.api_key) {
+                    localStorage.setItem('companion_api_key', d.api_key);
+                    prompt('New API key generated. Copy it and enter it in the main app\'s Game Plan Settings:', d.api_key);
+                    loadConfig();
+                    refreshHealth();
+                } else {
+                    alert(d.error || 'Failed to generate API key');
+                }
+            } catch {
+                alert('Network error while generating API key');
+            }
         }
 
         /* --- Init --- */
