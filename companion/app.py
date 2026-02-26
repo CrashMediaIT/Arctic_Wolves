@@ -173,10 +173,10 @@ def _save_persistent_config(cfg: dict) -> bool:
 
 
 # Load all settings from the encrypted persistent config file.
-# The ONLY environment variable required is ENCRYPTION_KEY (needed to
-# decrypt the config).  Everything else is entered through the companion
-# web UI (Settings tab) and persisted in the encrypted config file on the
-# Docker volume.
+# No environment variables are used.  The encryption key is stored
+# at /config/encryption.key (entered via the setup page on first start).
+# Everything else is entered through the companion web UI (Settings tab)
+# and persisted in the encrypted config file on the Docker volume.
 _persisted = _load_persistent_config()
 
 def _pcfg(key: str, default: str = "") -> str:
@@ -1106,6 +1106,9 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
             jobs[job_id]["finished_at"] = time.time()
         return
 
+    # Resolve callback URL once for both success and failure paths
+    cb_url = callback_url or (MAIN_APP_URL + "/api/v1/companion/callback" if MAIN_APP_URL else "")
+
     work_dir = os.path.join(TEMP_DIR, job_id)
     os.makedirs(work_dir, exist_ok=True)
 
@@ -1210,7 +1213,6 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
             jobs[job_id]["variants"] = [v["label"] for v in variants]
 
         # Notify the main application that transcoding is complete
-        cb_url = callback_url or (MAIN_APP_URL + "/api/v1/companion/callback" if MAIN_APP_URL else "")
         variant_playlists = {v["label"]: f"{output_prefix}/{v['label']}/playlist.m3u8" for v in variants}
         with job_lock:
             vid_id = jobs[job_id].get("video_id")
@@ -1232,7 +1234,6 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
             jobs[job_id]["finished_at"] = time.time()
 
         # Notify the main application about failure too
-        cb_url = callback_url or (MAIN_APP_URL + "/api/v1/companion/callback" if MAIN_APP_URL else "")
         with job_lock:
             vid_id = jobs[job_id].get("video_id")
         _send_callback(cb_url, {
