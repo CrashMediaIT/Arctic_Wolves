@@ -19,7 +19,7 @@ $action = $_POST['action'] ?? '';
 $user_id = $_SESSION['user_id'] ?? 0;
 
 // Determine if we should return JSON or redirect
-$json_actions = ['test_nextcloud', 'test_smtp', 'test_github', 'check_updates', 'apply_updates', 'test_nextcloud_backup', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library', 'test_docuseal', 'test_stallion', 'test_google_maps', 'create_restriction', 'remove_restriction', 'add_blocklist_entry', 'remove_blocklist_entry', 'add_pos_whitelist_entry', 'remove_pos_whitelist_entry', 'toggle_pos_whitelist_entry', 'get_ndi_camera', 'update_ndi_camera', 'delete_ndi_camera', 'toggle_ndi_camera', 'get_cluster_status', 'test_cluster_node', 'add_cluster_node', 'remove_cluster_node', 'save_cluster_settings', 'test_paperless', 'test_rustfs'];
+$json_actions = ['test_smtp', 'test_github', 'check_updates', 'apply_updates', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library', 'test_docuseal', 'test_stallion', 'test_google_maps', 'create_restriction', 'remove_restriction', 'add_blocklist_entry', 'remove_blocklist_entry', 'add_pos_whitelist_entry', 'remove_pos_whitelist_entry', 'toggle_pos_whitelist_entry', 'get_ndi_camera', 'update_ndi_camera', 'delete_ndi_camera', 'toggle_ndi_camera', 'get_cluster_status', 'test_cluster_node', 'add_cluster_node', 'remove_cluster_node', 'save_cluster_settings', 'test_paperless', 'test_rustfs'];
 $is_json = in_array($action, $json_actions);
 
 if ($is_json) {
@@ -190,105 +190,6 @@ try {
                 $error = $stmt->fetchColumn();
                 echo json_encode(['success' => false, 'message' => $error ?: 'Failed to send test email']);
             }
-            exit;
-            
-        case 'update_nextcloud':
-            $url = trim($_POST['nextcloud_url']);
-            $username = trim($_POST['nextcloud_username']);
-            $password = trim($_POST['nextcloud_password']);
-            $folder = trim($_POST['nextcloud_receipt_folder'] ?? $_POST['nextcloud_folder'] ?? '');
-            $webdav_path = trim($_POST['nextcloud_webdav_path'] ?? '');
-            $ocr_enabled = isset($_POST['nextcloud_ocr_enabled']) ? '1' : '0';
-            $auto_sync = isset($_POST['nextcloud_auto_sync']) ? '1' : '0';
-            
-            // Directory settings
-            $backups_dir = trim($_POST['nextcloud_backups_dir'] ?? '/Backups');
-            $videos_dir = trim($_POST['nextcloud_videos_dir'] ?? '/Videos');
-            $receipts_dir = trim($_POST['nextcloud_receipts_dir'] ?? '/Receipts');
-            $documents_dir = trim($_POST['nextcloud_documents_dir'] ?? '/Documents');
-            $hr_dir = trim($_POST['nextcloud_hr_dir'] ?? '/HR');
-            $terminations_dir = trim($_POST['nextcloud_terminations_dir'] ?? '/HR/Terminations');
-            $contracts_dir = trim($_POST['nextcloud_contracts_dir'] ?? '/accounting/contracts');
-            $images_dir = trim($_POST['nextcloud_images_dir'] ?? '/Images');
-            $persistent_path = trim($_POST['nextcloud_persistent_path'] ?? '');
-            
-            // Sync options
-            $sync_backups = isset($_POST['sync_backups']) ? '1' : '0';
-            $sync_videos = isset($_POST['sync_videos']) ? '1' : '0';
-            $sync_receipts = isset($_POST['sync_receipts']) ? '1' : '0';
-            $sync_documents = isset($_POST['sync_documents']) ? '1' : '0';
-            $sync_hr = isset($_POST['sync_hr']) ? '1' : '0';
-            $sync_terminations = isset($_POST['sync_terminations']) ? '1' : '0';
-            $sync_contracts = isset($_POST['sync_contracts']) ? '1' : '0';
-            $sync_images = isset($_POST['sync_images']) ? '1' : '0';
-            
-            updateSetting($pdo, 'nextcloud_url', $url);
-            updateSetting($pdo, 'nextcloud_username', $username);
-            // Only update password if a new one is provided
-            if (!empty($password)) {
-                // Encrypt password before storing
-                $encrypted_password = encryptPassword($password);
-                updateSetting($pdo, 'nextcloud_password', $encrypted_password);
-            }
-            updateSetting($pdo, 'nextcloud_receipt_folder', $folder);
-            updateSetting($pdo, 'nextcloud_webdav_path', $webdav_path);
-            updateSetting($pdo, 'nextcloud_ocr_enabled', $ocr_enabled);
-            updateSetting($pdo, 'nextcloud_auto_sync', $auto_sync);
-            
-            // Save directory settings
-            updateSetting($pdo, 'nextcloud_backups_dir', $backups_dir);
-            updateSetting($pdo, 'nextcloud_videos_dir', $videos_dir);
-            updateSetting($pdo, 'nextcloud_receipts_dir', $receipts_dir);
-            updateSetting($pdo, 'nextcloud_documents_dir', $documents_dir);
-            updateSetting($pdo, 'nextcloud_hr_dir', $hr_dir);
-            updateSetting($pdo, 'nextcloud_terminations_dir', $terminations_dir);
-            updateSetting($pdo, 'nextcloud_contracts_dir', $contracts_dir);
-            updateSetting($pdo, 'nextcloud_images_dir', $images_dir);
-            updateSetting($pdo, 'nextcloud_persistent_path', $persistent_path);
-            
-            // Save sync options
-            updateSetting($pdo, 'sync_backups', $sync_backups);
-            updateSetting($pdo, 'sync_videos', $sync_videos);
-            updateSetting($pdo, 'sync_receipts', $sync_receipts);
-            updateSetting($pdo, 'sync_documents', $sync_documents);
-            updateSetting($pdo, 'sync_hr', $sync_hr);
-            updateSetting($pdo, 'sync_terminations', $sync_terminations);
-            updateSetting($pdo, 'sync_contracts', $sync_contracts);
-            updateSetting($pdo, 'sync_images', $sync_images);
-            
-            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
-                'action' => 'update_nextcloud',
-                'settings' => ['nextcloud_url' => $url, 'nextcloud_username' => $username, 'nextcloud_ocr_enabled' => $ocr_enabled, 'nextcloud_auto_sync' => $auto_sync]
-            ]);
-            
-            // Redirect back to the appropriate page
-            header('Location: dashboard.php?page=system_tools&tab=nextcloud&success=1');
-            exit;
-            
-        case 'test_nextcloud':
-            $password = trim($_POST['nextcloud_password'] ?? '');
-            // If no password provided, use the stored encrypted password from database
-            if (empty($password)) {
-                $stored_pass_stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'nextcloud_password'");
-                $stored_pass_stmt->execute();
-                $encrypted_pass = $stored_pass_stmt->fetchColumn();
-                if (!empty($encrypted_pass)) {
-                    $decrypted = decryptPassword($encrypted_pass);
-                    if (!empty($decrypted)) {
-                        $password = $decrypted;
-                    }
-                }
-            }
-            $settings = [
-                'nextcloud_url' => trim($_POST['nextcloud_url'] ?? ''),
-                'nextcloud_username' => trim($_POST['nextcloud_username'] ?? ''),
-                'nextcloud_password' => $password,
-                'nextcloud_receipt_folder' => trim($_POST['nextcloud_receipt_folder'] ?? ''),
-                'nextcloud_webdav_path' => trim($_POST['nextcloud_webdav_path'] ?? '')
-            ];
-            
-            $result = testNextcloudConnection($settings, 'primary');
-            echo json_encode($result);
             exit;
             
         case 'update_rustfs':
@@ -780,58 +681,6 @@ try {
                 });
             }
             
-            echo json_encode($result);
-            exit;
-            
-        case 'update_nextcloud_backup':
-            $backup_enabled = isset($_POST['nextcloud_backup_enabled']) ? '1' : '0';
-            $backup_url = trim($_POST['nextcloud_backup_url'] ?? '');
-            $backup_username = trim($_POST['nextcloud_backup_username'] ?? '');
-            $backup_password = trim($_POST['nextcloud_backup_password'] ?? '');
-            $failover_timeout = intval($_POST['nextcloud_failover_timeout'] ?? 300);
-            $sync_interval = intval($_POST['nextcloud_sync_interval'] ?? 60);
-            
-            updateSetting($pdo, 'nextcloud_backup_enabled', $backup_enabled);
-            updateSetting($pdo, 'nextcloud_backup_url', $backup_url);
-            updateSetting($pdo, 'nextcloud_backup_username', $backup_username);
-            if (!empty($backup_password)) {
-                $encrypted_password = encryptPassword($backup_password);
-                updateSetting($pdo, 'nextcloud_backup_password', $encrypted_password);
-            }
-            updateSetting($pdo, 'nextcloud_failover_timeout', $failover_timeout);
-            updateSetting($pdo, 'nextcloud_sync_interval', $sync_interval);
-            
-            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
-                'action' => 'update_nextcloud_backup',
-                'settings' => ['nextcloud_backup_enabled' => $backup_enabled, 'nextcloud_backup_url' => $backup_url, 'nextcloud_backup_username' => $backup_username]
-            ]);
-            
-            header('Location: dashboard.php?page=system_tools&tab=nextcloud&success=1');
-            exit;
-            
-        case 'test_nextcloud_backup':
-            $backup_password = trim($_POST['nextcloud_backup_password'] ?? '');
-            // If no password provided, use the stored encrypted password from database
-            if (empty($backup_password)) {
-                $stored_pass_stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'nextcloud_backup_password'");
-                $stored_pass_stmt->execute();
-                $encrypted_pass = $stored_pass_stmt->fetchColumn();
-                if (!empty($encrypted_pass)) {
-                    $decrypted = decryptPassword($encrypted_pass);
-                    if (!empty($decrypted)) {
-                        $backup_password = $decrypted;
-                    }
-                }
-            }
-            $settings = [
-                'nextcloud_url' => trim($_POST['nextcloud_backup_url'] ?? ''),
-                'nextcloud_username' => trim($_POST['nextcloud_backup_username'] ?? ''),
-                'nextcloud_password' => $backup_password,
-                'nextcloud_receipt_folder' => '/',
-                'nextcloud_webdav_path' => ''
-            ];
-            
-            $result = testNextcloudConnection($settings, 'backup');
             echo json_encode($result);
             exit;
             
@@ -1870,8 +1719,6 @@ try {
         $action_tab_map = [
             'update_payments'    => 'payments',
             'update_smtp'        => 'smtp',
-            'update_nextcloud'   => 'nextcloud',
-            'update_nextcloud_backup' => 'nextcloud',
             'update_rustfs'      => 'rustfs',
             'update_theme'       => 'theme',
             'update_google_maps' => 'mileage',
