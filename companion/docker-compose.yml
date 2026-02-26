@@ -11,6 +11,7 @@ services:
     volumes:
       - /videos:/videos          # Mount your NFS/SMB video share here
     environment:
+      - TZ=${TZ:-America/Toronto}
       - API_KEY=${API_KEY:-changeme}
       - VIDEO_BASE_PATH=/videos
       - HW_ACCEL=auto

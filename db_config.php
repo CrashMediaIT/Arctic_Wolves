@@ -161,12 +161,25 @@ if ($db_config_valid) {
 // 5. APPLY TIMEZONE FROM SYSTEM SETTINGS
 // Load the configured timezone early so ALL PHP date/time functions use it,
 // not just the Logger / ErrorLogger classes.
+// Also sync the MySQL session timezone so NOW(), CURDATE(), CURRENT_TIMESTAMP
+// return local time instead of the server default (often UTC in Docker).
 if ($db_connected && $pdo) {
     try {
         $tz_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'timezone' LIMIT 1");
         $tz_value = $tz_stmt->fetchColumn();
         if (!empty($tz_value) && in_array($tz_value, timezone_identifiers_list())) {
             date_default_timezone_set($tz_value);
+
+            // Sync the database session timezone to match PHP.
+            // DateTimeZone::getOffset() returns seconds; convert to ±HH:MM for MySQL.
+            $tz_obj    = new DateTimeZone($tz_value);
+            $offset_s  = $tz_obj->getOffset(new DateTime('now', $tz_obj));
+            $sign      = $offset_s >= 0 ? '+' : '-';
+            $abs       = abs($offset_s);
+            $hours     = str_pad((int)($abs / 3600), 2, '0', STR_PAD_LEFT);
+            $minutes   = str_pad((int)(($abs % 3600) / 60), 2, '0', STR_PAD_LEFT);
+            $mysql_tz  = $sign . $hours . ':' . $minutes;
+            $pdo->exec("SET time_zone = '{$mysql_tz}'");
         }
     } catch (Exception $e) {
         // Silently fail — table may not exist yet (pre-setup)
