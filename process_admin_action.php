@@ -2270,47 +2270,41 @@ if ($action == 'admin_update_profile_image') {
             exit();
         }
         
-        $upload_dir = 'uploads/profiles/';
-        if (!is_dir($upload_dir)) {
-            mkdir($upload_dir, 0755, true);
-            // Create .htaccess to prevent PHP execution
-            file_put_contents($upload_dir . '.htaccess', "Options -Indexes\n<FilesMatch \"\\.(php|phtml|php3|php4|php5|phps|shtml|pl|py|cgi)$\">\n    Order Deny,Allow\n    Deny from all\n</FilesMatch>");
-        }
-        
         // Generate secure random filename
         $random_suffix = bin2hex(random_bytes(8));
-        $new_name = $upload_dir . "profile_" . $user_id_to_update . "_" . $random_suffix . "." . $ext;
+        $nc_filename = "profile_" . $user_id_to_update . "_" . $random_suffix . "." . $ext;
+        $new_name = 'uploads/profiles/' . $nc_filename;
         
-        if (move_uploaded_file($_FILES['profile_image']['tmp_name'], $new_name)) {
+        $persist = persistUploadedFile($pdo, $_FILES['profile_image']['tmp_name'], 'profiles', $nc_filename, $new_name);
+        $db_path = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $new_name;
+        
+        if ($persist['success']) {
             // Delete old profile image if exists
             $stmt = $pdo->prepare("SELECT profile_image FROM users WHERE id = ?");
             $stmt->execute([$user_id_to_update]);
             $old_image = $stmt->fetchColumn();
-            if ($old_image && file_exists($old_image)) {
-                unlink($old_image);
-            }
-            
-            // Update database
-            $pdo->prepare("UPDATE users SET profile_image = ? WHERE id = ?")->execute([$new_name, $user_id_to_update]);
-            
-            // Upload to Nextcloud for persistent storage
-            try {
-                $nc_settings = getNextcloudSettings($pdo);
-                if (!empty($nc_settings['nextcloud_url'])) {
-                    if (!empty($nc_settings['nextcloud_password'])) {
-                        $decrypted = decryptPassword($nc_settings['nextcloud_password']);
-                        if (!empty($decrypted)) {
-                            $nc_settings['nextcloud_password'] = $decrypted;
+            // Clean up old image from RustFS
+            if ($old_image && preg_match('#^https?://#', $old_image)) {
+                try {
+                    $rustfs = getRustFSSettings($pdo);
+                    if (isRustFSConfigured($rustfs)) {
+                        $base_url = getRustFSBaseUrl($rustfs);
+                        if (strpos($old_image, $base_url) === 0) {
+                            $object_key = substr($old_image, strlen($base_url) + 1);
+                            deleteFromRustFS($rustfs, $object_key);
                         }
                     }
-                    $nc_filename = "profile_" . $user_id_to_update . "_" . $random_suffix . "." . $ext;
-                    $result = uploadImageToNextcloud($pdo, $nc_settings, $new_name, 'profiles', $nc_filename);
-                    if ($result['success']) {
-                        $pdo->prepare("UPDATE users SET nextcloud_image_path = ? WHERE id = ?")->execute([$result['remote_path'], $user_id_to_update]);
-                    }
+                } catch (Exception $delErr) {
+                    error_log("RustFS delete old profile image: " . $delErr->getMessage());
                 }
-            } catch (Exception $e) {
-                error_log("Nextcloud profile image upload failed: " . $e->getMessage());
+            }
+            
+            // Update database with RustFS URL
+            $pdo->prepare("UPDATE users SET profile_image = ? WHERE id = ?")->execute([$db_path, $user_id_to_update]);
+            
+            // Store persistent path for recovery
+            if (!empty($persist['nextcloud_path'])) {
+                $pdo->prepare("UPDATE users SET nextcloud_image_path = ? WHERE id = ?")->execute([$persist['nextcloud_path'], $user_id_to_update]);
             }
             
             Auditor::log($pdo, $user_id, 'update', 'users', $user_id_to_update, ['action' => 'admin_update_profile_image']);
@@ -3208,14 +3202,10 @@ if ($action == 'create_team') {
         
         $ext = strtolower(pathinfo($_FILES['team_logo']['name'], PATHINFO_EXTENSION));
         if (in_array($mime, $allowed_types) && in_array($ext, $allowed_extensions) && $_FILES['team_logo']['size'] <= $max_size) {
-            $upload_dir = __DIR__ . '/uploads/team_logos/';
-            if (!is_dir($upload_dir)) {
-                mkdir($upload_dir, 0755, true);
-            }
             $filename = 'team_' . time() . '_' . bin2hex(random_bytes(8)) . '.' . $ext;
-            if (move_uploaded_file($_FILES['team_logo']['tmp_name'], $upload_dir . $filename)) {
-                $logo_url = 'uploads/team_logos/' . $filename;
-            }
+            $local_logo_path = 'uploads/team_logos/' . $filename;
+            $persist = persistUploadedFile($pdo, $_FILES['team_logo']['tmp_name'], 'team_logos', $filename, $local_logo_path);
+            $logo_url = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $local_logo_path;
         }
     }
     
@@ -3247,24 +3237,12 @@ if ($action == 'create_team') {
         }
         Auditor::log($pdo, $user_id, 'create', 'teams', $new_team_id, ['action' => 'create_team']);
         
-        // Upload team logo to Nextcloud for persistent storage
-        if (!empty($logo_url)) {
+        // Store persistent path for recovery
+        if (!empty($logo_url) && isset($persist) && !empty($persist['nextcloud_path'])) {
             try {
-                $nc_settings = getNextcloudSettings($pdo);
-                if (!empty($nc_settings['nextcloud_url'])) {
-                    if (!empty($nc_settings['nextcloud_password'])) {
-                        $decrypted = decryptPassword($nc_settings['nextcloud_password']);
-                        if (!empty($decrypted)) {
-                            $nc_settings['nextcloud_password'] = $decrypted;
-                        }
-                    }
-                    $result = uploadImageToNextcloud($pdo, $nc_settings, $logo_url, 'team_logos', $filename);
-                    if ($result['success']) {
-                        $pdo->prepare("UPDATE teams SET nextcloud_logo_path = ? WHERE id = ?")->execute([$result['remote_path'], $new_team_id]);
-                    }
-                }
+                $pdo->prepare("UPDATE teams SET nextcloud_logo_path = ? WHERE id = ?")->execute([$persist['nextcloud_path'], $new_team_id]);
             } catch (Exception $e) {
-                error_log("Nextcloud team logo upload failed: " . $e->getMessage());
+                error_log("Team logo persistent path save failed: " . $e->getMessage());
             }
         }
         
@@ -3313,14 +3291,10 @@ if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'team') {
             
             $ext = strtolower(pathinfo($_FILES['team_logo']['name'], PATHINFO_EXTENSION));
             if (in_array($mime, $allowed_types) && in_array($ext, $allowed_extensions) && $_FILES['team_logo']['size'] <= $max_size) {
-                $upload_dir = __DIR__ . '/uploads/team_logos/';
-                if (!is_dir($upload_dir)) {
-                    mkdir($upload_dir, 0755, true);
-                }
                 $filename = 'team_' . time() . '_' . bin2hex(random_bytes(8)) . '.' . $ext;
-                if (move_uploaded_file($_FILES['team_logo']['tmp_name'], $upload_dir . $filename)) {
-                    $logo_url = 'uploads/team_logos/' . $filename;
-                }
+                $local_logo_path = 'uploads/team_logos/' . $filename;
+                $persist = persistUploadedFile($pdo, $_FILES['team_logo']['tmp_name'], 'team_logos', $filename, $local_logo_path);
+                $logo_url = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $local_logo_path;
             }
         }
         
@@ -3344,24 +3318,12 @@ if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'team') {
         }
         Auditor::log($pdo, $user_id, 'update', 'teams', intval($_POST['id']), ['action' => 'edit_team']);
         
-        // Upload updated team logo to Nextcloud for persistent storage
-        if (!empty($logo_url)) {
+        // Store persistent path for recovery
+        if (!empty($logo_url) && isset($persist) && !empty($persist['nextcloud_path'])) {
             try {
-                $nc_settings = getNextcloudSettings($pdo);
-                if (!empty($nc_settings['nextcloud_url'])) {
-                    if (!empty($nc_settings['nextcloud_password'])) {
-                        $decrypted = decryptPassword($nc_settings['nextcloud_password']);
-                        if (!empty($decrypted)) {
-                            $nc_settings['nextcloud_password'] = $decrypted;
-                        }
-                    }
-                    $result = uploadImageToNextcloud($pdo, $nc_settings, $logo_url, 'team_logos', $filename);
-                    if ($result['success']) {
-                        $pdo->prepare("UPDATE teams SET nextcloud_logo_path = ? WHERE id = ?")->execute([$result['remote_path'], $id]);
-                    }
-                }
+                $pdo->prepare("UPDATE teams SET nextcloud_logo_path = ? WHERE id = ?")->execute([$persist['nextcloud_path'], $id]);
             } catch (Exception $e) {
-                error_log("Nextcloud team logo upload failed: " . $e->getMessage());
+                error_log("Team logo persistent path save failed: " . $e->getMessage());
             }
         }
         

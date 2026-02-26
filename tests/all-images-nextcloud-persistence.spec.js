@@ -164,7 +164,7 @@ test.describe('Drill uploads include Nextcloud persistence', () => {
   test('process_drills.php should handle Nextcloud upload failure gracefully', () => {
     const content = readFile('process_drills.php');
     expect(content).toContain('persistUploadedFile(');
-    expect(content).toContain('Nextcloud drill diagram upload failed');
+    expect(content).toContain('RustFS drill diagram upload failed');
   });
 });
 
@@ -189,7 +189,7 @@ test.describe('Practice plan drill images include Nextcloud persistence', () => 
 
   test('process_practice_plans.php should handle Nextcloud upload failure gracefully', () => {
     const content = readFile('process_practice_plans.php');
-    expect(content).toContain('Nextcloud drill diagram upload failed');
+    expect(content).toContain('RustFS drill diagram upload failed');
   });
 });
 
@@ -305,9 +305,9 @@ test.describe('Team logo uploads include Nextcloud persistence', () => {
     expect(content).toContain('nextcloud_logo_path');
   });
 
-  test('process_admin_action.php should handle Nextcloud team logo upload failure gracefully', () => {
+  test('process_admin_action.php should handle team logo upload failure gracefully', () => {
     const content = readFile('process_admin_action.php');
-    expect(content).toContain('Nextcloud team logo upload failed');
+    expect(content).toContain('Team logo persistent path save failed');
   });
 });
 
@@ -381,17 +381,17 @@ test.describe('All upload handlers use persistUploadedFile which decrypts Nextcl
     });
   }
 
-  test('cloud_config.php persistUploadedFile should decrypt Nextcloud password', () => {
+  test('cloud_config.php persistUploadedFile should use RustFS for uploads', () => {
     const content = readFile('cloud_config.php');
     const fnStart = content.indexOf('function persistUploadedFile(');
     const fnSection = content.substring(fnStart, fnStart + 2000);
-    expect(fnSection).toContain('decryptPassword(');
+    expect(fnSection).toContain('getRustFSSettings(');
   });
 
-  test('cloud_config.php persistUploadedFile should call uploadLargeFileToNextcloud for large files', () => {
+  test('cloud_config.php persistUploadedFile should call uploadLargeFileToRustFS for large files', () => {
     const content = readFile('cloud_config.php');
     const fnStart = content.indexOf('function persistUploadedFile(');
     const fnSection = content.substring(fnStart, fnStart + 2000);
-    expect(fnSection).toContain('uploadLargeFileToNextcloud(');
+    expect(fnSection).toContain('uploadLargeFileToRustFS(');
   });
 });

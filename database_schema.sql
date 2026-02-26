@@ -4673,3 +4673,13 @@ ADD COLUMN IF NOT EXISTS `nextcloud_logo_path` VARCHAR(500) DEFAULT NULL COMMENT
 -- Add nextcloud_path to vr_video_sources for persistent gameplan video storage
 ALTER TABLE `vr_video_sources`
 ADD COLUMN IF NOT EXISTS `nextcloud_path` VARCHAR(500) DEFAULT NULL COMMENT 'Nextcloud path for gameplan video persistence';
+
+-- Default RustFS S3 storage settings
+INSERT IGNORE INTO `system_settings` (`setting_key`, `setting_value`, `setting_type`, `description`) VALUES
+('rustfs_endpoint',   NULL, 'text',     'RustFS S3-compatible endpoint URL (e.g., https://rustfs.example.com)'),
+('rustfs_access_key', NULL, 'text',     'RustFS S3 access key ID'),
+('rustfs_secret_key', NULL, 'password', 'RustFS S3 secret key (stored encrypted)'),
+('rustfs_bucket',     NULL, 'text',     'RustFS S3 bucket name'),
+('rustfs_region',     'us-east-1', 'text', 'RustFS S3 region'),
+('rustfs_use_ssl',    '1', 'boolean',  'Use SSL/HTTPS for RustFS connections'),
+('rustfs_path_style', '1', 'boolean',  'Use path-style access (recommended for self-hosted RustFS)');

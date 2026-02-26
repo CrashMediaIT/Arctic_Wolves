@@ -19,7 +19,7 @@ $action = $_POST['action'] ?? '';
 $user_id = $_SESSION['user_id'] ?? 0;
 
 // Determine if we should return JSON or redirect
-$json_actions = ['test_nextcloud', 'test_smtp', 'test_github', 'check_updates', 'apply_updates', 'test_nextcloud_backup', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library', 'test_docuseal', 'test_stallion', 'test_google_maps', 'create_restriction', 'remove_restriction', 'add_blocklist_entry', 'remove_blocklist_entry', 'add_pos_whitelist_entry', 'remove_pos_whitelist_entry', 'toggle_pos_whitelist_entry', 'get_ndi_camera', 'update_ndi_camera', 'delete_ndi_camera', 'toggle_ndi_camera', 'get_cluster_status', 'test_cluster_node', 'add_cluster_node', 'remove_cluster_node', 'save_cluster_settings', 'test_paperless'];
+$json_actions = ['test_nextcloud', 'test_smtp', 'test_github', 'check_updates', 'apply_updates', 'test_nextcloud_backup', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library', 'test_docuseal', 'test_stallion', 'test_google_maps', 'create_restriction', 'remove_restriction', 'add_blocklist_entry', 'remove_blocklist_entry', 'add_pos_whitelist_entry', 'remove_pos_whitelist_entry', 'toggle_pos_whitelist_entry', 'get_ndi_camera', 'update_ndi_camera', 'delete_ndi_camera', 'toggle_ndi_camera', 'get_cluster_status', 'test_cluster_node', 'add_cluster_node', 'remove_cluster_node', 'save_cluster_settings', 'test_paperless', 'test_rustfs'];
 $is_json = in_array($action, $json_actions);
 
 if ($is_json) {
@@ -291,6 +291,63 @@ try {
             echo json_encode($result);
             exit;
             
+        case 'update_rustfs':
+            require_once __DIR__ . '/lib/rustfs_storage.php';
+            $rustfs_endpoint = trim($_POST['rustfs_endpoint'] ?? '');
+            $rustfs_access_key = trim($_POST['rustfs_access_key'] ?? '');
+            $rustfs_secret_key = trim($_POST['rustfs_secret_key'] ?? '');
+            $rustfs_bucket = trim($_POST['rustfs_bucket'] ?? '');
+            $rustfs_region = trim($_POST['rustfs_region'] ?? 'us-east-1');
+            $rustfs_use_ssl = isset($_POST['rustfs_use_ssl']) ? '1' : '0';
+            $rustfs_path_style = isset($_POST['rustfs_path_style']) ? '1' : '0';
+
+            updateSetting($pdo, 'rustfs_endpoint', $rustfs_endpoint);
+            updateSetting($pdo, 'rustfs_access_key', $rustfs_access_key);
+            if (!empty($rustfs_secret_key)) {
+                $encrypted_key = encryptPassword($rustfs_secret_key);
+                updateSetting($pdo, 'rustfs_secret_key', $encrypted_key);
+            }
+            updateSetting($pdo, 'rustfs_bucket', $rustfs_bucket);
+            updateSetting($pdo, 'rustfs_region', $rustfs_region);
+            updateSetting($pdo, 'rustfs_use_ssl', $rustfs_use_ssl);
+            updateSetting($pdo, 'rustfs_path_style', $rustfs_path_style);
+
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
+                'action' => 'update_rustfs',
+                'settings' => ['rustfs_endpoint' => $rustfs_endpoint, 'rustfs_bucket' => $rustfs_bucket, 'rustfs_region' => $rustfs_region]
+            ]);
+
+            header('Location: dashboard.php?page=system_tools&tab=rustfs&success=1');
+            exit;
+
+        case 'test_rustfs':
+            require_once __DIR__ . '/lib/rustfs_storage.php';
+            $rustfs_secret_key = trim($_POST['rustfs_secret_key'] ?? '');
+            // If no secret key provided, use stored encrypted one
+            if (empty($rustfs_secret_key)) {
+                $stored = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'rustfs_secret_key'");
+                $stored->execute();
+                $encrypted = $stored->fetchColumn();
+                if (!empty($encrypted)) {
+                    $decrypted = decryptPassword($encrypted);
+                    if (!empty($decrypted)) {
+                        $rustfs_secret_key = $decrypted;
+                    }
+                }
+            }
+            $test_settings = [
+                'rustfs_endpoint' => trim($_POST['rustfs_endpoint'] ?? ''),
+                'rustfs_access_key' => trim($_POST['rustfs_access_key'] ?? ''),
+                'rustfs_secret_key' => $rustfs_secret_key,
+                'rustfs_bucket' => trim($_POST['rustfs_bucket'] ?? ''),
+                'rustfs_region' => trim($_POST['rustfs_region'] ?? 'us-east-1'),
+                'rustfs_use_ssl' => isset($_POST['rustfs_use_ssl']) ? '1' : '0',
+                'rustfs_path_style' => isset($_POST['rustfs_path_style']) ? '1' : '0',
+            ];
+            $result = testRustFSConnection($test_settings);
+            echo json_encode($result);
+            exit;
+
         case 'update_paperless':
             $paperless_url = trim($_POST['paperless_url'] ?? '');
             $paperless_api_token = trim($_POST['paperless_api_token'] ?? '');
@@ -1815,6 +1872,7 @@ try {
             'update_smtp'        => 'smtp',
             'update_nextcloud'   => 'nextcloud',
             'update_nextcloud_backup' => 'nextcloud',
+            'update_rustfs'      => 'rustfs',
             'update_theme'       => 'theme',
             'update_google_maps' => 'mileage',
             'update_mileage_rates' => 'mileage',

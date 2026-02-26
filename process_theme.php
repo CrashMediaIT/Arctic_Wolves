@@ -69,8 +69,7 @@ function syncCenterIceLogoIfNeeded($pdo, $logoUrl) {
 }
 
 /**
- * Handle file upload - validates, persists to /config/persistent_uploads + Nextcloud,
- * and caches locally in uploads/theme/ for serving.
+ * Handle file upload - validates and persists to RustFS.
  */
 function handleFileUpload($file, $type = 'image') {
     $allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
@@ -98,22 +97,18 @@ function handleFileUpload($file, $type = 'image') {
     $local_url = 'uploads/theme/' . $filename;
     $nextcloud_path = null;
     
-    // Persist: save to /config/persistent_uploads, upload to Nextcloud, cache locally
+    // Upload to RustFS
     global $pdo;
     if ($pdo) {
         try {
             $persist = persistUploadedFile($pdo, $file['tmp_name'], 'theme', $filename, $local_url);
             $nextcloud_path = $persist['nextcloud_path'] ?? null;
+            if (!empty($persist['rustfs_url'])) {
+                $local_url = $persist['rustfs_url'];
+            }
         } catch (\Throwable $e) {
             error_log("Theme image persist failed: " . $e->getMessage());
         }
-    } else {
-        // Fallback: save to local uploads directory only
-        $upload_dir = __DIR__ . '/uploads/theme/';
-        if (!is_dir($upload_dir)) {
-            mkdir($upload_dir, 0755, true);
-        }
-        move_uploaded_file($file['tmp_name'], $upload_dir . $filename);
     }
     
     return ['success' => true, 'url' => $local_url, 'nextcloud_path' => $nextcloud_path];

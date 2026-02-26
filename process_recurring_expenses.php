@@ -37,66 +37,6 @@ $allowed_mime_types = [
     'image/png'
 ];
 
-/**
- * Upload contract document to Nextcloud
- * Structure: /accounting/contracts/{CompanyName}/{ContractPurpose}_{StartDate}/
- */
-function uploadContractToNextcloud($pdo, $local_file_path, $vendor_name, $contract_type, $start_date, $original_filename) {
-    try {
-        $settings = getNextcloudSettings($pdo);
-        
-        if (empty($settings['nextcloud_url']) || empty($settings['nextcloud_username'])) {
-            return ['success' => false, 'message' => 'Nextcloud not configured'];
-        }
-        
-        $connection = connectNextcloud($settings);
-        $contracts_dir = $settings['nextcloud_contracts_dir'] ?? '/accounting/contracts';
-        
-        // Sanitize vendor name for folder
-        $safe_vendor = preg_replace('/[^a-zA-Z0-9\-_ ]/', '', $vendor_name);
-        $safe_vendor = trim(substr($safe_vendor, 0, 50));
-        if (empty($safe_vendor)) $safe_vendor = 'Unknown_Vendor';
-        
-        // Create contract purpose folder name
-        $safe_type = preg_replace('/[^a-zA-Z0-9\-_ ]/', '', $contract_type ?: 'General');
-        $safe_type = trim(substr($safe_type, 0, 50));
-        $date_str = date('Y-m-d', strtotime($start_date ?: 'now'));
-        $purpose_folder = $safe_type . '_' . $date_str;
-        
-        // Create folder structure: /accounting/contracts/{CompanyName}/{ContractPurpose_StartDate}/
-        $folder_path = ensureNextcloudPath($connection, $contracts_dir, [$safe_vendor, $purpose_folder]);
-        
-        // Upload file
-        $file_content = file_get_contents($local_file_path);
-        $finfo = finfo_open(FILEINFO_MIME_TYPE);
-        $content_type = finfo_file($finfo, $local_file_path);
-        finfo_close($finfo);
-        
-        // Sanitize filename
-        $safe_filename = preg_replace('/[^a-zA-Z0-9\-_.]/', '_', $original_filename);
-        $remote_path = $folder_path . '/' . $safe_filename;
-        
-        uploadToNextcloud($connection, $remote_path, $file_content, $content_type);
-        
-        // Save to persistent local storage
-        saveToPersistentStorage($local_file_path, 'Contracts/' . $safe_vendor . '/' . $purpose_folder, $safe_filename, $pdo);
-        
-        // Also upload to Paperless-NGX with Contract tag
-        $title = 'Contract_' . $safe_vendor . '_' . $safe_type . '_' . $date_str;
-        uploadToPaperless($pdo, $local_file_path, 'Contract', $title);
-        
-        return [
-            'success' => true,
-            'cloud_path' => $remote_path,
-            'filename' => $safe_filename
-        ];
-        
-    } catch (Exception $e) {
-        ErrorLogger::error("Nextcloud contract upload error: " . $e->getMessage());
-        return ['success' => false, 'message' => $e->getMessage()];
-    }
-}
-
 try {
     switch ($action) {
         case 'create':
@@ -162,26 +102,19 @@ try {
                 $mime_type = finfo_file($finfo, $tmp_path);
                 finfo_close($finfo);
                 
-                // Upload to Nextcloud
-                $upload_result = null;
-                if (function_exists('getNextcloudSettings')) {
-                    $upload_result = uploadContractToNextcloud($pdo, $tmp_path, $vendor_name, $contract_type, $contract_start_date, $original_name);
-                }
+                // Upload to RustFS
+                $safe_contract_name = $recurring_id . '_' . basename($original_name);
+                $local_path = 'uploads/contracts/' . $safe_contract_name;
+                $persist = persistUploadedFile($pdo, $tmp_path, 'contracts', $safe_contract_name, $local_path);
+                $db_path = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $local_path;
                 
-                // Save to local uploads as fallback
-                $local_path = 'uploads/contracts/' . $recurring_id . '_' . basename($original_name);
-                if (!is_dir('uploads/contracts')) {
-                    mkdir('uploads/contracts', 0755, true);
-                }
-                move_uploaded_file($tmp_path, $local_path);
-                
-                $nc_path = ($upload_result && $upload_result['success']) ? $upload_result['cloud_path'] : null;
+                $nc_path = $persist['nextcloud_path'] ?? null;
                 if ($nc_path) $nextcloud_path = $nc_path;
                 
                 $doc_stmt = $pdo->prepare("INSERT INTO recurring_expense_documents 
                     (recurring_expense_id, document_type, file_name, file_path, nextcloud_path, file_size, mime_type, uploaded_by) 
                     VALUES (?, 'contract', ?, ?, ?, ?, ?, ?)");
-                $doc_stmt->execute([$recurring_id, $original_name, $local_path, $nc_path, $file_size, $mime_type, $user_id]);
+                $doc_stmt->execute([$recurring_id, $original_name, $db_path, $nc_path, $file_size, $mime_type, $user_id]);
             }
             
             // Handle additional files
@@ -200,20 +133,17 @@ try {
                     $file_size = $_FILES['additional_files']['size'][$i];
                     $mime_type = $detected_mime;
                     
-                    $upload_result = null;
-                    if (function_exists('getNextcloudSettings')) {
-                        $upload_result = uploadContractToNextcloud($pdo, $tmp_path, $vendor_name, $contract_type, $contract_start_date, $original_name);
-                    }
+                    $safe_add_name = $recurring_id . '_' . $i . '_' . basename($original_name);
+                    $local_path = 'uploads/contracts/' . $safe_add_name;
+                    $persist = persistUploadedFile($pdo, $tmp_path, 'contracts', $safe_add_name, $local_path);
+                    $db_path = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $local_path;
                     
-                    $local_path = 'uploads/contracts/' . $recurring_id . '_' . $i . '_' . basename($original_name);
-                    move_uploaded_file($tmp_path, $local_path);
-                    
-                    $nc_path = ($upload_result && $upload_result['success']) ? $upload_result['cloud_path'] : null;
+                    $nc_path = $persist['nextcloud_path'] ?? null;
                     
                     $doc_stmt = $pdo->prepare("INSERT INTO recurring_expense_documents 
                         (recurring_expense_id, document_type, file_name, file_path, nextcloud_path, file_size, mime_type, uploaded_by) 
                         VALUES (?, 'other', ?, ?, ?, ?, ?, ?)");
-                    $doc_stmt->execute([$recurring_id, $original_name, $local_path, $nc_path, $file_size, $mime_type, $user_id]);
+                    $doc_stmt->execute([$recurring_id, $original_name, $db_path, $nc_path, $file_size, $mime_type, $user_id]);
                 }
             }
             
@@ -250,9 +180,6 @@ try {
             }
             
             if (!empty($_FILES['documents']['name'][0])) {
-                if (!is_dir('uploads/contracts')) {
-                    mkdir('uploads/contracts', 0755, true);
-                }
                 
                 for ($i = 0; $i < count($_FILES['documents']['name']); $i++) {
                     if ($_FILES['documents']['error'][$i] !== UPLOAD_ERR_OK) continue;
@@ -268,26 +195,17 @@ try {
                     $file_size = $_FILES['documents']['size'][$i];
                     $mime_type = $detected_mime;
                     
-                    $upload_result = null;
-                    if (function_exists('getNextcloudSettings')) {
-                        $upload_result = uploadContractToNextcloud(
-                            $pdo, $tmp_path, 
-                            $recurring_expense['vendor_name'], 
-                            $recurring_expense['contract_type'], 
-                            $recurring_expense['contract_start_date'], 
-                            $original_name
-                        );
-                    }
+                    $safe_doc_name = $recurring_expense_id . '_' . time() . '_' . $i . '_' . basename($original_name);
+                    $local_path = 'uploads/contracts/' . $safe_doc_name;
+                    $persist = persistUploadedFile($pdo, $tmp_path, 'contracts', $safe_doc_name, $local_path);
+                    $db_path = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $local_path;
                     
-                    $local_path = 'uploads/contracts/' . $recurring_expense_id . '_' . time() . '_' . $i . '_' . basename($original_name);
-                    move_uploaded_file($tmp_path, $local_path);
-                    
-                    $nc_path = ($upload_result && $upload_result['success']) ? $upload_result['cloud_path'] : null;
+                    $nc_path = $persist['nextcloud_path'] ?? null;
                     
                     $doc_stmt = $pdo->prepare("INSERT INTO recurring_expense_documents 
                         (recurring_expense_id, document_type, file_name, file_path, nextcloud_path, file_size, mime_type, uploaded_by) 
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-                    $doc_stmt->execute([$recurring_expense_id, $document_type, $original_name, $local_path, $nc_path, $file_size, $mime_type, $user_id]);
+                    $doc_stmt->execute([$recurring_expense_id, $document_type, $original_name, $db_path, $nc_path, $file_size, $mime_type, $user_id]);
                 }
             }
             

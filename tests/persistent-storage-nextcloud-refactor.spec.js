@@ -23,7 +23,7 @@
  * 13. handleProductImageUpload (process_merchandise_products.php) - product images
  * 14. handleCategoryImageUpload (process_merchandise_categories.php) - category images
  * 15. saveThemeUploadResult (process_theme.php) - theme NC path storage
- * 16. restoreThemeImagesFromPersistentStorage (cloud_config.php) - theme restore
+ * 16. restoreThemeImagesFromPersistentStorage (cloud_config.php) - removed after RustFS migration
  * 17. persistUploadedFile (cloud_config.php) - central upload function
  */
 
@@ -48,44 +48,36 @@ test.describe('persistUploadedFile central function in cloud_config.php', () => 
     expect(content()).toContain('function persistUploadedFile(');
   });
 
-  test('persistUploadedFile calls saveToPersistentStorage', () => {
+  test('persistUploadedFile calls uploadToRustFS', () => {
     const fn = content().substring(
       content().indexOf('function persistUploadedFile('),
-      content().indexOf('function restoreImageFromNextcloud(') > -1
-        ? content().indexOf('function restoreImageFromNextcloud(')
-        : content().indexOf('/**', content().indexOf('function persistUploadedFile(') + 100)
+      content().indexOf('function getDrillVideoPath(')
     );
-    expect(fn).toContain('saveToPersistentStorage(');
+    expect(fn).toContain('uploadToRustFS(');
   });
 
-  test('persistUploadedFile calls uploadImageToNextcloud or uploadLargeFileToNextcloud', () => {
+  test('persistUploadedFile calls uploadToRustFS or uploadLargeFileToRustFS', () => {
     const fn = content().substring(
       content().indexOf('function persistUploadedFile('),
-      content().indexOf('function restoreImageFromNextcloud(') > -1
-        ? content().indexOf('function restoreImageFromNextcloud(')
-        : content().indexOf('/**', content().indexOf('function persistUploadedFile(') + 100)
+      content().indexOf('function getDrillVideoPath(')
     );
-    expect(fn.includes('uploadImageToNextcloud(') || fn.includes('uploadLargeFileToNextcloud(')).toBe(true);
+    expect(fn.includes('uploadToRustFS(') || fn.includes('uploadLargeFileToRustFS(')).toBe(true);
   });
 
   test('persistUploadedFile returns nextcloud_path', () => {
     const fn = content().substring(
       content().indexOf('function persistUploadedFile('),
-      content().indexOf('function restoreImageFromNextcloud(') > -1
-        ? content().indexOf('function restoreImageFromNextcloud(')
-        : content().indexOf('/**', content().indexOf('function persistUploadedFile(') + 100)
+      content().indexOf('function getDrillVideoPath(')
     );
     expect(fn).toContain("'nextcloud_path'");
   });
 
-  test('persistUploadedFile copies to local cache directory', () => {
+  test('persistUploadedFile does not copy to local cache directory', () => {
     const fn = content().substring(
       content().indexOf('function persistUploadedFile('),
-      content().indexOf('function restoreImageFromNextcloud(') > -1
-        ? content().indexOf('function restoreImageFromNextcloud(')
-        : content().indexOf('/**', content().indexOf('function persistUploadedFile(') + 100)
+      content().indexOf('function getDrillVideoPath(')
     );
-    expect(fn).toContain('copy(');
+    expect(fn).not.toContain('copy(');
   });
 
   test('persistUploadedFile accepts use_large_upload parameter', () => {
@@ -162,34 +154,22 @@ test.describe('saveThemeUploadResult stores Nextcloud path in theme_settings', (
 });
 
 // =====================================================
-// 4. restoreThemeImagesFromPersistentStorage uses NC paths
+// 4. restoreThemeImagesFromPersistentStorage removed (RustFS migration)
 // =====================================================
 
-test.describe('restoreThemeImagesFromPersistentStorage uses stored Nextcloud paths', () => {
+test.describe('restoreThemeImagesFromPersistentStorage removed after RustFS migration', () => {
   const content = () => readFile('cloud_config.php');
 
-  test('restore function queries _nc_path settings', () => {
-    const fn = content().substring(
-      content().indexOf('function restoreThemeImagesFromPersistentStorage('),
-      content().indexOf('}', content().lastIndexOf("error_log(\"Failed to restore theme image from Nextcloud"))
-    );
-    expect(fn).toContain('_nc_path');
+  test('restore function was removed for RustFS migration', () => {
+    expect(content()).not.toContain('function restoreThemeImagesFromPersistentStorage(');
   });
 
-  test('restore function queries business_card_front_bg_url_nc_path', () => {
-    const fn = content().substring(
-      content().indexOf('function restoreThemeImagesFromPersistentStorage('),
-      content().indexOf('}', content().lastIndexOf("error_log(\"Failed to restore theme image from Nextcloud"))
-    );
-    expect(fn).toContain('business_card_front_bg_url_nc_path');
+  test('restoreImageFromNextcloud was removed for RustFS migration', () => {
+    expect(content()).not.toContain('function restoreImageFromNextcloud(');
   });
 
-  test('restore function uses stored NC path when available', () => {
-    const fn = content().substring(
-      content().indexOf('function restoreThemeImagesFromPersistentStorage('),
-      content().indexOf('}', content().lastIndexOf("error_log(\"Failed to restore theme image from Nextcloud"))
-    );
-    expect(fn).toContain('$nc_path_key');
+  test('restoreAllFilesFromPersistentStorage was removed for RustFS migration', () => {
+    expect(content()).not.toContain('function restoreAllFilesFromPersistentStorage(');
   });
 });
 

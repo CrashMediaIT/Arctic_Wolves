@@ -80,9 +80,9 @@ test.describe('Drill delete JavaScript handler', () => {
   test('deleteDrill shows confirmation before deleting', () => {
     const content = readFile('views/drills_library.php');
     const fnStart = content.indexOf('function deleteDrill(');
-    const fnEnd = content.indexOf('}', content.indexOf('.catch', fnStart)) + 1;
+    const fnEnd = content.indexOf('}', content.indexOf('showDeleteConfirm', fnStart)) + 1;
     const fnBody = content.substring(fnStart, fnEnd);
-    expect(fnBody).toContain('confirm(');
+    expect(fnBody).toContain('showDeleteConfirm(');
   });
 
   test('delete action buttons are wired up in DOMContentLoaded', () => {

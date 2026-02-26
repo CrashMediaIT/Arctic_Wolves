@@ -119,8 +119,8 @@ test.describe('Business Card Front Background - Backend Handling', () => {
     const saveThemeEnd = content.indexOf('exit;', saveThemeStart);
     const saveThemeContent = content.substring(saveThemeStart, saveThemeEnd);
     
-    expect(saveThemeContent).toContain("updateThemeSetting($pdo, 'business_card_front_bg_url'");
-    expect(saveThemeContent).toContain("updateThemeSetting($pdo, 'business_card_back_bg_url'");
+    expect(saveThemeContent).toContain("saveThemeUploadResult($pdo, 'business_card_front_bg_url'");
+    expect(saveThemeContent).toContain("saveThemeUploadResult($pdo, 'business_card_back_bg_url'");
   });
 
   test('save_theme handler logs errors for failed front bg uploads', () => {

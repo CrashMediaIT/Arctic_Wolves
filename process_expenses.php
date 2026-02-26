@@ -35,57 +35,6 @@ if (in_array($action, $json_actions)) {
 /**
  * Upload receipt to Nextcloud with year/month directory structure
  */
-function uploadReceiptToNextcloud($pdo, $local_file_path, $expense_date, $vendor_name, $expense_id) {
-    try {
-        $settings = getNextcloudSettings($pdo);
-        
-        if (empty($settings['nextcloud_url']) || empty($settings['nextcloud_username'])) {
-            return ['success' => false, 'message' => 'Nextcloud not configured'];
-        }
-        
-        $connection = connectNextcloud($settings);
-        $receipts_dir = $settings['nextcloud_receipts_dir'] ?? '/Receipts';
-        
-        // Parse date for Year/Month folders
-        $date = new DateTime($expense_date);
-        $year = $date->format('Y');
-        $month = $date->format('m');
-        
-        // Create folder structure: /Receipts/YYYY/MM
-        $folder_path = ensureNextcloudPath($connection, $receipts_dir, [$year, $month]);
-        
-        // Sanitize vendor name for filename
-        $safe_vendor = preg_replace('/[^a-zA-Z0-9\-_]/', '_', $vendor_name);
-        $safe_vendor = substr($safe_vendor, 0, 50);
-        
-        // Generate filename: Date_Vendor_ExpenseID.ext
-        $file_ext = strtolower(pathinfo($local_file_path, PATHINFO_EXTENSION));
-        $filename = $date->format('Y-m-d') . '_' . $safe_vendor . '_' . $expense_id . '.' . $file_ext;
-        
-        // Upload file
-        $file_content = file_get_contents($local_file_path);
-        $finfo = finfo_open(FILEINFO_MIME_TYPE);
-        $content_type = finfo_file($finfo, $local_file_path);
-        finfo_close($finfo);
-        
-        $remote_path = $folder_path . '/' . $filename;
-        uploadToNextcloud($connection, $remote_path, $file_content, $content_type);
-        
-        // Save to persistent local storage
-        saveToPersistentStorage($local_file_path, 'Receipts/' . $year . '/' . $month, $filename, $pdo);
-        
-        return [
-            'success' => true,
-            'cloud_path' => $remote_path,
-            'filename' => $filename
-        ];
-        
-    } catch (Exception $e) {
-        ErrorLogger::error("Nextcloud upload error: " . $e->getMessage());
-        return ['success' => false, 'message' => $e->getMessage()];
-    }
-}
-
 /**
  * Perform OCR on receipt image or PDF
  * Uses Paperless-NGX API for all OCR processing
@@ -476,14 +425,9 @@ try {
             $ocr_data = null;
             
             if (isset($_FILES['receipt_file']) && $_FILES['receipt_file']['error'] === UPLOAD_ERR_OK) {
-                $upload_dir = 'uploads/receipts/';
-                if (!is_dir($upload_dir)) {
-                    mkdir($upload_dir, 0755, true);
-                }
-                
-                // Validate file size (10MB max)
-                if ($_FILES['receipt_file']['size'] > 10 * 1024 * 1024) {
-                    throw new Exception('File size exceeds 10MB limit');
+                // Validate file size (100MB max)
+                if ($_FILES['receipt_file']['size'] > 100 * 1024 * 1024) {
+                    throw new Exception('File size exceeds 100MB limit');
                 }
                 
                 // Validate MIME type
@@ -500,20 +444,24 @@ try {
                 $allowed_exts = ['jpg', 'jpeg', 'png', 'pdf'];
                 
                 if (in_array($file_ext, $allowed_exts)) {
-                    $receipt_url = 'uploads/receipts/' . uniqid('receipt_') . '.' . $file_ext;
-                    move_uploaded_file($_FILES['receipt_file']['tmp_name'], $receipt_url);
+                    $receipt_filename = uniqid('receipt_') . '.' . $file_ext;
+                    $receipt_local = 'uploads/receipts/' . $receipt_filename;
+                    $persist = persistUploadedFile($pdo, $_FILES['receipt_file']['tmp_name'], 'receipts', $receipt_filename, $receipt_local);
+                    $receipt_url = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $receipt_local;
+                    if (!empty($persist['nextcloud_path'])) {
+                        $nextcloud_path = $persist['nextcloud_path'];
+                    }
                     
-                    // Perform OCR on images
+                    // Perform OCR on images — Paperless needs the local temp file
                     if (in_array($file_ext, ['jpg', 'jpeg', 'png'])) {
-                        $ocr_data = performReceiptOCR($receipt_url);
+                        $ocr_data = performReceiptOCR($_FILES['receipt_file']['tmp_name']);
                     }
                 }
             } elseif (!empty($_POST['ocr_receipt_url'])) {
-                // Use receipt already saved during OCR scan
+                // Use receipt already saved to RustFS during OCR scan
                 $ocr_receipt = trim($_POST['ocr_receipt_url']);
-                $real_path = realpath($ocr_receipt);
-                $allowed_dir = realpath('uploads/receipts');
-                if ($real_path && $allowed_dir && strpos($real_path, $allowed_dir) === 0) {
+                // Accept RustFS URLs only
+                if (preg_match('#^https?://#', $ocr_receipt)) {
                     $receipt_url = $ocr_receipt;
                 }
                 if (!empty($_POST['ocr_nextcloud_path'])) {
@@ -558,18 +506,12 @@ try {
                 }
             }
             
-            // Upload to Nextcloud if receipt exists (always upload for redundancy)
-            if ($receipt_url && !empty($vendor_name)) {
-                $nc_result = uploadReceiptToNextcloud($pdo, $receipt_url, $expense_date, $vendor_name, $expense_id);
-                if ($nc_result['success']) {
-                    $pdo->prepare("UPDATE expenses SET nextcloud_path = ? WHERE id = ?")->execute([
-                        $nc_result['cloud_path'], $expense_id
-                    ]);
-                }
-                
-                // Also upload to Paperless-NGX with Receipt tag
+            // Receipt is already stored in RustFS via persistUploadedFile above.
+            // Upload to Paperless-NGX only if a fresh file was uploaded (not from OCR scan,
+            // which already sent the file to Paperless during performPaperlessOCR).
+            if ($receipt_url && !empty($vendor_name) && isset($_FILES['receipt_file']) && $_FILES['receipt_file']['error'] === UPLOAD_ERR_OK) {
                 $receipt_title = $expense_date . '_' . $vendor_name . '_' . $expense_id;
-                uploadToPaperless($pdo, $receipt_url, 'Receipt', $receipt_title);
+                uploadToPaperless($pdo, $_FILES['receipt_file']['tmp_name'], 'Receipt', $receipt_title);
             }
             
             if ($isAjax) {
@@ -603,14 +545,9 @@ try {
             // Handle file upload for update
             $receipt_url = null;
             if (isset($_FILES['receipt_file']) && $_FILES['receipt_file']['error'] === UPLOAD_ERR_OK) {
-                $upload_dir = 'uploads/receipts/';
-                if (!is_dir($upload_dir)) {
-                    mkdir($upload_dir, 0755, true);
-                }
-                
-                // Validate file size (10MB max)
-                if ($_FILES['receipt_file']['size'] > 10 * 1024 * 1024) {
-                    throw new Exception('File size exceeds 10MB limit');
+                // Validate file size (100MB max)
+                if ($_FILES['receipt_file']['size'] > 100 * 1024 * 1024) {
+                    throw new Exception('File size exceeds 100MB limit');
                 }
                 
                 // Validate MIME type
@@ -627,8 +564,10 @@ try {
                 $allowed_exts = ['jpg', 'jpeg', 'png', 'pdf'];
                 
                 if (in_array($file_ext, $allowed_exts)) {
-                    $receipt_url = 'uploads/receipts/' . uniqid('receipt_') . '.' . $file_ext;
-                    move_uploaded_file($_FILES['receipt_file']['tmp_name'], $receipt_url);
+                    $receipt_filename = uniqid('receipt_') . '.' . $file_ext;
+                    $receipt_local = 'uploads/receipts/' . $receipt_filename;
+                    $persist = persistUploadedFile($pdo, $_FILES['receipt_file']['tmp_name'], 'receipts', $receipt_filename, $receipt_local);
+                    $receipt_url = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $receipt_local;
                     
                     // Update with new file
                     $stmt = $pdo->prepare("
@@ -644,18 +583,17 @@ try {
                         $payment_method, $reference_number, $currency, $expense_id
                     ]);
                     
-                    // Upload to Nextcloud
+                    // Store persistent path
+                    if (!empty($persist['nextcloud_path'])) {
+                        $pdo->prepare("UPDATE expenses SET nextcloud_path = ? WHERE id = ?")->execute([
+                            $persist['nextcloud_path'], $expense_id
+                        ]);
+                    }
+                    
+                    // Upload to Paperless-NGX with Receipt tag (use PHP temp file)
                     if (!empty($vendor_name)) {
-                        $nc_result = uploadReceiptToNextcloud($pdo, $receipt_url, $expense_date, $vendor_name, $expense_id);
-                        if ($nc_result['success']) {
-                            $pdo->prepare("UPDATE expenses SET nextcloud_path = ? WHERE id = ?")->execute([
-                                $nc_result['cloud_path'], $expense_id
-                            ]);
-                        }
-                        
-                        // Also upload to Paperless-NGX with Receipt tag
                         $receipt_title = $expense_date . '_' . $vendor_name . '_' . $expense_id;
-                        uploadToPaperless($pdo, $receipt_url, 'Receipt', $receipt_title);
+                        uploadToPaperless($pdo, $_FILES['receipt_file']['tmp_name'], 'Receipt', $receipt_title);
                     }
                 }
             } else {
@@ -692,13 +630,20 @@ try {
             $file_stmt->execute([$expense_id]);
             $receipt = $file_stmt->fetchColumn();
             
-            // Validate path is within uploads directory and delete
-            if ($receipt && strpos($receipt, 'uploads/receipts/') === 0 && file_exists($receipt)) {
-                // Additional check: ensure no path traversal
-                $real_path = realpath($receipt);
-                $uploads_path = realpath('uploads/receipts/');
-                if ($real_path && $uploads_path && strpos($real_path, $uploads_path) === 0) {
-                    unlink($receipt);
+            // Delete receipt file from RustFS if it's an S3 URL, or from local if legacy path
+            if ($receipt && preg_match('#^https?://#', $receipt)) {
+                // RustFS URL — extract object key and delete
+                try {
+                    $rustfs = getRustFSSettings($pdo);
+                    if (isRustFSConfigured($rustfs)) {
+                        $base_url = getRustFSBaseUrl($rustfs);
+                        if (strpos($receipt, $base_url) === 0) {
+                            $object_key = substr($receipt, strlen($base_url) + 1);
+                            deleteFromRustFS($rustfs, $object_key);
+                        }
+                    }
+                } catch (Exception $delErr) {
+                    error_log("RustFS delete error on expense delete: " . $delErr->getMessage());
                 }
             }
             
@@ -804,38 +749,23 @@ try {
                 exit();
             }
             
-            // Save file permanently so it can be attached to an expense
+            // Save file to RustFS so it can be attached to an expense
             $ext = ($mime_type === 'image/png') ? '.png' : (($mime_type === 'application/pdf') ? '.pdf' : '.jpg');
-            $upload_dir = 'uploads/receipts/';
-            if (!is_dir($upload_dir)) {
-                mkdir($upload_dir, 0755, true);
-            }
-            $saved_file = $upload_dir . uniqid('receipt_') . $ext;
-            move_uploaded_file($_FILES['receipt_file']['tmp_name'], $saved_file);
+            $receipt_filename = uniqid('receipt_') . $ext;
+            $local_receipt = 'uploads/receipts/' . $receipt_filename;
+            $persist = persistUploadedFile($pdo, $_FILES['receipt_file']['tmp_name'], 'receipts', $receipt_filename, $local_receipt);
+            $saved_file = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $local_receipt;
             
-            // Perform OCR via Paperless-NGX (handles all file types including PDFs natively)
-            $ocr_data = performReceiptOCR($saved_file);
+            // Perform OCR via Paperless-NGX — pass the PHP temp file directly
+            $ocr_data = performReceiptOCR($_FILES['receipt_file']['tmp_name']);
             
-            // Upload to Nextcloud for cloud storage
-            $nextcloud_path = null;
+            // Cloud path from persist
+            $nextcloud_path = $persist['nextcloud_path'] ?? null;
             $vendor_name = $ocr_data['vendor'] ?? 'Unknown';
             $expense_date = $ocr_data['date'] ?? date('Y-m-d');
-            try {
-                $nc_result = uploadReceiptToNextcloud($pdo, $saved_file, $expense_date, $vendor_name, 'ocr_scan_' . uniqid());
-                if ($nc_result['success']) {
-                    $nextcloud_path = $nc_result['cloud_path'];
-                }
-            } catch (Exception $ncErr) {
-                error_log("OCR scan Nextcloud upload error: " . $ncErr->getMessage());
-            }
             
-            // Upload to Paperless-NGX for document storage
-            try {
-                $receipt_title = $expense_date . '_' . $vendor_name . '_Receipt';
-                uploadToPaperless($pdo, $saved_file, 'Receipt', $receipt_title);
-            } catch (Exception $plErr) {
-                error_log("OCR scan Paperless upload error: " . $plErr->getMessage());
-            }
+            // performPaperlessOCR already uploaded the file to Paperless for OCR,
+            // so no separate uploadToPaperless call is needed here.
             
             if (!empty($ocr_data['error'])) {
                 echo json_encode([

@@ -457,9 +457,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $media_cache_rel = 'uploads/eval_media/' . $file_name;
                     $media_type = in_array($file_ext, ['mp4', 'mov', 'avi']) ? 'video' : 'image';
                     
-                    // Persist: save to /config/persistent_uploads, upload to Nextcloud, cache locally
+                    // Upload to RustFS
                     $persist = persistUploadedFile($pdo, $_FILES['media_file']['tmp_name'], 'eval_goals/' . $step_id, $file_name, $media_cache_rel);
-                    $media_url = $media_cache_rel;
+                    $media_url = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $media_cache_rel;
                 }
                 
                 $stmt = $pdo->prepare("

@@ -42,19 +42,15 @@ function handleCategoryImageUpload($file) {
     $safeFilename = FileUploadValidator::generateUniqueFilename($file['name']);
     $local_cache_rel = 'uploads/merchandise/categories/' . $safeFilename;
     
-    // Persist: save to /config/persistent_uploads, upload to Nextcloud, cache locally
+    // Upload to RustFS
     global $pdo;
     $nextcloud_path = null;
     if ($pdo) {
         $persist = persistUploadedFile($pdo, $file['tmp_name'], 'merchandise/categories', $safeFilename, $local_cache_rel);
         $nextcloud_path = $persist['nextcloud_path'] ?? null;
-    } else {
-        // Fallback: save to local uploads directory
-        $uploadDir = __DIR__ . '/uploads/merchandise/categories/';
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
+        if (!empty($persist['rustfs_url'])) {
+            $local_cache_rel = $persist['rustfs_url'];
         }
-        move_uploaded_file($file['tmp_name'], $uploadDir . $safeFilename);
     }
     
     return ['url' => $local_cache_rel, 'nextcloud_path' => $nextcloud_path];

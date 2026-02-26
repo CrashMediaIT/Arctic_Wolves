@@ -39,25 +39,23 @@ test.describe('Backup Nextcloud Destination - process_database_backup.php', () =
     expect(forceMatch[1]).toBe('both_nextcloud');
   });
 
-  test('performBackup should handle both_nextcloud for primary Nextcloud upload', () => {
-    // The primary Nextcloud upload condition should include both_nextcloud
+  test('performBackup should handle both_nextcloud for primary RustFS upload', () => {
+    // The primary upload condition should include both_nextcloud
     expect(content).toContain("destination_type'] === 'both_nextcloud'");
     // Check that primary upload condition covers both_nextcloud alongside nextcloud and both
-    const primaryUploadPattern = /Upload to primary Nextcloud[\s\S]*?destination_type.*?===.*?'both_nextcloud'/;
+    const primaryUploadPattern = /Upload to primary RustFS[\s\S]*?destination_type.*?===.*?'both_nextcloud'/;
     expect(content).toMatch(primaryUploadPattern);
   });
 
-  test('performBackup should upload to secondary Nextcloud for both_nextcloud destination', () => {
-    // Should call getSecondaryNextcloudSettings for the secondary instance
-    expect(content).toContain('getSecondaryNextcloudSettings');
-    // Should have a block that uploads to secondary Nextcloud
-    const secondaryUploadPattern = /Upload to secondary Nextcloud.*both_nextcloud/;
+  test('performBackup should upload to secondary RustFS for both_nextcloud destination', () => {
+    // Should have a block that uploads to secondary RustFS
+    const secondaryUploadPattern = /Upload to secondary RustFS.*both_nextcloud/;
     expect(content).toMatch(secondaryUploadPattern);
   });
 
-  test('performBackup should track secondary Nextcloud destination in success list', () => {
-    // Should append 'Nextcloud2:' to the success destinations
-    expect(content).toContain("'Nextcloud2: '");
+  test('performBackup should track secondary RustFS destination in success list', () => {
+    // Should append 'RustFS-secondary:' to the success destinations
+    expect(content).toContain("'RustFS-secondary: '");
   });
 });
 
@@ -74,9 +72,8 @@ test.describe('Backup Nextcloud Destination - cron_database_backup.php', () => {
     expect(content).toMatch(primaryUploadPattern);
   });
 
-  test('Cron backup should upload to secondary Nextcloud for both_nextcloud destination', () => {
-    expect(content).toContain('getSecondaryNextcloudSettings');
-    const secondaryUploadPattern = /Upload to secondary Nextcloud.*both_nextcloud/;
+  test('Cron backup should upload to secondary RustFS for both_nextcloud destination', () => {
+    const secondaryUploadPattern = /Upload secondary copy to RustFS.*both_nextcloud/;
     expect(content).toMatch(secondaryUploadPattern);
   });
 });

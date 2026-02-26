@@ -48,20 +48,7 @@ $isActualAdmin = (($user_role === 'admin') || (isset($_SESSION['persona_original
 $personaActive = !empty($_SESSION['persona_active']);
 $personaOriginalRole = $_SESSION['persona_original_role'] ?? null;
 
-// Restore ALL files from persistent storage if they're missing locally (e.g., after re-deploy).
-// Persistent storage lives outside the web root and survives when the Arctic_Wolves directory
-// is deleted and re-created. This covers theme images, profile avatars, videos, drill images,
-// evaluation media, team logos, merchandise images, receipts, contracts, and all other uploads.
-// Only runs once per session to avoid unnecessary disk/DB checks on every page load.
-if (!isset($_SESSION['persistent_files_checked'])) {
-    try {
-        require_once __DIR__ . '/cloud_config.php';
-        restoreAllFilesFromPersistentStorage($pdo);
-        $_SESSION['persistent_files_checked'] = true;
-    } catch (Exception $e) {
-        // Silently continue - restoration is best-effort
-    }
-}
+// All files are served from RustFS — no local file restoration needed
 
 // Check if user needs to accept agreements (for users created by admin/coach)
 $showAgreementsModal = false;

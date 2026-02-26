@@ -48,18 +48,9 @@ function uploadOnboardingDocuments($pdo, $settings, $staffName, $year, $files) {
     $uploaded_paths = [];
     
     try {
-        $connection = connectNextcloud($settings);
-        
-        // Base onboarding directory
-        $onboardingDir = $settings['nextcloud_hr_dir'] ?? '/HR';
-        $onboardingDir .= '/Onboarding';
-        
         // Sanitize staff name
         $safeStaffName = preg_replace('/[^a-zA-Z0-9\-_\s]/', '', $staffName);
         $safeStaffName = str_replace(' ', '_', trim($safeStaffName));
-        
-        // Create folder structure: /HR/Onboarding/YYYY/StaffName
-        $folderPath = ensureNextcloudPath($connection, $onboardingDir, [$year, $safeStaffName]);
         
         // Handle file uploads
         if (!empty($files['name'][0])) {
@@ -69,24 +60,23 @@ function uploadOnboardingDocuments($pdo, $settings, $staffName, $year, $files) {
                 if ($files['error'][$i] === UPLOAD_ERR_OK) {
                     $original_name = basename($files['name'][$i]);
                     $tmp_path = $files['tmp_name'][$i];
-                    $file_content = file_get_contents($tmp_path);
                     $content_type = $files['type'][$i] ?? 'application/octet-stream';
                     
                     // Sanitize filename
                     $safe_filename = preg_replace('/[^a-zA-Z0-9\-_\.]/', '_', $original_name);
-                    $remote_path = $folderPath . '/' . $safe_filename;
+                    $subfolder = 'Onboarding/' . $year . '/' . $safeStaffName;
+                    $local_cache_rel = 'uploads/onboarding/' . $safe_filename;
                     
-                    // Upload file to Nextcloud
-                    $uploaded_path = uploadToNextcloud($connection, $remote_path, $file_content, $content_type);
+                    // Upload to RustFS via persistUploadedFile
+                    $persist = persistUploadedFile($pdo, $tmp_path, $subfolder, $safe_filename, $local_cache_rel);
+                    $db_path = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $local_cache_rel;
+                    
                     $uploaded_paths[] = [
                         'original_name' => $original_name,
-                        'remote_path' => $uploaded_path,
-                        'file_size' => strlen($file_content),
+                        'remote_path' => $db_path,
+                        'file_size' => filesize($tmp_path),
                         'content_type' => $content_type
                     ];
-                    
-                    // Save to persistent local storage
-                    saveToPersistentStorage($tmp_path, 'Onboarding/' . $year . '/' . $safeStaffName, $safe_filename, $pdo);
                     
                     // Also upload to Paperless-NGX with HR tag
                     $title = 'HR_' . $safeStaffName . '_' . $year . '_' . $safe_filename;
@@ -97,7 +87,7 @@ function uploadOnboardingDocuments($pdo, $settings, $staffName, $year, $files) {
         
         return [
             'success' => true,
-            'folder_path' => $folderPath,
+            'folder_path' => 'Onboarding/' . $year . '/' . $safeStaffName,
             'uploaded_files' => $uploaded_paths
         ];
         
@@ -116,18 +106,9 @@ function uploadOnboardingDocuments($pdo, $settings, $staffName, $year, $files) {
  */
 function exportOnboardingData($pdo, $settings, $onboardingData, $staffName, $year) {
     try {
-        $connection = connectNextcloud($settings);
-        
-        // Base onboarding directory
-        $onboardingDir = $settings['nextcloud_hr_dir'] ?? '/HR';
-        $onboardingDir .= '/Onboarding';
-        
         // Sanitize staff name
         $safeStaffName = preg_replace('/[^a-zA-Z0-9\-_\s]/', '', $staffName);
         $safeStaffName = str_replace(' ', '_', trim($safeStaffName));
-        
-        // Create folder structure
-        $folderPath = ensureNextcloudPath($connection, $onboardingDir, [$year, $safeStaffName]);
         
         // Create onboarding summary document
         $summary_content = "EMPLOYEE ONBOARDING RECORD\n";
@@ -191,22 +172,29 @@ function exportOnboardingData($pdo, $settings, $onboardingData, $staffName, $yea
         $summary_content .= "Admin ID: " . ($onboardingData['processed_by'] ?? 'N/A') . "\n";
         $summary_content .= "Processed At: " . date('Y-m-d H:i:s') . "\n";
         
-        // Upload summary file
-        $filename = 'Onboarding_Summary_' . $safeStaffName . '_' . date('Y-m-d') . '.txt';
-        $remote_path = $folderPath . '/' . $filename;
-        uploadToNextcloud($connection, $remote_path, $summary_content, 'text/plain');
+        // Upload summary and JSON to RustFS
+        $rustfs = getRustFSSettings($pdo);
+        $folder_key = 'Images/Onboarding/' . $year . '/' . $safeStaffName;
+        $summary_path = null;
+        $json_path = null;
         
-        // Also create a JSON version
+        $filename = 'Onboarding_Summary_' . $safeStaffName . '_' . date('Y-m-d') . '.txt';
         $json_filename = 'Onboarding_Data_' . $safeStaffName . '_' . date('Y-m-d') . '.json';
-        $json_path = $folderPath . '/' . $json_filename;
         $json_content = json_encode($onboardingData, JSON_PRETTY_PRINT);
-        uploadToNextcloud($connection, $json_path, $json_content, 'application/json');
+        
+        if (isRustFSConfigured($rustfs)) {
+            $r1 = uploadContentToRustFS($rustfs, $summary_content, $folder_key . '/' . $filename, 'text/plain');
+            if ($r1['success']) $summary_path = $r1['url'];
+            
+            $r2 = uploadContentToRustFS($rustfs, $json_content, $folder_key . '/' . $json_filename, 'application/json');
+            if ($r2['success']) $json_path = $r2['url'];
+        }
         
         return [
             'success' => true,
-            'folder_path' => $folderPath,
-            'summary_file' => $remote_path,
-            'json_file' => $json_path
+            'folder_path' => $folder_key,
+            'summary_file' => $summary_path ?? $folder_key . '/' . $filename,
+            'json_file' => $json_path ?? $folder_key . '/' . $json_filename
         ];
         
     } catch (Exception $e) {

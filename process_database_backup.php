@@ -576,43 +576,44 @@ function performBackup($pdo, $job) {
             }
         }
         
-        // Upload to primary Nextcloud if configured
+        // Upload to primary RustFS if configured
         if ($nc_file_content !== null && ($job['destination_type'] === 'nextcloud' || $job['destination_type'] === 'both' || $job['destination_type'] === 'both_nextcloud')) {
             try {
-                $nc_settings = getNextcloudSettings($pdo);
-                $connection = connectNextcloud($nc_settings);
-                
-                $remote_path = rtrim($job['nextcloud_folder'], '/') . '/' . $filename;
-                $result = uploadToNextcloud($connection, $remote_path, $nc_file_content, 'application/gzip');
-                
-                if ($result) {
-                    $success_destinations[] = 'Nextcloud: ' . $remote_path;
+                $rustfs = getRustFSSettings($pdo);
+                if (isRustFSConfigured($rustfs)) {
+                    $object_key = 'Backups/' . $filename;
+                    $result = uploadContentToRustFS($rustfs, $nc_file_content, $object_key, 'application/gzip');
+                    
+                    if ($result['success']) {
+                        $success_destinations[] = 'RustFS: ' . $result['url'];
+                    } else {
+                        $errors[] = 'RustFS upload failed: ' . ($result['message'] ?? '');
+                    }
                 } else {
-                    $errors[] = 'Primary Nextcloud upload failed';
+                    $errors[] = 'RustFS not configured';
                 }
             } catch (Exception $e) {
-                $errors[] = 'Primary Nextcloud: ' . $e->getMessage();
+                $errors[] = 'RustFS: ' . $e->getMessage();
             }
         }
         
-        // Upload to secondary Nextcloud if both_nextcloud destination is selected
+        // Upload to secondary RustFS if both_nextcloud destination is selected
         if ($nc_file_content !== null && $job['destination_type'] === 'both_nextcloud') {
             try {
-                $nc2_settings = getSecondaryNextcloudSettings($pdo);
-                if (!empty($nc2_settings['nextcloud_url'])) {
-                    $connection2 = connectNextcloud($nc2_settings);
-                    $folder2 = !empty($job['nextcloud_folder']) ? $job['nextcloud_folder'] : ($nc2_settings['nextcloud_backup_folder'] ?? '/ArcticWolves/Backups/');
-                    $remote_path2 = rtrim($folder2, '/') . '/' . $filename;
-                    $result2 = uploadToNextcloud($connection2, $remote_path2, $nc_file_content, 'application/gzip');
+                // Secondary storage also goes to RustFS with a different prefix
+                $rustfs = getRustFSSettings($pdo);
+                if (isRustFSConfigured($rustfs)) {
+                    $object_key2 = 'Backups/secondary/' . $filename;
+                    $result2 = uploadContentToRustFS($rustfs, $nc_file_content, $object_key2, 'application/gzip');
                     
-                    if ($result2) {
-                        $success_destinations[] = 'Nextcloud2: ' . $remote_path2;
+                    if ($result2['success']) {
+                        $success_destinations[] = 'RustFS-secondary: ' . $result2['url'];
                     } else {
-                        $errors[] = 'Secondary Nextcloud upload failed';
+                        $errors[] = 'Secondary RustFS upload failed';
                     }
                 }
             } catch (Exception $e) {
-                $errors[] = 'Secondary Nextcloud: ' . $e->getMessage();
+                $errors[] = 'Secondary RustFS: ' . $e->getMessage();
             }
         }
         

@@ -7,8 +7,8 @@
  * 1. Hidden fields exist in the expense form for OCR receipt data
  * 2. useOCRData() populates receipt hidden fields from OCR scan response
  * 3. Backend create action accepts ocr_receipt_url and ocr_nextcloud_path
- * 4. Backend validates ocr_receipt_url path before using it
- * 5. Backend skips re-upload to Nextcloud when nextcloud_path already set
+ * 4. Backend validates ocr_receipt_url is a valid HTTP/HTTPS URL (RustFS)
+ * 5. Backend uploads receipt to Paperless-NGX for archival
  */
 
 import { test, expect } from '@playwright/test';
@@ -102,41 +102,39 @@ test.describe('Backend create action uses OCR receipt when no file uploaded', ()
 });
 
 // =====================================================
-// 4. Backend validates ocr_receipt_url path
+// 4. Backend validates ocr_receipt_url is a valid URL
 // =====================================================
 
-test.describe('Backend validates OCR receipt path for security', () => {
-  test('should use realpath to prevent directory traversal', () => {
+test.describe('Backend validates OCR receipt URL for security', () => {
+  test('should validate OCR receipt is an HTTP/HTTPS URL', () => {
     const content = readFile('process_expenses.php');
     const createStart = content.indexOf("case 'create':");
     const createEnd = content.indexOf("case 'update':", createStart);
     const createSection = content.substring(createStart, createEnd);
-    expect(createSection).toContain('realpath($ocr_receipt)');
-    expect(createSection).toContain("realpath('uploads/receipts')");
+    expect(createSection).toContain("preg_match('#^https?://#', $ocr_receipt)");
   });
 
-  test('should verify resolved path starts within allowed directory', () => {
+  test('should only set receipt_url when URL matches HTTP pattern', () => {
     const content = readFile('process_expenses.php');
     const createStart = content.indexOf("case 'create':");
     const createEnd = content.indexOf("case 'update':", createStart);
     const createSection = content.substring(createStart, createEnd);
-    expect(createSection).toContain('strpos($real_path, $allowed_dir)');
+    // receipt_url is set only inside the preg_match guard — no local paths accepted
+    expect(createSection).toContain('$receipt_url = $ocr_receipt');
   });
 });
 
 // =====================================================
-// 5. Always upload to Nextcloud for redundancy
+// 5. Upload receipt to Paperless-NGX for archival
 // =====================================================
 
-test.describe('Always upload receipt to Nextcloud for redundancy', () => {
-  test('Nextcloud upload should always happen when receipt_url and vendor exist', () => {
+test.describe('Upload receipt to Paperless-NGX when file is uploaded', () => {
+  test('Paperless upload should happen when a fresh file is uploaded with vendor', () => {
     const content = readFile('process_expenses.php');
     const createStart = content.indexOf("case 'create':");
     const createEnd = content.indexOf("case 'update':", createStart);
     const createSection = content.substring(createStart, createEnd);
-    // Should upload to Nextcloud whenever receipt_url is set, not skip when nextcloud_path exists
-    expect(createSection).toContain("if ($receipt_url && !empty($vendor_name))");
-    expect(createSection).toContain('uploadReceiptToNextcloud');
+    // Receipt is stored in RustFS; Paperless upload happens for fresh file uploads
     expect(createSection).toContain('uploadToPaperless');
   });
 });

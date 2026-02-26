@@ -119,40 +119,39 @@ test.describe('Drill image restoration from Nextcloud', () => {
     expect(content).toContain('function resolveDrillImage(');
   });
 
-  test('resolveDrillImage should check file_exists before restoring', () => {
+  test('resolveDrillImage should validate URLs', () => {
     const content = readFile('lib/image_helper.php');
     const fnStart = content.indexOf('function resolveDrillImage(');
     const fn = content.substring(fnStart, content.indexOf('\nfunction ', fnStart + 10) || undefined);
-    expect(fn).toContain('file_exists');
+    expect(fn).toContain('https?://');
   });
 
-  test('resolveDrillImage should use restoreImageFromNextcloud', () => {
+  test('resolveDrillImage should return null for empty paths', () => {
     const content = readFile('lib/image_helper.php');
     const fnStart = content.indexOf('function resolveDrillImage(');
     const fn = content.substring(fnStart);
-    expect(fn).toContain('restoreImageFromNextcloud');
+    expect(fn).toContain('return null');
   });
 
-  test('resolveDrillImage should query nextcloud_image_path from drills table', () => {
+  test('resolveDrillImage should return URL for valid http paths', () => {
     const content = readFile('lib/image_helper.php');
     const fnStart = content.indexOf('function resolveDrillImage(');
     const fn = content.substring(fnStart);
-    expect(fn).toContain('nextcloud_image_path');
-    expect(fn).toContain('FROM drills');
+    expect(fn).toContain('return $path');
   });
 
-  test('resolveDrillImage should validate path with isValidImagePath', () => {
+  test('resolveDrillImage no longer queries drills table directly', () => {
     const content = readFile('lib/image_helper.php');
     const fnStart = content.indexOf('function resolveDrillImage(');
-    const fn = content.substring(fnStart);
-    expect(fn).toContain('isValidImagePath');
+    const fn = content.substring(fnStart, content.indexOf('\nfunction ', fnStart + 10) || undefined);
+    expect(fn).not.toContain('FROM drills');
   });
 
-  test('resolveDrillImage should update drills table after restoration', () => {
+  test('resolveDrillImage no longer updates drills table', () => {
     const content = readFile('lib/image_helper.php');
     const fnStart = content.indexOf('function resolveDrillImage(');
-    const fn = content.substring(fnStart);
-    expect(fn).toContain('UPDATE drills SET custom_image');
+    const fn = content.substring(fnStart, content.indexOf('\nfunction ', fnStart + 10) || undefined);
+    expect(fn).not.toContain('UPDATE drills SET custom_image');
   });
 });
 
@@ -160,17 +159,17 @@ test.describe('Drill image restoration from Nextcloud', () => {
 // 4. View files use drill image restoration
 // =====================================================
 
-test.describe('View files restore drill images from Nextcloud', () => {
-  test('view_drill.php should use resolveDrillImage when local file is missing', () => {
+test.describe('View files render drill images from URLs', () => {
+  test('view_drill.php renders drill images without resolveDrillImage', () => {
     const content = readFile('views/view_drill.php');
-    expect(content).toContain('resolveDrillImage');
-    expect(content).toContain('image_helper.php');
+    // After RustFS migration, images are URLs; resolveDrillImage is no longer needed in views
+    expect(content).not.toContain('resolveDrillImage');
   });
 
-  test('view_practice_plan.php should use resolveDrillImage when local file is missing', () => {
+  test('view_practice_plan.php renders drill images without resolveDrillImage', () => {
     const content = readFile('views/view_practice_plan.php');
-    expect(content).toContain('resolveDrillImage');
-    expect(content).toContain('image_helper.php');
+    // After RustFS migration, images are URLs; resolveDrillImage is no longer needed in views
+    expect(content).not.toContain('resolveDrillImage');
   });
 });
 

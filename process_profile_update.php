@@ -42,26 +42,26 @@ if ($action == 'upload_avatar') {
             $nc_filename = "avatar_" . $target_id . "_" . time() . "." . $ext;
             $new_name = "uploads/avatar_" . $target_id . "_" . time() . "." . $ext;
             
-            // Persist: save to /config/persistent_uploads, upload to Nextcloud, cache locally
+            // Upload to RustFS
             $persist = persistUploadedFile($pdo, $_FILES['profile_pic']['tmp_name'], 'profiles', $nc_filename, $new_name);
+            $db_path = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $new_name;
             
-            $pdo->prepare("UPDATE users SET profile_image = ? WHERE id = ?")->execute([$new_name, $target_id]);
+            $pdo->prepare("UPDATE users SET profile_image = ? WHERE id = ?")->execute([$db_path, $target_id]);
             
             // Store Nextcloud path for persistent recovery
             if (!empty($persist['nextcloud_path'])) {
                 $pdo->prepare("UPDATE users SET nextcloud_image_path = ? WHERE id = ?")->execute([$persist['nextcloud_path'], $target_id]);
             }
                 
-                Auditor::log($pdo, $current_user_id, 'update', 'users', $target_id, ['action' => 'uploaded_avatar']);
-                
-                // Redirect logic
-                if ($target_id == $current_user_id) {
-                    header("Location: dashboard.php?page=profile&msg=avatar_updated");
-                } else {
-                    header("Location: dashboard.php?page=athlete_detail&id=$target_id&msg=avatar_updated");
-                }
-                exit();
+            Auditor::log($pdo, $current_user_id, 'update', 'users', $target_id, ['action' => 'uploaded_avatar']);
+            
+            // Redirect logic
+            if ($target_id == $current_user_id) {
+                header("Location: dashboard.php?page=profile&msg=avatar_updated");
+            } else {
+                header("Location: dashboard.php?page=athlete_detail&id=$target_id&msg=avatar_updated");
             }
+            exit();
         }
     }
     header("Location: dashboard.php?page=profile&error=upload_error");
@@ -539,33 +539,40 @@ if ($action == 'upload_photo') {
         
         if (in_array($ext, $allowed)) {
             $relative_dir = 'uploads/profiles/';
-            $upload_dir = __DIR__ . '/' . $relative_dir;
-            if (!is_dir($upload_dir)) { 
-                mkdir($upload_dir, 0755, true); 
-            }
             $profile_filename = "profile_" . $current_user_id . "_" . time() . "." . $ext;
-            $absolute_path = $upload_dir . $profile_filename;
             $relative_path = $relative_dir . $profile_filename;
             
-            if (move_uploaded_file($_FILES['profile_photo']['tmp_name'], $absolute_path)) {
-                // Save to persistent storage (survives updates)
-                try {
-                    saveToPersistentStorage($absolute_path, 'profiles', $profile_filename, $pdo);
-                } catch (Exception $e) {
-                    error_log("Persistent storage save failed: " . $e->getMessage());
-                }
-                
-                // Delete old profile image if exists
+            $persist = persistUploadedFile($pdo, $_FILES['profile_photo']['tmp_name'], 'profiles', $profile_filename, $relative_path);
+            $db_path = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $relative_path;
+            
+            if ($persist['success']) {
+                // Delete old profile image from RustFS
                 $stmt = $pdo->prepare("SELECT profile_image FROM users WHERE id = ?");
                 $stmt->execute([$current_user_id]);
                 $old_image = $stmt->fetchColumn();
-                if ($old_image && file_exists(__DIR__ . '/' . $old_image)) {
-                    unlink(__DIR__ . '/' . $old_image);
+                if ($old_image && preg_match('#^https?://#', $old_image)) {
+                    try {
+                        $rustfs = getRustFSSettings($pdo);
+                        if (isRustFSConfigured($rustfs)) {
+                            $base_url = getRustFSBaseUrl($rustfs);
+                            if (strpos($old_image, $base_url) === 0) {
+                                $object_key = substr($old_image, strlen($base_url) + 1);
+                                deleteFromRustFS($rustfs, $object_key);
+                            }
+                        }
+                    } catch (Exception $delErr) {
+                        error_log("RustFS delete old profile image: " . $delErr->getMessage());
+                    }
                 }
                 
-                // Update database with relative path for web access
+                // Update database with RustFS URL or relative path
                 $pdo->prepare("UPDATE users SET profile_image = ? WHERE id = ?")
-                    ->execute([$relative_path, $current_user_id]);
+                    ->execute([$db_path, $current_user_id]);
+                
+                // Store persistent path for recovery
+                if (!empty($persist['nextcloud_path'])) {
+                    $pdo->prepare("UPDATE users SET nextcloud_image_path = ? WHERE id = ?")->execute([$persist['nextcloud_path'], $current_user_id]);
+                }
                 
                 header("Location: dashboard.php?page=profile&msg=photo_uploaded");
                 exit();

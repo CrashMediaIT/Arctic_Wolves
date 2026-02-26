@@ -290,15 +290,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $subfolder = 'evaluations/' . $eval['evaluation_id'];
                 $filepath = 'uploads/evaluations/' . $eval['evaluation_id'] . '/' . $filename;
                 
-                // Persist: save to /config/persistent_uploads, upload to Nextcloud, cache locally
+                // Upload to RustFS
                 $persist = persistUploadedFile($pdo, $file['tmp_name'], $subfolder, $filename, $filepath);
+                $db_filepath = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $filepath;
                 
                 // Save to database
                 $stmt = $pdo->prepare("
                     INSERT INTO evaluation_media (evaluation_id, score_id, media_url, media_type, uploaded_by, created_at)
                     VALUES (?, ?, ?, ?, ?, NOW())
                 ");
-                $stmt->execute([$eval['evaluation_id'], $score_id, $filepath, $media_type, $user_id]);
+                $stmt->execute([$eval['evaluation_id'], $score_id, $db_filepath, $media_type, $user_id]);
                 $media_id = $pdo->lastInsertId();
                 Auditor::log($pdo, $user_id, 'create', 'evaluation_media', $media_id, ['action' => 'Uploaded evaluation media']);
                 
@@ -312,7 +313,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 echo json_encode([
                     'success' => true,
                     'media_id' => $media_id,
-                    'media_url' => $filepath,
+                    'media_url' => $db_filepath,
                     'media_type' => $media_type,
                     'message' => 'Media uploaded successfully'
                 ]);

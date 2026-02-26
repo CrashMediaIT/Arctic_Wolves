@@ -300,7 +300,7 @@ if ($expenseStats['last_month'] > 0) {
                             <i class="fas fa-cloud-upload-alt"></i>
                         </div>
                         <p id="receiptFileLabel" class="upload-text">Drag & drop file here or click to browse</p>
-                        <span class="upload-hint">Supports: JPG, PNG, PDF (Max 10MB) - Auto-uploads to Nextcloud</span>
+                        <span class="upload-hint">Supports: JPG, PNG, PDF (Max 100MB) - Auto-uploads to RustFS</span>
                         <input type="file" name="receipt_file" id="receiptFile" accept="image/*,application/pdf" capture="environment" style="display: none;" onchange="updateFileLabel('receiptFileLabel', this)">
                         <div class="upload-buttons">
                             <button type="button" class="btn-secondary btn-small" onclick="document.getElementById('receiptFile').click()">
