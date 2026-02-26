@@ -260,7 +260,10 @@ $is_demo_data = false;
                         <div class="video-actions">
                             <button class="btn-primary btn-full" data-action="play-video" 
                                     data-video-id="<?= htmlspecialchars($video['id']) ?>"
-                                    data-video-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['video_url'] ?? '') ?? '') ?>">
+                                    data-video-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['video_url'] ?? '') ?? '') ?>"
+                                    data-video-description="<?= htmlspecialchars($video['description'] ?? '') ?>"
+                                    data-video-coach="<?= htmlspecialchars(trim(($video['coach_first_name'] ?? '') . ' ' . ($video['coach_last_name'] ?? ''))) ?>"
+                                    data-video-date="<?= htmlspecialchars(date('M d, Y', strtotime($video['upload_date']))) ?>">
                                 <i class="fas fa-play"></i> Watch Video
                             </button>
                             <?php if (($video['video_type'] ?? '') === 'uploaded_by_athlete' && (int)($video['athlete_id'] ?? 0) === (int)$user_id): ?>
@@ -1295,6 +1298,27 @@ $is_demo_data = false;
     line-height: 1.4;
 }
 
+.video-detail-description {
+    color: var(--text-dim);
+    font-size: 14px;
+    line-height: 1.6;
+    margin: 0 0 12px;
+}
+
+.video-detail-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-right: 16px;
+}
+
+.video-detail-item i {
+    color: var(--primary);
+    font-size: 12px;
+}
+
 /* Delete button */
 .btn-delete-video {
     margin-top: 8px;
@@ -1328,20 +1352,61 @@ document.addEventListener('DOMContentLoaded', function() {
     const videoPlaceholder = document.getElementById('videoPlaceholder');
     const videoTitle = document.getElementById('videoModalTitle');
     const videoDetails = document.getElementById('videoDetails');
+    const videoDetailTitle = document.getElementById('videoDetailTitle');
+    const videoDetailMeta = document.getElementById('videoDetailMeta');
+    var activeHls = null;
     
     // Play video buttons
     document.querySelectorAll('[data-action="play-video"]').forEach(btn => {
         btn.addEventListener('click', function() {
             const videoUrl = this.dataset.videoUrl;
             const title = this.closest('.video-card').querySelector('.video-title')?.textContent || 'Video';
+            const description = this.dataset.videoDescription || '';
+            const coach = this.dataset.videoCoach || '';
+            const date = this.dataset.videoDate || '';
             
             if (modal) {
                 modal.style.display = 'flex';
                 videoTitle.innerHTML = '<i class="fas fa-play-circle"></i> ' + title;
                 
+                // Populate video details section
+                if (videoDetailTitle) videoDetailTitle.textContent = title;
+                if (videoDetailMeta) {
+                    var metaHtml = '';
+                    if (description) {
+                        var descEl = document.createElement('p');
+                        descEl.className = 'video-detail-description';
+                        descEl.textContent = description;
+                        metaHtml += descEl.outerHTML;
+                    }
+                    if (coach) {
+                        var coachEl = document.createElement('span');
+                        coachEl.className = 'video-detail-item';
+                        coachEl.innerHTML = '<i class="fas fa-user-tie"></i> ';
+                        coachEl.appendChild(document.createTextNode(coach));
+                        metaHtml += coachEl.outerHTML;
+                    }
+                    if (date) {
+                        var dateEl = document.createElement('span');
+                        dateEl.className = 'video-detail-item';
+                        dateEl.innerHTML = '<i class="fas fa-calendar"></i> ';
+                        dateEl.appendChild(document.createTextNode(date));
+                        metaHtml += dateEl.outerHTML;
+                    }
+                    videoDetailMeta.innerHTML = metaHtml;
+                }
+                if (videoDetails) videoDetails.style.display = (description || coach || date) ? 'block' : 'none';
+                
                 if (videoUrl) {
-                    videoPlayer.querySelector('source').src = videoUrl;
-                    videoPlayer.load();
+                    // Destroy any previous HLS instance
+                    if (activeHls) { activeHls.destroy(); activeHls = null; }
+
+                    if (typeof window.awInitHlsPlayer === 'function') {
+                        activeHls = window.awInitHlsPlayer(videoPlayer, videoUrl);
+                    } else {
+                        videoPlayer.querySelector('source').src = videoUrl;
+                        videoPlayer.load();
+                    }
                     videoPlayer.style.display = 'block';
                     if (videoPlaceholder) videoPlaceholder.style.display = 'none';
                 } else {
@@ -1360,8 +1425,10 @@ document.addEventListener('DOMContentLoaded', function() {
         el.addEventListener('click', function() {
             if (modal) {
                 modal.style.display = 'none';
+                if (activeHls) { activeHls.destroy(); activeHls = null; }
                 if (videoPlayer) {
                     videoPlayer.pause();
+                    videoPlayer.removeAttribute('src');
                     videoPlayer.currentTime = 0;
                 }
             }
@@ -1372,8 +1439,10 @@ document.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape' && modal && modal.style.display !== 'none') {
             modal.style.display = 'none';
+            if (activeHls) { activeHls.destroy(); activeHls = null; }
             if (videoPlayer) {
                 videoPlayer.pause();
+                videoPlayer.removeAttribute('src');
             }
         }
     });

@@ -4679,3 +4679,14 @@ INSERT IGNORE INTO `system_settings` (`setting_key`, `setting_value`, `setting_t
 -- Add file_path column to backup_history for storing RustFS URLs
 ALTER TABLE `backup_history`
 ADD COLUMN IF NOT EXISTS `file_path` VARCHAR(500) DEFAULT NULL COMMENT 'RustFS URL or local path for the backup file' AFTER `filename`;
+
+-- Add HLS transcoding columns to videos table for adaptive streaming
+ALTER TABLE `videos`
+ADD COLUMN IF NOT EXISTS `hls_url` VARCHAR(500) DEFAULT NULL COMMENT 'HLS master playlist URL (api/media.php proxy path)' AFTER `video_url`,
+ADD COLUMN IF NOT EXISTS `hls_status` ENUM('pending', 'processing', 'ready', 'failed') DEFAULT NULL COMMENT 'HLS transcoding status' AFTER `hls_url`,
+ADD COLUMN IF NOT EXISTS `hls_job_id` VARCHAR(36) DEFAULT NULL COMMENT 'Companion server HLS transcode job ID' AFTER `hls_status`;
+
+-- Companion server settings for HLS transcoding
+INSERT IGNORE INTO `system_settings` (`setting_key`, `setting_value`, `setting_type`, `description`) VALUES
+('companion_url', NULL, 'text', 'Video companion server URL (e.g., http://companion:5100)'),
+('companion_api_key', NULL, 'password', 'Video companion server API key');

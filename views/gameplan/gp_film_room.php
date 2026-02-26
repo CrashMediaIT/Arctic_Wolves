@@ -538,11 +538,19 @@ document.addEventListener('DOMContentLoaded', function() {
         fileArea.style.display = 'none';
     }
 
-    // Video player toggle
+    // Video player toggle with HLS support
     var player = document.getElementById('vrVideoPlayer');
     var placeholder = document.getElementById('vrPlayerPlaceholder');
+    var gpFilmHls = null;
     if (player && placeholder) {
-        placeholder.addEventListener('click', function() { player.style.display = 'block'; placeholder.style.display = 'none'; });
+        placeholder.addEventListener('click', function() {
+            player.style.display = 'block';
+            placeholder.style.display = 'none';
+            var src = player.querySelector('source')?.src;
+            if (src && typeof window.awInitHlsPlayer === 'function' && !gpFilmHls) {
+                gpFilmHls = window.awInitHlsPlayer(player, src);
+            }
+        });
     }
 });
 </script>

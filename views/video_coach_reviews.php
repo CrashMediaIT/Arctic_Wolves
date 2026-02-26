@@ -237,6 +237,11 @@ $reviewed_videos = array_filter($videos, function($v) {
                     </div>
                     <div class="video-details">
                         <h4><?= htmlspecialchars($video['title']) ?></h4>
+                        <?php if (!empty($video['description'])): ?>
+                            <div class="athlete-notes-preview">
+                                <i class="fas fa-comment-alt"></i> <?= htmlspecialchars(mb_strimwidth($video['description'], 0, 150, '...')) ?>
+                            </div>
+                        <?php endif; ?>
                         <div class="video-meta">
                             <span><i class="fas fa-user"></i> <?= htmlspecialchars(($video['athlete_first_name'] ?? '') . ' ' . ($video['athlete_last_name'] ?? '')) ?></span>
                             <span><i class="fas fa-calendar"></i> <?= date('M d, Y', strtotime($video['upload_date'])) ?></span>
@@ -293,6 +298,11 @@ $reviewed_videos = array_filter($videos, function($v) {
                     </div>
                     <div class="video-details">
                         <h4><?= htmlspecialchars($video['title']) ?></h4>
+                        <?php if (!empty($video['description'])): ?>
+                            <div class="athlete-notes-preview">
+                                <i class="fas fa-comment-alt"></i> <?= htmlspecialchars(mb_strimwidth($video['description'], 0, 150, '...')) ?>
+                            </div>
+                        <?php endif; ?>
                         <div class="video-meta">
                             <span><i class="fas fa-user"></i> <?= htmlspecialchars(($video['athlete_first_name'] ?? '') . ' ' . ($video['athlete_last_name'] ?? '')) ?></span>
                             <span><i class="fas fa-calendar"></i> <?= date('M d, Y', strtotime($video['upload_date'])) ?></span>
@@ -487,6 +497,25 @@ $reviewed_videos = array_filter($videos, function($v) {
 </div>
 <?php endif; ?>
 
+<!-- Video Player Modal -->
+<div class="modal" id="coachVideoPlayerModal" style="display: none;">
+    <div class="modal-overlay" data-action="close-video-modal"></div>
+    <div class="modal-content" style="max-width: 1000px;">
+        <div class="modal-header">
+            <h3 id="coachVideoModalTitle"><i class="fas fa-play-circle"></i> Video Player</h3>
+            <button class="modal-close" aria-label="Close" data-action="close-video-modal"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <div style="position: relative; background: #000; border-radius: 8px; overflow: hidden;">
+                <video id="coachVideoPlayer" controls style="width: 100%; max-height: 500px; display: block;">
+                    <source src="" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
 .tab-content { display: none; }
 .tab-content.active { display: block; animation: fadeInUp 0.4s ease-out; }
@@ -536,6 +565,8 @@ $reviewed_videos = array_filter($videos, function($v) {
 .badge-game { background: rgba(16, 185, 129, 0.15); color: #10B981; }
 
 .coach-notes-preview { margin-top: 10px; padding: 8px 12px; background: rgba(107, 70, 193, 0.1); border-radius: 8px; font-size: 13px; color: var(--text-dim); display: flex; align-items: flex-start; gap: 8px; }
+.athlete-notes-preview { margin: 6px 0 8px; padding: 8px 12px; background: rgba(59, 130, 246, 0.08); border-left: 3px solid rgba(59, 130, 246, 0.4); border-radius: 4px; font-size: 13px; color: var(--text-dim); display: flex; align-items: flex-start; gap: 8px; line-height: 1.5; }
+.athlete-notes-preview i { color: #3b82f6; margin-top: 2px; flex-shrink: 0; }
 .coach-notes-preview i { color: var(--primary); margin-top: 2px; }
 
 .badge-success, .badge-warning { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
@@ -687,6 +718,38 @@ $reviewed_videos = array_filter($videos, function($v) {
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Video player modal
+    var vpModal = document.getElementById('coachVideoPlayerModal');
+    var vpVideo = document.getElementById('coachVideoPlayer');
+    var vpTitle = document.getElementById('coachVideoModalTitle');
+    var vpHls = null;
+
+    document.querySelectorAll('[data-action="view-video"]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var url = this.dataset.videoUrl;
+            var item = this.closest('.video-list-item');
+            var title = item ? (item.querySelector('.video-details h4')?.textContent || 'Video') : 'Video';
+            if (!vpModal) return;
+            vpModal.style.display = 'flex';
+            vpTitle.innerHTML = '<i class="fas fa-play-circle"></i> ' + title;
+            if (vpHls) { vpHls.destroy(); vpHls = null; }
+            if (url && typeof window.awInitHlsPlayer === 'function') {
+                vpHls = window.awInitHlsPlayer(vpVideo, url);
+            } else if (url) {
+                vpVideo.querySelector('source').src = url;
+                vpVideo.load();
+            }
+        });
+    });
+
+    document.querySelectorAll('[data-action="close-video-modal"]').forEach(function(el) {
+        el.addEventListener('click', function() {
+            if (vpModal) vpModal.style.display = 'none';
+            if (vpHls) { vpHls.destroy(); vpHls = null; }
+            if (vpVideo) { vpVideo.pause(); vpVideo.removeAttribute('src'); }
+        });
+    });
+
     document.querySelectorAll('[data-action="switch-tab"]').forEach(btn => {
         btn.addEventListener('click', function() {
             const tab = this.dataset.tab;
@@ -770,6 +833,8 @@ document.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
+            if (vpHls) { vpHls.destroy(); vpHls = null; }
+            if (vpVideo) { vpVideo.pause(); vpVideo.removeAttribute('src'); }
         }
     });
 
