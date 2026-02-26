@@ -80,9 +80,9 @@ try {
     </div>
 
     <?php if (!$assigned_coach_id): ?>
-    <div class="alert alert-warning">
-        <i class="fas fa-exclamation-triangle"></i>
-        <span>You don't have an assigned coach yet. Please contact an administrator to get assigned to a coach.</span>
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i>
+        <span>You don't have an assigned coach yet. Videos will be uploaded and can be assigned for review later.</span>
     </div>
     <?php else: ?>
     <div class="alert alert-info">
@@ -99,7 +99,7 @@ try {
             </div>
             <h3>Record with Camera</h3>
             <p>Use your device's camera to record a video directly</p>
-            <button class="btn btn-primary" id="start-camera-btn" <?= !$assigned_coach_id ? 'disabled' : '' ?>>
+            <button class="btn btn-primary" id="start-camera-btn">
                 <i class="fas fa-camera"></i> Start Recording
             </button>
         </div>
@@ -111,7 +111,7 @@ try {
             </div>
             <h3>Upload Video</h3>
             <p>Upload an existing video file from your device</p>
-            <button class="btn btn-secondary" id="upload-video-btn" <?= !$assigned_coach_id ? 'disabled' : '' ?>>
+            <button class="btn btn-secondary" id="upload-video-btn">
                 <i class="fas fa-upload"></i> Choose File
             </button>
         </div>
@@ -141,7 +141,6 @@ try {
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>">
             <input type="hidden" name="action" value="athlete_upload_video">
             <input type="hidden" name="coach_id" value="<?= (int)$assigned_coach_id ?>">
-            <input type="hidden" name="MAX_FILE_SIZE" value="10737418240"> <!-- 10GB in bytes -->
             
             <div class="form-row">
                 <div class="form-group">
@@ -854,7 +853,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Video upload with progress bar
+    // Video upload with progress bar — matches working drill video upload pattern
     var uploadForm = document.getElementById('video-upload-form');
     if (uploadForm) {
         uploadForm.addEventListener('submit', function(e) {
@@ -878,10 +877,23 @@ document.addEventListener('DOMContentLoaded', function() {
             percent.textContent = '0%';
             status.textContent = 'Uploading video...';
 
-            var formData = new FormData(uploadForm);
+            // Build FormData manually — matches the working drill video pattern
+            var formData = new FormData();
+            formData.append('action', 'athlete_upload_video');
+            formData.append('video_file', videoFile);
+            formData.append('title', document.getElementById('video_title').value);
+            formData.append('video_category', document.getElementById('video_type').value);
+            var descEl = document.getElementById('video_description');
+            if (descEl) formData.append('description', descEl.value);
+            var teamEl = document.getElementById('team_id');
+            if (teamEl && teamEl.value) formData.append('team_id', teamEl.value);
+            var csrfToken = uploadForm.querySelector('input[name="csrf_token"]');
+            if (csrfToken) formData.append('csrf_token', csrfToken.value);
+            var coachInput = uploadForm.querySelector('input[name="coach_id"]');
+            if (coachInput) formData.append('coach_id', coachInput.value);
+
             var xhr = new XMLHttpRequest();
-            xhr.open('POST', uploadForm.action, true);
-            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            xhr.open('POST', 'process_video.php', true);
 
             xhr.upload.onprogress = function(e) {
                 if (e.lengthComputable) {
@@ -897,28 +909,22 @@ document.addEventListener('DOMContentLoaded', function() {
             };
 
             xhr.onload = function() {
-                if (xhr.status === 200) {
-                    try {
-                        var response = JSON.parse(xhr.responseText);
-                        if (response.success) {
-                            bar.style.width = '100%';
-                            percent.textContent = '100%';
-                            status.textContent = 'Upload complete! Redirecting...';
-                            window.location.href = response.redirect || 'dashboard.php?page=coaches_reviews&success=video_uploaded';
-                        } else {
-                            overlay.style.display = 'none';
-                            submitBtn.disabled = false;
-                            showToast('Upload failed: ' + (response.error || 'Please try again or contact support.'), 'error');
-                        }
-                    } catch (err) {
+                try {
+                    var response = JSON.parse(xhr.responseText);
+                    if (response.success) {
+                        bar.style.width = '100%';
+                        percent.textContent = '100%';
+                        status.textContent = 'Upload complete! Redirecting...';
+                        window.location.href = response.redirect || 'dashboard.php?page=coaches_reviews&success=video_uploaded';
+                    } else {
                         overlay.style.display = 'none';
                         submitBtn.disabled = false;
-                        showToast('Upload failed. Please try again.', 'error');
+                        showToast('Upload failed: ' + (response.error || response.message || 'Please try again.'), 'error');
                     }
-                } else {
+                } catch (err) {
                     overlay.style.display = 'none';
                     submitBtn.disabled = false;
-                    showToast('Upload failed (server error). Please try again.', 'error');
+                    showToast('Upload failed: ' + (xhr.statusText || 'Server error'), 'error');
                 }
             };
 

@@ -294,12 +294,10 @@ function handleVideoUpload() {
 function handleAthleteVideoUpload() {
     global $pdo, $user_id, $user_role;
     
-    // Get user's assigned coach
+    // Get user's assigned coach from POST or look it up from the database.
+    // All users (regardless of role) can have an assigned coach and upload
+    // videos for review as an athlete.
     $coach_id = filter_input(INPUT_POST, 'coach_id', FILTER_VALIDATE_INT);
-    
-    // If user is a coach uploading for an athlete
-    $allowed_roles = ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'];
-    $is_coach = in_array($user_role, $allowed_roles);
     
     // Get athlete_id from POST (auto-assigned to current user on the frontend)
     $athlete_id = filter_input(INPUT_POST, 'athlete_id', FILTER_VALIDATE_INT);
@@ -309,23 +307,14 @@ function handleAthleteVideoUpload() {
         $athlete_id = $user_id;
     }
     
-    // Get the coach for this video
-    if ($is_coach) {
-        // For coaches uploading for themselves, they are their own reviewer
-        $coach_id = $user_id;
-    } else {
-        // For athletes, validate that they have an assigned coach
-        if (!$coach_id) {
-            $stmt = $pdo->prepare("SELECT assigned_coach_id FROM users WHERE id = ?");
-            $stmt->execute([$user_id]);
-            $user = $stmt->fetch();
-            $coach_id = $user['assigned_coach_id'] ?? null;
-        }
-        
-        if (!$coach_id) {
-            throw new Exception('You do not have an assigned coach. Please contact an administrator.');
-        }
+    // Look up assigned coach if not provided via POST
+    if (!$coach_id) {
+        $stmt = $pdo->prepare("SELECT assigned_coach_id FROM users WHERE id = ?");
+        $stmt->execute([$user_id]);
+        $user = $stmt->fetch();
+        $coach_id = $user['assigned_coach_id'] ?? null;
     }
+    // Allow upload even without an assigned coach — coach_id will be NULL
     
     // Validate required fields
     $title = trim($_POST['title'] ?? '');
@@ -433,19 +422,20 @@ function handleAthleteVideoUpload() {
         logSecurityEvent($pdo, 'athlete_video_upload', "Athlete video uploaded for review, ID: $video_id", $athlete_id);
     } catch (Exception $e) { error_log("logSecurityEvent failed: " . $e->getMessage()); }
     
-    try {
-        sendVideoUploadNotificationToCoach($pdo, $coach_id, $athlete_id, $video_id, $title);
-    } catch (Exception $e) { error_log("sendVideoUploadNotificationToCoach failed: " . $e->getMessage()); }
-    
-    // Return JSON for XHR requests, redirect for standard form submissions
-    if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
-        header('Content-Type: application/json');
-        echo json_encode(['success' => true, 'video_id' => $video_id, 'redirect' => 'dashboard.php?page=coaches_reviews&success=video_uploaded']);
-        exit;
+    if ($coach_id) {
+        try {
+            sendVideoUploadNotificationToCoach($pdo, $coach_id, $athlete_id, $video_id, $title);
+        } catch (Exception $e) { error_log("sendVideoUploadNotificationToCoach failed: " . $e->getMessage()); }
     }
-
-    // Redirect back to coach reviews page
-    header('Location: dashboard.php?page=coaches_reviews&success=video_uploaded');
+    
+    // Always return JSON — matches the working drill video upload pattern
+    header('Content-Type: application/json');
+    echo json_encode([
+        'success' => true,
+        'message' => 'Video uploaded successfully',
+        'video_id' => $video_id,
+        'redirect' => 'dashboard.php?page=coaches_reviews&success=video_uploaded'
+    ]);
     exit;
 }
 

@@ -984,8 +984,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (xhr.status === 200) {
                     const response = JSON.parse(xhr.responseText);
                     if (response.success) {
-                        showToast('Video uploaded successfully!', 'success');
-                        discardBtn.click();
+                        persistToast('Video uploaded successfully!', 'success');
+                        setTimeout(function() { location.reload(); }, 500);
                     } else {
                         showToast('Upload failed: ' + response.error, 'error');
                     }
@@ -1118,10 +1118,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 try {
                     var response = JSON.parse(xhr.responseText);
                     if (response.success) {
-                        showToast('Video uploaded successfully!', 'success');
-                        videoFileInput.value = '';
-                        selectedFileInfo.style.display = 'none';
-                        uploadFileBtn.disabled = true;
+                        persistToast('Video uploaded successfully!', 'success');
+                        setTimeout(function() { location.reload(); }, 500);
                     } else {
                         showToast('Upload failed: ' + (response.error || response.message || 'Unknown error'), 'error');
                         uploadFileBtn.disabled = false;
