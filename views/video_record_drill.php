@@ -247,7 +247,7 @@ try {
     <div class="file-upload-area" id="fileDropZone">
         <i class="fas fa-cloud-upload-alt"></i>
         <p>Drag & drop video file here or click to browse</p>
-        <p class="file-hint">Supported: MP4, MOV, AVI, WebM (Max 500MB)</p>
+        <p class="file-hint">Supported: MP4, MOV, AVI, WebM (Max 10GB)</p>
         <input type="file" name="video_file" id="videoFileInput" accept="video/*" style="display: none;">
         <button type="button" class="btn btn-secondary" id="browseFilesBtn">Browse Files</button>
     </div>
@@ -832,7 +832,7 @@ document.addEventListener('DOMContentLoaded', function() {
             startCameraBtn.disabled = true;
             flipCameraBtn.style.display = 'inline-flex';
         } catch (err) {
-            alert('Error accessing camera: ' + err.message);
+            showToast('Error accessing camera: ' + err.message, 'error');
             console.error('Camera error:', err);
         }
     });
@@ -868,7 +868,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 videoPreview.srcObject = stream;
             } catch (err2) {
-                alert('Error switching camera: ' + err2.message);
+                showToast('Error switching camera: ' + err2.message, 'error');
                 console.error('Camera flip error:', err2);
             }
         }
@@ -884,7 +884,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const athlete = document.getElementById('athleteSelect').value;
         
         if (!session || !drill || !athlete) {
-            alert('Please select a session, drill, and athlete before recording.');
+            showToast('Please select a session, drill, and athlete before recording.', 'error');
             return;
         }
         
@@ -984,25 +984,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (xhr.status === 200) {
                     const response = JSON.parse(xhr.responseText);
                     if (response.success) {
-                        alert('Video uploaded successfully!');
+                        showToast('Video uploaded successfully!', 'success');
                         discardBtn.click();
                     } else {
-                        alert('Upload failed: ' + response.error);
+                        showToast('Upload failed: ' + response.error, 'error');
                     }
                 } else {
-                    alert('Upload failed. Please try again.');
+                    showToast('Upload failed. Please try again.', 'error');
                 }
                 document.getElementById('uploadProgress').style.display = 'none';
             };
             
             xhr.onerror = function() {
-                alert('Upload failed. Please check your connection.');
+                showToast('Upload failed. Please check your connection.', 'error');
                 document.getElementById('uploadProgress').style.display = 'none';
             };
             
             xhr.send(formData);
         } catch (err) {
-            alert('Upload error: ' + err.message);
+            showToast('Upload error: ' + err.message, 'error');
             document.getElementById('uploadProgress').style.display = 'none';
         }
     });
@@ -1042,10 +1042,10 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     function handleFileSelect(file) {
-        const maxSize = 500 * 1024 * 1024; // 500MB
+        const maxSize = 10 * 1024 * 1024 * 1024; // 10GB
         
         if (file.size > maxSize) {
-            alert('File size exceeds 500MB limit. Please choose a smaller file.');
+            showToast('File size exceeds 10GB limit. Please choose a smaller file.', 'error');
             videoFileInput.value = '';
             selectedFileInfo.style.display = 'none';
             uploadFileBtn.disabled = true;
@@ -1081,7 +1081,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var athlete = document.getElementById('athleteSelect').value;
 
         if (!session || !drill || !athlete) {
-            alert('Please select a session, drill, and athlete before uploading.');
+            showToast('Please select a session, drill, and athlete before uploading.', 'error');
             return;
         }
 
@@ -1118,27 +1118,27 @@ document.addEventListener('DOMContentLoaded', function() {
                 try {
                     var response = JSON.parse(xhr.responseText);
                     if (response.success) {
-                        alert('Video uploaded successfully!');
+                        showToast('Video uploaded successfully!', 'success');
                         videoFileInput.value = '';
                         selectedFileInfo.style.display = 'none';
                         uploadFileBtn.disabled = true;
                     } else {
-                        alert('Upload failed: ' + (response.error || response.message || 'Unknown error'));
+                        showToast('Upload failed: ' + (response.error || response.message || 'Unknown error'), 'error');
                         uploadFileBtn.disabled = false;
                     }
                 } catch (err) {
-                    alert('Upload failed. Please try again.');
+                    showToast('Upload failed. Please try again.', 'error');
                     uploadFileBtn.disabled = false;
                 }
             } else {
-                alert('Upload failed. Please try again.');
+                showToast('Upload failed. Please try again.', 'error');
                 uploadFileBtn.disabled = false;
             }
             document.getElementById('uploadProgress').style.display = 'none';
         };
 
         xhr.onerror = function() {
-            alert('Upload failed. Please check your connection.');
+            showToast('Upload failed. Please check your connection.', 'error');
             document.getElementById('uploadProgress').style.display = 'none';
             uploadFileBtn.disabled = false;
         };

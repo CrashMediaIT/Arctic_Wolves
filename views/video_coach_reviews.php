@@ -421,7 +421,7 @@ $reviewed_videos = array_filter($videos, function($v) {
                     <div class="file-upload-area" data-component="FileUpload">
                         <i class="fas fa-cloud-upload-alt"></i>
                         <p>Drag & drop video file here or click to browse</p>
-                        <p class="file-hint">Supported: MP4, MOV, AVI, WebM (Max 500MB)</p>
+                        <p class="file-hint">Supported: MP4, MOV, AVI, WebM (Max 10GB)</p>
                         <p class="file-name" style="display: none;"></p>
                         <input type="file" name="video_file" accept="video/*" style="display: none;" required data-field="video-file">
                         <button type="button" class="btn-secondary" data-action="trigger-file-input">Choose File</button>
@@ -818,24 +818,24 @@ document.addEventListener('DOMContentLoaded', function() {
                         } else {
                             overlay.style.display = 'none';
                             submitBtn.disabled = false;
-                            alert('Upload failed: ' + (response.error || 'Please try again or contact support.'));
+                            showToast('Upload failed: ' + (response.error || 'Please try again or contact support.'), 'error');
                         }
                     } catch (err) {
                         overlay.style.display = 'none';
                         submitBtn.disabled = false;
-                        alert('Upload failed. Please try again.');
+                        showToast('Upload failed. Please try again.', 'error');
                     }
                 } else {
                     overlay.style.display = 'none';
                     submitBtn.disabled = false;
-                    alert('Upload failed (server error). Please try again.');
+                    showToast('Upload failed (server error). Please try again.', 'error');
                 }
             };
 
             xhr.onerror = function() {
                 overlay.style.display = 'none';
                 submitBtn.disabled = false;
-                alert('Upload failed. Please check your connection and try again.');
+                showToast('Upload failed. Please check your connection and try again.', 'error');
             };
 
             xhr.send(formData);

@@ -18,6 +18,9 @@ require_once __DIR__ . '/error_logger.php';
 // Set security headers
 setSecurityHeaders();
 
+// Allow unlimited execution time for large video uploads
+set_time_limit(0);
+
 // Check if user is logged in
 if (!isset($_SESSION['logged_in']) || !isset($_SESSION['user_id'])) {
     http_response_code(401);

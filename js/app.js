@@ -82,6 +82,62 @@
     }
 
     /**
+     * Show an in-app confirmation modal instead of browser confirm().
+     * Returns a Promise that resolves to true (confirmed) or false (cancelled).
+     */
+    function showConfirmModal(message, confirmText, cancelText) {
+        confirmText = confirmText || 'Confirm';
+        cancelText = cancelText || 'Cancel';
+        return new Promise(function(resolve) {
+            // Create overlay
+            var overlay = document.createElement('div');
+            overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:10001;';
+
+            var card = document.createElement('div');
+            card.style.cssText = 'background:var(--bg-card,#16161F);border:1px solid var(--border,#2D2D3F);border-radius:12px;padding:32px;max-width:420px;width:90%;text-align:center;';
+
+            var icon = document.createElement('div');
+            icon.innerHTML = '<i class="fas fa-exclamation-triangle" style="font-size:32px;color:#F59E0B;margin-bottom:16px;"></i>';
+
+            var msg = document.createElement('p');
+            msg.textContent = message;
+            msg.style.cssText = 'color:var(--text-white,#fff);font-size:15px;margin-bottom:24px;line-height:1.5;';
+
+            var actions = document.createElement('div');
+            actions.style.cssText = 'display:flex;gap:12px;justify-content:center;';
+
+            var cancelBtn = document.createElement('button');
+            cancelBtn.textContent = cancelText;
+            cancelBtn.style.cssText = 'padding:10px 24px;border-radius:8px;border:1px solid var(--border,#2D2D3F);background:transparent;color:var(--text-white,#fff);cursor:pointer;font-size:14px;font-weight:600;';
+
+            var confirmBtn = document.createElement('button');
+            confirmBtn.textContent = confirmText;
+            confirmBtn.style.cssText = 'padding:10px 24px;border-radius:8px;border:none;background:linear-gradient(135deg,var(--primary,#6B46C1),var(--accent,#8B5CF6));color:white;cursor:pointer;font-size:14px;font-weight:600;';
+
+            function cleanup(result) {
+                overlay.remove();
+                resolve(result);
+            }
+
+            cancelBtn.addEventListener('click', function() { cleanup(false); });
+            confirmBtn.addEventListener('click', function() { cleanup(true); });
+            overlay.addEventListener('click', function(e) { if (e.target === overlay) cleanup(false); });
+
+            actions.appendChild(cancelBtn);
+            actions.appendChild(confirmBtn);
+            card.appendChild(icon);
+            card.appendChild(msg);
+            card.appendChild(actions);
+            overlay.appendChild(card);
+            document.body.appendChild(overlay);
+            confirmBtn.focus();
+        });
+    }
+
+    // Expose showConfirmModal globally so views and other scripts can use it
+    window.showConfirmModal = showConfirmModal;
+
+    /**
      * Show loading indicator
      */
     function showLoading(element) {
