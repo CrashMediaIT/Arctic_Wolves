@@ -75,7 +75,7 @@ if ($action === 'update_role_permissions') {
         Auditor::log($pdo, $user_id, 'update', 'role_permissions', null, ['action' => 'Updated role permissions']);
         
         // Log the change
-        logSecurityEvent($pdo, 'permissions_updated', 'Role permissions updated by admin', $user_id);
+        logSecurityEvent('permissions_updated', 'Role permissions updated by admin', $user_id);
         
         header("Location: dashboard.php?page=admin_permissions&status=permissions_updated");
         exit();
@@ -118,7 +118,7 @@ if ($action === 'update_user_permissions') {
         Auditor::log($pdo, $user_id, 'update', 'user_permissions', $target_user_id, ['action' => 'Updated user permissions']);
         
         // Log the change
-        logSecurityEvent($pdo, 'user_permissions_updated', "User permissions updated for user ID $target_user_id", $user_id);
+        logSecurityEvent('user_permissions_updated', "User permissions updated for user ID $target_user_id", $user_id);
         
         header("Location: dashboard.php?page=user_permissions&user_id=$target_user_id&status=updated");
         exit();

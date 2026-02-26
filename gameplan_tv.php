@@ -117,7 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['tv_action'] ?? '') === 'jo
                 $joined = $stmt2->fetch(PDO::FETCH_ASSOC);
                 if ($joined) {
                     $_SESSION['tv_pair_id'] = (int)$joined['id'];
-                    logSecurityEvent($pdo, 'tv_viewer_paired', "TV joined pair $join_code as viewer", $user_id);
+                    logSecurityEvent('tv_viewer_paired', "TV joined pair $join_code as viewer", $user_id);
                 }
                 header('Location: /gameplan_tv.php');
                 exit;

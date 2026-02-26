@@ -112,7 +112,7 @@ if ($action === 'cancel_booking' || $action === 'cancel') {
         
         // Log the cancellation
         if (function_exists('logSecurityEvent')) {
-            logSecurityEvent($pdo, 'booking_cancelled', 
+            logSecurityEvent('booking_cancelled', 
                 "User cancelled booking ID: $booking_id for session: {$booking['session_title']}", 
                 $user_id
             );
@@ -323,7 +323,7 @@ if ($action === 'join_waitlist') {
         }
         
         if (function_exists('logSecurityEvent')) {
-            logSecurityEvent($pdo, 'waitlist_joined', 
+            logSecurityEvent('waitlist_joined', 
                 "User joined waitlist for session: {$session['title']} (position: $next_position)", 
                 $user_id
             );

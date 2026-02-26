@@ -63,7 +63,7 @@ if ($action === 'create_goal') {
         
         // Log the goal creation
         if (function_exists('logSecurityEvent')) {
-            logSecurityEvent($pdo, 'goal_created', "Goal ID: $goal_id created from stats page", $user_id);
+            logSecurityEvent('goal_created', "Goal ID: $goal_id created from stats page", $user_id);
         }
         
         // Redirect back to stats page with success message

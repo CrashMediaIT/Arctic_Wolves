@@ -84,7 +84,7 @@ try {
             $stmt->execute([$name, $min_age, $max_age, $description, $display_order]);
             Auditor::log($pdo, $user_id, 'create', 'age_groups', $pdo->lastInsertId(), ['action' => "Created age group: $name"]);
             
-            logSecurityEvent($pdo, 'age_group_created', "Created age group: $name", $_SESSION['user_id']);
+            logSecurityEvent('age_group_created', "Created age group: $name", $_SESSION['user_id']);
             
             respond(true, "Age group '$name' created successfully!", $age_group_redirect, 'age_group_created', $age_group_redirect_params);
             break;
@@ -101,7 +101,7 @@ try {
             $stmt->execute([$name, $min_age, $max_age, $description, $display_order, $id]);
             Auditor::log($pdo, $user_id, 'update', 'age_groups', $id, ['action' => "Updated age group: $name"]);
             
-            logSecurityEvent($pdo, 'age_group_updated', "Updated age group: $name", $_SESSION['user_id']);
+            logSecurityEvent('age_group_updated', "Updated age group: $name", $_SESSION['user_id']);
             
             respond(true, "Age group '$name' updated successfully!", $age_group_redirect, 'age_group_updated', $age_group_redirect_params);
             break;
@@ -117,7 +117,7 @@ try {
             if ($ag) {
                 $pdo->prepare("DELETE FROM age_groups WHERE id = ?")->execute([$id]);
                 Auditor::log($pdo, $user_id, 'delete', 'age_groups', $id, ['action' => "Deleted age group: {$ag['name']}"]);
-                logSecurityEvent($pdo, 'age_group_deleted', "Deleted age group: {$ag['name']}", $_SESSION['user_id']);
+                logSecurityEvent('age_group_deleted', "Deleted age group: {$ag['name']}", $_SESSION['user_id']);
             }
             
             respond(true, 'Age group deleted successfully!', $age_group_redirect, 'age_group_deleted', $age_group_redirect_params);
@@ -133,7 +133,7 @@ try {
             $stmt->execute([$name, $description, $display_order]);
             Auditor::log($pdo, $user_id, 'create', 'skill_levels', $pdo->lastInsertId(), ['action' => "Created skill level: $name"]);
             
-            logSecurityEvent($pdo, 'skill_level_created', "Created skill level: $name", $_SESSION['user_id']);
+            logSecurityEvent('skill_level_created', "Created skill level: $name", $_SESSION['user_id']);
             
             respond(true, "Skill level '$name' created successfully!", 'categories', 'skill_level_created', 'tab=skill_levels');
             break;
@@ -148,7 +148,7 @@ try {
             $stmt->execute([$name, $description, $display_order, $id]);
             Auditor::log($pdo, $user_id, 'update', 'skill_levels', $id, ['action' => "Updated skill level: $name"]);
             
-            logSecurityEvent($pdo, 'skill_level_updated', "Updated skill level: $name", $_SESSION['user_id']);
+            logSecurityEvent('skill_level_updated', "Updated skill level: $name", $_SESSION['user_id']);
             
             respond(true, "Skill level '$name' updated successfully!", 'admin_age_skill', 'skill_level_updated');
             break;
@@ -164,7 +164,7 @@ try {
             if ($sl) {
                 $pdo->prepare("DELETE FROM skill_levels WHERE id = ?")->execute([$id]);
                 Auditor::log($pdo, $user_id, 'delete', 'skill_levels', $id, ['action' => "Deleted skill level: {$sl['name']}"]);
-                logSecurityEvent($pdo, 'skill_level_deleted', "Deleted skill level: {$sl['name']}", $_SESSION['user_id']);
+                logSecurityEvent('skill_level_deleted', "Deleted skill level: {$sl['name']}", $_SESSION['user_id']);
             }
             
             respond(true, 'Skill level deleted successfully!', 'categories', 'skill_level_deleted', 'tab=skill_levels');
@@ -185,7 +185,7 @@ try {
                 ->execute([$tax_name, $tax_name]);
             Auditor::log($pdo, $user_id, 'update', 'system_settings', null, ['action' => "Updated tax settings: $tax_name = $tax_rate%"]);
             
-            logSecurityEvent($pdo, 'tax_settings_updated', "Updated tax settings: $tax_name = $tax_rate%", $_SESSION['user_id']);
+            logSecurityEvent('tax_settings_updated', "Updated tax settings: $tax_name = $tax_rate%", $_SESSION['user_id']);
             
             respond(true, 'Tax settings updated successfully!', 'admin_settings', 'tax_updated');
             break;
@@ -197,7 +197,7 @@ try {
     
 } catch (PDOException $e) {
     ErrorLogger::error("Age/skill management error: " . $e->getMessage());
-    logSecurityEvent($pdo, 'age_skill_error', "Error in age/skill management: " . $e->getMessage(), $_SESSION['user_id']);
+    logSecurityEvent('age_skill_error', "Error in age/skill management: " . $e->getMessage(), $_SESSION['user_id']);
     respond(false, $e->getMessage());
 }
 
