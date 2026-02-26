@@ -894,9 +894,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 try {
                     var urlResp = JSON.parse(urlXhr.responseText);
                 } catch (err) {
-                    overlay.style.display = 'none';
-                    submitBtn.disabled = false;
-                    showToast('Upload failed. Please try again.', 'error');
+                    // Response is not valid JSON — fall back to legacy server upload
+                    fallbackServerUpload(uploadForm, overlay, bar, percent, status, submitBtn);
                     return;
                 }
 

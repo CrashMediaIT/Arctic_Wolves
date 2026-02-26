@@ -13,8 +13,23 @@ require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/pwa_detect.php';
 require_once __DIR__ . '/lib/site_branding.php';
 
-// Set security headers including CSP
-setSecurityHeaders();
+// Build extra CSP connect-src origins (e.g., RustFS endpoint for direct video uploads)
+$extraConnectSrc = [];
+try {
+    require_once __DIR__ . '/cloud_config.php';
+    $rustfs = getRustFSSettings($pdo);
+    if (isRustFSConfigured($rustfs)) {
+        $parsedEndpoint = parse_url(rtrim($rustfs['rustfs_endpoint'], '/'));
+        if ($parsedEndpoint && !empty($parsedEndpoint['host'])) {
+            $origin = ($parsedEndpoint['scheme'] ?? 'https') . '://' . $parsedEndpoint['host'];
+            if (!empty($parsedEndpoint['port'])) $origin .= ':' . $parsedEndpoint['port'];
+            $extraConnectSrc[] = $origin;
+        }
+    }
+} catch (Exception $e) {}
+
+// Set security headers including CSP (with RustFS origin if configured)
+setSecurityHeaders($extraConnectSrc);
 
 // PWA: redirect mobile phones to PWA dashboard
 redirectToPwaIfMobile('pwa.php', 'pwa_tablet.php');
