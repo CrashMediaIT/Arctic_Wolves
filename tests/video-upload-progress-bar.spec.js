@@ -54,18 +54,20 @@ test.describe('Video coach reviews upload has progress bar', () => {
     const content = readFile('views/video_coach_reviews.php');
     expect(content).toContain('XMLHttpRequest');
     expect(content).toContain('xhr.upload.onprogress');
-    expect(content).toContain('lengthComputable');
+    expect(content).toContain('e.lengthComputable');
+    expect(content).toContain('X-Requested-With');
   });
 
   test('should prevent default form submission', () => {
     const content = readFile('views/video_coach_reviews.php');
     expect(content).toContain('e.preventDefault()');
+    expect(content).toContain('new FormData(uploadForm)');
   });
 
   test('should handle upload success with redirect', () => {
     const content = readFile('views/video_coach_reviews.php');
-    expect(content).toContain('.success');
-    expect(content).toContain('.redirect');
+    expect(content).toContain('response.success');
+    expect(content).toContain('response.redirect');
     expect(content).toContain('window.location.href');
   });
 

@@ -119,11 +119,6 @@ try {
 
     <!-- Camera Recording Interface (hidden by default) -->
     <div class="camera-interface" id="camera-interface" style="display: none;">
-        <div class="form-group" style="margin-bottom:12px;">
-            <label for="camera_recording_name">Recording Name <span class="required">*</span></label>
-            <input type="text" id="camera_recording_name" placeholder="e.g., Skating Drill Practice" required
-                   style="width:100%;padding:10px 14px;background:var(--bg-main,#06080b);border:1px solid var(--border,#1e293b);border-radius:8px;color:var(--text-white,#fff);font-size:14px;">
-        </div>
         <div class="camera-preview-container">
             <video id="camera-preview" autoplay playsinline muted></video>
             <div class="recording-indicator" id="recording-indicator" style="display: none;">
@@ -177,8 +172,8 @@ try {
             <?php endif; ?>
 
             <div class="form-group">
-                <label for="video_description">Description / Notes for Coach <span class="required">*</span></label>
-                <textarea id="video_description" name="description" rows="3" required
+                <label for="video_description">Description / Notes for Coach</label>
+                <textarea id="video_description" name="description" rows="3" 
                           placeholder="Describe what you're working on or what feedback you'd like..."></textarea>
             </div>
 
