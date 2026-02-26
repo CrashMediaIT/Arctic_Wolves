@@ -29,7 +29,7 @@ if (!in_array($userRole, ['admin', 'front_desk_staff'])) {
 
 // Check IP whitelist for POS access (admins exempt)
 if (!checkPOSIPAccess($pdo, $userRole)) {
-    logSecurityEvent('pos_ip_blocked', 'POS process access denied from unauthorized IP', ['ip' => $_SERVER['REMOTE_ADDR'] ?? '']);
+    logSecurityEvent('pos_ip_blocked', 'POS process access denied from unauthorized IP', ['ip' => getClientIP()]);
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'POS access is not available from this location']);
     exit();

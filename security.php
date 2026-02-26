@@ -271,7 +271,7 @@ function logSecurityEvent($event_type, $description, $context = []) {
         }
         
         $user_id = $_SESSION['user_id'] ?? null;
-        $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+        $ip_address = getClientIP();
         $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
         $context_json = json_encode($context);
         
@@ -490,6 +490,53 @@ function requirePermission($pdo, $user_id, $user_role, $permission, $json = fals
 }
 
 /**
+ * Get the real client IP address, checking proxy headers first.
+ * When behind a reverse proxy / load balancer (e.g. HAProxy, NGINX),
+ * REMOTE_ADDR will be the proxy's LAN IP. This function resolves
+ * the original public IP from standard forwarding headers.
+ *
+ * Note: Proxy headers (X-Forwarded-For, etc.) are only trustworthy when
+ * the reverse proxy (HAProxy/NGINX) is configured to overwrite them.
+ * Private/reserved IPs in proxy headers are skipped to mitigate spoofing.
+ *
+ * @return string Client IP address or 'unknown'
+ */
+function getClientIP() {
+    // Proxy headers — reject private/reserved IPs to prevent spoofing
+    $proxyHeaders = [
+        'HTTP_CLIENT_IP',
+        'HTTP_X_FORWARDED_FOR',
+        'HTTP_X_FORWARDED',
+        'HTTP_X_CLUSTER_CLIENT_IP',
+        'HTTP_FORWARDED_FOR',
+        'HTTP_FORWARDED',
+    ];
+
+    foreach ($proxyHeaders as $header) {
+        if (!empty($_SERVER[$header])) {
+            $ip = $_SERVER[$header];
+            // Handle multiple IPs in X-Forwarded-For (first is the original client)
+            if (strpos($ip, ',') !== false) {
+                $ips = explode(',', $ip);
+                $ip = trim($ips[0]);
+            }
+            // Accept only valid, non-private, non-reserved IPs from proxy headers
+            if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                return $ip;
+            }
+        }
+    }
+
+    // Fallback to REMOTE_ADDR (may be a private/LAN IP when not behind a proxy)
+    $remoteAddr = $_SERVER['REMOTE_ADDR'] ?? '';
+    if (filter_var($remoteAddr, FILTER_VALIDATE_IP)) {
+        return $remoteAddr;
+    }
+
+    return 'unknown';
+}
+
+/**
  * Check if the current IP is allowed to access POS systems.
  * Admins are always allowed. Non-admin users are restricted to
  * IP addresses listed in the pos_allowed_ips table.
@@ -506,8 +553,8 @@ function checkPOSIPAccess($pdo, $user_role) {
         return true;
     }
 
-    $client_ip = $_SERVER['REMOTE_ADDR'] ?? '';
-    if (empty($client_ip)) {
+    $client_ip = getClientIP();
+    if (empty($client_ip) || $client_ip === 'unknown') {
         return false;
     }
 

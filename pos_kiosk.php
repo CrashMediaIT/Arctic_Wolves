@@ -42,7 +42,7 @@ $error = '';
 // For kiosk login page, users are not yet authenticated so treat as non-admin
 $kiosk_user_role = $_SESSION['user_role'] ?? '';
 if (!checkPOSIPAccess($pdo, $kiosk_user_role)) {
-    logSecurityEvent('pos_ip_blocked', 'POS kiosk access denied from unauthorized IP', ['ip' => $_SERVER['REMOTE_ADDR'] ?? '']);
+    logSecurityEvent('pos_ip_blocked', 'POS kiosk access denied from unauthorized IP', ['ip' => getClientIP()]);
     die('<div style="text-align: center; padding: 60px; font-family: sans-serif; color: #ef4444;"><h2>Access Denied</h2><p>POS kiosk access is not available from this location. Please contact an administrator.</p></div>');
 }
 
