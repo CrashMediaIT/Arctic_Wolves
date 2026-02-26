@@ -98,6 +98,9 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
                         header("Location: dashboard.php?page=packages&package_id=" . $intent['package_id']);
                     }
                     exit();
+                } elseif (!empty($intent['session_id'])) {
+                    header("Location: dashboard.php?page=booking&session_id=" . intval($intent['session_id']));
+                    exit();
                 }
             }
         } catch (PDOException $e) {
@@ -105,7 +108,7 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
         }
     }
 
-    // Honor redirect parameter from trusted subdomains (e.g. gameplan.arcticwolves.ca)
+    // Honor redirect parameter from trusted subdomains(e.g. gameplan.arcticwolves.ca)
     $redirect = $_GET['redirect'] ?? '';
     if ($redirect !== '') {
         $parsed = parse_url($redirect);
@@ -218,6 +221,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                 } else {
                                     header("Location: dashboard.php?page=packages&package_id=" . $intent['package_id']);
                                 }
+                                exit();
+                            } elseif (!empty($intent['session_id'])) {
+                                header("Location: dashboard.php?page=booking&session_id=" . intval($intent['session_id']));
                                 exit();
                             }
                         }
