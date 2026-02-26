@@ -8,7 +8,7 @@
  * Set security headers for all responses
  * Prevents XSS, clickjacking, and other common attacks
  */
-function setSecurityHeaders() {
+function setSecurityHeaders($extraConnectSrc = []) {
     // Prevent XSS attacks
     header("X-Content-Type-Options: nosniff");
     header("X-Frame-Options: SAMEORIGIN");
@@ -24,13 +24,19 @@ function setSecurityHeaders() {
         header("Strict-Transport-Security: max-age=31536000; includeSubDomains");
     }
     
+    // Build connect-src with optional extra origins (e.g., RustFS endpoint for direct uploads)
+    $connectSrc = "'self' wss: https://maps.googleapis.com https://places.googleapis.com https://www.google.com";
+    foreach ($extraConnectSrc as $src) {
+        $connectSrc .= ' ' . $src;
+    }
+
     // Content Security Policy (aligned with NGINX config)
     $csp = "default-src 'self'; " .
            "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://maps.googleapis.com https://maps.gstatic.com https://places.googleapis.com https://www.google.com https://www.gstatic.com; " .
            "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://fonts.googleapis.com; " .
            "img-src 'self' data: https:; " .
            "font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; " .
-           "connect-src 'self' wss: https://maps.googleapis.com https://places.googleapis.com https://www.google.com; " .
+           "connect-src $connectSrc; " .
            "worker-src 'self'; " .
            "manifest-src 'self'; " .
            "media-src 'self' blob: mediastream: https:; " .
