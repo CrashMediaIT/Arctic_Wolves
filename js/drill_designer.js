@@ -2952,11 +2952,8 @@ class DrillDesigner {
                 }
             });
         } else {
-            // Fallback if showConfirmModal is not available
-            self.objects = [];
-            self.selectedObject = null;
-            self.redraw();
-            self.saveState();
+            // Fallback: showConfirmModal not loaded yet — log warning and skip clear
+            console.warn('showConfirmModal not available; clear all action skipped');
         }
     }
     

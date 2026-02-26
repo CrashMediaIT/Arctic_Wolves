@@ -3832,7 +3832,8 @@ function updateSelectedSessionsList() {
 
 function toggleSelectAll(tab, sourceCheckbox) {
     var selectAllBoxes = document.querySelectorAll('.bulk-select-all[data-tab="' + tab + '"]');
-    // Use the state of the checkbox that was actually clicked
+    // Use the state of the checkbox that was actually clicked;
+    // defaults to false (uncheck all) if called programmatically without a source element
     var isChecked = sourceCheckbox ? sourceCheckbox.checked : false;
     var checkboxes = document.querySelectorAll('.bulk-item-checkbox[data-tab="' + tab + '"]');
     checkboxes.forEach(function(cb) { cb.checked = isChecked; });
