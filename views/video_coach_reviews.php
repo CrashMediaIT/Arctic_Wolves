@@ -237,6 +237,11 @@ $reviewed_videos = array_filter($videos, function($v) {
                     </div>
                     <div class="video-details">
                         <h4><?= htmlspecialchars($video['title']) ?></h4>
+                        <?php if (!empty($video['description'])): ?>
+                            <div class="athlete-notes-preview">
+                                <i class="fas fa-comment-alt"></i> <?= htmlspecialchars(mb_strimwidth($video['description'], 0, 150, '...')) ?>
+                            </div>
+                        <?php endif; ?>
                         <div class="video-meta">
                             <span><i class="fas fa-user"></i> <?= htmlspecialchars(($video['athlete_first_name'] ?? '') . ' ' . ($video['athlete_last_name'] ?? '')) ?></span>
                             <span><i class="fas fa-calendar"></i> <?= date('M d, Y', strtotime($video['upload_date'])) ?></span>
@@ -293,6 +298,11 @@ $reviewed_videos = array_filter($videos, function($v) {
                     </div>
                     <div class="video-details">
                         <h4><?= htmlspecialchars($video['title']) ?></h4>
+                        <?php if (!empty($video['description'])): ?>
+                            <div class="athlete-notes-preview">
+                                <i class="fas fa-comment-alt"></i> <?= htmlspecialchars(mb_strimwidth($video['description'], 0, 150, '...')) ?>
+                            </div>
+                        <?php endif; ?>
                         <div class="video-meta">
                             <span><i class="fas fa-user"></i> <?= htmlspecialchars(($video['athlete_first_name'] ?? '') . ' ' . ($video['athlete_last_name'] ?? '')) ?></span>
                             <span><i class="fas fa-calendar"></i> <?= date('M d, Y', strtotime($video['upload_date'])) ?></span>
@@ -536,6 +546,8 @@ $reviewed_videos = array_filter($videos, function($v) {
 .badge-game { background: rgba(16, 185, 129, 0.15); color: #10B981; }
 
 .coach-notes-preview { margin-top: 10px; padding: 8px 12px; background: rgba(107, 70, 193, 0.1); border-radius: 8px; font-size: 13px; color: var(--text-dim); display: flex; align-items: flex-start; gap: 8px; }
+.athlete-notes-preview { margin: 6px 0 8px; padding: 8px 12px; background: rgba(59, 130, 246, 0.08); border-left: 3px solid rgba(59, 130, 246, 0.4); border-radius: 4px; font-size: 13px; color: var(--text-dim); display: flex; align-items: flex-start; gap: 8px; line-height: 1.5; }
+.athlete-notes-preview i { color: #3b82f6; margin-top: 2px; flex-shrink: 0; }
 .coach-notes-preview i { color: var(--primary); margin-top: 2px; }
 
 .badge-success, .badge-warning { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
