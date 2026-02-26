@@ -22,6 +22,7 @@ class GitHubUpdater {
         'config.php',
         'vendor/',
         'node_modules/',
+        'stripe-php/',
         '.update_deferred.json',
     ];
     
