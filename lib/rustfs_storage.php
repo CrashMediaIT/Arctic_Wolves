@@ -336,6 +336,7 @@ function uploadLargeFileToRustFS($settings, $local_path, $object_key, $content_t
         $amz_date = $now->format('Ymd\THis\Z');
 
         $headers_to_sign = [
+            'content-length' => (string)$file_size,
             'content-type' => $content_type,
             'host' => $host,
             'x-amz-content-sha256' => $payload_hash,
@@ -379,9 +380,11 @@ function uploadLargeFileToRustFS($settings, $local_path, $object_key, $content_t
 
         $curl_headers = [
             'Content-Type: ' . $content_type,
+            'Content-Length: ' . $file_size,
             'Authorization: ' . $auth_header,
             'x-amz-date: ' . $amz_date,
             'x-amz-content-sha256: ' . $payload_hash,
+            'Expect: ',
         ];
 
         $ch = curl_init($url);
@@ -405,7 +408,7 @@ function uploadLargeFileToRustFS($settings, $local_path, $object_key, $content_t
         }
 
         if ($http_code !== 200 && $http_code !== 201 && $http_code !== 204) {
-            throw new Exception("RustFS streaming upload failed. HTTP $http_code");
+            throw new Exception("RustFS streaming upload failed. HTTP $http_code. Response: " . substr($response, 0, 500));
         }
 
         return [
