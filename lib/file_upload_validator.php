@@ -66,7 +66,7 @@ class FileUploadValidator {
     /**
      * Validates image upload
      */
-    public static function validateImage($file, $maxSizeMB = 5) {
+    public static function validateImage($file, $maxSizeMB = 100) {
         return self::validate(
             $file,
             ['jpg', 'jpeg', 'png', 'gif', 'webp'],
@@ -78,7 +78,7 @@ class FileUploadValidator {
     /**
      * Validates video upload
      */
-    public static function validateVideo($file, $maxSizeMB = 100) {
+    public static function validateVideo($file, $maxSizeMB = 10240) {
         return self::validate(
             $file,
             ['mp4', 'mov', 'avi', 'webm'],

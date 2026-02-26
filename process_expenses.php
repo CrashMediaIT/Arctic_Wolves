@@ -445,9 +445,8 @@ try {
                 
                 if (in_array($file_ext, $allowed_exts)) {
                     $receipt_filename = uniqid('receipt_') . '.' . $file_ext;
-                    $receipt_local = 'uploads/receipts/' . $receipt_filename;
-                    $persist = persistUploadedFile($pdo, $_FILES['receipt_file']['tmp_name'], 'receipts', $receipt_filename, $receipt_local);
-                    $receipt_url = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $receipt_local;
+                    $persist = persistUploadedFile($pdo, $_FILES['receipt_file']['tmp_name'], 'receipts', $receipt_filename);
+                    $receipt_url = $persist['rustfs_url'] ?? null;
                     if (!empty($persist['nextcloud_path'])) {
                         $nextcloud_path = $persist['nextcloud_path'];
                     }
@@ -565,9 +564,8 @@ try {
                 
                 if (in_array($file_ext, $allowed_exts)) {
                     $receipt_filename = uniqid('receipt_') . '.' . $file_ext;
-                    $receipt_local = 'uploads/receipts/' . $receipt_filename;
-                    $persist = persistUploadedFile($pdo, $_FILES['receipt_file']['tmp_name'], 'receipts', $receipt_filename, $receipt_local);
-                    $receipt_url = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $receipt_local;
+                    $persist = persistUploadedFile($pdo, $_FILES['receipt_file']['tmp_name'], 'receipts', $receipt_filename);
+                    $receipt_url = $persist['rustfs_url'] ?? null;
                     
                     // Update with new file
                     $stmt = $pdo->prepare("
@@ -752,9 +750,8 @@ try {
             // Save file to RustFS so it can be attached to an expense
             $ext = ($mime_type === 'image/png') ? '.png' : (($mime_type === 'application/pdf') ? '.pdf' : '.jpg');
             $receipt_filename = uniqid('receipt_') . $ext;
-            $local_receipt = 'uploads/receipts/' . $receipt_filename;
-            $persist = persistUploadedFile($pdo, $_FILES['receipt_file']['tmp_name'], 'receipts', $receipt_filename, $local_receipt);
-            $saved_file = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $local_receipt;
+            $persist = persistUploadedFile($pdo, $_FILES['receipt_file']['tmp_name'], 'receipts', $receipt_filename);
+            $saved_file = $persist['rustfs_url'] ?? null;
             
             // Perform OCR via Paperless-NGX — pass the PHP temp file directly
             $ocr_data = performReceiptOCR($_FILES['receipt_file']['tmp_name']);

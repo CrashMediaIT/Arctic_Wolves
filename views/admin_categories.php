@@ -2340,9 +2340,9 @@ function previewLogo(input, prefix) {
         return;
     }
     
-    // Validate file size (5MB)
-    if (file.size > 5 * 1024 * 1024) {
-        showNotification('File too large. Maximum size is 5MB.', 'error');
+    // Validate file size (100MB)
+    if (file.size > 100 * 1024 * 1024) {
+        showNotification('File too large. Maximum size is 100MB.', 'error');
         input.value = '';
         return;
     }

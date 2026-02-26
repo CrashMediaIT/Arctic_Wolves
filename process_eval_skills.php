@@ -288,11 +288,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Generate unique filename with random bytes
                 $filename = bin2hex(random_bytes(16)) . '.' . $file_ext;
                 $subfolder = 'evaluations/' . $eval['evaluation_id'];
-                $filepath = 'uploads/evaluations/' . $eval['evaluation_id'] . '/' . $filename;
                 
                 // Upload to RustFS
-                $persist = persistUploadedFile($pdo, $file['tmp_name'], $subfolder, $filename, $filepath);
-                $db_filepath = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $filepath;
+                $persist = persistUploadedFile($pdo, $file['tmp_name'], $subfolder, $filename);
+                $db_filepath = $persist['rustfs_url'] ?? null;
                 
                 // Save to database
                 $stmt = $pdo->prepare("

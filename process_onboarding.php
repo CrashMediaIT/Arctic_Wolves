@@ -65,11 +65,10 @@ function uploadOnboardingDocuments($pdo, $settings, $staffName, $year, $files) {
                     // Sanitize filename
                     $safe_filename = preg_replace('/[^a-zA-Z0-9\-_\.]/', '_', $original_name);
                     $subfolder = 'Onboarding/' . $year . '/' . $safeStaffName;
-                    $local_cache_rel = 'uploads/onboarding/' . $safe_filename;
                     
                     // Upload to RustFS via persistUploadedFile
-                    $persist = persistUploadedFile($pdo, $tmp_path, $subfolder, $safe_filename, $local_cache_rel);
-                    $db_path = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $local_cache_rel;
+                    $persist = persistUploadedFile($pdo, $tmp_path, $subfolder, $safe_filename);
+                    $db_path = $persist['rustfs_url'] ?? null;
                     
                     $uploaded_paths[] = [
                         'original_name' => $original_name,

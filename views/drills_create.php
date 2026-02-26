@@ -365,10 +365,10 @@ if ($editDrillId) {
                             <label>Upload Video File</label>
                             <input type="file" name="video_file" id="videoFileInput" class="form-input" accept="video/mp4,video/webm,video/ogg" onchange="validateVideoFileSize(this)">
                             <p class="help-text" style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">
-                                <i class="fas fa-info-circle"></i> Supported formats: MP4, WebM, OGG. Max size: 100MB
+                                <i class="fas fa-info-circle"></i> Supported formats: MP4, WebM, OGG. Max size: 10GB
                             </p>
                             <p id="videoFileSizeError" style="display: none; color: var(--error); font-size: 12px; margin-top: 4px;">
-                                <i class="fas fa-exclamation-circle"></i> File is too large. Maximum size is 100MB.
+                                <i class="fas fa-exclamation-circle"></i> File is too large. Maximum size is 10GB.
                             </p>
                             <?php if (!empty($editingDrill['video_upload_path'])): ?>
                             <div class="current-video" style="margin-top: 8px; padding: 8px; background: var(--bg-main); border-radius: 6px;">
@@ -1065,9 +1065,9 @@ function previewYouTube() {
     }
 }
 
-// Validate video file size (max 100MB)
+// Validate video file size (max 10GB)
 function validateVideoFileSize(input) {
-    const maxSize = 100 * 1024 * 1024; // 100MB in bytes
+    const maxSize = 10 * 1024 * 1024 * 1024; // 10GB in bytes
     const errorEl = document.getElementById('videoFileSizeError');
     
     if (input.files && input.files[0]) {

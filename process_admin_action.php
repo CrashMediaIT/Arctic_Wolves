@@ -2264,19 +2264,18 @@ if ($action == 'admin_update_profile_image') {
             exit();
         }
         
-        // Check file size (5MB max)
-        if ($_FILES['profile_image']['size'] > 5 * 1024 * 1024) {
-            echo json_encode(['success' => false, 'message' => 'File too large. Maximum size is 5MB']);
+        // Check file size (100MB max)
+        if ($_FILES['profile_image']['size'] > 100 * 1024 * 1024) {
+            echo json_encode(['success' => false, 'message' => 'File too large. Maximum size is 100MB']);
             exit();
         }
         
         // Generate secure random filename
         $random_suffix = bin2hex(random_bytes(8));
         $nc_filename = "profile_" . $user_id_to_update . "_" . $random_suffix . "." . $ext;
-        $new_name = 'uploads/profiles/' . $nc_filename;
         
-        $persist = persistUploadedFile($pdo, $_FILES['profile_image']['tmp_name'], 'profiles', $nc_filename, $new_name);
-        $db_path = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $new_name;
+        $persist = persistUploadedFile($pdo, $_FILES['profile_image']['tmp_name'], 'profiles', $nc_filename);
+        $db_path = $persist['rustfs_url'] ?? null;
         
         if ($persist['success']) {
             // Delete old profile image if exists
@@ -3195,7 +3194,7 @@ if ($action == 'create_team') {
     if (!empty($_FILES['team_logo']) && $_FILES['team_logo']['error'] === UPLOAD_ERR_OK) {
         $allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
         $allowed_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
-        $max_size = 5 * 1024 * 1024;
+        $max_size = 100 * 1024 * 1024;
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
         $mime = finfo_file($finfo, $_FILES['team_logo']['tmp_name']);
         finfo_close($finfo);
@@ -3203,9 +3202,8 @@ if ($action == 'create_team') {
         $ext = strtolower(pathinfo($_FILES['team_logo']['name'], PATHINFO_EXTENSION));
         if (in_array($mime, $allowed_types) && in_array($ext, $allowed_extensions) && $_FILES['team_logo']['size'] <= $max_size) {
             $filename = 'team_' . time() . '_' . bin2hex(random_bytes(8)) . '.' . $ext;
-            $local_logo_path = 'uploads/team_logos/' . $filename;
-            $persist = persistUploadedFile($pdo, $_FILES['team_logo']['tmp_name'], 'team_logos', $filename, $local_logo_path);
-            $logo_url = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $local_logo_path;
+            $persist = persistUploadedFile($pdo, $_FILES['team_logo']['tmp_name'], 'team_logos', $filename);
+            $logo_url = $persist['rustfs_url'] ?? null;
         }
     }
     
@@ -3284,7 +3282,7 @@ if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'team') {
         if (!empty($_FILES['team_logo']) && $_FILES['team_logo']['error'] === UPLOAD_ERR_OK) {
             $allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
             $allowed_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
-            $max_size = 5 * 1024 * 1024;
+            $max_size = 100 * 1024 * 1024;
             $finfo = finfo_open(FILEINFO_MIME_TYPE);
             $mime = finfo_file($finfo, $_FILES['team_logo']['tmp_name']);
             finfo_close($finfo);
@@ -3292,9 +3290,8 @@ if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'team') {
             $ext = strtolower(pathinfo($_FILES['team_logo']['name'], PATHINFO_EXTENSION));
             if (in_array($mime, $allowed_types) && in_array($ext, $allowed_extensions) && $_FILES['team_logo']['size'] <= $max_size) {
                 $filename = 'team_' . time() . '_' . bin2hex(random_bytes(8)) . '.' . $ext;
-                $local_logo_path = 'uploads/team_logos/' . $filename;
-                $persist = persistUploadedFile($pdo, $_FILES['team_logo']['tmp_name'], 'team_logos', $filename, $local_logo_path);
-                $logo_url = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $local_logo_path;
+                $persist = persistUploadedFile($pdo, $_FILES['team_logo']['tmp_name'], 'team_logos', $filename);
+                $logo_url = $persist['rustfs_url'] ?? null;
             }
         }
         

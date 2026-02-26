@@ -40,11 +40,10 @@ if ($action == 'upload_avatar') {
         
         if (in_array($ext, $allowed)) {
             $nc_filename = "avatar_" . $target_id . "_" . time() . "." . $ext;
-            $new_name = "uploads/avatar_" . $target_id . "_" . time() . "." . $ext;
             
             // Upload to RustFS
-            $persist = persistUploadedFile($pdo, $_FILES['profile_pic']['tmp_name'], 'profiles', $nc_filename, $new_name);
-            $db_path = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $new_name;
+            $persist = persistUploadedFile($pdo, $_FILES['profile_pic']['tmp_name'], 'profiles', $nc_filename);
+            $db_path = $persist['rustfs_url'] ?? null;
             
             $pdo->prepare("UPDATE users SET profile_image = ? WHERE id = ?")->execute([$db_path, $target_id]);
             
@@ -538,12 +537,10 @@ if ($action == 'upload_photo') {
         $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
         
         if (in_array($ext, $allowed)) {
-            $relative_dir = 'uploads/profiles/';
             $profile_filename = "profile_" . $current_user_id . "_" . time() . "." . $ext;
-            $relative_path = $relative_dir . $profile_filename;
             
-            $persist = persistUploadedFile($pdo, $_FILES['profile_photo']['tmp_name'], 'profiles', $profile_filename, $relative_path);
-            $db_path = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $relative_path;
+            $persist = persistUploadedFile($pdo, $_FILES['profile_photo']['tmp_name'], 'profiles', $profile_filename);
+            $db_path = $persist['rustfs_url'] ?? null;
             
             if ($persist['success']) {
                 // Delete old profile image from RustFS
