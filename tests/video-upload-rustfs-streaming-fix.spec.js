@@ -75,7 +75,7 @@ test.describe('uploadLargeFileToRustFS error messages include response', () => {
 
     // Error message should include the response body for debugging
     expect(funcBody).toContain('$response');
-    expect(funcBody).toMatch(/streaming upload failed.*Response/);
+    expect(funcBody).toMatch(/RustFS streaming upload failed.*Response/);
   });
 });
 
