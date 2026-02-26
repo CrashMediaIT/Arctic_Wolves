@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arctic Wolves — Video Companion</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-main: #0A0A0F;
+            --bg-card: #16161F;
+            --primary: #6B46C1;
+            --primary-hover: #7C3AED;
+            --accent: #8B5CF6;
+            --text-white: #FFFFFF;
+            --text-dim: #A8A8B8;
+            --border: #2D2D3F;
+            --container-padding: 24px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+        body { background: var(--bg-main); color: var(--text-white); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+
+        /* --- NAVIGATION --- */
+        header {
+            background: rgba(6, 8, 11, 0.95);
+            backdrop-filter: blur(12px);
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 2000;
+        }
+        .container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 var(--container-padding); }
+        .nav-flex { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
+        .logo-text { font-weight: 900; font-size: 24px; letter-spacing: -1px; color: #fff; }
+        .logo-text span { color: var(--primary); }
+        .header-affiliation { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; margin-top: -4px; }
+        .nav-menu { display: flex; align-items: center; gap: 25px; }
+        .nav-menu a { color: #fff; text-decoration: none; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; transition: color 0.2s; }
+        .nav-menu a:hover { color: var(--primary); }
+        .nav-menu a.active { color: var(--primary); }
+
+        /* --- STATUS BADGES --- */
+        .status-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-size: 11px; font-weight: 800; text-transform: uppercase;
+            padding: 6px 14px; border-radius: 4px;
+        }
+        .status-badge.ok { color: #22c55e; background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.2); }
+        .status-badge.error { color: #ef4444; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.2); }
+        .status-badge.warn { color: #f59e0b; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.2); }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .status-badge.ok .status-dot { background: #22c55e; box-shadow: 0 0 8px #22c55e; }
+        .status-badge.error .status-dot { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
+        .status-badge.warn .status-dot { background: #f59e0b; box-shadow: 0 0 8px #f59e0b; }
+
+        /* --- HERO --- */
+        .hero-compact {
+            padding: 60px 0 40px;
+            border-bottom: 1px solid var(--border);
+        }
+        .hero-compact h1 { font-size: 2.4rem; font-weight: 900; margin-bottom: 8px; }
+        .hero-compact h1 .highlight { color: var(--primary); }
+        .hero-compact p { color: var(--text-dim); font-size: 1rem; }
+
+        /* --- SECTION --- */
+        .section { padding: 40px 0; }
+        .section-header { margin-bottom: 30px; }
+        .section-header h2 { font-size: 1.5rem; font-weight: 800; margin-bottom: 4px; }
+        .eyebrow { color: var(--primary); text-transform: uppercase; font-size: 11px; font-weight: 900; letter-spacing: 2px; margin-bottom: 6px; display: block; }
+
+        /* --- CARDS --- */
+        .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            transition: 0.3s ease;
+        }
+        .card:hover { border-color: var(--primary); transform: translateY(-3px); }
+        .card h3 { font-size: 1rem; font-weight: 800; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .card-value { font-size: 2rem; font-weight: 900; color: var(--accent); line-height: 1; margin-bottom: 8px; }
+        .card-label { color: var(--text-dim); font-size: 13px; font-weight: 600; }
+
+        /* --- SPEC TABLE --- */
+        .spec-table { border-top: 1px solid var(--border); margin-top: 16px; }
+        .spec-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+        .spec-label { color: var(--text-dim); }
+        .spec-value { color: #fff; font-weight: 700; text-align: right; }
+
+        /* --- TAGS --- */
+        .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+        .tags span {
+            font-size: 10px; background: rgba(107, 70, 193, 0.1);
+            padding: 4px 8px; border-radius: 4px;
+            color: var(--accent); font-weight: 800; text-transform: uppercase;
+        }
+
+        /* --- JOBS TABLE --- */
+        .jobs-table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+        .jobs-table th, .jobs-table td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 13px; }
+        .jobs-table th { color: var(--text-dim); font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 1px; }
+        .jobs-table tr:hover { background: rgba(107, 70, 193, 0.04); }
+        .job-status { padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: 800; text-transform: uppercase; }
+        .job-status.completed { color: #22c55e; background: rgba(34, 197, 94, 0.1); }
+        .job-status.running { color: var(--accent); background: rgba(139, 92, 246, 0.1); }
+        .job-status.queued { color: #f59e0b; background: rgba(245, 158, 11, 0.1); }
+        .job-status.failed { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+        .job-status.downloading, .job-status.transcoding, .job-status.uploading { color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
+        .empty-state { color: var(--text-dim); text-align: center; padding: 40px; font-size: 14px; }
+
+        /* --- BUTTONS --- */
+        .btn-primary {
+            background: var(--primary); color: #fff; padding: 10px 24px;
+            text-decoration: none; font-weight: 800; border-radius: 4px;
+            display: inline-block; transition: 0.3s ease; border: none;
+            cursor: pointer; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .btn-primary:hover { background: var(--primary-hover); transform: translateY(-2px); box-shadow: 0 6px 16px rgba(107, 70, 193, 0.3); }
+        .btn-secondary {
+            color: #fff; border: 1px solid var(--border); padding: 10px 24px;
+            text-decoration: none; font-weight: 800; border-radius: 4px;
+            display: inline-block; transition: 0.3s ease; background: transparent;
+            cursor: pointer; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .btn-secondary:hover { border-color: var(--accent); transform: translateY(-2px); }
+        .btn-sm { padding: 6px 14px; font-size: 11px; }
+        .btn-danger { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); }
+        .btn-danger:hover { background: rgba(239, 68, 68, 0.25); }
+
+        /* --- FOOTER --- */
+        .site-footer {
+            background: #040608; padding: 24px 0;
+            border-top: 1px solid var(--border);
+            color: #475569; font-size: 11px; font-weight: 800;
+            text-transform: uppercase; letter-spacing: 1px;
+            margin-top: 60px;
+        }
+        .footer-flex { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+        .footer-flex a { color: #64748b; text-decoration: none; }
+
+        /* --- RESPONSIVE --- */
+        @media (max-width: 768px) {
+            .nav-flex { flex-direction: column; gap: 12px; }
+            .nav-menu { gap: 16px; width: 100%; justify-content: center; }
+            .hero-compact { padding: 40px 0 24px; text-align: center; }
+            .hero-compact h1 { font-size: 1.8rem; }
+            .cards-grid { grid-template-columns: 1fr; }
+            .jobs-table { font-size: 12px; }
+            .jobs-table th, .jobs-table td { padding: 8px; }
+        }
+
+        /* --- LOADING --- */
+        .loading { opacity: 0.5; pointer-events: none; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+        .pulse { animation: pulse 2s ease-in-out infinite; }
+    </style>
+</head>
+<body>
+
+    <!-- NAVIGATION -->
+    <header>
+        <div class="container">
+            <div class="nav-flex">
+                <div>
+                    <div class="logo-text">Arctic<span>Wolves</span></div>
+                    <div class="header-affiliation">Video Companion Server</div>
+                </div>
+                <nav class="nav-menu">
+                    <a href="#status" class="active">Dashboard</a>
+                    <a href="#jobs">Jobs</a>
+                    <span id="health-badge" class="status-badge warn"><span class="status-dot"></span> Loading</span>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- HERO -->
+    <section class="hero-compact">
+        <div class="container">
+            <h1>Video <span class="highlight">Companion</span></h1>
+            <p>Hardware-accelerated video encoding, decoding, clip extraction, and HLS transcoding.</p>
+        </div>
+    </section>
+
+    <!-- STATUS SECTION -->
+    <section id="status" class="section">
+        <div class="container">
+            <div class="section-header">
+                <span class="eyebrow">Server Status</span>
+                <h2>System Overview</h2>
+            </div>
+            <div class="cards-grid">
+                <!-- Version Card -->
+                <div class="card">
+                    <h3>Version</h3>
+                    <div class="card-value" id="version">—</div>
+                    <div class="card-label">Companion Server</div>
+                </div>
+                <!-- Active Jobs Card -->
+                <div class="card">
+                    <h3>Active Jobs</h3>
+                    <div class="card-value"><span id="active-jobs">—</span> <span style="font-size:1rem;color:var(--text-dim)">/ <span id="max-jobs">—</span></span></div>
+                    <div class="card-label">Concurrent processing slots</div>
+                </div>
+                <!-- Video Storage Card -->
+                <div class="card">
+                    <h3>Video Storage</h3>
+                    <div id="storage-status" class="card-value" style="font-size:1.2rem;">—</div>
+                    <div class="card-label" id="storage-path">&nbsp;</div>
+                </div>
+                <!-- S3 / RustFS Card -->
+                <div class="card">
+                    <h3>S3 / RustFS</h3>
+                    <div id="s3-status" class="card-value" style="font-size:1.2rem;">—</div>
+                    <div class="card-label" id="s3-detail">&nbsp;</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- HARDWARE SECTION -->
+    <section class="section" style="padding-top:0;">
+        <div class="container">
+            <div class="section-header">
+                <span class="eyebrow">Hardware</span>
+                <h2>Acceleration &amp; Capabilities</h2>
+            </div>
+            <div class="cards-grid">
+                <div class="card">
+                    <h3>Selected Mode</h3>
+                    <div class="card-value" id="hw-mode">—</div>
+                    <div class="card-label">Hardware acceleration setting</div>
+                </div>
+                <div class="card">
+                    <h3>Available Methods</h3>
+                    <div id="hw-methods" class="tags"><span class="pulse">loading…</span></div>
+                </div>
+                <div class="card">
+                    <h3>Encoders</h3>
+                    <div id="hw-encoders" class="tags"><span class="pulse">loading…</span></div>
+                </div>
+                <div class="card">
+                    <h3>Decoders</h3>
+                    <div id="hw-decoders" class="tags"><span class="pulse">loading…</span></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- JOBS SECTION -->
+    <section id="jobs" class="section" style="padding-top:0;">
+        <div class="container">
+            <div class="section-header" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px;">
+                <div>
+                    <span class="eyebrow">Processing</span>
+                    <h2>Jobs</h2>
+                </div>
+                <button class="btn-secondary btn-sm" onclick="refreshJobs()">↻ Refresh</button>
+            </div>
+            <div style="overflow-x:auto;">
+                <table class="jobs-table">
+                    <thead>
+                        <tr>
+                            <th>Job ID</th>
+                            <th>Description</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="jobs-body">
+                        <tr><td colspan="5" class="empty-state">Loading jobs…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- HLS WATCHER SECTION -->
+    <section class="section" style="padding-top:0;">
+        <div class="container">
+            <div class="section-header">
+                <span class="eyebrow">Automation</span>
+                <h2>HLS Staging Watcher</h2>
+            </div>
+            <div class="cards-grid">
+                <div class="card">
+                    <h3>Watcher Status</h3>
+                    <div id="watcher-status" class="card-value" style="font-size:1.2rem;">—</div>
+                    <div class="card-label">Automatic HLS transcoding</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-flex">
+                <span>Arctic Wolves Video Companion &copy; 2025 Crash Media IT</span>
+                <span>Port <span id="footer-port">5100</span></span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        const API_BASE = window.location.origin;
+
+        function getApiKey() {
+            let key = localStorage.getItem('companion_api_key') || '';
+            return key;
+        }
+
+        function apiHeaders() {
+            const key = getApiKey();
+            const h = { 'Content-Type': 'application/json' };
+            if (key) h['X-API-Key'] = key;
+            return h;
+        }
+
+        /* --- Fetch health --- */
+        async function refreshHealth() {
+            try {
+                const res = await fetch(API_BASE + '/api/health', { headers: apiHeaders() });
+                if (res.status === 401) {
+                    const key = prompt('Enter API Key:');
+                    if (key) { localStorage.setItem('companion_api_key', key); return refreshHealth(); }
+                    return;
+                }
+                const d = await res.json();
+
+                document.getElementById('version').textContent = d.version || '—';
+                document.getElementById('active-jobs').textContent = d.active_jobs ?? '—';
+                document.getElementById('max-jobs').textContent = d.max_concurrent_jobs ?? '—';
+
+                // Storage
+                if (d.video_base_accessible) {
+                    document.getElementById('storage-status').innerHTML = '<span style="color:#22c55e">Connected</span>';
+                } else {
+                    document.getElementById('storage-status').innerHTML = '<span style="color:#ef4444">Unavailable</span>';
+                }
+                document.getElementById('storage-path').textContent = d.video_base_path || '';
+
+                // S3
+                if (d.s3_configured) {
+                    if (d.s3_connected) {
+                        document.getElementById('s3-status').innerHTML = '<span style="color:#22c55e">Connected</span>';
+                    } else {
+                        document.getElementById('s3-status').innerHTML = '<span style="color:#ef4444">Unreachable</span>';
+                    }
+                    document.getElementById('s3-detail').textContent = 'Bucket: ' + (d.s3_bucket || '—');
+                } else {
+                    document.getElementById('s3-status').innerHTML = '<span style="color:var(--text-dim)">Not Configured</span>';
+                    document.getElementById('s3-detail').textContent = '';
+                }
+
+                // HW
+                const hw = d.hw_accel || {};
+                document.getElementById('hw-mode').textContent = hw.selected || '—';
+                document.getElementById('hw-methods').innerHTML = (hw.available || []).length
+                    ? hw.available.map(m => '<span>' + m + '</span>').join('')
+                    : '<span style="color:var(--text-dim);">none detected</span>';
+                document.getElementById('hw-encoders').innerHTML = (hw.encoders || []).length
+                    ? hw.encoders.map(e => '<span>' + e + '</span>').join('')
+                    : '<span style="color:var(--text-dim);">software only</span>';
+                document.getElementById('hw-decoders').innerHTML = (hw.decoders || []).length
+                    ? hw.decoders.map(e => '<span>' + e + '</span>').join('')
+                    : '<span style="color:var(--text-dim);">software only</span>';
+
+                // Watcher
+                document.getElementById('watcher-status').innerHTML = d.hls_staging_watcher
+                    ? '<span style="color:#22c55e">Active</span>'
+                    : '<span style="color:var(--text-dim)">Inactive</span>';
+
+                // Health badge
+                const badge = document.getElementById('health-badge');
+                badge.className = 'status-badge ok';
+                badge.innerHTML = '<span class="status-dot"></span> Healthy';
+            } catch {
+                const badge = document.getElementById('health-badge');
+                badge.className = 'status-badge error';
+                badge.innerHTML = '<span class="status-dot"></span> Offline';
+            }
+        }
+
+        /* --- Fetch jobs --- */
+        async function refreshJobs() {
+            try {
+                const res = await fetch(API_BASE + '/api/jobs', { headers: apiHeaders() });
+                if (!res.ok) return;
+                const jobsList = await res.json();
+                const tbody = document.getElementById('jobs-body');
+                if (!jobsList.length) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No jobs found</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = jobsList.map(j => {
+                    // created_at is a Unix timestamp in seconds
+                    const created = j.created_at ? new Date(j.created_at * 1000).toLocaleString() : '—';
+                    const canCancel = j.status === 'queued' || j.status === 'running';
+                    const shortId = (j.id || '').substring(0, 8);
+                    return '<tr>' +
+                        '<td style="font-family:monospace;font-size:11px;">' + shortId + '…</td>' +
+                        '<td>' + (j.description || '—') + '</td>' +
+                        '<td><span class="job-status ' + j.status + '">' + j.status + '</span></td>' +
+                        '<td>' + created + '</td>' +
+                        '<td>' + (canCancel ? '<button class="btn-secondary btn-sm btn-danger" onclick="cancelJob(\'' + j.id + '\')">Cancel</button>' : '—') + '</td>' +
+                        '</tr>';
+                }).join('');
+            } catch {
+                document.getElementById('jobs-body').innerHTML = '<tr><td colspan="5" class="empty-state">Failed to load jobs</td></tr>';
+            }
+        }
+
+        /* --- Cancel a job --- */
+        async function cancelJob(jobId) {
+            if (!confirm('Cancel this job?')) return;
+            try {
+                const res = await fetch(API_BASE + '/api/job/' + jobId, { method: 'DELETE', headers: apiHeaders() });
+                if (!res.ok) { alert('Failed to cancel job'); }
+            } catch { alert('Failed to cancel job'); }
+            refreshJobs();
+        }
+
+        /* --- Init --- */
+        refreshHealth();
+        refreshJobs();
+        setInterval(refreshHealth, 15000);
+        setInterval(refreshJobs, 10000);
+    </script>
+</body>
+</html>

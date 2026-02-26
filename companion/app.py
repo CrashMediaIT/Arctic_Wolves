@@ -16,7 +16,7 @@ from pathlib import Path
 
 import boto3
 from botocore.config import Config as BotoConfig
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -344,6 +344,16 @@ def _create_job(cmd: list[str], description: str, output_path: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Web UI
+# ---------------------------------------------------------------------------
+
+@app.route("/")
+def index():
+    """Serve the companion dashboard UI."""
+    return render_template("index.html")
+
+
+# ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
 
@@ -610,6 +620,18 @@ def cancel_job(job_id):
     if not job:
         return jsonify({"error": "Job not found"}), 404
     return jsonify({"status": "cancelled", "id": job_id})
+
+
+@app.route("/api/jobs", methods=["GET"])
+def list_jobs():
+    """List all jobs, newest first."""
+    auth_err = _require_api_key()
+    if auth_err:
+        return auth_err
+
+    with job_lock:
+        all_jobs = sorted(jobs.values(), key=lambda j: j.get("created_at", 0), reverse=True)
+    return jsonify(all_jobs)
 
 
 # ---------------------------------------------------------------------------
