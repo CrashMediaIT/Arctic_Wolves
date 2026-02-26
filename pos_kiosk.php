@@ -9,6 +9,10 @@ require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/csrf_protection.php';
 require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/lib/encryption.php';
+require_once __DIR__ . '/lib/site_branding.php';
+
+$site_logo_url = getSiteLogoUrl($pdo ?? null);
+$site_favicon_url = getSiteFaviconUrl($pdo ?? null);
 
 // Detect POS subdomain (pos.arcticwolves.ca)
 // Strict validation: must end with arcticwolves.ca
@@ -126,7 +130,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>POS Kiosk | Arctic Wolves</title>
-    <link rel="icon" type="image/png" href="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png">
+    <link rel="icon" type="image/png" href="<?= htmlspecialchars($site_favicon_url) ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     <style>
@@ -305,7 +309,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 <body>
     <div class="kiosk-container">
         <div class="brand">
-            <img src="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png" alt="Arctic Wolves">
+            <img src="<?= htmlspecialchars($site_logo_url) ?>" alt="Arctic Wolves">
             <h1>ARCTIC <span>WOLVES</span></h1>
             <p>Staff Time Clock</p>
         </div>

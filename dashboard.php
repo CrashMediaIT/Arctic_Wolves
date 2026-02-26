@@ -11,6 +11,7 @@ require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/csrf_protection.php';
 require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/pwa_detect.php';
+require_once __DIR__ . '/lib/site_branding.php';
 
 // Set security headers including CSP
 setSecurityHeaders();
@@ -28,6 +29,10 @@ if (!$db_connected || $pdo === null) {
 }
 
 if (!isset($_SESSION['logged_in'])) { header("Location: login.php"); exit(); }
+
+// Load site branding from theme_settings (logo, favicon)
+$site_logo_url = getSiteLogoUrl($pdo);
+$site_favicon_url = getSiteFaviconUrl($pdo);
 
 $user_id   = $_SESSION['user_id'];
 $user_role = $_SESSION['user_role'] ?? 'athlete';
@@ -315,8 +320,8 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Arctic Wolves Dashboard</title>
-    <link rel="icon" type="image/png" href="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png">
-    <link rel="apple-touch-icon" href="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png">
+    <link rel="icon" type="image/png" href="<?= htmlspecialchars($site_favicon_url) ?>">
+    <link rel="apple-touch-icon" href="<?= htmlspecialchars($site_favicon_url) ?>">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#6B46C1">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -648,7 +653,7 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
 
 <aside class="sidebar">
     <a href="?page=home" class="brand">
-        <img src="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png" alt="Logo">
+        <img src="<?= htmlspecialchars($site_logo_url) ?>" alt="Logo">
         ARCTIC <span>WOLVES</span>
     </a>
     

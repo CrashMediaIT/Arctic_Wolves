@@ -76,10 +76,12 @@ function handleFileUpload($file, $type = 'image') {
     $max_size = 5 * 1024 * 1024; // 5MB
     
     if ($file['error'] !== UPLOAD_ERR_OK) {
+        error_log("handleFileUpload($type): Upload error code " . $file['error']);
         return ['success' => false, 'message' => 'Upload error: ' . $file['error']];
     }
     
     if ($file['size'] > $max_size) {
+        error_log("handleFileUpload($type): File too large: " . $file['size'] . " bytes");
         return ['success' => false, 'message' => 'File too large. Maximum size is 5MB.'];
     }
     
@@ -88,6 +90,7 @@ function handleFileUpload($file, $type = 'image') {
     finfo_close($finfo);
     
     if (!in_array($mime, $allowed_types)) {
+        error_log("handleFileUpload($type): Invalid MIME type: $mime");
         return ['success' => false, 'message' => 'Invalid file type. Allowed: JPG, PNG, GIF, WEBP, SVG'];
     }
     
@@ -105,9 +108,11 @@ function handleFileUpload($file, $type = 'image') {
             $nextcloud_path = $persist['nextcloud_path'] ?? null;
             if (!empty($persist['rustfs_url'])) {
                 $local_url = $persist['rustfs_url'];
+            } else {
+                error_log("handleFileUpload($type): persistUploadedFile returned no rustfs_url — stored local path: $local_url");
             }
         } catch (\Throwable $e) {
-            error_log("Theme image persist failed: " . $e->getMessage());
+            error_log("Theme image persist failed ($type): " . $e->getMessage());
         }
     }
     
@@ -450,29 +455,43 @@ try {
             }
             
             // Handle business card background uploads (unified into theme form)
+            $theme_upload_warnings = [];
             if (isset($_FILES['bc_front_bg']) && $_FILES['bc_front_bg']['error'] === UPLOAD_ERR_OK) {
                 $front_bg_result = handleFileUpload($_FILES['bc_front_bg'], 'bc_front_bg');
                 if ($front_bg_result['success']) {
                     saveThemeUploadResult($pdo, 'business_card_front_bg_url', $front_bg_result);
+                    error_log("save_theme: Front card background saved successfully: " . $front_bg_result['url']);
                 } else {
-                    ErrorLogger::error("Front card background upload failed: " . ($front_bg_result['message'] ?? 'Unknown error'));
+                    $msg = "Front card background upload failed: " . ($front_bg_result['message'] ?? 'Unknown error');
+                    ErrorLogger::error($msg);
+                    $theme_upload_warnings[] = $msg;
                 }
             } elseif (isset($_FILES['bc_front_bg']) && $_FILES['bc_front_bg']['error'] !== UPLOAD_ERR_NO_FILE) {
-                ErrorLogger::error("Front card background file error code: " . $_FILES['bc_front_bg']['error']);
+                $err = $_FILES['bc_front_bg']['error'];
+                $msg = "Front card background file error (code $err)";
+                ErrorLogger::error($msg);
+                error_log("save_theme: " . $msg . " — name=" . ($_FILES['bc_front_bg']['name'] ?? 'N/A') . " size=" . ($_FILES['bc_front_bg']['size'] ?? 'N/A'));
+                $theme_upload_warnings[] = $msg;
             }
             if (isset($_FILES['bc_back_bg']) && $_FILES['bc_back_bg']['error'] === UPLOAD_ERR_OK) {
                 $back_bg_result = handleFileUpload($_FILES['bc_back_bg'], 'bc_back_bg');
                 if ($back_bg_result['success']) {
                     saveThemeUploadResult($pdo, 'business_card_back_bg_url', $back_bg_result);
                 } else {
-                    ErrorLogger::error("Back card background upload failed: " . ($back_bg_result['message'] ?? 'Unknown error'));
+                    $msg = "Back card background upload failed: " . ($back_bg_result['message'] ?? 'Unknown error');
+                    ErrorLogger::error($msg);
+                    $theme_upload_warnings[] = $msg;
                 }
             }
             
             Auditor::log($pdo, $user_id, 'update', 'theme_settings', null, ['action' => 'Theme settings updated']);
             
             // Redirect back to system_tools theme tab
-            header('Location: dashboard.php?page=system_tools&tab=theme&success=1');
+            $redirect_url = 'dashboard.php?page=system_tools&tab=theme&success=1';
+            if (!empty($theme_upload_warnings)) {
+                $redirect_url .= '&upload_warning=' . urlencode(implode('; ', $theme_upload_warnings));
+            }
+            header('Location: ' . $redirect_url);
             exit;
             
         case 'update_all_theme_settings':

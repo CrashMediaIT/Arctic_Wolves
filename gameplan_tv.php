@@ -25,6 +25,10 @@ session_start();
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/csrf_protection.php';
 require_once __DIR__ . '/security.php';
+require_once __DIR__ . '/lib/site_branding.php';
+
+$site_logo_url = getSiteLogoUrl($pdo ?? null);
+$site_favicon_url = getSiteFaviconUrl($pdo ?? null);
 
 // Set security headers
 setSecurityHeaders();
@@ -218,8 +222,8 @@ $current_label = $page_labels[$page] ?? 'Game Plan';
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#6B46C1">
     <title>Game Plan TV – Arctic Wolves</title>
-    <link rel="icon" type="image/png" href="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png">
-    <link rel="apple-touch-icon" href="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png">
+    <link rel="icon" type="image/png" href="<?= htmlspecialchars($site_favicon_url) ?>">
+    <link rel="apple-touch-icon" href="<?= htmlspecialchars($site_favicon_url) ?>">
     <link rel="manifest" href="manifest-gameplan-tv.json">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -237,7 +241,7 @@ $current_label = $page_labels[$page] ?? 'Game Plan';
 <div class="tv-pair-screen">
     <div class="tv-pair-card">
         <div class="tv-pair-logo">
-            <img src="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png" alt="Arctic Wolves">
+            <img src="<?= htmlspecialchars($site_logo_url) ?>" alt="Arctic Wolves">
         </div>
         <h1 class="tv-pair-title">
             <i class="fas fa-tv"></i> Game Plan TV

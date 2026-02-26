@@ -6,8 +6,12 @@
  */
 session_start();
 require 'db_config.php';
+require_once __DIR__ . '/lib/site_branding.php';
 require_once __DIR__ . '/csrf_protection.php';
 require_once __DIR__ . '/security.php';
+
+$site_logo_url = getSiteLogoUrl($pdo ?? null);
+$site_favicon_url = getSiteFaviconUrl($pdo ?? null);
 
 // Detect POS subdomain (pos.arcticwolves.ca) - redirect to kiosk login
 // Strict validation: must end with arcticwolves.ca
@@ -166,7 +170,7 @@ if ($db_connected && $pdo) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Join the Team | Arctic Wolves</title>
     
-    <link rel="icon" type="image/png" href="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png">
+    <link rel="icon" type="image/png" href="<?= htmlspecialchars($site_favicon_url) ?>">
     
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -519,7 +523,7 @@ if ($db_connected && $pdo) {
 
     <div class="split-left">
         <div class="brand-content">
-            <img src="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png" alt="Logo" style="height: 80px; margin-bottom: 20px;">
+            <img src="<?= htmlspecialchars($site_logo_url) ?>" alt="Logo" style="height: 80px; margin-bottom: 20px;">
             <h1>ARCTIC <span style="color: var(--neon);">WOLVES</span></h1>
             <p>Join our community of dedicated athletes and parents. Track progress, book sessions, and dominate the ice.</p>
         </div>

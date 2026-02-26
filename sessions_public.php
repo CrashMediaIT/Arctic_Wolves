@@ -5,6 +5,10 @@
  * Visitors can view sessions and click Register to sign up
  */
 require_once __DIR__ . '/db_config.php';
+require_once __DIR__ . '/lib/site_branding.php';
+
+$site_logo_url = getSiteLogoUrl($pdo ?? null);
+$site_favicon_url = getSiteFaviconUrl($pdo ?? null);
 
 // Start session for potential redirect after login
 session_start();
@@ -201,7 +205,7 @@ $viewMode = $_GET['view'] ?? 'list';
     <title>Training Sessions | Arctic Wolves</title>
     <meta name="description" content="View and register for Arctic Wolves training sessions.">
     
-    <link rel="icon" type="image/png" href="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png">
+    <link rel="icon" type="image/png" href="<?= htmlspecialchars($site_favicon_url) ?>">
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="style.css">
@@ -671,7 +675,7 @@ $viewMode = $_GET['view'] ?? 'list';
     <header>
         <nav class="container nav-flex">
             <a href="index.php" class="logo-area" style="display: flex; align-items: center; gap: 15px; text-decoration: none;">
-                <img src="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png" alt="Arctic Wolves Logo" style="height: 40px; width: auto;">
+                <img src="<?= htmlspecialchars($site_logo_url) ?>" alt="Arctic Wolves Logo" style="height: 40px; width: auto;">
                 
                 <div>
                     <div class="logo-text">ARCTIC<span>WOLVES</span></div>
@@ -1000,7 +1004,7 @@ $viewMode = $_GET['view'] ?? 'list';
         <div class="container footer-flex">
             <div class="footer-left">
                 <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-                    <img src="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png" alt="Logo" style="height: 30px; opacity: 0.8;">
+                    <img src="<?= htmlspecialchars($site_logo_url) ?>" alt="Logo" style="height: 30px; opacity: 0.8;">
                     <div class="logo-text" style="font-size: 1.2rem;">ARCTIC<span>WOLVES</span></div>
                 </div>
                 

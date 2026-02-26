@@ -6,9 +6,13 @@
 require_once __DIR__ . '/config/session.php';
 session_start();
 require_once __DIR__ . '/db_config.php';
+require_once __DIR__ . '/lib/site_branding.php';
 require_once __DIR__ . '/csrf_protection.php';
 require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/pwa_detect.php';
+
+$site_logo_url = getSiteLogoUrl($pdo ?? null);
+$site_favicon_url = getSiteFaviconUrl($pdo ?? null);
 
 // If already logged in, go to appropriate PWA dashboard
 if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
@@ -53,8 +57,8 @@ $errorText = $errorMessages[$error] ?? '';
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Arctic Wolves - Sign In</title>
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/png" href="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png">
-    <link rel="apple-touch-icon" href="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png">
+    <link rel="icon" type="image/png" href="<?= htmlspecialchars($site_favicon_url) ?>">
+    <link rel="apple-touch-icon" href="<?= htmlspecialchars($site_favicon_url) ?>">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="css/style-guide.css">
@@ -65,7 +69,7 @@ $errorText = $errorMessages[$error] ?? '';
 <div class="pwa-login-wrapper">
     <div class="pwa-login-box">
         <div class="pwa-login-brand">
-            <img src="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png" alt="Arctic Wolves">
+            <img src="<?= htmlspecialchars($site_logo_url) ?>" alt="Arctic Wolves">
             <h1>ARCTIC <span>WOLVES</span></h1>
             <p style="color:var(--text-secondary);font-size:13px;margin-top:4px;">Sign in to your account</p>
         </div>

@@ -1291,6 +1291,11 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                 <h3><i class="fas fa-palette"></i> Theme Customization</h3>
             </div>
             <div class="card-body">
+                <?php if (!empty($_GET['upload_warning'])): ?>
+                <div class="alert alert-error" style="margin-bottom: 16px; padding: 12px; border-radius: 8px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444;">
+                    <i class="fas fa-exclamation-triangle"></i> Upload Warning: <?php echo htmlspecialchars($_GET['upload_warning']); ?>
+                </div>
+                <?php endif; ?>
                 <form id="theme-form" method="POST" action="process_theme.php" enctype="multipart/form-data">
                     <?php echo csrfTokenInput(); ?>
                     <input type="hidden" name="action" value="save_theme">

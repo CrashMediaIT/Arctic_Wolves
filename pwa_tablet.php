@@ -13,6 +13,7 @@ error_reporting(E_ALL);
 require_once __DIR__ . '/config/session.php';
 session_start();
 require_once __DIR__ . '/db_config.php';
+require_once __DIR__ . '/lib/site_branding.php';
 require_once __DIR__ . '/csrf_protection.php';
 require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/pwa_detect.php';
@@ -28,6 +29,9 @@ generateCSRFToken();
 if (!$db_connected || $pdo === null) {
     die("Database connection failed.");
 }
+
+$site_logo_url = getSiteLogoUrl($pdo ?? null);
+$site_favicon_url = getSiteFaviconUrl($pdo ?? null);
 
 // Auth check
 if (!isset($_SESSION['logged_in'])) {
@@ -285,8 +289,8 @@ try {
     <meta name="mobile-web-app-capable" content="yes">
     <title>Arctic Wolves</title>
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/png" href="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png">
-    <link rel="apple-touch-icon" href="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png">
+    <link rel="icon" type="image/png" href="<?= htmlspecialchars($site_favicon_url) ?>">
+    <link rel="apple-touch-icon" href="<?= htmlspecialchars($site_favicon_url) ?>">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="css/style-guide.css">
@@ -303,7 +307,7 @@ try {
 <!-- ── Sidebar Navigation (same as desktop dashboard.php) ─ -->
 <aside class="tablet-sidebar" id="tabletSidebar">
     <a href="?page=home" class="brand">
-        <img src="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png" alt="Logo">
+        <img src="<?= htmlspecialchars($site_logo_url) ?>" alt="Logo">
         ARCTIC <span>WOLVES</span>
     </a>
 
