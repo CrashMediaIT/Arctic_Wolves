@@ -95,8 +95,13 @@
         if (!container) return;
 
         // Remove existing menu if any
-        var existing = container.querySelector('.aw-quality-menu');
-        if (existing) existing.remove();
+        var existing = container.querySelector('.aw-quality-wrapper');
+        if (existing) {
+            if (existing._closeHandler) {
+                document.removeEventListener('click', existing._closeHandler);
+            }
+            existing.remove();
+        }
 
         // Ensure container is positioned
         var pos = getComputedStyle(container).position;
@@ -151,10 +156,12 @@
             menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
         });
 
-        // Close on outside click
-        document.addEventListener('click', function() {
-            menu.style.display = 'none';
-        });
+        // Close on outside click — use a single bound handler to avoid leaks
+        var _closeHandler = function() { menu.style.display = 'none'; };
+        document.addEventListener('click', _closeHandler);
+
+        // Store cleanup reference on the wrapper so it can be removed
+        wrapper._closeHandler = _closeHandler;
 
         var wrapper = document.createElement('div');
         wrapper.className = 'aw-quality-wrapper';

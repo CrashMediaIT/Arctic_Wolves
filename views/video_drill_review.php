@@ -1373,9 +1373,26 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (videoDetailTitle) videoDetailTitle.textContent = title;
                 if (videoDetailMeta) {
                     var metaHtml = '';
-                    if (description) metaHtml += '<p class="video-detail-description">' + description.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</p>';
-                    if (coach) metaHtml += '<span class="video-detail-item"><i class="fas fa-user-tie"></i> ' + coach.replace(/</g, '&lt;') + '</span>';
-                    if (date) metaHtml += '<span class="video-detail-item"><i class="fas fa-calendar"></i> ' + date.replace(/</g, '&lt;') + '</span>';
+                    if (description) {
+                        var descEl = document.createElement('p');
+                        descEl.className = 'video-detail-description';
+                        descEl.textContent = description;
+                        metaHtml += descEl.outerHTML;
+                    }
+                    if (coach) {
+                        var coachEl = document.createElement('span');
+                        coachEl.className = 'video-detail-item';
+                        coachEl.innerHTML = '<i class="fas fa-user-tie"></i> ';
+                        coachEl.appendChild(document.createTextNode(coach));
+                        metaHtml += coachEl.outerHTML;
+                    }
+                    if (date) {
+                        var dateEl = document.createElement('span');
+                        dateEl.className = 'video-detail-item';
+                        dateEl.innerHTML = '<i class="fas fa-calendar"></i> ';
+                        dateEl.appendChild(document.createTextNode(date));
+                        metaHtml += dateEl.outerHTML;
+                    }
                     videoDetailMeta.innerHTML = metaHtml;
                 }
                 if (videoDetails) videoDetails.style.display = (description || coach || date) ? 'block' : 'none';

@@ -23,6 +23,7 @@ services:
       - S3_BUCKET=${S3_BUCKET:-}
       - S3_REGION=${S3_REGION:-us-east-1}
       - S3_USE_SSL=${S3_USE_SSL:-true}
+      - S3_VERIFY_SSL=${S3_VERIFY_SSL:-false}
       - HLS_STAGING_PREFIX=${HLS_STAGING_PREFIX:-Images/videos/}
       - HLS_POLL_INTERVAL=${HLS_POLL_INTERVAL:-30}
     healthcheck:

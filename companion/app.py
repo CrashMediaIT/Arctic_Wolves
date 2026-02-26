@@ -45,10 +45,12 @@ S3_SECRET_KEY = os.getenv("S3_SECRET_KEY", "")
 S3_BUCKET = os.getenv("S3_BUCKET", "")
 S3_REGION = os.getenv("S3_REGION", "us-east-1")
 S3_USE_SSL = os.getenv("S3_USE_SSL", "true").lower() in ("true", "1", "yes")
+S3_VERIFY_SSL = os.getenv("S3_VERIFY_SSL", "false").lower() in ("true", "1", "yes")
 
 # HLS staging configuration
 HLS_STAGING_PREFIX = os.getenv("HLS_STAGING_PREFIX", "Images/videos/")
 HLS_POLL_INTERVAL = int(os.getenv("HLS_POLL_INTERVAL", "30"))
+VERSION = "1.1.0"
 
 Path(TEMP_DIR).mkdir(parents=True, exist_ok=True)
 
@@ -80,7 +82,7 @@ def _get_s3_client():
             signature_version="s3v4",
             retries={"max_attempts": 3},
         ),
-        verify=False,  # Self-signed certs common in internal networks
+        verify=S3_VERIFY_SSL,  # Configurable; often disabled for self-signed certs
     )
 
 
@@ -373,7 +375,7 @@ def health():
 
     return jsonify({
         "status": "ok",
-        "version": "1.1.0",
+        "version": VERSION,
         "video_base_path": VIDEO_BASE_PATH,
         "video_base_accessible": base_accessible,
         "hw_accel": hw,
@@ -907,7 +909,7 @@ def _start_staging_watcher():
 # Entry point
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
-    print(f"Arctic Wolves Video Companion Server v1.0.0")
+    print(f"Arctic Wolves Video Companion Server v{VERSION}")
     print(f"Video base path: {VIDEO_BASE_PATH}")
     print(f"Hardware acceleration: {HW_ACCEL}")
     print(f"S3 endpoint: {S3_ENDPOINT or '(not configured)'}")

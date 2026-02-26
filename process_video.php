@@ -2684,13 +2684,14 @@ function handleNavigatePair() {
 function triggerHlsTranscode($pdo, $video_id, $object_key) {
     try {
         // Load companion settings from system_settings
-        $stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = ?");
-
-        $stmt->execute(["companion_url"]);
-        $companion_url = ($stmt->fetch())["setting_value"] ?? "";
-
-        $stmt->execute(["companion_api_key"]);
-        $companion_key = ($stmt->fetch())["setting_value"] ?? "";
+        $stmt = $pdo->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('companion_url', 'companion_api_key')");
+        $stmt->execute();
+        $settings = [];
+        while ($row = $stmt->fetch()) {
+            $settings[$row['setting_key']] = $row['setting_value'] ?? '';
+        }
+        $companion_url = $settings['companion_url'] ?? '';
+        $companion_key = $settings['companion_api_key'] ?? '';
 
         if (empty($companion_url)) {
             return; // Companion not configured – skip
