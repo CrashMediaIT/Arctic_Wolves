@@ -210,10 +210,10 @@ if (!$show_history) {
 
     // For athletes: include sessions registered directly or via purchased packages
     if ($user_role === 'athlete') {
-        $template_sessions_query .= " AND (sda.id IS NOT NULL OR tst.id IN (
-            SELECT ps.template_id FROM package_sessions ps
+        $template_sessions_query .= " AND (sda.id IS NOT NULL OR EXISTS (
+            SELECT 1 FROM package_sessions ps
             INNER JOIN user_packages up ON up.package_id = ps.package_id
-            WHERE up.user_id = ? AND up.payment_status = 'paid' AND ps.template_id IS NOT NULL
+            WHERE ps.template_id = tst.id AND up.user_id = ? AND up.payment_status = 'paid'
         ))";
         $template_params[] = $user_id;
     }

@@ -38,9 +38,9 @@ test.describe('Desktop Upcoming Sessions - Athlete Registration Filter', () => {
 
   test('sessions_upcoming.php also checks package_sessions with template_id for athletes', () => {
     const content = readFile('views/sessions_upcoming.php');
-    expect(content).toContain('sda.id IS NOT NULL OR tst.id IN');
-    expect(content).toContain('ps.template_id FROM package_sessions ps');
-    expect(content).toContain('ps.template_id IS NOT NULL');
+    expect(content).toContain('sda.id IS NOT NULL OR EXISTS');
+    expect(content).toContain('ps.template_id = tst.id');
+    expect(content).toContain("up.payment_status = 'paid'");
   });
 
   test('sessions_upcoming.php passes athlete user_id as template param for registration filter', () => {
