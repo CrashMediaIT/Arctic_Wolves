@@ -1402,7 +1402,7 @@
                 return;
             }
 
-            // Initialise Video.js player
+            // Initialize Video.js player
             if (typeof videojs !== 'undefined') {
                 var player = videojs('aw-vp-video', {
                     controls: true,

@@ -846,7 +846,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 if (pct < 100) {
                                     status.textContent = 'Uploading to cloud storage... ' + pct + '%';
                                 } else {
-                                    status.textContent = 'Finalising upload...';
+                                    status.textContent = 'Finalizing upload...';
                                 }
                             }
                         };
