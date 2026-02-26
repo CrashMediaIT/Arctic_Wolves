@@ -1,11 +1,9 @@
 /**
- * Tests for Persistent Storage + Nextcloud Refactor
+ * Tests for Persistent Storage + RustFS Refactor
  *
  * Verifies that ALL upload functions use persistUploadedFile() which:
- * 1. Saves to /config/persistent_uploads (via saveToPersistentStorage)
- * 2. Uploads to Nextcloud (via uploadImageToNextcloud or uploadLargeFileToNextcloud)
- * 3. Caches locally in project uploads/ directory for serving
- * 4. Stores the Nextcloud remote_path in the database for recovery
+ * 1. Uploads to RustFS S3 storage (via uploadToRustFS or uploadLargeFileToRustFS)
+ * 2. Stores the remote path in the database for recovery
  *
  * Upload functions tested:
  *  1. handleFileUpload (process_theme.php) - theme images
