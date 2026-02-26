@@ -1071,11 +1071,17 @@ def _send_callback(callback_url: str, payload: dict):
     """
     if not callback_url:
         return
+    # Validate URL scheme to prevent SSRF to non-HTTP destinations
+    from urllib.parse import urlparse
+    parsed = urlparse(callback_url)
+    if parsed.scheme not in ("http", "https"):
+        logger.warning("Callback URL rejected (invalid scheme): %s", callback_url)
+        return
     try:
         headers = {"Content-Type": "application/json"}
         if API_KEY:
             headers["X-API-Key"] = API_KEY
-        http_requests.post(callback_url, json=payload, headers=headers, timeout=10, verify=False)
+        http_requests.post(callback_url, json=payload, headers=headers, timeout=10, verify=False)  # noqa: S501
         logger.info("Callback sent to %s for job %s", callback_url, payload.get("job_id"))
     except Exception as exc:
         logger.warning("Callback to %s failed: %s", callback_url, exc)
