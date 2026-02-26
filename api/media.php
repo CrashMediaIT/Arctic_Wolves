@@ -82,6 +82,144 @@ $curl_headers = [
 ];
 
 // ── Fetch and stream ────────────────────────────────────────────────────
+// Support HTTP Range requests for progressive video playback
+$range_header = $_SERVER['HTTP_RANGE'] ?? '';
+
+if ($range_header) {
+    // ---------- Range request (video seeking / progressive play) ----------
+    // First, get the object size via a HEAD request
+    $head_url = $url;
+    $head_signed = signRustFSRequest(
+        'HEAD',
+        $head_url,
+        [],
+        '',
+        $rustfs['rustfs_access_key'],
+        $rustfs['rustfs_secret_key'],
+        $region
+    );
+    $head_headers = [
+        'Authorization: ' . $head_signed['Authorization'],
+        'x-amz-date: ' . $head_signed['x-amz-date'],
+        'x-amz-content-sha256: ' . $head_signed['x-amz-content-sha256'],
+    ];
+
+    $ch_head = curl_init($head_url);
+    curl_setopt($ch_head, CURLOPT_NOBODY, true);
+    curl_setopt($ch_head, CURLOPT_HTTPHEADER, $head_headers);
+    curl_setopt($ch_head, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch_head, CURLOPT_CONNECTTIMEOUT, 15);
+    curl_setopt($ch_head, CURLOPT_TIMEOUT, 30);
+    curl_setopt($ch_head, CURLOPT_FOLLOWLOCATION, true);
+
+    $head_resp_headers = [];
+    curl_setopt($ch_head, CURLOPT_HEADERFUNCTION, function ($ch, $header) use (&$head_resp_headers) {
+        $len = strlen($header);
+        $parts = explode(':', $header, 2);
+        if (count($parts) === 2) {
+            $head_resp_headers[strtolower(trim($parts[0]))] = trim($parts[1]);
+        }
+        return $len;
+    });
+
+    curl_exec($ch_head);
+    $head_code = curl_getinfo($ch_head, CURLINFO_HTTP_CODE);
+    curl_close($ch_head);
+
+    if ($head_code !== 200) {
+        http_response_code(502);
+        header('Content-Type: application/json');
+        echo json_encode(['error' => 'Storage error']);
+        exit;
+    }
+
+    $total_size = (int)($head_resp_headers['content-length'] ?? 0);
+    $s3_content_type = $head_resp_headers['content-type'] ?? null;
+
+    if ($total_size <= 0) {
+        http_response_code(502);
+        header('Content-Type: application/json');
+        echo json_encode(['error' => 'Unable to determine file size']);
+        exit;
+    }
+
+    // Parse Range header (e.g. bytes=0-999)
+    $range_start = 0;
+    $range_end = $total_size - 1;
+    if (preg_match('/bytes=(\d+)-(\d*)/', $range_header, $m)) {
+        $range_start = (int)$m[1];
+        if ($m[2] !== '') {
+            $range_end = (int)$m[2];
+        }
+    }
+
+    if ($range_start > $range_end || $range_start >= $total_size) {
+        http_response_code(416);
+        header("Content-Range: bytes */$total_size");
+        exit;
+    }
+
+    // Fetch the requested byte range from RustFS
+    $range_signed = signRustFSRequest(
+        'GET',
+        $url,
+        [],
+        '',
+        $rustfs['rustfs_access_key'],
+        $rustfs['rustfs_secret_key'],
+        $region
+    );
+    $range_curl_headers = [
+        'Authorization: ' . $range_signed['Authorization'],
+        'x-amz-date: ' . $range_signed['x-amz-date'],
+        'x-amz-content-sha256: ' . $range_signed['x-amz-content-sha256'],
+        "Range: bytes=$range_start-$range_end",
+    ];
+
+    // Determine content type
+    $ct = $s3_content_type;
+    if (empty($ct) || $ct === 'application/octet-stream') {
+        $ext = strtolower(pathinfo($object_key_clean, PATHINFO_EXTENSION));
+        $mime_map = [
+            'jpg'  => 'image/jpeg',  'jpeg' => 'image/jpeg',  'png'  => 'image/png',
+            'gif'  => 'image/gif',   'webp' => 'image/webp',  'svg'  => 'image/svg+xml',
+            'mp4'  => 'video/mp4',   'webm' => 'video/webm',  'mov'  => 'video/quicktime',
+            'avi'  => 'video/x-msvideo', 'pdf' => 'application/pdf',
+            'm3u8' => 'application/vnd.apple.mpegurl', 'ts' => 'video/mp2t',
+        ];
+        $ct = $mime_map[$ext] ?? 'application/octet-stream';
+    }
+
+    $content_length = $range_end - $range_start + 1;
+    http_response_code(206);
+    header('Content-Type: ' . $ct);
+    header('Content-Length: ' . $content_length);
+    header("Content-Range: bytes $range_start-$range_end/$total_size");
+    header('Accept-Ranges: bytes');
+    header('Cache-Control: public, max-age=86400');
+    header('X-Content-Type-Options: nosniff');
+    header('Access-Control-Allow-Origin: *');
+
+    // Stream directly to output
+    $ch_range = curl_init($url);
+    curl_setopt($ch_range, CURLOPT_HTTPHEADER, $range_curl_headers);
+    curl_setopt($ch_range, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch_range, CURLOPT_CONNECTTIMEOUT, 15);
+    curl_setopt($ch_range, CURLOPT_TIMEOUT, 300);
+    curl_setopt($ch_range, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch_range, CURLOPT_RETURNTRANSFER, false);
+    curl_setopt($ch_range, CURLOPT_WRITEFUNCTION, function ($ch, $data) {
+        echo $data;
+        if (ob_get_level()) ob_flush();
+        flush();
+        return strlen($data);
+    });
+    curl_exec($ch_range);
+    curl_close($ch_range);
+    exit;
+}
+
+// ---------- Full request (non-range) ----------
 $ch = curl_init($url);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, $curl_headers);
@@ -150,6 +288,8 @@ if (empty($content_type) || $content_type === 'application/octet-stream') {
         'pdf'  => 'application/pdf',
         'json' => 'application/json',
         'txt'  => 'text/plain',
+        'm3u8' => 'application/vnd.apple.mpegurl',
+        'ts'   => 'video/mp2t',
     ];
     $content_type = $mime_map[$ext] ?? 'application/octet-stream';
 }
@@ -157,6 +297,7 @@ if (empty($content_type) || $content_type === 'application/octet-stream') {
 // ── Send response ───────────────────────────────────────────────────────
 header('Content-Type: ' . $content_type);
 header('Content-Length: ' . strlen($body));
+header('Accept-Ranges: bytes');
 header('Cache-Control: public, max-age=86400'); // Cache for 24 hours
 header('X-Content-Type-Options: nosniff');
 
