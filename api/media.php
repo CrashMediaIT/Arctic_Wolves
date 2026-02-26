@@ -14,6 +14,7 @@
  */
 
 require_once __DIR__ . '/../db_config.php';
+require_once __DIR__ . '/../security.php';
 require_once __DIR__ . '/../lib/rustfs_storage.php';
 
 // ── Resolve object key ──────────────────────────────────────────────────
