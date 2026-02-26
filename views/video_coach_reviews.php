@@ -1023,12 +1023,11 @@ document.addEventListener('DOMContentLoaded', function() {
             formData.append('title', title);
             formData.append('description', description);
             formData.append('csrf_token', csrfToken);
-            // Send notes based on role
+            // Send notes using distinct field names based on role
             if (coachNotesEdit) {
-                formData.append('comments', coachNotesEdit.value);
-            } else {
-                formData.append('comments', athleteNotes);
+                formData.append('coach_notes', coachNotesEdit.value);
             }
+            formData.append('athlete_notes', athleteNotes);
 
             fetch('process_video.php', { method: 'POST', body: formData })
                 .then(function(r) { return r.json(); })

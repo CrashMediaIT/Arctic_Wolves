@@ -804,7 +804,6 @@ function handleVideoUpdate() {
     global $pdo, $user_id, $user_role;
     
     $video_id = filter_input(INPUT_POST, 'video_id', FILTER_VALIDATE_INT);
-    $comments = $_POST['comments'] ?? '';
     $title = isset($_POST['title']) ? trim($_POST['title']) : null;
     $description = isset($_POST['description']) ? trim($_POST['description']) : null;
     
@@ -823,22 +822,26 @@ function handleVideoUpdate() {
         throw new Exception('Video not found or access denied');
     }
     
-    // Update video notes based on role
+    // Update video notes using distinct field names
     $allowed_roles = ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'];
-    if (in_array($user_role, $allowed_roles)) {
+    if (in_array($user_role, $allowed_roles) && isset($_POST['coach_notes'])) {
         $stmt = $pdo->prepare("
             UPDATE videos 
             SET coach_notes = ?, updated_at = NOW()
             WHERE id = ?
         ");
-        $stmt->execute([$comments, $video_id]);
-    } else {
+        $stmt->execute([$_POST['coach_notes'], $video_id]);
+    }
+    
+    // Athlete notes: athletes update their own notes, coaches can also see them via 'comments' fallback
+    $athlete_notes = $_POST['athlete_notes'] ?? $_POST['comments'] ?? null;
+    if ($athlete_notes !== null && !in_array($user_role, $allowed_roles)) {
         $stmt = $pdo->prepare("
             UPDATE videos 
             SET athlete_notes = ?, updated_at = NOW()
             WHERE id = ?
         ");
-        $stmt->execute([$comments, $video_id]);
+        $stmt->execute([$athlete_notes, $video_id]);
     }
 
     // Update title and description if provided (allowed for the athlete who uploaded or any coach)

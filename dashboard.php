@@ -767,7 +767,7 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="?page=sessions" class="nav-link <?= in_array($page, ['sessions','upcoming_sessions','booking'])?'active':'' ?>">
                 <i class="fa-solid fa-calendar-check icon"></i> Sessions
             </a>
-            <a href="?page=video" class="nav-link <?= in_array($page, ['video','drill_review','coaches_reviews'])?'active':'' ?>">
+            <a href="?page=video" class="nav-link <?= in_array($page, ['video','drill_review','coaches_reviews','record_video'])?'active':'' ?>">
                 <i class="fa-solid fa-video icon"></i> Video
             </a>
             <a href="?page=health" class="nav-link <?= in_array($page, ['health','strength_conditioning','nutrition'])?'active':'' ?>">
@@ -1439,7 +1439,7 @@ function switchAthlete(athleteId) {
         stopChatPoll();
         chatPollInterval = setInterval(function() {
             if (currentConvId) loadMessages(currentConvId);
-        }, 5000);
+        }, 10000);
     }
 
     function stopChatPoll() {
