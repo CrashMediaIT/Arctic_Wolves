@@ -1,9 +1,16 @@
 # Arctic Wolves Video Companion Server
-# CPU-only configuration
+# Worker/integration service for the main Arctic Wolves application.
 #
 # Quick start:
-#   1. Copy .env.example to .env and fill in your values
-#   2. docker compose up -d
+#   1. docker compose up -d
+#   2. Visit http://localhost:5100 — the setup page appears on first run
+#   3. Generate or paste an encryption key
+#   4. Go to Settings → Generate API Key, then enter it in the main app
+#
+# No environment variables are required.  All configuration (encryption key,
+# API key, RustFS credentials, hardware acceleration) is managed through the
+# companion web UI and stored in an encrypted config file on the persistent
+# volume.  The encryption key persists across container updates.
 #
 # To build locally instead of pulling from GHCR, uncomment "build" and comment "image":
 #   build: .
@@ -17,26 +24,13 @@ services:
     ports:
       - "5100:5100"
     volumes:
-      - /videos:/videos          # Mount your NFS/SMB video share here
-    environment:
-      - TZ=${TZ:-America/Toronto}
-      - API_KEY=${API_KEY:-changeme}
-      - VIDEO_BASE_PATH=/videos
-      - HW_ACCEL=auto
-      - MAX_CONCURRENT_JOBS=2
-      - COMPANION_PORT=5100
-      - S3_ENDPOINT=${S3_ENDPOINT:-}
-      - S3_ACCESS_KEY=${S3_ACCESS_KEY:-}
-      - S3_SECRET_KEY=${S3_SECRET_KEY:-}
-      - S3_BUCKET=${S3_BUCKET:-}
-      - S3_REGION=${S3_REGION:-us-east-1}
-      - S3_USE_SSL=${S3_USE_SSL:-true}
-      - S3_VERIFY_SSL=${S3_VERIFY_SSL:-false}
-      - HLS_STAGING_PREFIX=${HLS_STAGING_PREFIX:-Images/videos/}
-      - HLS_POLL_INTERVAL=${HLS_POLL_INTERVAL:-30}
+      - companion_config:/config  # Persistent: encryption key + encrypted config
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5100/api/health')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5100/setup')"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 10s
+
+volumes:
+  companion_config:

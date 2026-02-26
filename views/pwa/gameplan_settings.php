@@ -171,10 +171,10 @@ $error = $_GET['error'] ?? '';
                     <div class="m-gps-field">
                         <label>API Key *</label>
                         <div class="m-input-row">
-                            <input type="password" name="companion_api_key" id="mCompKey" value="<?= htmlspecialchars($companion_api_key) ?>" placeholder="Shared secret key">
+                            <input type="password" name="companion_api_key" id="mCompKey" value="<?= htmlspecialchars($companion_api_key) ?>" placeholder="Paste key from companion">
                             <button type="button" class="m-eye-btn" onclick="mGpsToggleVis('mCompKey', this)" aria-label="Show"><i class="fas fa-eye"></i></button>
                         </div>
-                        <small>Must match companion server config</small>
+                        <small>Generated in the companion app Settings, then pasted here</small>
                     </div>
 
                     <div class="m-gps-field">

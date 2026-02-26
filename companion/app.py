@@ -2,6 +2,13 @@
 Arctic Wolves Video Companion Server
 Hardware-accelerated video encoding, decoding, clip extraction,
 and HLS transcoding with S3/RustFS integration.
+
+The companion is a worker/integration service for the main Arctic Wolves
+application.  It generates its own API key which must be entered in the
+main application's Game Plan settings.  RustFS / S3 storage credentials
+and video-path settings are pushed from the main app or entered in the
+companion web UI and persisted in an AES-256-CBC encrypted config file
+(matching the main app's PII encryption scheme).
 """
 
 import os
@@ -12,12 +19,24 @@ import subprocess
 import threading
 import time
 import logging
+import hashlib
+import secrets
+import base64
 from pathlib import Path
 
 import boto3
+import requests as http_requests
 from botocore.config import Config as BotoConfig
 from flask import Flask, request, jsonify, render_template
 from dotenv import load_dotenv
+
+# Optional: cryptography for AES-256-CBC (fallback to a pure-Python impl)
+try:
+    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+    from cryptography.hazmat.primitives import padding as sym_padding
+    _HAS_CRYPTO = True
+except ImportError:
+    _HAS_CRYPTO = False
 
 load_dotenv()
 
@@ -26,31 +45,171 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger("companion")
 
 # ---------------------------------------------------------------------------
-# Configuration
+# Persistent Encrypted Configuration
 # ---------------------------------------------------------------------------
-API_KEY = os.getenv("API_KEY", "")
-VIDEO_BASE_PATH = os.getenv("VIDEO_BASE_PATH", "/videos")
-HW_ACCEL = os.getenv("HW_ACCEL", "auto")
-FFMPEG_PATH = os.getenv("FFMPEG_PATH", "ffmpeg")
-FFPROBE_PATH = os.getenv("FFPROBE_PATH", "ffprobe")
-MAX_CONCURRENT_JOBS = int(os.getenv("MAX_CONCURRENT_JOBS", "2"))
-TEMP_DIR = os.getenv("TEMP_DIR", "/tmp/companion")
-COMPANION_HOST = os.getenv("COMPANION_HOST", "0.0.0.0")
+# Settings are stored in an AES-256-CBC encrypted JSON file on a persistent
+# Docker volume so they survive container updates.  The encryption matches the
+# main application's PII FieldEncryption scheme.
+#
+# The encryption key itself is stored at /config/encryption.key on the
+# persistent volume.  On first start the companion shows a setup page where
+# you generate or enter the key.  After a container update the key persists.
+
+CONFIG_DIR = os.getenv("CONFIG_DIR", "/config")
+CONFIG_FILE = os.path.join(CONFIG_DIR, "companion_config.enc")
+KEY_FILE = os.path.join(CONFIG_DIR, "encryption.key")
+
+
+def _read_key_file() -> str:
+    """Read the hex encryption key from the persistent volume, or ''."""
+    if os.path.isfile(KEY_FILE):
+        try:
+            return open(KEY_FILE, "r").read().strip()
+        except Exception:
+            return ""
+    return ""
+
+
+def _write_key_file(hex_key: str) -> bool:
+    """Write the hex encryption key to the persistent volume."""
+    try:
+        Path(CONFIG_DIR).mkdir(parents=True, exist_ok=True)
+        with open(KEY_FILE, "w") as f:
+            f.write(hex_key)
+        os.chmod(KEY_FILE, 0o600)
+        return True
+    except Exception as exc:
+        logger.error("Failed to write key file: %s", exc)
+        return False
+
+
+def _get_cipher_key() -> bytes | None:
+    """Return the raw 32-byte key from the key file, or None."""
+    hex_key = _read_key_file()
+    if not hex_key or len(hex_key) < 64:
+        return None
+    try:
+        return bytes.fromhex(hex_key)
+    except ValueError:
+        return None
+
+
+def _encrypt_config(plaintext: str) -> str:
+    """Encrypt *plaintext* with AES-256-CBC and return base64 (IV + ciphertext).
+
+    Compatible with the main app's FieldEncryption::encrypt().
+    """
+    key = _get_cipher_key()
+    if key is None:
+        return plaintext  # no key – store as-is (dev mode)
+
+    iv = os.urandom(16)
+    if _HAS_CRYPTO:
+        padder = sym_padding.PKCS7(128).padder()
+        padded = padder.update(plaintext.encode()) + padder.finalize()
+        encryptor = Cipher(algorithms.AES(key), modes.CBC(iv)).encryptor()
+        ct = encryptor.update(padded) + encryptor.finalize()
+    else:
+        # Pure-Python fallback using subprocess + openssl
+        import subprocess as _sp
+        proc = _sp.run(
+            ["openssl", "enc", "-aes-256-cbc", "-nosalt", "-K", key.hex(), "-iv", iv.hex()],
+            input=plaintext.encode(), capture_output=True,
+        )
+        ct = proc.stdout
+
+    return base64.b64encode(iv + ct).decode()
+
+
+def _decrypt_config(blob: str) -> str:
+    """Decrypt a base64 blob produced by _encrypt_config."""
+    key = _get_cipher_key()
+    if key is None:
+        return blob
+
+    raw = base64.b64decode(blob)
+    iv = raw[:16]
+    ct = raw[16:]
+
+    if _HAS_CRYPTO:
+        decryptor = Cipher(algorithms.AES(key), modes.CBC(iv)).decryptor()
+        padded = decryptor.update(ct) + decryptor.finalize()
+        unpadder = sym_padding.PKCS7(128).unpadder()
+        return (unpadder.update(padded) + unpadder.finalize()).decode()
+    else:
+        import subprocess as _sp
+        proc = _sp.run(
+            ["openssl", "enc", "-d", "-aes-256-cbc", "-nosalt", "-K", key.hex(), "-iv", iv.hex()],
+            input=ct, capture_output=True,
+        )
+        return proc.stdout.decode()
+
+
+def _load_persistent_config() -> dict:
+    """Load the encrypted config file, returning a dict (empty if missing)."""
+    if not os.path.isfile(CONFIG_FILE):
+        return {}
+    try:
+        with open(CONFIG_FILE, "r") as f:
+            blob = f.read().strip()
+        plaintext = _decrypt_config(blob)
+        return json.loads(plaintext)
+    except Exception as exc:
+        logger.warning("Could not load persistent config: %s", exc)
+        return {}
+
+
+def _save_persistent_config(cfg: dict) -> bool:
+    """Encrypt and write config to the persistent volume."""
+    try:
+        Path(CONFIG_DIR).mkdir(parents=True, exist_ok=True)
+        blob = _encrypt_config(json.dumps(cfg))
+        with open(CONFIG_FILE, "w") as f:
+            f.write(blob)
+        return True
+    except Exception as exc:
+        logger.error("Failed to save persistent config: %s", exc)
+        return False
+
+
+# Load all settings from the encrypted persistent config file.
+# No environment variables are used.  The encryption key is stored
+# at /config/encryption.key (entered via the setup page on first start).
+# Everything else is entered through the companion web UI (Settings tab)
+# and persisted in the encrypted config file on the Docker volume.
+_persisted = _load_persistent_config()
+
+def _pcfg(key: str, default: str = "") -> str:
+    """Return a value from the persisted config, or *default*."""
+    return _persisted.get(key, default)
+
+# ---------------------------------------------------------------------------
+# Configuration — all values come from the encrypted config file
+# ---------------------------------------------------------------------------
+API_KEY = _pcfg("api_key")
+MAIN_APP_URL = _pcfg("main_app_url")
+HW_ACCEL = _pcfg("hw_accel", "auto")
+MAX_CONCURRENT_JOBS = int(_pcfg("max_concurrent_jobs", "2"))
+
+# S3 / RustFS connection — entered in the companion Settings UI or pushed
+# from the main app.  The companion uses these to download source videos and
+# upload transcoded output.  Storage *paths* are determined by the main app.
+S3_ENDPOINT = _pcfg("s3_endpoint")
+S3_ACCESS_KEY = _pcfg("s3_access_key")
+S3_SECRET_KEY = _pcfg("s3_secret_key")
+S3_BUCKET = _pcfg("s3_bucket")
+S3_REGION = _pcfg("s3_region", "us-east-1")
+S3_USE_SSL = _pcfg("s3_use_ssl", "true").lower() in ("true", "1", "yes")
+S3_VERIFY_SSL = _pcfg("s3_verify_ssl", "false").lower() in ("true", "1", "yes")
+
+# Internal constants (not user-configurable)
+FFMPEG_PATH = "ffmpeg"
+FFPROBE_PATH = "ffprobe"
+TEMP_DIR = "/tmp/companion"
+VIDEO_BASE_PATH = "/videos"
+COMPANION_HOST = "0.0.0.0"
 COMPANION_PORT = int(os.getenv("COMPANION_PORT", "5100"))
-
-# S3 / RustFS configuration
-S3_ENDPOINT = os.getenv("S3_ENDPOINT", "")
-S3_ACCESS_KEY = os.getenv("S3_ACCESS_KEY", "")
-S3_SECRET_KEY = os.getenv("S3_SECRET_KEY", "")
-S3_BUCKET = os.getenv("S3_BUCKET", "")
-S3_REGION = os.getenv("S3_REGION", "us-east-1")
-S3_USE_SSL = os.getenv("S3_USE_SSL", "true").lower() in ("true", "1", "yes")
-S3_VERIFY_SSL = os.getenv("S3_VERIFY_SSL", "false").lower() in ("true", "1", "yes")
-
-# HLS staging configuration
-HLS_STAGING_PREFIX = os.getenv("HLS_STAGING_PREFIX", "Images/videos/")
-HLS_POLL_INTERVAL = int(os.getenv("HLS_POLL_INTERVAL", "30"))
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 
 Path(TEMP_DIR).mkdir(parents=True, exist_ok=True)
 
@@ -344,6 +503,121 @@ def _create_job(cmd: list[str], description: str, output_path: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# First-Run Setup — generate or enter the encryption key
+# ---------------------------------------------------------------------------
+
+SETUP_TEMPLATE = """<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Companion — Setup</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',system-ui,sans-serif}
+body{background:#0A0A0F;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh}
+.card{background:#16161F;border:1px solid #2D2D3F;border-radius:16px;padding:40px;max-width:540px;width:100%}
+h1{font-size:1.8rem;font-weight:900;margin-bottom:8px}
+h1 span{color:#6B46C1}
+p{color:#A8A8B8;font-size:14px;line-height:1.6;margin-bottom:24px}
+label{display:block;font-size:13px;font-weight:700;margin-bottom:6px;color:#A8A8B8}
+input{width:100%;padding:10px 14px;border:1px solid #2D2D3F;border-radius:8px;background:#0A0A0F;color:#fff;font-size:14px;font-family:monospace}
+.actions{display:flex;gap:10px;margin-top:20px}
+.btn{padding:10px 20px;border:none;border-radius:8px;cursor:pointer;font-weight:800;font-size:13px;text-transform:uppercase}
+.btn-primary{background:#6B46C1;color:#fff}.btn-primary:hover{background:#7C3AED}
+.btn-secondary{background:#2D2D3F;color:#fff}.btn-secondary:hover{background:#3D3D4F}
+.hint{color:#A8A8B8;font-size:12px;margin-top:8px}
+.error{color:#EF4444;font-size:13px;margin-top:12px;display:none}
+</style></head><body>
+<div class="card">
+<h1>Video <span>Companion</span></h1>
+<p>First-time setup. Enter or generate an AES-256 encryption key.<br>
+This key encrypts the config file on the persistent volume. If you are connecting
+to an existing main application, use the same key.</p>
+<form id="sf">
+<label for="ek">Encryption Key (64-char hex)</label>
+<input id="ek" name="key" placeholder="Paste existing key or click Generate" autocomplete="off">
+<div class="hint">Generate with: <code>python -c "import os; print(os.urandom(32).hex())"</code></div>
+<div class="error" id="err"></div>
+<div class="actions">
+<button type="submit" class="btn btn-primary">Save &amp; Start</button>
+<button type="button" class="btn btn-secondary" onclick="genKey()">Generate Key</button>
+</div>
+</form>
+</div>
+<script>
+function genKey(){
+ const a=new Uint8Array(32);crypto.getRandomValues(a);
+ document.getElementById('ek').value=Array.from(a,b=>b.toString(16).padStart(2,'0')).join('');
+}
+document.getElementById('sf').onsubmit=async function(e){
+ e.preventDefault();const err=document.getElementById('err');err.style.display='none';
+ const key=document.getElementById('ek').value.trim();
+ if(!/^[0-9a-fA-F]{64}$/.test(key)){err.textContent='Key must be exactly 64 hex characters.';err.style.display='block';return;}
+ const r=await fetch('/api/setup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key})});
+ const d=await r.json();
+ if(d.success){window.location.href='/';}else{err.textContent=d.error||'Setup failed.';err.style.display='block';}
+};
+</script></body></html>"""
+
+
+@app.route("/setup")
+def setup_page():
+    """Show the first-run setup page (only when no encryption key exists)."""
+    if _get_cipher_key() is not None:
+        return flask_redirect("/")
+    return SETUP_TEMPLATE, 200, {"Content-Type": "text/html"}
+
+
+@app.route("/api/setup", methods=["POST"])
+def setup_save():
+    """Save the encryption key from the setup page."""
+    if _get_cipher_key() is not None:
+        return jsonify({"success": False, "error": "Already configured. Use Settings to change the key."}), 400
+
+    data = request.get_json(silent=True) or {}
+    hex_key = str(data.get("key", "")).strip()
+
+    if not hex_key or len(hex_key) != 64:
+        return jsonify({"success": False, "error": "Key must be exactly 64 hex characters."}), 400
+
+    try:
+        bytes.fromhex(hex_key)
+    except ValueError:
+        return jsonify({"success": False, "error": "Key must be valid hexadecimal."}), 400
+
+    if not _write_key_file(hex_key):
+        return jsonify({"success": False, "error": "Failed to write key file. Check volume permissions."}), 500
+
+    # Reload the persisted config now that we have a key
+    global _persisted, API_KEY, MAIN_APP_URL, HW_ACCEL, MAX_CONCURRENT_JOBS
+    global S3_ENDPOINT, S3_ACCESS_KEY, S3_SECRET_KEY, S3_BUCKET, S3_REGION
+    global S3_USE_SSL, S3_VERIFY_SSL
+    _persisted = _load_persistent_config()
+
+    logger.info("Setup complete — encryption key saved")
+    return jsonify({"success": True})
+
+
+# Import redirect helper
+from flask import redirect as flask_redirect
+
+
+@app.before_request
+def _require_setup():
+    """If no encryption key exists, redirect everything to the setup page."""
+    if _get_cipher_key() is not None:
+        return None  # key exists, proceed normally
+    # Allow setup endpoints through
+    if request.path in ("/setup", "/api/setup"):
+        return None
+    # Allow static assets (favicon etc.)
+    if request.path.startswith("/static"):
+        return None
+    # Redirect browser requests to setup; return 503 for API calls
+    if request.path.startswith("/api/"):
+        return jsonify({"error": "Setup required", "setup_url": "/setup"}), 503
+    return flask_redirect("/setup")
+
+
+# ---------------------------------------------------------------------------
 # Web UI
 # ---------------------------------------------------------------------------
 
@@ -366,9 +640,6 @@ def health():
 
     hw = _detect_hw_accel()
 
-    # Check video base path accessibility
-    base_accessible = os.path.isdir(VIDEO_BASE_PATH)
-
     active_jobs = sum(1 for j in jobs.values() if j["status"] in ("queued", "running"))
 
     # Check S3/RustFS connectivity
@@ -386,15 +657,14 @@ def health():
     return jsonify({
         "status": "ok",
         "version": VERSION,
-        "video_base_path": VIDEO_BASE_PATH,
-        "video_base_accessible": base_accessible,
         "hw_accel": hw,
         "active_jobs": active_jobs,
         "max_concurrent_jobs": MAX_CONCURRENT_JOBS,
         "s3_configured": s3_configured,
         "s3_connected": s3_connected,
         "s3_bucket": S3_BUCKET if s3_configured else None,
-        "hls_staging_watcher": _watcher_running,
+        "main_app_url": MAIN_APP_URL or None,
+        "config_encrypted": _get_cipher_key() is not None,
     })
 
 
@@ -647,8 +917,8 @@ def get_config():
 
     return jsonify({
         "api_key_set": bool(API_KEY),
+        "main_app_url": MAIN_APP_URL,
         "hw_accel": HW_ACCEL,
-        "video_base_path": VIDEO_BASE_PATH,
         "max_concurrent_jobs": MAX_CONCURRENT_JOBS,
         "s3_endpoint": S3_ENDPOINT,
         "s3_bucket": S3_BUCKET,
@@ -657,8 +927,8 @@ def get_config():
         "s3_secret_key_set": bool(S3_SECRET_KEY),
         "s3_use_ssl": S3_USE_SSL,
         "s3_verify_ssl": S3_VERIFY_SSL,
-        "hls_staging_prefix": HLS_STAGING_PREFIX,
-        "hls_poll_interval": HLS_POLL_INTERVAL,
+        "config_encrypted": _get_cipher_key() is not None,
+        "config_persisted": os.path.isfile(CONFIG_FILE),
     })
 
 
@@ -668,17 +938,20 @@ def update_config():
 
     Accepts a JSON object whose keys match the configuration names.
     Only the fields present in the request body are updated.
-    Changes take effect immediately but are **not** persisted across restarts
-    unless the caller also updates the .env / environment.
+    Changes take effect immediately and are persisted to the encrypted
+    config file so they survive container restarts.
+
+    Storage *paths* (where videos live, HLS prefixes) are NOT configurable
+    here — they are controlled by the main application which tells the
+    companion exactly where each source file is and where to write output.
     """
     auth_err = _require_api_key()
     if auth_err:
         return auth_err
 
-    global API_KEY, HW_ACCEL, VIDEO_BASE_PATH, MAX_CONCURRENT_JOBS
+    global API_KEY, MAIN_APP_URL, HW_ACCEL, MAX_CONCURRENT_JOBS
     global S3_ENDPOINT, S3_ACCESS_KEY, S3_SECRET_KEY, S3_BUCKET, S3_REGION
     global S3_USE_SSL, S3_VERIFY_SSL
-    global HLS_STAGING_PREFIX, HLS_POLL_INTERVAL
 
     data = request.get_json(silent=True) or {}
     updated = []
@@ -687,6 +960,10 @@ def update_config():
         API_KEY = str(data["api_key"])
         updated.append("api_key")
 
+    if "main_app_url" in data:
+        MAIN_APP_URL = str(data["main_app_url"]).rstrip("/")
+        updated.append("main_app_url")
+
     if "hw_accel" in data:
         allowed = ("auto", "nvenc", "qsv", "vaapi", "amf", "none")
         val = str(data["hw_accel"]).lower()
@@ -694,10 +971,6 @@ def update_config():
             return jsonify({"error": f"hw_accel must be one of {allowed}"}), 400
         HW_ACCEL = val
         updated.append("hw_accel")
-
-    if "video_base_path" in data:
-        VIDEO_BASE_PATH = str(data["video_base_path"])
-        updated.append("video_base_path")
 
     if "max_concurrent_jobs" in data:
         try:
@@ -734,22 +1007,84 @@ def update_config():
         S3_VERIFY_SSL = str(data["s3_verify_ssl"]).lower() in ("true", "1", "yes")
         updated.append("s3_verify_ssl")
 
-    if "hls_staging_prefix" in data:
-        HLS_STAGING_PREFIX = str(data["hls_staging_prefix"])
-        updated.append("hls_staging_prefix")
-
-    if "hls_poll_interval" in data:
-        try:
-            HLS_POLL_INTERVAL = max(5, int(data["hls_poll_interval"]))
-        except (ValueError, TypeError):
-            return jsonify({"error": "hls_poll_interval must be an integer >= 5"}), 400
-        updated.append("hls_poll_interval")
-
     if not updated:
         return jsonify({"error": "No recognized configuration fields in request"}), 400
 
-    logger.info("Configuration updated: %s", ", ".join(updated))
-    return jsonify({"updated": updated})
+    # Persist to encrypted config file
+    cfg = {
+        "api_key": API_KEY,
+        "main_app_url": MAIN_APP_URL,
+        "hw_accel": HW_ACCEL,
+        "max_concurrent_jobs": str(MAX_CONCURRENT_JOBS),
+        "s3_endpoint": S3_ENDPOINT,
+        "s3_access_key": S3_ACCESS_KEY,
+        "s3_secret_key": S3_SECRET_KEY,
+        "s3_bucket": S3_BUCKET,
+        "s3_region": S3_REGION,
+        "s3_use_ssl": str(S3_USE_SSL).lower(),
+        "s3_verify_ssl": str(S3_VERIFY_SSL).lower(),
+    }
+    persisted = _save_persistent_config(cfg)
+
+    logger.info("Configuration updated: %s (persisted=%s)", ", ".join(updated), persisted)
+    return jsonify({"updated": updated, "persisted": persisted})
+
+
+@app.route("/api/generate-key", methods=["POST"])
+def generate_key():
+    """Generate a new API key for authenticating requests from the main app.
+
+    The companion creates the key; the admin then copies it into the main
+    application's Game Plan Settings → Companion Server → API Key field.
+    """
+    # If an API key is already set, require it to generate a new one
+    auth_err = _require_api_key()
+    if auth_err:
+        return auth_err
+
+    global API_KEY
+    new_key = secrets.token_hex(32)  # 64-char hex string, same as main app's bin2hex(random_bytes(32))
+    API_KEY = new_key
+
+    # Persist the new key
+    cfg = _load_persistent_config()
+    cfg["api_key"] = new_key
+    _save_persistent_config(cfg)
+
+    logger.info("New API key generated")
+    return jsonify({
+        "api_key": new_key,
+        "message": "Copy this key into the main application's Game Plan Settings → Companion Server → API Key.",
+    })
+
+
+# ---------------------------------------------------------------------------
+# Callback — notify the main app when a job completes
+# ---------------------------------------------------------------------------
+
+def _send_callback(callback_url: str, payload: dict):
+    """POST job results back to the main application (fire-and-forget).
+
+    Note: SSL verification is disabled because companion and main app
+    typically run on an internal network behind a reverse proxy (HAProxy)
+    with self-signed or internal certificates.
+    """
+    if not callback_url:
+        return
+    # Validate URL scheme to prevent SSRF to non-HTTP destinations
+    from urllib.parse import urlparse
+    parsed = urlparse(callback_url)
+    if parsed.scheme not in ("http", "https"):
+        logger.warning("Callback URL rejected (invalid scheme): %s", callback_url)
+        return
+    try:
+        headers = {"Content-Type": "application/json"}
+        if API_KEY:
+            headers["X-API-Key"] = API_KEY
+        http_requests.post(callback_url, json=payload, headers=headers, timeout=10, verify=False)  # noqa: S501
+        logger.info("Callback sent to %s for job %s", callback_url, payload.get("job_id"))
+    except Exception as exc:
+        logger.warning("Callback to %s failed: %s", callback_url, exc)
 
 
 # ---------------------------------------------------------------------------
@@ -766,7 +1101,7 @@ HLS_VARIANTS = [
 
 
 def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
-                       delete_original: bool = True):
+                       delete_original: bool = True, callback_url: str = ""):
     """Download source from S3, transcode to HLS, upload output, optionally
     delete original.  Runs inside _run_job with the job semaphore."""
     s3 = _get_s3_client()
@@ -776,6 +1111,9 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
             jobs[job_id]["error"] = "S3 not configured"
             jobs[job_id]["finished_at"] = time.time()
         return
+
+    # Resolve callback URL once for both success and failure paths
+    cb_url = callback_url or (MAIN_APP_URL + "/api/v1/companion/callback" if MAIN_APP_URL else "")
 
     work_dir = os.path.join(TEMP_DIR, job_id)
     os.makedirs(work_dir, exist_ok=True)
@@ -880,12 +1218,37 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
             jobs[job_id]["finished_at"] = time.time()
             jobs[job_id]["variants"] = [v["label"] for v in variants]
 
+        # Notify the main application that transcoding is complete
+        variant_playlists = {v["label"]: f"{output_prefix}/{v['label']}/playlist.m3u8" for v in variants}
+        with job_lock:
+            vid_id = jobs[job_id].get("video_id")
+        _send_callback(cb_url, {
+            "job_id": job_id,
+            "video_id": vid_id,
+            "status": "completed",
+            "source_key": s3_source_key,
+            "hls_manifest": f"{output_prefix}/master.m3u8",
+            "hls_segments_path": output_prefix,
+            "variants": variant_playlists,
+        })
+
     except Exception as exc:
         logger.error("HLS transcode job %s failed: %s", job_id, exc)
         with job_lock:
             jobs[job_id]["status"] = "failed"
             jobs[job_id]["error"] = str(exc)[:2000]
             jobs[job_id]["finished_at"] = time.time()
+
+        # Notify the main application about failure too
+        with job_lock:
+            vid_id = jobs[job_id].get("video_id")
+        _send_callback(cb_url, {
+            "job_id": job_id,
+            "video_id": vid_id,
+            "status": "failed",
+            "source_key": s3_source_key,
+            "error": str(exc)[:2000],
+        })
     finally:
         # Clean up temp files
         shutil.rmtree(work_dir, ignore_errors=True)
@@ -897,21 +1260,29 @@ def _resolution_width(height: int) -> int:
 
 
 def _run_hls_job(job_id: str, s3_source_key: str, s3_output_prefix: str,
-                 delete_original: bool):
+                 delete_original: bool, callback_url: str = ""):
     """Wrapper that acquires the semaphore and runs HLS transcode."""
     with job_semaphore:
-        _hls_transcode_s3(job_id, s3_source_key, s3_output_prefix, delete_original)
+        _hls_transcode_s3(job_id, s3_source_key, s3_output_prefix, delete_original, callback_url)
 
 
 @app.route("/api/hls", methods=["POST"])
 def hls_transcode():
     """Transcode a video from S3/RustFS to multi-quality HLS and upload back.
 
+    The main application controls storage locations — it specifies both the
+    source_key (where the uploaded video lives) and output_prefix (where the
+    transcoded HLS segments should be written).  When transcoding finishes
+    the companion POSTs results to callback_url so the main app can update
+    the database with the final file locations.
+
     POST JSON body:
-        source_key:       S3 object key of the source video
-        output_prefix:    S3 prefix where HLS files are written
+        source_key:       S3 object key of the source video (required)
+        output_prefix:    S3 prefix where HLS files are written (required)
         delete_original:  (optional, default true) delete source after transcoding
-        callback_url:     (optional) URL to POST result when complete
+        callback_url:     (optional) URL to POST result when complete;
+                          falls back to MAIN_APP_URL/api/v1/companion/callback
+        video_id:         (optional) main-app video row ID, echoed in the callback
     """
     auth_err = _require_api_key()
     if auth_err:
@@ -925,6 +1296,8 @@ def hls_transcode():
     source_key = data.get("source_key", "")
     output_prefix = data.get("output_prefix", "")
     delete_original = data.get("delete_original", True)
+    callback_url = data.get("callback_url", "")
+    video_id = data.get("video_id")
 
     if not source_key:
         return jsonify({"error": "source_key is required"}), 400
@@ -942,6 +1315,7 @@ def hls_transcode():
         "output_prefix": output_prefix,
         "hls_manifest": None,
         "variants": [],
+        "video_id": video_id,
         "created_at": time.time(),
         "started_at": None,
         "finished_at": None,
@@ -952,7 +1326,7 @@ def hls_transcode():
 
     thread = threading.Thread(
         target=_run_hls_job,
-        args=(job_id, source_key, output_prefix, delete_original),
+        args=(job_id, source_key, output_prefix, delete_original, callback_url),
         daemon=True,
     )
     thread.start()
@@ -960,99 +1334,12 @@ def hls_transcode():
 
 
 # ---------------------------------------------------------------------------
-# HLS Staging Watcher
-# ---------------------------------------------------------------------------
-
-_watcher_running = False
-
-
-def _start_staging_watcher():
-    """Start a background thread that watches for new video uploads in S3 and
-    automatically queues HLS transcoding jobs."""
-    global _watcher_running
-    if _watcher_running:
-        return
-    _watcher_running = True
-
-    s3 = _get_s3_client()
-    if not s3:
-        logger.warning("S3 not configured – HLS staging watcher disabled")
-        _watcher_running = False
-        return
-
-    processed_keys: set = set()
-    video_extensions = {".mp4", ".mkv", ".mov", ".avi", ".webm"}
-
-    def _watcher_loop():
-        nonlocal processed_keys
-        logger.info("HLS staging watcher started (prefix=%s, interval=%ds)",
-                     HLS_STAGING_PREFIX, HLS_POLL_INTERVAL)
-        while True:
-            try:
-                objects = _s3_list_objects(s3, HLS_STAGING_PREFIX)
-                for key in objects:
-                    ext = os.path.splitext(key)[1].lower()
-                    if ext not in video_extensions:
-                        continue
-                    # Skip if already processed or HLS output
-                    if key in processed_keys:
-                        continue
-                    if "/hls/" in key:
-                        continue
-
-                    # Check if HLS output already exists
-                    hls_prefix = os.path.splitext(key)[0] + "/hls/"
-                    existing_hls = _s3_list_objects(s3, hls_prefix)
-                    if any(k.endswith("master.m3u8") for k in existing_hls):
-                        processed_keys.add(key)
-                        continue
-
-                    logger.info("Staging watcher: queuing HLS transcode for %s", key)
-                    processed_keys.add(key)
-
-                    # Queue a transcode job
-                    job_id = str(uuid.uuid4())
-                    output_prefix = os.path.splitext(key)[0] + "/hls"
-                    job = {
-                        "id": job_id,
-                        "status": "queued",
-                        "description": f"Auto HLS: {os.path.basename(key)}",
-                        "source_key": key,
-                        "output_prefix": output_prefix,
-                        "hls_manifest": None,
-                        "variants": [],
-                        "created_at": time.time(),
-                        "started_at": None,
-                        "finished_at": None,
-                        "error": None,
-                    }
-                    with job_lock:
-                        jobs[job_id] = job
-
-                    thread = threading.Thread(
-                        target=_run_hls_job,
-                        args=(job_id, key, output_prefix, True),
-                        daemon=True,
-                    )
-                    thread.start()
-
-            except Exception as exc:
-                logger.error("Staging watcher error: %s", exc)
-
-            time.sleep(HLS_POLL_INTERVAL)
-
-    watcher = threading.Thread(target=_watcher_loop, daemon=True)
-    watcher.start()
-
-
-# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
     print(f"Arctic Wolves Video Companion Server v{VERSION}")
-    print(f"Video base path: {VIDEO_BASE_PATH}")
     print(f"Hardware acceleration: {HW_ACCEL}")
     print(f"S3 endpoint: {S3_ENDPOINT or '(not configured)'}")
+    print(f"Config encrypted: {_get_cipher_key() is not None}")
     print(f"Listening on {COMPANION_HOST}:{COMPANION_PORT}")
-    _start_staging_watcher()
     app.run(host=COMPANION_HOST, port=COMPANION_PORT, debug=False)

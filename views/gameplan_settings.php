@@ -87,8 +87,9 @@ $error = $_GET['error'] ?? '';
         </div>
         <div class="card-body">
             <p style="color:var(--text-secondary);font-size:13px;margin-bottom:20px;">
-                The companion server handles hardware-accelerated video encoding, decoding, and clip extraction.
-                It runs alongside the Game Plan app and needs access to the same video storage.
+                The companion server is a worker/integration service that handles hardware-accelerated
+                video transcoding.  Generate an API key in the companion's Settings UI, then paste it here.
+                RustFS credentials are pushed from the main app (see RustFS settings).
             </p>
             <form class="settings-form" method="POST" action="process_gameplan_settings.php">
                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
@@ -107,13 +108,13 @@ $error = $_GET['error'] ?? '';
                     <div style="position:relative;display:flex;align-items:center;">
                         <input type="password" name="companion_api_key" id="companionApiKey" class="form-input"
                                value="<?= htmlspecialchars($companion_api_key) ?>"
-                               placeholder="Shared secret key" style="padding-right:40px;">
+                               placeholder="Paste the key generated in the companion" style="padding-right:40px;">
                         <button type="button" onclick="toggleVisibility('companionApiKey', this)" aria-label="Toggle visibility"
                                 style="position:absolute;right:10px;background:none;border:none;cursor:pointer;color:#64748b;padding:5px;">
                             <i class="fa-solid fa-eye"></i>
                         </button>
                     </div>
-                    <small class="form-hint">Must match the API_KEY configured on the companion server</small>
+                    <small class="form-hint">Generated in the companion app's Settings → Generate API Key, then pasted here</small>
                 </div>
 
                 <div class="form-group">
@@ -121,15 +122,19 @@ $error = $_GET['error'] ?? '';
                     <input type="url" name="gameplan_app_url" class="form-input"
                            value="<?= htmlspecialchars($gameplan_url) ?>"
                            placeholder="https://gameplan.arcticwolves.ca">
-                    <small class="form-hint">The URL of the Game Plan (Video Review) application</small>
+                    <small class="form-hint">Used by the companion to send transcode-complete callbacks back to this application</small>
                 </div>
 
-                <div class="form-actions" style="display:flex;gap:10px;">
+                <div class="form-actions" style="display:flex;gap:10px;flex-wrap:wrap;">
                     <button type="submit" class="btn btn-primary"><i class="fa-solid fa-save"></i> Save Companion Settings</button>
                     <button type="button" class="btn btn-secondary" id="testCompanionBtn" onclick="testCompanion()">
                         <i class="fa-solid fa-plug"></i> Test Connection
                     </button>
+                    <button type="button" class="btn btn-secondary" id="pushRustFsBtn" onclick="pushRustFsToCompanion()">
+                        <i class="fa-solid fa-paper-plane"></i> Push RustFS to Companion
+                    </button>
                 </div>
+                <div id="pushRustFsResult" style="margin-top:8px;font-size:13px;"></div>
             </form>
         </div>
     </div>
@@ -475,6 +480,35 @@ function testCompanion() {
         .finally(function() {
             btn.disabled = false;
             btn.innerHTML = '<i class="fa-solid fa-plug"></i> Test Connection';
+        });
+}
+
+function pushRustFsToCompanion() {
+    var btn = document.getElementById('pushRustFsBtn');
+    var resultEl = document.getElementById('pushRustFsResult');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Pushing...';
+    resultEl.innerHTML = '';
+
+    var form = new FormData();
+    form.append('csrf_token', '<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>');
+    form.append('action', 'push_rustfs_to_companion');
+
+    fetch('process_gameplan_settings.php', { method: 'POST', body: form })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                resultEl.innerHTML = '<span style="color:var(--success);"><i class="fa-solid fa-check"></i> RustFS settings pushed to companion successfully.</span>';
+            } else {
+                resultEl.innerHTML = '<span style="color:var(--danger);"><i class="fa-solid fa-exclamation-circle"></i> ' + (data.error || 'Push failed') + '</span>';
+            }
+        })
+        .catch(function(err) {
+            resultEl.innerHTML = '<span style="color:var(--danger);"><i class="fa-solid fa-exclamation-circle"></i> Network error: ' + err.message + '</span>';
+        })
+        .finally(function() {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Push RustFS to Companion';
         });
 }
 </script>

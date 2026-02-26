@@ -2,24 +2,29 @@
 
 Hardware-accelerated video encoding, decoding, clip extraction, and HLS transcoding with S3/RustFS integration.
 
+The companion is a **worker/integration service** for the main Arctic Wolves application. It receives transcoding jobs from the main app and reports results back via callbacks. Storage locations (where videos live, where HLS output goes) are controlled entirely by the main application.
+
 ## Quick Start
 
 ```bash
-# 1. Clone or download the companion directory
+# 1. Start the container
 cd companion
-
-# 2. Copy the example environment file and edit it
-cp .env.example .env
-# Edit .env with your API key, S3/RustFS credentials, etc.
-
-# 3. Start the container
 docker compose up -d
 
-# The dashboard is available at http://localhost:5100
+# 2. Visit http://localhost:5100 — the setup page appears on first run
+#    Generate or paste an AES-256 encryption key (use the same key as
+#    the main application for matching PII encryption)
+
+# 3. Go to Settings → Generate API Key
+# 4. Copy the key into the main app's Game Plan Settings → API Key
+# 5. In the main app, click "Push RustFS to Companion" to send S3 credentials
 ```
 
-> All settings (API key, hardware acceleration, S3/RustFS, HLS watcher) can also
-> be configured from the **Settings** tab in the web UI at `http://localhost:5100`.
+> **No environment variables are required.** All settings (encryption key,
+> API key, RustFS credentials, hardware acceleration, main app URL) are
+> configured through the web UI and stored on the persistent Docker volume.
+> The encryption key persists across container updates.  If the volume is
+> lost, the setup page appears again on first start.
 
 ## GPU Acceleration
 
@@ -41,22 +46,14 @@ docker compose -f docker-compose.yml -f docker-compose.truenas.yml up -d
 
 ### Intel QSV / VAAPI
 
-Pass through the render device and set `HW_ACCEL`:
-
-```bash
-# In your .env or docker-compose override:
-HW_ACCEL=vaapi
-```
-
-Then add to your compose or run command:
+Pass through the render device and set `HW_ACCEL` in the companion's Settings UI,
+or add a compose override:
 
 ```yaml
 services:
   companion:
     devices:
       - /dev/dri:/dev/dri
-    environment:
-      - HW_ACCEL=vaapi
 ```
 
 ## Building Locally
@@ -75,62 +72,46 @@ Or build and tag manually:
 docker build -t arctic-wolves-companion:latest .
 ```
 
-## Pushing to Docker Hub
-
-If you want to host the image on Docker Hub under your own account:
-
-```bash
-# 1. Build the image
-docker build -t arctic-wolves-companion:latest .
-
-# 2. Tag for Docker Hub (replace YOUR_DOCKERHUB_USER)
-docker tag arctic-wolves-companion:latest YOUR_DOCKERHUB_USER/arctic-wolves-companion:latest
-
-# 3. Log in and push
-docker login
-docker push YOUR_DOCKERHUB_USER/arctic-wolves-companion:latest
-```
-
-Then update `docker-compose.yml`:
-
-```yaml
-services:
-  companion:
-    image: YOUR_DOCKERHUB_USER/arctic-wolves-companion:latest
-```
-
 ## Configuration Reference
 
-All settings can be provided via environment variables, a `.env` file, or the
-web UI Settings page.
+All settings are managed via the companion web UI and persisted on the
+`/config` Docker volume.  No environment variables are needed.
 
-| Variable | Default | Description |
+On first start, the companion shows a setup page where you generate or enter
+the encryption key.  After setup, all other settings are entered through the
+Settings tab.
+
+| Setting | Default | Description |
 |---|---|---|
-| `API_KEY` | *(empty)* | Shared authentication key |
-| `HW_ACCEL` | `auto` | Hardware acceleration: `auto`, `nvenc`, `qsv`, `vaapi`, `amf`, `none` |
-| `VIDEO_BASE_PATH` | `/videos` | Mount point for video storage |
-| `MAX_CONCURRENT_JOBS` | `2` | Parallel encoding slots |
-| `S3_ENDPOINT` | *(empty)* | S3/RustFS endpoint URL |
-| `S3_ACCESS_KEY` | *(empty)* | S3 access key |
-| `S3_SECRET_KEY` | *(empty)* | S3 secret key |
-| `S3_BUCKET` | *(empty)* | S3 bucket name |
-| `S3_REGION` | `us-east-1` | S3 region |
-| `S3_USE_SSL` | `true` | Use HTTPS for S3 |
-| `S3_VERIFY_SSL` | `false` | Verify S3 SSL certificate |
-| `HLS_STAGING_PREFIX` | `Images/videos/` | S3 prefix for HLS staging watcher |
-| `HLS_POLL_INTERVAL` | `30` | Staging watcher poll interval (seconds) |
-| `COMPANION_PORT` | `5100` | Server listen port |
-| `TZ` | `America/Toronto` | Timezone |
+| Encryption Key | *(generated on setup)* | AES-256 key — entered on first-start setup page |
+| API Key | *(generated)* | Generated in the companion; enter in the main app's Game Plan Settings |
+| Main App URL | *(empty)* | URL of the main application (for transcode-complete callbacks) |
+| Hardware Acceleration | `auto` | Method: `auto`, `nvenc`, `qsv`, `vaapi`, `amf`, `none` |
+| Max Concurrent Jobs | `2` | Parallel encoding slots |
+| S3 Endpoint | *(empty)* | RustFS endpoint URL (pushed from main app or entered manually) |
+| S3 Access Key | *(empty)* | RustFS access key |
+| S3 Secret Key | *(empty)* | RustFS secret key |
+| S3 Bucket | *(empty)* | RustFS bucket name |
+| S3 Region | `us-east-1` | RustFS region |
+| S3 Use SSL | `true` | Use HTTPS for RustFS |
+| S3 Verify SSL | `false` | Verify RustFS SSL certificate |
 
 ## Architecture
 
 The companion server runs as a standalone container alongside the main Game Plan
-application. It exposes a REST API on port 5100 and a web dashboard for
-monitoring and configuration.
+application. The main app controls storage locations — it tells the companion
+where each source file is and where to write the transcoded output. When
+transcoding is complete, the companion calls back the main app to update the
+database.
 
 ```
 Game Plan App  ──►  Companion API (:5100)  ──►  FFmpeg (HW accel)
-                          │                           │
-                          ▼                           ▼
-                     S3 / RustFS  ◄──────────  HLS segments
+     │                     │                           │
+     │  (upload location)  │                           ▼
+     │  (output prefix)    │                     HLS segments
+     │                     ▼                           │
+     │               S3 / RustFS  ◄────────────────────┘
+     │                     │
+     ◄─────────────────────┘
+       (callback: transcode complete + file locations)
 ```

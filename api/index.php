@@ -72,6 +72,7 @@ if (empty($segments) || (count($segments) === 1 && $segments[0] === '')) {
             'shop'           => '/v1/shop',
             'admin'          => '/v1/admin',
             'tv'             => '/v1/tv',
+            'companion'      => '/v1/companion',
         ],
     ]);
     exit;

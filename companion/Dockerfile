@@ -19,20 +19,17 @@ COPY app.py .
 COPY templates/ templates/
 
 # Create default directories
-RUN mkdir -p /videos /tmp/companion
+RUN mkdir -p /videos /tmp/companion /config
 
 # Non-root user
 RUN groupadd -r companion && useradd -r -g companion -d /app companion
-RUN chown -R companion:companion /app /tmp/companion
+RUN chown -R companion:companion /app /tmp/companion /config
 USER companion
 
 EXPOSE 5100
 
-ENV COMPANION_HOST=0.0.0.0
-ENV COMPANION_PORT=5100
-ENV VIDEO_BASE_PATH=/videos
-ENV HW_ACCEL=auto
-ENV MAX_CONCURRENT_JOBS=2
-ENV TEMP_DIR=/tmp/companion
+# No environment variables are required.  The encryption key and all other
+# settings are configured through the web UI setup page on first start and
+# stored on the persistent /config volume.
 
 CMD ["gunicorn", "--bind", "0.0.0.0:5100", "--workers", "2", "--timeout", "7200", "app:app"]
