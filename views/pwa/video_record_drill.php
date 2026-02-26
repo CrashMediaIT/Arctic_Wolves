@@ -211,9 +211,16 @@ endif;
         xhr.onload = function() {
             try {
                 var data = JSON.parse(xhr.responseText);
-                statusEl.textContent = data.success ? 'Upload complete!' : (data.message || 'Upload failed');
-                if (data.success) btn.disabled = true;
-                else btn.disabled = false;
+                if (data.success) {
+                    statusEl.textContent = 'Upload complete!';
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="fas fa-cloud-arrow-up"></i> Upload Video';
+                    progressWrap.remove();
+                    setTimeout(function() { location.reload(); }, 500);
+                    return;
+                }
+                statusEl.textContent = data.message || 'Upload failed';
+                btn.disabled = false;
             } catch(err) {
                 statusEl.textContent = 'Upload failed. Please try again.';
                 btn.disabled = false;

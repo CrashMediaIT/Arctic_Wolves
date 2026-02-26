@@ -112,13 +112,12 @@ test.describe('Video record athlete upload has progress bar', () => {
     expect(content).toContain('XMLHttpRequest');
     expect(content).toContain('xhr.upload.onprogress');
     expect(content).toContain('e.lengthComputable');
-    expect(content).toContain('X-Requested-With');
   });
 
-  test('should prevent default form submission', () => {
+  test('should prevent default form submission and build FormData manually', () => {
     const content = readFile('views/video_record_athlete.php');
     expect(content).toContain('e.preventDefault()');
-    expect(content).toContain('new FormData(uploadForm)');
+    expect(content).toContain('new FormData()');
   });
 
   test('should handle upload success with redirect', () => {
@@ -140,21 +139,27 @@ test.describe('Video record athlete upload has progress bar', () => {
 // =====================================================
 
 test.describe('process_video.php supports XHR responses', () => {
-  test('handleAthleteVideoUpload should detect XHR requests', () => {
+  test('handleAthleteVideoUpload should always return JSON', () => {
     const content = readFile('process_video.php');
-    expect(content).toContain('HTTP_X_REQUESTED_WITH');
-    expect(content).toContain('xmlhttprequest');
-  });
-
-  test('handleAthleteVideoUpload should return JSON for XHR', () => {
-    const content = readFile('process_video.php');
-    // Find the athlete upload function and check it returns JSON for XHR
+    // Find the athlete upload function and check it always returns JSON
     const fnStart = content.indexOf('function handleAthleteVideoUpload()');
-    const fnEnd = content.indexOf('function handleDrillVideoUpload()');
+    const fnEnd = content.indexOf('function handleGetAthleteUploadUrl()');
     const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain("header('Content-Type: application/json')");
     expect(fn).toContain('json_encode');
     expect(fn).toContain("'success' => true");
     expect(fn).toContain("'redirect'");
+  });
+
+  test('handleAthleteVideoUpload should not restrict by role', () => {
+    const content = readFile('process_video.php');
+    const fnStart = content.indexOf('function handleAthleteVideoUpload()');
+    const fnEnd = content.indexOf('function handleGetAthleteUploadUrl()');
+    const fn = content.substring(fnStart, fnEnd);
+    // Should not throw for missing coach
+    expect(fn).not.toContain("'You do not have an assigned coach");
+    // Should not have role-gated branching
+    expect(fn).not.toContain('$is_coach');
   });
 });
 

@@ -250,13 +250,12 @@ test.describe('Simplified upload JS in video_record_athlete.php', () => {
     const content = readFile('views/video_record_athlete.php');
     expect(content).toContain('XMLHttpRequest');
     expect(content).toContain('upload.onprogress');
-    expect(content).toContain('X-Requested-With');
   });
 
   test('should POST form data directly to process_video.php', () => {
     const content = readFile('views/video_record_athlete.php');
-    expect(content).toContain('new FormData(uploadForm)');
-    expect(content).toContain('xhr.open(\'POST\', uploadForm.action');
+    expect(content).toContain('new FormData()');
+    expect(content).toContain("xhr.open('POST', 'process_video.php'");
   });
 
   test('should prevent default form submission', () => {
