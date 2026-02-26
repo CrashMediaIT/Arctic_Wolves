@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arctic Wolves — Video Companion</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-main: #0A0A0F;
+            --bg-card: #16161F;
+            --primary: #6B46C1;
+            --primary-hover: #7C3AED;
+            --accent: #8B5CF6;
+            --text-white: #FFFFFF;
+            --text-dim: #A8A8B8;
+            --border: #2D2D3F;
+            --container-padding: 24px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+        body { background: var(--bg-main); color: var(--text-white); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+
+        /* --- NAVIGATION --- */
+        header {
+            background: rgba(6, 8, 11, 0.95);
+            backdrop-filter: blur(12px);
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 2000;
+        }
+        .container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 var(--container-padding); }
+        .nav-flex { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
+        .logo-text { font-weight: 900; font-size: 24px; letter-spacing: -1px; color: #fff; }
+        .logo-text span { color: var(--primary); }
+        .header-affiliation { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; margin-top: -4px; }
+        .nav-menu { display: flex; align-items: center; gap: 25px; }
+        .nav-menu a { color: #fff; text-decoration: none; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; transition: color 0.2s; }
+        .nav-menu a:hover { color: var(--primary); }
+        .nav-menu a.active { color: var(--primary); }
+
+        /* --- STATUS BADGES --- */
+        .status-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-size: 11px; font-weight: 800; text-transform: uppercase;
+            padding: 6px 14px; border-radius: 4px;
+        }
+        .status-badge.ok { color: #22c55e; background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.2); }
+        .status-badge.error { color: #ef4444; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.2); }
+        .status-badge.warn { color: #f59e0b; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.2); }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .status-badge.ok .status-dot { background: #22c55e; box-shadow: 0 0 8px #22c55e; }
+        .status-badge.error .status-dot { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
+        .status-badge.warn .status-dot { background: #f59e0b; box-shadow: 0 0 8px #f59e0b; }
+
+        /* --- HERO --- */
+        .hero-compact {
+            padding: 60px 0 40px;
+            border-bottom: 1px solid var(--border);
+        }
+        .hero-compact h1 { font-size: 2.4rem; font-weight: 900; margin-bottom: 8px; }
+        .hero-compact h1 .highlight { color: var(--primary); }
+        .hero-compact p { color: var(--text-dim); font-size: 1rem; }
+
+        /* --- SECTION --- */
+        .section { padding: 40px 0; }
+        .section-header { margin-bottom: 30px; }
+        .section-header h2 { font-size: 1.5rem; font-weight: 800; margin-bottom: 4px; }
+        .eyebrow { color: var(--primary); text-transform: uppercase; font-size: 11px; font-weight: 900; letter-spacing: 2px; margin-bottom: 6px; display: block; }
+
+        /* --- CARDS --- */
+        .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            transition: 0.3s ease;
+        }
+        .card:hover { border-color: var(--primary); transform: translateY(-3px); }
+        .card h3 { font-size: 1rem; font-weight: 800; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .card-value { font-size: 2rem; font-weight: 900; color: var(--accent); line-height: 1; margin-bottom: 8px; }
+        .card-label { color: var(--text-dim); font-size: 13px; font-weight: 600; }
+
+        /* --- SPEC TABLE --- */
+        .spec-table { border-top: 1px solid var(--border); margin-top: 16px; }
+        .spec-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+        .spec-label { color: var(--text-dim); }
+        .spec-value { color: #fff; font-weight: 700; text-align: right; }
+
+        /* --- TAGS --- */
+        .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+        .tags span {
+            font-size: 10px; background: rgba(107, 70, 193, 0.1);
+            padding: 4px 8px; border-radius: 4px;
+            color: var(--accent); font-weight: 800; text-transform: uppercase;
+        }
+
+        /* --- JOBS TABLE --- */
+        .jobs-table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+        .jobs-table th, .jobs-table td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 13px; }
+        .jobs-table th { color: var(--text-dim); font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 1px; }
+        .jobs-table tr:hover { background: rgba(107, 70, 193, 0.04); }
+        .job-status { padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: 800; text-transform: uppercase; }
+        .job-status.completed { color: #22c55e; background: rgba(34, 197, 94, 0.1); }
+        .job-status.running { color: var(--accent); background: rgba(139, 92, 246, 0.1); }
+        .job-status.queued { color: #f59e0b; background: rgba(245, 158, 11, 0.1); }
+        .job-status.failed { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+        .job-status.downloading, .job-status.transcoding, .job-status.uploading { color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
+        .empty-state { color: var(--text-dim); text-align: center; padding: 40px; font-size: 14px; }
+
+        /* --- BUTTONS --- */
+        .btn-primary {
+            background: var(--primary); color: #fff; padding: 10px 24px;
+            text-decoration: none; font-weight: 800; border-radius: 4px;
+            display: inline-block; transition: 0.3s ease; border: none;
+            cursor: pointer; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .btn-primary:hover { background: var(--primary-hover); transform: translateY(-2px); box-shadow: 0 6px 16px rgba(107, 70, 193, 0.3); }
+        .btn-secondary {
+            color: #fff; border: 1px solid var(--border); padding: 10px 24px;
+            text-decoration: none; font-weight: 800; border-radius: 4px;
+            display: inline-block; transition: 0.3s ease; background: transparent;
+            cursor: pointer; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .btn-secondary:hover { border-color: var(--accent); transform: translateY(-2px); }
+        .btn-sm { padding: 6px 14px; font-size: 11px; }
+        .btn-danger { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); }
+        .btn-danger:hover { background: rgba(239, 68, 68, 0.25); }
+
+        /* --- FOOTER --- */
+        .site-footer {
+            background: #040608; padding: 24px 0;
+            border-top: 1px solid var(--border);
+            color: #475569; font-size: 11px; font-weight: 800;
+            text-transform: uppercase; letter-spacing: 1px;
+            margin-top: 60px;
+        }
+        .footer-flex { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+        .footer-flex a { color: #64748b; text-decoration: none; }
+
+        /* --- RESPONSIVE --- */
+        @media (max-width: 768px) {
+            .nav-flex { flex-direction: column; gap: 12px; }
+            .nav-menu { gap: 16px; width: 100%; justify-content: center; }
+            .hero-compact { padding: 40px 0 24px; text-align: center; }
+            .hero-compact h1 { font-size: 1.8rem; }
+            .cards-grid { grid-template-columns: 1fr; }
+            .jobs-table { font-size: 12px; }
+            .jobs-table th, .jobs-table td { padding: 8px; }
+        }
+
+        /* --- LOADING --- */
+        .loading { opacity: 0.5; pointer-events: none; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+        .pulse { animation: pulse 2s ease-in-out infinite; }
+
+        /* --- SETTINGS FORM --- */
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .form-group { margin-bottom: 0; }
+        .form-group.full { grid-column: 1 / -1; }
+        .form-group label {
+            display: block; font-size: 11px; font-weight: 700; color: var(--text-dim);
+            margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .form-input {
+            width: 100%; background: #0d1117; border: 1px solid var(--border);
+            border-radius: 4px; padding: 10px 14px; color: #fff; font-size: 14px;
+            outline: none; transition: border-color 0.2s;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+        .form-input:focus { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
+        .form-input::placeholder { color: #475569; }
+        select.form-input { cursor: pointer; appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23A8A8B8' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px;
+        }
+        .form-hint { font-size: 11px; color: #475569; margin-top: 4px; }
+        .form-actions { display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; align-items: center; }
+        .form-actions .save-msg { font-size: 13px; font-weight: 700; }
+        .form-section-title {
+            font-size: 13px; font-weight: 800; color: var(--accent); text-transform: uppercase;
+            letter-spacing: 1px; padding-bottom: 8px; border-bottom: 1px solid var(--border);
+            margin-bottom: 16px; grid-column: 1 / -1;
+        }
+        .toggle-row { display: flex; align-items: center; gap: 10px; }
+        .toggle { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
+        .toggle input { opacity: 0; width: 0; height: 0; }
+        .toggle .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background: var(--border); border-radius: 22px; transition: 0.3s; }
+        .toggle .slider::before { content: ''; position: absolute; height: 16px; width: 16px;
+            left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: 0.3s; }
+        .toggle input:checked + .slider { background: var(--primary); }
+        .toggle input:checked + .slider::before { transform: translateX(18px); }
+
+        @media (max-width: 768px) {
+            .form-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- NAVIGATION -->
+    <header>
+        <div class="container">
+            <div class="nav-flex">
+                <div>
+                    <div class="logo-text">Arctic<span>Wolves</span></div>
+                    <div class="header-affiliation">Video Companion Server</div>
+                </div>
+                <nav class="nav-menu">
+                    <a href="#status" class="active">Dashboard</a>
+                    <a href="#jobs">Jobs</a>
+                    <a href="#settings">Settings</a>
+                    <span id="health-badge" class="status-badge warn"><span class="status-dot"></span> Loading</span>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- HERO -->
+    <section class="hero-compact">
+        <div class="container">
+            <h1>Video <span class="highlight">Companion</span></h1>
+            <p>Hardware-accelerated video encoding, decoding, clip extraction, and HLS transcoding.</p>
+        </div>
+    </section>
+
+    <!-- STATUS SECTION -->
+    <section id="status" class="section">
+        <div class="container">
+            <div class="section-header">
+                <span class="eyebrow">Server Status</span>
+                <h2>System Overview</h2>
+            </div>
+            <div class="cards-grid">
+                <!-- Version Card -->
+                <div class="card">
+                    <h3>Version</h3>
+                    <div class="card-value" id="version">—</div>
+                    <div class="card-label">Companion Server</div>
+                </div>
+                <!-- Active Jobs Card -->
+                <div class="card">
+                    <h3>Active Jobs</h3>
+                    <div class="card-value"><span id="active-jobs">—</span> <span style="font-size:1rem;color:var(--text-dim)">/ <span id="max-jobs">—</span></span></div>
+                    <div class="card-label">Concurrent processing slots</div>
+                </div>
+                <!-- Video Storage Card -->
+                <div class="card">
+                    <h3>Video Storage</h3>
+                    <div id="storage-status" class="card-value" style="font-size:1.2rem;">—</div>
+                    <div class="card-label" id="storage-path">&nbsp;</div>
+                </div>
+                <!-- S3 / RustFS Card -->
+                <div class="card">
+                    <h3>S3 / RustFS</h3>
+                    <div id="s3-status" class="card-value" style="font-size:1.2rem;">—</div>
+                    <div class="card-label" id="s3-detail">&nbsp;</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- HARDWARE SECTION -->
+    <section class="section" style="padding-top:0;">
+        <div class="container">
+            <div class="section-header">
+                <span class="eyebrow">Hardware</span>
+                <h2>Acceleration &amp; Capabilities</h2>
+            </div>
+            <div class="cards-grid">
+                <div class="card">
+                    <h3>Selected Mode</h3>
+                    <div class="card-value" id="hw-mode">—</div>
+                    <div class="card-label">Hardware acceleration setting</div>
+                </div>
+                <div class="card">
+                    <h3>Available Methods</h3>
+                    <div id="hw-methods" class="tags"><span class="pulse">loading…</span></div>
+                </div>
+                <div class="card">
+                    <h3>Encoders</h3>
+                    <div id="hw-encoders" class="tags"><span class="pulse">loading…</span></div>
+                </div>
+                <div class="card">
+                    <h3>Decoders</h3>
+                    <div id="hw-decoders" class="tags"><span class="pulse">loading…</span></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- JOBS SECTION -->
+    <section id="jobs" class="section" style="padding-top:0;">
+        <div class="container">
+            <div class="section-header" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px;">
+                <div>
+                    <span class="eyebrow">Processing</span>
+                    <h2>Jobs</h2>
+                </div>
+                <button class="btn-secondary btn-sm" onclick="refreshJobs()">↻ Refresh</button>
+            </div>
+            <div style="overflow-x:auto;">
+                <table class="jobs-table">
+                    <thead>
+                        <tr>
+                            <th>Job ID</th>
+                            <th>Description</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="jobs-body">
+                        <tr><td colspan="5" class="empty-state">Loading jobs…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- HLS WATCHER SECTION -->
+    <section class="section" style="padding-top:0;">
+        <div class="container">
+            <div class="section-header">
+                <span class="eyebrow">Automation</span>
+                <h2>HLS Staging Watcher</h2>
+            </div>
+            <div class="cards-grid">
+                <div class="card">
+                    <h3>Watcher Status</h3>
+                    <div id="watcher-status" class="card-value" style="font-size:1.2rem;">—</div>
+                    <div class="card-label">Automatic HLS transcoding</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SETTINGS SECTION -->
+    <section id="settings" class="section" style="padding-top:0;">
+        <div class="container">
+            <div class="section-header">
+                <span class="eyebrow">Configuration</span>
+                <h2>Settings</h2>
+            </div>
+            <div class="card" style="max-width:860px;">
+                <form id="settings-form" onsubmit="return saveConfig(event)">
+
+                    <div class="form-grid">
+                        <!-- Server -->
+                        <div class="form-section-title">Server</div>
+
+                        <div class="form-group">
+                            <label for="cfg-api-key">API Key</label>
+                            <input id="cfg-api-key" name="api_key" type="password" class="form-input" placeholder="Enter API key" autocomplete="off">
+                            <div class="form-hint" id="cfg-api-key-hint">Not set</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-hw-accel">Hardware Acceleration</label>
+                            <select id="cfg-hw-accel" name="hw_accel" class="form-input">
+                                <option value="auto">Auto Detect</option>
+                                <option value="nvenc">NVENC (NVIDIA)</option>
+                                <option value="qsv">QSV (Intel Quick Sync)</option>
+                                <option value="vaapi">VAAPI (Linux VA-API)</option>
+                                <option value="amf">AMF (AMD)</option>
+                                <option value="none">Software Only</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-video-base">Video Base Path</label>
+                            <input id="cfg-video-base" name="video_base_path" type="text" class="form-input" placeholder="/videos">
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-max-jobs">Max Concurrent Jobs</label>
+                            <input id="cfg-max-jobs" name="max_concurrent_jobs" type="number" class="form-input" min="1" max="16" placeholder="2">
+                        </div>
+
+                        <!-- S3 / RustFS -->
+                        <div class="form-section-title">S3 / RustFS</div>
+
+                        <div class="form-group">
+                            <label for="cfg-s3-endpoint">Endpoint URL</label>
+                            <input id="cfg-s3-endpoint" name="s3_endpoint" type="text" class="form-input" placeholder="https://rustfs.example.com:9000">
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-s3-bucket">Bucket Name</label>
+                            <input id="cfg-s3-bucket" name="s3_bucket" type="text" class="form-input" placeholder="your-bucket-name">
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-s3-region">Region</label>
+                            <input id="cfg-s3-region" name="s3_region" type="text" class="form-input" placeholder="us-east-1">
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-s3-access-key">Access Key</label>
+                            <input id="cfg-s3-access-key" name="s3_access_key" type="password" class="form-input" placeholder="Enter access key" autocomplete="off">
+                            <div class="form-hint" id="cfg-s3-access-hint">Not set</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-s3-secret-key">Secret Key</label>
+                            <input id="cfg-s3-secret-key" name="s3_secret_key" type="password" class="form-input" placeholder="Enter secret key" autocomplete="off">
+                            <div class="form-hint" id="cfg-s3-secret-hint">Not set</div>
+                        </div>
+                        <div class="form-group">
+                            <label>SSL Options</label>
+                            <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px;">
+                                <label class="toggle-row">
+                                    <span class="toggle"><input type="checkbox" id="cfg-s3-use-ssl" name="s3_use_ssl"><span class="slider"></span></span>
+                                    <span style="font-size:13px;">Use SSL</span>
+                                </label>
+                                <label class="toggle-row">
+                                    <span class="toggle"><input type="checkbox" id="cfg-s3-verify-ssl" name="s3_verify_ssl"><span class="slider"></span></span>
+                                    <span style="font-size:13px;">Verify SSL Certificate</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- HLS Staging -->
+                        <div class="form-section-title">HLS Staging Watcher</div>
+
+                        <div class="form-group">
+                            <label for="cfg-hls-prefix">Staging Prefix</label>
+                            <input id="cfg-hls-prefix" name="hls_staging_prefix" type="text" class="form-input" placeholder="Images/videos/">
+                            <div class="form-hint">S3 key prefix to watch for new uploads</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-hls-interval">Poll Interval (seconds)</label>
+                            <input id="cfg-hls-interval" name="hls_poll_interval" type="number" class="form-input" min="5" placeholder="30">
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary">Save Settings</button>
+                        <button type="button" class="btn-secondary" onclick="loadConfig()">Reset</button>
+                        <span id="save-msg" class="save-msg"></span>
+                    </div>
+
+                    <div class="form-hint" style="margin-top:16px;">Changes take effect immediately. To persist across restarts, update the environment variables or <code>.env</code> file.</div>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-flex">
+                <span>Arctic Wolves Video Companion &copy; 2025 Crash Media IT</span>
+                <span>Port <span id="footer-port">5100</span></span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        const API_BASE = window.location.origin;
+
+        function getApiKey() {
+            let key = localStorage.getItem('companion_api_key') || '';
+            return key;
+        }
+
+        function apiHeaders() {
+            const key = getApiKey();
+            const h = { 'Content-Type': 'application/json' };
+            if (key) h['X-API-Key'] = key;
+            return h;
+        }
+
+        /* --- Fetch health --- */
+        async function refreshHealth() {
+            try {
+                const res = await fetch(API_BASE + '/api/health', { headers: apiHeaders() });
+                if (res.status === 401) {
+                    const key = prompt('Enter API Key:');
+                    if (key) { localStorage.setItem('companion_api_key', key); return refreshHealth(); }
+                    return;
+                }
+                const d = await res.json();
+
+                document.getElementById('version').textContent = d.version || '—';
+                document.getElementById('active-jobs').textContent = d.active_jobs ?? '—';
+                document.getElementById('max-jobs').textContent = d.max_concurrent_jobs ?? '—';
+
+                // Storage
+                if (d.video_base_accessible) {
+                    document.getElementById('storage-status').innerHTML = '<span style="color:#22c55e">Connected</span>';
+                } else {
+                    document.getElementById('storage-status').innerHTML = '<span style="color:#ef4444">Unavailable</span>';
+                }
+                document.getElementById('storage-path').textContent = d.video_base_path || '';
+
+                // S3
+                if (d.s3_configured) {
+                    if (d.s3_connected) {
+                        document.getElementById('s3-status').innerHTML = '<span style="color:#22c55e">Connected</span>';
+                    } else {
+                        document.getElementById('s3-status').innerHTML = '<span style="color:#ef4444">Unreachable</span>';
+                    }
+                    document.getElementById('s3-detail').textContent = 'Bucket: ' + (d.s3_bucket || '—');
+                } else {
+                    document.getElementById('s3-status').innerHTML = '<span style="color:var(--text-dim)">Not Configured</span>';
+                    document.getElementById('s3-detail').textContent = '';
+                }
+
+                // HW
+                const hw = d.hw_accel || {};
+                document.getElementById('hw-mode').textContent = hw.selected || '—';
+                document.getElementById('hw-methods').innerHTML = (hw.available || []).length
+                    ? hw.available.map(m => '<span>' + m + '</span>').join('')
+                    : '<span style="color:var(--text-dim);">none detected</span>';
+                document.getElementById('hw-encoders').innerHTML = (hw.encoders || []).length
+                    ? hw.encoders.map(e => '<span>' + e + '</span>').join('')
+                    : '<span style="color:var(--text-dim);">software only</span>';
+                document.getElementById('hw-decoders').innerHTML = (hw.decoders || []).length
+                    ? hw.decoders.map(e => '<span>' + e + '</span>').join('')
+                    : '<span style="color:var(--text-dim);">software only</span>';
+
+                // Watcher
+                document.getElementById('watcher-status').innerHTML = d.hls_staging_watcher
+                    ? '<span style="color:#22c55e">Active</span>'
+                    : '<span style="color:var(--text-dim)">Inactive</span>';
+
+                // Health badge
+                const badge = document.getElementById('health-badge');
+                badge.className = 'status-badge ok';
+                badge.innerHTML = '<span class="status-dot"></span> Healthy';
+            } catch {
+                const badge = document.getElementById('health-badge');
+                badge.className = 'status-badge error';
+                badge.innerHTML = '<span class="status-dot"></span> Offline';
+            }
+        }
+
+        /* --- Fetch jobs --- */
+        async function refreshJobs() {
+            try {
+                const res = await fetch(API_BASE + '/api/jobs', { headers: apiHeaders() });
+                if (!res.ok) return;
+                const jobsList = await res.json();
+                const tbody = document.getElementById('jobs-body');
+                if (!jobsList.length) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No jobs found</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = jobsList.map(j => {
+                    // created_at is a Unix timestamp in seconds
+                    const created = j.created_at ? new Date(j.created_at * 1000).toLocaleString() : '—';
+                    const canCancel = j.status === 'queued' || j.status === 'running';
+                    const shortId = (j.id || '').substring(0, 8);
+                    return '<tr>' +
+                        '<td style="font-family:monospace;font-size:11px;">' + shortId + '…</td>' +
+                        '<td>' + (j.description || '—') + '</td>' +
+                        '<td><span class="job-status ' + j.status + '">' + j.status + '</span></td>' +
+                        '<td>' + created + '</td>' +
+                        '<td>' + (canCancel ? '<button class="btn-secondary btn-sm btn-danger" onclick="cancelJob(\'' + j.id + '\')">Cancel</button>' : '—') + '</td>' +
+                        '</tr>';
+                }).join('');
+            } catch {
+                document.getElementById('jobs-body').innerHTML = '<tr><td colspan="5" class="empty-state">Failed to load jobs</td></tr>';
+            }
+        }
+
+        /* --- Cancel a job --- */
+        async function cancelJob(jobId) {
+            if (!confirm('Cancel this job?')) return;
+            try {
+                const res = await fetch(API_BASE + '/api/job/' + jobId, { method: 'DELETE', headers: apiHeaders() });
+                if (!res.ok) { alert('Failed to cancel job'); }
+            } catch { alert('Failed to cancel job'); }
+            refreshJobs();
+        }
+
+        /* --- Load config into settings form --- */
+        async function loadConfig() {
+            try {
+                const res = await fetch(API_BASE + '/api/config', { headers: apiHeaders() });
+                if (!res.ok) return;
+                const c = await res.json();
+
+                document.getElementById('cfg-hw-accel').value = c.hw_accel || 'auto';
+                document.getElementById('cfg-video-base').value = c.video_base_path || '';
+                document.getElementById('cfg-max-jobs').value = c.max_concurrent_jobs ?? '';
+
+                // Secrets: show hint but don't fill value
+                document.getElementById('cfg-api-key').value = '';
+                document.getElementById('cfg-api-key-hint').textContent = c.api_key_set ? 'Currently set (leave blank to keep)' : 'Not set';
+                document.getElementById('cfg-s3-access-key').value = '';
+                document.getElementById('cfg-s3-access-hint').textContent = c.s3_access_key_set ? 'Currently set (leave blank to keep)' : 'Not set';
+                document.getElementById('cfg-s3-secret-key').value = '';
+                document.getElementById('cfg-s3-secret-hint').textContent = c.s3_secret_key_set ? 'Currently set (leave blank to keep)' : 'Not set';
+
+                document.getElementById('cfg-s3-endpoint').value = c.s3_endpoint || '';
+                document.getElementById('cfg-s3-bucket').value = c.s3_bucket || '';
+                document.getElementById('cfg-s3-region').value = c.s3_region || '';
+                document.getElementById('cfg-s3-use-ssl').checked = !!c.s3_use_ssl;
+                document.getElementById('cfg-s3-verify-ssl').checked = !!c.s3_verify_ssl;
+                document.getElementById('cfg-hls-prefix').value = c.hls_staging_prefix || '';
+                document.getElementById('cfg-hls-interval').value = c.hls_poll_interval ?? '';
+            } catch { /* silently ignore on load failure */ }
+        }
+
+        /* --- Save config --- */
+        async function saveConfig(e) {
+            e.preventDefault();
+            const msgEl = document.getElementById('save-msg');
+            msgEl.textContent = '';
+
+            const payload = {};
+            const val = (id) => document.getElementById(id).value.trim();
+
+            // Only send secret fields if user typed something
+            if (val('cfg-api-key')) payload.api_key = val('cfg-api-key');
+            payload.hw_accel = val('cfg-hw-accel');
+            payload.video_base_path = val('cfg-video-base');
+            if (val('cfg-max-jobs')) payload.max_concurrent_jobs = parseInt(val('cfg-max-jobs'), 10);
+            payload.s3_endpoint = val('cfg-s3-endpoint');
+            payload.s3_bucket = val('cfg-s3-bucket');
+            payload.s3_region = val('cfg-s3-region');
+            if (val('cfg-s3-access-key')) payload.s3_access_key = val('cfg-s3-access-key');
+            if (val('cfg-s3-secret-key')) payload.s3_secret_key = val('cfg-s3-secret-key');
+            payload.s3_use_ssl = document.getElementById('cfg-s3-use-ssl').checked;
+            payload.s3_verify_ssl = document.getElementById('cfg-s3-verify-ssl').checked;
+            payload.hls_staging_prefix = val('cfg-hls-prefix');
+            if (val('cfg-hls-interval')) payload.hls_poll_interval = parseInt(val('cfg-hls-interval'), 10);
+
+            try {
+                const res = await fetch(API_BASE + '/api/config', {
+                    method: 'PUT', headers: apiHeaders(), body: JSON.stringify(payload)
+                });
+                const d = await res.json();
+                if (res.ok) {
+                    msgEl.style.color = '#22c55e';
+                    msgEl.textContent = '✓ Settings saved';
+                    // If API key was changed, update localStorage so subsequent calls work
+                    if (payload.api_key) { localStorage.setItem('companion_api_key', payload.api_key); }
+                    loadConfig();
+                    refreshHealth();
+                } else {
+                    msgEl.style.color = '#ef4444';
+                    msgEl.textContent = d.error || 'Save failed';
+                }
+            } catch {
+                msgEl.style.color = '#ef4444';
+                msgEl.textContent = 'Network error';
+            }
+            return false;
+        }
+
+        /* --- Init --- */
+        refreshHealth();
+        refreshJobs();
+        loadConfig();
+        setInterval(refreshHealth, 15000);
+        setInterval(refreshJobs, 10000);
+    </script>
+</body>
+</html>

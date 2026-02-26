@@ -16,7 +16,7 @@ from pathlib import Path
 
 import boto3
 from botocore.config import Config as BotoConfig
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -344,6 +344,16 @@ def _create_job(cmd: list[str], description: str, output_path: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Web UI
+# ---------------------------------------------------------------------------
+
+@app.route("/")
+def index():
+    """Serve the companion dashboard UI."""
+    return render_template("index.html")
+
+
+# ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
 
@@ -610,6 +620,136 @@ def cancel_job(job_id):
     if not job:
         return jsonify({"error": "Job not found"}), 404
     return jsonify({"status": "cancelled", "id": job_id})
+
+
+@app.route("/api/jobs", methods=["GET"])
+def list_jobs():
+    """List all jobs, newest first."""
+    auth_err = _require_api_key()
+    if auth_err:
+        return auth_err
+
+    with job_lock:
+        all_jobs = sorted(jobs.values(), key=lambda j: j.get("created_at", 0), reverse=True)
+    return jsonify(all_jobs)
+
+
+# ---------------------------------------------------------------------------
+# Runtime Configuration
+# ---------------------------------------------------------------------------
+
+@app.route("/api/config", methods=["GET"])
+def get_config():
+    """Return current runtime configuration (secrets are masked)."""
+    auth_err = _require_api_key()
+    if auth_err:
+        return auth_err
+
+    return jsonify({
+        "api_key_set": bool(API_KEY),
+        "hw_accel": HW_ACCEL,
+        "video_base_path": VIDEO_BASE_PATH,
+        "max_concurrent_jobs": MAX_CONCURRENT_JOBS,
+        "s3_endpoint": S3_ENDPOINT,
+        "s3_bucket": S3_BUCKET,
+        "s3_region": S3_REGION,
+        "s3_access_key_set": bool(S3_ACCESS_KEY),
+        "s3_secret_key_set": bool(S3_SECRET_KEY),
+        "s3_use_ssl": S3_USE_SSL,
+        "s3_verify_ssl": S3_VERIFY_SSL,
+        "hls_staging_prefix": HLS_STAGING_PREFIX,
+        "hls_poll_interval": HLS_POLL_INTERVAL,
+    })
+
+
+@app.route("/api/config", methods=["PUT"])
+def update_config():
+    """Update runtime configuration values.
+
+    Accepts a JSON object whose keys match the configuration names.
+    Only the fields present in the request body are updated.
+    Changes take effect immediately but are **not** persisted across restarts
+    unless the caller also updates the .env / environment.
+    """
+    auth_err = _require_api_key()
+    if auth_err:
+        return auth_err
+
+    global API_KEY, HW_ACCEL, VIDEO_BASE_PATH, MAX_CONCURRENT_JOBS
+    global S3_ENDPOINT, S3_ACCESS_KEY, S3_SECRET_KEY, S3_BUCKET, S3_REGION
+    global S3_USE_SSL, S3_VERIFY_SSL
+    global HLS_STAGING_PREFIX, HLS_POLL_INTERVAL
+
+    data = request.get_json(silent=True) or {}
+    updated = []
+
+    if "api_key" in data:
+        API_KEY = str(data["api_key"])
+        updated.append("api_key")
+
+    if "hw_accel" in data:
+        allowed = ("auto", "nvenc", "qsv", "vaapi", "amf", "none")
+        val = str(data["hw_accel"]).lower()
+        if val not in allowed:
+            return jsonify({"error": f"hw_accel must be one of {allowed}"}), 400
+        HW_ACCEL = val
+        updated.append("hw_accel")
+
+    if "video_base_path" in data:
+        VIDEO_BASE_PATH = str(data["video_base_path"])
+        updated.append("video_base_path")
+
+    if "max_concurrent_jobs" in data:
+        try:
+            MAX_CONCURRENT_JOBS = max(1, int(data["max_concurrent_jobs"]))
+        except (ValueError, TypeError):
+            return jsonify({"error": "max_concurrent_jobs must be a positive integer"}), 400
+        updated.append("max_concurrent_jobs")
+
+    if "s3_endpoint" in data:
+        S3_ENDPOINT = str(data["s3_endpoint"])
+        updated.append("s3_endpoint")
+
+    if "s3_access_key" in data:
+        S3_ACCESS_KEY = str(data["s3_access_key"])
+        updated.append("s3_access_key")
+
+    if "s3_secret_key" in data:
+        S3_SECRET_KEY = str(data["s3_secret_key"])
+        updated.append("s3_secret_key")
+
+    if "s3_bucket" in data:
+        S3_BUCKET = str(data["s3_bucket"])
+        updated.append("s3_bucket")
+
+    if "s3_region" in data:
+        S3_REGION = str(data["s3_region"])
+        updated.append("s3_region")
+
+    if "s3_use_ssl" in data:
+        S3_USE_SSL = str(data["s3_use_ssl"]).lower() in ("true", "1", "yes")
+        updated.append("s3_use_ssl")
+
+    if "s3_verify_ssl" in data:
+        S3_VERIFY_SSL = str(data["s3_verify_ssl"]).lower() in ("true", "1", "yes")
+        updated.append("s3_verify_ssl")
+
+    if "hls_staging_prefix" in data:
+        HLS_STAGING_PREFIX = str(data["hls_staging_prefix"])
+        updated.append("hls_staging_prefix")
+
+    if "hls_poll_interval" in data:
+        try:
+            HLS_POLL_INTERVAL = max(5, int(data["hls_poll_interval"]))
+        except (ValueError, TypeError):
+            return jsonify({"error": "hls_poll_interval must be an integer >= 5"}), 400
+        updated.append("hls_poll_interval")
+
+    if not updated:
+        return jsonify({"error": "No recognized configuration fields in request"}), 400
+
+    logger.info("Configuration updated: %s", ", ".join(updated))
+    return jsonify({"updated": updated})
 
 
 # ---------------------------------------------------------------------------
