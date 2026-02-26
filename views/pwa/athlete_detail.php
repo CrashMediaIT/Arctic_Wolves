@@ -3,6 +3,7 @@
  * PWA Athlete Detail - Mobile-native athlete profile for coaches
  * Purpose-built for mobile phones.
  */
+require_once __DIR__ . '/../../lib/image_helper.php';
 
 // Only coaches/admins can view athlete details
 if (!$isAnyCoach && !$isTeamStaff && !$isAdmin) {
@@ -134,7 +135,7 @@ if ($athleteId > 0) {
         <div class="m-ad-hero">
             <div class="m-ad-avatar">
                 <?php if (!empty($athlete['profile_image'])): ?>
-                    <img src="<?= htmlspecialchars($athlete['profile_image']) ?>" alt="<?= htmlspecialchars($fullName) ?>">
+                    <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $athlete['profile_image'])) ?>" alt="<?= htmlspecialchars($fullName) ?>">
                 <?php else: ?>
                     <?= $initials ?>
                 <?php endif; ?>
