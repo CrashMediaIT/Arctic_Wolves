@@ -17,7 +17,7 @@ class GitHubUpdater {
         'uploads/',
         '.git/',
         '.env',
-        '.nextcloud_key',
+        '.credential_key',
         'arctic_wolves.env',
         'config.php',
         'vendor/',
@@ -811,7 +811,7 @@ class GitHubUpdater {
      */
     private function backupPersistentFiles() {
         $persistent_files = [
-            '.nextcloud_key',
+            '.credential_key',
             'arctic_wolves.env',
             '.env',
             'db_config.php',

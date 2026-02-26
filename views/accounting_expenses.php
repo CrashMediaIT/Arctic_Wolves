@@ -375,7 +375,7 @@ if ($expenseStats['last_month'] > 0) {
                                             <i class="fas fa-paperclip"></i> View
                                         </a>
                                         <?php if(!empty($expense['nextcloud_path'])): ?>
-                                        <span class="cloud-synced" title="Synced to Nextcloud"><i class="fas fa-cloud"></i></span>
+                                        <span class="cloud-synced" title="Synced to cloud storage"><i class="fas fa-cloud"></i></span>
                                         <?php endif; ?>
                                     <?php else: ?>
                                         <span class="no-receipt">No receipt</span>
@@ -1392,7 +1392,7 @@ foreach ($recurring_expenses as $re) {
                     <h3><i class="fas fa-upload"></i> Upload Contract & Documents</h3>
                 </div>
                 <div class="card-body">
-                    <p style="color:var(--text-dim); font-size:12px; margin-bottom:16px;">Upload the contract document and any additional files (e.g., insurance policy). Files will be stored in Nextcloud under the configured contracts directory.</p>
+                    <p style="color:var(--text-dim); font-size:12px; margin-bottom:16px;">Upload the contract document and any additional files (e.g., insurance policy). Files will be stored in cloud storage under the configured contracts directory.</p>
                     
                     <div class="form-group">
                         <label class="form-label">Contract Document</label>

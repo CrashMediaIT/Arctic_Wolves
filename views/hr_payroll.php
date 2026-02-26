@@ -122,7 +122,7 @@ $provinces = [
 <div class="page-header">
     <div class="page-header-content">
         <h1 class="page-title"><i class="fas fa-money-check-dollar"></i> Payroll Management</h1>
-        <p class="page-description">Manage staff payroll, banking information, tax deductions, and T4 generation. Integrated with Stripe for secure payments and Nextcloud for document storage.</p>
+        <p class="page-description">Manage staff payroll, banking information, tax deductions, and T4 generation. Integrated with Stripe for secure payments and cloud storage for document storage.</p>
     </div>
 </div>
 
@@ -442,7 +442,7 @@ $provinces = [
                 <div class="alert-card info">
                     <i class="fas fa-lock"></i>
                     <div class="alert-content">
-                        <p>Banking information is encrypted and stored securely. Payments are processed through Stripe for direct deposit. Employee data will be uploaded to Nextcloud for record keeping.</p>
+                        <p>Banking information is encrypted and stored securely. Payments are processed through Stripe for direct deposit. Employee data will be uploaded to cloud storage for record keeping.</p>
                     </div>
                 </div>
 
@@ -569,7 +569,7 @@ $provinces = [
                 <i class="fas fa-info-circle"></i>
                 <div class="alert-content">
                     <h4>T4 Generation</h4>
-                    <p>T4 slips are generated for the previous tax year (<?= $currentYear - 1 ?>). Completed T4s will be automatically uploaded to Nextcloud under the Payroll directory organized by year and employee name.</p>
+                    <p>T4 slips are generated for the previous tax year (<?= $currentYear - 1 ?>). Completed T4s will be automatically uploaded to cloud storage under the Payroll directory organized by year and employee name.</p>
                 </div>
             </div>
 
@@ -612,7 +612,7 @@ $provinces = [
                                         <button class="btn-icon" title="View T4"><i class="fas fa-eye"></i></button>
                                         <button class="btn-icon" title="Download PDF"><i class="fas fa-download"></i></button>
                                         <?php if (!empty($t4['nextcloud_path'])): ?>
-                                        <a href="<?= htmlspecialchars($t4['nextcloud_path']) ?>" target="_blank" class="btn-icon" title="Open in Nextcloud">
+                                        <a href="<?= htmlspecialchars($t4['nextcloud_path']) ?>" target="_blank" class="btn-icon" title="View Document">
                                             <i class="fas fa-cloud"></i>
                                         </a>
                                         <?php endif; ?>

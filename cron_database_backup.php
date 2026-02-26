@@ -132,7 +132,7 @@ function performBackup($pdo, $job) {
         $errors = [];
         
         // Upload to primary RustFS if configured
-        if ($job['destination_type'] === 'nextcloud' || $job['destination_type'] === 'both' || $job['destination_type'] === 'both_nextcloud') {
+        if ($job['destination_type'] === 's3' || $job['destination_type'] === 'both') {
             try {
                 $rustfs = getRustFSSettings($pdo);
                 if (isRustFSConfigured($rustfs)) {
@@ -157,34 +157,6 @@ function performBackup($pdo, $job) {
             } catch (Exception $e) {
                 $errors[] = 'RustFS: ' . $e->getMessage();
                 echo "  ✗ RustFS error: " . $e->getMessage() . "\n";
-            }
-        }
-        
-        // Upload secondary copy to RustFS if both_nextcloud destination is selected
-        if ($job['destination_type'] === 'both_nextcloud') {
-            try {
-                $rustfs = getRustFSSettings($pdo);
-                if (isRustFSConfigured($rustfs)) {
-                    $nc2_file_content = file_get_contents($gz_file);
-                    if ($nc2_file_content === false) {
-                        throw new Exception('Failed to read backup file for secondary RustFS upload');
-                    }
-                    $object_key2 = 'Backups/secondary/' . $filename;
-                    $result2 = uploadContentToRustFS($rustfs, $nc2_file_content, $object_key2, 'application/gzip');
-                    
-                    if ($result2['success']) {
-                        $success_destinations[] = 'RustFS-secondary: ' . $result2['url'];
-                        echo "  ✓ Uploaded to secondary RustFS\n";
-                    } else {
-                        $errors[] = 'Secondary RustFS upload failed';
-                        echo "  ✗ Secondary RustFS upload failed\n";
-                    }
-                } else {
-                    echo "  ⚠ RustFS not configured for secondary – skipping\n";
-                }
-            } catch (Exception $e) {
-                $errors[] = 'Secondary RustFS: ' . $e->getMessage();
-                echo "  ✗ Secondary RustFS error: " . $e->getMessage() . "\n";
             }
         }
         

@@ -19,10 +19,10 @@ if (empty($_SESSION['csrf_token'])) {
 }
 $csrf_token = $_SESSION['csrf_token'];
 
-// Fetch available backups from Nextcloud/SMB if configured
+// Fetch available backups from cloud/SMB if configured
 $available_backups = [];
 try {
-    $settings_query = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('nextcloud_enabled', 'nextcloud_backup_path', 'smb_enabled', 'smb_backup_path')");
+    $settings_query = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('smb_enabled', 'smb_backup_path')");
     $settings = [];
     while ($row = $settings_query->fetch(PDO::FETCH_ASSOC)) {
         $settings[$row['setting_key']] = $row['setting_value'];

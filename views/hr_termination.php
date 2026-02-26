@@ -136,7 +136,7 @@ $employees = decryptUserRows($employees);
         <i class="fas fa-exclamation-triangle"></i>
         <div class="alert-content">
             <h4>Important Notice</h4>
-            <p>Staff termination is a sensitive process. Please ensure all required documentation and approvals are in place before proceeding. This action will be logged in the audit trail. Supporting documents will be uploaded to Nextcloud.</p>
+            <p>Staff termination is a sensitive process. Please ensure all required documentation and approvals are in place before proceeding. This action will be logged in the audit trail. Supporting documents will be uploaded to cloud storage.</p>
         </div>
     </div>
 
@@ -244,7 +244,7 @@ $employees = decryptUserRows($employees);
                             <i class="fas fa-cloud-upload-alt"></i>
                         </div>
                         <p class="upload-text">Drag & drop files or click to browse</p>
-                        <span class="upload-hint">Resignation letter, termination notice, etc. (PDF, DOC, Images) - Files will be uploaded to Nextcloud</span>
+                        <span class="upload-hint">Resignation letter, termination notice, etc. (PDF, DOC, Images) - Files will be uploaded to cloud storage</span>
                         <input type="file" name="documents[]" id="terminationDocuments" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style="display: none;">
                         <div class="upload-buttons">
                             <button type="button" class="btn-secondary btn-small" onclick="document.getElementById('terminationDocuments').click()">
@@ -263,7 +263,7 @@ $employees = decryptUserRows($employees);
                 <div class="alert-card info">
                     <i class="fas fa-info-circle"></i>
                     <div class="alert-content">
-                        <p>This action will archive the staff record and trigger notifications to relevant departments. The staff member's system access will be scheduled for revocation on the termination date. All documents and form data will be exported to Nextcloud.</p>
+                        <p>This action will archive the staff record and trigger notifications to relevant departments. The staff member's system access will be scheduled for revocation on the termination date. All documents and form data will be exported to cloud storage.</p>
                     </div>
                 </div>
 
@@ -318,7 +318,7 @@ $employees = decryptUserRows($employees);
                                 <td><span class="status-badge <?= $statusClass ?>"><?= ucfirst($term['status']) ?></span></td>
                                 <td>
                                     <?php if(!empty($term['nextcloud_folder'])): ?>
-                                        <span class="doc-indicator has-docs" title="Documents in Nextcloud"><i class="fas fa-cloud"></i> <?= count($docs) ?></span>
+                                        <span class="doc-indicator has-docs" title="Documents uploaded"><i class="fas fa-cloud"></i> <?= count($docs) ?></span>
                                     <?php elseif(count($docs) > 0): ?>
                                         <span class="doc-indicator has-docs"><i class="fas fa-file"></i> <?= count($docs) ?></span>
                                     <?php else: ?>
@@ -346,7 +346,7 @@ $employees = decryptUserRows($employees);
                                             <i class="fas fa-eye"></i>
                                         </button>
                                         <?php if(!empty($term['nextcloud_folder'])): ?>
-                                        <a href="<?= htmlspecialchars($term['nextcloud_folder']) ?>" target="_blank" class="btn-icon" title="Open in Nextcloud">
+                                        <a href="<?= htmlspecialchars($term['nextcloud_folder']) ?>" target="_blank" class="btn-icon" title="View Documents">
                                             <i class="fas fa-external-link-alt"></i>
                                         </a>
                                         <?php endif; ?>
@@ -454,7 +454,7 @@ $employees = decryptUserRows($employees);
             </div>
             
             <div class="detail-section full-width">
-                <h4><i class="fas fa-cloud"></i> Nextcloud Documents</h4>
+                <h4><i class="fas fa-cloud"></i> Cloud Documents</h4>
                 <div id="modal-nextcloud"></div>
             </div>
             
@@ -1002,7 +1002,7 @@ $employees = decryptUserRows($employees);
     width: 16px;
 }
 
-.nextcloud-link {
+.cloud-link {
     display: inline-flex;
     align-items: center;
     gap: 8px;
@@ -1016,11 +1016,11 @@ $employees = decryptUserRows($employees);
     transition: all 0.2s;
 }
 
-.nextcloud-link:hover {
+.cloud-link:hover {
     background: rgba(59, 130, 246, 0.2);
 }
 
-.no-nextcloud {
+.no-documents {
     color: var(--text-dim);
     font-style: italic;
 }
@@ -1120,14 +1120,14 @@ document.querySelectorAll('.view-details').forEach(function(btn) {
                    '</div>';
         }).join('');
         
-        // Nextcloud
-        const nextcloudContainer = document.getElementById('modal-nextcloud');
+        // Cloud Documents
+        const documentsContainer = document.getElementById('modal-nextcloud');
         if (data.nextcloud) {
-            nextcloudContainer.innerHTML = '<a href="' + data.nextcloud + '" target="_blank" class="nextcloud-link">' +
-                '<i class="fas fa-cloud"></i> View Documents in Nextcloud' +
+            documentsContainer.innerHTML = '<a href="' + data.nextcloud + '" target="_blank" class="cloud-link">' +
+                '<i class="fas fa-cloud"></i> View Documents' +
                 '</a><br><small style="color: var(--text-dim); margin-top: 8px; display: block;">Path: ' + data.nextcloud + '</small>';
         } else {
-            nextcloudContainer.innerHTML = '<span class="no-nextcloud">No documents uploaded to Nextcloud</span>';
+            documentsContainer.innerHTML = '<span class="no-documents">No documents uploaded</span>';
         }
         
         document.getElementById('terminationModal').style.display = 'flex';

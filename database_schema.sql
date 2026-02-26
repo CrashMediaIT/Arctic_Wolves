@@ -827,12 +827,7 @@ CREATE TABLE IF NOT EXISTS `system_settings` (
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Default secondary Nextcloud settings (backup Nextcloud instance for redundant backups)
-INSERT IGNORE INTO `system_settings` (`setting_key`, `setting_value`, `setting_type`, `description`) VALUES
-('nextcloud_backup_url',      NULL, 'text',     'URL of the secondary/backup Nextcloud instance'),
-('nextcloud_backup_username', NULL, 'text',     'Username for the secondary Nextcloud instance'),
-('nextcloud_backup_password', NULL, 'password', 'Password for the secondary Nextcloud instance'),
-('nextcloud_backup_folder',   '/ArcticWolves/Backups/', 'text', 'Default backup folder on the secondary Nextcloud instance');
+-- (Nextcloud settings removed — all storage uses RustFS S3)
 
 -- Audit log
 -- Theme settings (key-value store for all theme/branding settings)
@@ -1054,7 +1049,7 @@ CREATE TABLE IF NOT EXISTS `backup_jobs` (
     `name` VARCHAR(255) NOT NULL,
     `schedule` VARCHAR(50) NOT NULL,
     `backup_type` ENUM('full', 'incremental', 'schema_only', 'data_only') DEFAULT 'full',
-    `destination_type` ENUM('local', 'nextcloud', 'smb', 'ftp', 's3', 'both', 'both_nextcloud') DEFAULT 'nextcloud',
+    `destination_type` ENUM('local', 'smb', 'ftp', 's3', 'both') DEFAULT 's3',
     `nextcloud_folder` VARCHAR(255) DEFAULT NULL,
     `smb_path` VARCHAR(255) DEFAULT NULL,
     `smb_username` VARCHAR(100) DEFAULT NULL,
@@ -1113,7 +1108,7 @@ CREATE TABLE IF NOT EXISTS `bookings` (
     INDEX `idx_stripe_session` (`stripe_session_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Nextcloud receipt storage tracking
+-- Cloud receipt storage tracking
 CREATE TABLE IF NOT EXISTS `cloud_receipts` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `expense_id` INT DEFAULT NULL,
@@ -2706,7 +2701,7 @@ CREATE TABLE IF NOT EXISTS `t4_slips` (
     `province_of_employment` VARCHAR(2) DEFAULT 'BC',
     `generated_at` TIMESTAMP NULL DEFAULT NULL,
     `generated_by` INT DEFAULT NULL,
-    `nextcloud_path` VARCHAR(500) DEFAULT NULL COMMENT 'Path to uploaded T4 in Nextcloud',
+    `nextcloud_path` VARCHAR(500) DEFAULT NULL COMMENT 'Cloud storage path (RustFS URL)',
     `status` ENUM('draft', 'generated', 'filed', 'amended') DEFAULT 'draft',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -2752,7 +2747,7 @@ CREATE TABLE IF NOT EXISTS `employee_onboarding` (
     `province` VARCHAR(2) DEFAULT NULL,
     `postal_code` VARCHAR(10) DEFAULT NULL,
     `notes` TEXT DEFAULT NULL,
-    `nextcloud_folder` VARCHAR(500) DEFAULT NULL COMMENT 'Path to onboarding docs in Nextcloud',
+    `nextcloud_folder` VARCHAR(500) DEFAULT NULL COMMENT 'Cloud storage path for onboarding docs (RustFS URL)',
     `contract_sent` TINYINT(1) DEFAULT 0 COMMENT 'Whether employment contract was sent for signature',
     `contract_id` INT DEFAULT NULL COMMENT 'Link to employee_contracts record if contract was created',
     `processed_by` INT DEFAULT NULL,
@@ -2876,7 +2871,7 @@ CREATE TABLE IF NOT EXISTS `employee_contracts` (
     `signing_url` VARCHAR(500) DEFAULT NULL COMMENT 'OpenSign signing URL',
     `signing_token` VARCHAR(64) DEFAULT NULL COMMENT 'Legacy: Unique token for signing URL',
     `signing_token_expires` DATETIME DEFAULT NULL,
-    `nextcloud_path` VARCHAR(500) DEFAULT NULL COMMENT 'Path to signed contract in Nextcloud',
+    `nextcloud_path` VARCHAR(500) DEFAULT NULL COMMENT 'Cloud storage path for signed contract (RustFS URL)',
     `sent_at` TIMESTAMP NULL DEFAULT NULL,
     `signed_at` TIMESTAMP NULL DEFAULT NULL,
     `signed_date` DATE DEFAULT NULL,
@@ -3693,7 +3688,7 @@ CREATE TABLE IF NOT EXISTS `hr_complaints` (
     `appeal_notes` TEXT DEFAULT NULL,
     `legal_consultation` TINYINT(1) DEFAULT 0 COMMENT 'Whether legal was consulted',
     `documentation_complete` TINYINT(1) DEFAULT 0,
-    `nextcloud_folder` VARCHAR(500) DEFAULT NULL COMMENT 'Path to complaint documents in Nextcloud',
+    `nextcloud_folder` VARCHAR(500) DEFAULT NULL COMMENT 'Cloud storage path for complaint documents (RustFS URL)',
     `created_by` INT NOT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -3981,7 +3976,7 @@ CREATE TABLE IF NOT EXISTS `recurring_expenses` (
     `account_number` VARCHAR(100) DEFAULT NULL,
     `category` VARCHAR(100) DEFAULT NULL,
     `notes` TEXT DEFAULT NULL,
-    `nextcloud_path` VARCHAR(500) DEFAULT NULL COMMENT 'Path to contract documents in Nextcloud',
+    `nextcloud_path` VARCHAR(500) DEFAULT NULL COMMENT 'Cloud storage path for contract documents (RustFS URL)',
     `status` ENUM('active', 'paused', 'expired', 'cancelled') DEFAULT 'active',
     `created_by` INT DEFAULT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -4002,7 +3997,7 @@ CREATE TABLE IF NOT EXISTS `recurring_expense_documents` (
     `document_type` ENUM('contract', 'insurance', 'invoice', 'amendment', 'other') DEFAULT 'contract',
     `file_name` VARCHAR(255) NOT NULL,
     `file_path` VARCHAR(500) DEFAULT NULL COMMENT 'Local file path',
-    `nextcloud_path` VARCHAR(500) DEFAULT NULL COMMENT 'Nextcloud storage path',
+    `nextcloud_path` VARCHAR(500) DEFAULT NULL COMMENT 'Cloud storage path (RustFS URL)',
     `file_size` INT DEFAULT NULL,
     `mime_type` VARCHAR(100) DEFAULT NULL,
     `uploaded_by` INT DEFAULT NULL,
@@ -4630,49 +4625,45 @@ ALTER TABLE `user_packages`
 ADD COLUMN IF NOT EXISTS `stripe_session_id` VARCHAR(255) DEFAULT NULL COMMENT 'Stripe checkout session ID for payment tracking',
 ADD INDEX IF NOT EXISTS `idx_stripe_session` (`stripe_session_id`);
 
--- Add nextcloud_path to users for persistent profile image storage
+-- Add cloud storage path to users for persistent profile image storage
 ALTER TABLE `users`
-ADD COLUMN IF NOT EXISTS `nextcloud_image_path` VARCHAR(500) DEFAULT NULL COMMENT 'Nextcloud path for profile image persistence';
+ADD COLUMN IF NOT EXISTS `nextcloud_image_path` VARCHAR(500) DEFAULT NULL COMMENT 'Cloud storage path for profile image (RustFS URL)';
 
--- Add nextcloud_path to evaluation_media for persistent media storage
+-- Add cloud storage path to evaluation_media for persistent media storage
 ALTER TABLE `evaluation_media`
-ADD COLUMN IF NOT EXISTS `nextcloud_path` VARCHAR(500) DEFAULT NULL COMMENT 'Nextcloud path for persistent media storage';
+ADD COLUMN IF NOT EXISTS `nextcloud_path` VARCHAR(500) DEFAULT NULL COMMENT 'Cloud storage path for persistent media (RustFS URL)';
 
--- Default Nextcloud images directory setting
-INSERT IGNORE INTO `system_settings` (`setting_key`, `setting_value`, `setting_type`, `description`) VALUES
-('nextcloud_images_dir', '/Images', 'text', 'Nextcloud directory for profile images and evaluation media');
+-- (Nextcloud images directory setting removed — all storage uses RustFS S3)
 
--- Default persistent storage path setting (editable from admin panel)
-INSERT IGNORE INTO `system_settings` (`setting_key`, `setting_value`, `setting_type`, `description`) VALUES
-('nextcloud_persistent_path', '', 'text', 'Custom path for persistent local storage outside the web root (leave empty for default)');
+-- (Nextcloud persistent path setting removed — all storage uses RustFS S3)
 
--- Add nextcloud_image_path to exercise_library for persistent exercise image storage
+-- Add cloud storage path to exercise_library for persistent exercise image storage
 ALTER TABLE `exercise_library`
-ADD COLUMN IF NOT EXISTS `nextcloud_image_path` VARCHAR(500) DEFAULT NULL COMMENT 'Nextcloud path for exercise image persistence';
+ADD COLUMN IF NOT EXISTS `nextcloud_image_path` VARCHAR(500) DEFAULT NULL COMMENT 'Cloud storage path for exercise image (RustFS URL)';
 
--- Add nextcloud_image_path to merchandise_products for persistent product image storage
+-- Add cloud storage path to merchandise_products for persistent product image storage
 ALTER TABLE `merchandise_products`
-ADD COLUMN IF NOT EXISTS `nextcloud_image_path` VARCHAR(500) DEFAULT NULL COMMENT 'Nextcloud path for product image persistence';
+ADD COLUMN IF NOT EXISTS `nextcloud_image_path` VARCHAR(500) DEFAULT NULL COMMENT 'Cloud storage path for product image (RustFS URL)';
 
--- Add nextcloud_image_path to merchandise_categories for persistent category image storage
+-- Add cloud storage path to merchandise_categories for persistent category image storage
 ALTER TABLE `merchandise_categories`
-ADD COLUMN IF NOT EXISTS `nextcloud_image_path` VARCHAR(500) DEFAULT NULL COMMENT 'Nextcloud path for category image persistence';
+ADD COLUMN IF NOT EXISTS `nextcloud_image_path` VARCHAR(500) DEFAULT NULL COMMENT 'Cloud storage path for category image (RustFS URL)';
 
--- Add nextcloud_image_path to drills for persistent drill video/image storage
+-- Add cloud storage path to drills for persistent drill video/image storage
 ALTER TABLE `drills`
-ADD COLUMN IF NOT EXISTS `nextcloud_image_path` VARCHAR(500) DEFAULT NULL COMMENT 'Nextcloud path for drill media persistence';
+ADD COLUMN IF NOT EXISTS `nextcloud_image_path` VARCHAR(500) DEFAULT NULL COMMENT 'Cloud storage path for drill media (RustFS URL)';
 
--- Add nextcloud_path to goal_eval_progress for persistent eval goal media storage
+-- Add cloud storage path to goal_eval_progress for persistent eval goal media storage
 ALTER TABLE `goal_eval_progress`
-ADD COLUMN IF NOT EXISTS `nextcloud_path` VARCHAR(500) DEFAULT NULL COMMENT 'Nextcloud path for eval goal media persistence';
+ADD COLUMN IF NOT EXISTS `nextcloud_path` VARCHAR(500) DEFAULT NULL COMMENT 'Cloud storage path for eval goal media (RustFS URL)';
 
--- Add nextcloud_logo_path to teams for persistent team logo storage
+-- Add cloud storage path to teams for persistent team logo storage
 ALTER TABLE `teams`
-ADD COLUMN IF NOT EXISTS `nextcloud_logo_path` VARCHAR(500) DEFAULT NULL COMMENT 'Nextcloud path for team logo persistence';
+ADD COLUMN IF NOT EXISTS `nextcloud_logo_path` VARCHAR(500) DEFAULT NULL COMMENT 'Cloud storage path for team logo (RustFS URL)';
 
--- Add nextcloud_path to vr_video_sources for persistent gameplan video storage
+-- Add cloud storage path to vr_video_sources for persistent gameplan video storage
 ALTER TABLE `vr_video_sources`
-ADD COLUMN IF NOT EXISTS `nextcloud_path` VARCHAR(500) DEFAULT NULL COMMENT 'Nextcloud path for gameplan video persistence';
+ADD COLUMN IF NOT EXISTS `nextcloud_path` VARCHAR(500) DEFAULT NULL COMMENT 'Cloud storage path for gameplan video (RustFS URL)';
 
 -- Default RustFS S3 storage settings
 INSERT IGNORE INTO `system_settings` (`setting_key`, `setting_value`, `setting_type`, `description`) VALUES

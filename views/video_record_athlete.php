@@ -39,18 +39,18 @@ try {
     error_log("Failed to load user teams: " . $e->getMessage());
 }
 
-// Check Nextcloud connection status (same as coach recording interface)
-$nextcloud_available = false;
-$nextcloud_message = '';
+// Check RustFS connection status
+$storage_available = false;
+$storage_message = '';
 try {
     require_once __DIR__ . '/../cloud_config.php';
-    $nc_settings = getNextcloudSettings($pdo);
-    if (!empty($nc_settings['nextcloud_url']) && !empty($nc_settings['nextcloud_username'])) {
-        $connection = connectNextcloud($nc_settings);
-        $nextcloud_available = true;
+    require_once __DIR__ . '/../lib/rustfs_storage.php';
+    $rustfs = getRustFSSettings($pdo);
+    if (isRustFSConfigured($rustfs)) {
+        $storage_available = true;
     }
 } catch (Exception $e) {
-    $nextcloud_message = $e->getMessage();
+    $storage_message = $e->getMessage();
 }
 ?>
 
@@ -61,19 +61,19 @@ try {
     </div>
 
     <!-- Connection Status - Same as coach recording interface -->
-    <div class="connection-status <?= $nextcloud_available ? 'status-connected' : 'status-offline' ?>">
+    <div class="connection-status <?= $storage_available ? 'status-connected' : 'status-offline' ?>">
         <div class="status-icon">
-            <i class="fas <?= $nextcloud_available ? 'fa-cloud-upload-alt' : 'fa-exclamation-triangle' ?>"></i>
+            <i class="fas <?= $storage_available ? 'fa-cloud-upload-alt' : 'fa-exclamation-triangle' ?>"></i>
         </div>
         <div class="status-info">
-            <?php if ($nextcloud_available): ?>
+            <?php if ($storage_available): ?>
                 <strong>Cloud Connected</strong>
-                <span>Videos will upload directly to Nextcloud</span>
+                <span>Videos will upload directly to cloud storage</span>
             <?php else: ?>
                 <strong>Offline Mode</strong>
                 <span>Videos will be saved locally for later upload</span>
-                <?php if ($nextcloud_message): ?>
-                    <small class="status-error"><?= htmlspecialchars($nextcloud_message) ?></small>
+                <?php if ($storage_message): ?>
+                    <small class="status-error"><?= htmlspecialchars($storage_message) ?></small>
                 <?php endif; ?>
             <?php endif; ?>
         </div>

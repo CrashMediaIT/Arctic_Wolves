@@ -262,7 +262,7 @@ $csrf_token = $_SESSION['csrf_token'];
         border: 1px solid #fbbf24;
     }
     
-    .badge-nextcloud {
+    .badge-s3 {
         background: rgba(59, 130, 246, 0.15);
         color: #3b82f6;
         border: 1px solid #3b82f6;
@@ -602,8 +602,8 @@ $csrf_token = $_SESSION['csrf_token'];
         <button class="btn-create" onclick="backupToFile()" title="Download a backup file to your computer">
             <span><i class="fas fa-save"></i></span> Backup to File
         </button>
-        <button class="btn-create" onclick="forceNextcloudBackup()" title="Force an immediate backup to Nextcloud" style="background: #3b82f6;">
-            <span><i class="fas fa-cloud-upload-alt"></i></span> Force to Nextcloud
+        <button class="btn-create" onclick="forceRustFSBackup()" title="Force an immediate backup to RustFS" style="background: #3b82f6;">
+            <span><i class="fas fa-cloud-upload-alt"></i></span> Force to RustFS
         </button>
         <button class="btn-create" onclick="showJobModal()">
             <span><i class="fas fa-plus"></i></span> Create Backup Job
@@ -633,8 +633,7 @@ $csrf_token = $_SESSION['csrf_token'];
         <div class="info-box-content">
             <strong>Backup Format:</strong> All backups are compressed and named <code>arctic_wolves_backup_YYYYMMDD_HHMMSS.sql.gz</code>
             <ul>
-                <li><strong>Both Nextcloud Instances:</strong> Uploads to primary <em>and</em> secondary Nextcloud for full redundancy</li>
-                <li><strong>Primary Nextcloud Only:</strong> Backups stored in /ArcticWolves/Backups/ (configurable)</li>
+                <li><strong>RustFS S3:</strong> Uploads backups to RustFS S3 cloud storage for full redundancy</li>
                 <li><strong>SMB:</strong> Direct network share storage (Windows/Samba)</li>
                 <li><strong>Retention:</strong> Specify how many copies to keep per schedule; older backups are pruned automatically</li>
                 <li><strong>Standard schedules:</strong> Every 5 min · 1 hr · 6 hr · 12 hr · 24 hr · 1 week · 1 month — set <em>Copies to Keep</em> = 3</li>
@@ -676,8 +675,8 @@ $csrf_token = $_SESSION['csrf_token'];
                             <td>
                                 <?php
                                 $dest = $job['destination_type'];
-                                if ($dest === 'nextcloud') {
-                                    echo '<span class="badge badge-nextcloud">Nextcloud</span>';
+                                if ($dest === 's3') {
+                                    echo '<span class="badge badge-s3">RustFS</span>';
                                 } elseif ($dest === 'smb') {
                                     echo '<span class="badge badge-smb">SMB</span>';
                                 } else {
@@ -789,8 +788,8 @@ $csrf_token = $_SESSION['csrf_token'];
                             <td>
                                 <?php
                                 $dest = $item['destination'];
-                                if ($dest === 'nextcloud') {
-                                    echo '<span class="badge badge-nextcloud">Nextcloud</span>';
+                                if ($dest === 's3') {
+                                    echo '<span class="badge badge-s3">RustFS</span>';
                                 } elseif ($dest === 'smb') {
                                     echo '<span class="badge badge-smb">SMB</span>';
                                 } else {
@@ -867,17 +866,10 @@ $csrf_token = $_SESSION['csrf_token'];
                 <div class="form-group">
                     <label class="form-label required" for="destination-type">Destination Type</label>
                     <select id="destination-type" name="destination_type" class="form-select" required onchange="toggleSmbFields()">
-                        <option value="both_nextcloud">Both Nextcloud Instances (Recommended)</option>
-                        <option value="nextcloud">Primary Nextcloud Only</option>
+                        <option value="s3">RustFS S3 Storage (Recommended)</option>
                         <option value="smb">SMB Network Share</option>
-                        <option value="both">Nextcloud + SMB</option>
+                        <option value="both">RustFS + SMB</option>
                     </select>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label" for="nextcloud-folder">Nextcloud Folder</label>
-                    <input type="text" id="nextcloud-folder" name="nextcloud_folder" class="form-input" value="/ArcticWolves/Backups/" placeholder="/ArcticWolves/Backups/">
-                    <span class="form-help">Path in Nextcloud where backups will be stored</span>
                 </div>
                 
                 <!-- SMB Fields (conditionally shown) -->
@@ -1015,7 +1007,6 @@ function loadJobData(jobId) {
             document.getElementById('job-name').value = job.job_name;
             document.getElementById('cron-schedule').value = job.cron_schedule;
             document.getElementById('destination-type').value = job.destination_type;
-            document.getElementById('nextcloud-folder').value = job.nextcloud_folder || '';
             document.getElementById('smb-path').value = job.smb_path || '';
             document.getElementById('smb-username').value = job.smb_username || '';
             document.getElementById('smb-domain').value = job.smb_domain || '';
@@ -1252,18 +1243,18 @@ function backupToFile() {
     document.body.removeChild(form);
 }
 
-// Force backup to Nextcloud
-function forceNextcloudBackup() {
-    if (!confirm('Force an immediate backup to Nextcloud?')) {
+// Force backup to RustFS
+function forceRustFSBackup() {
+    if (!confirm('Force an immediate backup to RustFS?')) {
         return;
     }
     
-    showAlert('success', 'Sending backup to Nextcloud... This may take a moment.');
+    showAlert('success', 'Sending backup to RustFS... This may take a moment.');
     
     fetch('process_database_backup.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `action=force_nextcloud&csrf_token=<?= $csrf_token ?>`
+        body: `action=force_rustfs&csrf_token=<?= $csrf_token ?>`
     })
     .then(response => response.json())
     .then(data => {
@@ -1274,7 +1265,7 @@ function forceNextcloudBackup() {
         }
     })
     .catch(error => {
-        showAlert('error', 'Failed to create Nextcloud backup: ' + error.message);
+        showAlert('error', 'Failed to create RustFS backup: ' + error.message);
         console.error(error);
     });
 }

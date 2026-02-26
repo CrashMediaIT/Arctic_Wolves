@@ -575,7 +575,7 @@ function getDecryptedSetting($pdo, $key) {
  * Load the credential encryption key material.
  *
  * Resolution order:
- *   1. Local key file  (.nextcloud_key)  – fastest, no DB hit.
+ *   1. Local key file  (.credential_key)  – fastest, no DB hit.
  *   2. Database row     (system_settings, key = '_credential_encryption_key')
  *      → also restores the file so subsequent calls use the fast path.
  *   3. Generate a new key and store it in both file AND database so it
@@ -585,7 +585,7 @@ function getDecryptedSetting($pdo, $key) {
  */
 function loadCredentialKey() {
     static $synced_to_db = false;
-    $key_file = __DIR__ . '/.nextcloud_key';
+    $key_file = __DIR__ . '/.credential_key';
 
     // 1. Fast path – local file
     if (file_exists($key_file)) {
@@ -689,7 +689,7 @@ function decryptPassword($encrypted_data) {
     }
 
     // Legacy fallback: old IV::ciphertext format from before PII consolidation
-    $key_file = __DIR__ . '/.nextcloud_key';
+    $key_file = __DIR__ . '/.credential_key';
     global $pdo;
     $key = null;
 
@@ -781,8 +781,6 @@ function decryptCredential($value) {
 function getEncryptedSettingKeys() {
     return [
         'smtp_pass',
-        'nextcloud_password',
-        'nextcloud_backup_password',
         'paperless_api_token',
         'stripe_publishable_key',
         'stripe_secret_key',

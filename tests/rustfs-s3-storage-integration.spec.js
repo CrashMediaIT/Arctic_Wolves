@@ -235,31 +235,24 @@ test.describe('cloud_config.php uses RustFS for all uploads', () => {
     expect(content).not.toContain('function saveToPersistentStorage(');
   });
 
-  test('uploadImageToNextcloud should upload to RustFS', () => {
+  test('should NOT contain getNextcloudSettings function', () => {
     const content = readFile('cloud_config.php');
-    const fnStart = content.indexOf('function uploadImageToNextcloud(');
-    const fnEnd = content.indexOf('\n}\n', fnStart) + 3;
-    const fn = content.substring(fnStart, fnEnd);
-    expect(fn).toContain('getRustFSSettings');
-    expect(fn).toContain('uploadToRustFS');
+    expect(content).not.toContain('function getNextcloudSettings(');
   });
 
-  test('uploadLargeFileToNextcloud should use RustFS streaming', () => {
+  test('should NOT contain connectNextcloud function', () => {
     const content = readFile('cloud_config.php');
-    const fnStart = content.indexOf('function uploadLargeFileToNextcloud(');
-    const fnEnd = content.indexOf('\n}\n', fnStart) + 3;
-    const fn = content.substring(fnStart, fnEnd);
-    expect(fn).toContain('getRustFSSettings');
-    expect(fn).toContain('uploadLargeFileToRustFS');
+    expect(content).not.toContain('function connectNextcloud(');
   });
 
-  test('uploadDrillVideo should upload to RustFS', () => {
+  test('should NOT contain testNextcloudConnection function', () => {
     const content = readFile('cloud_config.php');
-    const fnStart = content.indexOf('function uploadDrillVideo(');
-    const fnEnd = content.indexOf('\n}\n', fnStart) + 3;
-    const fn = content.substring(fnStart, fnEnd);
-    expect(fn).toContain('getRustFSSettings');
-    expect(fn).toContain('uploadLargeFileToRustFS');
+    expect(content).not.toContain('function testNextcloudConnection(');
+  });
+
+  test('should NOT contain uploadToNextcloud function', () => {
+    const content = readFile('cloud_config.php');
+    expect(content).not.toContain('function uploadToNextcloud(');
   });
 
   test('uploadTerminationDocuments should upload to RustFS', () => {

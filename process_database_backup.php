@@ -39,8 +39,7 @@ try {
             $name = trim($_POST['name'] ?? '');
             $schedule = trim($_POST['schedule'] ?? '');
             $backup_type = $_POST['backup_type'] ?? 'scheduled';
-            $destination_type = $_POST['destination_type'] ?? 'nextcloud';
-            $nextcloud_folder = trim($_POST['nextcloud_folder'] ?? '/ArcticWolves/Backups/');
+            $destination_type = $_POST['destination_type'] ?? 's3';
             $smb_path = trim($_POST['smb_path'] ?? '');
             $smb_username = trim($_POST['smb_username'] ?? '');
             $smb_password = trim($_POST['smb_password'] ?? '');
@@ -76,12 +75,12 @@ try {
             // Insert backup job
             $stmt = $pdo->prepare("
                 INSERT INTO backup_jobs 
-                (name, schedule, backup_type, destination_type, nextcloud_folder, smb_path, 
+                (name, schedule, backup_type, destination_type, smb_path, 
                  smb_username, smb_password, smb_domain, retention_days, keep_count, next_backup, status, created_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
-                $name, $schedule, $backup_type, $destination_type, $nextcloud_folder,
+                $name, $schedule, $backup_type, $destination_type,
                 $smb_path, $smb_username, $encrypted_password, $smb_domain,
                 $retention_days, $keep_count, $next_backup, $status, $user_id
             ]);
@@ -97,8 +96,7 @@ try {
             $id = (int)($_POST['id'] ?? 0);
             $name = trim($_POST['name'] ?? '');
             $schedule = trim($_POST['schedule'] ?? '');
-            $destination_type = $_POST['destination_type'] ?? 'nextcloud';
-            $nextcloud_folder = trim($_POST['nextcloud_folder'] ?? '/ArcticWolves/Backups/');
+            $destination_type = $_POST['destination_type'] ?? 's3';
             $smb_path = trim($_POST['smb_path'] ?? '');
             $smb_username = trim($_POST['smb_username'] ?? '');
             $smb_password = trim($_POST['smb_password'] ?? '');
@@ -132,13 +130,13 @@ try {
             // Update backup job
             $stmt = $pdo->prepare("
                 UPDATE backup_jobs 
-                SET name = ?, schedule = ?, destination_type = ?, nextcloud_folder = ?,
+                SET name = ?, schedule = ?, destination_type = ?,
                     smb_path = ?, smb_username = ?, smb_password = ?, smb_domain = ?,
                     retention_days = ?, keep_count = ?, next_backup = ?, status = ?
                 WHERE id = ?
             ");
             $stmt->execute([
-                $name, $schedule, $destination_type, $nextcloud_folder,
+                $name, $schedule, $destination_type,
                 $smb_path, $smb_username, $encrypted_password, $smb_domain,
                 $retention_days, $keep_count, $next_backup, $status, $id
             ]);
@@ -180,8 +178,7 @@ try {
                 $job = [
                     'id' => 0,
                     'name' => 'Quick Backup',
-                    'destination_type' => 'both_nextcloud',
-                    'nextcloud_folder' => '/Backups/',
+                    'destination_type' => 's3',
                     'smb_path' => '',
                     'smb_username' => '',
                     'smb_password' => '',
@@ -208,15 +205,12 @@ try {
             }
             break;
             
-        case 'force_nextcloud':
-            // Force backup directly to both Nextcloud instances
-            $nextcloud_folder = trim($_POST['nextcloud_folder'] ?? '/Backups/');
-            
+        case 'force_rustfs':
+            // Force backup directly to RustFS
             $job = [
                 'id' => 0,
-                'name' => 'Force Nextcloud Backup',
-                'destination_type' => 'both_nextcloud',
-                'nextcloud_folder' => $nextcloud_folder,
+                'name' => 'Force RustFS Backup',
+                'destination_type' => 's3',
                 'smb_path' => '',
                 'smb_username' => '',
                 'smb_password' => '',
@@ -227,7 +221,7 @@ try {
             $result = performBackup($pdo, $job);
             
             if ($result['success']) {
-                logAction($pdo, $user_id, 'force_nextcloud_backup', 'Forced backup to Nextcloud: ' . $nextcloud_folder);
+                logAction($pdo, $user_id, 'force_rustfs_backup', 'Forced backup to RustFS');
                 echo json_encode(['success' => true, 'message' => $result['message']]);
             } else {
                 throw new Exception($result['message']);
@@ -240,7 +234,6 @@ try {
                 'id' => 0,
                 'name' => 'Download Backup',
                 'destination_type' => 'local',
-                'nextcloud_folder' => '',
                 'smb_path' => '',
                 'smb_username' => '',
                 'smb_password' => '',
@@ -566,23 +559,23 @@ function performBackup($pdo, $job) {
             }
         }
         
-        // Read file content once for Nextcloud uploads
-        $nc_file_content = null;
-        if ($job['destination_type'] === 'nextcloud' || $job['destination_type'] === 'both' || $job['destination_type'] === 'both_nextcloud') {
-            $nc_file_content = file_get_contents($gz_file);
-            if ($nc_file_content === false) {
-                $errors[] = 'Failed to read backup file for Nextcloud upload';
-                $nc_file_content = null;
+        // Read file content for RustFS upload
+        $file_content = null;
+        if ($job['destination_type'] === 's3' || $job['destination_type'] === 'both') {
+            $file_content = file_get_contents($gz_file);
+            if ($file_content === false) {
+                $errors[] = 'Failed to read backup file for RustFS upload';
+                $file_content = null;
             }
         }
         
-        // Upload to primary RustFS if configured
-        if ($nc_file_content !== null && ($job['destination_type'] === 'nextcloud' || $job['destination_type'] === 'both' || $job['destination_type'] === 'both_nextcloud')) {
+        // Upload to RustFS if configured
+        if ($file_content !== null && ($job['destination_type'] === 's3' || $job['destination_type'] === 'both')) {
             try {
                 $rustfs = getRustFSSettings($pdo);
                 if (isRustFSConfigured($rustfs)) {
                     $object_key = 'Backups/' . $filename;
-                    $result = uploadContentToRustFS($rustfs, $nc_file_content, $object_key, 'application/gzip');
+                    $result = uploadContentToRustFS($rustfs, $file_content, $object_key, 'application/gzip');
                     
                     if ($result['success']) {
                         $success_destinations[] = 'RustFS: ' . $result['url'];
@@ -594,26 +587,6 @@ function performBackup($pdo, $job) {
                 }
             } catch (Exception $e) {
                 $errors[] = 'RustFS: ' . $e->getMessage();
-            }
-        }
-        
-        // Upload to secondary RustFS if both_nextcloud destination is selected
-        if ($nc_file_content !== null && $job['destination_type'] === 'both_nextcloud') {
-            try {
-                // Secondary storage also goes to RustFS with a different prefix
-                $rustfs = getRustFSSettings($pdo);
-                if (isRustFSConfigured($rustfs)) {
-                    $object_key2 = 'Backups/secondary/' . $filename;
-                    $result2 = uploadContentToRustFS($rustfs, $nc_file_content, $object_key2, 'application/gzip');
-                    
-                    if ($result2['success']) {
-                        $success_destinations[] = 'RustFS-secondary: ' . $result2['url'];
-                    } else {
-                        $errors[] = 'Secondary RustFS upload failed';
-                    }
-                }
-            } catch (Exception $e) {
-                $errors[] = 'Secondary RustFS: ' . $e->getMessage();
             }
         }
         
@@ -752,7 +725,7 @@ function cleanOldBackups($pdo, $job) {
     $old_backups = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     foreach ($old_backups as $backup) {
-        // Note: Actual file deletion from Nextcloud/SMB would be implemented here
+        // Note: Actual file deletion from RustFS/SMB would be implemented here
         // For now, just mark as cleaned in database
         $stmt = $pdo->prepare("DELETE FROM backup_history WHERE id = ?");
         $stmt->execute([$backup['id']]);

@@ -25,10 +25,10 @@ test.describe('Encryption Consolidation - security.php (canonical source)', () =
     expect(content).toContain('function decryptPassword($encrypted_data)');
   });
 
-  test('should use .nextcloud_key file for key material', async () => {
+  test('should use .credential_key file for key material', async () => {
     const filePath = path.join(__dirname, '..', 'security.php');
     const content = fs.readFileSync(filePath, 'utf-8');
-    expect(content).toContain('.nextcloud_key');
+    expect(content).toContain('.credential_key');
   });
 
   test('should use AES-256-CBC with :: separator format', async () => {

@@ -6,8 +6,7 @@ import * as path from 'path';
  * Tests for:
  * 1. Stripe booking status ENUM fix (process_booking.php, payment_success.php)
  * 2. Packages shown on landing page without show_on_landing requirement
- * 3. OCR scan uploads to Nextcloud and Paperless-NGX
- * 4. Nextcloud password decryption fix (cloud_config.php)
+ * 3. OCR scan uploads to cloud storage and Paperless-NGX
  */
 
 const ROOT = path.resolve(__dirname, '..');
@@ -109,14 +108,12 @@ test.describe('OCR Scan Upload to Cloud Services', () => {
     expect(ocrSection).not.toContain('unlink(');
   });
 
-  test('ocr_scan uploads to Nextcloud after OCR', () => {
+  test('ocr_scan uploads to persistent storage after OCR', () => {
     const content = readFile('process_expenses.php');
-    // Find the full ocr_scan case section - from 'case ocr_scan' to the next 'case '
     const startIdx = content.indexOf("case 'ocr_scan':");
     const nextCase = content.indexOf("case '", startIdx + 20);
     const ocrSection = content.substring(startIdx, nextCase > -1 ? nextCase : undefined);
     expect(ocrSection).toContain('persistUploadedFile');
-    expect(ocrSection).toContain('nextcloud_path');
   });
 
   test('ocr_scan uploads to Paperless-NGX after OCR', () => {
@@ -128,59 +125,17 @@ test.describe('OCR Scan Upload to Cloud Services', () => {
     expect(ocrSection).toContain('Receipt');
   });
 
-  test('ocr_scan returns receipt_url and nextcloud_path in response', () => {
+  test('ocr_scan returns receipt_url in response', () => {
     const content = readFile('process_expenses.php');
     const startIdx = content.indexOf("case 'ocr_scan':");
     const nextCase = content.indexOf("case '", startIdx + 20);
     const ocrSection = content.substring(startIdx, nextCase > -1 ? nextCase : undefined);
     expect(ocrSection).toContain("'receipt_url'");
-    expect(ocrSection).toContain("'nextcloud_path'");
   });
 
-  test('frontend stores receipt_url and nextcloud_path from OCR response', () => {
+  test('frontend stores receipt_url from OCR response', () => {
     const content = readFile('views/accounting_expenses.php');
     expect(content).toContain('_receipt_url');
-    expect(content).toContain('_nextcloud_path');
     expect(content).toContain('data.receipt_url');
-    expect(content).toContain('data.nextcloud_path');
-  });
-});
-
-// =====================================================
-// 4. Nextcloud Password Decryption Fix
-// =====================================================
-
-test.describe('Nextcloud Password Decryption Fix', () => {
-  test('connectNextcloud decrypts stored encrypted password', () => {
-    const content = readFile('cloud_config.php');
-    const connectFn = content.substring(
-      content.indexOf('function connectNextcloud'),
-      content.indexOf('}', content.indexOf("return [", content.indexOf('function connectNextcloud'))) + 1
-    );
-    // Should call decryptPassword on the password
-    expect(connectFn).toContain('decryptPassword');
-    expect(connectFn).toContain('function_exists');
-  });
-
-  test('connectNextcloud falls back to raw password if decryption returns empty', () => {
-    const content = readFile('cloud_config.php');
-    const connectFn = content.substring(
-      content.indexOf('function connectNextcloud'),
-      content.indexOf('}', content.indexOf("return [", content.indexOf('function connectNextcloud'))) + 1
-    );
-    // Should only use decrypted password if it's not empty
-    expect(connectFn).toContain('!empty($decrypted)');
-  });
-
-  test('connectNextcloud still validates required settings', () => {
-    const content = readFile('cloud_config.php');
-    const connectFn = content.substring(
-      content.indexOf('function connectNextcloud'),
-      content.indexOf('}', content.indexOf("return [", content.indexOf('function connectNextcloud'))) + 1
-    );
-    expect(connectFn).toContain("empty($settings['nextcloud_url'])");
-    expect(connectFn).toContain("empty($settings['nextcloud_username'])");
-    expect(connectFn).toContain("empty($settings['nextcloud_password'])");
-    expect(connectFn).toContain('Nextcloud settings are incomplete');
   });
 });

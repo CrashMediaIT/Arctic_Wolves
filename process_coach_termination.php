@@ -105,19 +105,16 @@ if ($action === 'create') {
             
             $termination_id = $pdo->lastInsertId();
             
-            // Handle Nextcloud upload
+            // Handle document upload to RustFS
             $nextcloud_folder = null;
             $uploaded_docs = [];
             
             try {
-                $nc_settings = getNextcloudSettings($pdo);
-                
-                if (!empty($nc_settings['nextcloud_url']) && !empty($nc_settings['nextcloud_username'])) {
-                    // Upload documents to Nextcloud
+                    // Upload documents
                     if (!empty($_FILES['documents']) && !empty($_FILES['documents']['name'][0])) {
                         $upload_result = uploadTerminationDocuments(
                             $pdo, 
-                            $nc_settings, 
+                            [], 
                             $staff_member['name'], 
                             $termination_date, 
                             $_FILES['documents']
@@ -146,7 +143,7 @@ if ($action === 'create') {
                         }
                     }
                     
-                    // Export termination data to Nextcloud
+                    // Export termination data to RustFS
                     $termination_data = [
                         'employee_name' => $staff_member['name'],
                         'email' => $staff_member['email'],
@@ -164,7 +161,7 @@ if ($action === 'create') {
                     
                     $export_result = exportTerminationData(
                         $pdo, 
-                        $nc_settings, 
+                        [], 
                         $termination_data, 
                         $staff_member['name'], 
                         $termination_date
@@ -173,13 +170,12 @@ if ($action === 'create') {
                     if ($export_result['success'] && empty($nextcloud_folder)) {
                         $nextcloud_folder = $export_result['folder_path'];
                     }
-                }
             } catch (Exception $nc_error) {
-                ErrorLogger::error("Nextcloud upload error: " . $nc_error->getMessage());
-                // Continue without Nextcloud - not critical
+                ErrorLogger::error("Document upload error: " . $nc_error->getMessage());
+                // Continue without upload - not critical
             }
             
-            // Update termination record with Nextcloud folder path
+            // Update termination record with cloud folder path
             if ($nextcloud_folder) {
                 $update_stmt = $pdo->prepare("UPDATE employee_terminations SET nextcloud_folder = ? WHERE id = ?");
                 $update_stmt->execute([$nextcloud_folder, $termination_id]);

@@ -107,9 +107,6 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
     <a href="?page=system_tools&tab=smtp" class="page-tab <?php echo $activeTab === 'smtp' ? 'active' : ''; ?>">
         <i class="fas fa-envelope"></i> SMTP
     </a>
-    <a href="?page=system_tools&tab=nextcloud" class="page-tab <?php echo $activeTab === 'nextcloud' ? 'active' : ''; ?>">
-        <i class="fas fa-cloud"></i> Nextcloud
-    </a>
     <a href="?page=system_tools&tab=rustfs" class="page-tab <?php echo $activeTab === 'rustfs' ? 'active' : ''; ?>">
         <i class="fas fa-box-open"></i> RustFS Storage
     </a>
@@ -685,325 +682,6 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
         </div>
     </div>
 
-    <!-- Nextcloud Integration Tab -->
-    <div class="tab-content <?php echo $activeTab === 'nextcloud' ? 'active' : ''; ?>" id="nextcloud-tab">
-        <!-- Primary Server Card -->
-        <div class="card">
-            <div class="card-header">
-                <h3><i class="fas fa-cloud"></i> Primary Nextcloud Server</h3>
-                <span class="badge badge-primary">Active</span>
-            </div>
-            <div class="card-body">
-                <div class="integration-status <?php echo !empty($settings['nextcloud_url']) ? 'connected' : 'disconnected'; ?>">
-                    <div class="status-icon">
-                        <i class="fas <?php echo !empty($settings['nextcloud_url']) ? 'fa-check-circle' : 'fa-times-circle'; ?>"></i>
-                    </div>
-                    <div class="status-info">
-                        <h4><?php echo !empty($settings['nextcloud_url']) ? 'Connected to Primary Server' : 'Not Connected'; ?></h4>
-                        <p><?php echo !empty($settings['nextcloud_url']) ? htmlspecialchars($settings['nextcloud_url']) : 'Configure Nextcloud settings to enable file sync'; ?></p>
-                    </div>
-                </div>
-                
-                <form id="nextcloud-form" method="POST" action="process_settings.php" data-form-type="nextcloud">
-                    <?php echo csrfTokenInput(); ?>
-                    <input type="hidden" name="action" value="update_nextcloud">
-                    <input type="hidden" name="redirect_page" value="system_tools">
-                    <div class="settings-list">
-                        <div class="setting-item">
-                            <div class="setting-info">
-                                <h4>Nextcloud URL</h4>
-                                <p>Your primary Nextcloud server address</p>
-                            </div>
-                            <input type="url" name="nextcloud_url" class="form-input" 
-                                   value="<?php echo htmlspecialchars($settings['nextcloud_url'] ?? ''); ?>"
-                                   placeholder="https://cloud.example.com">
-                        </div>
-                        <div class="setting-item">
-                            <div class="setting-info">
-                                <h4>Username</h4>
-                                <p>Nextcloud account username</p>
-                            </div>
-                            <input type="text" name="nextcloud_username" class="form-input" 
-                                   value="<?php echo htmlspecialchars($settings['nextcloud_username'] ?? ''); ?>"
-                                   placeholder="admin">
-                        </div>
-                        <div class="setting-item">
-                            <div class="setting-info">
-                                <h4>App Password</h4>
-                                <p>App-specific password (recommended over main password)<?php echo !empty($settings['nextcloud_password']) ? ' (currently set)' : ''; ?></p>
-                            </div>
-                            <input type="password" name="nextcloud_password" class="form-input" 
-                                   placeholder="<?php echo !empty($settings['nextcloud_password']) ? 'Leave blank to keep current password' : 'Enter app password'; ?>">
-                        </div>
-                        <div class="setting-item">
-                            <div class="setting-info">
-                                <h4>Enable Auto-Sync</h4>
-                                <p>Automatically sync backups and uploads</p>
-                            </div>
-                            <label class="toggle-switch">
-                                <input type="checkbox" name="nextcloud_auto_sync" 
-                                       <?php echo !empty($settings['nextcloud_auto_sync']) ? 'checked' : ''; ?>
-                                       data-action="toggle-setting">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <!-- Directory Configuration -->
-                    <div class="sync-options">
-                        <h4><i class="fas fa-folder-tree"></i> Directory Configuration</h4>
-                        <p class="help-text" style="margin-bottom: 16px;">Configure the Nextcloud directory path for each file type</p>
-                        <div class="settings-list">
-                            <div class="setting-item">
-                                <div class="setting-info">
-                                    <h4><i class="fas fa-database" style="color: #8B5CF6; margin-right: 8px;"></i>Backups Directory</h4>
-                                    <p>Database backups storage path</p>
-                                </div>
-                                <input type="text" name="nextcloud_backups_dir" class="form-input" 
-                                       value="<?php echo htmlspecialchars($settings['nextcloud_backups_dir'] ?? '/Backups'); ?>"
-                                       placeholder="/Backups">
-                            </div>
-                            <div class="setting-item">
-                                <div class="setting-info">
-                                    <h4><i class="fas fa-video" style="color: #10b981; margin-right: 8px;"></i>Videos Directory</h4>
-                                    <p>Video uploads storage path</p>
-                                </div>
-                                <input type="text" name="nextcloud_videos_dir" class="form-input" 
-                                       value="<?php echo htmlspecialchars($settings['nextcloud_videos_dir'] ?? '/Videos'); ?>"
-                                       placeholder="/Videos">
-                            </div>
-                            <div class="setting-item">
-                                <div class="setting-info">
-                                    <h4><i class="fas fa-receipt" style="color: #f59e0b; margin-right: 8px;"></i>Receipts Directory</h4>
-                                    <p>Scanned receipts storage path</p>
-                                </div>
-                                <input type="text" name="nextcloud_receipts_dir" class="form-input" 
-                                       value="<?php echo htmlspecialchars($settings['nextcloud_receipts_dir'] ?? '/Receipts'); ?>"
-                                       placeholder="/Receipts">
-                            </div>
-                            <div class="setting-item">
-                                <div class="setting-info">
-                                    <h4><i class="fas fa-file-alt" style="color: #3b82f6; margin-right: 8px;"></i>Documents Directory</h4>
-                                    <p>General documents storage path</p>
-                                </div>
-                                <input type="text" name="nextcloud_documents_dir" class="form-input" 
-                                       value="<?php echo htmlspecialchars($settings['nextcloud_documents_dir'] ?? '/Documents'); ?>"
-                                       placeholder="/Documents">
-                            </div>
-                            <div class="setting-item">
-                                <div class="setting-info">
-                                    <h4><i class="fas fa-users-cog" style="color: #ec4899; margin-right: 8px;"></i>HR Directory</h4>
-                                    <p>Human Resources files storage path</p>
-                                </div>
-                                <input type="text" name="nextcloud_hr_dir" class="form-input" 
-                                       value="<?php echo htmlspecialchars($settings['nextcloud_hr_dir'] ?? '/HR'); ?>"
-                                       placeholder="/HR">
-                            </div>
-                            <div class="setting-item">
-                                <div class="setting-info">
-                                    <h4><i class="fas fa-user-times" style="color: #ef4444; margin-right: 8px;"></i>Terminations Directory</h4>
-                                    <p>Staff termination documents (organized by Year/Month/StaffName)</p>
-                                </div>
-                                <input type="text" name="nextcloud_terminations_dir" class="form-input" 
-                                       value="<?php echo htmlspecialchars($settings['nextcloud_terminations_dir'] ?? '/HR/Terminations'); ?>"
-                                       placeholder="/HR/Terminations">
-                            </div>
-                            <div class="setting-item">
-                                <div class="setting-info">
-                                    <h4><i class="fas fa-file-contract" style="color: #f59e0b; margin-right: 8px;"></i>Contracts Directory</h4>
-                                    <p>Recurring expense contracts and insurance documents (organized by Company/ContractType_Date)</p>
-                                </div>
-                                <input type="text" name="nextcloud_contracts_dir" class="form-input" 
-                                       value="<?php echo htmlspecialchars($settings['nextcloud_contracts_dir'] ?? '/accounting/contracts'); ?>"
-                                       placeholder="/accounting/contracts">
-                            </div>
-                            <div class="setting-item">
-                                <div class="setting-info">
-                                    <h4><i class="fas fa-image" style="color: #6366f1; margin-right: 8px;"></i>Images Directory</h4>
-                                    <p>Profile images and evaluation media storage path (persistent across updates)</p>
-                                </div>
-                                <input type="text" name="nextcloud_images_dir" class="form-input" 
-                                       value="<?php echo htmlspecialchars($settings['nextcloud_images_dir'] ?? '/Images'); ?>"
-                                       placeholder="/Images">
-                            </div>
-                            <div class="setting-item">
-                                <div class="setting-info">
-                                    <h4><i class="fas fa-hdd" style="color: #10b981; margin-right: 8px;"></i>Persistent Local Storage</h4>
-                                    <p>Images are automatically saved to a folder outside the web root that persists across updates. Same folder structure as Nextcloud for easy restoration.</p>
-                                </div>
-                                <input type="text" name="nextcloud_persistent_path" class="form-input"
-                                       value="<?php echo htmlspecialchars($settings['nextcloud_persistent_path'] ?? (dirname(dirname(__DIR__)) . '/persistent_uploads')); ?>"
-                                       placeholder="<?php echo htmlspecialchars(dirname(dirname(__DIR__)) . '/persistent_uploads'); ?>">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Sync Options -->
-                    <div class="sync-options" style="margin-top: 24px;">
-                        <h4><i class="fas fa-check-double"></i> Sync Options</h4>
-                        <p class="help-text" style="margin-bottom: 16px;">Select which content types to sync to Nextcloud</p>
-                        <div class="checkbox-grid">
-                            <label class="checkbox-item">
-                                <input type="checkbox" name="sync_backups" 
-                                       <?php echo ($settings['sync_backups'] ?? true) ? 'checked' : ''; ?>>
-                                <span>Database Backups</span>
-                            </label>
-                            <label class="checkbox-item">
-                                <input type="checkbox" name="sync_videos" 
-                                       <?php echo ($settings['sync_videos'] ?? true) ? 'checked' : ''; ?>>
-                                <span>Video Uploads</span>
-                            </label>
-                            <label class="checkbox-item">
-                                <input type="checkbox" name="sync_receipts" 
-                                       <?php echo ($settings['sync_receipts'] ?? true) ? 'checked' : ''; ?>>
-                                <span>Receipt Scans</span>
-                            </label>
-                            <label class="checkbox-item">
-                                <input type="checkbox" name="sync_documents" 
-                                       <?php echo ($settings['sync_documents'] ?? true) ? 'checked' : ''; ?>>
-                                <span>Documents</span>
-                            </label>
-                            <label class="checkbox-item">
-                                <input type="checkbox" name="sync_hr" 
-                                       <?php echo ($settings['sync_hr'] ?? true) ? 'checked' : ''; ?>>
-                                <span>HR Files</span>
-                            </label>
-                            <label class="checkbox-item">
-                                <input type="checkbox" name="sync_terminations" 
-                                       <?php echo ($settings['sync_terminations'] ?? true) ? 'checked' : ''; ?>>
-                                <span>Termination Documents</span>
-                            </label>
-                            <label class="checkbox-item">
-                                <input type="checkbox" name="sync_contracts" 
-                                       <?php echo ($settings['sync_contracts'] ?? true) ? 'checked' : ''; ?>>
-                                <span>Contract Documents</span>
-                            </label>
-                            <label class="checkbox-item">
-                                <input type="checkbox" name="sync_images" 
-                                       <?php echo ($settings['sync_images'] ?? true) ? 'checked' : ''; ?>>
-                                <span>Images (Profiles &amp; Evaluations)</span>
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <div class="form-actions">
-                        <button type="button" class="btn btn-secondary" onclick="testNextcloudConnection('primary')">
-                            <i class="fas fa-vial"></i> Test Connection
-                        </button>
-                        <button type="button" class="btn btn-secondary" onclick="syncNow()">
-                            <i class="fas fa-sync"></i> Sync Now
-                        </button>
-                        <button type="submit" class="btn btn-primary" data-action="save">
-                            <i class="fas fa-save"></i> Save Settings
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-        
-        <!-- Backup Server Card -->
-        <div class="card" style="margin-top: 24px;">
-            <div class="card-header">
-                <h3><i class="fas fa-cloud-upload-alt"></i> Backup Nextcloud Server (Redundancy)</h3>
-                <span class="badge badge-secondary">Standby</span>
-            </div>
-            <div class="card-body">
-                <div class="info-box" style="margin-bottom: 24px;">
-                    <i class="fas fa-info-circle"></i>
-                    <div>
-                        <p><strong>Redundancy Configuration:</strong> The backup server receives periodic copies of all files from the primary. If the primary becomes unavailable for 5 minutes, the system automatically fails over to the backup server and promotes it to primary. When the original primary comes back online, files saved during the outage are synced back to it.</p>
-                    </div>
-                </div>
-                
-                <div class="integration-status <?php echo !empty($settings['nextcloud_backup_url']) ? 'connected' : 'disconnected'; ?>">
-                    <div class="status-icon">
-                        <i class="fas <?php echo !empty($settings['nextcloud_backup_url']) ? 'fa-check-circle' : 'fa-times-circle'; ?>"></i>
-                    </div>
-                    <div class="status-info">
-                        <h4><?php echo !empty($settings['nextcloud_backup_url']) ? 'Backup Server Connected' : 'Backup Server Not Configured'; ?></h4>
-                        <p><?php echo !empty($settings['nextcloud_backup_url']) ? htmlspecialchars($settings['nextcloud_backup_url']) : 'Configure backup server for redundancy'; ?></p>
-                    </div>
-                </div>
-                
-                <form id="nextcloud-backup-form" method="POST" action="process_settings.php" data-form-type="nextcloud-backup">
-                    <?php echo csrfTokenInput(); ?>
-                    <input type="hidden" name="action" value="update_nextcloud_backup">
-                    <input type="hidden" name="redirect_page" value="system_tools">
-                    <div class="settings-list">
-                        <div class="setting-item">
-                            <div class="setting-info">
-                                <h4>Enable Backup Server</h4>
-                                <p>Activate redundant Nextcloud server for failover</p>
-                            </div>
-                            <label class="toggle-switch">
-                                <input type="checkbox" name="nextcloud_backup_enabled" 
-                                       <?php echo !empty($settings['nextcloud_backup_enabled']) ? 'checked' : ''; ?>
-                                       data-action="toggle-setting">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                        <div class="setting-item">
-                            <div class="setting-info">
-                                <h4>Backup Server URL</h4>
-                                <p>Your backup Nextcloud server address</p>
-                            </div>
-                            <input type="url" name="nextcloud_backup_url" class="form-input" 
-                                   value="<?php echo htmlspecialchars($settings['nextcloud_backup_url'] ?? ''); ?>"
-                                   placeholder="https://backup-cloud.example.com">
-                        </div>
-                        <div class="setting-item">
-                            <div class="setting-info">
-                                <h4>Username</h4>
-                                <p>Backup server account username</p>
-                            </div>
-                            <input type="text" name="nextcloud_backup_username" class="form-input" 
-                                   value="<?php echo htmlspecialchars($settings['nextcloud_backup_username'] ?? ''); ?>"
-                                   placeholder="admin">
-                        </div>
-                        <div class="setting-item">
-                            <div class="setting-info">
-                                <h4>App Password</h4>
-                                <p>Backup server app-specific password<?php echo !empty($settings['nextcloud_backup_password']) ? ' (currently set)' : ''; ?></p>
-                            </div>
-                            <input type="password" name="nextcloud_backup_password" class="form-input" 
-                                   placeholder="<?php echo !empty($settings['nextcloud_backup_password']) ? 'Leave blank to keep current password' : 'Enter app password'; ?>">
-                        </div>
-                        <div class="setting-item">
-                            <div class="setting-info">
-                                <h4>Failover Timeout (seconds)</h4>
-                                <p>Time to wait before failing over to backup (default: 300 = 5 minutes)</p>
-                            </div>
-                            <input type="number" name="nextcloud_failover_timeout" class="form-input" 
-                                   value="<?php echo htmlspecialchars($settings['nextcloud_failover_timeout'] ?? '300'); ?>"
-                                   placeholder="300" min="60" max="3600">
-                        </div>
-                        <div class="setting-item">
-                            <div class="setting-info">
-                                <h4>Sync Interval (minutes)</h4>
-                                <p>How often to sync files from primary to backup</p>
-                            </div>
-                            <input type="number" name="nextcloud_sync_interval" class="form-input" 
-                                   value="<?php echo htmlspecialchars($settings['nextcloud_sync_interval'] ?? '60'); ?>"
-                                   placeholder="60" min="5" max="1440">
-                        </div>
-                    </div>
-                    
-                    <div class="form-actions">
-                        <button type="button" class="btn btn-secondary" onclick="testNextcloudConnection('backup')">
-                            <i class="fas fa-vial"></i> Test Backup Connection
-                        </button>
-                        <button type="button" class="btn btn-secondary" onclick="syncToBackup()">
-                            <i class="fas fa-sync"></i> Sync to Backup Now
-                        </button>
-                        <button type="submit" class="btn btn-primary" data-action="save">
-                            <i class="fas fa-save"></i> Save Backup Settings
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
     <!-- Paperless-NGX Tab -->
     <div class="tab-content <?php echo $activeTab === 'paperless' ? 'active' : ''; ?>" id="paperless-tab">
         <div class="card">
@@ -1014,19 +692,6 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                 </span>
             </div>
             <div class="card-body">
-                <!-- Info Box: Paperless-NGX vs Nextcloud -->
-                <div class="info-box" style="margin-bottom: 24px;">
-                    <i class="fas fa-info-circle"></i>
-                    <div>
-                        <p><strong>Paperless-NGX vs Nextcloud for Document Storage:</strong></p>
-                        <ul style="margin: 8px 0; padding-left: 20px; color: var(--text-dim);">
-                            <li><strong>Paperless-NGX</strong> — Purpose-built document management with <em>built-in OCR</em>, automatic tagging, full-text search, and smart categorization. Ideal for receipt/invoice processing. Handles all file types including PDFs natively. Stores documents in its own database with metadata.</li>
-                            <li><strong>Nextcloud</strong> — General-purpose file sync &amp; share platform. Great for backups, videos, and file collaboration. Better suited as a file storage backend for non-document files.</li>
-                        </ul>
-                        <p style="color: var(--text-dim);"><strong>Recommendation:</strong> Use <em>Paperless-NGX for receipt/document OCR</em> and <em>Nextcloud for general file storage</em> (backups, videos, HR files).</p>
-                    </div>
-                </div>
-
                 <div class="integration-status <?php echo !empty($settings['paperless_url']) ? 'connected' : 'disconnected'; ?>">
                     <div class="status-icon">
                         <i class="fas <?php echo !empty($settings['paperless_url']) ? 'fa-check-circle' : 'fa-times-circle'; ?>"></i>
@@ -1067,18 +732,6 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                             <label class="toggle-switch">
                                 <input type="checkbox" name="paperless_ocr_enabled"
                                        <?php echo !empty($settings['paperless_ocr_enabled']) ? 'checked' : ''; ?>
-                                       data-action="toggle-setting">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                        <div class="setting-item">
-                            <div class="setting-info">
-                                <h4>Save to Both Locations</h4>
-                                <p>Save all documents (receipts, contracts, HR, terminations) to both Paperless-NGX and Nextcloud. Files are tagged by type in Paperless-NGX.</p>
-                            </div>
-                            <label class="toggle-switch">
-                                <input type="checkbox" name="paperless_store_documents"
-                                       <?php echo !empty($settings['paperless_store_documents']) ? 'checked' : ''; ?>
                                        data-action="toggle-setting">
                                 <span class="toggle-slider"></span>
                             </label>
@@ -3784,39 +3437,7 @@ function runClearCache(btn) {
     });
 }
 
-// Nextcloud functions
-function testNextcloudConnection(serverType = 'primary') {
-    const btn = event.target.closest('button');
-    const originalText = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
-    
-    const formId = serverType === 'backup' ? 'nextcloud-backup-form' : 'nextcloud-form';
-    const formData = new FormData(document.getElementById(formId));
-    formData.append('action', serverType === 'backup' ? 'test_nextcloud_backup' : 'test_nextcloud');
-    
-    fetch('process_settings.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-        
-        if (data.success) {
-            alert('Success: Nextcloud Connection Successful!\n\n' + (data.message || 'Connected successfully.'));
-        } else {
-            alert('Error: Nextcloud Connection Failed\n\n' + (data.message || 'Could not connect to server'));
-        }
-    })
-    .catch(error => {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-        alert('Error testing Nextcloud connection');
-        console.error('Error:', error);
-    });
-}
+
 
 function testRustFSConnection() {
     const btn = event.target.closest('button');
@@ -3846,40 +3467,6 @@ function testRustFSConnection() {
         btn.disabled = false;
         btn.innerHTML = originalText;
         alert('Error testing RustFS connection');
-        console.error('Error:', error);
-    });
-}
-
-function syncToBackup() {
-    if (!confirm('Sync all files from primary to backup server? This may take some time.')) return;
-    
-    const btn = event.target.closest('button');
-    const originalText = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Syncing...';
-    
-    const formData = new FormData(document.getElementById('nextcloud-backup-form'));
-    formData.append('action', 'sync_to_backup');
-    
-    fetch('process_settings.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-        
-        if (data.success) {
-            alert('Success: Sync Completed!\n\n' + (data.message || 'Files synced to backup server.'));
-        } else {
-            alert('Error: Sync Failed\n\n' + (data.message || 'Could not sync files'));
-        }
-    })
-    .catch(error => {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-        alert('Error syncing files');
         console.error('Error:', error);
     });
 }
@@ -5393,41 +4980,6 @@ function testSmtpConnection() {
         btn.innerHTML = originalText;
         btn.disabled = false;
         alert('Error testing SMTP connection');
-        console.error('Error:', error);
-    });
-}
-
-// Note: testNextcloudConnection is defined in the primary script block above (supports both primary and backup)
-
-// Sync Now
-function syncNow() {
-    const btn = event.target;
-    const originalText = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Syncing...';
-    btn.disabled = true;
-    
-    const formData = new FormData(document.getElementById('nextcloud-form'));
-    formData.append('action', 'sync_nextcloud');
-    
-    fetch('process_settings.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        btn.innerHTML = originalText;
-        btn.disabled = false;
-        
-        if (data.success) {
-            alert('Success: Sync Completed!\n\n' + (data.message || 'Files synced successfully'));
-        } else {
-            alert('Error: Sync Failed\n\n' + (data.message || 'Could not sync files'));
-        }
-    })
-    .catch(error => {
-        btn.innerHTML = originalText;
-        btn.disabled = false;
-        alert('Error syncing files');
         console.error('Error:', error);
     });
 }

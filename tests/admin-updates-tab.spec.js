@@ -203,7 +203,7 @@ test.describe('GitHub updater class capabilities', () => {
     const content = readFile('lib/github_updater.php');
     expect(content).toContain("'db_config.php'");
     expect(content).toContain("'uploads/'");
-    expect(content).toContain("'.nextcloud_key'");
+    expect(content).toContain("'.credential_key'");
     expect(content).toContain("'.env'");
   });
 });

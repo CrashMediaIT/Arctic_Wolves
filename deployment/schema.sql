@@ -753,7 +753,7 @@ CREATE TABLE IF NOT EXISTS `backup_jobs` (
     `name` VARCHAR(255) NOT NULL,
     `schedule` VARCHAR(50) NOT NULL,
     `backup_type` ENUM('full', 'incremental', 'schema_only', 'data_only') DEFAULT 'full',
-    `destination_type` ENUM('local', 'nextcloud', 'smb', 'ftp', 's3') DEFAULT 'local',
+    `destination_type` ENUM('local', 'smb', 'ftp', 's3') DEFAULT 's3',
     `nextcloud_folder` VARCHAR(255) DEFAULT NULL,
     `smb_path` VARCHAR(255) DEFAULT NULL,
     `smb_username` VARCHAR(100) DEFAULT NULL,
@@ -806,7 +806,7 @@ CREATE TABLE IF NOT EXISTS `bookings` (
     INDEX `idx_session` (`session_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Nextcloud receipt storage tracking
+-- Cloud receipt storage tracking
 CREATE TABLE IF NOT EXISTS `cloud_receipts` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `expense_id` INT DEFAULT NULL,
