@@ -35,8 +35,9 @@ test.describe('Login Intent - session_id Redirect', () => {
     expect(sessionIdMatches.length).toBeGreaterThanOrEqual(2);
   });
 
-  test('login.php uses intval() to sanitize session_id in redirect', () => {
+  test('login.php uses !empty() and intval() to safely check and sanitize session_id in redirect', () => {
     const content = readFile('login.php');
+    expect(content).toContain("!empty($intent['session_id'])");
     expect(content).toContain("intval($intent['session_id'])");
   });
 
@@ -59,8 +60,9 @@ test.describe('Register Intent - session_id Redirect', () => {
     expect(content).toContain("dashboard.php?page=booking&session_id=");
   });
 
-  test('register.php uses intval() to sanitize session_id in redirect', () => {
+  test('register.php uses !empty() and intval() to safely check and sanitize session_id in redirect', () => {
     const content = readFile('register.php');
+    expect(content).toContain("!empty($intent['session_id'])");
     expect(content).toContain("intval($intent['session_id'])");
   });
 
