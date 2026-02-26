@@ -141,7 +141,7 @@ try {
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>">
             <input type="hidden" name="action" value="athlete_upload_video">
             <input type="hidden" name="coach_id" value="<?= (int)$assigned_coach_id ?>">
-            <input type="hidden" name="MAX_FILE_SIZE" value="10737418240">
+            <input type="hidden" name="MAX_FILE_SIZE" value="10737418240"> <!-- 10GB in bytes -->
             
             <div class="form-row">
                 <div class="form-group">
