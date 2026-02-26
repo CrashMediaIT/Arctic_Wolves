@@ -4,6 +4,7 @@
  * Point of Sale interface for front desk staff and admins
  * Integrated with Stripe Terminal (bbpos wisepos e)
  */
+require_once __DIR__ . '/../lib/image_helper.php';
 
 // Check access - require authentication in dashboard context
 if (!isset($_SESSION['user_id']) || !$canAccessPOS) {
@@ -859,7 +860,7 @@ try {
                      onclick="<?= $inStock ? 'selectProduct(this)' : '' ?>">
                     <div class="pos-product-image">
                         <?php if ($product['image_url']): ?>
-                            <img src="<?= htmlspecialchars($product['image_url']) ?>" alt="<?= htmlspecialchars($product['name']) ?>">
+                            <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $product['image_url'])) ?>" alt="<?= htmlspecialchars($product['name']) ?>">
                         <?php else: ?>
                             <i class="fas fa-tshirt"></i>
                         <?php endif; ?>

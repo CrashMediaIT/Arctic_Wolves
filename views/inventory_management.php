@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../lib/image_helper.php';
 /**
  * Inventory Management View
  * In-store and warehouse inventory tracking, incoming shipments, and outgoing orders
@@ -396,7 +397,7 @@ if ($active_tab === 'outgoing') {
                             <td>
                                 <div style="display: flex; align-items: center; gap: 10px;">
                                     <?php if (!empty($product['image_url'])): ?>
-                                        <img src="<?= htmlspecialchars($product['image_url']) ?>" alt="" class="inv-product-img">
+                                        <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $product['image_url'])) ?>" alt="" class="inv-product-img">
                                     <?php endif; ?>
                                     <span style="font-weight: 600;"><?= htmlspecialchars($product['name']) ?></span>
                                 </div>
@@ -478,7 +479,7 @@ if ($active_tab === 'outgoing') {
                             <td>
                                 <div style="display: flex; align-items: center; gap: 10px;">
                                     <?php if (!empty($product['image_url'])): ?>
-                                        <img src="<?= htmlspecialchars($product['image_url']) ?>" alt="" class="inv-product-img">
+                                        <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $product['image_url'])) ?>" alt="" class="inv-product-img">
                                     <?php endif; ?>
                                     <span style="font-weight: 600;"><?= htmlspecialchars($product['name']) ?></span>
                                 </div>

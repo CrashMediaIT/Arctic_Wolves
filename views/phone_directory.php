@@ -1,5 +1,6 @@
 <!-- Phone Directory View -->
 <?php
+require_once __DIR__ . '/../lib/image_helper.php';
 /**
  * Phone Directory
  * Lists staff members with name, job title, extension, DID, and email.
@@ -130,8 +131,8 @@ try {
                                 <td>
                                     <div class="user-cell">
                                         <?php
-                                        $profile_img = $du['profile_image'] ?? '';
-                                        $is_valid_image = !empty($profile_img) && preg_match('#^https?://#', $profile_img);
+                                        $profile_img = resolveRustfsUrl($pdo, $du['profile_image'] ?? '');
+                                        $is_valid_image = !empty($profile_img) && (preg_match('#^https?://#', $profile_img) || strpos($profile_img, 'api/media.php') !== false);
                                         ?>
                                         <?php if ($is_valid_image): ?>
                                             <img src="<?php echo htmlspecialchars($profile_img); ?>" alt="Profile" class="user-avatar-img" style="width: 32px; height: 32px; border-radius: 50%;">

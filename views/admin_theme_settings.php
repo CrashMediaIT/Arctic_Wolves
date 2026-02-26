@@ -5,6 +5,7 @@
  */
 
 require_once __DIR__ . '/../security.php';
+require_once __DIR__ . '/../lib/image_helper.php';
 
 // Check if user is admin
 if ($user_role !== 'admin') {
@@ -46,12 +47,12 @@ $defaults = [
 
 $colors = array_merge($defaults, $theme_colors);
 
-// Get branding settings
-$logo_url = $theme_colors['logo_url'] ?? '';
-$center_ice_logo_url = $theme_colors['center_ice_logo_url'] ?? '';
-$bc_front_bg_url_theme = $theme_colors['business_card_front_bg_url'] ?? '';
-$bc_back_bg_url_theme = $theme_colors['business_card_back_bg_url'] ?? '';
-$hero_image_url = $theme_colors['hero_image_url'] ?? '';
+// Get branding settings — resolve through media proxy for browser access
+$logo_url = resolveRustfsUrl($pdo, $theme_colors['logo_url'] ?? '');
+$center_ice_logo_url = resolveRustfsUrl($pdo, $theme_colors['center_ice_logo_url'] ?? '');
+$bc_front_bg_url_theme = resolveRustfsUrl($pdo, $theme_colors['business_card_front_bg_url'] ?? '');
+$bc_back_bg_url_theme = resolveRustfsUrl($pdo, $theme_colors['business_card_back_bg_url'] ?? '');
+$hero_image_url = resolveRustfsUrl($pdo, $theme_colors['hero_image_url'] ?? '');
 $hero_title = $theme_colors['hero_title'] ?? 'Arctic Wolves Player Development';
 $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-ice training protocols designed for competitive athletes seeking elite performance levels.';
 ?>
@@ -1277,7 +1278,7 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
                         <tr>
                             <td>
                                 <?php if (!empty($program['image_url'])): ?>
-                                    <img src="<?= htmlspecialchars($program['image_url']) ?>" alt="" class="program-image-thumb">
+                                    <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $program['image_url'])) ?>" alt="" class="program-image-thumb">
                                 <?php else: ?>
                                     <i class="fas fa-image" style="font-size: 24px; color: #1e293b;"></i>
                                 <?php endif; ?>

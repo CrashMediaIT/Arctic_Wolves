@@ -1,5 +1,6 @@
 <!-- View Practice Plan - In-depth Practice Plan View -->
 <?php
+require_once __DIR__ . '/../lib/image_helper.php';
 $planId = $_GET['id'] ?? null;
 $isShared = isset($_GET['shared']);
 $plan = null;
@@ -12,7 +13,7 @@ try {
     $logoStmt->execute();
     $logoResult = $logoStmt->fetch(PDO::FETCH_ASSOC);
     if ($logoResult && !empty($logoResult['setting_value'])) {
-        $centerLogoUrl = $logoResult['setting_value'];
+        $centerLogoUrl = resolveRustfsUrl($pdo, $logoResult['setting_value']);
     }
 } catch (PDOException $e) {
     error_log("Error fetching logo URL: " . $e->getMessage());
@@ -248,7 +249,7 @@ $totalDuration = $plan['total_duration'] ?? $calculatedDuration;
                                     <?php if ($hasCustomImage): ?>
                                         <!-- IHS Imported Image -->
                                         <div class="ihs-diagram-container">
-                                            <img src="<?php echo htmlspecialchars($drill['custom_image']); ?>" 
+                                            <img src="<?php echo htmlspecialchars(resolveRustfsUrl($pdo, $drill['custom_image'])); ?>" 
                                                  alt="<?php echo htmlspecialchars($drill['title'] ?? 'Drill'); ?> Diagram" 
                                                  class="ihs-drill-image"
                                                  onerror="this.parentElement.innerHTML='<div class=\'no-diagram\'><i class=\'fas fa-image\'></i><span>Image not available</span></div>'">
@@ -306,7 +307,7 @@ $totalDuration = $plan['total_duration'] ?? $calculatedDuration;
                                     <?php if (!empty($drill['video_url'])): ?>
                                     <div class="drill-detail-section">
                                         <h5><i class="fas fa-video"></i> Video</h5>
-                                        <a href="<?php echo htmlspecialchars($drill['video_url']); ?>" target="_blank" class="btn btn-secondary btn-sm">
+                                        <a href="<?php echo htmlspecialchars(resolveRustfsUrl($pdo, $drill['video_url'])); ?>" target="_blank" class="btn btn-secondary btn-sm">
                                             <i class="fas fa-play-circle"></i> Watch Video
                                         </a>
                                     </div>

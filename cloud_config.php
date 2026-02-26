@@ -222,11 +222,18 @@ function persistUploadedFile($pdo, $source_path, $subfolder, $filename, $local_c
         }
 
         if ($upload['success']) {
+            // Build the browser-facing proxy URL so the file is accessible
+            // even when the RustFS bucket is private.
+            $proxy_url = 'api/media.php?key=' . rawurlencode($object_key);
+
             $result['success'] = true;
-            $result['rustfs_url'] = $upload['url'];
-            $result['persistent_path'] = $upload['url'];
-            // Legacy key name, actually contains RustFS URL
-            $result['nextcloud_path'] = $upload['url'];
+            $result['rustfs_url'] = $proxy_url;
+            $result['persistent_path'] = $proxy_url;
+            // Legacy key — also the proxy URL for views that use this field
+            $result['nextcloud_path'] = $proxy_url;
+            // Keep the direct S3 URL available for server-side operations
+            $result['direct_url'] = $upload['url'];
+            $result['object_key'] = $object_key;
         } else {
             error_log("persistUploadedFile: RustFS upload failed for $subfolder/$filename: " . ($upload['message'] ?? ''));
             $result['success'] = false;

@@ -5,6 +5,7 @@
  */
 
 require_once __DIR__ . '/../security.php';
+require_once __DIR__ . '/../lib/image_helper.php';
 
 // Check if user is logged in
 if (!isset($_SESSION['logged_in'])) {
@@ -573,10 +574,10 @@ foreach ($scheduled_reports as $schedule) {
                     </div>
                     <div class="history-actions">
                         <?php if (!empty($report['file_path'])): ?>
-                        <a href="<?= htmlspecialchars($report['file_path']) ?>" download class="btn-icon" title="Download">
+                        <a href="<?= htmlspecialchars(resolveRustfsUrl($pdo, $report['file_path'])) ?>" download class="btn-icon" title="Download">
                             <i class="fas fa-download"></i>
                         </a>
-                        <a href="<?= htmlspecialchars($report['file_path']) ?>" target="_blank" class="btn-icon" title="View">
+                        <a href="<?= htmlspecialchars(resolveRustfsUrl($pdo, $report['file_path'])) ?>" target="_blank" class="btn-icon" title="View">
                             <i class="fas fa-eye"></i>
                         </a>
                         <?php endif; ?>

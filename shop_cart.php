@@ -5,6 +5,7 @@
  */
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/lib/site_branding.php';
+require_once __DIR__ . '/lib/image_helper.php';
 
 $site_logo_url = getSiteLogoUrl($pdo ?? null);
 $site_favicon_url = getSiteFaviconUrl($pdo ?? null);
@@ -436,7 +437,7 @@ $cartCount = $cartData['item_count'];
                         <div class="cart-item" data-key="<?= htmlspecialchars($cartKey) ?>">
                             <div class="cart-item-image">
                                 <?php if (!empty($item['image_url'])): ?>
-                                    <img src="<?= htmlspecialchars($item['image_url']) ?>" alt="<?= htmlspecialchars($item['name']) ?>">
+                                    <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $item['image_url'])) ?>" alt="<?= htmlspecialchars($item['name']) ?>">
                                 <?php else: ?>
                                     <div class="cart-item-placeholder">
                                         <i class="fas fa-tshirt"></i>

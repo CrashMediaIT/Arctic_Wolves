@@ -1,5 +1,6 @@
 <!-- View Drill - Shareable Drill View -->
 <?php
+require_once __DIR__ . '/../lib/image_helper.php';
 $drillId = $_GET['id'] ?? null;
 $isShared = isset($_GET['shared']);
 $drill = null;
@@ -19,7 +20,7 @@ try {
     $logoStmt->execute();
     $logoResult = $logoStmt->fetch(PDO::FETCH_ASSOC);
     if ($logoResult && !empty($logoResult['logo_url'])) {
-        $centerLogoUrl = $logoResult['logo_url'];
+        $centerLogoUrl = resolveRustfsUrl($pdo, $logoResult['logo_url']);
     }
 } catch (PDOException $e) {
     error_log("Error fetching center ice logo URL: " . $e->getMessage());
@@ -115,7 +116,7 @@ $shareUrl = $protocol . '://' . $host . '/dashboard.php?page=view_drill&id=' . u
                 <?php if (!empty($drill['custom_image'])): ?>
                     <!-- IHS Imported Image -->
                     <div class="ihs-diagram-container">
-                        <img src="<?php echo htmlspecialchars($drill['custom_image']); ?>" alt="<?php echo htmlspecialchars($drill['title']); ?> Diagram" class="ihs-drill-image" id="drill-ihs-image">
+                        <img src="<?php echo htmlspecialchars(resolveRustfsUrl($pdo, $drill['custom_image'])); ?>" alt="<?php echo htmlspecialchars($drill['title']); ?> Diagram" class="ihs-drill-image" id="drill-ihs-image">
                     </div>
                 <?php else: ?>
                     <!-- Drill Draw Canvas -->

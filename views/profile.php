@@ -14,7 +14,10 @@ try {
     $userData = $stmt->fetch(PDO::FETCH_ASSOC);
     $userData = $userData ? decryptUserRow($userData) : $userData;
     
-    // Profile images are served from RustFS URLs — no local restoration needed
+    // Resolve profile image through media proxy for browser access
+    if ($userData && !empty($userData['profile_image'])) {
+        $userData['profile_image'] = resolveRustfsUrl($pdo, $userData['profile_image']);
+    }
     
     // Get additional player data (available for ALL users, not just athletes)
     $playerData = null;

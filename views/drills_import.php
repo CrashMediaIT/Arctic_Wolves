@@ -4,6 +4,7 @@
  * Allows importing drills by pasting an IHS URL
  * Fetches drill images, description, setup, coaching points and progressions
  */
+require_once __DIR__ . '/../lib/image_helper.php';
 
 // Fetch recently imported drills
 $recentImportsQuery = "SELECT d.*, u.first_name, u.last_name 
@@ -204,7 +205,7 @@ $status_messages = [
                         <div class="import-history-item">
                             <div class="import-thumbnail">
                                 <?php if (!empty($import['custom_image'])): ?>
-                                    <img src="<?= htmlspecialchars($import['custom_image']) ?>" alt="Drill image">
+                                    <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $import['custom_image'])) ?>" alt="Drill image">
                                 <?php else: ?>
                                     <i class="fas fa-hockey-puck"></i>
                                 <?php endif; ?>

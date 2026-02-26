@@ -5,6 +5,7 @@
  */
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/lib/site_branding.php';
+require_once __DIR__ . '/lib/image_helper.php';
 
 $site_logo_url = getSiteLogoUrl($pdo ?? null);
 $site_favicon_url = getSiteFaviconUrl($pdo ?? null);
@@ -662,7 +663,7 @@ $cartCount = array_sum(array_column($_SESSION['shop_cart'], 'quantity'));
                         <div class="product-card <?= !$inStock ? 'out-of-stock' : '' ?>">
                             <?php if (!empty($product['image_url'])): ?>
                                 <div class="product-image">
-                                    <img src="<?= htmlspecialchars($product['image_url']) ?>" alt="<?= htmlspecialchars($product['name']) ?>">
+                                    <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $product['image_url'])) ?>" alt="<?= htmlspecialchars($product['name']) ?>">
                                     <?php if (!$inStock): ?>
                                         <span class="product-badge" style="background: #ef4444;">Out of Stock</span>
                                     <?php endif; ?>

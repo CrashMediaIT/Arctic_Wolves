@@ -5,6 +5,7 @@
  */
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/lib/site_branding.php';
+require_once __DIR__ . '/lib/image_helper.php';
 
 $site_logo_url = getSiteLogoUrl($pdo ?? null);
 $site_favicon_url = getSiteFaviconUrl($pdo ?? null);
@@ -649,7 +650,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             <div class="product-gallery">
                 <div class="main-image" id="main-image">
                     <?php if ($product['image_url']): ?>
-                        <img src="<?= htmlspecialchars($product['image_url']) ?>" alt="<?= htmlspecialchars($product['name']) ?>" id="main-image-img">
+                        <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $product['image_url'])) ?>" alt="<?= htmlspecialchars($product['name']) ?>" id="main-image-img">
                     <?php else: ?>
                         <div class="main-image-placeholder">
                             <i class="fas fa-tshirt"></i>
@@ -660,13 +661,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 <?php if (!empty($additionalImages) || $product['image_url']): ?>
                     <div class="thumbnail-gallery">
                         <?php if ($product['image_url']): ?>
-                            <div class="thumbnail active" onclick="changeImage('<?= htmlspecialchars($product['image_url']) ?>', this)">
-                                <img src="<?= htmlspecialchars($product['image_url']) ?>" alt="Main">
+                            <div class="thumbnail active" onclick="changeImage('<?= htmlspecialchars(resolveRustfsUrl($pdo, $product['image_url'])) ?>', this)">
+                                <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $product['image_url'])) ?>" alt="Main">
                             </div>
                         <?php endif; ?>
                         <?php foreach ($additionalImages as $img): ?>
-                            <div class="thumbnail" onclick="changeImage('<?= htmlspecialchars($img['image_url']) ?>', this)">
-                                <img src="<?= htmlspecialchars($img['image_url']) ?>" alt="Product image">
+                            <div class="thumbnail" onclick="changeImage('<?= htmlspecialchars(resolveRustfsUrl($pdo, $img['image_url'])) ?>', this)">
+                                <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $img['image_url'])) ?>" alt="Product image">
                             </div>
                         <?php endforeach; ?>
                     </div>
@@ -756,7 +757,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         <a href="shop_product.php?id=<?= $related['id'] ?>" class="related-card">
                             <?php if ($related['image_url']): ?>
                                 <div class="related-image">
-                                    <img src="<?= htmlspecialchars($related['image_url']) ?>" alt="<?= htmlspecialchars($related['name']) ?>">
+                                    <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $related['image_url'])) ?>" alt="<?= htmlspecialchars($related['name']) ?>">
                                 </div>
                             <?php else: ?>
                                 <div class="related-placeholder">

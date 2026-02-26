@@ -5,6 +5,7 @@
  * 1. Browse drills by skill type with filtering (drill name, coach)
  * 2. View session videos in list or calendar view
  */
+require_once __DIR__ . '/../lib/image_helper.php';
 
 // Get active view (default: drills)
 $active_view = $_GET['view'] ?? 'drills';
@@ -253,7 +254,7 @@ $is_demo_data = false;
                         <div class="video-actions">
                             <button class="btn-primary btn-full" data-action="play-video" 
                                     data-video-id="<?= htmlspecialchars($video['id']) ?>"
-                                    data-video-url="<?= htmlspecialchars($video['video_url'] ?? '') ?>">
+                                    data-video-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['video_url'] ?? '') ?? '') ?>">
                                 <i class="fas fa-play"></i> Watch Video
                             </button>
                         </div>

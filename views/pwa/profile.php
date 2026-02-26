@@ -3,6 +3,7 @@
  * PWA Profile - Mobile-native user profile view
  * Purpose-built for mobile phones.
  */
+require_once __DIR__ . '/../../lib/image_helper.php';
 
 $profile = null;
 try {
@@ -88,7 +89,7 @@ $roleBg = $roleBadgeColors[$profile['role']][1] ?? 'rgba(168,168,184,0.15)';
     <div class="m-profile-hero">
         <div class="m-profile-avatar">
             <?php if (!empty($profile['profile_image'])): ?>
-                <img src="<?= htmlspecialchars($profile['profile_image']) ?>" alt="Profile">
+                <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $profile['profile_image'])) ?>" alt="Profile">
             <?php else: ?>
                 <?= $initials ?>
             <?php endif; ?>

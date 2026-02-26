@@ -3,6 +3,7 @@
  * Game Plan - My Clips View (Athlete Only)
  * Personal clips the athlete is tagged in, with filters and player modal.
  */
+require_once __DIR__ . '/../../lib/image_helper.php';
 
 if ($isAnyCoach) {
     echo '<div class="gp-empty"><i class="fas fa-info-circle"></i><p>This page is for athletes. Visit <a href="/gameplan.php?page=video_review">Video Review</a> to see all clips.</p></div>';
@@ -155,10 +156,10 @@ if (!function_exists('vr_format_duration')) {
 <?php else: ?>
 <div class="gp-grid">
     <?php foreach ($mc_clips as $clip): ?>
-    <div class="gp-card vr-clip-card" data-clip-id="<?= (int)$clip['id'] ?>" data-source="<?= htmlspecialchars($clip['source_path'] ?? '') ?>">
+    <div class="gp-card vr-clip-card" data-clip-id="<?= (int)$clip['id'] ?>" data-source="<?= htmlspecialchars(resolveRustfsUrl($pdo, $clip['source_path'] ?? '') ?? '') ?>">
         <div class="gp-card-thumb">
             <?php if (!empty($clip['thumbnail_path'])): ?>
-            <img src="<?= htmlspecialchars($clip['thumbnail_path']) ?>" alt="" loading="lazy">
+            <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $clip['thumbnail_path'])) ?>" alt="" loading="lazy">
             <?php else: ?>
             <i class="fas fa-play-circle"></i>
             <?php endif; ?>

@@ -3,6 +3,7 @@
  * Game Plan - Film Room View (Coach Only)
  * Three tabs: Upload & Manage / Clip Editor / Multi-Camera
  */
+require_once __DIR__ . '/../../lib/image_helper.php';
 
 if (!$isAnyCoach) {
     echo '<div class="gp-empty"><i class="fas fa-lock"></i><p>Coach access required to use the Film Room.</p></div>';
@@ -332,7 +333,7 @@ if (!function_exists('vr_format_duration')) {
             <p><?= htmlspecialchars($vr_edit_source['filename'] ?? 'Source Video') ?></p>
             <?php if (!empty($vr_edit_source['file_path'])): ?>
             <video id="vrVideoPlayer" controls preload="metadata" style="width:100%;max-height:400px;border-radius:8px;display:none">
-                <source src="<?= htmlspecialchars($vr_edit_source['file_path']) ?>">
+                <source src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $vr_edit_source['file_path'])) ?>">
             </video>
             <?php endif; ?>
             <span class="vr-file-hint"><?= htmlspecialchars(ucfirst($vr_edit_source['camera_angle'] ?? '')) ?> · <?= !empty($vr_edit_source['duration']) ? gmdate('H:i:s', (int)$vr_edit_source['duration']) : 'Unknown duration' ?></span>

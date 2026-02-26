@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../lib/image_helper.php';
 // Determine which tab should be active based on URL parameter
 $activeTab = $_GET['tab'] ?? 'skills';
 $validTabs = ['skills', 'drills', 'merchandise', 'teams', 'locations', 'skill_levels', 'seasons', 'age_groups'];
@@ -394,7 +395,7 @@ try {
                     <div class="category-card <?= !$team['is_active'] ? 'inactive' : '' ?>">
                         <?php if (!empty($team['logo_url'])): ?>
                         <div class="category-card-icon team" style="padding: 0; overflow: hidden;">
-                            <img src="<?= htmlspecialchars($team['logo_url']) ?>" alt="<?= htmlspecialchars($team['name']) ?> logo" style="width: 100%; height: 100%; object-fit: cover; border-radius: inherit;">
+                            <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $team['logo_url'])) ?>" alt="<?= htmlspecialchars($team['name']) ?> logo" style="width: 100%; height: 100%; object-fit: cover; border-radius: inherit;">
                         </div>
                         <?php else: ?>
                         <div class="category-card-icon team">
@@ -522,7 +523,7 @@ try {
                             <?php endif; ?>
                             <?php if ($location['image_url']): ?>
                             <div style="margin-top: 10px;">
-                                <img src="<?= htmlspecialchars($location['image_url']) ?>" alt="Location" style="max-width: 150px; border-radius: 6px;">
+                                <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $location['image_url'])) ?>" alt="Location" style="max-width: 150px; border-radius: 6px;">
                             </div>
                             <?php endif; ?>
                         </div>

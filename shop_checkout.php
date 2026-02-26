@@ -6,6 +6,7 @@
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/lib/site_branding.php';
+require_once __DIR__ . '/lib/image_helper.php';
 
 $site_logo_url = getSiteLogoUrl($pdo ?? null);
 $site_favicon_url = getSiteFaviconUrl($pdo ?? null);
@@ -606,7 +607,7 @@ $stripeConfigured = !empty($stripeSettings['stripe_publishable_key']) && !empty(
                             <div class="order-item">
                                 <div class="order-item-image">
                                     <?php if (!empty($item['image_url'])): ?>
-                                        <img src="<?= htmlspecialchars($item['image_url']) ?>" alt="<?= htmlspecialchars($item['name']) ?>">
+                                        <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $item['image_url'])) ?>" alt="<?= htmlspecialchars($item['name']) ?>">
                                     <?php else: ?>
                                         <div class="order-item-placeholder">
                                             <i class="fas fa-tshirt"></i>

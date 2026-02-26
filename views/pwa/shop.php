@@ -3,6 +3,7 @@
  * PWA Shop - Mobile-native product grid with add-to-cart
  * Purpose-built for mobile phones.
  */
+require_once __DIR__ . '/../../lib/image_helper.php';
 
 if (!isset($_SESSION['shop_cart'])) { $_SESSION['shop_cart'] = []; }
 $shopCartCount = array_sum(array_column($_SESSION['shop_cart'], 'quantity'));
@@ -157,7 +158,7 @@ try {
                 <a href="?page=shop&product_id=<?= (int)$p['id'] ?>" style="text-decoration:none;">
                     <div class="m-product-img">
                         <?php if (!empty($p['image_url'])): ?>
-                            <img src="<?= htmlspecialchars($p['image_url']) ?>" alt="<?= htmlspecialchars($p['name']) ?>">
+                            <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $p['image_url'])) ?>" alt="<?= htmlspecialchars($p['name']) ?>">
                         <?php else: ?>
                             <i class="fas fa-box"></i>
                         <?php endif; ?>
@@ -202,7 +203,7 @@ try {
                 ?>
                 <div class="m-shop-cart-item">
                     <div class="m-shop-cart-item-img">
-                        <?php if (!empty($ci['image_url'])): ?><img src="<?= htmlspecialchars($ci['image_url']) ?>"><?php else: ?><i class="fas fa-box"></i><?php endif; ?>
+                        <?php if (!empty($ci['image_url'])): ?><img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $ci['image_url'])) ?>"><?php else: ?><i class="fas fa-box"></i><?php endif; ?>
                     </div>
                     <div class="m-shop-cart-item-info">
                         <div class="m-shop-cart-item-name"><?= htmlspecialchars($ci['name']) ?></div>

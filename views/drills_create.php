@@ -1,5 +1,6 @@
 <!-- Create/Edit Drill View -->
 <?php
+require_once __DIR__ . '/../lib/image_helper.php';
 $editDrillId = $_GET['edit'] ?? null;
 $editingDrill = null;
 $isEditMode = false;
@@ -19,7 +20,7 @@ try {
     $logoStmt->execute();
     $logoResult = $logoStmt->fetch(PDO::FETCH_ASSOC);
     if ($logoResult && !empty($logoResult['logo_url'])) {
-        $centerLogoUrl = $logoResult['logo_url'];
+        $centerLogoUrl = resolveRustfsUrl($pdo, $logoResult['logo_url']);
     }
 } catch (PDOException $e) {
     error_log("Error fetching center ice logo URL: " . $e->getMessage());

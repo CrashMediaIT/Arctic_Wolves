@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../lib/image_helper.php';
 // Merchandise Products Management View
 // Fetch all merchandise categories for the dropdown
 try {
@@ -200,7 +201,7 @@ $filterCategory = $_GET['category'] ?? '';
                             <!-- Product Image -->
                             <?php if (!empty($product['image_url'])): ?>
                                 <div class="product-image" style="height: 180px; overflow: hidden;">
-                                    <img src="<?= htmlspecialchars($product['image_url']) ?>" alt="<?= htmlspecialchars($product['name']) ?>" style="width: 100%; height: 100%; object-fit: cover;">
+                                    <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $product['image_url'])) ?>" alt="<?= htmlspecialchars($product['name']) ?>" style="width: 100%; height: 100%; object-fit: cover;">
                                 </div>
                             <?php else: ?>
                                 <div class="product-image-placeholder" style="height: 180px; background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%); display: flex; align-items: center; justify-content: center;">

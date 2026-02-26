@@ -5,6 +5,7 @@
  */
 
 require_once __DIR__ . '/../security.php';
+require_once __DIR__ . '/../lib/image_helper.php';
 
 // Check if user has permission to view library
 if (!in_array($user_role, ['health_coach', 'coach', 'coach_plus', 'admin'])) {
@@ -117,7 +118,7 @@ $allAthletes = decryptUserRows($allAthletes);
                         <div class="exercise-card">
                             <?php if ($exercise['image_url']): ?>
                             <div class="exercise-image">
-                                <img src="<?= htmlspecialchars($exercise['image_url']) ?>" alt="<?= htmlspecialchars($exercise['name']) ?>">
+                                <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $exercise['image_url'])) ?>" alt="<?= htmlspecialchars($exercise['name']) ?>">
                             </div>
                             <?php else: ?>
                             <div class="exercise-image placeholder">
@@ -143,8 +144,8 @@ $allAthletes = decryptUserRows($allAthletes);
                                         data-category="<?= htmlspecialchars($exercise['category'] ?? '') ?>"
                                         data-equipment="<?= htmlspecialchars($exercise['equipment_needed'] ?? '') ?>"
                                         data-difficulty="<?= htmlspecialchars($exercise['difficulty_level'] ?? '') ?>"
-                                        data-video="<?= htmlspecialchars($exercise['video_url'] ?? '') ?>"
-                                        data-image="<?= htmlspecialchars($exercise['image_url'] ?? '') ?>">
+                                        data-video="<?= htmlspecialchars(resolveRustfsUrl($pdo, $exercise['video_url'] ?? '')) ?>"
+                                        data-image="<?= htmlspecialchars(resolveRustfsUrl($pdo, $exercise['image_url'] ?? '')) ?>">
                                     <i class="fas fa-edit"></i>
                                 </button>
                                 <button type="button" class="btn-icon btn-icon-danger" title="Delete"

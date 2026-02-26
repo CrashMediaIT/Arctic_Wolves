@@ -1,5 +1,6 @@
 <!-- Admin Business Card Generator View -->
 <?php
+require_once __DIR__ . '/../lib/image_helper.php';
 // Permission check - only admins can access this page
 if (!isset($isAdmin) || !$isAdmin) {
     echo '<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> Access denied. Admin privileges required.</div>';
@@ -18,11 +19,11 @@ try {
     $ts_stmt->execute();
     while ($ts_row = $ts_stmt->fetch(PDO::FETCH_ASSOC)) {
         if ($ts_row['setting_name'] === 'logo_url' && !empty($ts_row['setting_value'])) {
-            $bc_logo_url = $ts_row['setting_value'];
+            $bc_logo_url = resolveRustfsUrl($pdo, $ts_row['setting_value']);
         } elseif ($ts_row['setting_name'] === 'business_card_front_bg_url' && !empty($ts_row['setting_value'])) {
-            $bc_front_bg_url = $ts_row['setting_value'];
+            $bc_front_bg_url = resolveRustfsUrl($pdo, $ts_row['setting_value']);
         } elseif ($ts_row['setting_name'] === 'business_card_back_bg_url' && !empty($ts_row['setting_value'])) {
-            $bc_back_bg_url = $ts_row['setting_value'];
+            $bc_back_bg_url = resolveRustfsUrl($pdo, $ts_row['setting_value']);
         }
     }
 } catch (PDOException $e) {

@@ -1,5 +1,6 @@
 <!-- Admin Users Management View -->
 <?php
+require_once __DIR__ . '/../lib/image_helper.php';
 // Fetch users from database
 try {
     // Get filter values
@@ -344,9 +345,9 @@ foreach ($users as $u) {
                                     <td>
                                         <div class="user-cell">
                                             <?php 
-                                            // Validate profile image path
-                                            $profile_img = $user['profile_image'] ?? '';
-                                            $is_valid_image = !empty($profile_img) && preg_match('#^https?://#', $profile_img);
+                                            // Validate profile image path and resolve through media proxy
+                                            $profile_img = resolveRustfsUrl($pdo, $user['profile_image'] ?? '');
+                                            $is_valid_image = !empty($profile_img) && (preg_match('#^https?://#', $profile_img) || strpos($profile_img, 'api/media.php') !== false);
                                             $user_is_online = !empty($user['is_online']) && $user['is_online'] > 0;
                                             ?>
                                             <div class="avatar-wrapper">
