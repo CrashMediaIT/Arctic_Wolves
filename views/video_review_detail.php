@@ -325,9 +325,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
                 .finally(function() {
                     saveBtn.disabled = false;
-                    saveBtn.innerHTML = isCoach
-                        ? '<i class="fas fa-paper-plane"></i> Submit Review'
-                        : '<i class="fas fa-reply"></i> Send Reply';
+                    if (isCoach) {
+                        var isReviewed = <?= $video['status'] === 'reviewed' ? 'true' : 'false' ?>;
+                        saveBtn.innerHTML = isReviewed
+                            ? '<i class="fas fa-paper-plane"></i> Update Notes'
+                            : '<i class="fas fa-paper-plane"></i> Submit Review';
+                    } else {
+                        saveBtn.innerHTML = '<i class="fas fa-reply"></i> Send Reply';
+                    }
                 });
         });
     }
