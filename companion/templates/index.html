@@ -405,6 +405,50 @@
                             </div>
                         </div>
 
+                        <!-- Node Management -->
+                        <div class="form-section-title">Node Management</div>
+                        <div class="form-hint" style="grid-column:1/-1;margin-bottom:4px;">
+                            Configure master/slave node architecture for distributed transcoding.
+                            The master node receives jobs from the main application and delegates to slave nodes when busy.
+                        </div>
+
+                        <div class="form-group">
+                            <label for="cfg-node-role">Node Role</label>
+                            <select id="cfg-node-role" name="node_role" class="form-input">
+                                <option value="master">Master</option>
+                                <option value="slave">Slave</option>
+                            </select>
+                            <div class="form-hint">Master nodes accept jobs from the main app and can delegate to slaves. Slave nodes only accept delegated jobs.</div>
+                        </div>
+
+                        <div class="form-group full" id="slave-nodes-section">
+                            <label>Slave Nodes</label>
+                            <div id="slave-nodes-list" style="margin-bottom:12px;">
+                                <div style="color:var(--text-dim);font-size:13px;">Loading nodes…</div>
+                            </div>
+                            <div style="background:var(--bg-main);border:1px solid var(--border);border-radius:8px;padding:16px;">
+                                <div style="font-size:12px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">Add Slave Node</div>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                                    <div>
+                                        <label for="new-node-url" style="font-size:11px;color:var(--text-dim);margin-bottom:4px;display:block;">URL</label>
+                                        <input id="new-node-url" type="text" class="form-input" placeholder="http://slave-host:5100">
+                                    </div>
+                                    <div>
+                                        <label for="new-node-name" style="font-size:11px;color:var(--text-dim);margin-bottom:4px;display:block;">Name (optional)</label>
+                                        <input id="new-node-name" type="text" class="form-input" placeholder="Slave 1">
+                                    </div>
+                                    <div>
+                                        <label for="new-node-api-key" style="font-size:11px;color:var(--text-dim);margin-bottom:4px;display:block;">API Key</label>
+                                        <input id="new-node-api-key" type="password" class="form-input" placeholder="Slave node API key" autocomplete="off">
+                                    </div>
+                                    <div style="display:flex;align-items:flex-end;">
+                                        <button type="button" class="btn-primary btn-sm" onclick="addSlaveNode()">Add Node</button>
+                                    </div>
+                                </div>
+                                <div id="add-node-msg" style="font-size:12px;margin-top:8px;"></div>
+                            </div>
+                        </div>
+
                     </div>
 
                     <div class="form-actions">
@@ -576,7 +620,12 @@
                 document.getElementById('cfg-s3-region').value = c.s3_region || '';
                 document.getElementById('cfg-s3-use-ssl').checked = !!c.s3_use_ssl;
                 document.getElementById('cfg-s3-verify-ssl').checked = !!c.s3_verify_ssl;
+
+                // Node role
+                document.getElementById('cfg-node-role').value = c.node_role || 'master';
+                toggleSlaveNodesSection(c.node_role || 'master');
             } catch { /* silently ignore on load failure */ }
+            refreshNodes();
         }
 
         /* --- Save config --- */
@@ -598,6 +647,7 @@
             if (val('cfg-s3-secret-key')) payload.s3_secret_key = val('cfg-s3-secret-key');
             payload.s3_use_ssl = document.getElementById('cfg-s3-use-ssl').checked;
             payload.s3_verify_ssl = document.getElementById('cfg-s3-verify-ssl').checked;
+            payload.node_role = val('cfg-node-role');
 
             try {
                 const res = await fetch(API_BASE + '/api/config', {
@@ -639,6 +689,85 @@
             } catch {
                 alert('Network error while generating API key');
             }
+        }
+
+        /* --- Node Management --- */
+        function toggleSlaveNodesSection(role) {
+            const section = document.getElementById('slave-nodes-section');
+            if (section) section.style.display = (role === 'master') ? '' : 'none';
+        }
+
+        document.getElementById('cfg-node-role').addEventListener('change', function() {
+            toggleSlaveNodesSection(this.value);
+        });
+
+        async function refreshNodes() {
+            try {
+                const res = await fetch(API_BASE + '/api/nodes', { headers: apiHeaders() });
+                if (!res.ok) return;
+                const data = await res.json();
+                const list = document.getElementById('slave-nodes-list');
+                const nodes = data.slave_nodes || [];
+                if (!nodes.length) {
+                    list.innerHTML = '<div style="color:var(--text-dim);font-size:13px;padding:8px 0;">No slave nodes configured. Add a node below to enable distributed transcoding.</div>';
+                    return;
+                }
+                list.innerHTML = '<table class="jobs-table" style="margin-top:0;"><thead><tr>' +
+                    '<th>Name</th><th>URL</th><th>Status</th><th>Jobs</th><th>Actions</th>' +
+                    '</tr></thead><tbody>' + nodes.map(function(n) {
+                        var statusCls = n.online ? (n.busy ? 'warn' : 'ok') : 'error';
+                        var statusText = n.online ? (n.busy ? 'Busy' : 'Available') : 'Offline';
+                        var jobsText = n.online ? (n.active_jobs + ' / ' + n.max_jobs) : '—';
+                        return '<tr>' +
+                            '<td>' + (n.name || '—') + '</td>' +
+                            '<td style="font-size:12px;font-family:monospace;">' + (n.url || '—') + '</td>' +
+                            '<td><span class="status-badge ' + statusCls + '" style="padding:3px 8px;font-size:10px;"><span class="status-dot"></span> ' + statusText + '</span></td>' +
+                            '<td>' + jobsText + '</td>' +
+                            '<td><button class="btn-secondary btn-sm btn-danger" onclick="removeNode(\'' + n.id + '\')">Remove</button></td>' +
+                            '</tr>';
+                    }).join('') + '</tbody></table>';
+            } catch { /* ignore */ }
+        }
+
+        async function addSlaveNode() {
+            var url = document.getElementById('new-node-url').value.trim();
+            var name = document.getElementById('new-node-name').value.trim();
+            var apiKey = document.getElementById('new-node-api-key').value.trim();
+            var msgEl = document.getElementById('add-node-msg');
+            msgEl.textContent = '';
+            if (!url) { msgEl.style.color = '#ef4444'; msgEl.textContent = 'URL is required'; return; }
+            try {
+                var res = await fetch(API_BASE + '/api/nodes', {
+                    method: 'POST', headers: apiHeaders(),
+                    body: JSON.stringify({ url: url, name: name, api_key: apiKey })
+                });
+                var d = await res.json();
+                if (res.ok) {
+                    msgEl.style.color = '#22c55e';
+                    msgEl.textContent = '✓ Node added';
+                    document.getElementById('new-node-url').value = '';
+                    document.getElementById('new-node-name').value = '';
+                    document.getElementById('new-node-api-key').value = '';
+                    refreshNodes();
+                } else {
+                    msgEl.style.color = '#ef4444';
+                    msgEl.textContent = d.error || 'Failed to add node';
+                }
+            } catch {
+                msgEl.style.color = '#ef4444';
+                msgEl.textContent = 'Network error';
+            }
+        }
+
+        async function removeNode(nodeId) {
+            if (!confirm('Remove this slave node?')) return;
+            try {
+                var res = await fetch(API_BASE + '/api/nodes/' + nodeId, {
+                    method: 'DELETE', headers: apiHeaders()
+                });
+                if (res.ok) { refreshNodes(); }
+                else { alert('Failed to remove node'); }
+            } catch { alert('Network error'); }
         }
 
         /* --- Init --- */

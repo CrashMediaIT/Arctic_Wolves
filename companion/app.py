@@ -202,6 +202,21 @@ S3_REGION = _pcfg("s3_region", "us-east-1")
 S3_USE_SSL = _pcfg("s3_use_ssl", "true").lower() in ("true", "1", "yes")
 S3_VERIFY_SSL = _pcfg("s3_verify_ssl", "false").lower() in ("true", "1", "yes")
 
+# Node support — master/slave architecture for distributed transcoding.
+# The master node is what the main application communicates with.  If the
+# master is busy (all job slots occupied) it delegates to a slave node.
+# Slave nodes are registered in the companion Settings UI.
+NODE_ROLE = _pcfg("node_role", "master")  # "master" or "slave"
+
+def _load_slave_nodes() -> list:
+    """Return the list of slave node dicts from persistent config."""
+    raw = _persisted.get("slave_nodes", [])
+    if isinstance(raw, list):
+        return raw
+    return []
+
+SLAVE_NODES: list = _load_slave_nodes()
+
 # Internal constants (not user-configurable)
 FFMPEG_PATH = "ffmpeg"
 FFPROBE_PATH = "ffprobe"
@@ -209,7 +224,7 @@ TEMP_DIR = "/tmp/companion"
 VIDEO_BASE_PATH = "/videos"
 COMPANION_HOST = "0.0.0.0"
 COMPANION_PORT = int(os.getenv("COMPANION_PORT", "5100"))
-VERSION = "1.2.0"
+VERSION = "1.3.0"
 
 Path(TEMP_DIR).mkdir(parents=True, exist_ok=True)
 
@@ -302,6 +317,73 @@ def _require_api_key():
     key = request.headers.get("X-API-Key", "")
     if key != API_KEY:
         return jsonify({"error": "Unauthorized"}), 401
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Node Helpers — master/slave delegation
+# ---------------------------------------------------------------------------
+
+def _is_master_busy() -> bool:
+    """Return True if all concurrent job slots on this node are occupied."""
+    with job_lock:
+        active = sum(1 for j in jobs.values() if j["status"] in ("queued", "running", "downloading", "transcoding", "uploading"))
+    return active >= MAX_CONCURRENT_JOBS
+
+
+def _check_slave_health(node: dict) -> dict:
+    """Probe a slave node's /api/health endpoint and return status info."""
+    url = node.get("url", "").rstrip("/")
+    api_key = node.get("api_key", "")
+    result = {"url": url, "name": node.get("name", ""), "online": False, "busy": True, "active_jobs": 0, "max_jobs": 0}
+    if not url:
+        return result
+    try:
+        headers = {"Accept": "application/json"}
+        if api_key:
+            headers["X-API-Key"] = api_key
+        resp = http_requests.get(url + "/api/health", headers=headers, timeout=5, verify=False)  # noqa: S501
+        if resp.status_code == 200:
+            data = resp.json()
+            result["online"] = data.get("status") == "ok"
+            result["active_jobs"] = data.get("active_jobs", 0)
+            result["max_jobs"] = data.get("max_concurrent_jobs", 1)
+            result["busy"] = result["active_jobs"] >= result["max_jobs"]
+            result["version"] = data.get("version", "")
+    except Exception as exc:
+        logger.debug("Slave health check failed for %s: %s", url, exc)
+    return result
+
+
+def _get_available_slave() -> dict | None:
+    """Return the first slave node that is online and not busy, or None."""
+    for node in SLAVE_NODES:
+        status = _check_slave_health(node)
+        if status["online"] and not status["busy"]:
+            return node
+    return None
+
+
+def _delegate_to_slave(node: dict, data: dict) -> dict | None:
+    """Forward an HLS transcode request to a slave node.
+
+    Returns the slave's response dict on success, or None on failure.
+    """
+    url = node.get("url", "").rstrip("/")
+    api_key = node.get("api_key", "")
+    if not url:
+        return None
+    try:
+        headers = {"Content-Type": "application/json"}
+        if api_key:
+            headers["X-API-Key"] = api_key
+        resp = http_requests.post(url + "/api/hls", json=data, headers=headers, timeout=15, verify=False)  # noqa: S501
+        if resp.status_code in (200, 202):
+            result = resp.json()
+            result["delegated_to"] = url
+            return result
+    except Exception as exc:
+        logger.warning("Failed to delegate HLS job to slave %s: %s", url, exc)
     return None
 
 
@@ -589,8 +671,9 @@ def setup_save():
     # Reload the persisted config now that we have a key
     global _persisted, API_KEY, MAIN_APP_URL, HW_ACCEL, MAX_CONCURRENT_JOBS
     global S3_ENDPOINT, S3_ACCESS_KEY, S3_SECRET_KEY, S3_BUCKET, S3_REGION
-    global S3_USE_SSL, S3_VERIFY_SSL
+    global S3_USE_SSL, S3_VERIFY_SSL, NODE_ROLE, SLAVE_NODES
     _persisted = _load_persistent_config()
+    SLAVE_NODES = _load_slave_nodes()
 
     logger.info("Setup complete — encryption key saved")
     return jsonify({"success": True})
@@ -664,6 +747,8 @@ def health():
         "s3_connected": s3_connected,
         "s3_bucket": S3_BUCKET if s3_configured else None,
         "main_app_url": MAIN_APP_URL or None,
+        "node_role": NODE_ROLE,
+        "slave_node_count": len(SLAVE_NODES),
         "config_encrypted": _get_cipher_key() is not None,
     })
 
@@ -927,6 +1012,8 @@ def get_config():
         "s3_secret_key_set": bool(S3_SECRET_KEY),
         "s3_use_ssl": S3_USE_SSL,
         "s3_verify_ssl": S3_VERIFY_SSL,
+        "node_role": NODE_ROLE,
+        "slave_node_count": len(SLAVE_NODES),
         "config_encrypted": _get_cipher_key() is not None,
         "config_persisted": os.path.isfile(CONFIG_FILE),
     })
@@ -951,7 +1038,7 @@ def update_config():
 
     global API_KEY, MAIN_APP_URL, HW_ACCEL, MAX_CONCURRENT_JOBS
     global S3_ENDPOINT, S3_ACCESS_KEY, S3_SECRET_KEY, S3_BUCKET, S3_REGION
-    global S3_USE_SSL, S3_VERIFY_SSL
+    global S3_USE_SSL, S3_VERIFY_SSL, NODE_ROLE
 
     data = request.get_json(silent=True) or {}
     updated = []
@@ -1007,6 +1094,13 @@ def update_config():
         S3_VERIFY_SSL = str(data["s3_verify_ssl"]).lower() in ("true", "1", "yes")
         updated.append("s3_verify_ssl")
 
+    if "node_role" in data:
+        role = str(data["node_role"]).lower()
+        if role not in ("master", "slave"):
+            return jsonify({"error": "node_role must be 'master' or 'slave'"}), 400
+        NODE_ROLE = role
+        updated.append("node_role")
+
     if not updated:
         return jsonify({"error": "No recognized configuration fields in request"}), 400
 
@@ -1023,6 +1117,8 @@ def update_config():
         "s3_region": S3_REGION,
         "s3_use_ssl": str(S3_USE_SSL).lower(),
         "s3_verify_ssl": str(S3_VERIFY_SSL).lower(),
+        "node_role": NODE_ROLE,
+        "slave_nodes": SLAVE_NODES,
     }
     persisted = _save_persistent_config(cfg)
 
@@ -1056,6 +1152,100 @@ def generate_key():
         "api_key": new_key,
         "message": "Copy this key into the main application's Game Plan Settings → Companion Server → API Key.",
     })
+
+
+# ---------------------------------------------------------------------------
+# Node Management — master/slave distributed transcoding
+# ---------------------------------------------------------------------------
+
+@app.route("/api/nodes", methods=["GET"])
+def list_nodes():
+    """List all configured slave nodes with their current status."""
+    auth_err = _require_api_key()
+    if auth_err:
+        return auth_err
+
+    nodes_status = []
+    for node in SLAVE_NODES:
+        status = _check_slave_health(node)
+        status["id"] = node.get("id", "")
+        nodes_status.append(status)
+
+    return jsonify({
+        "node_role": NODE_ROLE,
+        "slave_nodes": nodes_status,
+    })
+
+
+@app.route("/api/nodes", methods=["POST"])
+def add_node():
+    """Register a new slave node.
+
+    POST JSON body:
+        url:      Base URL of the slave companion server (required)
+        api_key:  API key for the slave node (required)
+        name:     Friendly name for the node (optional)
+    """
+    auth_err = _require_api_key()
+    if auth_err:
+        return auth_err
+
+    global SLAVE_NODES
+
+    data = request.get_json(silent=True) or {}
+    node_url = str(data.get("url", "")).strip().rstrip("/")
+    node_api_key = str(data.get("api_key", "")).strip()
+    node_name = str(data.get("name", "")).strip() or node_url
+
+    if not node_url:
+        return jsonify({"error": "url is required"}), 400
+
+    # Validate URL scheme
+    from urllib.parse import urlparse
+    parsed = urlparse(node_url)
+    if parsed.scheme not in ("http", "https"):
+        return jsonify({"error": "url must use http or https scheme"}), 400
+
+    # Check for duplicate URLs
+    for existing in SLAVE_NODES:
+        if existing.get("url", "").rstrip("/") == node_url:
+            return jsonify({"error": "A node with this URL is already registered"}), 409
+
+    node_id = str(uuid.uuid4())[:8]
+    new_node = {"id": node_id, "url": node_url, "api_key": node_api_key, "name": node_name}
+    SLAVE_NODES.append(new_node)
+
+    # Persist
+    cfg = _load_persistent_config()
+    cfg["slave_nodes"] = SLAVE_NODES
+    _save_persistent_config(cfg)
+
+    logger.info("Slave node added: %s (%s)", node_name, node_url)
+    return jsonify({"success": True, "node": {"id": node_id, "url": node_url, "name": node_name}}), 201
+
+
+@app.route("/api/nodes/<node_id>", methods=["DELETE"])
+def remove_node(node_id):
+    """Remove a slave node by its ID."""
+    auth_err = _require_api_key()
+    if auth_err:
+        return auth_err
+
+    global SLAVE_NODES
+
+    original_len = len(SLAVE_NODES)
+    SLAVE_NODES = [n for n in SLAVE_NODES if n.get("id") != node_id]
+
+    if len(SLAVE_NODES) == original_len:
+        return jsonify({"error": "Node not found"}), 404
+
+    # Persist
+    cfg = _load_persistent_config()
+    cfg["slave_nodes"] = SLAVE_NODES
+    _save_persistent_config(cfg)
+
+    logger.info("Slave node removed: %s", node_id)
+    return jsonify({"success": True, "removed": node_id})
 
 
 # ---------------------------------------------------------------------------
@@ -1306,6 +1496,16 @@ def hls_transcode():
         base = os.path.splitext(source_key)[0]
         output_prefix = base + "/hls"
 
+    # Node delegation: if this master node is busy and slave nodes are
+    # configured, delegate the transcode to an available slave.
+    if NODE_ROLE == "master" and SLAVE_NODES and _is_master_busy():
+        slave = _get_available_slave()
+        if slave:
+            logger.info("Master busy — delegating HLS job to slave %s", slave.get("url"))
+            slave_result = _delegate_to_slave(slave, data)
+            if slave_result:
+                return jsonify(slave_result), 202
+
     job_id = str(uuid.uuid4())
     job = {
         "id": job_id,
@@ -1340,6 +1540,9 @@ if __name__ == "__main__":
     print(f"Arctic Wolves Video Companion Server v{VERSION}")
     print(f"Hardware acceleration: {HW_ACCEL}")
     print(f"S3 endpoint: {S3_ENDPOINT or '(not configured)'}")
+    print(f"Node role: {NODE_ROLE}")
+    if NODE_ROLE == "master" and SLAVE_NODES:
+        print(f"Slave nodes: {len(SLAVE_NODES)}")
     print(f"Config encrypted: {_get_cipher_key() is not None}")
     print(f"Listening on {COMPANION_HOST}:{COMPANION_PORT}")
     app.run(host=COMPANION_HOST, port=COMPANION_PORT, debug=False)
