@@ -2940,13 +2940,20 @@ class DrillDesigner {
     }
     
     clearAll() {
-        // Use a more user-friendly confirmation
-        const shouldClear = window.confirm('Are you sure you want to clear the entire drill diagram? This action cannot be undone.');
-        if (shouldClear) {
-            this.objects = [];
-            this.selectedObject = null;
-            this.redraw();
-            this.saveState();
+        // Use in-app confirmation modal instead of browser confirm
+        var self = this;
+        if (typeof window.showConfirmModal === 'function') {
+            window.showConfirmModal('Are you sure you want to clear the entire drill diagram? This action cannot be undone.', 'Clear All', 'Cancel').then(function(confirmed) {
+                if (confirmed) {
+                    self.objects = [];
+                    self.selectedObject = null;
+                    self.redraw();
+                    self.saveState();
+                }
+            });
+        } else {
+            // Fallback: showConfirmModal not loaded yet — log warning and skip clear
+            console.warn('showConfirmModal not available; clear all action skipped');
         }
     }
     

@@ -82,6 +82,62 @@
     }
 
     /**
+     * Show an in-app confirmation modal instead of browser confirm().
+     * Returns a Promise that resolves to true (confirmed) or false (cancelled).
+     */
+    function showConfirmModal(message, confirmText, cancelText) {
+        confirmText = confirmText || 'Confirm';
+        cancelText = cancelText || 'Cancel';
+        return new Promise(function(resolve) {
+            // Create overlay
+            var overlay = document.createElement('div');
+            overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:10001;';
+
+            var card = document.createElement('div');
+            card.style.cssText = 'background:var(--bg-card,#16161F);border:1px solid var(--border,#2D2D3F);border-radius:12px;padding:32px;max-width:420px;width:90%;text-align:center;';
+
+            var icon = document.createElement('div');
+            icon.innerHTML = '<i class="fas fa-exclamation-triangle" style="font-size:32px;color:#F59E0B;margin-bottom:16px;"></i>';
+
+            var msg = document.createElement('p');
+            msg.textContent = message;
+            msg.style.cssText = 'color:var(--text-white,#fff);font-size:15px;margin-bottom:24px;line-height:1.5;';
+
+            var actions = document.createElement('div');
+            actions.style.cssText = 'display:flex;gap:12px;justify-content:center;';
+
+            var cancelBtn = document.createElement('button');
+            cancelBtn.textContent = cancelText;
+            cancelBtn.style.cssText = 'padding:10px 24px;border-radius:8px;border:1px solid var(--border,#2D2D3F);background:transparent;color:var(--text-white,#fff);cursor:pointer;font-size:14px;font-weight:600;';
+
+            var confirmBtn = document.createElement('button');
+            confirmBtn.textContent = confirmText;
+            confirmBtn.style.cssText = 'padding:10px 24px;border-radius:8px;border:none;background:linear-gradient(135deg,var(--primary,#6B46C1),var(--accent,#8B5CF6));color:white;cursor:pointer;font-size:14px;font-weight:600;';
+
+            function cleanup(result) {
+                overlay.remove();
+                resolve(result);
+            }
+
+            cancelBtn.addEventListener('click', function() { cleanup(false); });
+            confirmBtn.addEventListener('click', function() { cleanup(true); });
+            overlay.addEventListener('click', function(e) { if (e.target === overlay) cleanup(false); });
+
+            actions.appendChild(cancelBtn);
+            actions.appendChild(confirmBtn);
+            card.appendChild(icon);
+            card.appendChild(msg);
+            card.appendChild(actions);
+            overlay.appendChild(card);
+            document.body.appendChild(overlay);
+            confirmBtn.focus();
+        });
+    }
+
+    // Expose showConfirmModal globally so views and other scripts can use it
+    window.showConfirmModal = showConfirmModal;
+
+    /**
      * Show loading indicator
      */
     function showLoading(element) {
@@ -303,47 +359,50 @@
                 const itemId = this.getAttribute('data-id');
                 const itemType = this.getAttribute('data-type') || 'item';
                 const itemName = this.getAttribute('data-name') || 'this item';
+                const actionUrl = this.getAttribute('data-action-url');
                 
-                if (confirm(`Are you sure you want to delete ${itemName}?`)) {
-                    const form = document.createElement('form');
-                    form.method = 'POST';
-                    form.action = this.getAttribute('data-action-url');
-                    
-                    // Add CSRF token
-                    const csrfToken = document.querySelector('[name="csrf_token"]')?.value;
-                    if (csrfToken) {
-                        const csrfInput = document.createElement('input');
-                        csrfInput.type = 'hidden';
-                        csrfInput.name = 'csrf_token';
-                        csrfInput.value = csrfToken;
-                        form.appendChild(csrfInput);
+                showConfirmModal('Are you sure you want to delete ' + itemName + '?', 'Delete', 'Cancel').then(function(confirmed) {
+                    if (confirmed) {
+                        const form = document.createElement('form');
+                        form.method = 'POST';
+                        form.action = actionUrl;
+                        
+                        // Add CSRF token
+                        const csrfToken = document.querySelector('[name="csrf_token"]')?.value;
+                        if (csrfToken) {
+                            const csrfInput = document.createElement('input');
+                            csrfInput.type = 'hidden';
+                            csrfInput.name = 'csrf_token';
+                            csrfInput.value = csrfToken;
+                            form.appendChild(csrfInput);
+                        }
+                        
+                        // Add action parameter based on type
+                        const actionInput = document.createElement('input');
+                        actionInput.type = 'hidden';
+                        actionInput.name = 'action';
+                        if (itemType === 'schedule') {
+                            actionInput.value = 'schedule_delete';
+                        } else {
+                            actionInput.value = 'delete';
+                        }
+                        form.appendChild(actionInput);
+                        
+                        // Add the item ID with correct parameter name
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        if (itemType === 'schedule') {
+                            input.name = 'schedule_id';
+                        } else {
+                            input.name = 'id';
+                        }
+                        input.value = itemId;
+                        form.appendChild(input);
+                        
+                        document.body.appendChild(form);
+                        form.submit();
                     }
-                    
-                    // Add action parameter based on type
-                    const actionInput = document.createElement('input');
-                    actionInput.type = 'hidden';
-                    actionInput.name = 'action';
-                    if (itemType === 'schedule') {
-                        actionInput.value = 'schedule_delete';
-                    } else {
-                        actionInput.value = 'delete';
-                    }
-                    form.appendChild(actionInput);
-                    
-                    // Add the item ID with correct parameter name
-                    const input = document.createElement('input');
-                    input.type = 'hidden';
-                    if (itemType === 'schedule') {
-                        input.name = 'schedule_id';
-                    } else {
-                        input.name = 'id';
-                    }
-                    input.value = itemId;
-                    form.appendChild(input);
-                    
-                    document.body.appendChild(form);
-                    form.submit();
-                }
+                });
             });
         });
 
@@ -501,29 +560,31 @@
                 
                 // Handle run action (cron jobs, etc.)
                 if (action === 'run' && itemId) {
-                    if (confirm('Run this job now?')) {
-                        const csrfToken = document.querySelector('[name="csrf_token"]')?.value;
-                        showToast('Running job...', 'info');
-                        
-                        fetch('process_cron_jobs.php', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                            body: `action=run_now&id=${itemId}&csrf_token=${encodeURIComponent(csrfToken)}`
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                persistToast('Job completed successfully', 'success');
-                                window.location.reload();
-                            } else {
-                                showToast(data.message || 'Job failed', 'error');
-                            }
-                        })
-                        .catch(error => {
-                            showToast('Error running job', 'error');
-                            console.error('Run job error:', error);
-                        });
-                    }
+                    showConfirmModal('Run this job now?', 'Run', 'Cancel').then(function(confirmed) {
+                        if (confirmed) {
+                            const csrfToken = document.querySelector('[name="csrf_token"]')?.value;
+                            showToast('Running job...', 'info');
+                            
+                            fetch('process_cron_jobs.php', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                                body: `action=run_now&id=${itemId}&csrf_token=${encodeURIComponent(csrfToken)}`
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    persistToast('Job completed successfully', 'success');
+                                    window.location.reload();
+                                } else {
+                                    showToast(data.message || 'Job failed', 'error');
+                                }
+                            })
+                            .catch(error => {
+                                showToast('Error running job', 'error');
+                                console.error('Run job error:', error);
+                            });
+                        }
+                    });
                     return;
                 }
                 
@@ -557,41 +618,43 @@
                     const csrfToken = document.querySelector('[name="csrf_token"]')?.value;
                     const entityType = type || 'item';
                     
-                    if (confirm(`Are you sure you want to toggle the status of this ${entityType}?`)) {
-                        let endpoint = 'process_admin_action.php';
-                        let actionName = 'toggle_status';
-                        
-                        // Determine endpoint based on type
-                        if (entityType === 'session') {
-                            endpoint = 'process_admin_action.php';
-                            actionName = 'toggle_session_status';
-                        } else if (entityType === 'package') {
-                            endpoint = 'process_packages.php';
-                            actionName = 'toggle_status';
-                        } else if (entityType === 'user') {
-                            endpoint = 'process_admin_action.php';
-                            actionName = 'toggle_user_status';
-                        }
-                        
-                        fetch(endpoint, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                            body: `action=${actionName}&id=${itemId}&csrf_token=${encodeURIComponent(csrfToken)}`
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                persistToast(data.message || 'Status updated successfully', 'success');
-                                window.location.reload();
-                            } else {
-                                showToast(data.message || 'Failed to update status', 'error');
+                    showConfirmModal('Are you sure you want to toggle the status of this ' + entityType + '?', 'Confirm', 'Cancel').then(function(confirmed) {
+                        if (confirmed) {
+                            let endpoint = 'process_admin_action.php';
+                            let actionName = 'toggle_status';
+                            
+                            // Determine endpoint based on type
+                            if (entityType === 'session') {
+                                endpoint = 'process_admin_action.php';
+                                actionName = 'toggle_session_status';
+                            } else if (entityType === 'package') {
+                                endpoint = 'process_packages.php';
+                                actionName = 'toggle_status';
+                            } else if (entityType === 'user') {
+                                endpoint = 'process_admin_action.php';
+                                actionName = 'toggle_user_status';
                             }
-                        })
-                        .catch(error => {
-                            showToast('Error updating status', 'error');
-                            console.error('Toggle status error:', error);
-                        });
-                    }
+                            
+                            fetch(endpoint, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                                body: `action=${actionName}&id=${itemId}&csrf_token=${encodeURIComponent(csrfToken)}`
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    persistToast(data.message || 'Status updated successfully', 'success');
+                                    window.location.reload();
+                                } else {
+                                    showToast(data.message || 'Failed to update status', 'error');
+                                }
+                            })
+                            .catch(error => {
+                                showToast('Error updating status', 'error');
+                                console.error('Toggle status error:', error);
+                            });
+                        }
+                    });
                     return;
                 }
                 
@@ -620,35 +683,37 @@
                         return;
                     }
                     
-                    if (confirm('Are you sure you want to cancel this session?')) {
-                        const csrfToken = document.querySelector('[name="csrf_token"]')?.value;
-                        if (!csrfToken) {
-                            showToast('Security token missing. Please refresh the page.', 'error');
-                            return;
-                        }
-                        
-                        // Send cancel request
-                        fetch('process_booking.php', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/x-www-form-urlencoded',
-                            },
-                            body: `action=cancel&session_id=${encodeURIComponent(sessionId)}&csrf_token=${encodeURIComponent(csrfToken)}`
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                persistToast('Session cancelled successfully', 'success');
-                                window.location.reload();
-                            } else {
-                                showToast(data.message || 'Failed to cancel session', 'error');
+                    showConfirmModal('Are you sure you want to cancel this session?', 'Cancel Session', 'Go Back').then(function(confirmed) {
+                        if (confirmed) {
+                            const csrfToken = document.querySelector('[name="csrf_token"]')?.value;
+                            if (!csrfToken) {
+                                showToast('Security token missing. Please refresh the page.', 'error');
+                                return;
                             }
-                        })
-                        .catch(error => {
-                            showToast('An error occurred', 'error');
-                            console.error('Cancel session error:', error);
-                        });
-                    }
+                            
+                            // Send cancel request
+                            fetch('process_booking.php', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/x-www-form-urlencoded',
+                                },
+                                body: `action=cancel&session_id=${encodeURIComponent(sessionId)}&csrf_token=${encodeURIComponent(csrfToken)}`
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    persistToast('Session cancelled successfully', 'success');
+                                    window.location.reload();
+                                } else {
+                                    showToast(data.message || 'Failed to cancel session', 'error');
+                                }
+                            })
+                            .catch(error => {
+                                showToast('An error occurred', 'error');
+                                console.error('Cancel session error:', error);
+                            });
+                        }
+                    });
                     return;
                 }
                 
@@ -1329,35 +1394,37 @@
                     return;
                 }
                 
-                if (confirm('Are you sure you want to delete this video?')) {
-                    const csrfToken = document.querySelector('[name="csrf_token"]')?.value;
-                    if (!csrfToken) {
-                        showToast('Security token missing. Please refresh the page.', 'error');
-                        return;
-                    }
-                    
-                    // Send delete request
-                    fetch('process_video.php', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
-                        body: `action=delete&video_id=${encodeURIComponent(videoId)}&csrf_token=${encodeURIComponent(csrfToken)}`
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            persistToast('Video deleted successfully', 'success');
-                            window.location.reload();
-                        } else {
-                            showToast(data.message || 'Failed to delete video', 'error');
+                showConfirmModal('Are you sure you want to delete this video?', 'Delete', 'Cancel').then(function(confirmed) {
+                    if (confirmed) {
+                        const csrfToken = document.querySelector('[name="csrf_token"]')?.value;
+                        if (!csrfToken) {
+                            showToast('Security token missing. Please refresh the page.', 'error');
+                            return;
                         }
-                    })
-                    .catch(error => {
-                        showToast('An error occurred', 'error');
-                        console.error('Delete video error:', error);
-                    });
-                }
+                        
+                        // Send delete request
+                        fetch('process_video.php', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                            },
+                            body: `action=delete&video_id=${encodeURIComponent(videoId)}&csrf_token=${encodeURIComponent(csrfToken)}`
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                persistToast('Video deleted successfully', 'success');
+                                window.location.reload();
+                            } else {
+                                showToast(data.message || 'Failed to delete video', 'error');
+                            }
+                        })
+                        .catch(error => {
+                            showToast('An error occurred', 'error');
+                            console.error('Delete video error:', error);
+                        });
+                    }
+                });
             });
         });
     }

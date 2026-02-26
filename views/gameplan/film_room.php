@@ -210,7 +210,7 @@ if (!function_exists('vr_format_duration')) {
             <div class="vr-file-area" id="vrFileArea">
                 <i class="fas fa-cloud-upload-alt"></i>
                 <p>Drag &amp; drop video file here or click to browse</p>
-                <span class="vr-file-hint">Supported: MP4, MOV, AVI, WebM (max 500 MB)</span>
+                <span class="vr-file-hint">Supported: MP4, MKV, MOV, AVI, WebM (max 10 GB)</span>
                 <input type="file" name="video_file" accept="video/*" id="vrFileInput" style="display:none;" required>
             </div>
             <div class="vr-selected-file" id="vrSelectedFile" style="display:none;">
@@ -529,7 +529,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var selectedFile = document.getElementById('vrSelectedFile');
     var fileName = document.getElementById('vrFileName');
     var removeBtn = document.getElementById('vrRemoveFile');
-    var MAX_SIZE = 500 * 1024 * 1024;
+    var MAX_SIZE = 10 * 1024 * 1024 * 1024;
 
     function frToast(msg) {
         var t = document.createElement('div');
@@ -547,13 +547,13 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault(); fileArea.style.borderColor = '';
             if (e.dataTransfer.files.length && e.dataTransfer.files[0].type.startsWith('video/')) {
                 if (e.dataTransfer.files[0].size <= MAX_SIZE) { fileInput.files = e.dataTransfer.files; showFile(e.dataTransfer.files[0]); }
-                else frToast('File exceeds 500 MB limit');
+                else frToast('File exceeds 10 GB limit');
             }
         });
         fileInput.addEventListener('change', function() {
             if (this.files.length) {
                 if (this.files[0].size <= MAX_SIZE) showFile(this.files[0]);
-                else { frToast('File exceeds 500 MB limit'); this.value = ''; }
+                else { frToast('File exceeds 10 GB limit'); this.value = ''; }
             }
         });
     }

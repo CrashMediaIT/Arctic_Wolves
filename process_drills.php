@@ -77,7 +77,7 @@ if ($action === 'save_drill' || $action === 'create') {
         }
     } elseif ($video_type === 'upload' && isset($_FILES['video_file']) && $_FILES['video_file']['error'] === UPLOAD_ERR_OK) {
         // Handle video upload
-        $allowed_types = ['video/mp4', 'video/webm', 'video/ogg'];
+        $allowed_types = ['video/mp4', 'video/webm', 'video/ogg', 'video/x-matroska', 'video/quicktime', 'video/x-msvideo'];
         $max_size = 10 * 1024 * 1024 * 1024; // 10GB
         
         $file = $_FILES['video_file'];

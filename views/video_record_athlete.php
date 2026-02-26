@@ -183,7 +183,7 @@ try {
                 <div class="file-upload-area" id="file-upload-area">
                     <i class="fas fa-cloud-upload-alt"></i>
                     <p>Click to select or drag and drop your video</p>
-                    <span class="file-hint">Supported formats: MP4, MOV, AVI, WebM (max 500MB)</span>
+                    <span class="file-hint">Supported formats: MP4, MKV, MOV, AVI, WebM (max 10GB)</span>
                     <input type="file" id="video_file" name="video_file" accept="video/*" required style="display: none;">
                 </div>
                 <div class="selected-file" id="selected-file" style="display: none;">
@@ -670,7 +670,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let mediaStream = null;
     let mediaRecorder = null;
     let recordedChunks = [];
-    const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB in bytes
+    const MAX_FILE_SIZE = 10 * 1024 * 1024 * 1024; // 10GB in bytes
     
     // Show camera recording interface
     if (startCameraBtn) {
@@ -689,7 +689,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 cameraInterface.style.display = 'block';
             } catch (err) {
                 console.error('Camera access error:', err);
-                alert('Unable to access camera. Please check permissions and try again.');
+                showToast('Unable to access camera. Please check permissions and try again.', 'error');
             }
         });
     }
@@ -725,7 +725,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Validate file size
     function validateFileSize(file) {
         if (file.size > MAX_FILE_SIZE) {
-            alert('File size exceeds the maximum limit of 500MB. Please choose a smaller file.');
+            showToast('File size exceeds the maximum limit of 10GB. Please choose a smaller file.', 'error');
             return false;
         }
         return true;
@@ -899,24 +899,24 @@ document.addEventListener('DOMContentLoaded', function() {
                         } else {
                             overlay.style.display = 'none';
                             submitBtn.disabled = false;
-                            alert('Upload failed: ' + (response.error || 'Please try again or contact support.'));
+                            showToast('Upload failed: ' + (response.error || 'Please try again or contact support.'), 'error');
                         }
                     } catch (err) {
                         overlay.style.display = 'none';
                         submitBtn.disabled = false;
-                        alert('Upload failed. Please try again.');
+                        showToast('Upload failed. Please try again.', 'error');
                     }
                 } else {
                     overlay.style.display = 'none';
                     submitBtn.disabled = false;
-                    alert('Upload failed (server error). Please try again.');
+                    showToast('Upload failed (server error). Please try again.', 'error');
                 }
             };
 
             xhr.onerror = function() {
                 overlay.style.display = 'none';
                 submitBtn.disabled = false;
-                alert('Upload failed. Please check your connection and try again.');
+                showToast('Upload failed. Please check your connection and try again.', 'error');
             };
 
             xhr.send(formData);
