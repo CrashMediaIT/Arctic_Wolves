@@ -193,24 +193,22 @@ function exportTerminationData($pdo, $settings, $termination_data, $staff_name, 
  * @param string $source_path      Absolute path to the source file (e.g., PHP tmp_name or downloaded file)
  * @param string $subfolder        Logical subfolder  (e.g., 'theme', 'drills/diagrams', 'videos/coach')
  * @param string $filename         Target filename
- * @param string $local_cache_rel  Relative path for backward compatibility (e.g., 'uploads/theme/logo.png')
+ * @param string $local_cache_rel  Deprecated — ignored. Kept for call-site compatibility.
  * @param bool   $use_large_upload Use streaming upload for large files (videos)
- * @return array ['success'=>bool, 'rustfs_url'=>string|null, 'nextcloud_path'=>string|null, 'persistent_path'=>string|null, 'local_cache'=>string]
+ * @return array ['success'=>bool, 'rustfs_url'=>string|null, 'nextcloud_path'=>string|null, 'persistent_path'=>string|null]
  */
-function persistUploadedFile($pdo, $source_path, $subfolder, $filename, $local_cache_rel, $use_large_upload = false) {
+function persistUploadedFile($pdo, $source_path, $subfolder, $filename, $local_cache_rel = '', $use_large_upload = false) {
     $result = [
         'success' => false,
         'rustfs_url' => null,
         'nextcloud_path' => null,
         'persistent_path' => null,
-        'local_cache' => $local_cache_rel,
     ];
 
     try {
         $rustfs = getRustFSSettings($pdo);
         if (!isRustFSConfigured($rustfs)) {
             error_log("persistUploadedFile: RustFS not configured — cannot persist $subfolder/$filename");
-            $result['success'] = true; // Don't fail the caller if storage isn't configured yet
             return $result;
         }
 
@@ -229,8 +227,6 @@ function persistUploadedFile($pdo, $source_path, $subfolder, $filename, $local_c
             $result['persistent_path'] = $upload['url'];
             // Legacy key name, actually contains RustFS URL
             $result['nextcloud_path'] = $upload['url'];
-            // Update local_cache to the RustFS URL so DB stores the S3 location
-            $result['local_cache'] = $upload['url'];
         } else {
             error_log("persistUploadedFile: RustFS upload failed for $subfolder/$filename: " . ($upload['message'] ?? ''));
             $result['success'] = false;

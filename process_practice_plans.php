@@ -943,7 +943,7 @@ function downloadAndSaveDrillImage($image_url, $user_id) {
     
     // Generate a unique filename using only random bytes for security
     $filename = 'drill_' . bin2hex(random_bytes(16)) . '.' . $extension;
-    $local_cache_rel = 'uploads/drills/' . $filename;
+    $rustfs_url = null;
     $nextcloud_path = null;
     
     // Write to a temp file so persistUploadedFile can read it
@@ -956,10 +956,10 @@ function downloadAndSaveDrillImage($image_url, $user_id) {
     global $pdo;
     if ($pdo) {
         try {
-            $persist = persistUploadedFile($pdo, $tmp_file, 'drills/diagrams', $filename, $local_cache_rel);
+            $persist = persistUploadedFile($pdo, $tmp_file, 'drills/diagrams', $filename);
             $nextcloud_path = $persist['nextcloud_path'] ?? null;
             if (!empty($persist['rustfs_url'])) {
-                $local_cache_rel = $persist['rustfs_url'];
+                $rustfs_url = $persist['rustfs_url'];
             }
         } catch (Exception $e) {
             error_log("RustFS drill diagram upload failed: " . $e->getMessage());
@@ -968,7 +968,7 @@ function downloadAndSaveDrillImage($image_url, $user_id) {
     
     @unlink($tmp_file);
     
-    return ['local_path' => $local_cache_rel, 'nextcloud_path' => $nextcloud_path];
+    return ['local_path' => $rustfs_url ?? '', 'nextcloud_path' => $nextcloud_path];
 }
 
 // =========================================================

@@ -104,9 +104,8 @@ try {
                 
                 // Upload to RustFS
                 $safe_contract_name = $recurring_id . '_' . basename($original_name);
-                $local_path = 'uploads/contracts/' . $safe_contract_name;
-                $persist = persistUploadedFile($pdo, $tmp_path, 'contracts', $safe_contract_name, $local_path);
-                $db_path = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $local_path;
+                $persist = persistUploadedFile($pdo, $tmp_path, 'contracts', $safe_contract_name);
+                $db_path = $persist['rustfs_url'] ?? null;
                 
                 $nc_path = $persist['nextcloud_path'] ?? null;
                 if ($nc_path) $nextcloud_path = $nc_path;
@@ -134,9 +133,8 @@ try {
                     $mime_type = $detected_mime;
                     
                     $safe_add_name = $recurring_id . '_' . $i . '_' . basename($original_name);
-                    $local_path = 'uploads/contracts/' . $safe_add_name;
-                    $persist = persistUploadedFile($pdo, $tmp_path, 'contracts', $safe_add_name, $local_path);
-                    $db_path = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $local_path;
+                    $persist = persistUploadedFile($pdo, $tmp_path, 'contracts', $safe_add_name);
+                    $db_path = $persist['rustfs_url'] ?? null;
                     
                     $nc_path = $persist['nextcloud_path'] ?? null;
                     
@@ -196,9 +194,8 @@ try {
                     $mime_type = $detected_mime;
                     
                     $safe_doc_name = $recurring_expense_id . '_' . time() . '_' . $i . '_' . basename($original_name);
-                    $local_path = 'uploads/contracts/' . $safe_doc_name;
-                    $persist = persistUploadedFile($pdo, $tmp_path, 'contracts', $safe_doc_name, $local_path);
-                    $db_path = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $local_path;
+                    $persist = persistUploadedFile($pdo, $tmp_path, 'contracts', $safe_doc_name);
+                    $db_path = $persist['rustfs_url'] ?? null;
                     
                     $nc_path = $persist['nextcloud_path'] ?? null;
                     

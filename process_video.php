@@ -217,11 +217,10 @@ function handleVideoUpload() {
     // Generate unique filename
     $file_extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
     $unique_filename = uniqid('video_', true) . '_' . time() . '.' . $file_extension;
-    $video_url = 'videos/' . $unique_filename;
     
     // Upload to RustFS
-    $persist = persistUploadedFile($pdo, $file['tmp_name'], 'videos/coach', $unique_filename, $video_url, true);
-    $db_video_url = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $video_url;
+    $persist = persistUploadedFile($pdo, $file['tmp_name'], 'videos/coach', $unique_filename, '', true);
+    $db_video_url = $persist['rustfs_url'] ?? null;
     
     // Insert video record into database
     $stmt = $pdo->prepare("
@@ -374,11 +373,10 @@ function handleAthleteVideoUpload() {
     // Generate unique filename
     $file_extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
     $unique_filename = uniqid('athlete_video_', true) . '_' . time() . '.' . $file_extension;
-    $video_url = 'videos/' . $unique_filename;
     
     // Upload to RustFS
-    $persist = persistUploadedFile($pdo, $file['tmp_name'], 'videos/athlete', $unique_filename, $video_url, true);
-    $db_video_url = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $video_url;
+    $persist = persistUploadedFile($pdo, $file['tmp_name'], 'videos/athlete', $unique_filename, '', true);
+    $db_video_url = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : null;
     
     // Insert video record into database
     $stmt = $pdo->prepare("
@@ -507,17 +505,16 @@ function handleDrillVideoUpload() {
     $file_extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
     
     $filename = sprintf('%s-%s-%s-Rep%d.%s', $safe_session, $safe_drill, $safe_athlete, $rep_number, $file_extension);
-    $local_path = 'videos/drills/' . $filename;
     $nextcloud_path = null;
     $is_uploaded_to_cloud = 0;
     
     // Upload to RustFS
-    $persist = persistUploadedFile($pdo, $file['tmp_name'], 'DrillVideos', $filename, $local_path, true);
+    $persist = persistUploadedFile($pdo, $file['tmp_name'], 'DrillVideos', $filename, '', true);
     if (!empty($persist['nextcloud_path'])) {
         $nextcloud_path = $persist['nextcloud_path'];
         $is_uploaded_to_cloud = 1;
     }
-    $db_local_path = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $local_path;
+    $db_local_path = $persist['rustfs_url'] ?? null;
     
     // Insert video record into database
     $title = sprintf('%s - %s - %s (Rep %d)', $session_name, $drill_name, $athlete_name, $rep_number);
@@ -1108,11 +1105,10 @@ function handleUploadVideoSource() {
 
     $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
     $unique_name = 'gp_source_' . uniqid('', true) . '_' . time() . '.' . $ext;
-    $file_path_rel = 'videos/gameplan/' . $unique_name;
 
     // Upload to RustFS
-    $persist = persistUploadedFile($pdo, $file['tmp_name'], 'videos/gameplan', $unique_name, $file_path_rel, true);
-    $db_file_path = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $file_path_rel;
+    $persist = persistUploadedFile($pdo, $file['tmp_name'], 'videos/gameplan', $unique_name, '', true);
+    $db_file_path = $persist['rustfs_url'] ?? null;
 
     $stmt = $pdo->prepare("
         INSERT INTO vr_video_sources (filename, file_path, camera_angle, file_size, game_id, team_id, uploaded_by)

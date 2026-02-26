@@ -58,11 +58,10 @@ try {
             if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
                 $ext = pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION);
                 $filename = uniqid('exercise_') . '.' . $ext;
-                $uploadPath = 'uploads/exercises/' . $filename;
                 
                 // Upload to RustFS
-                $persist = persistUploadedFile($pdo, $_FILES['image']['tmp_name'], 'exercises', $filename, $uploadPath);
-                $image_url = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $uploadPath;
+                $persist = persistUploadedFile($pdo, $_FILES['image']['tmp_name'], 'exercises', $filename);
+                $image_url = $persist['rustfs_url'] ?? null;
                 $exercise_nc_path = $persist['nextcloud_path'] ?? null;
             }
             
@@ -103,11 +102,10 @@ try {
             if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
                 $ext = pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION);
                 $filename = uniqid('exercise_') . '.' . $ext;
-                $uploadPath = 'uploads/exercises/' . $filename;
                 
                 // Upload to RustFS
-                $persist = persistUploadedFile($pdo, $_FILES['image']['tmp_name'], 'exercises', $filename, $uploadPath);
-                $db_image_path = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : $uploadPath;
+                $persist = persistUploadedFile($pdo, $_FILES['image']['tmp_name'], 'exercises', $filename);
+                $db_image_path = $persist['rustfs_url'] ?? null;
                 $image_sql = ', image_url = ?';
                 $params[] = $db_image_path;
             }

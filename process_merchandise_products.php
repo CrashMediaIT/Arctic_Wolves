@@ -173,20 +173,20 @@ function handleProductImageUpload($file) {
     
     // Generate safe filename
     $safeFilename = FileUploadValidator::generateUniqueFilename($file['name']);
-    $local_cache_rel = 'uploads/merchandise/products/' . $safeFilename;
     
     // Upload to RustFS
     global $pdo;
     $nextcloud_path = null;
+    $rustfs_url = null;
     if ($pdo) {
-        $persist = persistUploadedFile($pdo, $file['tmp_name'], 'merchandise/products', $safeFilename, $local_cache_rel);
+        $persist = persistUploadedFile($pdo, $file['tmp_name'], 'merchandise/products', $safeFilename);
         $nextcloud_path = $persist['nextcloud_path'] ?? null;
         if (!empty($persist['rustfs_url'])) {
-            $local_cache_rel = $persist['rustfs_url'];
+            $rustfs_url = $persist['rustfs_url'];
         }
     }
     
-    return ['url' => $local_cache_rel, 'nextcloud_path' => $nextcloud_path];
+    return ['url' => $rustfs_url, 'nextcloud_path' => $nextcloud_path];
 }
 
 /**

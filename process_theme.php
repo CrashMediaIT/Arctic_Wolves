@@ -97,17 +97,16 @@ function handleFileUpload($file, $type = 'image') {
     // Generate unique filename
     $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
     $filename = $type . '_' . time() . '_' . bin2hex(random_bytes(8)) . '.' . $ext;
-    $local_url = 'uploads/theme/' . $filename;
     $nextcloud_path = null;
     
     // Upload to RustFS
     global $pdo;
     if ($pdo) {
         try {
-            $persist = persistUploadedFile($pdo, $file['tmp_name'], 'theme', $filename, $local_url);
+            $persist = persistUploadedFile($pdo, $file['tmp_name'], 'theme', $filename);
             $nextcloud_path = $persist['nextcloud_path'] ?? null;
             if (!empty($persist['rustfs_url'])) {
-                $local_url = $persist['rustfs_url'];
+                return ['success' => true, 'url' => $persist['rustfs_url'], 'nextcloud_path' => $nextcloud_path];
             } else {
                 error_log("handleFileUpload($type): persistUploadedFile returned no rustfs_url — upload failed");
                 return ['success' => false, 'message' => 'Failed to upload file to storage'];
@@ -118,7 +117,7 @@ function handleFileUpload($file, $type = 'image') {
         }
     }
     
-    return ['success' => true, 'url' => $local_url, 'nextcloud_path' => $nextcloud_path];
+    return ['success' => false, 'message' => 'Database connection not available'];
 }
 
 try {
