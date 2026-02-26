@@ -567,12 +567,20 @@ document.addEventListener('DOMContentLoaded', function() {
         fileArea.style.display = 'none';
     }
 
-    // Video player toggle
+    // Video player toggle with HLS support
     var player = document.getElementById('vrVideoPlayer');
     var placeholder = document.querySelector('.vr-player-placeholder > i');
+    var filmHls = null;
     if (player && placeholder) {
         placeholder.style.cursor = 'pointer';
-        placeholder.addEventListener('click', function() { player.style.display = 'block'; placeholder.style.display = 'none'; });
+        placeholder.addEventListener('click', function() {
+            player.style.display = 'block';
+            placeholder.style.display = 'none';
+            var src = player.querySelector('source')?.src;
+            if (src && typeof window.awInitHlsPlayer === 'function' && !filmHls) {
+                filmHls = window.awInitHlsPlayer(player, src);
+            }
+        });
     }
 });
 </script>

@@ -1906,3 +1906,66 @@ button:disabled,
     font-size: 12px;
     font-weight: 600;
 }
+
+/* =========================================================
+   HLS Video Player - Quality Selection Controls
+   ========================================================= */
+.aw-quality-wrapper {
+    position: absolute;
+    bottom: 50px;
+    right: 12px;
+    z-index: 10;
+}
+
+.aw-quality-btn {
+    width: 36px;
+    height: 36px;
+    background: rgba(0, 0, 0, 0.7);
+    border: none;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.aw-quality-btn:hover {
+    background: rgba(107, 70, 193, 0.9);
+}
+
+.aw-quality-menu {
+    position: absolute;
+    bottom: 44px;
+    right: 0;
+    background: rgba(0, 0, 0, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    padding: 6px 0;
+    min-width: 110px;
+    backdrop-filter: blur(8px);
+}
+
+.aw-quality-item {
+    padding: 8px 16px;
+    color: #ccc;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.aw-quality-item:hover {
+    background: rgba(107, 70, 193, 0.3);
+    color: #fff;
+}
+
+.aw-quality-item.active {
+    color: #8B5CF6;
+}
+
+.aw-quality-item.active::before {
+    content: '✓ ';
+}

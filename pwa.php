@@ -305,6 +305,8 @@ try {
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="views/shared_styles.css">
     <link rel="stylesheet" href="css/pwa.css">
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
+    <script src="js/hls-player.js"></script>
     <script src="js/typeahead.js"></script>
     <style>
       /* Override desktop sidebar layout - PWA uses stacked layout */

@@ -251,15 +251,21 @@ document.addEventListener('DOMContentLoaded', function() {
     var video = document.getElementById('vrModalVideo');
     var source = document.getElementById('vrModalSource');
     var titleEl = document.getElementById('vrPlayerTitle');
+    var clipsHls = null;
 
     document.querySelectorAll('.vr-clip-card').forEach(function(card) {
         card.addEventListener('click', function() {
             var src = card.dataset.source || '';
             var title = card.querySelector('.gp-card-title');
             titleEl.textContent = title ? title.textContent : 'Clip';
+            if (clipsHls) { clipsHls.destroy(); clipsHls = null; }
             if (src) {
-                source.src = src;
-                video.load();
+                if (typeof window.awInitHlsPlayer === 'function') {
+                    clipsHls = window.awInitHlsPlayer(video, src);
+                } else {
+                    source.src = src;
+                    video.load();
+                }
                 video.style.display = 'block';
             } else {
                 video.style.display = 'none';
@@ -268,17 +274,19 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    document.getElementById('vrClosePlayer').addEventListener('click', function() {
+    function closeClipModal() {
         modal.classList.remove('vr-modal-open');
+        if (clipsHls) { clipsHls.destroy(); clipsHls = null; }
         video.pause();
-    });
+        video.removeAttribute('src');
+    }
+
+    document.getElementById('vrClosePlayer').addEventListener('click', closeClipModal);
     modal.addEventListener('click', function(e) {
-        if (e.target === modal) { modal.classList.remove('vr-modal-open'); video.pause(); }
+        if (e.target === modal) closeClipModal();
     });
     document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && modal.classList.contains('vr-modal-open')) {
-            modal.classList.remove('vr-modal-open'); video.pause();
-        }
+        if (e.key === 'Escape' && modal.classList.contains('vr-modal-open')) closeClipModal();
     });
 });
 </script>
