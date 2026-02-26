@@ -9,6 +9,7 @@ require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/lib/auditor.php';
 require_once __DIR__ . '/error_logger.php';
+require_once __DIR__ . '/cloud_config.php';
 
 checkCsrfToken();
 
@@ -86,8 +87,26 @@ function generateReport() {
     // Generate the report
     $report_data = fetchReportData($report_type, $parameters);
     
-    // Create file
+    // Create file locally (temporary)
     $filename = generateReportFile($report_type, $format, $report_data, $parameters);
+    
+    // Upload to RustFS and use the RustFS URL as file_path
+    $local_filepath = __DIR__ . '/' . $filename;
+    $file_path_for_db = $filename; // fallback to local path
+    
+    if (file_exists($local_filepath)) {
+        $ext = pathinfo($filename, PATHINFO_EXTENSION);
+        $content_types = ['csv' => 'text/csv', 'xls' => 'application/vnd.ms-excel', 'html' => 'text/html', 'pdf' => 'application/pdf'];
+        $content_type = $content_types[$ext] ?? 'application/octet-stream';
+        $rustfs_filename = basename($filename);
+        
+        $upload_result = persistUploadedFile($pdo, $local_filepath, 'reports', $rustfs_filename);
+        if ($upload_result['success'] && !empty($upload_result['rustfs_url'])) {
+            $file_path_for_db = $upload_result['rustfs_url'];
+            // Remove local temp file after successful upload
+            @unlink($local_filepath);
+        }
+    }
     
     // Generate share token
     $share_token = bin2hex(random_bytes(32));
@@ -103,7 +122,7 @@ function generateReport() {
         $report_type,
         $user_id,
         json_encode($parameters),
-        $filename
+        $file_path_for_db
     ]);
     
     $report_id = $pdo->lastInsertId();
@@ -1469,9 +1488,14 @@ function deleteReport() {
         throw new Exception('Report not found');
     }
     
-    // Delete file
-    if ($report['file_path'] && file_exists(__DIR__ . '/' . $report['file_path'])) {
-        unlink(__DIR__ . '/' . $report['file_path']);
+    // Delete file (handle both local paths and RustFS URLs)
+    if ($report['file_path']) {
+        if (preg_match('#^https?://#', $report['file_path'])) {
+            // RustFS URL - no local file to delete
+            // RustFS object cleanup can be handled separately if needed
+        } elseif (file_exists(__DIR__ . '/' . $report['file_path'])) {
+            unlink(__DIR__ . '/' . $report['file_path']);
+        }
     }
     
     $stmt = $pdo->prepare("DELETE FROM reports WHERE id = ?");
