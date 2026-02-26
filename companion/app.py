@@ -338,6 +338,10 @@ def _check_slave_health(node: dict) -> dict:
     result = {"url": url, "name": node.get("name", ""), "online": False, "busy": True, "active_jobs": 0, "max_jobs": 0}
     if not url:
         return result
+    # Validate URL scheme to prevent SSRF to non-HTTP destinations
+    from urllib.parse import urlparse
+    if urlparse(url).scheme not in ("http", "https"):
+        return result
     try:
         headers = {"Accept": "application/json"}
         if api_key:
@@ -372,6 +376,10 @@ def _delegate_to_slave(node: dict, data: dict) -> dict | None:
     url = node.get("url", "").rstrip("/")
     api_key = node.get("api_key", "")
     if not url:
+        return None
+    # Validate URL scheme to prevent SSRF to non-HTTP destinations
+    from urllib.parse import urlparse
+    if urlparse(url).scheme not in ("http", "https"):
         return None
     try:
         headers = {"Content-Type": "application/json"}
@@ -1558,6 +1566,12 @@ def _sync_settings_to_slave(node: dict) -> bool:
     url = node.get("url", "").rstrip("/")
     api_key = node.get("api_key", "")
     if not url:
+        return False
+    # Validate URL scheme to prevent SSRF to non-HTTP destinations
+    from urllib.parse import urlparse
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        logger.warning("Slave sync URL rejected (invalid scheme): %s", url)
         return False
     try:
         headers = {"Content-Type": "application/json"}
