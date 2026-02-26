@@ -231,7 +231,7 @@ $is_demo_data = false;
                     <div class="video-card" data-component="VideoCard" data-video-id="<?= htmlspecialchars($video['id']) ?>">
                         <div class="video-thumbnail">
                             <?php if (!empty($video['thumbnail_url'])): ?>
-                                <img src="<?= htmlspecialchars($video['thumbnail_url']) ?>" alt="Video thumbnail">
+                                <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['thumbnail_url']) ?? '') ?>" alt="Video thumbnail">
                             <?php else: ?>
                                 <div class="video-placeholder">
                                     <i class="fas fa-play-circle"></i>

@@ -4,6 +4,7 @@
  * Athletes can upload videos (game or drill) for coach review
  * Coaches can review, add notes, and mark videos as reviewed
  */
+require_once __DIR__ . '/../lib/image_helper.php';
 
 // Get the current user's assigned coach
 $assigned_coach_id = null;
@@ -228,7 +229,7 @@ $reviewed_videos = array_filter($videos, function($v) {
                 <div class="video-list-item" data-video-id="<?= $video['id'] ?>">
                     <div class="video-thumbnail-small">
                         <?php if (!empty($video['thumbnail_url'])): ?>
-                            <img src="<?= htmlspecialchars($video['thumbnail_url']) ?>" alt="Thumbnail">
+                            <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['thumbnail_url']) ?? '') ?>" alt="Thumbnail">
                         <?php else: ?>
                             <i class="fas fa-video"></i>
                         <?php endif; ?>
@@ -252,7 +253,7 @@ $reviewed_videos = array_filter($videos, function($v) {
                         <span class="badge-warning"><i class="fas fa-clock"></i> Pending</span>
                     </div>
                     <div class="video-actions-inline">
-                        <button class="btn-icon" title="View" data-action="view-video" data-video-id="<?= $video['id'] ?>" data-video-url="<?= htmlspecialchars($video['video_url'] ?? '') ?>"><i class="fas fa-eye"></i></button>
+                        <button class="btn-icon" title="View" data-action="view-video" data-video-id="<?= $video['id'] ?>" data-video-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['video_url'] ?? '') ?? '') ?>"><i class="fas fa-eye"></i></button>
                         <?php if ($isAnyCoach): ?>
                         <button class="btn-icon btn-review" title="Review" data-action="review-video" data-video-id="<?= $video['id'] ?>"><i class="fas fa-check"></i></button>
                         <?php endif; ?>
@@ -284,7 +285,7 @@ $reviewed_videos = array_filter($videos, function($v) {
                 <div class="video-list-item" data-video-id="<?= $video['id'] ?>">
                     <div class="video-thumbnail-small">
                         <?php if (!empty($video['thumbnail_url'])): ?>
-                            <img src="<?= htmlspecialchars($video['thumbnail_url']) ?>" alt="Thumbnail">
+                            <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['thumbnail_url']) ?? '') ?>" alt="Thumbnail">
                         <?php else: ?>
                             <i class="fas fa-video"></i>
                         <?php endif; ?>
@@ -313,7 +314,7 @@ $reviewed_videos = array_filter($videos, function($v) {
                         <span class="badge-success"><i class="fas fa-check-circle"></i> Reviewed</span>
                     </div>
                     <div class="video-actions-inline">
-                        <button class="btn-icon" title="View" data-action="view-video" data-video-id="<?= $video['id'] ?>" data-video-url="<?= htmlspecialchars($video['video_url'] ?? '') ?>"><i class="fas fa-eye"></i></button>
+                        <button class="btn-icon" title="View" data-action="view-video" data-video-id="<?= $video['id'] ?>" data-video-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['video_url'] ?? '') ?? '') ?>"><i class="fas fa-eye"></i></button>
                         <button class="btn-icon" title="View Feedback" data-action="view-feedback" data-video-id="<?= $video['id'] ?>"><i class="fas fa-comments"></i></button>
                     </div>
                 </div>
