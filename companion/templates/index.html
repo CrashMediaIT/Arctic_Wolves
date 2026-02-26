@@ -157,6 +157,48 @@
         .loading { opacity: 0.5; pointer-events: none; }
         @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
         .pulse { animation: pulse 2s ease-in-out infinite; }
+
+        /* --- SETTINGS FORM --- */
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .form-group { margin-bottom: 0; }
+        .form-group.full { grid-column: 1 / -1; }
+        .form-group label {
+            display: block; font-size: 11px; font-weight: 700; color: var(--text-dim);
+            margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .form-input {
+            width: 100%; background: #0d1117; border: 1px solid var(--border);
+            border-radius: 4px; padding: 10px 14px; color: #fff; font-size: 14px;
+            outline: none; transition: border-color 0.2s;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+        .form-input:focus { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
+        .form-input::placeholder { color: #475569; }
+        select.form-input { cursor: pointer; appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23A8A8B8' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px;
+        }
+        .form-hint { font-size: 11px; color: #475569; margin-top: 4px; }
+        .form-actions { display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; align-items: center; }
+        .form-actions .save-msg { font-size: 13px; font-weight: 700; }
+        .form-section-title {
+            font-size: 13px; font-weight: 800; color: var(--accent); text-transform: uppercase;
+            letter-spacing: 1px; padding-bottom: 8px; border-bottom: 1px solid var(--border);
+            margin-bottom: 16px; grid-column: 1 / -1;
+        }
+        .toggle-row { display: flex; align-items: center; gap: 10px; }
+        .toggle { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
+        .toggle input { opacity: 0; width: 0; height: 0; }
+        .toggle .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background: var(--border); border-radius: 22px; transition: 0.3s; }
+        .toggle .slider::before { content: ''; position: absolute; height: 16px; width: 16px;
+            left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: 0.3s; }
+        .toggle input:checked + .slider { background: var(--primary); }
+        .toggle input:checked + .slider::before { transform: translateX(18px); }
+
+        @media (max-width: 768px) {
+            .form-grid { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
@@ -172,6 +214,7 @@
                 <nav class="nav-menu">
                     <a href="#status" class="active">Dashboard</a>
                     <a href="#jobs">Jobs</a>
+                    <a href="#settings">Settings</a>
                     <span id="health-badge" class="status-badge warn"><span class="status-dot"></span> Loading</span>
                 </nav>
             </div>
@@ -293,6 +336,110 @@
                     <div id="watcher-status" class="card-value" style="font-size:1.2rem;">—</div>
                     <div class="card-label">Automatic HLS transcoding</div>
                 </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SETTINGS SECTION -->
+    <section id="settings" class="section" style="padding-top:0;">
+        <div class="container">
+            <div class="section-header">
+                <span class="eyebrow">Configuration</span>
+                <h2>Settings</h2>
+            </div>
+            <div class="card" style="max-width:860px;">
+                <form id="settings-form" onsubmit="return saveConfig(event)">
+
+                    <div class="form-grid">
+                        <!-- Server -->
+                        <div class="form-section-title">Server</div>
+
+                        <div class="form-group">
+                            <label for="cfg-api-key">API Key</label>
+                            <input id="cfg-api-key" name="api_key" type="password" class="form-input" placeholder="Enter API key" autocomplete="off">
+                            <div class="form-hint" id="cfg-api-key-hint">Not set</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-hw-accel">Hardware Acceleration</label>
+                            <select id="cfg-hw-accel" name="hw_accel" class="form-input">
+                                <option value="auto">Auto Detect</option>
+                                <option value="nvenc">NVENC (NVIDIA)</option>
+                                <option value="qsv">QSV (Intel Quick Sync)</option>
+                                <option value="vaapi">VAAPI (Linux VA-API)</option>
+                                <option value="amf">AMF (AMD)</option>
+                                <option value="none">Software Only</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-video-base">Video Base Path</label>
+                            <input id="cfg-video-base" name="video_base_path" type="text" class="form-input" placeholder="/videos">
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-max-jobs">Max Concurrent Jobs</label>
+                            <input id="cfg-max-jobs" name="max_concurrent_jobs" type="number" class="form-input" min="1" max="16" placeholder="2">
+                        </div>
+
+                        <!-- S3 / RustFS -->
+                        <div class="form-section-title">S3 / RustFS</div>
+
+                        <div class="form-group">
+                            <label for="cfg-s3-endpoint">Endpoint URL</label>
+                            <input id="cfg-s3-endpoint" name="s3_endpoint" type="text" class="form-input" placeholder="https://rustfs.example.com:9000">
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-s3-bucket">Bucket Name</label>
+                            <input id="cfg-s3-bucket" name="s3_bucket" type="text" class="form-input" placeholder="your-bucket-name">
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-s3-region">Region</label>
+                            <input id="cfg-s3-region" name="s3_region" type="text" class="form-input" placeholder="us-east-1">
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-s3-access-key">Access Key</label>
+                            <input id="cfg-s3-access-key" name="s3_access_key" type="password" class="form-input" placeholder="Enter access key" autocomplete="off">
+                            <div class="form-hint" id="cfg-s3-access-hint">Not set</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-s3-secret-key">Secret Key</label>
+                            <input id="cfg-s3-secret-key" name="s3_secret_key" type="password" class="form-input" placeholder="Enter secret key" autocomplete="off">
+                            <div class="form-hint" id="cfg-s3-secret-hint">Not set</div>
+                        </div>
+                        <div class="form-group">
+                            <label>SSL Options</label>
+                            <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px;">
+                                <label class="toggle-row">
+                                    <span class="toggle"><input type="checkbox" id="cfg-s3-use-ssl" name="s3_use_ssl"><span class="slider"></span></span>
+                                    <span style="font-size:13px;">Use SSL</span>
+                                </label>
+                                <label class="toggle-row">
+                                    <span class="toggle"><input type="checkbox" id="cfg-s3-verify-ssl" name="s3_verify_ssl"><span class="slider"></span></span>
+                                    <span style="font-size:13px;">Verify SSL Certificate</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- HLS Staging -->
+                        <div class="form-section-title">HLS Staging Watcher</div>
+
+                        <div class="form-group">
+                            <label for="cfg-hls-prefix">Staging Prefix</label>
+                            <input id="cfg-hls-prefix" name="hls_staging_prefix" type="text" class="form-input" placeholder="Images/videos/">
+                            <div class="form-hint">S3 key prefix to watch for new uploads</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-hls-interval">Poll Interval (seconds)</label>
+                            <input id="cfg-hls-interval" name="hls_poll_interval" type="number" class="form-input" min="5" placeholder="30">
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary">Save Settings</button>
+                        <button type="button" class="btn-secondary" onclick="loadConfig()">Reset</button>
+                        <span id="save-msg" class="save-msg"></span>
+                    </div>
+
+                    <div class="form-hint" style="margin-top:16px;">Changes take effect immediately. To persist across restarts, update the environment variables or <code>.env</code> file.</div>
+                </form>
             </div>
         </div>
     </section>
@@ -426,9 +573,86 @@
             refreshJobs();
         }
 
+        /* --- Load config into settings form --- */
+        async function loadConfig() {
+            try {
+                const res = await fetch(API_BASE + '/api/config', { headers: apiHeaders() });
+                if (!res.ok) return;
+                const c = await res.json();
+
+                document.getElementById('cfg-hw-accel').value = c.hw_accel || 'auto';
+                document.getElementById('cfg-video-base').value = c.video_base_path || '';
+                document.getElementById('cfg-max-jobs').value = c.max_concurrent_jobs ?? '';
+
+                // Secrets: show hint but don't fill value
+                document.getElementById('cfg-api-key').value = '';
+                document.getElementById('cfg-api-key-hint').textContent = c.api_key_set ? 'Currently set (leave blank to keep)' : 'Not set';
+                document.getElementById('cfg-s3-access-key').value = '';
+                document.getElementById('cfg-s3-access-hint').textContent = c.s3_access_key_set ? 'Currently set (leave blank to keep)' : 'Not set';
+                document.getElementById('cfg-s3-secret-key').value = '';
+                document.getElementById('cfg-s3-secret-hint').textContent = c.s3_secret_key_set ? 'Currently set (leave blank to keep)' : 'Not set';
+
+                document.getElementById('cfg-s3-endpoint').value = c.s3_endpoint || '';
+                document.getElementById('cfg-s3-bucket').value = c.s3_bucket || '';
+                document.getElementById('cfg-s3-region').value = c.s3_region || '';
+                document.getElementById('cfg-s3-use-ssl').checked = !!c.s3_use_ssl;
+                document.getElementById('cfg-s3-verify-ssl').checked = !!c.s3_verify_ssl;
+                document.getElementById('cfg-hls-prefix').value = c.hls_staging_prefix || '';
+                document.getElementById('cfg-hls-interval').value = c.hls_poll_interval ?? '';
+            } catch { /* silently ignore on load failure */ }
+        }
+
+        /* --- Save config --- */
+        async function saveConfig(e) {
+            e.preventDefault();
+            const msgEl = document.getElementById('save-msg');
+            msgEl.textContent = '';
+
+            const payload = {};
+            const val = (id) => document.getElementById(id).value.trim();
+
+            // Only send secret fields if user typed something
+            if (val('cfg-api-key')) payload.api_key = val('cfg-api-key');
+            payload.hw_accel = val('cfg-hw-accel');
+            payload.video_base_path = val('cfg-video-base');
+            if (val('cfg-max-jobs')) payload.max_concurrent_jobs = parseInt(val('cfg-max-jobs'), 10);
+            payload.s3_endpoint = val('cfg-s3-endpoint');
+            payload.s3_bucket = val('cfg-s3-bucket');
+            payload.s3_region = val('cfg-s3-region');
+            if (val('cfg-s3-access-key')) payload.s3_access_key = val('cfg-s3-access-key');
+            if (val('cfg-s3-secret-key')) payload.s3_secret_key = val('cfg-s3-secret-key');
+            payload.s3_use_ssl = document.getElementById('cfg-s3-use-ssl').checked;
+            payload.s3_verify_ssl = document.getElementById('cfg-s3-verify-ssl').checked;
+            payload.hls_staging_prefix = val('cfg-hls-prefix');
+            if (val('cfg-hls-interval')) payload.hls_poll_interval = parseInt(val('cfg-hls-interval'), 10);
+
+            try {
+                const res = await fetch(API_BASE + '/api/config', {
+                    method: 'PUT', headers: apiHeaders(), body: JSON.stringify(payload)
+                });
+                const d = await res.json();
+                if (res.ok) {
+                    msgEl.style.color = '#22c55e';
+                    msgEl.textContent = '✓ Settings saved';
+                    // If API key was changed, update localStorage so subsequent calls work
+                    if (payload.api_key) { localStorage.setItem('companion_api_key', payload.api_key); }
+                    loadConfig();
+                    refreshHealth();
+                } else {
+                    msgEl.style.color = '#ef4444';
+                    msgEl.textContent = d.error || 'Save failed';
+                }
+            } catch {
+                msgEl.style.color = '#ef4444';
+                msgEl.textContent = 'Network error';
+            }
+            return false;
+        }
+
         /* --- Init --- */
         refreshHealth();
         refreshJobs();
+        loadConfig();
         setInterval(refreshHealth, 15000);
         setInterval(refreshJobs, 10000);
     </script>
