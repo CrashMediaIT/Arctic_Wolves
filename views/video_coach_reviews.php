@@ -89,9 +89,9 @@ if ($isAnyCoach) {
         LEFT JOIN drills d ON v.drill_id = d.id
         LEFT JOIN sessions s ON v.session_id = s.id
         WHERE v.video_type = 'uploaded_by_athlete'
-        AND (v.coach_id = ? OR a.assigned_coach_id = ? OR v.athlete_id = ?)
+        AND (v.coach_id = ? OR a.assigned_coach_id = ?)
     ";
-    $params = [$user_id, $user_id, $user_id];
+    $params = [$user_id, $user_id];
 } else {
     $video_query = "
         SELECT v.*, 
@@ -252,7 +252,7 @@ $reviewed_videos = array_filter($videos, function($v) {
                         <span class="badge-warning"><i class="fas fa-clock"></i> Pending</span>
                     </div>
                     <div class="video-actions-inline">
-                        <button class="btn-icon" title="View" data-action="view-video" data-video-id="<?= $video['id'] ?>" data-video-url="<?= htmlspecialchars($video['video_url'] ?? '') ?>"><i class="fas fa-eye"></i></button>
+                        <button class="btn-icon" title="View" data-action="view-video" data-video-id="<?= $video['id'] ?>"><i class="fas fa-eye"></i></button>
                         <?php if ($isAnyCoach): ?>
                         <button class="btn-icon btn-review" title="Review" data-action="review-video" data-video-id="<?= $video['id'] ?>"><i class="fas fa-check"></i></button>
                         <?php endif; ?>
@@ -313,7 +313,7 @@ $reviewed_videos = array_filter($videos, function($v) {
                         <span class="badge-success"><i class="fas fa-check-circle"></i> Reviewed</span>
                     </div>
                     <div class="video-actions-inline">
-                        <button class="btn-icon" title="View" data-action="view-video" data-video-id="<?= $video['id'] ?>" data-video-url="<?= htmlspecialchars($video['video_url'] ?? '') ?>"><i class="fas fa-eye"></i></button>
+                        <button class="btn-icon" title="View" data-action="view-video" data-video-id="<?= $video['id'] ?>"><i class="fas fa-eye"></i></button>
                         <button class="btn-icon" title="View Feedback" data-action="view-feedback" data-video-id="<?= $video['id'] ?>"><i class="fas fa-comments"></i></button>
                     </div>
                 </div>
@@ -332,16 +332,16 @@ $reviewed_videos = array_filter($videos, function($v) {
             <h3><i class="fas fa-cloud-upload-alt"></i> Upload Video for Coach Review</h3>
             
             <?php if (!$isAnyCoach && !$assigned_coach_id): ?>
-            <div class="alert alert-info">
-                <i class="fas fa-info-circle"></i>
-                <span>You don't have an assigned coach yet. Videos will be uploaded and can be assigned for review later.</span>
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>You don't have an assigned coach yet. Please contact an administrator.</span>
             </div>
-            <?php endif; ?>
+            <?php else: ?>
             
             <form class="upload-form" method="POST" action="process_video.php" enctype="multipart/form-data" data-form="video-upload">
                 <?= csrfTokenInput() ?>
                 <input type="hidden" name="action" value="athlete_upload_video">
-                <?php if ($assigned_coach_id): ?>
+                <?php if (!$isAnyCoach): ?>
                 <input type="hidden" name="coach_id" value="<?= $assigned_coach_id ?>">
                 <?php endif; ?>
                 
@@ -429,8 +429,8 @@ $reviewed_videos = array_filter($videos, function($v) {
                 </div>
 
                 <div class="form-group">
-                    <label>Notes for Coach *</label>
-                    <textarea name="description" class="form-textarea" rows="4" required placeholder="Describe what you'd like feedback on..."></textarea>
+                    <label>Notes for Coach</label>
+                    <textarea name="description" class="form-textarea" rows="4" placeholder="Describe what you'd like feedback on..."></textarea>
                 </div>
 
                 <div class="form-actions">
@@ -452,6 +452,7 @@ $reviewed_videos = array_filter($videos, function($v) {
                     </div>
                 </div>
             </form>
+            <?php endif; ?>
         </div>
     </div>
 </div>
@@ -772,7 +773,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Video upload — direct-to-RustFS via presigned URL (3-step flow)
+    // Video upload with progress bar
     var uploadForm = document.querySelector('[data-form="video-upload"]');
     if (uploadForm) {
         uploadForm.addEventListener('submit', function(e) {
@@ -783,152 +784,61 @@ document.addEventListener('DOMContentLoaded', function() {
             var percent = document.getElementById('uploadProgressPercent');
             var status = document.getElementById('uploadProgressStatus');
             var submitBtn = document.getElementById('uploadSubmitBtn');
-            var videoFile = uploadForm.querySelector('[data-field="video-file"]');
 
-            if (!videoFile || !videoFile.files.length) {
-                showToast('Please select a video file.', 'error');
-                return;
-            }
-
-            var file = videoFile.files[0];
             overlay.style.display = 'flex';
             submitBtn.disabled = true;
-            bar.style.width = '0%';
-            percent.textContent = '0%';
-            status.textContent = 'Requesting upload URL...';
 
-            // Collect form values
-            var csrfToken = uploadForm.querySelector('[name="csrf_token"]')?.value || '';
-            var formMeta = new FormData();
-            formMeta.append('action', 'get_athlete_upload_url');
-            formMeta.append('csrf_token', csrfToken);
-            formMeta.append('title', uploadForm.querySelector('[name="title"]')?.value || '');
-            formMeta.append('video_category', uploadForm.querySelector('[name="video_category"]')?.value || 'drill');
-            formMeta.append('description', uploadForm.querySelector('[name="description"]')?.value || '');
-            formMeta.append('file_name', file.name);
-            formMeta.append('file_size', file.size);
-            formMeta.append('file_type', file.type || 'video/mp4');
-            var coachInput = uploadForm.querySelector('[name="coach_id"]');
-            if (coachInput && coachInput.value) formMeta.append('coach_id', coachInput.value);
-            var athleteInput = uploadForm.querySelector('[name="athlete_id"]');
-            if (athleteInput && athleteInput.value) formMeta.append('athlete_id', athleteInput.value);
-            // Game fields
-            var gd = uploadForm.querySelector('[name="game_date"]');
-            if (gd && gd.value) formMeta.append('game_date', gd.value);
-            var tp = uploadForm.querySelector('[name="team_played_on"]');
-            if (tp && tp.value) formMeta.append('team_played_on', tp.value);
-            var ot = uploadForm.querySelector('[name="opponent_team"]');
-            if (ot && ot.value) formMeta.append('opponent_team', ot.value);
+            var formData = new FormData(uploadForm);
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', uploadForm.action, true);
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
 
-            // ---------- Step 1: get presigned URL ----------
-            fetch('process_video.php', { method: 'POST', body: formMeta })
-                .then(function(r) { return r.json(); })
-                .then(function(data) {
-                    if (!data.success) throw new Error(data.error || 'Failed to get upload URL');
-
-                    var presignedUrl = data.presigned_url;
-                    var contentType = data.content_type || file.type || 'application/octet-stream';
-                    var uploadNonce = data.upload_nonce;
-
-                    status.textContent = 'Uploading to cloud storage...';
-
-                    // ---------- Step 2: PUT file directly to RustFS ----------
-                    return new Promise(function(resolve, reject) {
-                        var xhr = new XMLHttpRequest();
-                        xhr.open('PUT', presignedUrl, true);
-                        xhr.setRequestHeader('Content-Type', contentType);
-
-                        xhr.upload.onprogress = function(ev) {
-                            if (ev.lengthComputable) {
-                                var pct = Math.round((ev.loaded / ev.total) * 100);
-                                bar.style.width = pct + '%';
-                                percent.textContent = pct + '%';
-                                if (pct < 100) {
-                                    status.textContent = 'Uploading to cloud storage... ' + pct + '%';
-                                } else {
-                                    status.textContent = 'Finalizing upload...';
-                                }
-                            }
-                        };
-
-                        xhr.onload = function() {
-                            if (xhr.status >= 200 && xhr.status < 300) {
-                                resolve(uploadNonce);
-                            } else {
-                                reject(new Error('Cloud upload failed (HTTP ' + xhr.status + ')'));
-                            }
-                        };
-                        xhr.onerror = function() { reject(new Error('Network error during upload')); };
-                        xhr.send(file);
-                    });
-                })
-                .then(function(uploadNonce) {
-                    // ---------- Step 3: confirm upload ----------
-                    status.textContent = 'Confirming upload...';
-                    var confirmData = new FormData();
-                    confirmData.append('action', 'confirm_athlete_upload');
-                    confirmData.append('csrf_token', csrfToken);
-                    confirmData.append('upload_nonce', uploadNonce);
-
-                    return fetch('process_video.php', { method: 'POST', body: confirmData })
-                        .then(function(r) { return r.json(); });
-                })
-                .then(function(result) {
-                    if (result.success) {
-                        bar.style.width = '100%';
-                        percent.textContent = '100%';
-                        status.textContent = 'Upload complete! Redirecting...';
-                        window.location.href = result.redirect || 'dashboard.php?page=coaches_reviews&success=video_uploaded';
+            xhr.upload.onprogress = function(e) {
+                if (e.lengthComputable) {
+                    var pct = Math.round((e.loaded / e.total) * 100);
+                    bar.style.width = pct + '%';
+                    percent.textContent = pct + '%';
+                    if (pct < 100) {
+                        status.textContent = 'Uploading video...';
                     } else {
-                        throw new Error(result.error || 'Confirmation failed');
+                        status.textContent = 'Processing video...';
                     }
-                })
-                .catch(function(err) {
-                    // Fall back to legacy server-side upload if presigned flow fails
-                    console.warn('Direct upload failed, falling back to server upload:', err.message);
-                    status.textContent = 'Retrying via server...';
-                    bar.style.width = '0%';
-                    percent.textContent = '0%';
+                }
+            };
 
-                    var legacyData = new FormData(uploadForm);
-                    legacyData.set('action', 'athlete_upload_video');
-                    var legacyXhr = new XMLHttpRequest();
-                    legacyXhr.open('POST', uploadForm.action, true);
-                    legacyXhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-                    legacyXhr.upload.onprogress = function(ev) {
-                        if (ev.lengthComputable) {
-                            var pct = Math.round((ev.loaded / ev.total) * 100);
-                            bar.style.width = pct + '%';
-                            percent.textContent = pct + '%';
-                            status.textContent = pct < 100 ? 'Uploading video...' : 'Processing...';
-                        }
-                    };
-                    legacyXhr.onload = function() {
-                        try {
-                            var resp = JSON.parse(legacyXhr.responseText);
-                            if (resp.success) {
-                                bar.style.width = '100%';
-                                percent.textContent = '100%';
-                                status.textContent = 'Upload complete! Redirecting...';
-                                window.location.href = resp.redirect || 'dashboard.php?page=coaches_reviews&success=video_uploaded';
-                            } else {
-                                overlay.style.display = 'none';
-                                submitBtn.disabled = false;
-                                showToast('Upload failed: ' + (resp.error || 'Please try again.'), 'error');
-                            }
-                        } catch (e) {
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    try {
+                        var response = JSON.parse(xhr.responseText);
+                        if (response.success) {
+                            bar.style.width = '100%';
+                            percent.textContent = '100%';
+                            status.textContent = 'Upload complete! Redirecting...';
+                            window.location.href = response.redirect || 'dashboard.php?page=coaches_reviews&success=video_uploaded';
+                        } else {
                             overlay.style.display = 'none';
                             submitBtn.disabled = false;
-                            showToast('Upload failed. Please try again.', 'error');
+                            showToast('Upload failed: ' + (response.error || 'Please try again or contact support.'), 'error');
                         }
-                    };
-                    legacyXhr.onerror = function() {
+                    } catch (err) {
                         overlay.style.display = 'none';
                         submitBtn.disabled = false;
-                        showToast('Upload failed. Please check your connection.', 'error');
-                    };
-                    legacyXhr.send(legacyData);
-                });
+                        showToast('Upload failed. Please try again.', 'error');
+                    }
+                } else {
+                    overlay.style.display = 'none';
+                    submitBtn.disabled = false;
+                    showToast('Upload failed (server error). Please try again.', 'error');
+                }
+            };
+
+            xhr.onerror = function() {
+                overlay.style.display = 'none';
+                submitBtn.disabled = false;
+                showToast('Upload failed. Please check your connection and try again.', 'error');
+            };
+
+            xhr.send(formData);
         });
     }
 });
