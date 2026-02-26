@@ -189,11 +189,14 @@ function performBackup($pdo, $job) {
         $destinations = implode(', ', $success_destinations);
         $error_msg = empty($errors) ? null : implode('; ', $errors);
         
+        // Determine file_path: prefer RustFS URL
+        $backup_file_path = $rustfs_url;
+        
         $stmt = $pdo->prepare("
             INSERT INTO backup_history (backup_job_id, filename, file_path, file_size, destination, status, error_message)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         ");
-        $stmt->execute([$job['id'], $filename, $rustfs_url, $file_size, $destinations, $backup_status, $error_msg]);
+        $stmt->execute([$job['id'], $filename, $backup_file_path, $file_size, $destinations, $backup_status, $error_msg]);
         
         // Update last_backup time
         $stmt = $pdo->prepare("UPDATE backup_jobs SET last_backup = NOW() WHERE id = ?");
