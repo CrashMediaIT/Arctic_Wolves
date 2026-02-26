@@ -94,7 +94,7 @@ try {
             $athlete = $stmt->fetch();
             
             if (!$athlete) {
-                logSecurityEvent($pdo, 'athlete_link_failed', "Parent $user_id attempted to link non-existent athlete: $athlete_email", $user_id);
+                logSecurityEvent('athlete_link_failed', "Parent $user_id attempted to link non-existent athlete: $athlete_email", $user_id);
                 header("Location: " . buildRedirectUrl($redirect_source, 'manage_athletes', ['error' => 'athlete_not_found']));
                 exit();
             }
@@ -118,7 +118,7 @@ try {
             Auditor::log($pdo, $user_id, 'create', 'managed_athletes', $athlete['id'], ['action' => 'linked_athlete', 'athlete_email' => $athlete_email]);
             
             // Log security event
-            logSecurityEvent($pdo, 'athlete_linked', "Parent $user_id linked athlete {$athlete['id']}", $user_id);
+            logSecurityEvent('athlete_linked', "Parent $user_id linked athlete {$athlete['id']}", $user_id);
             
             // Notify athlete
             $parent_stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
@@ -203,7 +203,7 @@ try {
             Auditor::log($pdo, $user_id, 'create', 'users', $athlete_id, ['action' => 'created_athlete_account', 'email' => $email]);
             
             // Log security event
-            logSecurityEvent($pdo, 'athlete_created', "Parent $user_id created athlete account $athlete_id", $user_id);
+            logSecurityEvent('athlete_created', "Parent $user_id created athlete account $athlete_id", $user_id);
             
             // Send welcome email with credentials
             require_once __DIR__ . '/mailer.php';
@@ -248,7 +248,7 @@ try {
             $managed = $verify_stmt->fetch();
             
             if (!$managed) {
-                logSecurityEvent($pdo, 'athlete_removal_denied', "Parent $user_id attempted to remove managed athlete $managed_id without permission", $user_id);
+                logSecurityEvent('athlete_removal_denied', "Parent $user_id attempted to remove managed athlete $managed_id without permission", $user_id);
                 header("Location: " . buildRedirectUrl($redirect_source, 'manage_athletes', ['error' => 'permission_denied']));
                 exit();
             }
@@ -260,7 +260,7 @@ try {
             Auditor::log($pdo, $user_id, 'delete', 'managed_athletes', $managed_id, ['action' => 'removed_athlete', 'athlete_id' => $managed['athlete_id']]);
             
             // Log security event
-            logSecurityEvent($pdo, 'athlete_removed', "Parent $user_id removed athlete {$managed['athlete_id']} from managed list", $user_id);
+            logSecurityEvent('athlete_removed', "Parent $user_id removed athlete {$managed['athlete_id']} from managed list", $user_id);
             
             header("Location: " . buildRedirectUrl($redirect_source, 'manage_athletes', ['success' => 'athlete_removed']));
             exit();

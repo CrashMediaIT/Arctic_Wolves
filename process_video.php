@@ -172,14 +172,14 @@ try {
             throw new Exception('Invalid action');
     }
 } catch (PDOException $e) {
-    try { logSecurityEvent($pdo, 'video_error', $e->getMessage(), $user_id); } catch (Exception $le) {}
+    try { logSecurityEvent('video_error', $e->getMessage(), $user_id); } catch (Exception $le) {}
     ErrorLogger::error('process_video PDO error: ' . $e->getMessage());
     header('Content-Type: application/json');
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => 'A database error occurred. Please try again.']);
     exit;
 } catch (Exception $e) {
-    try { logSecurityEvent($pdo, 'video_error', $e->getMessage(), $user_id); } catch (Exception $le) {}
+    try { logSecurityEvent('video_error', $e->getMessage(), $user_id); } catch (Exception $le) {}
     header('Content-Type: application/json');
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
@@ -269,7 +269,7 @@ function handleVideoUpload() {
     
     // Log and notify — wrapped in try-catch so failures don't break the upload response
     try {
-        logSecurityEvent($pdo, 'video_upload', "Video uploaded for athlete ID: $athlete_id", $user_id);
+        logSecurityEvent('video_upload', "Video uploaded for athlete ID: $athlete_id", $user_id);
     } catch (Exception $e) { error_log("logSecurityEvent failed: " . $e->getMessage()); }
     
     try {
@@ -432,7 +432,7 @@ function handleAthleteVideoUpload() {
     
     // Log and notify — wrapped in try-catch so failures don't break the upload response
     try {
-        logSecurityEvent($pdo, 'athlete_video_upload', "Athlete video uploaded for review, ID: $video_id", $athlete_id);
+        logSecurityEvent('athlete_video_upload', "Athlete video uploaded for review, ID: $video_id", $athlete_id);
     } catch (Exception $e) { error_log("logSecurityEvent failed: " . $e->getMessage()); }
     
     if ($coach_id) {
@@ -648,7 +648,7 @@ function handleConfirmAthleteUpload() {
     unset($_SESSION['pending_video_upload']);
 
     // Log and notify
-    try { logSecurityEvent($pdo, 'athlete_video_upload', "Athlete video uploaded (direct) for review, ID: $video_id", $athlete_id); } catch (Exception $e) { error_log("logSecurityEvent failed: " . $e->getMessage()); }
+    try { logSecurityEvent('athlete_video_upload', "Athlete video uploaded (direct) for review, ID: $video_id", $athlete_id); } catch (Exception $e) { error_log("logSecurityEvent failed: " . $e->getMessage()); }
     try { sendVideoUploadNotificationToCoach($pdo, $coach_id, $athlete_id, $video_id, $title); } catch (Exception $e) { error_log("sendVideoUploadNotificationToCoach failed: " . $e->getMessage()); }
 
     echo json_encode([
@@ -784,7 +784,7 @@ function handleDrillVideoUpload() {
     
     // Log the action - wrapped to not break upload response
     try {
-        logSecurityEvent($pdo, 'drill_video_upload', "Drill video uploaded: $title (ID: $video_id)", $user_id);
+        logSecurityEvent('drill_video_upload', "Drill video uploaded: $title (ID: $video_id)", $user_id);
     } catch (Exception $e) { error_log("logSecurityEvent failed: " . $e->getMessage()); }
     
     header('Content-Type: application/json');
@@ -839,7 +839,7 @@ function handleVideoUpdate() {
         $stmt->execute([$comments, $video_id]);
     }
     
-    logSecurityEvent($pdo, 'video_update', "Video ID: $video_id updated", $user_id);
+    logSecurityEvent('video_update', "Video ID: $video_id updated", $user_id);
     Auditor::log($pdo, $user_id, 'update', 'videos', $video_id, ['action' => 'Video updated']);
     
     echo json_encode(['success' => true, 'message' => 'Video updated successfully']);
@@ -864,6 +864,12 @@ function handleVideoDelete() {
     
     if (!$video) {
         throw new Exception('Video not found or access denied');
+    }
+    
+    // Athletes can only delete videos they uploaded themselves, not coach-recorded videos
+    $is_coach_role = in_array($user_role, ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin']);
+    if (!$is_coach_role && ($video['video_type'] ?? '') !== 'uploaded_by_athlete') {
+        throw new Exception('You can only delete videos you uploaded yourself');
     }
     
     // Delete file from storage
@@ -898,8 +904,9 @@ function handleVideoDelete() {
     $stmt->execute([$video_id]);
     Auditor::log($pdo, $user_id, 'delete', 'videos', $video_id, ['action' => 'Video deleted']);
     
-    logSecurityEvent($pdo, 'video_delete', "Video ID: $video_id deleted", $user_id);
+    logSecurityEvent('video_delete', "Video ID: $video_id deleted", $user_id);
     
+    header('Content-Type: application/json');
     echo json_encode(['success' => true, 'message' => 'Video deleted successfully']);
 }
 
@@ -952,7 +959,7 @@ function handleVideoReview() {
         sendVideoReviewNotificationToAthlete($pdo, $video['athlete_id'], $user_id, $video_id, $video['title']);
     }
     
-    logSecurityEvent($pdo, 'video_review', "Video ID: $video_id reviewed", $user_id);
+    logSecurityEvent('video_review', "Video ID: $video_id reviewed", $user_id);
     
     // Check if this is an AJAX request or form submission
     if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
@@ -1199,7 +1206,7 @@ function handleCreateGamePlan() {
         throw new Exception('Failed to create game plan. Please try again.');
     }
 
-    logSecurityEvent($pdo, 'game_plan_created', "Game plan created: $title", $user_id);
+    logSecurityEvent('game_plan_created', "Game plan created: $title", $user_id);
     header('Location: /gameplan.php?page=game_plan&tab=' . urlencode($plan_type) . '&success=plan_created');
     exit;
 }
@@ -1322,7 +1329,7 @@ function handleSaveHockeyLines() {
     }
 
     $game_param = $game_id ? '&game_id=' . $game_id : '';
-    logSecurityEvent($pdo, 'hockey_lines_saved', "Hockey lines saved for team $team_id" . ($game_id ? " game $game_id" : " (default)"), $user_id);
+    logSecurityEvent('hockey_lines_saved', "Hockey lines saved for team $team_id" . ($game_id ? " game $game_id" : " (default)"), $user_id);
     header('Location: /gameplan.php?page=lines&team_id=' . $team_id . '&tab=' . urlencode($tab) . $game_param . '&success=lines_saved');
     exit;
 }
@@ -1386,7 +1393,7 @@ function handleUploadVideoSource() {
     }
 
     try {
-        logSecurityEvent($pdo, 'video_source_uploaded', "Video source uploaded: " . $file['name'], $user_id);
+        logSecurityEvent('video_source_uploaded', "Video source uploaded: " . $file['name'], $user_id);
     } catch (Exception $e) { error_log("logSecurityEvent failed: " . $e->getMessage()); }
     header('Location: /gameplan.php?page=film_room&tab=upload&success=source_uploaded');
     exit;
@@ -1458,7 +1465,7 @@ function handleCreateClip() {
         }
     }
 
-    logSecurityEvent($pdo, 'clip_created', "Clip created: $title from source $source_id", $user_id);
+    logSecurityEvent('clip_created', "Clip created: $title from source $source_id", $user_id);
     header('Location: /gameplan.php?page=film_room&tab=editor&source_id=' . $source_id . '&success=clip_created');
     exit;
 }
@@ -1505,7 +1512,7 @@ function handleCreateReviewSession() {
         }
     }
 
-    logSecurityEvent($pdo, 'review_session_created', "Review session created: $title", $user_id);
+    logSecurityEvent('review_session_created', "Review session created: $title", $user_id);
     header('Location: /gameplan.php?page=review_sessions&success=session_created');
     exit;
 }
@@ -1578,7 +1585,7 @@ function handleUpdateVideoPermissions() {
         throw new Exception('Failed to update permissions. Please try again.');
     }
 
-    logSecurityEvent($pdo, 'video_permissions_updated', "Video permissions updated for team $team_id", $user_id);
+    logSecurityEvent('video_permissions_updated', "Video permissions updated for team $team_id", $user_id);
     header('Location: /gameplan.php?page=permissions&team_id=' . $team_id . '&success=permissions_saved');
     exit;
 }
@@ -1798,7 +1805,7 @@ function handleImportCalendar() {
     }
 
     $msg = "Calendar imported: $imported new, $updated updated, $teams_created teams created for team $team_id";
-    logSecurityEvent($pdo, 'calendar_imported', $msg, $user_id);
+    logSecurityEvent('calendar_imported', $msg, $user_id);
     $success_msg = 'imported_' . $imported . ($updated > 0 ? '_updated_' . $updated : '');
     $ambiguous_count = count($ambiguous_events ?? []);
     if ($ambiguous_count > 0) {
@@ -1937,7 +1944,7 @@ function handleSyncCalendar() {
         }
     }
 
-    logSecurityEvent($pdo, 'calendar_synced', "Calendar synced: $imported new, $updated updated, $teams_created teams created for team $team_id", $user_id);
+    logSecurityEvent('calendar_synced', "Calendar synced: $imported new, $updated updated, $teams_created teams created for team $team_id", $user_id);
     $success_msg = 'synced_' . $imported . '_updated_' . $updated;
     header('Location: /gameplan.php?page=calendar&success=' . $success_msg);
     exit;
@@ -2015,7 +2022,7 @@ function handleResolveImport() {
     // Clear the session data
     unset($_SESSION['import_ambiguous']);
 
-    logSecurityEvent($pdo, 'import_resolved', "Import resolution: $imported events resolved for team $team_id", $user_id);
+    logSecurityEvent('import_resolved', "Import resolution: $imported events resolved for team $team_id", $user_id);
     header('Location: /gameplan.php?page=calendar&success=resolved_' . $imported);
     exit;
 }
@@ -2266,7 +2273,7 @@ function handleAddRosterPlayer() {
         exit;
     }
 
-    logSecurityEvent($pdo, 'roster_player_added', "Added $first_name $last_name to team $team_id", $user_id);
+    logSecurityEvent('roster_player_added', "Added $first_name $last_name to team $team_id", $user_id);
     header('Location: /gameplan.php?page=roster&team_id=' . $team_id . '&success=player_added');
     exit;
 }
@@ -2335,7 +2342,7 @@ function handleUpdateRosterPlayer() {
         exit;
     }
 
-    logSecurityEvent($pdo, 'roster_player_updated', "Updated roster player $player_id", $user_id);
+    logSecurityEvent('roster_player_updated', "Updated roster player $player_id", $user_id);
     header('Location: /gameplan.php?page=roster&team_id=' . $team_id . '&success=player_updated');
     exit;
 }
@@ -2360,7 +2367,7 @@ function handleRemoveRosterPlayer() {
     $stmt->execute([$player_id]);
     Auditor::log($pdo, $user_id, 'update', 'roster_players', $player_id, ['action' => 'Roster player archived']);
 
-    logSecurityEvent($pdo, 'roster_player_removed', "Archived roster player $player_id", $user_id);
+    logSecurityEvent('roster_player_removed', "Archived roster player $player_id", $user_id);
     header('Location: /gameplan.php?page=roster&team_id=' . $team_id . '&success=player_removed');
     exit;
 }
@@ -2395,7 +2402,7 @@ function handleLinkRosterPlayer() {
     $stmt->execute([$link_user_id, $player_id]);
     Auditor::log($pdo, $user_id, 'update', 'roster_players', $player_id, ['action' => 'Roster player linked to user']);
 
-    logSecurityEvent($pdo, 'roster_player_linked', "Linked roster player $player_id to user $link_user_id", $user_id);
+    logSecurityEvent('roster_player_linked', "Linked roster player $player_id to user $link_user_id", $user_id);
     header('Location: /gameplan.php?page=roster&team_id=' . $team_id . '&success=player_linked');
     exit;
 }
@@ -2451,7 +2458,7 @@ function handleAddCalendarEvent() {
     $event_id = $pdo->lastInsertId();
     Auditor::log($pdo, $user_id, 'create', 'game_schedules', $event_id, ['action' => 'Calendar event added']);
 
-    logSecurityEvent($pdo, 'calendar_event_added', "Added $game_type event for team $team_id on $game_date", $user_id);
+    logSecurityEvent('calendar_event_added', "Added $game_type event for team $team_id on $game_date", $user_id);
     header('Location: /gameplan.php?page=calendar&success=event_added');
     exit;
 }
@@ -2484,7 +2491,7 @@ function handleCreateDevicePair() {
         }
     }
 
-    logSecurityEvent($pdo, 'device_pair_created', "Created device pair $pair_code", $user_id);
+    logSecurityEvent('device_pair_created', "Created device pair $pair_code", $user_id);
     header('Location: ' . devicePairRedirect('success=pair_created'));
     exit;
 }
@@ -2511,7 +2518,7 @@ function handleJoinDevicePair() {
         exit;
     }
 
-    logSecurityEvent($pdo, 'device_pair_joined', "Joined device pair $pair_code as viewer", $user_id);
+    logSecurityEvent('device_pair_joined', "Joined device pair $pair_code as viewer", $user_id);
     header('Location: ' . devicePairRedirect('success=pair_joined'));
     exit;
 }
@@ -2560,7 +2567,7 @@ function handleJoinAsController() {
         exit;
     }
 
-    logSecurityEvent($pdo, 'device_pair_controller_joined', "Joined device pair $pair_code as additional controller", $user_id);
+    logSecurityEvent('device_pair_controller_joined', "Joined device pair $pair_code as additional controller", $user_id);
     header('Location: ' . devicePairRedirect('success=controller_joined'));
     exit;
 }
@@ -2583,7 +2590,7 @@ function handleEndDevicePair() {
     $stmt->execute([$pair_id, $user_id]);
     Auditor::log($pdo, $user_id, 'update', 'vr_device_pairs', $pair_id, ['action' => 'Device pair ended']);
 
-    logSecurityEvent($pdo, 'device_pair_ended', "Ended device pair $pair_id", $user_id);
+    logSecurityEvent('device_pair_ended', "Ended device pair $pair_id", $user_id);
     header('Location: ' . devicePairRedirect('success=pair_ended'));
     exit;
 }

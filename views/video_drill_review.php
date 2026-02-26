@@ -242,12 +242,18 @@ $is_demo_data = false;
                             <?php endif; ?>
                         </div>
                         <div class="video-info">
-                            <h4 class="video-title"><?= htmlspecialchars($video['drill_name'] ?? 'Untitled') ?></h4>
+                            <h4 class="video-title"><?= htmlspecialchars($video['drill_name'] ?? $video['title'] ?? 'Untitled') ?></h4>
+                            <?php if (!empty($video['description']) && empty($video['drill_name'])): ?>
+                                <p class="video-description"><?= htmlspecialchars(mb_strimwidth($video['description'], 0, 100, '...')) ?></p>
+                            <?php endif; ?>
                             <div class="video-meta">
                                 <span><i class="fas fa-calendar"></i> <?= date('M d, Y', strtotime($video['upload_date'])) ?></span>
                                 <?php $video_coach_name = trim(($video['coach_first_name'] ?? '') . ' ' . ($video['coach_last_name'] ?? '')); ?>
                                 <?php if (!empty($video_coach_name)): ?>
                                     <span><i class="fas fa-user-tie"></i> <?= htmlspecialchars($video_coach_name) ?></span>
+                                <?php endif; ?>
+                                <?php if (($video['video_type'] ?? '') === 'uploaded_by_athlete'): ?>
+                                    <span class="badge-athlete-upload"><i class="fas fa-upload"></i> My Upload</span>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -257,6 +263,13 @@ $is_demo_data = false;
                                     data-video-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['video_url'] ?? '') ?? '') ?>">
                                 <i class="fas fa-play"></i> Watch Video
                             </button>
+                            <?php if (($video['video_type'] ?? '') === 'uploaded_by_athlete' && (int)($video['athlete_id'] ?? 0) === (int)$user_id): ?>
+                            <button class="btn-danger btn-sm btn-delete-video" data-action="delete-video"
+                                    data-video-id="<?= htmlspecialchars($video['id']) ?>"
+                                    data-video-title="<?= htmlspecialchars($video['drill_name'] ?? $video['title'] ?? 'this video') ?>">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                            <?php endif; ?>
                         </div>
                     </div>
                     <?php endforeach; ?>
@@ -1263,6 +1276,48 @@ $is_demo_data = false;
         border-radius: 50%;
     }
 }
+
+/* Athlete Upload Badge */
+.badge-athlete-upload {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+/* Video description snippet */
+.video-description {
+    color: var(--text-dim);
+    font-size: 12px;
+    margin: 4px 0 0;
+    line-height: 1.4;
+}
+
+/* Delete button */
+.btn-delete-video {
+    margin-top: 8px;
+    width: 100%;
+    padding: 8px 12px;
+    background: transparent;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    color: #ef4444;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.btn-delete-video:hover {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: #ef4444;
+}
 </style>
 
 <script>
@@ -1329,6 +1384,39 @@ document.addEventListener('DOMContentLoaded', function() {
             const sessionId = this.dataset.sessionId;
             // In a real implementation, this would open a modal or navigate to session videos
             alert('View videos for session ' + sessionId + '\n\nThis would show all videos from this session.');
+        });
+    });
+
+    // Delete video buttons
+    document.querySelectorAll('[data-action="delete-video"]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const videoId = this.dataset.videoId;
+            const videoTitle = this.dataset.videoTitle || 'this video';
+            if (!confirm('Are you sure you want to delete "' + videoTitle + '"? This cannot be undone.')) {
+                return;
+            }
+            const card = this.closest('.video-card');
+            const formData = new FormData();
+            formData.append('action', 'delete_video');
+            formData.append('video_id', videoId);
+            const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+            const csrfInput = document.querySelector('input[name="csrf_token"]');
+            const csrfToken = (csrfMeta && csrfMeta.content) || (csrfInput && csrfInput.value) || '<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>';
+            formData.append('csrf_token', csrfToken);
+
+            fetch('process_video.php', { method: 'POST', body: formData })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        if (card) card.remove();
+                        if (typeof showToast === 'function') showToast('Video deleted successfully.', 'success');
+                    } else {
+                        if (typeof showToast === 'function') showToast('Delete failed: ' + (data.error || 'Unknown error'), 'error');
+                    }
+                })
+                .catch(function() {
+                    if (typeof showToast === 'function') showToast('Delete failed. Please try again.', 'error');
+                });
         });
     });
 });

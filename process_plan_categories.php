@@ -72,7 +72,7 @@ try {
         Auditor::log($pdo, $user_id, 'create', $table, $new_category_id, ['action' => "Created {$category_type} plan category: {$name}"]);
 
         // Log the action
-        logSecurityEvent($pdo, $_SESSION['user_id'], 'category_created', 
+        logSecurityEvent($_SESSION['user_id'], 'category_created', 
             "Created {$category_type} plan category: {$name}");
 
         if ($isAjax) {
@@ -108,7 +108,7 @@ try {
         Auditor::log($pdo, $user_id, 'delete', $table, $category_id, ['action' => "Deleted {$category_type} plan category: {$category['name']}"]);
 
         // Log the action
-        logSecurityEvent($pdo, $_SESSION['user_id'], 'category_deleted', 
+        logSecurityEvent($_SESSION['user_id'], 'category_deleted', 
             "Deleted {$category_type} plan category: {$category['name']}");
 
         if ($isAjax) {
@@ -153,7 +153,7 @@ try {
         Auditor::log($pdo, $user_id, 'update', $table, $category_id, ['action' => "Updated {$category_type} plan category: {$name}"]);
 
         // Log the action
-        logSecurityEvent($pdo, $_SESSION['user_id'], 'category_updated', 
+        logSecurityEvent($_SESSION['user_id'], 'category_updated', 
             "Updated {$category_type} plan category: {$name}");
 
         if ($isAjax) {
@@ -171,7 +171,7 @@ try {
 
 } catch (Exception $e) {
     // Log the error
-    logSecurityEvent($pdo, $_SESSION['user_id'], 'category_error', 
+    logSecurityEvent($_SESSION['user_id'], 'category_error', 
         "Error managing {$category_type} category: " . $e->getMessage());
 
     if ($isAjax) {

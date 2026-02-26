@@ -117,14 +117,14 @@ if ($action === 'import_drills') {
         Auditor::log($pdo, $user_id, 'CREATE', 'drills', 0, ['action' => 'IHS drill import', 'imported' => $imported, 'skipped' => $skipped]);
         
         // Log the import
-        logSecurityEvent($pdo, 'ihs_import_drills', "Imported $imported drills, skipped $skipped", $user_id);
+        logSecurityEvent('ihs_import_drills', "Imported $imported drills, skipped $skipped", $user_id);
         
         header("Location: dashboard.php?page=ihs_import&status=drills_imported&count=$imported&skipped=$skipped");
         exit();
         
     } catch (Exception $e) {
         $pdo->rollBack();
-        logSecurityEvent($pdo, 'ihs_import_error', "IHS import error: " . $e->getMessage(), $user_id);
+        logSecurityEvent('ihs_import_error', "IHS import error: " . $e->getMessage(), $user_id);
         header("Location: dashboard.php?page=ihs_import&error=import_failed");
         exit();
     }
@@ -235,14 +235,14 @@ if ($action === 'import_plans') {
         Auditor::log($pdo, $user_id, 'CREATE', 'practice_plans', $plan_id, ['action' => 'IHS practice plan import', 'title' => $title]);
         
         // Log the import
-        logSecurityEvent($pdo, 'ihs_import_plan', "Imported practice plan: $title", $user_id);
+        logSecurityEvent('ihs_import_plan', "Imported practice plan: $title", $user_id);
         
         header("Location: dashboard.php?page=ihs_import&status=plan_imported&id=$plan_id");
         exit();
         
     } catch (Exception $e) {
         $pdo->rollBack();
-        logSecurityEvent($pdo, 'ihs_import_error', "IHS import error: " . $e->getMessage(), $user_id);
+        logSecurityEvent('ihs_import_error', "IHS import error: " . $e->getMessage(), $user_id);
         header("Location: dashboard.php?page=ihs_import&error=import_failed");
         exit();
     }
