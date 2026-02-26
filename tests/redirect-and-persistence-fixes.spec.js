@@ -9,7 +9,7 @@
  * 4. image_helper.php defines resolveDrillImage() function
  * 5. view_drill.php uses resolveDrillImage to restore missing images
  * 6. view_practice_plan.php uses resolveDrillImage to restore missing images
- * 7. GitHub updater excludes .nextcloud_key and arctic_wolves.env
+ * 7. GitHub updater excludes .credential_key and arctic_wolves.env
  * 8. GitHub updater backs up and restores persistent files during updates
  */
 
@@ -178,9 +178,9 @@ test.describe('View files render drill images from URLs', () => {
 // =====================================================
 
 test.describe('GitHub updater preserves persistent files during updates', () => {
-  test('excluded_paths should include .nextcloud_key', () => {
+  test('excluded_paths should include .credential_key', () => {
     const content = readFile('lib/github_updater.php');
-    expect(content).toContain("'.nextcloud_key'");
+    expect(content).toContain("'.credential_key'");
   });
 
   test('excluded_paths should include arctic_wolves.env', () => {
@@ -206,13 +206,13 @@ test.describe('GitHub updater preserves persistent files during updates', () => 
     expect(applyFn).toContain('restorePersistentFiles');
   });
 
-  test('backupPersistentFiles should backup .nextcloud_key', () => {
+  test('backupPersistentFiles should backup .credential_key', () => {
     const content = readFile('lib/github_updater.php');
     const fn = content.substring(
       content.indexOf('function backupPersistentFiles()'),
       content.indexOf('function restorePersistentFiles')
     );
-    expect(fn).toContain('.nextcloud_key');
+    expect(fn).toContain('.credential_key');
   });
 
   test('restorePersistentFiles should restore files with restricted permissions', () => {

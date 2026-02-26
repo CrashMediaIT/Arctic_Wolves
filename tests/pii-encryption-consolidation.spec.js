@@ -67,7 +67,7 @@ test.describe('decryptPassword uses PII FieldEncryption primarily', () => {
     const fnEnd = content.indexOf('\n}\n', fnStart) + 2;
     const fnBody = content.substring(fnStart, fnEnd);
     // Legacy fallback still present for old format
-    expect(fnBody).toContain('.nextcloud_key');
+    expect(fnBody).toContain('.credential_key');
     expect(fnBody).toContain('::');
   });
 
