@@ -33,7 +33,14 @@ test.describe('Desktop Upcoming Sessions - Athlete Registration Filter', () => {
   test('sessions_upcoming.php conditionally joins session_date_athletes only for athletes', () => {
     const content = readFile('views/sessions_upcoming.php');
     expect(content).toContain("user_role === 'athlete'");
-    expect(content).toContain('INNER JOIN session_date_athletes sda');
+    expect(content).toContain('LEFT JOIN session_date_athletes sda');
+  });
+
+  test('sessions_upcoming.php also checks package_sessions with template_id for athletes', () => {
+    const content = readFile('views/sessions_upcoming.php');
+    expect(content).toContain('sda.id IS NOT NULL OR EXISTS');
+    expect(content).toContain('ps.template_id = tst.id');
+    expect(content).toContain("up.payment_status = 'paid'");
   });
 
   test('sessions_upcoming.php passes athlete user_id as template param for registration filter', () => {

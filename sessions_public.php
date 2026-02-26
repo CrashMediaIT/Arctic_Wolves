@@ -641,20 +641,23 @@ $viewMode = $_GET['view'] ?? 'list';
             gap: 8px;
         }
         
-        .calendar-nav button {
-            background: var(--bg-main);
+        .calendar-nav-btn {
+            width: 36px;
+            height: 36px;
             border: 1px solid var(--border);
+            background: transparent;
             color: var(--text-dim);
-            padding: 8px 16px;
             border-radius: 6px;
             cursor: pointer;
             transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
-        .calendar-nav button:hover {
-            background: var(--primary);
+        .calendar-nav-btn:hover {
             border-color: var(--primary);
-            color: #fff;
+            color: var(--primary);
         }
         
         .calendar-month-title {
