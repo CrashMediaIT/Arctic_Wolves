@@ -247,7 +247,7 @@ try {
     <div class="file-upload-area" id="fileDropZone">
         <i class="fas fa-cloud-upload-alt"></i>
         <p>Drag & drop video file here or click to browse</p>
-        <p class="file-hint">Supported: MP4, MOV, AVI, WebM (Max 10GB)</p>
+        <p class="file-hint">Supported: MP4, MKV, MOV, AVI, WebM (Max 10GB)</p>
         <input type="file" name="video_file" id="videoFileInput" accept="video/*" style="display: none;">
         <button type="button" class="btn btn-secondary" id="browseFilesBtn">Browse Files</button>
     </div>

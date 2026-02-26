@@ -369,7 +369,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
             <div class="card-header">
                 <h3><i class="fas fa-calendar-day"></i> Training Sessions & Templates</h3>
                 <div class="bulk-select-bar" data-tab="sessions">
-                    <label><input type="checkbox" class="bulk-select-all" data-tab="sessions" onchange="toggleSelectAll('sessions')"> Select All</label>
+                    <label><input type="checkbox" class="bulk-select-all" data-tab="sessions" onchange="toggleSelectAll('sessions', this)"> Select All</label>
                     <button type="button" class="btn-bulk-delete" data-tab="sessions" onclick="bulkDeleteSelected('sessions')"><i class="fas fa-trash"></i> Delete <span class="bulk-delete-count"></span></button>
                 </div>
                 <button type="button" class="btn btn-primary" data-action="add" data-modal="add-session-modal"><i class="fas fa-plus"></i> Create Session</button>
@@ -445,7 +445,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
             <div class="card-header">
                 <h3><i class="fas fa-box"></i> Training Packages</h3>
                 <div class="bulk-select-bar" data-tab="packages">
-                    <label><input type="checkbox" class="bulk-select-all" data-tab="packages" onchange="toggleSelectAll('packages')"> Select All</label>
+                    <label><input type="checkbox" class="bulk-select-all" data-tab="packages" onchange="toggleSelectAll('packages', this)"> Select All</label>
                     <button type="button" class="btn-bulk-delete" data-tab="packages" onclick="bulkDeleteSelected('packages')"><i class="fas fa-trash"></i> Delete <span class="bulk-delete-count"></span></button>
                 </div>
                 <button type="button" class="btn btn-primary" data-action="add" data-modal="add-package-modal"><i class="fas fa-plus"></i> Create Package</button>
@@ -509,7 +509,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
             <div class="card-header">
                 <h3><i class="fas fa-tags"></i> Discount Codes</h3>
                 <div class="bulk-select-bar" data-tab="discounts">
-                    <label><input type="checkbox" class="bulk-select-all" data-tab="discounts" onchange="toggleSelectAll('discounts')"> Select All</label>
+                    <label><input type="checkbox" class="bulk-select-all" data-tab="discounts" onchange="toggleSelectAll('discounts', this)"> Select All</label>
                     <button type="button" class="btn-bulk-delete" data-tab="discounts" onclick="bulkDeleteSelected('discounts')"><i class="fas fa-trash"></i> Delete <span class="bulk-delete-count"></span></button>
                 </div>
                 <button type="button" class="btn btn-primary" data-action="add" data-modal="add-discount-modal"><i class="fas fa-plus"></i> Create Discount</button>
@@ -526,7 +526,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th style="width:40px;"><input type="checkbox" class="bulk-select-all bulk-row-checkbox" data-tab="discounts" onchange="toggleSelectAll('discounts')"></th>
+                                <th style="width:40px;"><input type="checkbox" class="bulk-select-all bulk-row-checkbox" data-tab="discounts" onchange="toggleSelectAll('discounts', this)"></th>
                                 <th>Code</th>
                                 <th>Description</th>
                                 <th>Type</th>
@@ -600,7 +600,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
             <div class="card-header">
                 <h3><i class="fas fa-tshirt"></i> Merchandise Products</h3>
                 <div class="bulk-select-bar" data-tab="merchandise">
-                    <label><input type="checkbox" class="bulk-select-all" data-tab="merchandise" onchange="toggleSelectAll('merchandise')"> Select All</label>
+                    <label><input type="checkbox" class="bulk-select-all" data-tab="merchandise" onchange="toggleSelectAll('merchandise', this)"> Select All</label>
                     <button type="button" class="btn-bulk-delete" data-tab="merchandise" onclick="bulkDeleteSelected('merchandise')"><i class="fas fa-trash"></i> Delete <span class="bulk-delete-count"></span></button>
                 </div>
                 <button type="button" class="btn btn-primary" data-action="add" data-modal="add-merchandise-product-modal"><i class="fas fa-plus"></i> Add Product</button>
@@ -617,7 +617,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th style="width:40px;"><input type="checkbox" class="bulk-select-all bulk-row-checkbox" data-tab="merchandise" onchange="toggleSelectAll('merchandise')"></th>
+                                <th style="width:40px;"><input type="checkbox" class="bulk-select-all bulk-row-checkbox" data-tab="merchandise" onchange="toggleSelectAll('merchandise', this)"></th>
                                 <th>Product</th>
                                 <th>Category</th>
                                 <th>Price</th>
@@ -676,7 +676,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
             <div class="card-header">
                 <h3><i class="fas fa-campground"></i> Programs & Camps</h3>
                 <div class="bulk-select-bar" data-tab="programs_camps">
-                    <label><input type="checkbox" class="bulk-select-all" data-tab="programs_camps" onchange="toggleSelectAll('programs_camps')"> Select All</label>
+                    <label><input type="checkbox" class="bulk-select-all" data-tab="programs_camps" onchange="toggleSelectAll('programs_camps', this)"> Select All</label>
                     <button type="button" class="btn-bulk-delete" data-tab="programs_camps" onclick="bulkDeleteSelected('programs_camps')"><i class="fas fa-trash"></i> Delete <span class="bulk-delete-count"></span></button>
                 </div>
                 <button type="button" class="btn btn-primary" data-action="add" data-modal="add-program-modal"><i class="fas fa-plus"></i> Create Program / Camp</button>
@@ -693,7 +693,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th style="width:40px;"><input type="checkbox" class="bulk-select-all bulk-row-checkbox" data-tab="programs_camps" onchange="toggleSelectAll('programs_camps')"></th>
+                                <th style="width:40px;"><input type="checkbox" class="bulk-select-all bulk-row-checkbox" data-tab="programs_camps" onchange="toggleSelectAll('programs_camps', this)"></th>
                                 <th>Name</th>
                                 <th>Type</th>
                                 <th>Dates</th>
@@ -3830,10 +3830,10 @@ function updateSelectedSessionsList() {
 
 // ========== Bulk Select & Delete Functions ==========
 
-function toggleSelectAll(tab) {
+function toggleSelectAll(tab, sourceCheckbox) {
     var selectAllBoxes = document.querySelectorAll('.bulk-select-all[data-tab="' + tab + '"]');
-    var isChecked = false;
-    selectAllBoxes.forEach(function(box) { isChecked = box.checked; });
+    // Use the state of the checkbox that was actually clicked
+    var isChecked = sourceCheckbox ? sourceCheckbox.checked : false;
     var checkboxes = document.querySelectorAll('.bulk-item-checkbox[data-tab="' + tab + '"]');
     checkboxes.forEach(function(cb) { cb.checked = isChecked; });
     // Sync all select-all checkboxes for this tab

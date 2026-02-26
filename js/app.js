@@ -359,47 +359,50 @@
                 const itemId = this.getAttribute('data-id');
                 const itemType = this.getAttribute('data-type') || 'item';
                 const itemName = this.getAttribute('data-name') || 'this item';
+                const actionUrl = this.getAttribute('data-action-url');
                 
-                if (confirm(`Are you sure you want to delete ${itemName}?`)) {
-                    const form = document.createElement('form');
-                    form.method = 'POST';
-                    form.action = this.getAttribute('data-action-url');
-                    
-                    // Add CSRF token
-                    const csrfToken = document.querySelector('[name="csrf_token"]')?.value;
-                    if (csrfToken) {
-                        const csrfInput = document.createElement('input');
-                        csrfInput.type = 'hidden';
-                        csrfInput.name = 'csrf_token';
-                        csrfInput.value = csrfToken;
-                        form.appendChild(csrfInput);
+                showConfirmModal('Are you sure you want to delete ' + itemName + '?', 'Delete', 'Cancel').then(function(confirmed) {
+                    if (confirmed) {
+                        const form = document.createElement('form');
+                        form.method = 'POST';
+                        form.action = actionUrl;
+                        
+                        // Add CSRF token
+                        const csrfToken = document.querySelector('[name="csrf_token"]')?.value;
+                        if (csrfToken) {
+                            const csrfInput = document.createElement('input');
+                            csrfInput.type = 'hidden';
+                            csrfInput.name = 'csrf_token';
+                            csrfInput.value = csrfToken;
+                            form.appendChild(csrfInput);
+                        }
+                        
+                        // Add action parameter based on type
+                        const actionInput = document.createElement('input');
+                        actionInput.type = 'hidden';
+                        actionInput.name = 'action';
+                        if (itemType === 'schedule') {
+                            actionInput.value = 'schedule_delete';
+                        } else {
+                            actionInput.value = 'delete';
+                        }
+                        form.appendChild(actionInput);
+                        
+                        // Add the item ID with correct parameter name
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        if (itemType === 'schedule') {
+                            input.name = 'schedule_id';
+                        } else {
+                            input.name = 'id';
+                        }
+                        input.value = itemId;
+                        form.appendChild(input);
+                        
+                        document.body.appendChild(form);
+                        form.submit();
                     }
-                    
-                    // Add action parameter based on type
-                    const actionInput = document.createElement('input');
-                    actionInput.type = 'hidden';
-                    actionInput.name = 'action';
-                    if (itemType === 'schedule') {
-                        actionInput.value = 'schedule_delete';
-                    } else {
-                        actionInput.value = 'delete';
-                    }
-                    form.appendChild(actionInput);
-                    
-                    // Add the item ID with correct parameter name
-                    const input = document.createElement('input');
-                    input.type = 'hidden';
-                    if (itemType === 'schedule') {
-                        input.name = 'schedule_id';
-                    } else {
-                        input.name = 'id';
-                    }
-                    input.value = itemId;
-                    form.appendChild(input);
-                    
-                    document.body.appendChild(form);
-                    form.submit();
-                }
+                });
             });
         });
 
@@ -557,29 +560,31 @@
                 
                 // Handle run action (cron jobs, etc.)
                 if (action === 'run' && itemId) {
-                    if (confirm('Run this job now?')) {
-                        const csrfToken = document.querySelector('[name="csrf_token"]')?.value;
-                        showToast('Running job...', 'info');
-                        
-                        fetch('process_cron_jobs.php', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                            body: `action=run_now&id=${itemId}&csrf_token=${encodeURIComponent(csrfToken)}`
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                persistToast('Job completed successfully', 'success');
-                                window.location.reload();
-                            } else {
-                                showToast(data.message || 'Job failed', 'error');
-                            }
-                        })
-                        .catch(error => {
-                            showToast('Error running job', 'error');
-                            console.error('Run job error:', error);
-                        });
-                    }
+                    showConfirmModal('Run this job now?', 'Run', 'Cancel').then(function(confirmed) {
+                        if (confirmed) {
+                            const csrfToken = document.querySelector('[name="csrf_token"]')?.value;
+                            showToast('Running job...', 'info');
+                            
+                            fetch('process_cron_jobs.php', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                                body: `action=run_now&id=${itemId}&csrf_token=${encodeURIComponent(csrfToken)}`
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    persistToast('Job completed successfully', 'success');
+                                    window.location.reload();
+                                } else {
+                                    showToast(data.message || 'Job failed', 'error');
+                                }
+                            })
+                            .catch(error => {
+                                showToast('Error running job', 'error');
+                                console.error('Run job error:', error);
+                            });
+                        }
+                    });
                     return;
                 }
                 
@@ -613,41 +618,43 @@
                     const csrfToken = document.querySelector('[name="csrf_token"]')?.value;
                     const entityType = type || 'item';
                     
-                    if (confirm(`Are you sure you want to toggle the status of this ${entityType}?`)) {
-                        let endpoint = 'process_admin_action.php';
-                        let actionName = 'toggle_status';
-                        
-                        // Determine endpoint based on type
-                        if (entityType === 'session') {
-                            endpoint = 'process_admin_action.php';
-                            actionName = 'toggle_session_status';
-                        } else if (entityType === 'package') {
-                            endpoint = 'process_packages.php';
-                            actionName = 'toggle_status';
-                        } else if (entityType === 'user') {
-                            endpoint = 'process_admin_action.php';
-                            actionName = 'toggle_user_status';
-                        }
-                        
-                        fetch(endpoint, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                            body: `action=${actionName}&id=${itemId}&csrf_token=${encodeURIComponent(csrfToken)}`
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                persistToast(data.message || 'Status updated successfully', 'success');
-                                window.location.reload();
-                            } else {
-                                showToast(data.message || 'Failed to update status', 'error');
+                    showConfirmModal('Are you sure you want to toggle the status of this ' + entityType + '?', 'Confirm', 'Cancel').then(function(confirmed) {
+                        if (confirmed) {
+                            let endpoint = 'process_admin_action.php';
+                            let actionName = 'toggle_status';
+                            
+                            // Determine endpoint based on type
+                            if (entityType === 'session') {
+                                endpoint = 'process_admin_action.php';
+                                actionName = 'toggle_session_status';
+                            } else if (entityType === 'package') {
+                                endpoint = 'process_packages.php';
+                                actionName = 'toggle_status';
+                            } else if (entityType === 'user') {
+                                endpoint = 'process_admin_action.php';
+                                actionName = 'toggle_user_status';
                             }
-                        })
-                        .catch(error => {
-                            showToast('Error updating status', 'error');
-                            console.error('Toggle status error:', error);
-                        });
-                    }
+                            
+                            fetch(endpoint, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                                body: `action=${actionName}&id=${itemId}&csrf_token=${encodeURIComponent(csrfToken)}`
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    persistToast(data.message || 'Status updated successfully', 'success');
+                                    window.location.reload();
+                                } else {
+                                    showToast(data.message || 'Failed to update status', 'error');
+                                }
+                            })
+                            .catch(error => {
+                                showToast('Error updating status', 'error');
+                                console.error('Toggle status error:', error);
+                            });
+                        }
+                    });
                     return;
                 }
                 
@@ -676,35 +683,37 @@
                         return;
                     }
                     
-                    if (confirm('Are you sure you want to cancel this session?')) {
-                        const csrfToken = document.querySelector('[name="csrf_token"]')?.value;
-                        if (!csrfToken) {
-                            showToast('Security token missing. Please refresh the page.', 'error');
-                            return;
-                        }
-                        
-                        // Send cancel request
-                        fetch('process_booking.php', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/x-www-form-urlencoded',
-                            },
-                            body: `action=cancel&session_id=${encodeURIComponent(sessionId)}&csrf_token=${encodeURIComponent(csrfToken)}`
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                persistToast('Session cancelled successfully', 'success');
-                                window.location.reload();
-                            } else {
-                                showToast(data.message || 'Failed to cancel session', 'error');
+                    showConfirmModal('Are you sure you want to cancel this session?', 'Cancel Session', 'Go Back').then(function(confirmed) {
+                        if (confirmed) {
+                            const csrfToken = document.querySelector('[name="csrf_token"]')?.value;
+                            if (!csrfToken) {
+                                showToast('Security token missing. Please refresh the page.', 'error');
+                                return;
                             }
-                        })
-                        .catch(error => {
-                            showToast('An error occurred', 'error');
-                            console.error('Cancel session error:', error);
-                        });
-                    }
+                            
+                            // Send cancel request
+                            fetch('process_booking.php', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/x-www-form-urlencoded',
+                                },
+                                body: `action=cancel&session_id=${encodeURIComponent(sessionId)}&csrf_token=${encodeURIComponent(csrfToken)}`
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    persistToast('Session cancelled successfully', 'success');
+                                    window.location.reload();
+                                } else {
+                                    showToast(data.message || 'Failed to cancel session', 'error');
+                                }
+                            })
+                            .catch(error => {
+                                showToast('An error occurred', 'error');
+                                console.error('Cancel session error:', error);
+                            });
+                        }
+                    });
                     return;
                 }
                 
@@ -1385,35 +1394,37 @@
                     return;
                 }
                 
-                if (confirm('Are you sure you want to delete this video?')) {
-                    const csrfToken = document.querySelector('[name="csrf_token"]')?.value;
-                    if (!csrfToken) {
-                        showToast('Security token missing. Please refresh the page.', 'error');
-                        return;
-                    }
-                    
-                    // Send delete request
-                    fetch('process_video.php', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
-                        body: `action=delete&video_id=${encodeURIComponent(videoId)}&csrf_token=${encodeURIComponent(csrfToken)}`
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            persistToast('Video deleted successfully', 'success');
-                            window.location.reload();
-                        } else {
-                            showToast(data.message || 'Failed to delete video', 'error');
+                showConfirmModal('Are you sure you want to delete this video?', 'Delete', 'Cancel').then(function(confirmed) {
+                    if (confirmed) {
+                        const csrfToken = document.querySelector('[name="csrf_token"]')?.value;
+                        if (!csrfToken) {
+                            showToast('Security token missing. Please refresh the page.', 'error');
+                            return;
                         }
-                    })
-                    .catch(error => {
-                        showToast('An error occurred', 'error');
-                        console.error('Delete video error:', error);
-                    });
-                }
+                        
+                        // Send delete request
+                        fetch('process_video.php', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                            },
+                            body: `action=delete&video_id=${encodeURIComponent(videoId)}&csrf_token=${encodeURIComponent(csrfToken)}`
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                persistToast('Video deleted successfully', 'success');
+                                window.location.reload();
+                            } else {
+                                showToast(data.message || 'Failed to delete video', 'error');
+                            }
+                        })
+                        .catch(error => {
+                            showToast('An error occurred', 'error');
+                            console.error('Delete video error:', error);
+                        });
+                    }
+                });
             });
         });
     }

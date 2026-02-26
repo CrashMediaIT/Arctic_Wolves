@@ -183,7 +183,7 @@ try {
                 <div class="file-upload-area" id="file-upload-area">
                     <i class="fas fa-cloud-upload-alt"></i>
                     <p>Click to select or drag and drop your video</p>
-                    <span class="file-hint">Supported formats: MP4, MOV, AVI, WebM (max 10GB)</span>
+                    <span class="file-hint">Supported formats: MP4, MKV, MOV, AVI, WebM (max 10GB)</span>
                     <input type="file" id="video_file" name="video_file" accept="video/*" required style="display: none;">
                 </div>
                 <div class="selected-file" id="selected-file" style="display: none;">

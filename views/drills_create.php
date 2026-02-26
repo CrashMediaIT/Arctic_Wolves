@@ -364,9 +364,9 @@ if ($editDrillId) {
                     <div id="uploadFields" class="video-type-fields" style="display: none;">
                         <div class="form-group">
                             <label>Upload Video File</label>
-                            <input type="file" name="video_file" id="videoFileInput" class="form-input" accept="video/mp4,video/webm,video/ogg" onchange="validateVideoFileSize(this)">
+                            <input type="file" name="video_file" id="videoFileInput" class="form-input" accept="video/mp4,video/webm,video/ogg,video/x-matroska,video/quicktime,video/x-msvideo" onchange="validateVideoFileSize(this)">
                             <p class="help-text" style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">
-                                <i class="fas fa-info-circle"></i> Supported formats: MP4, WebM, OGG. Max size: 10GB
+                                <i class="fas fa-info-circle"></i> Supported formats: MP4, MKV, MOV, AVI, WebM, OGG. Max size: 10GB
                             </p>
                             <p id="videoFileSizeError" style="display: none; color: var(--error); font-size: 12px; margin-top: 4px;">
                                 <i class="fas fa-exclamation-circle"></i> File is too large. Maximum size is 10GB.

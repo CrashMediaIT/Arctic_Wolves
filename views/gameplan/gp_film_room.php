@@ -211,7 +211,7 @@ if (!function_exists('vr_format_duration')) {
                 <div id="vrFileArea" style="border: 2px dashed var(--border-color, #ccc); border-radius: 12px; padding: 40px 24px; text-align: center; cursor: pointer;">
                     <i class="fas fa-cloud-upload-alt" style="font-size: 40px; opacity: 0.4; display: block; margin-bottom: 12px;"></i>
                     <p style="margin: 0 0 6px;">Drag &amp; drop video file here or click to browse</p>
-                    <small style="color: var(--text-muted, #888);">Supported: MP4, MOV, AVI, WebM (max 10 GB)</small>
+                    <small style="color: var(--text-muted, #888);">Supported: MP4, MKV, MOV, AVI, WebM (max 10 GB)</small>
                     <input type="file" name="video_file" accept="video/*" id="vrFileInput" style="display:none;" required>
                 </div>
                 <div id="vrSelectedFile" style="display:none; align-items: center; gap: 10px; padding: 14px; border: 1px solid var(--border-color, #ccc); border-radius: 10px; margin-top: 8px;">

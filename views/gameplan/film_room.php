@@ -210,7 +210,7 @@ if (!function_exists('vr_format_duration')) {
             <div class="vr-file-area" id="vrFileArea">
                 <i class="fas fa-cloud-upload-alt"></i>
                 <p>Drag &amp; drop video file here or click to browse</p>
-                <span class="vr-file-hint">Supported: MP4, MOV, AVI, WebM (max 10 GB)</span>
+                <span class="vr-file-hint">Supported: MP4, MKV, MOV, AVI, WebM (max 10 GB)</span>
                 <input type="file" name="video_file" accept="video/*" id="vrFileInput" style="display:none;" required>
             </div>
             <div class="vr-selected-file" id="vrSelectedFile" style="display:none;">

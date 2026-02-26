@@ -421,7 +421,7 @@ $reviewed_videos = array_filter($videos, function($v) {
                     <div class="file-upload-area" data-component="FileUpload">
                         <i class="fas fa-cloud-upload-alt"></i>
                         <p>Drag & drop video file here or click to browse</p>
-                        <p class="file-hint">Supported: MP4, MOV, AVI, WebM (Max 10GB)</p>
+                        <p class="file-hint">Supported: MP4, MKV, MOV, AVI, WebM (Max 10GB)</p>
                         <p class="file-name" style="display: none;"></p>
                         <input type="file" name="video_file" accept="video/*" style="display: none;" required data-field="video-file">
                         <button type="button" class="btn-secondary" data-action="trigger-file-input">Choose File</button>

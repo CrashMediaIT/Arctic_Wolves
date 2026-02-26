@@ -81,9 +81,9 @@ class FileUploadValidator {
     public static function validateVideo($file, $maxSizeMB = 10240) {
         return self::validate(
             $file,
-            ['mp4', 'mov', 'avi', 'webm'],
+            ['mp4', 'mov', 'avi', 'webm', 'mkv'],
             $maxSizeMB * 1024 * 1024,
-            ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm']
+            ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm', 'video/x-matroska']
         );
     }
     
