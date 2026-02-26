@@ -1278,7 +1278,7 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
                         <tr>
                             <td>
                                 <?php if (!empty($program['image_url'])): ?>
-                                    <img src="<?= htmlspecialchars($program['image_url']) ?>" alt="" class="program-image-thumb">
+                                    <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $program['image_url'])) ?>" alt="" class="program-image-thumb">
                                 <?php else: ?>
                                     <i class="fas fa-image" style="font-size: 24px; color: #1e293b;"></i>
                                 <?php endif; ?>

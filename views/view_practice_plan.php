@@ -307,7 +307,7 @@ $totalDuration = $plan['total_duration'] ?? $calculatedDuration;
                                     <?php if (!empty($drill['video_url'])): ?>
                                     <div class="drill-detail-section">
                                         <h5><i class="fas fa-video"></i> Video</h5>
-                                        <a href="<?php echo htmlspecialchars($drill['video_url']); ?>" target="_blank" class="btn btn-secondary btn-sm">
+                                        <a href="<?php echo htmlspecialchars(resolveRustfsUrl($pdo, $drill['video_url'])); ?>" target="_blank" class="btn btn-secondary btn-sm">
                                             <i class="fas fa-play-circle"></i> Watch Video
                                         </a>
                                     </div>

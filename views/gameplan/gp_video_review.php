@@ -10,7 +10,6 @@
  * Rendered inside standalone gameplan.php shell.
  */
 require_once __DIR__ . '/../../lib/image_helper.php';
- */
 
 // -- Tab & Filter parameters -----------------------------------------------
 $vr_tab = isset($_GET['tab']) ? preg_replace('/[^a-z_]/', '', $_GET['tab']) : 'by_game';

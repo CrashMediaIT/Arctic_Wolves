@@ -1,5 +1,6 @@
 <!-- Drills Library View -->
 <?php
+require_once __DIR__ . '/../lib/image_helper.php';
 // Fetch drills from database
 try {
     // Get drill categories for filter
@@ -157,7 +158,7 @@ $is_demo_drills = false;
                     </div>
                     <div class="drill-image" data-ice-view="<?php echo htmlspecialchars($drillIceView); ?>">
                         <?php if ($drill['custom_image']): ?>
-                            <img src="<?php echo htmlspecialchars($drill['custom_image']); ?>" alt="<?php echo htmlspecialchars($drill['title']); ?>">
+                            <img src="<?php echo htmlspecialchars(resolveRustfsUrl($pdo, $drill['custom_image'])); ?>" alt="<?php echo htmlspecialchars($drill['title']); ?>">
                         <?php else: ?>
                             <div class="drill-diagram-preview" data-diagram='<?php echo htmlspecialchars($drill['diagram_data'] ?? '[]'); ?>' data-center-logo="<?php echo htmlspecialchars($centerLogoUrl); ?>">
                                 <canvas class="drill-thumbnail-canvas"></canvas>

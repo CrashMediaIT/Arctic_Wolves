@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../lib/image_helper.php';
 // Validate and sanitize team_id
 $team_id = isset($_GET['team_id']) ? intval($_GET['team_id']) : 0;
 
@@ -173,7 +174,7 @@ if ($team) {
             <a href="?page=team_roster&team_id=<?= $t['id'] ?>" class="team-select-card">
                 <div class="team-card-icon">
                     <?php if (!empty($t['logo_url'])): ?>
-                        <img src="<?= htmlspecialchars($t['logo_url']) ?>" alt="<?= htmlspecialchars($t['name']) ?>" style="width: 100%; height: 100%; object-fit: cover; border-radius: inherit;">
+                        <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $t['logo_url'])) ?>" alt="<?= htmlspecialchars($t['name']) ?>" style="width: 100%; height: 100%; object-fit: cover; border-radius: inherit;">
                     <?php else: ?>
                         <i class="fas fa-users"></i>
                     <?php endif; ?>
@@ -213,7 +214,7 @@ if ($team) {
                     <i class="fas fa-arrow-left"></i>
                 </a>
                 <?php if (!empty($team['logo_url'])): ?>
-                <img src="<?= htmlspecialchars($team['logo_url']) ?>" alt="<?= htmlspecialchars($team['name']) ?>" class="team-header-logo">
+                <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $team['logo_url'])) ?>" alt="<?= htmlspecialchars($team['name']) ?>" class="team-header-logo">
                 <?php endif; ?>
                 <h3><?= htmlspecialchars($team['name']) ?></h3>
             </div>

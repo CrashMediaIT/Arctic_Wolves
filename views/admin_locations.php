@@ -5,6 +5,7 @@
  */
 
 require_once __DIR__ . '/../security.php';
+require_once __DIR__ . '/../lib/image_helper.php';
 
 // Check if user has permission
 if ($user_role !== 'admin') {
@@ -217,7 +218,7 @@ $locations = $pdo->query("
                     <td style="font-weight: 600;">
                         <?= htmlspecialchars($location['name']) ?>
                         <?php if ($location['image_url']): ?>
-                        <br><img src="<?= htmlspecialchars($location['image_url']) ?>" alt="Location" style="max-width: 100px; margin-top: 5px; border-radius: 4px;">
+                        <br><img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $location['image_url'])) ?>" alt="Location" style="max-width: 100px; margin-top: 5px; border-radius: 4px;">
                         <?php endif; ?>
                     </td>
                     <td><?= htmlspecialchars($location['city']) ?></td>
