@@ -281,6 +281,7 @@ $allowed_pages = [
     // Session Evaluations (Coaches Corner)
     'coach_session_evaluations' => 'views/coach_session_evaluations.php',
     'session_evaluation_form'   => 'views/session_evaluation_form.php',
+    'coach_pending_reviews'     => 'views/coach_pending_reviews.php',
     
     // Evaluations
     'evaluations_goals'       => 'views/evaluations_goals.php',
@@ -819,6 +820,9 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="?page=coach_session_evaluations" class="nav-link <?= in_array($page, ['coach_session_evaluations','session_evaluation_form'])?'active':'' ?>">
                 <i class="fa-solid fa-clipboard-check icon"></i> Session Evaluations
             </a>
+            <a href="?page=coach_pending_reviews" class="nav-link <?= $page=='coach_pending_reviews'?'active':'' ?>">
+                <i class="fa-solid fa-video icon"></i> Pending Video Reviews
+            </a>
             <a href="?page=travel" class="nav-link <?= in_array($page, ['travel','mileage'])?'active':'' ?>">
                 <i class="fa-solid fa-plane icon"></i> Travel
             </a>
@@ -1109,27 +1113,429 @@ function switchAthlete(athleteId) {
 <!-- Main Application JavaScript -->
 <script src="js/app.js"></script>
 
+<!-- Messenger Widget (Facebook Messenger-style) -->
+<div id="messengerWidget" class="messenger-widget">
+    <!-- Floating Button -->
+    <button id="messengerToggle" class="messenger-toggle" title="Messages">
+        <i class="fas fa-comment-dots"></i>
+        <span id="messengerBadge" class="messenger-badge" style="display:none;">0</span>
+    </button>
+
+    <!-- Widget Panel -->
+    <div id="messengerPanel" class="messenger-panel" style="display:none;">
+        <!-- Panel Header -->
+        <div class="messenger-panel-header">
+            <h4><i class="fas fa-comments"></i> Messages</h4>
+            <div class="messenger-panel-actions">
+                <button id="messengerNewBtn" class="messenger-icon-btn" title="New Message"><i class="fas fa-edit"></i></button>
+                <button id="messengerCloseBtn" class="messenger-icon-btn" title="Close"><i class="fas fa-times"></i></button>
+            </div>
+        </div>
+
+        <!-- Conversation List View -->
+        <div id="messengerListView">
+            <div class="messenger-search">
+                <input type="text" id="messengerSearch" placeholder="Search conversations..." autocomplete="off">
+            </div>
+            <div id="messengerConversations" class="messenger-conversations">
+                <div class="messenger-loading"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
+            </div>
+        </div>
+
+        <!-- Chat View (hidden by default) -->
+        <div id="messengerChatView" style="display:none;">
+            <div class="messenger-chat-header">
+                <button id="messengerBackBtn" class="messenger-icon-btn"><i class="fas fa-arrow-left"></i></button>
+                <span id="messengerChatName">User</span>
+                <button id="messengerMinimizeBtn" class="messenger-icon-btn" title="Minimize"><i class="fas fa-minus"></i></button>
+            </div>
+            <div id="messengerMessages" class="messenger-messages"></div>
+            <div class="messenger-input-area">
+                <textarea id="messengerInput" placeholder="Type a message..." rows="1"></textarea>
+                <button id="messengerSendBtn" class="messenger-send-btn"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+
+        <!-- New Message View (hidden by default) -->
+        <div id="messengerNewView" style="display:none;">
+            <div class="messenger-chat-header">
+                <button id="messengerNewBackBtn" class="messenger-icon-btn"><i class="fas fa-arrow-left"></i></button>
+                <span>New Message</span>
+            </div>
+            <div class="messenger-new-search">
+                <input type="text" id="messengerContactSearch" placeholder="Search contacts..." autocomplete="off">
+            </div>
+            <div id="messengerContacts" class="messenger-contacts"></div>
+        </div>
+    </div>
+</div>
+
+<style>
+.messenger-widget { position: fixed; bottom: 24px; right: 24px; z-index: 9990; font-family: inherit; }
+.messenger-toggle { width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, var(--primary, #6B46C1), var(--accent, #8B5CF6)); border: none; color: #fff; font-size: 24px; cursor: pointer; box-shadow: 0 4px 16px rgba(107,70,193,0.4); transition: transform 0.2s, box-shadow 0.2s; position: relative; display: flex; align-items: center; justify-content: center; }
+.messenger-toggle:hover { transform: scale(1.08); box-shadow: 0 6px 24px rgba(107,70,193,0.5); }
+.messenger-badge { position: absolute; top: -4px; right: -4px; background: #EF4444; color: #fff; font-size: 11px; font-weight: 700; min-width: 20px; height: 20px; border-radius: 10px; display: flex; align-items: center; justify-content: center; padding: 0 5px; }
+.messenger-panel { position: absolute; bottom: 70px; right: 0; width: 360px; max-height: 520px; background: var(--bg-card, #16161F); border: 1px solid var(--border, #2D2D3F); border-radius: 16px; box-shadow: 0 12px 40px rgba(0,0,0,0.5); display: flex; flex-direction: column; overflow: hidden; }
+.messenger-panel-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border, #2D2D3F); }
+.messenger-panel-header h4 { margin: 0; font-size: 16px; font-weight: 700; color: var(--text-white, #fff); display: flex; align-items: center; gap: 8px; }
+.messenger-panel-header h4 i { color: var(--primary, #6B46C1); }
+.messenger-panel-actions { display: flex; gap: 4px; }
+.messenger-icon-btn { width: 34px; height: 34px; background: transparent; border: 1px solid var(--border, #2D2D3F); color: var(--text-dim, #94a3b8); border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+.messenger-icon-btn:hover { background: var(--primary, #6B46C1); border-color: var(--primary, #6B46C1); color: #fff; }
+.messenger-search { padding: 10px 16px; }
+.messenger-search input, .messenger-new-search input { width: 100%; padding: 10px 14px; background: var(--bg-main, #0a0a0f); border: 1px solid var(--border, #2D2D3F); border-radius: 8px; color: #fff; font-size: 13px; outline: none; box-sizing: border-box; }
+.messenger-search input:focus, .messenger-new-search input:focus { border-color: var(--primary, #6B46C1); }
+.messenger-new-search { padding: 10px 16px; }
+.messenger-conversations { flex: 1; overflow-y: auto; max-height: 360px; }
+.messenger-conv-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; cursor: pointer; border-bottom: 1px solid rgba(45,45,63,0.3); transition: background 0.15s; }
+.messenger-conv-item:hover { background: rgba(107,70,193,0.1); }
+.messenger-conv-item.unread { background: rgba(107,70,193,0.08); }
+.messenger-conv-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--primary, #6B46C1), var(--accent, #8B5CF6)); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+.messenger-conv-info { flex: 1; min-width: 0; }
+.messenger-conv-name { font-size: 14px; font-weight: 600; color: var(--text-white, #fff); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.messenger-conv-preview { font-size: 12px; color: var(--text-dim, #94a3b8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.messenger-conv-unread-dot { width: 10px; height: 10px; background: var(--primary, #6B46C1); border-radius: 50%; flex-shrink: 0; }
+.messenger-loading { text-align: center; padding: 32px; color: var(--text-dim, #94a3b8); font-size: 13px; }
+.messenger-chat-header { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--border, #2D2D3F); }
+.messenger-chat-header span { flex: 1; font-size: 15px; font-weight: 600; color: var(--text-white, #fff); }
+.messenger-messages { flex: 1; overflow-y: auto; padding: 16px; max-height: 320px; min-height: 200px; display: flex; flex-direction: column; gap: 8px; }
+.msg-bubble { max-width: 80%; padding: 10px 14px; border-radius: 16px; font-size: 13px; line-height: 1.5; word-break: break-word; }
+.msg-bubble.sent { align-self: flex-end; background: linear-gradient(135deg, var(--primary, #6B46C1), var(--accent, #8B5CF6)); color: #fff; border-bottom-right-radius: 4px; }
+.msg-bubble.received { align-self: flex-start; background: var(--bg-main, #0a0a0f); color: var(--text-white, #fff); border: 1px solid var(--border, #2D2D3F); border-bottom-left-radius: 4px; }
+.msg-bubble .msg-time { font-size: 10px; opacity: 0.6; margin-top: 4px; display: block; }
+.messenger-input-area { display: flex; align-items: flex-end; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border, #2D2D3F); }
+.messenger-input-area textarea { flex: 1; padding: 10px 14px; background: var(--bg-main, #0a0a0f); border: 1px solid var(--border, #2D2D3F); border-radius: 20px; color: #fff; font-size: 13px; resize: none; outline: none; max-height: 80px; font-family: inherit; box-sizing: border-box; }
+.messenger-input-area textarea:focus { border-color: var(--primary, #6B46C1); }
+.messenger-send-btn { width: 38px; height: 38px; border-radius: 50%; background: var(--primary, #6B46C1); border: none; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background 0.2s; }
+.messenger-send-btn:hover { background: var(--accent, #8B5CF6); }
+.messenger-contacts { flex: 1; overflow-y: auto; max-height: 380px; }
+.messenger-contact-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; cursor: pointer; border-bottom: 1px solid rgba(45,45,63,0.3); transition: background 0.15s; }
+.messenger-contact-item:hover { background: rgba(107,70,193,0.1); }
+.messenger-contact-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #3B82F6, #6366F1); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 13px; flex-shrink: 0; }
+.messenger-contact-name { font-size: 14px; font-weight: 600; color: var(--text-white, #fff); }
+.messenger-contact-role { font-size: 11px; color: var(--text-dim, #94a3b8); text-transform: capitalize; }
+.messenger-empty { text-align: center; padding: 32px 16px; color: var(--text-dim); font-size: 13px; }
+@media (max-width: 480px) {
+    .messenger-panel { width: calc(100vw - 32px); right: -8px; bottom: 64px; max-height: 70vh; }
+}
+</style>
+
 <script>
-// Unread message badge polling
+// Messenger Widget Controller
 (function() {
-    function updateMsgBadge() {
+    var currentUserId = <?= (int)$user_id ?>;
+    var csrfToken = '<?= htmlspecialchars($_SESSION["csrf_token"] ?? "", ENT_QUOTES) ?>';
+    var panel = document.getElementById('messengerPanel');
+    var toggle = document.getElementById('messengerToggle');
+    var badge = document.getElementById('messengerBadge');
+    var listView = document.getElementById('messengerListView');
+    var chatView = document.getElementById('messengerChatView');
+    var newView = document.getElementById('messengerNewView');
+    var currentConvId = null;
+    var currentToUserId = null;
+    var chatPollInterval = null;
+
+    function getInitials(first, last) {
+        return ((first || '')[0] || '') + ((last || '')[0] || '');
+    }
+
+    function escapeHtml(text) {
+        var d = document.createElement('div');
+        d.textContent = text || '';
+        return d.innerHTML;
+    }
+
+    function formatTime(dateStr) {
+        if (!dateStr) return '';
+        var d = new Date(dateStr);
+        var now = new Date();
+        if (d.toDateString() === now.toDateString()) {
+            return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+        return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    }
+
+    // Toggle panel
+    toggle.addEventListener('click', function() {
+        if (panel.style.display === 'none') {
+            panel.style.display = 'flex';
+            showListView();
+            loadConversations();
+        } else {
+            panel.style.display = 'none';
+            stopChatPoll();
+        }
+    });
+
+    document.getElementById('messengerCloseBtn').addEventListener('click', function() {
+        panel.style.display = 'none';
+        stopChatPoll();
+    });
+
+    document.getElementById('messengerMinimizeBtn').addEventListener('click', function() {
+        panel.style.display = 'none';
+        stopChatPoll();
+    });
+
+    function showListView() {
+        listView.style.display = 'block';
+        chatView.style.display = 'none';
+        newView.style.display = 'none';
+        stopChatPoll();
+    }
+
+    function showChatView() {
+        listView.style.display = 'none';
+        chatView.style.display = 'flex';
+        newView.style.display = 'none';
+    }
+
+    function showNewView() {
+        listView.style.display = 'none';
+        chatView.style.display = 'none';
+        newView.style.display = 'flex';
+    }
+
+    // Back buttons
+    document.getElementById('messengerBackBtn').addEventListener('click', function() {
+        showListView();
+        loadConversations();
+    });
+    document.getElementById('messengerNewBackBtn').addEventListener('click', function() {
+        showListView();
+    });
+
+    // New message
+    document.getElementById('messengerNewBtn').addEventListener('click', function() {
+        showNewView();
+        loadContacts();
+    });
+
+    // Load conversations
+    function loadConversations() {
+        var container = document.getElementById('messengerConversations');
+        container.innerHTML = '<div class="messenger-loading"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+        fetch('process_messages.php?action=get_conversations')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.success || !data.conversations || data.conversations.length === 0) {
+                    container.innerHTML = '<div class="messenger-empty"><i class="fas fa-inbox" style="font-size:32px; display:block; margin-bottom:12px; opacity:0.3;"></i>No conversations yet</div>';
+                    return;
+                }
+                var html = '';
+                data.conversations.forEach(function(c) {
+                    var initials = getInitials(c.first_name, c.last_name);
+                    var name = escapeHtml((c.first_name || '') + ' ' + (c.last_name || ''));
+                    var preview = escapeHtml(c.last_message || 'No messages yet');
+                    if (preview.length > 40) preview = preview.substring(0, 40) + '...';
+                    var unread = parseInt(c.unread_count || 0) > 0;
+                    html += '<div class="messenger-conv-item' + (unread ? ' unread' : '') + '" data-conv-id="' + c.conversation_id + '" data-user-id="' + c.other_user_id + '" data-name="' + escapeHtml(name) + '">';
+                    html += '<div class="messenger-conv-avatar">' + escapeHtml(initials).toUpperCase() + '</div>';
+                    html += '<div class="messenger-conv-info"><div class="messenger-conv-name">' + name + '</div><div class="messenger-conv-preview">' + preview + '</div></div>';
+                    if (unread) html += '<div class="messenger-conv-unread-dot"></div>';
+                    html += '</div>';
+                });
+                container.innerHTML = html;
+                // Add click handlers
+                container.querySelectorAll('.messenger-conv-item').forEach(function(item) {
+                    item.addEventListener('click', function() {
+                        currentConvId = parseInt(this.dataset.convId);
+                        currentToUserId = parseInt(this.dataset.userId);
+                        document.getElementById('messengerChatName').textContent = this.dataset.name;
+                        showChatView();
+                        loadMessages(currentConvId);
+                        startChatPoll();
+                    });
+                });
+            })
+            .catch(function() {
+                container.innerHTML = '<div class="messenger-empty">Failed to load conversations</div>';
+            });
+    }
+
+    // Search conversations
+    document.getElementById('messengerSearch').addEventListener('input', function() {
+        var query = this.value.toLowerCase();
+        document.querySelectorAll('.messenger-conv-item').forEach(function(item) {
+            var name = (item.dataset.name || '').toLowerCase();
+            item.style.display = name.indexOf(query) !== -1 ? 'flex' : 'none';
+        });
+    });
+
+    // Load messages
+    function loadMessages(convId) {
+        var container = document.getElementById('messengerMessages');
+        container.innerHTML = '<div class="messenger-loading"><i class="fas fa-spinner fa-spin"></i></div>';
+        fetch('process_messages.php?action=get_messages&conversation_id=' + convId)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.success) { container.innerHTML = '<div class="messenger-empty">Failed to load messages</div>'; return; }
+                renderMessages(data.messages || []);
+            })
+            .catch(function() {
+                container.innerHTML = '<div class="messenger-empty">Error loading messages</div>';
+            });
+    }
+
+    function renderMessages(messages) {
+        var container = document.getElementById('messengerMessages');
+        if (messages.length === 0) {
+            container.innerHTML = '<div class="messenger-empty">No messages yet. Start the conversation!</div>';
+            return;
+        }
+        var html = '';
+        messages.forEach(function(m) {
+            var isSent = parseInt(m.from_user_id) === currentUserId;
+            html += '<div class="msg-bubble ' + (isSent ? 'sent' : 'received') + '">';
+            html += escapeHtml(m.message_body);
+            html += '<span class="msg-time">' + formatTime(m.created_at) + '</span>';
+            html += '</div>';
+        });
+        container.innerHTML = html;
+        container.scrollTop = container.scrollHeight;
+    }
+
+    // Send message
+    function sendMsg() {
+        var input = document.getElementById('messengerInput');
+        var body = input.value.trim();
+        if (!body || !currentToUserId) return;
+        input.value = '';
+
+        var formData = new FormData();
+        formData.append('action', 'send_message');
+        formData.append('to_user_id', currentToUserId);
+        formData.append('message_body', body);
+        formData.append('csrf_token', csrfToken);
+
+        fetch('process_messages.php', { method: 'POST', body: formData })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success && data.message) {
+                    if (!currentConvId && data.conversation_id) currentConvId = data.conversation_id;
+                    // Append the new message
+                    var container = document.getElementById('messengerMessages');
+                    var emptyMsg = container.querySelector('.messenger-empty');
+                    if (emptyMsg) emptyMsg.remove();
+                    var div = document.createElement('div');
+                    div.className = 'msg-bubble sent';
+                    div.innerHTML = escapeHtml(data.message.message_body) + '<span class="msg-time">' + formatTime(data.message.created_at) + '</span>';
+                    container.appendChild(div);
+                    container.scrollTop = container.scrollHeight;
+                }
+            });
+    }
+
+    document.getElementById('messengerSendBtn').addEventListener('click', sendMsg);
+    document.getElementById('messengerInput').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMsg();
+        }
+    });
+
+    // Chat polling for new messages
+    function startChatPoll() {
+        stopChatPoll();
+        chatPollInterval = setInterval(function() {
+            if (currentConvId) loadMessages(currentConvId);
+        }, 5000);
+    }
+
+    function stopChatPoll() {
+        if (chatPollInterval) { clearInterval(chatPollInterval); chatPollInterval = null; }
+    }
+
+    // Load contacts for new message
+    function loadContacts() {
+        var container = document.getElementById('messengerContacts');
+        container.innerHTML = '<div class="messenger-loading"><i class="fas fa-spinner fa-spin"></i> Loading contacts...</div>';
+        fetch('process_messages.php?action=get_contacts')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.success || !data.contacts || data.contacts.length === 0) {
+                    container.innerHTML = '<div class="messenger-empty">No contacts available</div>';
+                    return;
+                }
+                var html = '';
+                data.contacts.forEach(function(c) {
+                    var initials = getInitials(c.first_name, c.last_name);
+                    var name = escapeHtml((c.first_name || '') + ' ' + (c.last_name || ''));
+                    var role = escapeHtml(c.role || '');
+                    html += '<div class="messenger-contact-item" data-user-id="' + c.id + '" data-name="' + escapeHtml(name) + '">';
+                    html += '<div class="messenger-contact-avatar">' + escapeHtml(initials).toUpperCase() + '</div>';
+                    html += '<div><div class="messenger-contact-name">' + name + '</div><div class="messenger-contact-role">' + role + '</div></div>';
+                    html += '</div>';
+                });
+                container.innerHTML = html;
+                container.querySelectorAll('.messenger-contact-item').forEach(function(item) {
+                    item.addEventListener('click', function() {
+                        currentToUserId = parseInt(this.dataset.userId);
+                        currentConvId = null;
+                        document.getElementById('messengerChatName').textContent = this.dataset.name;
+                        showChatView();
+                        // Try to find existing conversation
+                        fetch('process_messages.php?action=get_conversations')
+                            .then(function(r) { return r.json(); })
+                            .then(function(data) {
+                                if (data.success && data.conversations) {
+                                    var existing = data.conversations.find(function(c) { return parseInt(c.other_user_id) === currentToUserId; });
+                                    if (existing) {
+                                        currentConvId = parseInt(existing.conversation_id);
+                                        loadMessages(currentConvId);
+                                        startChatPoll();
+                                    } else {
+                                        document.getElementById('messengerMessages').innerHTML = '<div class="messenger-empty">Start a new conversation!</div>';
+                                    }
+                                }
+                            });
+                    });
+                });
+            })
+            .catch(function() {
+                container.innerHTML = '<div class="messenger-empty">Failed to load contacts</div>';
+            });
+    }
+
+    // Search contacts
+    document.getElementById('messengerContactSearch').addEventListener('input', function() {
+        var query = this.value.toLowerCase();
+        document.querySelectorAll('.messenger-contact-item').forEach(function(item) {
+            var name = (item.dataset.name || '').toLowerCase();
+            item.style.display = name.indexOf(query) !== -1 ? 'flex' : 'none';
+        });
+    });
+
+    // Update badge
+    function updateWidgetBadge() {
         fetch('process_messages.php?action=unread_count')
-            .then(r => r.json())
-            .then(data => {
-                const badge = document.getElementById('nav-msg-badge');
-                if (badge && data.success) {
-                    if (data.count > 0) {
-                        badge.textContent = data.count > 99 ? '99+' : data.count;
-                        badge.style.display = 'inline-block';
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    var count = parseInt(data.count) || 0;
+                    // Update widget badge
+                    if (count > 0) {
+                        badge.textContent = count > 99 ? '99+' : count;
+                        badge.style.display = 'flex';
                     } else {
                         badge.style.display = 'none';
+                    }
+                    // Also update nav badge
+                    var navBadge = document.getElementById('nav-msg-badge');
+                    if (navBadge) {
+                        if (count > 0) {
+                            navBadge.textContent = count > 99 ? '99+' : count;
+                            navBadge.style.display = 'inline-block';
+                        } else {
+                            navBadge.style.display = 'none';
+                        }
                     }
                 }
             })
             .catch(function() {});
     }
-    updateMsgBadge();
-    setInterval(updateMsgBadge, 30000);
+    updateWidgetBadge();
+    setInterval(updateWidgetBadge, 30000);
 })();
 </script>
 
