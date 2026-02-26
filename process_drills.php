@@ -98,9 +98,7 @@ if ($action === 'save_drill' || $action === 'create') {
         
         // Upload to RustFS
         $persist = persistUploadedFile($pdo, $file['tmp_name'], 'drills/videos', $filename);
-        if (!empty($persist['rustfs_url'])) {
-            $video_upload_path = $persist['rustfs_url'];
-        }
+        $video_upload_path = $persist['rustfs_url'] ?? null;
         if (!empty($persist['nextcloud_path'])) {
             $drill_video_nc_path = $persist['nextcloud_path'];
         }

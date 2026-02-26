@@ -376,7 +376,7 @@ function handleAthleteVideoUpload() {
     
     // Upload to RustFS
     $persist = persistUploadedFile($pdo, $file['tmp_name'], 'videos/athlete', $unique_filename, '', true);
-    $db_video_url = (!empty($persist['rustfs_url'])) ? $persist['rustfs_url'] : null;
+    $db_video_url = $persist['rustfs_url'] ?? null;
     
     // Insert video record into database
     $stmt = $pdo->prepare("
