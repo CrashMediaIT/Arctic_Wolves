@@ -636,10 +636,13 @@ function handleVideoDelete() {
         throw new Exception('Video not found or access denied');
     }
     
-    // Delete physical file
-    $file_path = __DIR__ . '/' . $video['video_url'];
-    if (file_exists($file_path)) {
-        unlink($file_path);
+    // Delete physical file (skip for RustFS URLs)
+    $video_url = $video['video_url'] ?? '';
+    if (!empty($video_url) && !preg_match('#^https?://#', $video_url)) {
+        $file_path = __DIR__ . '/' . $video_url;
+        if (file_exists($file_path)) {
+            unlink($file_path);
+        }
     }
     
     // Delete database record

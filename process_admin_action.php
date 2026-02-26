@@ -2335,7 +2335,7 @@ if ($action == 'admin_remove_profile_image') {
         $stmt->execute([$user_id_to_update]);
         $old_image = $stmt->fetchColumn();
         
-        if ($old_image && file_exists($old_image)) {
+        if ($old_image && !preg_match('#^https?://#', $old_image) && file_exists($old_image)) {
             unlink($old_image);
         }
         
