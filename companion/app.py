@@ -1211,7 +1211,7 @@ def add_node():
         if existing.get("url", "").rstrip("/") == node_url:
             return jsonify({"error": "A node with this URL is already registered"}), 409
 
-    node_id = str(uuid.uuid4())[:8]
+    node_id = str(uuid.uuid4())
     new_node = {"id": node_id, "url": node_url, "api_key": node_api_key, "name": node_name}
     SLAVE_NODES.append(new_node)
 

@@ -701,6 +701,12 @@
             toggleSlaveNodesSection(this.value);
         });
 
+        function escapeHtml(str) {
+            var div = document.createElement('div');
+            div.appendChild(document.createTextNode(str));
+            return div.innerHTML;
+        }
+
         async function refreshNodes() {
             try {
                 const res = await fetch(API_BASE + '/api/nodes', { headers: apiHeaders() });
@@ -719,11 +725,11 @@
                         var statusText = n.online ? (n.busy ? 'Busy' : 'Available') : 'Offline';
                         var jobsText = n.online ? (n.active_jobs + ' / ' + n.max_jobs) : '—';
                         return '<tr>' +
-                            '<td>' + (n.name || '—') + '</td>' +
-                            '<td style="font-size:12px;font-family:monospace;">' + (n.url || '—') + '</td>' +
+                            '<td>' + escapeHtml(n.name || '—') + '</td>' +
+                            '<td style="font-size:12px;font-family:monospace;">' + escapeHtml(n.url || '—') + '</td>' +
                             '<td><span class="status-badge ' + statusCls + '" style="padding:3px 8px;font-size:10px;"><span class="status-dot"></span> ' + statusText + '</span></td>' +
                             '<td>' + jobsText + '</td>' +
-                            '<td><button class="btn-secondary btn-sm btn-danger" onclick="removeNode(\'' + n.id + '\')">Remove</button></td>' +
+                            '<td><button class="btn-secondary btn-sm btn-danger" data-node-id="' + escapeHtml(n.id) + '" onclick="removeNode(this.dataset.nodeId)">Remove</button></td>' +
                             '</tr>';
                     }).join('') + '</tbody></table>';
             } catch { /* ignore */ }
