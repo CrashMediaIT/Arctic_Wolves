@@ -648,7 +648,7 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                                 <h4>Use SSL</h4>
                                 <p>Enable HTTPS for RustFS connections</p>
                             </div>
-                            <label class="toggle">
+                            <label class="toggle-switch">
                                 <input type="checkbox" name="rustfs_use_ssl" 
                                        <?php echo ($settings['rustfs_use_ssl'] ?? '1') === '1' ? 'checked' : ''; ?>
                                        value="1">
@@ -660,7 +660,7 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                                 <h4>Path Style Access</h4>
                                 <p>Use path-style URLs (recommended for self-hosted RustFS). Disable for virtual-hosted style.</p>
                             </div>
-                            <label class="toggle">
+                            <label class="toggle-switch">
                                 <input type="checkbox" name="rustfs_path_style" 
                                        <?php echo ($settings['rustfs_path_style'] ?? '1') === '1' ? 'checked' : ''; ?>
                                        value="1">
