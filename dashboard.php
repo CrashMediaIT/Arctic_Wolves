@@ -282,6 +282,7 @@ $allowed_pages = [
     'coach_session_evaluations' => 'views/coach_session_evaluations.php',
     'session_evaluation_form'   => 'views/session_evaluation_form.php',
     'coach_pending_reviews'     => 'views/coach_pending_reviews.php',
+    'video_review_detail'       => 'views/video_review_detail.php',
     
     // Evaluations
     'evaluations_goals'       => 'views/evaluations_goals.php',
@@ -346,6 +347,8 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
     <link rel="stylesheet" href="css/style-guide.css">
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="views/shared_styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
+    <script src="js/hls-player.js"></script>
     <script src="js/typeahead.js"></script>
     <style>
         /* Dashboard-specific layout styles */
@@ -767,7 +770,7 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="?page=sessions" class="nav-link <?= in_array($page, ['sessions','upcoming_sessions','booking'])?'active':'' ?>">
                 <i class="fa-solid fa-calendar-check icon"></i> Sessions
             </a>
-            <a href="?page=video" class="nav-link <?= in_array($page, ['video','drill_review','coaches_reviews','record_video'])?'active':'' ?>">
+            <a href="?page=video" class="nav-link <?= in_array($page, ['video','drill_review','coaches_reviews','record_video','video_review_detail'])?'active':'' ?>">
                 <i class="fa-solid fa-video icon"></i> Video
             </a>
             <a href="?page=health" class="nav-link <?= in_array($page, ['health','strength_conditioning','nutrition'])?'active':'' ?>">
@@ -1115,15 +1118,11 @@ function switchAthlete(athleteId) {
 
 <!-- Messenger Widget (Facebook Messenger-style) -->
 <div id="messengerWidget" class="messenger-widget">
-    <!-- Floating Button -->
     <button id="messengerToggle" class="messenger-toggle" title="Messages">
         <i class="fas fa-comment-dots"></i>
         <span id="messengerBadge" class="messenger-badge" style="display:none;">0</span>
     </button>
-
-    <!-- Widget Panel -->
     <div id="messengerPanel" class="messenger-panel" style="display:none;">
-        <!-- Panel Header -->
         <div class="messenger-panel-header">
             <h4><i class="fas fa-comments"></i> Messages</h4>
             <div class="messenger-panel-actions">
@@ -1131,8 +1130,6 @@ function switchAthlete(athleteId) {
                 <button id="messengerCloseBtn" class="messenger-icon-btn" title="Close"><i class="fas fa-times"></i></button>
             </div>
         </div>
-
-        <!-- Conversation List View -->
         <div id="messengerListView">
             <div class="messenger-search">
                 <input type="text" id="messengerSearch" placeholder="Search conversations..." autocomplete="off">
@@ -1141,8 +1138,6 @@ function switchAthlete(athleteId) {
                 <div class="messenger-loading"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
             </div>
         </div>
-
-        <!-- Chat View (hidden by default) -->
         <div id="messengerChatView" style="display:none;">
             <div class="messenger-chat-header">
                 <button id="messengerBackBtn" class="messenger-icon-btn"><i class="fas fa-arrow-left"></i></button>
@@ -1155,8 +1150,6 @@ function switchAthlete(athleteId) {
                 <button id="messengerSendBtn" class="messenger-send-btn"><i class="fas fa-paper-plane"></i></button>
             </div>
         </div>
-
-        <!-- New Message View (hidden by default) -->
         <div id="messengerNewView" style="display:none;">
             <div class="messenger-chat-header">
                 <button id="messengerNewBackBtn" class="messenger-icon-btn"><i class="fas fa-arrow-left"></i></button>
@@ -1255,7 +1248,6 @@ function switchAthlete(athleteId) {
         return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
     }
 
-    // Toggle panel
     toggle.addEventListener('click', function() {
         if (panel.style.display === 'none') {
             panel.style.display = 'flex';
@@ -1296,7 +1288,6 @@ function switchAthlete(athleteId) {
         newView.style.display = 'flex';
     }
 
-    // Back buttons
     document.getElementById('messengerBackBtn').addEventListener('click', function() {
         showListView();
         loadConversations();
@@ -1305,13 +1296,11 @@ function switchAthlete(athleteId) {
         showListView();
     });
 
-    // New message
     document.getElementById('messengerNewBtn').addEventListener('click', function() {
         showNewView();
         loadContacts();
     });
 
-    // Load conversations
     function loadConversations() {
         var container = document.getElementById('messengerConversations');
         container.innerHTML = '<div class="messenger-loading"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
@@ -1336,7 +1325,6 @@ function switchAthlete(athleteId) {
                     html += '</div>';
                 });
                 container.innerHTML = html;
-                // Add click handlers
                 container.querySelectorAll('.messenger-conv-item').forEach(function(item) {
                     item.addEventListener('click', function() {
                         currentConvId = parseInt(this.dataset.convId);
@@ -1353,7 +1341,6 @@ function switchAthlete(athleteId) {
             });
     }
 
-    // Search conversations
     document.getElementById('messengerSearch').addEventListener('input', function() {
         var query = this.value.toLowerCase();
         document.querySelectorAll('.messenger-conv-item').forEach(function(item) {
@@ -1362,7 +1349,6 @@ function switchAthlete(athleteId) {
         });
     });
 
-    // Load messages
     function loadMessages(convId) {
         var container = document.getElementById('messengerMessages');
         container.innerHTML = '<div class="messenger-loading"><i class="fas fa-spinner fa-spin"></i></div>';
@@ -1395,7 +1381,6 @@ function switchAthlete(athleteId) {
         container.scrollTop = container.scrollHeight;
     }
 
-    // Send message
     function sendMsg() {
         var input = document.getElementById('messengerInput');
         var body = input.value.trim();
@@ -1413,7 +1398,6 @@ function switchAthlete(athleteId) {
             .then(function(data) {
                 if (data.success && data.message) {
                     if (!currentConvId && data.conversation_id) currentConvId = data.conversation_id;
-                    // Append the new message
                     var container = document.getElementById('messengerMessages');
                     var emptyMsg = container.querySelector('.messenger-empty');
                     if (emptyMsg) emptyMsg.remove();
@@ -1434,7 +1418,6 @@ function switchAthlete(athleteId) {
         }
     });
 
-    // Chat polling for new messages
     function startChatPoll() {
         stopChatPoll();
         chatPollInterval = setInterval(function() {
@@ -1446,7 +1429,6 @@ function switchAthlete(athleteId) {
         if (chatPollInterval) { clearInterval(chatPollInterval); chatPollInterval = null; }
     }
 
-    // Load contacts for new message
     function loadContacts() {
         var container = document.getElementById('messengerContacts');
         container.innerHTML = '<div class="messenger-loading"><i class="fas fa-spinner fa-spin"></i> Loading contacts...</div>';
@@ -1474,7 +1456,6 @@ function switchAthlete(athleteId) {
                         currentConvId = null;
                         document.getElementById('messengerChatName').textContent = this.dataset.name;
                         showChatView();
-                        // Try to find existing conversation
                         fetch('process_messages.php?action=get_conversations')
                             .then(function(r) { return r.json(); })
                             .then(function(data) {
@@ -1497,7 +1478,6 @@ function switchAthlete(athleteId) {
             });
     }
 
-    // Search contacts
     document.getElementById('messengerContactSearch').addEventListener('input', function() {
         var query = this.value.toLowerCase();
         document.querySelectorAll('.messenger-contact-item').forEach(function(item) {
@@ -1506,21 +1486,18 @@ function switchAthlete(athleteId) {
         });
     });
 
-    // Update badge
     function updateWidgetBadge() {
         fetch('process_messages.php?action=unread_count')
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (data.success) {
                     var count = parseInt(data.count) || 0;
-                    // Update widget badge
                     if (count > 0) {
                         badge.textContent = count > 99 ? '99+' : count;
                         badge.style.display = 'flex';
                     } else {
                         badge.style.display = 'none';
                     }
-                    // Also update nav badge
                     var navBadge = document.getElementById('nav-msg-badge');
                     if (navBadge) {
                         if (count > 0) {

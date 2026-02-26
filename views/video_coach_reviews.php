@@ -226,23 +226,22 @@ $reviewed_videos = array_filter($videos, function($v) {
             
             <?php if (count($pending_videos) > 0): ?>
                 <?php foreach ($pending_videos as $video): ?>
-                <div class="video-list-item" data-video-id="<?= $video['id'] ?>" data-action="open-detail"
-                     data-video-title="<?= htmlspecialchars($video['title']) ?>"
-                     data-video-description="<?= htmlspecialchars($video['description'] ?? '') ?>"
-                     data-video-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['video_url'] ?? '') ?? '') ?>"
-                     data-coach-notes="<?= htmlspecialchars($video['coach_notes'] ?? '') ?>"
-                     data-athlete-notes="<?= htmlspecialchars($video['athlete_notes'] ?? '') ?>"
-                     data-video-status="<?= htmlspecialchars($video['status'] ?? 'pending_review') ?>">
-                    <div class="video-thumbnail-small">
+                <div class="video-list-item" data-video-id="<?= $video['id'] ?>">
+                    <a href="?page=video_review_detail&video_id=<?= $video['id'] ?>" class="video-thumbnail-small" style="text-decoration:none;">
                         <?php if (!empty($video['thumbnail_url'])): ?>
                             <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['thumbnail_url']) ?? '') ?>" alt="Thumbnail">
                         <?php else: ?>
                             <i class="fas fa-video"></i>
                         <?php endif; ?>
                         <span class="play-overlay"><i class="fas fa-play"></i></span>
-                    </div>
+                    </a>
                     <div class="video-details">
-                        <h4><?= htmlspecialchars($video['title']) ?></h4>
+                        <h4><a href="?page=video_review_detail&video_id=<?= $video['id'] ?>" style="color:inherit; text-decoration:none;"><?= htmlspecialchars($video['title']) ?></a></h4>
+                        <?php if (!empty($video['description'])): ?>
+                            <div class="athlete-notes-preview">
+                                <i class="fas fa-comment-alt"></i> <?= htmlspecialchars(mb_strimwidth($video['description'], 0, 150, '...')) ?>
+                            </div>
+                        <?php endif; ?>
                         <div class="video-meta">
                             <span><i class="fas fa-user"></i> <?= htmlspecialchars(($video['athlete_first_name'] ?? '') . ' ' . ($video['athlete_last_name'] ?? '')) ?></span>
                             <span><i class="fas fa-calendar"></i> <?= date('M d, Y', strtotime($video['upload_date'])) ?></span>
@@ -288,23 +287,22 @@ $reviewed_videos = array_filter($videos, function($v) {
             
             <?php if (count($reviewed_videos) > 0): ?>
                 <?php foreach ($reviewed_videos as $video): ?>
-                <div class="video-list-item" data-video-id="<?= $video['id'] ?>" data-action="open-detail"
-                     data-video-title="<?= htmlspecialchars($video['title']) ?>"
-                     data-video-description="<?= htmlspecialchars($video['description'] ?? '') ?>"
-                     data-video-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['video_url'] ?? '') ?? '') ?>"
-                     data-coach-notes="<?= htmlspecialchars($video['coach_notes'] ?? '') ?>"
-                     data-athlete-notes="<?= htmlspecialchars($video['athlete_notes'] ?? '') ?>"
-                     data-video-status="<?= htmlspecialchars($video['status'] ?? 'reviewed') ?>">
-                    <div class="video-thumbnail-small">
+                <div class="video-list-item" data-video-id="<?= $video['id'] ?>">
+                    <a href="?page=video_review_detail&video_id=<?= $video['id'] ?>" class="video-thumbnail-small" style="text-decoration:none;">
                         <?php if (!empty($video['thumbnail_url'])): ?>
                             <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['thumbnail_url']) ?? '') ?>" alt="Thumbnail">
                         <?php else: ?>
                             <i class="fas fa-video"></i>
                         <?php endif; ?>
                         <span class="play-overlay"><i class="fas fa-play"></i></span>
-                    </div>
+                    </a>
                     <div class="video-details">
-                        <h4><?= htmlspecialchars($video['title']) ?></h4>
+                        <h4><a href="?page=video_review_detail&video_id=<?= $video['id'] ?>" style="color:inherit; text-decoration:none;"><?= htmlspecialchars($video['title']) ?></a></h4>
+                        <?php if (!empty($video['description'])): ?>
+                            <div class="athlete-notes-preview">
+                                <i class="fas fa-comment-alt"></i> <?= htmlspecialchars(mb_strimwidth($video['description'], 0, 150, '...')) ?>
+                            </div>
+                        <?php endif; ?>
                         <div class="video-meta">
                             <span><i class="fas fa-user"></i> <?= htmlspecialchars(($video['athlete_first_name'] ?? '') . ' ' . ($video['athlete_last_name'] ?? '')) ?></span>
                             <span><i class="fas fa-calendar"></i> <?= date('M d, Y', strtotime($video['upload_date'])) ?></span>
@@ -327,7 +325,7 @@ $reviewed_videos = array_filter($videos, function($v) {
                     </div>
                     <div class="video-actions-inline">
                         <button class="btn-icon" title="Watch Video" data-action="view-video" data-video-id="<?= $video['id'] ?>" data-video-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['video_url'] ?? '') ?? '') ?>"><i class="fas fa-play"></i></button>
-                        <button class="btn-icon" title="View Details" data-action="view-feedback" data-video-id="<?= $video['id'] ?>"><i class="fas fa-comments"></i></button>
+                        <a href="?page=video_review_detail&video_id=<?= $video['id'] ?>" class="btn-icon" title="View Details"><i class="fas fa-comments"></i></a>
                     </div>
                 </div>
                 <?php endforeach; ?>
@@ -500,17 +498,20 @@ $reviewed_videos = array_filter($videos, function($v) {
 <?php endif; ?>
 
 <!-- Video Player Modal -->
-<div class="modal" id="videoPlayerModal" style="display: none;">
-    <div class="modal-overlay" data-action="close-modal"></div>
-    <div class="modal-content" style="max-width: 900px;">
+<div class="modal" id="coachVideoPlayerModal" style="display: none;">
+    <div class="modal-overlay" data-action="close-video-modal"></div>
+    <div class="modal-content" style="max-width: 1000px;">
         <div class="modal-header">
-            <h3><i class="fas fa-play-circle"></i> <span id="videoPlayerTitle">Watch Video</span></h3>
-            <button class="modal-close" aria-label="Close modal" data-action="close-modal"><i class="fas fa-times"></i></button>
+            <h3 id="coachVideoModalTitle"><i class="fas fa-play-circle"></i> Video Player</h3>
+            <button class="modal-close" aria-label="Close" data-action="close-video-modal"><i class="fas fa-times"></i></button>
         </div>
-        <div class="modal-body" style="padding: 0;">
-            <video id="videoPlayer" controls style="width: 100%; max-height: 500px; background: #000;">
-                Your browser does not support the video tag.
-            </video>
+        <div class="modal-body">
+            <div style="position: relative; background: #000; border-radius: 8px; overflow: hidden;">
+                <video id="coachVideoPlayer" controls style="width: 100%; max-height: 500px; display: block;">
+                    <source src="" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
         </div>
     </div>
 </div>
@@ -534,62 +535,7 @@ $reviewed_videos = array_filter($videos, function($v) {
     </div>
 </div>
 
-<!-- Video Detail Modal -->
-<div class="modal" id="videoDetailModal" style="display: none;">
-    <div class="modal-overlay" data-action="close-modal"></div>
-    <div class="modal-content" style="max-width: 800px;">
-        <div class="modal-header">
-            <h3><i class="fas fa-file-video"></i> Video Details</h3>
-            <button class="modal-close" aria-label="Close modal" data-action="close-modal"><i class="fas fa-times"></i></button>
-        </div>
-        <div class="modal-body">
-            <input type="hidden" id="detailVideoId">
-
-            <!-- Video Player in Detail -->
-            <div style="margin-bottom: 20px;">
-                <video id="detailVideoPlayer" controls style="width: 100%; max-height: 360px; background: #000; border-radius: 8px;">
-                    Your browser does not support the video tag.
-                </video>
-            </div>
-
-            <!-- Editable Title & Description -->
-            <div class="form-group">
-                <label style="display:block; font-size:12px; font-weight:600; color:var(--text-dim); margin-bottom:6px; text-transform:uppercase;">Title</label>
-                <input type="text" id="detailTitle" class="form-input" placeholder="Video title">
-            </div>
-            <div class="form-group">
-                <label style="display:block; font-size:12px; font-weight:600; color:var(--text-dim); margin-bottom:6px; text-transform:uppercase;">Description</label>
-                <textarea id="detailDescription" class="form-textarea" rows="3" placeholder="Video description..."></textarea>
-            </div>
-
-            <!-- Coach Notes (readonly for athletes, editable for coaches) -->
-            <div class="form-group" id="detailCoachNotesSection">
-                <label style="display:block; font-size:12px; font-weight:600; color:var(--text-dim); margin-bottom:6px; text-transform:uppercase;">
-                    <i class="fas fa-user-tie" style="color:var(--primary);"></i> Coach Notes
-                </label>
-                <div id="detailCoachNotesReadonly" class="coach-notes-display" style="padding:12px 16px; background:rgba(107,70,193,0.08); border:1px solid rgba(107,70,193,0.2); border-radius:8px; color:var(--text-dim); font-size:14px; line-height:1.6; white-space:pre-wrap; min-height:40px;">
-                    <em style="opacity:0.5;">No coach notes yet.</em>
-                </div>
-                <?php if ($isAnyCoach): ?>
-                <textarea id="detailCoachNotesEdit" class="form-textarea" rows="4" placeholder="Add or update your review notes..." style="margin-top:8px;"></textarea>
-                <?php endif; ?>
-            </div>
-
-            <!-- Athlete Notes / Reply to Coach -->
-            <div class="form-group">
-                <label style="display:block; font-size:12px; font-weight:600; color:var(--text-dim); margin-bottom:6px; text-transform:uppercase;">
-                    <i class="fas fa-user" style="color:var(--primary);"></i> <?= $isAnyCoach ? 'Athlete Notes' : 'My Notes / Reply to Coach' ?>
-                </label>
-                <textarea id="detailAthleteNotes" class="form-textarea" rows="4" placeholder="<?= $isAnyCoach ? 'Athlete notes will appear here...' : 'Add your notes or reply to coach feedback...' ?>" <?= $isAnyCoach ? 'readonly' : '' ?>></textarea>
-            </div>
-
-            <div class="form-actions">
-                <button type="button" class="btn-secondary" data-action="close-modal">Close</button>
-                <button type="button" class="btn-primary" id="saveDetailBtn"><i class="fas fa-save"></i> Save Changes</button>
-            </div>
-        </div>
-    </div>
-</div>
+<style>
 .tab-content { display: none; }
 .tab-content.active { display: block; animation: fadeInUp 0.4s ease-out; }
 @keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
@@ -638,6 +584,8 @@ $reviewed_videos = array_filter($videos, function($v) {
 .badge-game { background: rgba(16, 185, 129, 0.15); color: #10B981; }
 
 .coach-notes-preview { margin-top: 10px; padding: 8px 12px; background: rgba(107, 70, 193, 0.1); border-radius: 8px; font-size: 13px; color: var(--text-dim); display: flex; align-items: flex-start; gap: 8px; }
+.athlete-notes-preview { margin: 6px 0 8px; padding: 8px 12px; background: rgba(59, 130, 246, 0.08); border-left: 3px solid rgba(59, 130, 246, 0.4); border-radius: 4px; font-size: 13px; color: var(--text-dim); display: flex; align-items: flex-start; gap: 8px; line-height: 1.5; }
+.athlete-notes-preview i { color: #3b82f6; margin-top: 2px; flex-shrink: 0; }
 .coach-notes-preview i { color: var(--primary); margin-top: 2px; }
 
 .badge-success, .badge-warning { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
@@ -785,31 +733,42 @@ $reviewed_videos = array_filter($videos, function($v) {
     color: var(--text-dim, #64748b);
     font-size: 12px;
 }
-
-.video-list-item[data-action="open-detail"] { cursor: pointer; }
-.video-list-item[data-action="open-detail"] .video-details h4:hover { color: var(--primary); }
-
-.coach-notes-display { word-break: break-word; }
-
-#videoDetailModal .form-input,
-#videoDetailModal .form-textarea {
-    width: 100%;
-    background: var(--bg-main, #0F0F14);
-    border: 1px solid var(--border, #2D2D3F);
-    border-radius: 8px;
-    color: var(--text-white);
-    font-size: 14px;
-    padding: 12px 16px;
-}
-#videoDetailModal .form-input:focus,
-#videoDetailModal .form-textarea:focus {
-    border-color: var(--primary, #6B46C1);
-    outline: none;
-}
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Video player modal
+    var vpModal = document.getElementById('coachVideoPlayerModal');
+    var vpVideo = document.getElementById('coachVideoPlayer');
+    var vpTitle = document.getElementById('coachVideoModalTitle');
+    var vpHls = null;
+
+    document.querySelectorAll('[data-action="view-video"]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var url = this.dataset.videoUrl;
+            var item = this.closest('.video-list-item');
+            var title = item ? (item.querySelector('.video-details h4')?.textContent || 'Video') : 'Video';
+            if (!vpModal) return;
+            vpModal.style.display = 'flex';
+            vpTitle.innerHTML = '<i class="fas fa-play-circle"></i> ' + title;
+            if (vpHls) { vpHls.destroy(); vpHls = null; }
+            if (url && typeof window.awInitHlsPlayer === 'function') {
+                vpHls = window.awInitHlsPlayer(vpVideo, url);
+            } else if (url) {
+                vpVideo.querySelector('source').src = url;
+                vpVideo.load();
+            }
+        });
+    });
+
+    document.querySelectorAll('[data-action="close-video-modal"]').forEach(function(el) {
+        el.addEventListener('click', function() {
+            if (vpModal) vpModal.style.display = 'none';
+            if (vpHls) { vpHls.destroy(); vpHls = null; }
+            if (vpVideo) { vpVideo.pause(); vpVideo.removeAttribute('src'); }
+        });
+    });
+
     document.querySelectorAll('[data-action="switch-tab"]').forEach(btn => {
         btn.addEventListener('click', function() {
             const tab = this.dataset.tab;
@@ -869,30 +828,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     document.querySelectorAll('[data-action="close-modal"]').forEach(el => {
         el.addEventListener('click', function() {
-            var modal = this.closest('.modal');
-            // Pause any playing videos when closing modals
-            var vids = modal.querySelectorAll('video');
-            vids.forEach(function(v) { v.pause(); v.removeAttribute('src'); v.load(); });
-            modal.style.display = 'none';
-        });
-    });
-
-    // ── View Video (play in modal) ──
-    document.querySelectorAll('[data-action="view-video"]').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            var videoUrl = this.dataset.videoUrl;
-            var card = this.closest('.video-list-item');
-            var title = card ? (card.dataset.videoTitle || 'Video') : 'Video';
-            if (!videoUrl) {
-                if (typeof showToast === 'function') showToast('Video URL not available.', 'error');
-                return;
-            }
-            var modal = document.getElementById('videoPlayerModal');
-            var player = document.getElementById('videoPlayer');
-            document.getElementById('videoPlayerTitle').textContent = title;
-            player.src = videoUrl;
-            modal.style.display = 'flex';
+            this.closest('.modal').style.display = 'none';
         });
     });
 
@@ -908,7 +844,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Confirm delete
     var confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
     if (confirmDeleteBtn) {
         confirmDeleteBtn.addEventListener('click', function() {
@@ -927,7 +862,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(function(data) {
                     if (data.success) {
                         document.getElementById('deleteModal').style.display = 'none';
-                        // Remove the video card from the DOM
                         var card = document.querySelector('.video-list-item[data-video-id="' + videoId + '"]');
                         if (card) card.remove();
                         if (typeof showToast === 'function') showToast('Video deleted successfully.', 'success');
@@ -941,119 +875,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 .finally(function() {
                     confirmDeleteBtn.disabled = false;
                     confirmDeleteBtn.innerHTML = '<i class="fas fa-trash"></i> Delete';
-                });
-        });
-    }
-
-    // ── Open Video Detail (card click or view-feedback button) ──
-    function openVideoDetail(card) {
-        if (!card) return;
-        var videoId = card.dataset.videoId;
-        var modal = document.getElementById('videoDetailModal');
-        document.getElementById('detailVideoId').value = videoId;
-        document.getElementById('detailTitle').value = card.dataset.videoTitle || '';
-        document.getElementById('detailDescription').value = card.dataset.videoDescription || '';
-
-        var videoUrl = card.dataset.videoUrl || '';
-        var detailPlayer = document.getElementById('detailVideoPlayer');
-        if (videoUrl) {
-            detailPlayer.src = videoUrl;
-            detailPlayer.style.display = 'block';
-        } else {
-            detailPlayer.removeAttribute('src');
-            detailPlayer.style.display = 'none';
-        }
-
-        var coachNotes = card.dataset.coachNotes || '';
-        var coachNotesEl = document.getElementById('detailCoachNotesReadonly');
-        if (coachNotes) {
-            coachNotesEl.textContent = coachNotes;
-        } else {
-            coachNotesEl.innerHTML = '<em style="opacity:0.5;">No coach notes yet.</em>';
-        }
-        var coachEdit = document.getElementById('detailCoachNotesEdit');
-        if (coachEdit) coachEdit.value = coachNotes;
-
-        var athleteNotesEl = document.getElementById('detailAthleteNotes');
-        if (athleteNotesEl) athleteNotesEl.value = card.dataset.athleteNotes || '';
-
-        modal.style.display = 'flex';
-    }
-
-    document.querySelectorAll('[data-action="open-detail"]').forEach(function(card) {
-        card.addEventListener('click', function(e) {
-            // Don't open detail if clicking an action button
-            if (e.target.closest('[data-action="view-video"]') ||
-                e.target.closest('[data-action="delete-video"]') ||
-                e.target.closest('[data-action="review-video"]')) return;
-            openVideoDetail(this);
-        });
-    });
-
-    document.querySelectorAll('[data-action="view-feedback"]').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            var card = this.closest('.video-list-item');
-            openVideoDetail(card);
-        });
-    });
-
-    // ── Save Detail Changes ──
-    var saveDetailBtn = document.getElementById('saveDetailBtn');
-    if (saveDetailBtn) {
-        saveDetailBtn.addEventListener('click', function() {
-            var videoId = document.getElementById('detailVideoId').value;
-            var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '';
-            var title = document.getElementById('detailTitle').value.trim();
-            var description = document.getElementById('detailDescription').value.trim();
-            var athleteNotes = document.getElementById('detailAthleteNotes')?.value || '';
-            var coachNotesEdit = document.getElementById('detailCoachNotesEdit');
-
-            if (!title) {
-                if (typeof showToast === 'function') showToast('Title is required.', 'error');
-                return;
-            }
-
-            this.disabled = true;
-            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-
-            var formData = new FormData();
-            formData.append('action', 'update_video');
-            formData.append('video_id', videoId);
-            formData.append('title', title);
-            formData.append('description', description);
-            formData.append('csrf_token', csrfToken);
-            // Send notes using distinct field names based on role
-            if (coachNotesEdit) {
-                formData.append('coach_notes', coachNotesEdit.value);
-            }
-            formData.append('athlete_notes', athleteNotes);
-
-            fetch('process_video.php', { method: 'POST', body: formData })
-                .then(function(r) { return r.json(); })
-                .then(function(data) {
-                    if (data.success) {
-                        if (typeof showToast === 'function') showToast('Changes saved successfully.', 'success');
-                        // Update the card data attributes
-                        var card = document.querySelector('.video-list-item[data-video-id="' + videoId + '"]');
-                        if (card) {
-                            card.dataset.videoTitle = title;
-                            card.dataset.videoDescription = description;
-                            if (coachNotesEdit) card.dataset.coachNotes = coachNotesEdit.value;
-                            else card.dataset.athleteNotes = athleteNotes;
-                            var h4 = card.querySelector('.video-details h4');
-                            if (h4) h4.textContent = title;
-                        }
-                    } else {
-                        if (typeof showToast === 'function') showToast('Save failed: ' + (data.error || data.message || 'Unknown error'), 'error');
-                    }
-                })
-                .catch(function(err) {
-                    if (typeof showToast === 'function') showToast('Save failed: ' + err.message, 'error');
-                })
-                .finally(function() {
-                    saveDetailBtn.disabled = false;
-                    saveDetailBtn.innerHTML = '<i class="fas fa-save"></i> Save Changes';
                 });
         });
     }
@@ -1077,11 +898,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
-            document.querySelectorAll('.modal').forEach(function(m) {
-                var vids = m.querySelectorAll('video');
-                vids.forEach(function(v) { v.pause(); v.removeAttribute('src'); v.load(); });
-                m.style.display = 'none';
-            });
+            document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
+            if (vpHls) { vpHls.destroy(); vpHls = null; }
+            if (vpVideo) { vpVideo.pause(); vpVideo.removeAttribute('src'); }
         }
     });
 

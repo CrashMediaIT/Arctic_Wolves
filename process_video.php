@@ -644,6 +644,9 @@ function handleConfirmAthleteUpload() {
     // Store the nextcloud_path (proxy URL) for persistent recovery
     $pdo->prepare("UPDATE videos SET nextcloud_path = ? WHERE id = ?")->execute([$proxy_url, $video_id]);
 
+    // Trigger HLS transcoding via companion server (fire-and-forget)
+    triggerHlsTranscode($pdo, $video_id, $object_key);
+
     // Clean up the session
     unset($_SESSION['pending_video_upload']);
 
@@ -833,7 +836,7 @@ function handleVideoUpdate() {
         $stmt->execute([$_POST['coach_notes'], $video_id]);
     }
     
-    // Athlete notes: athletes update their own notes, coaches can also see them via 'comments' fallback
+    // Athlete notes: athletes update their own notes, fallback to 'comments' for backwards compat
     $athlete_notes = $_POST['athlete_notes'] ?? $_POST['comments'] ?? null;
     if ($athlete_notes !== null && !in_array($user_role, $allowed_roles)) {
         $stmt = $pdo->prepare("
@@ -2686,4 +2689,71 @@ function handleNavigatePair() {
 
     echo json_encode(['success' => $stmt->rowCount() > 0, 'page' => $target_page]);
     exit;
+}
+
+
+/**
+ * Trigger HLS transcoding via the companion server (fire-and-forget).
+ * Non-blocking: if the companion is unavailable the upload still succeeds.
+ */
+function triggerHlsTranscode($pdo, $video_id, $object_key) {
+    try {
+        // Load companion settings from system_settings
+        $stmt = $pdo->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('companion_url', 'companion_api_key')");
+        $stmt->execute();
+        $settings = [];
+        while ($row = $stmt->fetch()) {
+            $settings[$row['setting_key']] = $row['setting_value'] ?? '';
+        }
+        $companion_url = $settings['companion_url'] ?? '';
+        $companion_key = $settings['companion_api_key'] ?? '';
+
+        if (empty($companion_url)) {
+            return; // Companion not configured – skip
+        }
+
+        $companion_url = rtrim($companion_url, "/");
+        $hls_prefix = pathinfo($object_key, PATHINFO_FILENAME);
+        $hls_dir    = pathinfo($object_key, PATHINFO_DIRNAME);
+        $output_prefix = $hls_dir . "/" . $hls_prefix . "/hls";
+
+        $payload = json_encode([
+            "source_key"      => $object_key,
+            "output_prefix"   => $output_prefix,
+            "delete_original" => true,
+        ]);
+
+        // Mark video as pending HLS transcode
+        $pdo->prepare("UPDATE videos SET hls_status = 'pending' WHERE id = ?")->execute([$video_id]);
+
+        // Fire-and-forget POST to companion /api/hls
+        $ch = curl_init($companion_url . "/api/hls");
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            "Content-Type: application/json",
+            "X-API-Key: " . $companion_key,
+        ]);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 5); // Short timeout – fire and forget
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($http_code === 202 && $response) {
+            $data = json_decode($response, true);
+            if (!empty($data["id"])) {
+                // Store the HLS manifest URL and job ID
+                $hls_manifest_url = "api/media.php?key=" . rawurlencode($output_prefix . "/master.m3u8");
+                $pdo->prepare("UPDATE videos SET hls_url = ?, hls_job_id = ?, hls_status = 'processing' WHERE id = ?")
+                    ->execute([$hls_manifest_url, $data["id"], $video_id]);
+            }
+        }
+    } catch (Exception $e) {
+        error_log("triggerHlsTranscode failed for video $video_id: " . $e->getMessage());
+        // Non-fatal: the upload still succeeds
+    }
 }
