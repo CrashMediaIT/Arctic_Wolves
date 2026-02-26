@@ -657,7 +657,7 @@ try {
             $auditStmt->execute([
                 $userId,
                 json_encode(['period' => ['start' => $startDate, 'end' => $endDate], 'hours_data' => $hoursData]),
-                $_SERVER['REMOTE_ADDR'] ?? null
+                getClientIP()
             ]);
             
             echo json_encode([

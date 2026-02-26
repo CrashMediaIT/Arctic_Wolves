@@ -13,7 +13,7 @@ if (!isset($_SESSION['user_id']) || !$canAccessPOS) {
 
 // Check IP whitelist for POS access (admins exempt)
 if (!checkPOSIPAccess($pdo, $user_role)) {
-    logSecurityEvent('pos_ip_blocked', 'POS access denied from unauthorized IP', ['ip' => $_SERVER['REMOTE_ADDR'] ?? '', 'page' => 'inventory_management']);
+    logSecurityEvent('pos_ip_blocked', 'POS access denied from unauthorized IP', ['ip' => getClientIP(), 'page' => 'inventory_management']);
     echo '<div style="text-align: center; padding: 60px;"><h2>Access Denied</h2><p>POS access is not available from this location. Please contact an administrator.</p></div>';
     return;
 }
