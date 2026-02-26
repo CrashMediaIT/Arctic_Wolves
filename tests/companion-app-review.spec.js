@@ -23,35 +23,31 @@ function readFile(relativePath) {
 }
 
 // =====================================================
-// 1. Companion .env.example — only ENCRYPTION_KEY
+// 1. Companion .env.example — no env vars required
 // =====================================================
 
 test.describe('Companion .env.example', () => {
   const content = () => readFile('companion/.env.example');
 
-  test('should only require ENCRYPTION_KEY', () => {
+  test('should NOT have any variable assignments', () => {
     const c = content();
-    expect(c).toContain('ENCRYPTION_KEY=');
-    expect(c).toContain('Encryption Key (required)');
-  });
-
-  test('should NOT contain API_KEY as a set variable', () => {
-    const c = content();
-    // ENCRYPTION_KEY= should be the only "VAR=" line
-    const assignmentLines = c.split('\n').filter(l => /^[A-Z][A-Z_]+=/.test(l.trim()));
-    expect(assignmentLines.length).toBe(1);
-    expect(assignmentLines[0].trim()).toMatch(/^ENCRYPTION_KEY=/);
+    // No non-comment lines should have VAR= pattern
+    const assignmentLines = c.split('\n').filter(l => {
+      const trimmed = l.trim();
+      return !trimmed.startsWith('#') && trimmed.length > 0 && /^[A-Z][A-Z_]+=/.test(trimmed);
+    });
+    expect(assignmentLines.length).toBe(0);
   });
 
   test('should explain that all settings come from the web UI', () => {
     const c = content();
-    expect(c).toContain('companion web UI');
-    expect(c).toContain('encrypted');
-    expect(c).toContain('persistent Docker volume');
+    expect(c).toContain('web UI');
+    expect(c).toContain('encrypted config file');
   });
 
-  test('should explain the API key generation flow', () => {
+  test('should explain the setup page flow', () => {
     const c = content();
+    expect(c).toContain('setup page');
     expect(c).toContain('Generate API Key');
     expect(c).toContain('Game Plan Settings');
   });
@@ -60,6 +56,11 @@ test.describe('Companion .env.example', () => {
     const c = content();
     expect(c).toContain('controlled');
     expect(c).toContain('main application');
+  });
+
+  test('should state no environment variables are required', () => {
+    const c = content();
+    expect(c).toContain('No environment variables are required');
   });
 });
 
@@ -77,12 +78,28 @@ test.describe('Companion app.py configuration', () => {
     expect(c).toContain('CONFIG_FILE');
   });
 
-  test('should use AES-256-CBC encryption matching main app PII', () => {
+  test('should load encryption key from file, not env var', () => {
     const c = content();
-    expect(c).toContain('AES');
-    expect(c).toContain('CBC');
-    expect(c).toContain('_encrypt_config');
-    expect(c).toContain('_decrypt_config');
+    expect(c).toContain('KEY_FILE');
+    expect(c).toContain('_read_key_file');
+    expect(c).toContain('_write_key_file');
+    // Should NOT reference ENCRYPTION_KEY env var
+    expect(c).not.toContain("os.getenv(\"ENCRYPTION_KEY\"");
+    expect(c).not.toContain("os.getenv('ENCRYPTION_KEY'");
+  });
+
+  test('should have a first-run setup page', () => {
+    const c = content();
+    expect(c).toContain('/setup');
+    expect(c).toContain('/api/setup');
+    expect(c).toContain('def setup_page');
+    expect(c).toContain('def setup_save');
+  });
+
+  test('should redirect to setup when no key exists', () => {
+    const c = content();
+    expect(c).toContain('_require_setup');
+    expect(c).toContain('before_request');
   });
 
   test('should have /api/generate-key endpoint', () => {
@@ -324,14 +341,13 @@ test.describe('Companion Docker configuration', () => {
     expect(c).toContain('volumes:');
   });
 
-  test('docker-compose.yml should only use env_file for ENCRYPTION_KEY', () => {
+  test('docker-compose.yml should NOT require any env file or environment vars', () => {
     const c = readFile('companion/docker-compose.yml');
-    expect(c).toContain('env_file');
-    expect(c).toContain('.env');
-    // Should not have explicit environment section with many vars
+    expect(c).not.toContain('env_file');
+    expect(c).not.toContain('environment:');
     expect(c).not.toContain('API_KEY=');
     expect(c).not.toContain('S3_ENDPOINT=');
-    expect(c).not.toContain('HLS_STAGING_PREFIX=');
+    expect(c).not.toContain('ENCRYPTION_KEY=');
   });
 
   test('Dockerfile should NOT set env var defaults for config', () => {

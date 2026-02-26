@@ -28,8 +28,8 @@ USER companion
 
 EXPOSE 5100
 
-# Only ENCRYPTION_KEY is required at runtime (set via .env file).
-# All other settings are managed in the companion web UI and persisted
-# in the encrypted config file on the /config volume.
+# No environment variables are required.  The encryption key and all other
+# settings are configured through the web UI setup page on first start and
+# stored on the persistent /config volume.
 
 CMD ["gunicorn", "--bind", "0.0.0.0:5100", "--workers", "2", "--timeout", "7200", "app:app"]

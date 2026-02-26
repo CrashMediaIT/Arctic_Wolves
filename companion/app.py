@@ -50,18 +50,46 @@ logger = logging.getLogger("companion")
 # Settings are stored in an AES-256-CBC encrypted JSON file on a persistent
 # Docker volume so they survive container updates.  The encryption matches the
 # main application's PII FieldEncryption scheme.
+#
+# The encryption key itself is stored at /config/encryption.key on the
+# persistent volume.  On first start the companion shows a setup page where
+# you generate or enter the key.  After a container update the key persists.
 
 CONFIG_DIR = os.getenv("CONFIG_DIR", "/config")
 CONFIG_FILE = os.path.join(CONFIG_DIR, "companion_config.enc")
-ENCRYPTION_KEY_HEX = os.getenv("ENCRYPTION_KEY", "")
+KEY_FILE = os.path.join(CONFIG_DIR, "encryption.key")
+
+
+def _read_key_file() -> str:
+    """Read the hex encryption key from the persistent volume, or ''."""
+    if os.path.isfile(KEY_FILE):
+        try:
+            return open(KEY_FILE, "r").read().strip()
+        except Exception:
+            return ""
+    return ""
+
+
+def _write_key_file(hex_key: str) -> bool:
+    """Write the hex encryption key to the persistent volume."""
+    try:
+        Path(CONFIG_DIR).mkdir(parents=True, exist_ok=True)
+        with open(KEY_FILE, "w") as f:
+            f.write(hex_key)
+        os.chmod(KEY_FILE, 0o600)
+        return True
+    except Exception as exc:
+        logger.error("Failed to write key file: %s", exc)
+        return False
 
 
 def _get_cipher_key() -> bytes | None:
-    """Return the raw 32-byte key derived from the hex ENCRYPTION_KEY, or None."""
-    if not ENCRYPTION_KEY_HEX or len(ENCRYPTION_KEY_HEX) < 64:
+    """Return the raw 32-byte key from the key file, or None."""
+    hex_key = _read_key_file()
+    if not hex_key or len(hex_key) < 64:
         return None
     try:
-        return bytes.fromhex(ENCRYPTION_KEY_HEX)
+        return bytes.fromhex(hex_key)
     except ValueError:
         return None
 
@@ -472,6 +500,121 @@ def _create_job(cmd: list[str], description: str, output_path: str) -> dict:
     thread = threading.Thread(target=_run_job, args=(job_id, cmd), daemon=True)
     thread.start()
     return job
+
+
+# ---------------------------------------------------------------------------
+# First-Run Setup — generate or enter the encryption key
+# ---------------------------------------------------------------------------
+
+SETUP_TEMPLATE = """<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Companion — Setup</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',system-ui,sans-serif}
+body{background:#0A0A0F;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh}
+.card{background:#16161F;border:1px solid #2D2D3F;border-radius:16px;padding:40px;max-width:540px;width:100%}
+h1{font-size:1.8rem;font-weight:900;margin-bottom:8px}
+h1 span{color:#6B46C1}
+p{color:#A8A8B8;font-size:14px;line-height:1.6;margin-bottom:24px}
+label{display:block;font-size:13px;font-weight:700;margin-bottom:6px;color:#A8A8B8}
+input{width:100%;padding:10px 14px;border:1px solid #2D2D3F;border-radius:8px;background:#0A0A0F;color:#fff;font-size:14px;font-family:monospace}
+.actions{display:flex;gap:10px;margin-top:20px}
+.btn{padding:10px 20px;border:none;border-radius:8px;cursor:pointer;font-weight:800;font-size:13px;text-transform:uppercase}
+.btn-primary{background:#6B46C1;color:#fff}.btn-primary:hover{background:#7C3AED}
+.btn-secondary{background:#2D2D3F;color:#fff}.btn-secondary:hover{background:#3D3D4F}
+.hint{color:#A8A8B8;font-size:12px;margin-top:8px}
+.error{color:#EF4444;font-size:13px;margin-top:12px;display:none}
+</style></head><body>
+<div class="card">
+<h1>Video <span>Companion</span></h1>
+<p>First-time setup. Enter or generate an AES-256 encryption key.<br>
+This key encrypts the config file on the persistent volume. If you are connecting
+to an existing main application, use the same key.</p>
+<form id="sf">
+<label for="ek">Encryption Key (64-char hex)</label>
+<input id="ek" name="key" placeholder="Paste existing key or click Generate" autocomplete="off">
+<div class="hint">Generate with: <code>python -c "import os; print(os.urandom(32).hex())"</code></div>
+<div class="error" id="err"></div>
+<div class="actions">
+<button type="submit" class="btn btn-primary">Save &amp; Start</button>
+<button type="button" class="btn btn-secondary" onclick="genKey()">Generate Key</button>
+</div>
+</form>
+</div>
+<script>
+function genKey(){
+ const a=new Uint8Array(32);crypto.getRandomValues(a);
+ document.getElementById('ek').value=Array.from(a,b=>b.toString(16).padStart(2,'0')).join('');
+}
+document.getElementById('sf').onsubmit=async function(e){
+ e.preventDefault();const err=document.getElementById('err');err.style.display='none';
+ const key=document.getElementById('ek').value.trim();
+ if(!/^[0-9a-fA-F]{64}$/.test(key)){err.textContent='Key must be exactly 64 hex characters.';err.style.display='block';return;}
+ const r=await fetch('/api/setup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key})});
+ const d=await r.json();
+ if(d.success){window.location.href='/';}else{err.textContent=d.error||'Setup failed.';err.style.display='block';}
+};
+</script></body></html>"""
+
+
+@app.route("/setup")
+def setup_page():
+    """Show the first-run setup page (only when no encryption key exists)."""
+    if _get_cipher_key() is not None:
+        return flask_redirect("/")
+    return SETUP_TEMPLATE, 200, {"Content-Type": "text/html"}
+
+
+@app.route("/api/setup", methods=["POST"])
+def setup_save():
+    """Save the encryption key from the setup page."""
+    if _get_cipher_key() is not None:
+        return jsonify({"success": False, "error": "Already configured. Use Settings to change the key."}), 400
+
+    data = request.get_json(silent=True) or {}
+    hex_key = str(data.get("key", "")).strip()
+
+    if not hex_key or len(hex_key) != 64:
+        return jsonify({"success": False, "error": "Key must be exactly 64 hex characters."}), 400
+
+    try:
+        bytes.fromhex(hex_key)
+    except ValueError:
+        return jsonify({"success": False, "error": "Key must be valid hexadecimal."}), 400
+
+    if not _write_key_file(hex_key):
+        return jsonify({"success": False, "error": "Failed to write key file. Check volume permissions."}), 500
+
+    # Reload the persisted config now that we have a key
+    global _persisted, API_KEY, MAIN_APP_URL, HW_ACCEL, MAX_CONCURRENT_JOBS
+    global S3_ENDPOINT, S3_ACCESS_KEY, S3_SECRET_KEY, S3_BUCKET, S3_REGION
+    global S3_USE_SSL, S3_VERIFY_SSL
+    _persisted = _load_persistent_config()
+
+    logger.info("Setup complete — encryption key saved")
+    return jsonify({"success": True})
+
+
+# Import redirect helper
+from flask import redirect as flask_redirect
+
+
+@app.before_request
+def _require_setup():
+    """If no encryption key exists, redirect everything to the setup page."""
+    if _get_cipher_key() is not None:
+        return None  # key exists, proceed normally
+    # Allow setup endpoints through
+    if request.path in ("/setup", "/api/setup"):
+        return None
+    # Allow static assets (favicon etc.)
+    if request.path.startswith("/static"):
+        return None
+    # Redirect browser requests to setup; return 503 for API calls
+    if request.path.startswith("/api/"):
+        return jsonify({"error": "Setup required", "setup_url": "/setup"}), 503
+    return flask_redirect("/setup")
 
 
 # ---------------------------------------------------------------------------
@@ -920,7 +1063,12 @@ def generate_key():
 # ---------------------------------------------------------------------------
 
 def _send_callback(callback_url: str, payload: dict):
-    """POST job results back to the main application (fire-and-forget)."""
+    """POST job results back to the main application (fire-and-forget).
+
+    Note: SSL verification is disabled because companion and main app
+    typically run on an internal network behind a reverse proxy (HAProxy)
+    with self-signed or internal certificates.
+    """
     if not callback_url:
         return
     try:

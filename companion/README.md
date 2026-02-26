@@ -7,26 +7,24 @@ The companion is a **worker/integration service** for the main Arctic Wolves app
 ## Quick Start
 
 ```bash
-# 1. Clone or download the companion directory
+# 1. Start the container
 cd companion
-
-# 2. Copy the example environment file and set your encryption key
-cp .env.example .env
-# Edit .env — set ENCRYPTION_KEY to match the main application
-
-# 3. Start the container
 docker compose up -d
 
-# 4. Visit http://localhost:5100 → Settings → Generate API Key
-# 5. Copy the key into the main app's Game Plan Settings → API Key
-# 6. In the main app, click "Push RustFS to Companion" to send S3 credentials
+# 2. Visit http://localhost:5100 — the setup page appears on first run
+#    Generate or paste an AES-256 encryption key (use the same key as
+#    the main application for matching PII encryption)
+
+# 3. Go to Settings → Generate API Key
+# 4. Copy the key into the main app's Game Plan Settings → API Key
+# 5. In the main app, click "Push RustFS to Companion" to send S3 credentials
 ```
 
-> The **only** environment variable required is `ENCRYPTION_KEY`. All other
-> settings (API key, RustFS credentials, hardware acceleration, main app URL)
-> are configured through the **Settings** tab in the web UI at
-> `http://localhost:5100` and stored in an AES-256-CBC encrypted config file
-> on a persistent Docker volume.
+> **No environment variables are required.** All settings (encryption key,
+> API key, RustFS credentials, hardware acceleration, main app URL) are
+> configured through the web UI and stored on the persistent Docker volume.
+> The encryption key persists across container updates.  If the volume is
+> lost, the setup page appears again on first start.
 
 ## GPU Acceleration
 
@@ -76,12 +74,16 @@ docker build -t arctic-wolves-companion:latest .
 
 ## Configuration Reference
 
-All settings are managed via the companion **Settings** web UI and persisted in
-an encrypted config file on the `/config` Docker volume. The only environment
-variable is `ENCRYPTION_KEY`.
+All settings are managed via the companion web UI and persisted on the
+`/config` Docker volume.  No environment variables are needed.
+
+On first start, the companion shows a setup page where you generate or enter
+the encryption key.  After setup, all other settings are entered through the
+Settings tab.
 
 | Setting | Default | Description |
 |---|---|---|
+| Encryption Key | *(generated on setup)* | AES-256 key — entered on first-start setup page |
 | API Key | *(generated)* | Generated in the companion; enter in the main app's Game Plan Settings |
 | Main App URL | *(empty)* | URL of the main application (for transcode-complete callbacks) |
 | Hardware Acceleration | `auto` | Method: `auto`, `nvenc`, `qsv`, `vaapi`, `amf`, `none` |
@@ -93,10 +95,6 @@ variable is `ENCRYPTION_KEY`.
 | S3 Region | `us-east-1` | RustFS region |
 | S3 Use SSL | `true` | Use HTTPS for RustFS |
 | S3 Verify SSL | `false` | Verify RustFS SSL certificate |
-
-| Env Variable | Required | Description |
-|---|---|---|
-| `ENCRYPTION_KEY` | **Yes** | AES-256-CBC key (hex, 64 chars). Must match the main application. |
 
 ## Architecture
 

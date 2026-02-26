@@ -491,7 +491,7 @@ function pushRustFsToCompanion() {
     resultEl.innerHTML = '';
 
     var form = new FormData();
-    form.append('csrf_token', '<?= $_SESSION['csrf_token'] ?? '' ?>');
+    form.append('csrf_token', '<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>');
     form.append('action', 'push_rustfs_to_companion');
 
     fetch('process_gameplan_settings.php', { method: 'POST', body: form })

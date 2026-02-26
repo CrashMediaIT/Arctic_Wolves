@@ -86,7 +86,10 @@ function handleCompanionCallback(): void {
     }
 
     if (!$vid) {
-        ErrorLogger::warning("Companion callback: no matching video for job_id=$job_id video_id=$video_id");
+        // Sanitize log values to prevent log injection
+        $safe_job = preg_replace('/[^a-zA-Z0-9\-]/', '', substr($job_id, 0, 64));
+        $safe_vid = $video_id !== null ? (int) $video_id : 'null';
+        ErrorLogger::warning("Companion callback: no matching video for job_id=$safe_job video_id=$safe_vid");
         apiResponse(404, ['success' => false, 'error' => 'Video record not found']);
     }
 

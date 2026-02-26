@@ -2,14 +2,15 @@
 # Worker/integration service for the main Arctic Wolves application.
 #
 # Quick start:
-#   1. Copy .env.example to .env and set ENCRYPTION_KEY (must match main app)
-#   2. docker compose up -d
-#   3. Visit http://localhost:5100 → Settings to generate an API key
-#   4. Enter that API key in the main app's Game Plan Settings
+#   1. docker compose up -d
+#   2. Visit http://localhost:5100 — the setup page appears on first run
+#   3. Generate or paste an encryption key
+#   4. Go to Settings → Generate API Key, then enter it in the main app
 #
-# All other configuration (RustFS credentials, hardware acceleration, etc.)
-# is managed through the companion's web UI and stored in an encrypted config
-# file on the persistent volume.  No other environment variables are needed.
+# No environment variables are required.  All configuration (encryption key,
+# API key, RustFS credentials, hardware acceleration) is managed through the
+# companion web UI and stored in an encrypted config file on the persistent
+# volume.  The encryption key persists across container updates.
 #
 # To build locally instead of pulling from GHCR, uncomment "build" and comment "image":
 #   build: .
@@ -23,11 +24,9 @@ services:
     ports:
       - "5100:5100"
     volumes:
-      - companion_config:/config  # Persistent encrypted config (survives updates)
-    env_file:
-      - .env                      # Only ENCRYPTION_KEY is required
+      - companion_config:/config  # Persistent: encryption key + encrypted config
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5100/api/health')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5100/setup')"]
       interval: 30s
       timeout: 10s
       retries: 3
