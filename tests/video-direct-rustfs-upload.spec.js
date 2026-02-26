@@ -233,47 +233,12 @@ test.describe('confirm_athlete_upload action', () => {
 });
 
 // =====================================================
-// 4. Updated JS in video_record_athlete.php
+// 4. Simplified upload JS in video_record_athlete.php
+//    Uses same single-step POST pattern as drill video upload
 // =====================================================
 
-test.describe('Direct upload JS in video_record_athlete.php', () => {
-  test('should request presigned URL via get_athlete_upload_url action', () => {
-    const content = readFile('views/video_record_athlete.php');
-    expect(content).toContain("'action', 'get_athlete_upload_url'");
-    expect(content).toContain('get_athlete_upload_url');
-  });
-
-  test('should send file metadata (name, size, type) for URL generation', () => {
-    const content = readFile('views/video_record_athlete.php');
-    expect(content).toContain('file_name');
-    expect(content).toContain('file_size');
-    expect(content).toContain('file_type');
-  });
-
-  test('should use PUT method for direct RustFS upload', () => {
-    const content = readFile('views/video_record_athlete.php');
-    expect(content).toContain("'PUT'");
-    expect(content).toContain('presignedUrl');
-  });
-
-  test('should track upload progress on direct PUT request', () => {
-    const content = readFile('views/video_record_athlete.php');
-    expect(content).toContain('putXhr.upload.onprogress');
-    expect(content).toContain('e.lengthComputable');
-  });
-
-  test('should show cloud storage upload status', () => {
-    const content = readFile('views/video_record_athlete.php');
-    expect(content).toContain('Uploading to cloud storage');
-  });
-
-  test('should confirm upload via confirm_athlete_upload action', () => {
-    const content = readFile('views/video_record_athlete.php');
-    expect(content).toContain('confirm_athlete_upload');
-    expect(content).toContain('upload_nonce');
-  });
-
-  test('should still have progress bar elements', () => {
+test.describe('Simplified upload JS in video_record_athlete.php', () => {
+  test('should have progress bar elements', () => {
     const content = readFile('views/video_record_athlete.php');
     expect(content).toContain('id="uploadProgressOverlay"');
     expect(content).toContain('id="uploadProgressBar"');
@@ -281,11 +246,17 @@ test.describe('Direct upload JS in video_record_athlete.php', () => {
     expect(content).toContain('id="uploadProgressStatus"');
   });
 
-  test('should still use XHR with upload progress tracking', () => {
+  test('should use XHR with upload progress tracking', () => {
     const content = readFile('views/video_record_athlete.php');
     expect(content).toContain('XMLHttpRequest');
     expect(content).toContain('upload.onprogress');
     expect(content).toContain('X-Requested-With');
+  });
+
+  test('should POST form data directly to process_video.php', () => {
+    const content = readFile('views/video_record_athlete.php');
+    expect(content).toContain('new FormData(uploadForm)');
+    expect(content).toContain('xhr.open(\'POST\', uploadForm.action');
   });
 
   test('should prevent default form submission', () => {
@@ -298,49 +269,24 @@ test.describe('Direct upload JS in video_record_athlete.php', () => {
     expect(content).toContain('response.success');
     expect(content).toContain('window.location.href');
   });
-});
 
-// =====================================================
-// 5. Legacy fallback upload
-// =====================================================
-
-test.describe('Legacy fallback when direct upload unavailable', () => {
-  test('should define fallbackServerUpload function', () => {
+  test('should handle upload errors gracefully', () => {
     const content = readFile('views/video_record_athlete.php');
-    expect(content).toContain('function fallbackServerUpload');
+    expect(content).toContain('xhr.onerror');
+    expect(content).toContain('submitBtn.disabled = false');
   });
 
-  test('fallback should POST to uploadForm.action', () => {
+  test('should show saving to cloud storage status', () => {
     const content = readFile('views/video_record_athlete.php');
-    const fnStart = content.indexOf('function fallbackServerUpload');
-    const fnBody = content.substring(fnStart, fnStart + 2000);
-    expect(fnBody).toContain('uploadForm.action');
-    expect(fnBody).toContain('new FormData(uploadForm)');
+    expect(content).toContain('Saving to cloud storage');
   });
 
-  test('fallback should use XHR with progress tracking', () => {
+  test('should not use complex presigned URL multi-step flow', () => {
     const content = readFile('views/video_record_athlete.php');
-    const fnStart = content.indexOf('function fallbackServerUpload');
-    const fnBody = content.substring(fnStart, fnStart + 2000);
-    expect(fnBody).toContain('XMLHttpRequest');
-    expect(fnBody).toContain('xhr.upload.onprogress');
-  });
-
-  test('fallback should handle errors gracefully', () => {
-    const content = readFile('views/video_record_athlete.php');
-    const fnStart = content.indexOf('function fallbackServerUpload');
-    const fnBody = content.substring(fnStart, fnStart + 3000);
-    expect(fnBody).toContain('xhr.onerror');
-    expect(fnBody).toContain('submitBtn.disabled = false');
-  });
-
-  test('should fall back when presigned URL is not available', () => {
-    const content = readFile('views/video_record_athlete.php');
-    expect(content).toContain('fallbackServerUpload');
-    // Should be called when URL request fails
-    const occurrences = content.match(/fallbackServerUpload\(/g);
-    expect(occurrences).not.toBeNull();
-    expect(occurrences.length).toBeGreaterThanOrEqual(2);
+    expect(content).not.toContain('get_athlete_upload_url');
+    expect(content).not.toContain('presignedUrl');
+    expect(content).not.toContain('confirm_athlete_upload');
+    expect(content).not.toContain('fallbackServerUpload');
   });
 });
 

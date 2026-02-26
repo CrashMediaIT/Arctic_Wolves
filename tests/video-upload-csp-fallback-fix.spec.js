@@ -128,31 +128,31 @@ test.describe('pwa_tablet.php includes RustFS endpoint in CSP connect-src', () =
 });
 
 // =====================================================
-// 5. JS JSON parse error falls back to legacy upload
+// 5. Simplified upload — no more presigned URL flow
 // =====================================================
 
-test.describe('Presigned URL JSON parse failure falls back to legacy upload', () => {
-  test('should call fallbackServerUpload when JSON parse fails', () => {
+test.describe('Simplified athlete upload uses single XHR POST', () => {
+  test('should POST form data directly to process_video.php', () => {
     const content = readFile('views/video_record_athlete.php');
-    // Find the urlXhr.onload handler
-    const onloadStart = content.indexOf('urlXhr.onload = function()');
-    const onloadSection = content.substring(onloadStart, onloadStart + 500);
-
-    // The catch block for JSON.parse should call fallbackServerUpload
-    expect(onloadSection).toContain('catch (err)');
-    expect(onloadSection).toContain('fallbackServerUpload(uploadForm, overlay, bar, percent, status, submitBtn)');
+    expect(content).toContain('new FormData(uploadForm)');
+    expect(content).toContain('xhr.open(\'POST\', uploadForm.action');
   });
 
-  test('should not show error toast and dead-end on JSON parse failure', () => {
+  test('should not use presigned URL multi-step flow', () => {
     const content = readFile('views/video_record_athlete.php');
-    // Find the urlXhr.onload handler's catch block
-    const onloadStart = content.indexOf('urlXhr.onload = function()');
-    const catchStart = content.indexOf('catch (err)', onloadStart);
-    // Get the catch block content (up to the next code block)
-    const catchSection = content.substring(catchStart, catchStart + 300);
+    expect(content).not.toContain('get_athlete_upload_url');
+    expect(content).not.toContain('presignedUrl');
+    expect(content).not.toContain('confirm_athlete_upload');
+    expect(content).not.toContain('fallbackServerUpload');
+  });
 
-    // Should NOT have the old dead-end error toast in the JSON parse catch
-    expect(catchSection).not.toContain("showToast('Upload failed. Please try again.'");
-    expect(catchSection).not.toContain('overlay.style.display');
+  test('should handle JSON parse errors with toast message', () => {
+    const content = readFile('views/video_record_athlete.php');
+    // The upload XHR onload should have a catch for JSON parse
+    const onloadStart = content.indexOf('xhr.onload = function()');
+    const onloadSection = content.substring(onloadStart, onloadStart + 1000);
+    expect(onloadSection).toContain('catch (err)');
+    expect(onloadSection).toContain('showToast');
+    expect(onloadSection).toContain('submitBtn.disabled = false');
   });
 });
