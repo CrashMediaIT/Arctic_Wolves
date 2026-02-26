@@ -463,9 +463,7 @@ function handleGetAthleteUploadUrl() {
             $user = $stmt->fetch();
             $coach_id = $user['assigned_coach_id'] ?? null;
         }
-        if (!$coach_id) {
-            throw new Exception('You do not have an assigned coach. Please contact an administrator.');
-        }
+        // Allow upload even without an assigned coach — coach_id will be NULL
     }
 
     // Validate required fields
@@ -840,12 +838,30 @@ function handleVideoDelete() {
         throw new Exception('Video not found or access denied');
     }
     
-    // Delete physical file (skip for RustFS URLs)
+    // Delete file from storage
     $video_url = $video['video_url'] ?? '';
-    if (!empty($video_url) && !preg_match('#^https?://#', $video_url)) {
-        $file_path = __DIR__ . '/' . $video_url;
-        if (file_exists($file_path)) {
-            unlink($file_path);
+    if (!empty($video_url)) {
+        if (strpos($video_url, 'api/media.php?key=') !== false) {
+            // RustFS proxy URL — extract the object key and delete from RustFS
+            try {
+                $parsed = [];
+                parse_str(parse_url($video_url, PHP_URL_QUERY) ?? '', $parsed);
+                $object_key = $parsed['key'] ?? '';
+                if ($object_key !== '') {
+                    $rustfs = getRustFSSettings($pdo);
+                    if (isRustFSConfigured($rustfs)) {
+                        deleteFromRustFS($rustfs, $object_key);
+                    }
+                }
+            } catch (Exception $e) {
+                error_log("Failed to delete RustFS object for video $video_id: " . $e->getMessage());
+            }
+        } elseif (!preg_match('#^https?://#', $video_url)) {
+            // Local file path
+            $file_path = __DIR__ . '/' . $video_url;
+            if (file_exists($file_path)) {
+                unlink($file_path);
+            }
         }
     }
     

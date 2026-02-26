@@ -119,6 +119,11 @@ try {
 
     <!-- Camera Recording Interface (hidden by default) -->
     <div class="camera-interface" id="camera-interface" style="display: none;">
+        <div class="form-group" style="margin-bottom:12px;">
+            <label for="camera_recording_name">Recording Name <span class="required">*</span></label>
+            <input type="text" id="camera_recording_name" placeholder="e.g., Skating Drill Practice" required
+                   style="width:100%;padding:10px 14px;background:var(--bg-main,#06080b);border:1px solid var(--border,#1e293b);border-radius:8px;color:var(--text-white,#fff);font-size:14px;">
+        </div>
         <div class="camera-preview-container">
             <video id="camera-preview" autoplay playsinline muted></video>
             <div class="recording-indicator" id="recording-indicator" style="display: none;">
@@ -833,6 +838,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     cameraInterface.style.display = 'none';
                     uploadInterface.style.display = 'block';
                     showSelectedFile(file);
+                    
+                    // Pre-fill the upload form's title from the camera name field
+                    var cameraName = document.getElementById('camera_recording_name');
+                    var titleField = document.getElementById('video_title');
+                    if (cameraName && titleField && cameraName.value.trim()) {
+                        titleField.value = cameraName.value.trim();
+                    }
                 };
                 
                 mediaRecorder.start();
