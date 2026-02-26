@@ -1,6 +1,11 @@
 <?php
 session_start();
+require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/security.php';
+require_once __DIR__ . '/lib/site_branding.php';
+
+$site_logo_url = getSiteLogoUrl($pdo ?? null);
+$site_favicon_url = getSiteFaviconUrl($pdo ?? null);
 
 // Generate CSRF token
 generateCSRFToken();
@@ -21,7 +26,7 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     <meta charset="UTF-8">
     <title>Security Update | Arctic Wolves</title>
     
-    <link rel="icon" type="image/png" href="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png">
+    <link rel="icon" type="image/png" href="<?= htmlspecialchars($site_favicon_url) ?>">
     
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
