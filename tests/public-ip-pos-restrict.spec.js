@@ -49,9 +49,17 @@ test.describe('getClientIP function', () => {
     expect(content).toContain('FILTER_VALIDATE_IP');
   });
 
+  test('getClientIP rejects private/reserved IPs in proxy headers (anti-spoofing)', () => {
+    const content = readFile('security.php');
+    const fnMatch = content.match(/function getClientIP\(\)\s*\{[\s\S]*?^}/m);
+    expect(fnMatch).not.toBeNull();
+    const fnBody = fnMatch[0];
+    expect(fnBody).toContain('FILTER_FLAG_NO_PRIV_RANGE');
+    expect(fnBody).toContain('FILTER_FLAG_NO_RES_RANGE');
+  });
+
   test('getClientIP falls back to REMOTE_ADDR as last resort', () => {
     const content = readFile('security.php');
-    // REMOTE_ADDR should be in the headers array, checked last
     const fnMatch = content.match(/function getClientIP\(\)\s*\{[\s\S]*?^}/m);
     expect(fnMatch).not.toBeNull();
     const fnBody = fnMatch[0];

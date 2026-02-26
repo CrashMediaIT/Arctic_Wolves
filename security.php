@@ -495,20 +495,24 @@ function requirePermission($pdo, $user_id, $user_role, $permission, $json = fals
  * REMOTE_ADDR will be the proxy's LAN IP. This function resolves
  * the original public IP from standard forwarding headers.
  *
+ * Note: Proxy headers (X-Forwarded-For, etc.) are only trustworthy when
+ * the reverse proxy (HAProxy/NGINX) is configured to overwrite them.
+ * Private/reserved IPs in proxy headers are skipped to mitigate spoofing.
+ *
  * @return string Client IP address or 'unknown'
  */
 function getClientIP() {
-    $headers = [
+    // Proxy headers — reject private/reserved IPs to prevent spoofing
+    $proxyHeaders = [
         'HTTP_CLIENT_IP',
         'HTTP_X_FORWARDED_FOR',
         'HTTP_X_FORWARDED',
         'HTTP_X_CLUSTER_CLIENT_IP',
         'HTTP_FORWARDED_FOR',
         'HTTP_FORWARDED',
-        'REMOTE_ADDR'
     ];
 
-    foreach ($headers as $header) {
+    foreach ($proxyHeaders as $header) {
         if (!empty($_SERVER[$header])) {
             $ip = $_SERVER[$header];
             // Handle multiple IPs in X-Forwarded-For (first is the original client)
@@ -516,10 +520,17 @@ function getClientIP() {
                 $ips = explode(',', $ip);
                 $ip = trim($ips[0]);
             }
-            if (filter_var($ip, FILTER_VALIDATE_IP)) {
+            // Accept only valid, non-private, non-reserved IPs from proxy headers
+            if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
                 return $ip;
             }
         }
+    }
+
+    // Fallback to REMOTE_ADDR (may be a private/LAN IP when not behind a proxy)
+    $remoteAddr = $_SERVER['REMOTE_ADDR'] ?? '';
+    if (filter_var($remoteAddr, FILTER_VALIDATE_IP)) {
+        return $remoteAddr;
     }
 
     return 'unknown';
