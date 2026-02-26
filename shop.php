@@ -4,6 +4,10 @@
  * Supports guest checkout and logged-in user purchases
  */
 require_once __DIR__ . '/db_config.php';
+require_once __DIR__ . '/lib/site_branding.php';
+
+$site_logo_url = getSiteLogoUrl($pdo ?? null);
+$site_favicon_url = getSiteFaviconUrl($pdo ?? null);
 
 // Start session for cart functionality
 session_start();
@@ -163,7 +167,7 @@ $cartCount = array_sum(array_column($_SESSION['shop_cart'], 'quantity'));
     <title>Shop | Arctic Wolves</title>
     <meta name="description" content="Shop official Arctic Wolves merchandise - jerseys, apparel, and accessories.">
     
-    <link rel="icon" type="image/png" href="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png">
+    <link rel="icon" type="image/png" href="<?= htmlspecialchars($site_favicon_url) ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="style.css">
     <style>
@@ -556,7 +560,7 @@ $cartCount = array_sum(array_column($_SESSION['shop_cart'], 'quantity'));
         <nav class="container nav-flex">
             <div class="logo-area" style="display: flex; align-items: center; gap: 15px;">
                 <a href="index.php" style="display: flex; align-items: center; gap: 15px; text-decoration: none; color: inherit;">
-                    <img src="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png" alt="Arctic Wolves Logo" style="height: 40px; width: auto;">
+                    <img src="<?= htmlspecialchars($site_logo_url) ?>" alt="Arctic Wolves Logo" style="height: 40px; width: auto;">
                     <div>
                         <div class="logo-text">ARCTIC<span>WOLVES</span></div>
                         <div class="header-affiliation">Player Development</div>
@@ -731,7 +735,7 @@ $cartCount = array_sum(array_column($_SESSION['shop_cart'], 'quantity'));
         <div class="container footer-flex">
             <div class="footer-left">
                 <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-                    <img src="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png" alt="Logo" style="height: 30px; opacity: 0.8;">
+                    <img src="<?= htmlspecialchars($site_logo_url) ?>" alt="Logo" style="height: 30px; opacity: 0.8;">
                     <div class="logo-text" style="font-size: 1.2rem;">ARCTIC<span>WOLVES</span></div>
                 </div>
                 <p class="footer-desc">High-performance athletic development.</p>
