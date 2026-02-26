@@ -342,3 +342,220 @@ test.describe('Companion web UI node settings (templates/index.html)', () => {
     expect(c).toContain('Offline');
   });
 });
+
+// =====================================================
+// 6. Setup wizard — node role selection
+// =====================================================
+
+test.describe('Setup wizard node role selection (app.py)', () => {
+  const content = () => readFile('companion/app.py');
+
+  test('setup page should have role selection (master/slave)', () => {
+    const c = content();
+    expect(c).toContain('step-role');
+    expect(c).toContain('role-master');
+    expect(c).toContain('role-slave');
+    expect(c).toContain('selectRole');
+  });
+
+  test('master setup should walk through encryption key step', () => {
+    const c = content();
+    expect(c).toContain('step-master-key');
+    expect(c).toContain('saveMasterKey');
+  });
+
+  test('master setup should walk through RustFS step', () => {
+    const c = content();
+    expect(c).toContain('step-master-rustfs');
+    expect(c).toContain('saveMasterRustFS');
+    expect(c).toContain('skipRustFS');
+    expect(c).toContain('setup-s3-endpoint');
+  });
+
+  test('master setup should walk through API key generation step', () => {
+    const c = content();
+    expect(c).toContain('step-master-apikey');
+    expect(c).toContain('setupGenerateApiKey');
+  });
+
+  test('slave setup should only have API key generation', () => {
+    const c = content();
+    expect(c).toContain('step-slave-apikey');
+    expect(c).toContain('slaveGenerateApiKey');
+    expect(c).toContain('Copy this key and enter it when adding this slave on the master');
+  });
+
+  test('/api/setup should accept node_role parameter', () => {
+    const c = content();
+    const setupFunc = c.substring(
+      c.indexOf('def setup_save'),
+      c.indexOf('# Import redirect')
+    );
+    expect(setupFunc).toContain('node_role');
+    expect(setupFunc).toContain('"master"');
+    expect(setupFunc).toContain('"slave"');
+  });
+
+  test('master setup should return config_loaded when key matches existing config', () => {
+    const c = content();
+    const setupFunc = c.substring(
+      c.indexOf('def setup_save'),
+      c.indexOf('# Import redirect')
+    );
+    expect(setupFunc).toContain('config_loaded');
+    expect(setupFunc).toContain('s3_configured');
+  });
+
+  test('slave setup should auto-generate encryption key', () => {
+    const c = content();
+    const setupFunc = c.substring(
+      c.indexOf('def setup_save'),
+      c.indexOf('# Import redirect')
+    );
+    expect(setupFunc).toContain('secrets.token_hex');
+    expect(setupFunc).toContain('auto-generated');
+  });
+
+  test('master setup should reload runtime globals from loaded config', () => {
+    const c = content();
+    const setupFunc = c.substring(
+      c.indexOf('def setup_save'),
+      c.indexOf('# Import redirect')
+    );
+    expect(setupFunc).toContain('Reload runtime globals');
+    expect(setupFunc).toContain('S3_ENDPOINT');
+  });
+});
+
+// =====================================================
+// 7. Settings sync — master to slave
+// =====================================================
+
+test.describe('Settings sync from master to slave', () => {
+  const content = () => readFile('companion/app.py');
+
+  test('should have _get_master_settings_payload helper', () => {
+    const c = content();
+    expect(c).toContain('def _get_master_settings_payload');
+  });
+
+  test('should have _sync_settings_to_slave helper', () => {
+    const c = content();
+    expect(c).toContain('def _sync_settings_to_slave');
+    expect(c).toContain('/api/config');
+  });
+
+  test('should have /api/nodes/sync endpoint', () => {
+    const c = content();
+    expect(c).toContain('/api/nodes/sync');
+    expect(c).toContain('def sync_nodes');
+  });
+
+  test('should have /api/nodes/pull-settings endpoint', () => {
+    const c = content();
+    expect(c).toContain('/api/nodes/pull-settings');
+    expect(c).toContain('def pull_settings');
+  });
+
+  test('should auto-sync settings when a slave node is added', () => {
+    const c = content();
+    const addFunc = c.substring(
+      c.indexOf('def add_node'),
+      c.indexOf('def remove_node')
+    );
+    expect(addFunc).toContain('_sync_settings_to_slave');
+    expect(addFunc).toContain('settings_synced');
+  });
+
+  test('settings sync should NOT include hw_accel', () => {
+    const c = content();
+    const payloadFunc = c.substring(
+      c.indexOf('def _get_master_settings_payload'),
+      c.indexOf('def _sync_settings_to_slave')
+    );
+    expect(payloadFunc).not.toContain('"hw_accel"');
+    expect(payloadFunc).toContain('intentionally excluded');
+    expect(payloadFunc).toContain('different GPU hardware');
+  });
+
+  test('settings sync should include S3/RustFS credentials', () => {
+    const c = content();
+    const payloadFunc = c.substring(
+      c.indexOf('def _get_master_settings_payload'),
+      c.indexOf('def _sync_settings_to_slave')
+    );
+    expect(payloadFunc).toContain('s3_endpoint');
+    expect(payloadFunc).toContain('s3_access_key');
+    expect(payloadFunc).toContain('s3_secret_key');
+    expect(payloadFunc).toContain('s3_bucket');
+  });
+
+  test('sync endpoint should only work on master nodes', () => {
+    const c = content();
+    const syncFunc = c.substring(
+      c.indexOf('def sync_nodes'),
+      c.indexOf('def pull_settings')
+    );
+    expect(syncFunc).toContain('NODE_ROLE');
+    expect(syncFunc).toContain('"master"');
+    expect(syncFunc).toContain('Only master nodes');
+  });
+});
+
+// =====================================================
+// 8. UI — master/slave settings visibility
+// =====================================================
+
+test.describe('Companion web UI master/slave settings visibility', () => {
+  const content = () => readFile('companion/templates/index.html');
+
+  test('should have master-only-settings class on S3 settings', () => {
+    const c = content();
+    expect(c).toContain('master-only-settings');
+    // S3 section should be master-only
+    const s3Section = c.substring(
+      c.indexOf('S3 / RustFS'),
+      c.indexOf('Node Management')
+    );
+    expect(s3Section).toContain('master-only-settings');
+  });
+
+  test('hardware acceleration should NOT have master-only-settings class', () => {
+    const c = content();
+    // Find the form-group div that directly contains cfg-hw-accel
+    const hwStart = c.indexOf('cfg-hw-accel');
+    // Go backwards to find the opening div for this form-group
+    const divStart = c.lastIndexOf('<div class="form-group', hwStart);
+    const divTag = c.substring(divStart, c.indexOf('>', divStart) + 1);
+    expect(divTag).not.toContain('master-only-settings');
+  });
+
+  test('should explain hw_accel is configured per-node', () => {
+    const c = content();
+    expect(c).toContain('per-node');
+    expect(c).toContain('different GPU hardware');
+  });
+
+  test('should have slave settings banner', () => {
+    const c = content();
+    expect(c).toContain('slave-settings-banner');
+    expect(c).toContain('Slave Node');
+  });
+
+  test('toggleSlaveNodesSection should toggle master-only-settings visibility', () => {
+    const c = content();
+    const toggleFunc = c.substring(
+      c.indexOf('function toggleSlaveNodesSection'),
+      c.indexOf('document.getElementById(\'cfg-node-role\').addEventListener')
+    );
+    expect(toggleFunc).toContain('master-only-settings');
+    expect(toggleFunc).toContain('slave-settings-banner');
+  });
+
+  test('should have syncAllNodes function and button', () => {
+    const c = content();
+    expect(c).toContain('syncAllNodes');
+    expect(c).toContain('Sync Settings to All Slaves');
+    expect(c).toContain('/api/nodes/sync');
+  });
+});

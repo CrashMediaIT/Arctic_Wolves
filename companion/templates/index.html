@@ -331,6 +331,13 @@
                 <h2>Settings</h2>
             </div>
             <div class="card" style="max-width:860px;">
+
+                <!-- Slave info banner (shown only when node is a slave) -->
+                <div id="slave-settings-banner" style="display:none;background:rgba(107,70,193,0.08);border:1px solid rgba(107,70,193,0.2);border-radius:8px;padding:16px;margin-bottom:20px;">
+                    <div style="font-weight:800;font-size:14px;margin-bottom:6px;">🔗 Slave Node</div>
+                    <div style="color:var(--text-dim);font-size:13px;">This node is configured as a slave. Settings (S3/RustFS, max jobs, etc.) are synced from the master node. Hardware acceleration is configured locally per-node. Only the API key, node role, and hardware acceleration are configurable here.</div>
+                </div>
+
                 <form id="settings-form" onsubmit="return saveConfig(event)">
 
                     <div class="form-grid">
@@ -345,7 +352,9 @@
                             </div>
                             <div class="form-hint" id="cfg-api-key-hint">Generated here, then enter in the main app's Game Plan Settings</div>
                         </div>
-                        <div class="form-group">
+
+                        <!-- Master-only settings start -->
+                        <div class="form-group master-only-settings">
                             <label for="cfg-main-app-url">Main App URL</label>
                             <input id="cfg-main-app-url" name="main_app_url" type="text" class="form-input" placeholder="https://your-app-domain.com" autocomplete="off">
                         </div>
@@ -359,39 +368,40 @@
                                 <option value="amf">AMF (AMD)</option>
                                 <option value="none">Software Only</option>
                             </select>
+                            <div class="form-hint">Configured per-node — slaves may have different GPU hardware than the master.</div>
                         </div>
-                        <div class="form-group">
+                        <div class="form-group master-only-settings">
                             <label for="cfg-max-jobs">Max Concurrent Jobs</label>
                             <input id="cfg-max-jobs" name="max_concurrent_jobs" type="number" class="form-input" min="1" max="16" placeholder="2">
                         </div>
 
-                        <!-- S3 / RustFS -->
-                        <div class="form-section-title">S3 / RustFS</div>
-                        <div class="form-hint" style="grid-column:1/-1;margin-bottom:4px;">These credentials are typically pushed from the main app's RustFS settings. You can also enter them manually below.</div>
+                        <!-- S3 / RustFS (master only) -->
+                        <div class="form-section-title master-only-settings">S3 / RustFS</div>
+                        <div class="form-hint master-only-settings" style="grid-column:1/-1;margin-bottom:4px;">These credentials are typically pushed from the main app's RustFS settings. You can also enter them manually below.</div>
 
-                        <div class="form-group">
+                        <div class="form-group master-only-settings">
                             <label for="cfg-s3-endpoint">Endpoint URL</label>
                             <input id="cfg-s3-endpoint" name="s3_endpoint" type="text" class="form-input" placeholder="https://rustfs.example.com:9000">
                         </div>
-                        <div class="form-group">
+                        <div class="form-group master-only-settings">
                             <label for="cfg-s3-bucket">Bucket Name</label>
                             <input id="cfg-s3-bucket" name="s3_bucket" type="text" class="form-input" placeholder="your-bucket-name">
                         </div>
-                        <div class="form-group">
+                        <div class="form-group master-only-settings">
                             <label for="cfg-s3-region">Region</label>
                             <input id="cfg-s3-region" name="s3_region" type="text" class="form-input" placeholder="us-east-1">
                         </div>
-                        <div class="form-group">
+                        <div class="form-group master-only-settings">
                             <label for="cfg-s3-access-key">Access Key</label>
                             <input id="cfg-s3-access-key" name="s3_access_key" type="password" class="form-input" placeholder="Enter access key" autocomplete="off">
                             <div class="form-hint" id="cfg-s3-access-hint">Not set</div>
                         </div>
-                        <div class="form-group">
+                        <div class="form-group master-only-settings">
                             <label for="cfg-s3-secret-key">Secret Key</label>
                             <input id="cfg-s3-secret-key" name="s3_secret_key" type="password" class="form-input" placeholder="Enter secret key" autocomplete="off">
                             <div class="form-hint" id="cfg-s3-secret-hint">Not set</div>
                         </div>
-                        <div class="form-group">
+                        <div class="form-group master-only-settings">
                             <label>SSL Options</label>
                             <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px;">
                                 <label class="toggle-row">
@@ -404,6 +414,7 @@
                                 </label>
                             </div>
                         </div>
+                        <!-- Master-only settings end -->
 
                         <!-- Node Management -->
                         <div class="form-section-title">Node Management</div>
@@ -418,7 +429,7 @@
                                 <option value="master">Master</option>
                                 <option value="slave">Slave</option>
                             </select>
-                            <div class="form-hint">Master nodes accept jobs from the main app and can delegate to slaves. Slave nodes only accept delegated jobs.</div>
+                            <div class="form-hint">Master nodes accept jobs from the main app and can delegate to slaves. Slave nodes only accept delegated jobs and receive settings from the master.</div>
                         </div>
 
                         <div class="form-group full" id="slave-nodes-section">
@@ -446,6 +457,10 @@
                                     </div>
                                 </div>
                                 <div id="add-node-msg" style="font-size:12px;margin-top:8px;"></div>
+                            </div>
+                            <div style="margin-top:12px;">
+                                <button type="button" class="btn-secondary btn-sm" onclick="syncAllNodes()">Sync Settings to All Slaves</button>
+                                <span id="sync-msg" style="font-size:12px;margin-left:8px;"></span>
                             </div>
                         </div>
 
@@ -693,8 +708,16 @@
 
         /* --- Node Management --- */
         function toggleSlaveNodesSection(role) {
-            const section = document.getElementById('slave-nodes-section');
+            var section = document.getElementById('slave-nodes-section');
             if (section) section.style.display = (role === 'master') ? '' : 'none';
+            // Show/hide master-only settings
+            var masterElems = document.querySelectorAll('.master-only-settings');
+            for (var i = 0; i < masterElems.length; i++) {
+                masterElems[i].style.display = (role === 'master') ? '' : 'none';
+            }
+            // Show/hide slave banner
+            var banner = document.getElementById('slave-settings-banner');
+            if (banner) banner.style.display = (role === 'slave') ? '' : 'none';
         }
 
         document.getElementById('cfg-node-role').addEventListener('change', function() {
@@ -774,6 +797,29 @@
                 if (res.ok) { refreshNodes(); }
                 else { alert('Failed to remove node'); }
             } catch { alert('Network error'); }
+        }
+
+        async function syncAllNodes() {
+            var msgEl = document.getElementById('sync-msg');
+            msgEl.textContent = 'Syncing…';
+            msgEl.style.color = 'var(--text-dim)';
+            try {
+                var res = await fetch(API_BASE + '/api/nodes/sync', {
+                    method: 'POST', headers: apiHeaders()
+                });
+                var d = await res.json();
+                if (res.ok) {
+                    msgEl.style.color = '#22c55e';
+                    msgEl.textContent = '✓ Settings synced to slaves';
+                    refreshNodes();
+                } else {
+                    msgEl.style.color = '#ef4444';
+                    msgEl.textContent = d.error || 'Sync failed';
+                }
+            } catch {
+                msgEl.style.color = '#ef4444';
+                msgEl.textContent = 'Network error';
+            }
         }
 
         /* --- Init --- */

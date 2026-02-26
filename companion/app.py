@@ -595,48 +595,250 @@ SETUP_TEMPLATE = """<!DOCTYPE html>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',system-ui,sans-serif}
 body{background:#0A0A0F;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh}
-.card{background:#16161F;border:1px solid #2D2D3F;border-radius:16px;padding:40px;max-width:540px;width:100%}
+.card{background:#16161F;border:1px solid #2D2D3F;border-radius:16px;padding:40px;max-width:600px;width:100%}
 h1{font-size:1.8rem;font-weight:900;margin-bottom:8px}
 h1 span{color:#6B46C1}
 p{color:#A8A8B8;font-size:14px;line-height:1.6;margin-bottom:24px}
 label{display:block;font-size:13px;font-weight:700;margin-bottom:6px;color:#A8A8B8}
-input{width:100%;padding:10px 14px;border:1px solid #2D2D3F;border-radius:8px;background:#0A0A0F;color:#fff;font-size:14px;font-family:monospace}
+input,select{width:100%;padding:10px 14px;border:1px solid #2D2D3F;border-radius:8px;background:#0A0A0F;color:#fff;font-size:14px}
+input[type=text],input[type=password]{font-family:monospace}
+select{cursor:pointer;appearance:none}
 .actions{display:flex;gap:10px;margin-top:20px}
 .btn{padding:10px 20px;border:none;border-radius:8px;cursor:pointer;font-weight:800;font-size:13px;text-transform:uppercase}
 .btn-primary{background:#6B46C1;color:#fff}.btn-primary:hover{background:#7C3AED}
 .btn-secondary{background:#2D2D3F;color:#fff}.btn-secondary:hover{background:#3D3D4F}
 .hint{color:#A8A8B8;font-size:12px;margin-top:8px}
 .error{color:#EF4444;font-size:13px;margin-top:12px;display:none}
+.success{color:#22c55e;font-size:13px;margin-top:12px;display:none}
+.step{display:none}.step.active{display:block}
+.step-indicator{display:flex;gap:8px;margin-bottom:24px}
+.step-dot{width:10px;height:10px;border-radius:50%;background:#2D2D3F}
+.step-dot.active{background:#6B46C1}
+.step-dot.done{background:#22c55e}
+.role-cards{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.role-card{border:2px solid #2D2D3F;border-radius:12px;padding:20px;cursor:pointer;text-align:center;transition:0.2s}
+.role-card:hover{border-color:#6B46C1}
+.role-card.selected{border-color:#6B46C1;background:rgba(107,70,193,0.1)}
+.role-card h3{font-size:16px;margin-bottom:6px}
+.role-card p{font-size:12px;margin-bottom:0}
+.role-icon{font-size:32px;margin-bottom:8px}
+.form-group{margin-bottom:16px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.api-key-box{background:#0A0A0F;border:1px solid #2D2D3F;border-radius:8px;padding:14px;font-family:monospace;font-size:13px;word-break:break-all;color:#22c55e;display:none}
 </style></head><body>
 <div class="card">
 <h1>Video <span>Companion</span></h1>
-<p>First-time setup. Enter or generate an AES-256 encryption key.<br>
-This key encrypts the config file on the persistent volume. If you are connecting
-to an existing main application, use the same key.</p>
-<form id="sf">
-<label for="ek">Encryption Key (64-char hex)</label>
-<input id="ek" name="key" placeholder="Paste existing key or click Generate" autocomplete="off">
-<div class="hint">Generate with: <code>python -c "import os; print(os.urandom(32).hex())"</code></div>
-<div class="error" id="err"></div>
+
+<!-- Step 1: Node Role Selection -->
+<div class="step active" id="step-role">
+<p>Welcome to first-time setup. Select the role for this companion node.</p>
+<div class="role-cards">
+<div class="role-card" onclick="selectRole('master')" id="role-master">
+<div class="role-icon">&#9733;</div>
+<h3>Master Node</h3>
+<p>Receives jobs from the main application. Can delegate to slave nodes when busy.</p>
+</div>
+<div class="role-card" onclick="selectRole('slave')" id="role-slave">
+<div class="role-icon">&#9830;</div>
+<h3>Slave Node</h3>
+<p>Accepts delegated jobs from a master node. Settings are synced from the master.</p>
+</div>
+</div>
+<div class="error" id="err-role"></div>
 <div class="actions">
-<button type="submit" class="btn btn-primary">Save &amp; Start</button>
+<button type="button" class="btn btn-primary" onclick="nextFromRole()">Continue</button>
+</div>
+</div>
+
+<!-- Step 2 (Master): Encryption Key -->
+<div class="step" id="step-master-key">
+<div class="step-indicator"><span class="step-dot done"></span><span class="step-dot active"></span><span class="step-dot"></span><span class="step-dot"></span></div>
+<p><strong>Master Setup — Step 1:</strong> Enter or generate an AES-256 encryption key.<br>
+This key encrypts the config file on the persistent volume. If you have an existing key,
+entering it will load your saved settings.</p>
+<div class="form-group">
+<label for="ek">Encryption Key (64-char hex)</label>
+<input id="ek" type="text" placeholder="Paste existing key or click Generate" autocomplete="off">
+<div class="hint">Generate with: <code>python -c "import os; print(os.urandom(32).hex())"</code></div>
+</div>
+<div class="error" id="err-key"></div>
+<div id="key-loaded-msg" class="success"></div>
+<div class="actions">
+<button type="button" class="btn btn-primary" onclick="saveMasterKey()">Save Key &amp; Continue</button>
 <button type="button" class="btn btn-secondary" onclick="genKey()">Generate Key</button>
 </div>
-</form>
+</div>
+
+<!-- Step 3 (Master): RustFS / S3 Setup -->
+<div class="step" id="step-master-rustfs">
+<div class="step-indicator"><span class="step-dot done"></span><span class="step-dot done"></span><span class="step-dot active"></span><span class="step-dot"></span></div>
+<p><strong>Master Setup — Step 2:</strong> Configure S3 / RustFS storage credentials.
+These are used to download source videos and upload transcoded output.
+You can also push these later from the main app.</p>
+<div class="form-row">
+<div class="form-group">
+<label for="setup-s3-endpoint">S3 Endpoint URL</label>
+<input id="setup-s3-endpoint" type="text" placeholder="https://rustfs.example.com:9000">
+</div>
+<div class="form-group">
+<label for="setup-s3-bucket">Bucket Name</label>
+<input id="setup-s3-bucket" type="text" placeholder="your-bucket-name">
+</div>
+</div>
+<div class="form-row">
+<div class="form-group">
+<label for="setup-s3-region">Region</label>
+<input id="setup-s3-region" type="text" placeholder="us-east-1" value="us-east-1">
+</div>
+<div class="form-group">
+<label for="setup-s3-access">Access Key</label>
+<input id="setup-s3-access" type="password" placeholder="Access key" autocomplete="off">
+</div>
+</div>
+<div class="form-group">
+<label for="setup-s3-secret">Secret Key</label>
+<input id="setup-s3-secret" type="password" placeholder="Secret key" autocomplete="off">
+</div>
+<div class="error" id="err-rustfs"></div>
+<div class="actions">
+<button type="button" class="btn btn-primary" onclick="saveMasterRustFS()">Save &amp; Continue</button>
+<button type="button" class="btn btn-secondary" onclick="skipRustFS()">Skip (configure later)</button>
+</div>
+</div>
+
+<!-- Step 4 (Master): API Key Generation -->
+<div class="step" id="step-master-apikey">
+<div class="step-indicator"><span class="step-dot done"></span><span class="step-dot done"></span><span class="step-dot done"></span><span class="step-dot active"></span></div>
+<p><strong>Master Setup — Step 3:</strong> Generate an API key. Copy this key into the
+main application's Game Plan Settings &rarr; Companion Server &rarr; API Key field.</p>
+<div class="form-group">
+<label>API Key</label>
+<div id="setup-api-key-box" class="api-key-box"></div>
+<div class="hint" id="setup-api-hint">Click Generate to create a new API key.</div>
+</div>
+<div class="error" id="err-apikey"></div>
+<div class="actions">
+<button type="button" class="btn btn-primary" id="gen-api-btn" onclick="setupGenerateApiKey()">Generate API Key</button>
+<button type="button" class="btn btn-secondary" id="finish-master-btn" onclick="finishSetup()" style="display:none">Finish Setup</button>
+</div>
+</div>
+
+<!-- Step 2 (Slave): API Key Generation -->
+<div class="step" id="step-slave-apikey">
+<div class="step-indicator"><span class="step-dot done"></span><span class="step-dot active"></span></div>
+<p><strong>Slave Setup:</strong> Generate an API key for this slave node.
+Copy this key and enter it when adding this slave on the master node.
+Once connected, all settings (S3, hardware acceleration, etc.) will be synced from the master.</p>
+<div class="form-group">
+<label>API Key</label>
+<div id="slave-api-key-box" class="api-key-box"></div>
+<div class="hint" id="slave-api-hint">Click Generate to create a new API key for this slave.</div>
+</div>
+<div class="error" id="err-slave"></div>
+<div class="actions">
+<button type="button" class="btn btn-primary" id="gen-slave-btn" onclick="slaveGenerateApiKey()">Generate API Key</button>
+<button type="button" class="btn btn-secondary" id="finish-slave-btn" onclick="finishSetup()" style="display:none">Finish Setup</button>
+</div>
+</div>
+
 </div>
 <script>
-function genKey(){
- const a=new Uint8Array(32);crypto.getRandomValues(a);
- document.getElementById('ek').value=Array.from(a,b=>b.toString(16).padStart(2,'0')).join('');
+var selectedRole='';
+function selectRole(role){
+ selectedRole=role;
+ document.getElementById('role-master').className='role-card'+(role==='master'?' selected':'');
+ document.getElementById('role-slave').className='role-card'+(role==='slave'?' selected':'');
 }
-document.getElementById('sf').onsubmit=async function(e){
- e.preventDefault();const err=document.getElementById('err');err.style.display='none';
- const key=document.getElementById('ek').value.trim();
+function nextFromRole(){
+ var err=document.getElementById('err-role');
+ if(!selectedRole){err.textContent='Please select a node role.';err.style.display='block';return;}
+ err.style.display='none';
+ document.getElementById('step-role').className='step';
+ if(selectedRole==='master'){
+  document.getElementById('step-master-key').className='step active';
+ } else {
+  saveSlaveSetup();
+ }
+}
+function genKey(){
+ var a=new Uint8Array(32);crypto.getRandomValues(a);
+ document.getElementById('ek').value=Array.from(a,function(b){return b.toString(16).padStart(2,'0')}).join('');
+}
+async function saveMasterKey(){
+ var err=document.getElementById('err-key');err.style.display='none';
+ var msg=document.getElementById('key-loaded-msg');msg.style.display='none';
+ var key=document.getElementById('ek').value.trim();
  if(!/^[0-9a-fA-F]{64}$/.test(key)){err.textContent='Key must be exactly 64 hex characters.';err.style.display='block';return;}
- const r=await fetch('/api/setup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key})});
- const d=await r.json();
- if(d.success){window.location.href='/';}else{err.textContent=d.error||'Setup failed.';err.style.display='block';}
-};
+ var r=await fetch('/api/setup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:key,node_role:'master'})});
+ var d=await r.json();
+ if(!d.success){err.textContent=d.error||'Setup failed.';err.style.display='block';return;}
+ if(d.config_loaded){
+  msg.textContent='Existing settings loaded from persistent config.';msg.style.display='block';
+  if(d.s3_configured){
+   document.getElementById('setup-s3-endpoint').value=d.config.s3_endpoint||'';
+   document.getElementById('setup-s3-bucket').value=d.config.s3_bucket||'';
+   document.getElementById('setup-s3-region').value=d.config.s3_region||'us-east-1';
+  }
+ }
+ document.getElementById('step-master-key').className='step';
+ document.getElementById('step-master-rustfs').className='step active';
+}
+async function saveMasterRustFS(){
+ var err=document.getElementById('err-rustfs');err.style.display='none';
+ var payload={};
+ var v=function(id){return document.getElementById(id).value.trim()};
+ if(v('setup-s3-endpoint'))payload.s3_endpoint=v('setup-s3-endpoint');
+ if(v('setup-s3-bucket'))payload.s3_bucket=v('setup-s3-bucket');
+ if(v('setup-s3-region'))payload.s3_region=v('setup-s3-region');
+ if(v('setup-s3-access'))payload.s3_access_key=v('setup-s3-access');
+ if(v('setup-s3-secret'))payload.s3_secret_key=v('setup-s3-secret');
+ if(Object.keys(payload).length>0){
+  var r=await fetch('/api/config',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  var d=await r.json();
+  if(!r.ok){err.textContent=d.error||'Failed to save.';err.style.display='block';return;}
+ }
+ document.getElementById('step-master-rustfs').className='step';
+ document.getElementById('step-master-apikey').className='step active';
+}
+function skipRustFS(){
+ document.getElementById('step-master-rustfs').className='step';
+ document.getElementById('step-master-apikey').className='step active';
+}
+async function setupGenerateApiKey(){
+ var err=document.getElementById('err-apikey');err.style.display='none';
+ var r=await fetch('/api/generate-key',{method:'POST',headers:{'Content-Type':'application/json'}});
+ var d=await r.json();
+ if(r.ok&&d.api_key){
+  var box=document.getElementById('setup-api-key-box');
+  box.textContent=d.api_key;box.style.display='block';
+  localStorage.setItem('companion_api_key',d.api_key);
+  document.getElementById('setup-api-hint').textContent='Copy this key into the main app\\'s Game Plan Settings.';
+  document.getElementById('gen-api-btn').style.display='none';
+  document.getElementById('finish-master-btn').style.display='';
+ } else {err.textContent=d.error||'Failed to generate key.';err.style.display='block';}
+}
+async function saveSlaveSetup(){
+ var r=await fetch('/api/setup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({node_role:'slave'})});
+ var d=await r.json();
+ if(d.success){
+  document.getElementById('step-role').className='step';
+  document.getElementById('step-slave-apikey').className='step active';
+ }
+}
+async function slaveGenerateApiKey(){
+ var err=document.getElementById('err-slave');err.style.display='none';
+ var r=await fetch('/api/generate-key',{method:'POST',headers:{'Content-Type':'application/json'}});
+ var d=await r.json();
+ if(r.ok&&d.api_key){
+  var box=document.getElementById('slave-api-key-box');
+  box.textContent=d.api_key;box.style.display='block';
+  localStorage.setItem('companion_api_key',d.api_key);
+  document.getElementById('slave-api-hint').textContent='Copy this key and enter it on the master node when adding this slave.';
+  document.getElementById('gen-slave-btn').style.display='none';
+  document.getElementById('finish-slave-btn').style.display='';
+ } else {err.textContent=d.error||'Failed to generate key.';err.style.display='block';}
+}
+function finishSetup(){window.location.href='/';}
 </script></body></html>"""
 
 
@@ -650,11 +852,44 @@ def setup_page():
 
 @app.route("/api/setup", methods=["POST"])
 def setup_save():
-    """Save the encryption key from the setup page."""
+    """Save the encryption key and node role from the setup wizard.
+
+    Master setup: requires a 64-char hex encryption key.  If the key matches
+    an existing encrypted config file the saved settings are loaded and
+    returned so the wizard can pre-populate the RustFS fields.
+
+    Slave setup: auto-generates an encryption key (slaves get their real
+    settings synced from the master later).  Only needs API key generation.
+    """
     if _get_cipher_key() is not None:
         return jsonify({"success": False, "error": "Already configured. Use Settings to change the key."}), 400
 
     data = request.get_json(silent=True) or {}
+    node_role = str(data.get("node_role", "master")).lower()
+    if node_role not in ("master", "slave"):
+        node_role = "master"
+
+    global _persisted, API_KEY, MAIN_APP_URL, HW_ACCEL, MAX_CONCURRENT_JOBS
+    global S3_ENDPOINT, S3_ACCESS_KEY, S3_SECRET_KEY, S3_BUCKET, S3_REGION
+    global S3_USE_SSL, S3_VERIFY_SSL, NODE_ROLE, SLAVE_NODES
+
+    if node_role == "slave":
+        # Slave nodes auto-generate their encryption key
+        hex_key = secrets.token_hex(32)
+        if not _write_key_file(hex_key):
+            return jsonify({"success": False, "error": "Failed to write key file. Check volume permissions."}), 500
+
+        # Save minimal config with slave role
+        _persisted = _load_persistent_config()
+        NODE_ROLE = "slave"
+        cfg = _persisted.copy() if _persisted else {}
+        cfg["node_role"] = "slave"
+        _save_persistent_config(cfg)
+        SLAVE_NODES = _load_slave_nodes()
+        logger.info("Slave setup complete — encryption key auto-generated")
+        return jsonify({"success": True, "node_role": "slave"})
+
+    # Master setup — requires explicit encryption key
     hex_key = str(data.get("key", "")).strip()
 
     if not hex_key or len(hex_key) != 64:
@@ -669,14 +904,54 @@ def setup_save():
         return jsonify({"success": False, "error": "Failed to write key file. Check volume permissions."}), 500
 
     # Reload the persisted config now that we have a key
-    global _persisted, API_KEY, MAIN_APP_URL, HW_ACCEL, MAX_CONCURRENT_JOBS
-    global S3_ENDPOINT, S3_ACCESS_KEY, S3_SECRET_KEY, S3_BUCKET, S3_REGION
-    global S3_USE_SSL, S3_VERIFY_SSL, NODE_ROLE, SLAVE_NODES
     _persisted = _load_persistent_config()
     SLAVE_NODES = _load_slave_nodes()
 
-    logger.info("Setup complete — encryption key saved")
-    return jsonify({"success": True})
+    # Check if existing config was loaded
+    config_loaded = bool(_persisted)
+    s3_configured = bool(_persisted.get("s3_endpoint"))
+
+    # Always set master role
+    NODE_ROLE = "master"
+    if _persisted:
+        # Reload runtime globals from loaded config
+        API_KEY = _persisted.get("api_key", API_KEY)
+        MAIN_APP_URL = _persisted.get("main_app_url", MAIN_APP_URL)
+        HW_ACCEL = _persisted.get("hw_accel", HW_ACCEL)
+        try:
+            MAX_CONCURRENT_JOBS = int(_persisted.get("max_concurrent_jobs", MAX_CONCURRENT_JOBS))
+        except (ValueError, TypeError):
+            pass
+        S3_ENDPOINT = _persisted.get("s3_endpoint", S3_ENDPOINT)
+        S3_ACCESS_KEY = _persisted.get("s3_access_key", S3_ACCESS_KEY)
+        S3_SECRET_KEY = _persisted.get("s3_secret_key", S3_SECRET_KEY)
+        S3_BUCKET = _persisted.get("s3_bucket", S3_BUCKET)
+        S3_REGION = _persisted.get("s3_region", S3_REGION)
+        S3_USE_SSL = str(_persisted.get("s3_use_ssl", S3_USE_SSL)).lower() in ("true", "1", "yes")
+        S3_VERIFY_SSL = str(_persisted.get("s3_verify_ssl", S3_VERIFY_SSL)).lower() in ("true", "1", "yes")
+
+    # Persist the master role into config
+    cfg = _persisted.copy() if _persisted else {}
+    cfg["node_role"] = "master"
+    _save_persistent_config(cfg)
+
+    response = {
+        "success": True,
+        "node_role": "master",
+        "config_loaded": config_loaded,
+        "s3_configured": s3_configured,
+    }
+    if config_loaded:
+        response["config"] = {
+            "s3_endpoint": S3_ENDPOINT or "",
+            "s3_bucket": S3_BUCKET or "",
+            "s3_region": S3_REGION or "us-east-1",
+            "main_app_url": MAIN_APP_URL or "",
+            "hw_accel": HW_ACCEL or "auto",
+        }
+
+    logger.info("Master setup complete — encryption key saved (config_loaded=%s)", config_loaded)
+    return jsonify(response)
 
 
 # Import redirect helper
@@ -1221,7 +1496,15 @@ def add_node():
     _save_persistent_config(cfg)
 
     logger.info("Slave node added: %s (%s)", node_name, node_url)
-    return jsonify({"success": True, "node": {"id": node_id, "url": node_url, "name": node_name}}), 201
+
+    # Automatically sync settings to the new slave node
+    sync_result = _sync_settings_to_slave(new_node)
+
+    return jsonify({
+        "success": True,
+        "node": {"id": node_id, "url": node_url, "name": node_name},
+        "settings_synced": sync_result,
+    }), 201
 
 
 @app.route("/api/nodes/<node_id>", methods=["DELETE"])
@@ -1246,6 +1529,87 @@ def remove_node(node_id):
 
     logger.info("Slave node removed: %s", node_id)
     return jsonify({"success": True, "removed": node_id})
+
+
+def _get_master_settings_payload() -> dict:
+    """Build the settings payload that the master pushes to slave nodes.
+
+    Hardware acceleration (hw_accel) is intentionally excluded because slave
+    nodes may have different GPU hardware and should configure this locally.
+    """
+    return {
+        "s3_endpoint": S3_ENDPOINT,
+        "s3_access_key": S3_ACCESS_KEY,
+        "s3_secret_key": S3_SECRET_KEY,
+        "s3_bucket": S3_BUCKET,
+        "s3_region": S3_REGION,
+        "s3_use_ssl": S3_USE_SSL,
+        "s3_verify_ssl": S3_VERIFY_SSL,
+        "main_app_url": MAIN_APP_URL,
+        "max_concurrent_jobs": MAX_CONCURRENT_JOBS,
+    }
+
+
+def _sync_settings_to_slave(node: dict) -> bool:
+    """Push the master's settings to a slave node via its /api/config endpoint.
+
+    Returns True if the slave accepted the settings, False otherwise.
+    """
+    url = node.get("url", "").rstrip("/")
+    api_key = node.get("api_key", "")
+    if not url:
+        return False
+    try:
+        headers = {"Content-Type": "application/json"}
+        if api_key:
+            headers["X-API-Key"] = api_key
+        payload = _get_master_settings_payload()
+        resp = http_requests.put(url + "/api/config", json=payload, headers=headers, timeout=10, verify=False)  # noqa: S501
+        if resp.status_code == 200:
+            logger.info("Settings synced to slave %s", url)
+            return True
+        else:
+            logger.warning("Failed to sync settings to slave %s: %s", url, resp.status_code)
+            return False
+    except Exception as exc:
+        logger.warning("Failed to sync settings to slave %s: %s", url, exc)
+        return False
+
+
+@app.route("/api/nodes/sync", methods=["POST"])
+def sync_nodes():
+    """Push the master's settings to all registered slave nodes.
+
+    Called from the master's UI when the admin wants to push updated settings
+    (e.g. after changing S3 credentials) to all slave nodes at once.
+    """
+    auth_err = _require_api_key()
+    if auth_err:
+        return auth_err
+
+    if NODE_ROLE != "master":
+        return jsonify({"error": "Only master nodes can sync settings to slaves"}), 400
+
+    results = {}
+    for node in SLAVE_NODES:
+        node_name = node.get("name", node.get("url", "unknown"))
+        results[node_name] = _sync_settings_to_slave(node)
+
+    return jsonify({"synced": results})
+
+
+@app.route("/api/nodes/pull-settings", methods=["GET"])
+def pull_settings():
+    """Return the master's settings so a slave can pull them.
+
+    This endpoint is called by slave nodes to retrieve the master's
+    configuration (S3, HW accel, etc.).  Requires API key authentication.
+    """
+    auth_err = _require_api_key()
+    if auth_err:
+        return auth_err
+
+    return jsonify(_get_master_settings_payload())
 
 
 # ---------------------------------------------------------------------------
