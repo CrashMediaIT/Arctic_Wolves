@@ -581,7 +581,7 @@ if ($action === 'create') {
             ");
             $auditStmt->execute([
                 $user_id, $onboardingId, json_encode($auditData),
-                $_SERVER['REMOTE_ADDR'] ?? null, $_SERVER['HTTP_USER_AGENT'] ?? null
+                getClientIP(), $_SERVER['HTTP_USER_AGENT'] ?? null
             ]);
             
             $pdo->commit();

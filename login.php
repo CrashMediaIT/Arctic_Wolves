@@ -37,7 +37,7 @@ function recordLoginHistory($pdo, $user_id, $status, $failure_reason = null) {
         ");
         $stmt->execute([
             $user_id,
-            $_SERVER['REMOTE_ADDR'] ?? null,
+            getClientIP(),
             $_SERVER['HTTP_USER_AGENT'] ?? null,
             $status,
             $failure_reason,

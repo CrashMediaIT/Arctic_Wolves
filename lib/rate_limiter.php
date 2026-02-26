@@ -106,7 +106,7 @@ class RateLimiter {
             $stmt->execute([
                 $identifier,
                 $action,
-                $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+                $this->getClientIP(),
                 $_SERVER['HTTP_USER_AGENT'] ?? 'unknown'
             ]);
         } catch (PDOException $e) {
@@ -136,7 +136,7 @@ class RateLimiter {
             $stmt->execute([
                 $identifier,
                 "rate_limit_violation:{$action}",
-                $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+                $this->getClientIP(),
                 $_SERVER['HTTP_USER_AGENT'] ?? 'unknown',
                 $details
             ]);

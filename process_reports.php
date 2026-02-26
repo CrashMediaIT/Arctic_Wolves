@@ -147,7 +147,7 @@ function generateReport() {
         $user_id,
         $report_id,
         json_encode($auditData),
-        $_SERVER['REMOTE_ADDR'] ?? 'CLI',
+        getClientIP(),
         $_SERVER['HTTP_USER_AGENT'] ?? 'CLI'
     ]);
     
@@ -194,7 +194,7 @@ function generateReport() {
             $user_id,
             $schedule_id,
             json_encode($scheduleAuditData),
-            $_SERVER['REMOTE_ADDR'] ?? 'CLI',
+            getClientIP(),
             $_SERVER['HTTP_USER_AGENT'] ?? 'CLI'
         ]);
     }

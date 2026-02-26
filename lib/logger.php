@@ -38,6 +38,33 @@ class Logger {
     }
     
     /**
+     * Resolve the real client IP behind a reverse proxy.
+     * Checks standard proxy headers before falling back to REMOTE_ADDR.
+     */
+    private static function resolveClientIP() {
+        $proxyHeaders = [
+            'HTTP_CLIENT_IP',
+            'HTTP_X_FORWARDED_FOR',
+            'HTTP_X_FORWARDED',
+            'HTTP_X_CLUSTER_CLIENT_IP',
+            'HTTP_FORWARDED_FOR',
+            'HTTP_FORWARDED',
+        ];
+        foreach ($proxyHeaders as $header) {
+            if (!empty($_SERVER[$header])) {
+                $ip = $_SERVER[$header];
+                if (strpos($ip, ',') !== false) {
+                    $ip = trim(explode(',', $ip)[0]);
+                }
+                if (filter_var($ip, FILTER_VALIDATE_IP)) {
+                    return $ip;
+                }
+            }
+        }
+        return $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    }
+    
+    /**
      * Log an error message
      */
     public static function error($message, $context = []) {
@@ -134,7 +161,7 @@ class Logger {
         $context = [
             'event' => $event,
             'details' => $details,
-            'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+            'ip' => self::resolveClientIP(),
             'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'unknown'
         ];
         

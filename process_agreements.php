@@ -40,7 +40,7 @@ if ($action === 'accept_agreements') {
     try {
         $pdo->beginTransaction();
 
-        $client_ip = $_SERVER['REMOTE_ADDR'] ?? null;
+        $client_ip = getClientIP();
         $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? null;
 
         // Insert or update agreement records
