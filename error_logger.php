@@ -58,7 +58,7 @@ class ErrorLogger {
                 }
             }
         }
-        return isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : null;
+        return $_SERVER['REMOTE_ADDR'] ?? 'unknown';
     }
     
     /**
