@@ -50,10 +50,10 @@ test.describe('Color selection is independent from tool selection', () => {
 
   test('color preset click handler does not call selectPaintTool', () => {
     const content = readFile('js/drill_designer.js');
-    // Find the color preset handler block
+    // Find the color preset handler block up to the paint tool button section
     const presetHandlerStart = content.indexOf("document.querySelectorAll('[data-color-preset]').forEach");
-    const presetHandlerEnd = content.indexOf('});', content.indexOf('});', presetHandlerStart) + 1);
-    const presetHandler = content.substring(presetHandlerStart, presetHandlerEnd);
+    const paintBtnSection = content.indexOf("// Paint tool button", presetHandlerStart);
+    const presetHandler = content.substring(presetHandlerStart, paintBtnSection);
     // Should NOT contain selectPaintTool
     expect(presetHandler).not.toContain('selectPaintTool');
     // Should update activeColor
@@ -85,19 +85,19 @@ test.describe('Color selection applies to selected objects', () => {
   test('color preset click handler calls applyColorToSelected', () => {
     const content = readFile('js/drill_designer.js');
     const presetHandlerStart = content.indexOf("document.querySelectorAll('[data-color-preset]').forEach");
-    const presetHandlerEnd = content.indexOf('});', content.indexOf('});', presetHandlerStart) + 1);
-    const presetHandler = content.substring(presetHandlerStart, presetHandlerEnd);
+    const paintBtnSection = content.indexOf("// Paint tool button", presetHandlerStart);
+    const presetHandler = content.substring(presetHandlerStart, paintBtnSection);
     expect(presetHandler).toContain('this.applyColorToSelected()');
   });
 
   test('applyColorToSelected method exists and updates selected object color', () => {
     const content = readFile('js/drill_designer.js');
-    const fnStart = content.indexOf('applyColorToSelected()');
-    expect(fnStart).toBeGreaterThan(-1);
-    // Find the method body
+    // Find the method definition
     const methodStart = content.indexOf('applyColorToSelected() {');
-    const methodEnd = content.indexOf('}', methodStart + 30);
-    const methodBody = content.substring(methodStart, methodEnd);
+    expect(methodStart).toBeGreaterThan(-1);
+    // Extract the method body up to the next method (shareLink)
+    const nextMethod = content.indexOf('shareLink()', methodStart);
+    const methodBody = content.substring(methodStart, nextMethod);
     expect(methodBody).toContain('this.selectedObject.color = this.activeColor');
     expect(methodBody).toContain('this.redraw()');
     expect(methodBody).toContain('this.saveState()');
@@ -134,17 +134,19 @@ test.describe('Items use activeColor when placed', () => {
   test('cone tool uses activeColor when placing', () => {
     const content = readFile('js/drill_designer.js');
     const coneSection = content.indexOf("this.currentTool === 'cone'");
-    const coneEnd = content.indexOf('});', coneSection);
-    const coneHandler = content.substring(coneSection, coneEnd);
-    expect(coneHandler).toContain('this.activeColor');
+    expect(coneSection).toBeGreaterThan(-1);
+    // Check a section after the cone tool check for activeColor usage
+    const coneBlock = content.substring(coneSection, coneSection + 200);
+    expect(coneBlock).toContain('this.activeColor');
   });
 
   test('puck tool uses activeColor when placing', () => {
     const content = readFile('js/drill_designer.js');
     const puckSection = content.indexOf("this.currentTool === 'puck'");
-    const puckEnd = content.indexOf('});', puckSection);
-    const puckHandler = content.substring(puckSection, puckEnd);
-    expect(puckHandler).toContain('this.activeColor');
+    expect(puckSection).toBeGreaterThan(-1);
+    // Check a section after the puck tool check for activeColor usage
+    const puckBlock = content.substring(puckSection, puckSection + 200);
+    expect(puckBlock).toContain('this.activeColor');
   });
 
   test('freehand drawing uses activeColor', () => {
