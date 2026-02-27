@@ -942,7 +942,9 @@
             // Skip inputs that already have a custom upload UI
             if (input.closest('.file-upload-zone') ||
                 input.closest('.file-upload-area') ||
-                input.closest('[data-component="FileUpload"]')) {
+                input.closest('[data-component="FileUpload"]') ||
+                input.closest('.msg-input-toolbar') ||
+                input.closest('.messenger-input-toolbar')) {
                 return;
             }
 
