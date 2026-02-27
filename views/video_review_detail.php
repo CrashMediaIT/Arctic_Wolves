@@ -1,17 +1,28 @@
 <?php
 /**
  * Video Review Detail Page
- * Full page view for athletes to see video details, coach notes, and respond.
- * Coaches can also use this page to review and add notes.
+ * Full page view for reviewing a video.
+ * - Shows video player, metadata, and a conversation thread (coach notes + athlete replies).
+ * - Coach submitting notes marks the video as "reviewed" (moves to Reviewed tab).
+ * - Athlete replying on a reviewed video moves it back to "pending_review".
  */
 require_once __DIR__ . '/../lib/image_helper.php';
 
 $video_id = filter_input(INPUT_GET, 'video_id', FILTER_VALIDATE_INT);
 
+// Build the back link – honour the "from" query param so we return to the right page/tab
+$back_page = $_GET['from'] ?? 'coach_video_reviews';
+$back_tab  = $_GET['tab'] ?? '';
+$back_athlete = $_GET['athlete_id'] ?? '';
+$back_url  = '?page=' . urlencode($back_page);
+if ($back_tab) $back_url .= '&tab=' . urlencode($back_tab);
+if ($back_athlete) $back_url .= '&athlete_id=' . urlencode($back_athlete);
+$back_label = ($back_page === 'coaches_reviews') ? 'Coach Review' : 'Video Reviews';
+
 if (!$video_id) {
     echo '<div class="page-header"><h1 class="page-title"><i class="fas fa-exclamation-triangle"></i> Video Not Found</h1></div>';
     echo '<div style="max-width:800px; margin:24px auto; padding:40px; text-align:center; color:var(--text-dim);">';
-    echo '<p>Invalid video ID. <a href="?page=coaches_reviews" style="color:var(--primary);">Return to Coach Review</a></p>';
+    echo '<p>Invalid video ID. <a href="' . htmlspecialchars($back_url) . '" style="color:var(--primary);">Return to ' . htmlspecialchars($back_label) . '</a></p>';
     echo '</div>';
     return;
 }
@@ -32,7 +43,7 @@ $video = $stmt->fetch();
 if (!$video) {
     echo '<div class="page-header"><h1 class="page-title"><i class="fas fa-lock"></i> Access Denied</h1></div>';
     echo '<div style="max-width:800px; margin:24px auto; padding:40px; text-align:center; color:var(--text-dim);">';
-    echo '<p>Video not found or you don\'t have permission to view it. <a href="?page=coaches_reviews" style="color:var(--primary);">Return to Coach Review</a></p>';
+    echo '<p>Video not found or you don\'t have permission to view it. <a href="' . htmlspecialchars($back_url) . '" style="color:var(--primary);">Return to ' . htmlspecialchars($back_label) . '</a></p>';
     echo '</div>';
     return;
 }
@@ -46,11 +57,13 @@ $video_url = resolveRustfsUrl($pdo, $video['video_url'] ?? '') ?? '';
 $csrf_token = $_SESSION['csrf_token'] ?? '';
 $is_coach = $isAnyCoach;
 $is_owner = (int)$video['athlete_id'] === (int)$user_id;
+$athlete_name = trim(($video['athlete_first_name'] ?? '') . ' ' . ($video['athlete_last_name'] ?? ''));
+$coach_name   = trim(($video['coach_first_name'] ?? '') . ' ' . ($video['coach_last_name'] ?? ''));
 ?>
 
 <div class="page-header" style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
-    <a href="?page=coaches_reviews" style="color:var(--text-dim); text-decoration:none; font-size:14px; display:flex; align-items:center; gap:6px;">
-        <i class="fas fa-arrow-left"></i> Back to Coach Review
+    <a href="<?= htmlspecialchars($back_url) ?>" style="color:var(--text-dim); text-decoration:none; font-size:14px; display:flex; align-items:center; gap:6px;">
+        <i class="fas fa-arrow-left"></i> Back to <?= htmlspecialchars($back_label) ?>
     </a>
 </div>
 
@@ -64,27 +77,27 @@ $is_owner = (int)$video['athlete_id'] === (int)$user_id;
     </div>
 
     <div style="display: grid; grid-template-columns: 1fr 380px; gap: 24px;">
-        <!-- Left: Video Info & Edit -->
+        <!-- Left: Video Info & Conversation -->
         <div>
-            <!-- Title & Description (editable for owner/coach) -->
+            <!-- Title & Description -->
             <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 24px;">
                 <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
                     <h2 id="videoTitle" style="margin:0; font-size:20px; font-weight:700; color:var(--text-white);"><?= htmlspecialchars($video['title']) ?></h2>
-                    <span style="padding:6px 12px; border-radius:20px; font-size:11px; font-weight:700; text-transform:uppercase; <?= $video['status'] === 'reviewed' ? 'background:rgba(16,185,129,0.15); color:#10B981;' : 'background:rgba(245,158,11,0.15); color:#F59E0B;' ?>">
+                    <span id="statusBadge" style="padding:6px 12px; border-radius:20px; font-size:11px; font-weight:700; text-transform:uppercase; <?= $video['status'] === 'reviewed' ? 'background:rgba(16,185,129,0.15); color:#10B981;' : 'background:rgba(245,158,11,0.15); color:#F59E0B;' ?>">
                         <i class="fas <?= $video['status'] === 'reviewed' ? 'fa-check-circle' : 'fa-clock' ?>"></i>
                         <?= ucfirst(str_replace('_', ' ', $video['status'])) ?>
                     </span>
                 </div>
 
                 <div style="display:flex; flex-wrap:wrap; gap:16px; margin-bottom:16px; font-size:13px; color:var(--text-dim);">
-                    <span><i class="fas fa-user" style="color:var(--primary);"></i> <?= htmlspecialchars(($video['athlete_first_name'] ?? '') . ' ' . ($video['athlete_last_name'] ?? '')) ?></span>
+                    <span><i class="fas fa-user" style="color:var(--primary);"></i> <?= htmlspecialchars($athlete_name) ?></span>
                     <span><i class="fas fa-calendar" style="color:var(--primary);"></i> <?= date('M d, Y', strtotime($video['upload_date'])) ?></span>
                     <span style="padding:4px 10px; border-radius:20px; font-size:11px; font-weight:600; <?= ($video['video_category'] ?? 'drill') === 'game' ? 'background:rgba(16,185,129,0.15); color:#10B981;' : 'background:rgba(107,70,193,0.15); color:var(--primary);' ?>">
                         <i class="fas <?= ($video['video_category'] ?? 'drill') === 'game' ? 'fa-hockey-puck' : 'fa-dumbbell' ?>"></i>
                         <?= ucfirst($video['video_category'] ?? 'drill') ?>
                     </span>
-                    <?php if (!empty($video['coach_first_name'])): ?>
-                    <span><i class="fas fa-user-tie" style="color:var(--primary);"></i> <?= htmlspecialchars($video['coach_first_name'] . ' ' . ($video['coach_last_name'] ?? '')) ?></span>
+                    <?php if (!empty($coach_name)): ?>
+                    <span><i class="fas fa-user-tie" style="color:var(--primary);"></i> <?= htmlspecialchars($coach_name) ?></span>
                     <?php endif; ?>
                 </div>
 
@@ -112,49 +125,111 @@ $is_owner = (int)$video['athlete_id'] === (int)$user_id;
                 <?php endif; ?>
             </div>
 
-            <!-- Athlete Notes / Reply -->
+            <!-- Conversation Thread (Coach Notes + Athlete Replies) -->
             <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 24px;">
                 <h3 style="font-size:16px; font-weight:700; color:var(--text-white); margin:0 0 16px 0; display:flex; align-items:center; gap:8px;">
-                    <i class="fas fa-user" style="color:var(--primary);"></i> 
-                    <?= $is_coach ? 'Athlete Notes' : 'My Notes / Reply to Coach' ?>
+                    <i class="fas fa-comments" style="color:var(--primary);"></i> Review Conversation
                 </h3>
-                <textarea id="detailAthleteNotes" rows="4" class="detail-input" 
-                          placeholder="<?= $is_coach ? 'Athlete notes will appear here...' : 'Add your notes or reply to coach feedback...' ?>" 
-                          <?= $is_coach ? 'readonly' : '' ?>><?= htmlspecialchars($video['athlete_notes'] ?? '') ?></textarea>
-                
-                <?php if ($is_owner || $is_coach): ?>
-                <div style="margin-top:16px; display:flex; gap:12px; justify-content:flex-end;">
-                    <button type="button" id="saveDetailBtn" class="btn-primary" style="padding:12px 24px; border-radius:8px; font-size:14px; font-weight:600;">
-                        <i class="fas fa-save"></i> Save Changes
-                    </button>
+
+                <!-- Existing conversation entries -->
+                <div id="conversationThread" style="display:flex; flex-direction:column; gap:12px; margin-bottom:16px;">
+                    <?php if (!empty($video['coach_notes'])): ?>
+                    <div style="padding:14px 16px; background:rgba(107,70,193,0.08); border:1px solid rgba(107,70,193,0.2); border-radius:10px;">
+                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                            <i class="fas fa-user-tie" style="color:var(--primary); font-size:13px;"></i>
+                            <span style="font-size:13px; font-weight:600; color:var(--primary);">Coach<?php if ($coach_name): ?> — <?= htmlspecialchars($coach_name) ?><?php endif; ?></span>
+                        </div>
+                        <p id="coachNotesText" style="margin:0; font-size:14px; color:var(--text-dim); line-height:1.6; white-space:pre-wrap;"><?= htmlspecialchars($video['coach_notes']) ?></p>
+                    </div>
+                    <?php endif; ?>
+
+                    <?php if (!empty($video['athlete_notes'])): ?>
+                    <div style="padding:14px 16px; background:rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.2); border-radius:10px;">
+                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                            <i class="fas fa-user" style="color:#10B981; font-size:13px;"></i>
+                            <span style="font-size:13px; font-weight:600; color:#10B981;">Athlete<?php if ($athlete_name): ?> — <?= htmlspecialchars($athlete_name) ?><?php endif; ?></span>
+                        </div>
+                        <p id="athleteNotesText" style="margin:0; font-size:14px; color:var(--text-dim); line-height:1.6; white-space:pre-wrap;"><?= htmlspecialchars($video['athlete_notes']) ?></p>
+                    </div>
+                    <?php endif; ?>
+
+                    <?php if (empty($video['coach_notes']) && empty($video['athlete_notes'])): ?>
+                    <div id="noConversation" style="text-align:center; padding:24px; color:var(--text-dim); opacity:0.6;">
+                        <i class="fas fa-comment-slash" style="font-size:28px; display:block; margin-bottom:8px;"></i>
+                        <p style="margin:0; font-size:13px;">No notes yet. <?= $is_coach ? 'Add your review notes below.' : 'Your coach hasn\'t reviewed this video yet.' ?></p>
+                    </div>
+                    <?php endif; ?>
+                </div>
+
+                <!-- Reply / Add Notes area -->
+                <?php if ($is_coach): ?>
+                <div style="border-top:1px solid var(--border); padding-top:16px;">
+                    <label style="display:block; font-size:12px; font-weight:600; color:var(--text-dim); margin-bottom:6px; text-transform:uppercase;">
+                        <?= $video['status'] === 'pending_review' ? 'Review Notes (submitting marks video as reviewed)' : 'Update Coach Notes' ?>
+                    </label>
+                    <textarea id="detailCoachNotes" rows="5" class="detail-input" 
+                              placeholder="Add your review notes..."><?= htmlspecialchars($video['coach_notes'] ?? '') ?></textarea>
+                    <div style="margin-top:12px; display:flex; gap:12px; justify-content:flex-end;">
+                        <button type="button" id="saveDetailBtn" class="btn-primary" style="padding:12px 24px; border-radius:8px; font-size:14px; font-weight:600;">
+                            <i class="fas fa-paper-plane"></i> <?= $video['status'] === 'pending_review' ? 'Submit Review' : 'Update Notes' ?>
+                        </button>
+                    </div>
+                </div>
+                <?php elseif ($is_owner): ?>
+                <div style="border-top:1px solid var(--border); padding-top:16px;">
+                    <label style="display:block; font-size:12px; font-weight:600; color:var(--text-dim); margin-bottom:6px; text-transform:uppercase;">
+                        Reply to Coach
+                    </label>
+                    <textarea id="detailAthleteNotes" rows="4" class="detail-input" 
+                              placeholder="Add your notes or reply to coach feedback..."><?= htmlspecialchars($video['athlete_notes'] ?? '') ?></textarea>
+                    <div style="margin-top:12px; display:flex; gap:12px; justify-content:flex-end;">
+                        <button type="button" id="saveDetailBtn" class="btn-primary" style="padding:12px 24px; border-radius:8px; font-size:14px; font-weight:600;">
+                            <i class="fas fa-reply"></i> Send Reply
+                        </button>
+                    </div>
                 </div>
                 <?php endif; ?>
             </div>
         </div>
 
-        <!-- Right: Coach Notes -->
+        <!-- Right: Quick Info Panel -->
         <div>
             <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; position: sticky; top: 24px;">
                 <h3 style="font-size:16px; font-weight:700; color:var(--text-white); margin:0 0 16px 0; display:flex; align-items:center; gap:8px;">
-                    <i class="fas fa-user-tie" style="color:var(--primary);"></i> Coach Notes
+                    <i class="fas fa-info-circle" style="color:var(--primary);"></i> Video Info
                 </h3>
-                
-                <!-- Coach notes display (readonly for athletes) -->
-                <div id="coachNotesDisplay" style="padding:16px; background:rgba(107,70,193,0.08); border:1px solid rgba(107,70,193,0.2); border-radius:8px; color:var(--text-dim); font-size:14px; line-height:1.6; white-space:pre-wrap; min-height:60px; margin-bottom:16px;">
-                    <?php if (!empty($video['coach_notes'])): ?>
-                        <?= htmlspecialchars($video['coach_notes']) ?>
-                    <?php else: ?>
-                        <em style="opacity:0.5;">No coach notes yet.</em>
+                <div style="display:flex; flex-direction:column; gap:12px; font-size:14px; color:var(--text-dim);">
+                    <div style="display:flex; justify-content:space-between;">
+                        <span>Athlete</span>
+                        <span style="color:var(--text-white); font-weight:600;"><?= htmlspecialchars($athlete_name) ?></span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between;">
+                        <span>Uploaded</span>
+                        <span style="color:var(--text-white); font-weight:600;"><?= date('M d, Y', strtotime($video['upload_date'])) ?></span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between;">
+                        <span>Type</span>
+                        <span style="color:var(--text-white); font-weight:600;"><?= ucfirst($video['video_category'] ?? 'drill') ?></span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between;">
+                        <span>Status</span>
+                        <span id="infoStatus" style="font-weight:600; <?= $video['status'] === 'reviewed' ? 'color:#10B981;' : 'color:#F59E0B;' ?>">
+                            <?= ucfirst(str_replace('_', ' ', $video['status'])) ?>
+                        </span>
+                    </div>
+                    <?php if (!empty($coach_name)): ?>
+                    <div style="display:flex; justify-content:space-between;">
+                        <span>Coach</span>
+                        <span style="color:var(--text-white); font-weight:600;"><?= htmlspecialchars($coach_name) ?></span>
+                    </div>
+                    <?php endif; ?>
+                    <?php if (!empty($video['reviewed_at'])): ?>
+                    <div style="display:flex; justify-content:space-between;">
+                        <span>Reviewed</span>
+                        <span style="color:var(--text-white); font-weight:600;"><?= date('M d, Y', strtotime($video['reviewed_at'])) ?></span>
+                    </div>
                     <?php endif; ?>
                 </div>
-
-                <?php if ($is_coach): ?>
-                <div>
-                    <label style="display:block; font-size:12px; font-weight:600; color:var(--text-dim); margin-bottom:6px; text-transform:uppercase;">Add/Update Notes</label>
-                    <textarea id="detailCoachNotes" rows="6" class="detail-input" 
-                              placeholder="Add your review notes..."><?= htmlspecialchars($video['coach_notes'] ?? '') ?></textarea>
-                </div>
-                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -204,6 +279,7 @@ document.addEventListener('DOMContentLoaded', function() {
         saveBtn.addEventListener('click', function() {
             var videoId = <?= (int)$video_id ?>;
             var csrfToken = '<?= htmlspecialchars($csrf_token, ENT_QUOTES) ?>';
+            var isCoach = <?= $is_coach ? 'true' : 'false' ?>;
             var title = document.getElementById('detailTitle');
             var description = document.getElementById('detailDescription');
             var athleteNotes = document.getElementById('detailAthleteNotes');
@@ -213,27 +289,33 @@ document.addEventListener('DOMContentLoaded', function() {
             this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
 
             var formData = new FormData();
-            formData.append('action', 'update_video');
             formData.append('video_id', videoId);
             formData.append('csrf_token', csrfToken);
+
+            if (isCoach && coachNotes) {
+                // Coach submitting notes – use review_video action to mark as reviewed
+                formData.append('action', 'review_video');
+                formData.append('coach_notes', coachNotes.value);
+            } else {
+                // Athlete saving reply
+                formData.append('action', 'update_video');
+                if (athleteNotes) formData.append('athlete_notes', athleteNotes.value);
+            }
+
             if (title) formData.append('title', title.value.trim());
             if (description) formData.append('description', description.value.trim());
-            if (coachNotes) formData.append('coach_notes', coachNotes.value);
-            if (athleteNotes && !athleteNotes.readOnly) formData.append('athlete_notes', athleteNotes.value);
 
-            fetch('process_video.php', { method: 'POST', body: formData })
+            fetch('process_video.php', {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
                     if (data.success) {
-                        if (typeof showToast === 'function') showToast('Changes saved successfully.', 'success');
-                        // Update the coach notes display if coach updated
-                        if (coachNotes) {
-                            var display = document.getElementById('coachNotesDisplay');
-                            if (display) {
-                                display.textContent = coachNotes.value || '';
-                                if (!coachNotes.value) display.innerHTML = '<em style="opacity:0.5;">No coach notes yet.</em>';
-                            }
-                        }
+                        if (typeof showToast === 'function') showToast(data.message || 'Saved successfully.', 'success');
+                        // Reload to show updated status and conversation
+                        setTimeout(function() { location.reload(); }, 800);
                     } else {
                         if (typeof showToast === 'function') showToast('Save failed: ' + (data.error || data.message || 'Unknown error'), 'error');
                     }
@@ -243,7 +325,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
                 .finally(function() {
                     saveBtn.disabled = false;
-                    saveBtn.innerHTML = '<i class="fas fa-save"></i> Save Changes';
+                    if (isCoach) {
+                        var isReviewed = <?= $video['status'] === 'reviewed' ? 'true' : 'false' ?>;
+                        saveBtn.innerHTML = isReviewed
+                            ? '<i class="fas fa-paper-plane"></i> Update Notes'
+                            : '<i class="fas fa-paper-plane"></i> Submit Review';
+                    } else {
+                        saveBtn.innerHTML = '<i class="fas fa-reply"></i> Send Reply';
+                    }
                 });
         });
     }

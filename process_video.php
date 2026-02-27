@@ -845,6 +845,15 @@ function handleVideoUpdate() {
             WHERE id = ?
         ");
         $stmt->execute([$athlete_notes, $video_id]);
+
+        // If the video was already reviewed and the athlete is replying with new content, move it back to pending
+        $previous_notes = $video['athlete_notes'] ?? '';
+        if (($video['status'] ?? '') === 'reviewed' && trim($athlete_notes) !== '' && trim($athlete_notes) !== trim($previous_notes)) {
+            $stmt = $pdo->prepare("
+                UPDATE videos SET status = 'pending_review', updated_at = NOW() WHERE id = ?
+            ");
+            $stmt->execute([$video_id]);
+        }
     }
 
     // Update title and description if provided (allowed for the athlete who uploaded or any coach)
