@@ -67,6 +67,16 @@ test.describe('Message Emoji Picker UI', () => {
     });
 });
 
+test.describe('File Upload Choose-File Skip', () => {
+    test('app.js should skip message toolbar file inputs from choose-file enhancement', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'js', 'app.js'), 'utf-8');
+        
+        // The initializeFileUploads function should skip inputs inside message toolbars
+        expect(content).toContain(".closest('.msg-input-toolbar')");
+        expect(content).toContain(".closest('.messenger-input-toolbar')");
+    });
+});
+
 test.describe('File/Image Upload UI', () => {
     test('views/messages.php should contain file input and attachment button', () => {
         const content = fs.readFileSync(path.join(ROOT, 'views', 'messages.php'), 'utf-8');
