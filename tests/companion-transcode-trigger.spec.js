@@ -53,12 +53,13 @@ test.describe('All upload handlers trigger HLS transcoding', () => {
     expect(func).toContain("!empty($persist['object_key'])");
   });
 
-  test('handleConfirmAthleteUpload should call triggerHlsTranscode', () => {
+  test('handleConfirmAthleteUpload should call triggerHlsTranscode with guard', () => {
     const c = content();
     const funcStart = c.indexOf('function handleConfirmAthleteUpload()');
     const funcEnd = c.indexOf('\nfunction ', funcStart + 1);
     const func = c.substring(funcStart, funcEnd);
     expect(func).toContain('triggerHlsTranscode');
+    expect(func).toContain('!empty($object_key)');
   });
 
   test('triggerHlsTranscode should pass source_key and output_prefix to companion', () => {

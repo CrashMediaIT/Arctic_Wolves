@@ -655,7 +655,9 @@ function handleConfirmAthleteUpload() {
     $pdo->prepare("UPDATE videos SET nextcloud_path = ? WHERE id = ?")->execute([$proxy_url, $video_id]);
 
     // Trigger HLS transcoding via companion server (fire-and-forget)
-    triggerHlsTranscode($pdo, $video_id, $object_key);
+    if (!empty($object_key)) {
+        triggerHlsTranscode($pdo, $video_id, $object_key);
+    }
 
     // Clean up the session
     unset($_SESSION['pending_video_upload']);
