@@ -308,56 +308,68 @@ test.describe('Database Schema Support', () => {
     });
 });
 
-test.describe('Conversation View Size Toggle', () => {
-    test('should have size toggle buttons in chat header', () => {
-        const content = fs.readFileSync(path.join(ROOT, 'views', 'messages.php'), 'utf-8');
+test.describe('Widget Size Toggle', () => {
+    test('should have size toggle buttons in widget chat header', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'dashboard.php'), 'utf-8');
         
-        expect(content).toContain('msg-size-toggle');
-        expect(content).toContain('msg-size-btn');
+        expect(content).toContain('messenger-size-toggle');
+        expect(content).toContain('messenger-size-btn');
         expect(content).toContain('data-size="default"');
         expect(content).toContain('data-size="half"');
         expect(content).toContain('data-size="full"');
     });
 
-    test('should have setConversationSize function', () => {
-        const content = fs.readFileSync(path.join(ROOT, 'views', 'messages.php'), 'utf-8');
+    test('should have setWidgetSize function', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'dashboard.php'), 'utf-8');
         
-        expect(content).toContain('function setConversationSize(size)');
-        expect(content).toContain("classList.add('size-' + size)");
-        expect(content).toContain("'size-default', 'size-half', 'size-full'");
+        expect(content).toContain('function setWidgetSize(size)');
+        expect(content).toContain("classList.add('widget-size-' + size)");
+        expect(content).toContain("'widget-size-default', 'widget-size-half', 'widget-size-full'");
     });
 
-    test('messages container should start with size-default class', () => {
-        const content = fs.readFileSync(path.join(ROOT, 'views', 'messages.php'), 'utf-8');
+    test('default widget size should hide emoji/file upload toolbar', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'dashboard.php'), 'utf-8');
         
-        expect(content).toContain('class="messages-container size-default"');
-    });
-
-    test('default size should hide emoji/file upload toolbar', () => {
-        const content = fs.readFileSync(path.join(ROOT, 'views', 'messages.php'), 'utf-8');
-        
-        expect(content).toContain('.messages-container.size-default .msg-input-toolbar');
+        expect(content).toContain('.messenger-panel.widget-size-default .messenger-input-toolbar');
         expect(content).toContain('display: none');
     });
 
-    test('half and full sizes should have distinct CSS height rules', () => {
-        const content = fs.readFileSync(path.join(ROOT, 'views', 'messages.php'), 'utf-8');
+    test('half and full widget sizes should have distinct CSS rules', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'dashboard.php'), 'utf-8');
         
-        expect(content).toContain('.messages-container.size-half');
-        expect(content).toContain('.messages-container.size-full');
+        expect(content).toContain('.messenger-panel.widget-size-half');
+        expect(content).toContain('.messenger-panel.widget-size-full');
     });
 
     test('size toggle buttons should have descriptive titles', () => {
-        const content = fs.readFileSync(path.join(ROOT, 'views', 'messages.php'), 'utf-8');
+        const content = fs.readFileSync(path.join(ROOT, 'dashboard.php'), 'utf-8');
         
         expect(content).toContain('title="Compact view"');
         expect(content).toContain('title="Half size with emoji & file support"');
         expect(content).toContain('title="Full size with emoji & file support"');
     });
+
+    test('messages view should NOT have size toggle', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'views', 'messages.php'), 'utf-8');
+        
+        expect(content).not.toContain('msg-size-toggle');
+        expect(content).not.toContain('setConversationSize');
+        expect(content).not.toContain('size-default');
+        expect(content).not.toContain('size-half');
+        expect(content).not.toContain('size-full');
+    });
+
+    test('messages view should always show toolbar in full screen mode', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'views', 'messages.php'), 'utf-8');
+        
+        expect(content).toContain('msg-input-toolbar');
+        // Should not have any rule hiding the toolbar
+        expect(content).not.toContain('.messages-container.size-default .msg-input-toolbar');
+    });
 });
 
 test.describe('Image Paste Support', () => {
-    test('should have paste event listener on message input', () => {
+    test('should have paste event listener on message input in messages view', () => {
         const content = fs.readFileSync(path.join(ROOT, 'views', 'messages.php'), 'utf-8');
         
         expect(content).toContain("addEventListener('paste'");
@@ -380,12 +392,26 @@ test.describe('Image Paste Support', () => {
         expect(content).toContain('Cannot paste image: file size exceeds 25MB limit');
     });
 
-    test('should have paste hint visible in expanded modes', () => {
+    test('should have paste hint always visible in messages view', () => {
         const content = fs.readFileSync(path.join(ROOT, 'views', 'messages.php'), 'utf-8');
         
         expect(content).toContain('msg-paste-hint');
         expect(content).toContain('Paste images');
         expect(content).toContain('fa-paste');
+    });
+
+    test('widget should have paste event listener', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'dashboard.php'), 'utf-8');
+        
+        expect(content).toContain("addEventListener('paste'");
+        expect(content).toContain('clipboardData');
+    });
+
+    test('widget should have paste hint in toolbar', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'dashboard.php'), 'utf-8');
+        
+        expect(content).toContain('messenger-paste-hint');
+        expect(content).toContain('Paste images');
     });
 });
 

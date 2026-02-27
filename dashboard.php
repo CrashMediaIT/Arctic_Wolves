@@ -1143,10 +1143,28 @@ function switchAthlete(athleteId) {
             <div class="messenger-chat-header">
                 <button id="messengerBackBtn" class="messenger-icon-btn"><i class="fas fa-arrow-left"></i></button>
                 <span id="messengerChatName">User</span>
+                <div class="messenger-size-toggle" id="messengerSizeToggle">
+                    <button class="messenger-size-btn active" data-size="default" onclick="setWidgetSize('default')" title="Compact view">
+                        <i class="fas fa-compress"></i>
+                    </button>
+                    <button class="messenger-size-btn" data-size="half" onclick="setWidgetSize('half')" title="Half size with emoji & file support">
+                        <i class="fas fa-up-right-and-down-left-from-center"></i>
+                    </button>
+                    <button class="messenger-size-btn" data-size="full" onclick="setWidgetSize('full')" title="Full size with emoji & file support">
+                        <i class="fas fa-expand"></i>
+                    </button>
+                </div>
                 <button id="messengerMinimizeBtn" class="messenger-icon-btn" title="Minimize"><i class="fas fa-minus"></i></button>
             </div>
             <div id="messengerMessages" class="messenger-messages"></div>
             <div class="messenger-input-area">
+                <div class="messenger-input-toolbar">
+                    <button class="messenger-toolbar-btn" onclick="document.getElementById('messengerFileInput').click()" title="Attach file" aria-label="Attach file or image">
+                        <i class="fas fa-paperclip"></i>
+                    </button>
+                    <input type="file" id="messengerFileInput" multiple accept="image/*,.pdf,.doc,.docx,.txt,.xls,.xlsx,.csv" style="display:none">
+                    <span class="messenger-paste-hint"><i class="fas fa-paste"></i> Paste images</span>
+                </div>
                 <textarea id="messengerInput" placeholder="Type a message..." rows="1"></textarea>
                 <button id="messengerSendBtn" class="messenger-send-btn"><i class="fas fa-paper-plane"></i></button>
             </div>
@@ -1211,6 +1229,21 @@ function switchAthlete(athleteId) {
 .messenger-contact-name { font-size: 14px; font-weight: 600; color: var(--text-white, #fff); }
 .messenger-contact-role { font-size: 11px; color: var(--text-dim, #94a3b8); text-transform: capitalize; }
 .messenger-empty { text-align: center; padding: 32px 16px; color: var(--text-dim); font-size: 13px; }
+.messenger-size-toggle { display: flex; align-items: center; gap: 3px; margin-left: auto; margin-right: 4px; }
+.messenger-size-btn { padding: 3px 8px; background: rgba(255,255,255,0.06); border: 1px solid var(--border, #2D2D3F); color: #8b949e; font-size: 11px; font-weight: 600; border-radius: 6px; cursor: pointer; transition: background 0.2s, color 0.2s, border-color 0.2s; white-space: nowrap; }
+.messenger-size-btn:hover { background: rgba(107, 70, 193, 0.15); color: #c4b5fd; }
+.messenger-size-btn.active { background: var(--primary, #6B46C1); color: #fff; border-color: var(--primary, #6B46C1); }
+.messenger-input-toolbar { display: none; align-items: center; gap: 6px; padding: 4px 16px 0; }
+.messenger-toolbar-btn { width: 32px; height: 32px; background: rgba(255,255,255,0.06); border: 1px solid var(--border, #2D2D3F); color: #8b949e; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; font-size: 14px; }
+.messenger-toolbar-btn:hover { background: rgba(107, 70, 193, 0.15); color: #c4b5fd; }
+.messenger-paste-hint { font-size: 11px; color: #8b949e; display: flex; align-items: center; gap: 4px; }
+.messenger-panel.widget-size-default .messenger-input-toolbar { display: none; }
+.messenger-panel.widget-size-half { width: 480px; max-height: calc(60vh); }
+.messenger-panel.widget-size-half .messenger-messages { max-height: calc(60vh - 180px); }
+.messenger-panel.widget-size-half .messenger-input-toolbar { display: flex; }
+.messenger-panel.widget-size-full { width: 600px; max-height: calc(90vh); }
+.messenger-panel.widget-size-full .messenger-messages { max-height: calc(90vh - 180px); }
+.messenger-panel.widget-size-full .messenger-input-toolbar { display: flex; }
 @media (max-width: 480px) {
     .messenger-panel { width: calc(100vw - 32px); right: -8px; bottom: 64px; max-height: 70vh; }
 }
@@ -1517,6 +1550,34 @@ function switchAthlete(athleteId) {
     updateWidgetBadge();
     setInterval(updateWidgetBadge, 30000);
 })();
+
+// === Widget Size Toggle ===
+function setWidgetSize(size) {
+    var panel = document.getElementById('messengerPanel');
+    panel.classList.remove('widget-size-default', 'widget-size-half', 'widget-size-full');
+    panel.classList.add('widget-size-' + size);
+    document.querySelectorAll('.messenger-size-btn').forEach(function(btn) {
+        btn.classList.toggle('active', btn.dataset.size === size);
+    });
+}
+
+// Handle paste events on messenger widget input
+document.getElementById('messengerInput').addEventListener('paste', function(e) {
+    var items = (e.clipboardData || e.originalEvent.clipboardData).items;
+    for (var i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+            e.preventDefault();
+            var blob = items[i].getAsFile();
+            if (!blob) continue;
+            if (blob.size > 25 * 1024 * 1024) {
+                alert('Cannot paste image: file size exceeds 25MB limit');
+                return;
+            }
+            alert('Image pasted — full file upload coming soon');
+            break;
+        }
+    }
+});
 </script>
 
 <?php if ($showAgreementsModal): ?>

@@ -651,65 +651,14 @@ $start_with_user = isset($_GET['user_id']) ? intval($_GET['user_id']) : 0;
         text-transform: capitalize;
     }
     
-    /* Conversation View Size Toggle */
-    .msg-size-toggle {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        margin-left: 12px;
-    }
-    .msg-size-btn {
-        padding: 4px 10px;
-        background: rgba(255,255,255,0.06);
-        border: 1px solid var(--border, #2D2D3F);
-        color: #8b949e;
-        font-size: 11px;
-        font-weight: 600;
-        border-radius: 6px;
-        cursor: pointer;
-        transition: background 0.2s, color 0.2s, border-color 0.2s;
-        white-space: nowrap;
-    }
-    .msg-size-btn:hover {
-        background: rgba(107, 70, 193, 0.15);
-        color: #c4b5fd;
-    }
-    .msg-size-btn.active {
-        background: var(--primary, #6B46C1);
-        color: #fff;
-        border-color: var(--primary, #6B46C1);
-    }
-    
-    /* Default size: hide toolbar */
-    .messages-container.size-default .msg-input-toolbar {
-        display: none;
-    }
-    
-    /* Half size */
-    .messages-container.size-half {
-        height: calc(100vh - 70px);
-    }
-    
-    /* Full size */
-    .messages-container.size-full {
-        height: calc(100vh - 40px);
-    }
-    .messages-container.size-full .msg-body {
-        padding: 24px 28px;
-    }
-    
     /* Paste hint */
     .msg-paste-hint {
         font-size: 11px;
         color: #8b949e;
         padding: 0 4px;
-        display: none;
+        display: flex;
         align-items: center;
         gap: 4px;
-    }
-    .messages-container.size-half .msg-paste-hint,
-    .messages-container.size-full .msg-paste-hint {
-        display: flex;
     }
     
     /* Responsive */
@@ -745,7 +694,7 @@ $start_with_user = isset($_GET['user_id']) ? intval($_GET['user_id']) : 0;
     <p class="page-description">Send and receive messages with your coaches and athletes.</p>
 </div>
 
-<div class="messages-container size-default" id="messagesContainer">
+<div class="messages-container" id="messagesContainer">
     <!-- Sidebar -->
     <div class="msg-sidebar" id="msgSidebar">
         <div class="msg-sidebar-header">
@@ -780,17 +729,6 @@ $start_with_user = isset($_GET['user_id']) ? intval($_GET['user_id']) : 0;
                 <div class="header-info">
                     <h3 id="chatName"></h3>
                     <p id="chatRole"></p>
-                </div>
-                <div class="msg-size-toggle" id="msgSizeToggle">
-                    <button class="msg-size-btn active" data-size="default" onclick="setConversationSize('default')" title="Compact view">
-                        <i class="fas fa-compress"></i> Default
-                    </button>
-                    <button class="msg-size-btn" data-size="half" onclick="setConversationSize('half')" title="Half size with emoji & file support">
-                        <i class="fas fa-up-right-and-down-left-from-center"></i> Half
-                    </button>
-                    <button class="msg-size-btn" data-size="full" onclick="setConversationSize('full')" title="Full size with emoji & file support">
-                        <i class="fas fa-expand"></i> Full
-                    </button>
                 </div>
                 <div class="msg-e2e-badge" title="Messages are end-to-end encrypted">
                     <i class="fas fa-lock"></i> Encrypted
@@ -946,18 +884,6 @@ document.addEventListener('DOMContentLoaded', function() {
 function updateSendButton() {
     const input = document.getElementById('msgInput');
     document.getElementById('sendBtn').disabled = !input.value.trim() && pendingFiles.length === 0;
-}
-
-// === Conversation Size Toggle ===
-function setConversationSize(size) {
-    const container = document.getElementById('messagesContainer');
-    container.classList.remove('size-default', 'size-half', 'size-full');
-    container.classList.add('size-' + size);
-    
-    // Update active button
-    document.querySelectorAll('.msg-size-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.size === size);
-    });
 }
 
 // === Emoji Picker ===
