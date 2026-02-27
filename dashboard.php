@@ -1118,7 +1118,7 @@ function switchAthlete(athleteId) {
 <script src="js/app.js"></script>
 
 <!-- Messenger Widget (Facebook Messenger-style) -->
-<div id="messengerWidget" class="messenger-widget">
+<div id="messengerWidget" class="messenger-widget<?php if ($page === 'messages') echo ' messenger-widget-hidden'; ?>">
     <button id="messengerToggle" class="messenger-toggle" title="Messages">
         <i class="fas fa-comment-dots"></i>
         <span id="messengerBadge" class="messenger-badge" style="display:none;">0</span>
@@ -1166,6 +1166,7 @@ function switchAthlete(athleteId) {
 
 <style>
 .messenger-widget { position: fixed; bottom: 24px; right: 24px; z-index: 9990; font-family: inherit; }
+.messenger-widget-hidden { display: none; }
 .messenger-toggle { width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, var(--primary, #6B46C1), var(--accent, #8B5CF6)); border: none; color: #fff; font-size: 24px; cursor: pointer; box-shadow: 0 4px 16px rgba(107,70,193,0.4); transition: transform 0.2s, box-shadow 0.2s; position: relative; display: flex; align-items: center; justify-content: center; }
 .messenger-toggle:hover { transform: scale(1.08); box-shadow: 0 6px 24px rgba(107,70,193,0.5); }
 .messenger-badge { position: absolute; top: -4px; right: -4px; background: #EF4444; color: #fff; font-size: 11px; font-weight: 700; min-width: 20px; height: 20px; border-radius: 10px; display: flex; align-items: center; justify-content: center; padding: 0 5px; }
@@ -1193,10 +1194,10 @@ function switchAthlete(athleteId) {
 .messenger-chat-header { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--border, #2D2D3F); }
 .messenger-chat-header span { flex: 1; font-size: 15px; font-weight: 600; color: var(--text-white, #fff); }
 .messenger-messages { flex: 1; overflow-y: auto; padding: 16px; max-height: 320px; min-height: 200px; display: flex; flex-direction: column; gap: 8px; }
-.msg-bubble { max-width: 80%; padding: 10px 14px; border-radius: 16px; font-size: 13px; line-height: 1.5; word-break: break-word; }
-.msg-bubble.sent { align-self: flex-end; background: linear-gradient(135deg, var(--primary, #6B46C1), var(--accent, #8B5CF6)); color: #fff; border-bottom-right-radius: 4px; }
-.msg-bubble.received { align-self: flex-start; background: var(--bg-main, #0a0a0f); color: var(--text-white, #fff); border: 1px solid var(--border, #2D2D3F); border-bottom-left-radius: 4px; }
-.msg-bubble .msg-time { font-size: 10px; opacity: 0.6; margin-top: 4px; display: block; }
+.messenger-messages .msg-bubble { max-width: 80%; padding: 10px 14px; border-radius: 16px; font-size: 13px; line-height: 1.5; word-break: break-word; }
+.messenger-messages .msg-bubble.sent { align-self: flex-end; background: linear-gradient(135deg, var(--primary, #6B46C1), var(--accent, #8B5CF6)); color: #fff; border-bottom-right-radius: 4px; }
+.messenger-messages .msg-bubble.received { align-self: flex-start; background: var(--bg-main, #0a0a0f); color: var(--text-white, #fff); border: 1px solid var(--border, #2D2D3F); border-bottom-left-radius: 4px; }
+.messenger-messages .msg-bubble .msg-time { font-size: 10px; opacity: 0.6; margin-top: 4px; display: block; }
 .messenger-input-area { display: flex; align-items: flex-end; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border, #2D2D3F); }
 .messenger-input-area textarea { flex: 1; padding: 10px 14px; background: var(--bg-main, #0a0a0f); border: 1px solid var(--border, #2D2D3F); border-radius: 20px; color: #fff; font-size: 13px; resize: none; outline: none; max-height: 80px; font-family: inherit; box-sizing: border-box; }
 .messenger-input-area textarea:focus { border-color: var(--primary, #6B46C1); }
