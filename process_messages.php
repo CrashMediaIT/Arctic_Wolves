@@ -9,6 +9,8 @@ require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/lib/auditor.php';
 require_once __DIR__ . '/error_logger.php';
+require_once __DIR__ . '/lib/file_upload_validator.php';
+require_once __DIR__ . '/lib/rustfs_storage.php';
 
 // Require authentication
 if (!isset($_SESSION['user_id'])) {
@@ -152,6 +154,31 @@ function getMessages($pdo, $user_id, $conversation_id) {
         // Decrypt encrypted message content
         $messages = FieldEncryption::decryptRows($messages, FieldEncryption::MESSAGE_ENCRYPTED_FIELDS);
         
+        // Load attachments for all messages in this conversation
+        $msg_ids = array_column($messages, 'id');
+        $attachments_map = [];
+        if (!empty($msg_ids)) {
+            $placeholders = implode(',', array_fill(0, count($msg_ids), '?'));
+            $att_stmt = $pdo->prepare("
+                SELECT id, message_id, filename, file_path, file_size, mime_type
+                FROM message_attachments
+                WHERE message_id IN ($placeholders)
+                ORDER BY id ASC
+            ");
+            $att_stmt->execute($msg_ids);
+            while ($att = $att_stmt->fetch(PDO::FETCH_ASSOC)) {
+                // Decrypt the stored filename
+                $att['filename'] = FieldEncryption::decrypt($att['filename']);
+                $attachments_map[$att['message_id']][] = $att;
+            }
+        }
+        
+        // Attach attachment data to each message
+        foreach ($messages as &$msg) {
+            $msg['attachments'] = $attachments_map[$msg['id']] ?? [];
+        }
+        unset($msg);
+        
         // Mark messages as read
         $update = $pdo->prepare("
             UPDATE messages SET is_read = 1, read_at = NOW() 
@@ -259,14 +286,17 @@ function getContacts($pdo, $user_id, $user_role) {
 }
 
 /**
- * Send a message
+ * Send a message (with optional file attachments)
  */
 function sendMessage($pdo, $user_id) {
     $to_user_id = intval($_POST['to_user_id'] ?? 0);
     $message_body = trim($_POST['message_body'] ?? '');
     
-    if (!$to_user_id || empty($message_body)) {
-        echo json_encode(['success' => false, 'message' => 'Recipient and message are required']);
+    // Allow empty message body if attachments are present
+    $has_attachments = !empty($_FILES['attachments']['name'][0]);
+    
+    if (!$to_user_id || (empty($message_body) && !$has_attachments)) {
+        echo json_encode(['success' => false, 'message' => 'Recipient and message (or attachment) are required']);
         return;
     }
     
@@ -274,6 +304,40 @@ function sendMessage($pdo, $user_id) {
     if (strlen($message_body) > MAX_MESSAGE_LENGTH) {
         echo json_encode(['success' => false, 'message' => 'Message is too long (max ' . MAX_MESSAGE_LENGTH . ' characters)']);
         return;
+    }
+    
+    // Validate attachments before starting transaction
+    $validated_files = [];
+    if ($has_attachments) {
+        $file_count = count($_FILES['attachments']['name']);
+        if ($file_count > 5) {
+            echo json_encode(['success' => false, 'message' => 'Maximum 5 attachments per message']);
+            return;
+        }
+        for ($i = 0; $i < $file_count; $i++) {
+            if ($_FILES['attachments']['error'][$i] === UPLOAD_ERR_NO_FILE) {
+                continue;
+            }
+            $file = [
+                'name'     => $_FILES['attachments']['name'][$i],
+                'type'     => $_FILES['attachments']['type'][$i],
+                'tmp_name' => $_FILES['attachments']['tmp_name'][$i],
+                'error'    => $_FILES['attachments']['error'][$i],
+                'size'     => $_FILES['attachments']['size'][$i],
+            ];
+            // Validate: accept images and common document types
+            $validation = FileUploadValidator::validate(
+                $file,
+                ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'doc', 'docx', 'txt', 'xls', 'xlsx', 'csv'],
+                25 * 1024 * 1024, // 25 MB per file
+                null // skip mime check, rely on extension validation
+            );
+            if (!$validation['valid']) {
+                echo json_encode(['success' => false, 'message' => 'Attachment "' . basename($file['name']) . '": ' . $validation['error']]);
+                return;
+            }
+            $validated_files[] = $file;
+        }
     }
     
     try {
@@ -295,6 +359,12 @@ function sendMessage($pdo, $user_id) {
             $conversation_id = $pdo->lastInsertId();
         }
         
+        // If only attachments and no text, set a placeholder body
+        $display_body = $message_body;
+        if (empty($message_body) && !empty($validated_files)) {
+            $message_body = '[Attachment]';
+        }
+        
         // Insert message (encrypt message body for end-to-end encryption)
         $encrypted_body = FieldEncryption::encrypt($message_body);
         $stmt = $pdo->prepare("
@@ -310,7 +380,72 @@ function sendMessage($pdo, $user_id) {
         
         $pdo->commit();
         
-        Auditor::log($pdo, $user_id, 'create', 'messages', $message_id, ['action' => 'sent_message', 'to_user_id' => $to_user_id, 'conversation_id' => $conversation_id]);
+        // Upload attachments outside transaction (storage operations)
+        $attachment_results = [];
+        if (!empty($validated_files)) {
+            $rustfs_settings = getRustFSSettings($pdo);
+            $rustfs_configured = isRustFSConfigured($rustfs_settings);
+            
+            foreach ($validated_files as $file) {
+                $safe_filename = FileUploadValidator::sanitizeFilename($file['name']);
+                $unique_name = FileUploadValidator::generateUniqueFilename($safe_filename);
+                $object_key = 'Messages/attachments/' . $conversation_id . '/' . $unique_name;
+                
+                $file_path = $object_key; // default to object key
+                if ($rustfs_configured) {
+                    $upload_result = uploadToRustFS($rustfs_settings, $file['tmp_name'], $object_key);
+                    if ($upload_result['success']) {
+                        $file_path = $object_key;
+                    } else {
+                        ErrorLogger::error("Message attachment upload failed: " . ($upload_result['message'] ?? 'Unknown error'));
+                        // Save locally as fallback
+                        $local_dir = __DIR__ . '/uploads/messages/' . $conversation_id;
+                        if (!is_dir($local_dir)) {
+                            mkdir($local_dir, 0755, true);
+                        }
+                        $local_path = $local_dir . '/' . $unique_name;
+                        move_uploaded_file($file['tmp_name'], $local_path);
+                        $file_path = 'uploads/messages/' . $conversation_id . '/' . $unique_name;
+                    }
+                } else {
+                    // No RustFS - save locally
+                    $local_dir = __DIR__ . '/uploads/messages/' . $conversation_id;
+                    if (!is_dir($local_dir)) {
+                        mkdir($local_dir, 0755, true);
+                    }
+                    $local_path = $local_dir . '/' . $unique_name;
+                    move_uploaded_file($file['tmp_name'], $local_path);
+                    $file_path = 'uploads/messages/' . $conversation_id . '/' . $unique_name;
+                }
+                
+                // Encrypt the original filename for E2E privacy
+                $encrypted_filename = FieldEncryption::encrypt($safe_filename);
+                
+                // Detect MIME type from actual file content if still available
+                $mime_type = $file['type'] ?: 'application/octet-stream';
+                
+                $att_stmt = $pdo->prepare("
+                    INSERT INTO message_attachments (message_id, filename, file_path, file_size, mime_type)
+                    VALUES (?, ?, ?, ?, ?)
+                ");
+                $att_stmt->execute([$message_id, $encrypted_filename, $file_path, $file['size'], $mime_type]);
+                
+                $attachment_results[] = [
+                    'id' => $pdo->lastInsertId(),
+                    'filename' => $safe_filename,
+                    'file_path' => $file_path,
+                    'file_size' => $file['size'],
+                    'mime_type' => $mime_type,
+                ];
+            }
+        }
+        
+        Auditor::log($pdo, $user_id, 'create', 'messages', $message_id, [
+            'action' => 'sent_message',
+            'to_user_id' => $to_user_id,
+            'conversation_id' => $conversation_id,
+            'attachment_count' => count($attachment_results)
+        ]);
         
         // Get sender info for response
         $sender = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
@@ -326,12 +461,13 @@ function sendMessage($pdo, $user_id) {
                 'id' => $message_id,
                 'from_user_id' => $user_id,
                 'to_user_id' => $to_user_id,
-                'message_body' => $message_body,
+                'message_body' => $display_body ?: $message_body,
                 'is_read' => 0,
                 'read_at' => null,
                 'created_at' => date('Y-m-d H:i:s'),
                 'first_name' => $sender_info['first_name'],
-                'last_name' => $sender_info['last_name']
+                'last_name' => $sender_info['last_name'],
+                'attachments' => $attachment_results
             ]
         ]);
     } catch (PDOException $e) {
