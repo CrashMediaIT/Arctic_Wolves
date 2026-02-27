@@ -256,7 +256,7 @@ foreach ($team_seasons as $ts) {
                                 <button type="submit" class="m-tc-btn-sm m-tc-btn-activate" title="Activate"><i class="fas fa-check"></i></button>
                             </form>
                             <?php endif; ?>
-                            <form method="POST" action="process_admin_team_coaches.php" style="margin:0;" onsubmit="return confirm('Delete this season?');">
+                            <form method="POST" action="process_admin_team_coaches.php" style="margin:0;" data-confirm="Delete this season?">
                                 <?= csrfTokenInput() ?>
                                 <input type="hidden" name="action" value="delete_season">
                                 <input type="hidden" name="season_id" value="<?= $season['id'] ?>">
@@ -295,7 +295,7 @@ foreach ($team_seasons as $ts) {
                             </div>
                         </div>
                         <div class="m-tc-card-actions">
-                            <form method="POST" action="process_admin_team_coaches.php" style="margin:0;" onsubmit="return confirm('Remove this assignment?');">
+                            <form method="POST" action="process_admin_team_coaches.php" style="margin:0;" data-confirm="Remove this assignment?">
                                 <?= csrfTokenInput() ?>
                                 <input type="hidden" name="action" value="delete_assignment">
                                 <input type="hidden" name="assignment_id" value="<?= $a['id'] ?>">
@@ -334,7 +334,7 @@ foreach ($team_seasons as $ts) {
                             </div>
                         </div>
                         <div class="m-tc-card-actions">
-                            <form method="POST" action="process_admin_team_coaches.php" style="margin:0;" onsubmit="return confirm('Remove this team season? This also removes roster entries.');">
+                            <form method="POST" action="process_admin_team_coaches.php" style="margin:0;" data-confirm="Remove this season from the team? This also removes roster entries.">
                                 <?= csrfTokenInput() ?>
                                 <input type="hidden" name="action" value="remove_team_season">
                                 <input type="hidden" name="team_season_id" value="<?= $ts['id'] ?>">
@@ -374,7 +374,7 @@ foreach ($team_seasons as $ts) {
                             </div>
                         </div>
                         <div class="m-tc-card-actions">
-                            <form method="POST" action="process_admin_team_coaches.php" style="margin:0;" onsubmit="return confirm('Remove this athlete from the roster?');">
+                            <form method="POST" action="process_admin_team_coaches.php" style="margin:0;" data-confirm="Remove this athlete from the roster?">
                                 <?= csrfTokenInput() ?>
                                 <input type="hidden" name="action" value="remove_roster_athlete">
                                 <input type="hidden" name="roster_id" value="<?= $r['id'] ?>">

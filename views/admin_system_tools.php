@@ -2060,7 +2060,7 @@ foreach ($url_keys as $uk) {
                 <button type="submit" class="btn btn-primary" data-action="save">
                     <i class="fas fa-save"></i> Save Landing Page Settings
                 </button>
-                <button type="button" class="btn btn-secondary" onclick="if(confirm('This will clear all custom landing page content. After clearing, click Save to apply the changes and use default values.')) { document.querySelectorAll('#landing-tab input, #landing-tab textarea').forEach(el => el.value = ''); }">
+                <button type="button" class="btn btn-secondary" onclick="showConfirmModal('This will clear all custom landing page content. After clearing, click Save to apply the changes and use default values.').then(function(ok){ if(ok){ document.querySelectorAll('#landing-tab input, #landing-tab textarea').forEach(el => el.value = ''); } })">
                     <i class="fas fa-undo"></i> Reset to Defaults
                 </button>
             </div>
@@ -2225,7 +2225,7 @@ foreach ($url_keys as $uk) {
                                     </td>
                                     <td style="padding: 12px 16px; text-align: right;">
                                         <?php if ($ak['is_active'] && !$is_expired): ?>
-                                        <form method="POST" action="process_settings.php" style="display: inline;" onsubmit="return confirm('Are you sure you want to revoke this API key? Any applications using it will lose access.');">
+                                        <form method="POST" action="process_settings.php" style="display: inline;" data-confirm="Are you sure you want to revoke this API key? Any applications using it will lose access.">
                                             <?php echo csrfTokenInput(); ?>
                                             <input type="hidden" name="action" value="revoke_api_key">
                                             <input type="hidden" name="api_key_id" value="<?php echo (int)$ak['id']; ?>">
@@ -2234,7 +2234,7 @@ foreach ($url_keys as $uk) {
                                             </button>
                                         </form>
                                         <?php endif; ?>
-                                        <form method="POST" action="process_settings.php" style="display: inline;" onsubmit="return confirm('Permanently delete this API key?');">
+                                        <form method="POST" action="process_settings.php" style="display: inline;" data-confirm="Permanently delete this API key?">
                                             <?php echo csrfTokenInput(); ?>
                                             <input type="hidden" name="action" value="delete_api_key">
                                             <input type="hidden" name="api_key_id" value="<?php echo (int)$ak['id']; ?>">

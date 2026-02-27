@@ -668,7 +668,7 @@ try {
                                 <input type="hidden" name="season_id" value="<?= $season['id'] ?>">
                                 <input type="hidden" name="redirect_page" value="categories">
                                 <button type="submit" class="btn-icon btn-icon-danger" title="Delete"
-                                        onclick="return confirm('Delete this season? This will fail if there are assignments using it.');">
+                                        data-confirm="Delete this season? This will fail if there are assignments using it.">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </form>
@@ -731,7 +731,7 @@ try {
                                 <input type="hidden" name="id" value="<?= $ag['id'] ?>">
                                 <input type="hidden" name="redirect_page" value="categories">
                                 <button type="submit" class="btn-icon btn-icon-danger" title="Delete"
-                                        onclick="return confirm('Delete this age group? Sessions using it will have the field set to NULL.');">
+                                        data-confirm="Delete this age group? Sessions using it will have the field set to NULL.">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </form>

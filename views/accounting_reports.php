@@ -296,7 +296,7 @@ exit;
                                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
                                 <input type="hidden" name="action" value="delete_report">
                                 <input type="hidden" name="report_id" value="<?= $report['id'] ?>">
-                                <button type="submit" class="btn-icon" title="Delete" onclick="return confirm('Delete this report?')"><i class="fas fa-trash"></i></button>
+                                <button type="submit" class="btn-icon" title="Delete" data-confirm="Delete this report?"><i class="fas fa-trash"></i></button>
                             </form>
                         </div>
                     </div>

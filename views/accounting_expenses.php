@@ -390,7 +390,7 @@ if ($expenseStats['last_month'] > 0) {
                                             <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
                                             <input type="hidden" name="action" value="delete">
                                             <input type="hidden" name="expense_id" value="<?= $expense['id'] ?>">
-                                            <button type="submit" class="btn-icon btn-delete" title="Delete" onclick="return confirm('Are you sure you want to delete this expense?')">
+                                            <button type="submit" class="btn-icon btn-delete" title="Delete" data-confirm="Are you sure you want to delete this expense?">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </form>

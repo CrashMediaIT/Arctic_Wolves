@@ -193,7 +193,7 @@ try {
                     <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
                     <input type="hidden" name="plan_id" id="libraryRemoveSharePlanId">
                     <input type="hidden" name="action" value="remove_share_token">
-                    <button type="submit" class="btn btn-secondary" style="width: 100%;" onclick="return confirm('Remove share link? The current link will no longer work.');">
+                    <button type="submit" class="btn btn-secondary" style="width: 100%;" data-confirm="Remove share link? The current link will no longer work.">
                         <i class="fas fa-unlink"></i> Remove Share Link
                     </button>
                 </form>

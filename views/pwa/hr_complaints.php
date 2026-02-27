@@ -123,7 +123,7 @@ $nextComplaintNum = 'COMP-' . str_pad(count($complaints) + 1, 4, '0', STR_PAD_LE
             </div>
             <div class="m-card-actions">
                 <button class="m-btn-sm" style="background:rgba(139,92,246,0.15);color:#8B5CF6;" onclick="openEditComplaint(<?= $comp['id'] ?>, '<?= htmlspecialchars(addslashes($comp['status'] ?? ''), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($comp['priority'] ?? ''), ENT_QUOTES) ?>')">Edit</button>
-                <form method="POST" action="process_hr_complaints.php" style="display:inline;" onsubmit="return confirm('Delete this complaint?');">
+                <form method="POST" action="process_hr_complaints.php" style="display:inline;" data-confirm="Delete this complaint?">
                     <?= csrfTokenInput() ?>
                     <input type="hidden" name="action" value="delete">
                     <input type="hidden" name="complaint_id" value="<?= $comp['id'] ?>">

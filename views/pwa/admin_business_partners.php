@@ -156,7 +156,7 @@ try {
             </div>
             <div class="m-partner-actions">
                 <button class="m-partner-action-btn" onclick='mPartnerEdit(<?= json_encode($p, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>)' title="Edit"><i class="fas fa-edit"></i></button>
-                <form method="POST" action="process_business_partners.php" style="margin:0;" onsubmit="return confirm('Delete this partner?')">
+                <form method="POST" action="process_business_partners.php" style="margin:0;" data-confirm="Delete this partner?">
                     <?= csrfTokenInput() ?>
                     <input type="hidden" name="action" value="delete_partner">
                     <input type="hidden" name="partner_id" value="<?= $p['id'] ?>">

@@ -812,7 +812,7 @@ try {
                     
                     <div style="display: flex; gap: 12px; flex-wrap: wrap;">
                         <button type="submit" name="action" value="update_template" class="btn btn-secondary"><i class="fas fa-save"></i> Save Draft</button>
-                        <button type="submit" name="action" value="publish_and_force_resign" class="btn btn-primary" onclick="return confirm('This will require ALL users to re-accept the updated <?= htmlspecialchars($agr_tpl['agreement_type'] === 'waiver' ? 'waiver' : 'privacy policy') ?> on their next login. Continue?')">
+                        <button type="submit" name="action" value="publish_and_force_resign" class="btn btn-primary" data-confirm="This will require ALL users to re-accept the updated <?= htmlspecialchars($agr_tpl['agreement_type'] === 'waiver' ? 'waiver' : 'privacy policy') ?> on their next login. Continue?">
                             <i class="fas fa-bullhorn"></i> Publish &amp; Force Re-sign
                         </button>
                         <button type="button" class="btn btn-secondary" onclick="toggleEditAgreement(<?= $agr_tpl['id'] ?>)"><i class="fas fa-times"></i> Cancel</button>

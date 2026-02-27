@@ -160,7 +160,7 @@ if ($selected_partner_id > 0) {
                                 <div style="display: flex; gap: 6px;">
                                     <a href="?page=business_partners&tab=contracts&partner_id=<?= $partner['id'] ?>" class="btn btn-sm btn-primary" title="View Contracts"><i class="fas fa-file-contract"></i></a>
                                     <button type="button" class="btn btn-sm btn-secondary" onclick='editPartner(<?= json_encode($partner, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>)' title="Edit"><i class="fas fa-edit"></i></button>
-                                    <form method="POST" action="process_business_partners.php" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this partner and all associated contracts?')">
+                                    <form method="POST" action="process_business_partners.php" style="display:inline;" data-confirm="Are you sure you want to delete this partner and all associated contracts?">
                                         <?php echo csrfTokenInput(); ?>
                                         <input type="hidden" name="action" value="delete_partner">
                                         <input type="hidden" name="partner_id" value="<?= $partner['id'] ?>">
@@ -340,7 +340,7 @@ if ($selected_partner_id > 0) {
                             <td style="font-weight: 700;"><?= $contract['value'] ? '$' . number_format($contract['value'], 2) : '-' ?></td>
                             <td><span class="badge badge-<?= $contract['status'] === 'active' ? 'success' : ($contract['status'] === 'expired' ? 'error' : 'secondary') ?>"><?= ucfirst($contract['status']) ?></span></td>
                             <td>
-                                <form method="POST" action="process_business_partners.php" style="display:inline;" onsubmit="return confirm('Delete this contract?')">
+                                <form method="POST" action="process_business_partners.php" style="display:inline;" data-confirm="Delete this contract?">
                                     <?php echo csrfTokenInput(); ?>
                                     <input type="hidden" name="action" value="delete_contract">
                                     <input type="hidden" name="contract_id" value="<?= $contract['id'] ?>">

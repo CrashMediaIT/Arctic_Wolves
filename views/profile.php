@@ -353,7 +353,7 @@ $errors = [
                             <form method="POST" action="process_profile_update.php" style="display: inline;">
                                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
                                 <input type="hidden" name="action" value="remove_photo">
-                                <button type="submit" class="btn btn-secondary" onclick="return confirm('Remove profile photo?')">
+                                <button type="submit" class="btn btn-secondary" data-confirm="Remove profile photo?">
                                     <i class="fas fa-trash"></i> Remove
                                 </button>
                             </form>
@@ -1382,7 +1382,7 @@ $errors = [
                                     </div>
                                 </div>
                                 <form method="POST" action="process_manage_athletes.php" style="display: inline;" 
-                                      onsubmit="return confirm('Remove this child from your managed list?');">
+                                      data-confirm="Remove this child from your managed list?">
                                     <?= csrfTokenInput() ?>
                                     <input type="hidden" name="action" value="remove_athlete">
                                     <input type="hidden" name="managed_id" value="<?= $child['managed_id'] ?>">
