@@ -1352,7 +1352,7 @@ async function uploadMedia(scoreId, file) {
 }
 
 async function deleteMedia(mediaId) {
-    if (!confirm('Delete this media?')) return;
+    if (!await showConfirmModal('Delete this media?')) return;
     
     const formData = new FormData();
     formData.append('action', 'delete_media');
@@ -1377,7 +1377,7 @@ async function deleteMedia(mediaId) {
 }
 
 async function completeEvaluation(evalId) {
-    if (!confirm('Mark this evaluation as completed?')) return;
+    if (!await showConfirmModal('Mark this evaluation as completed?')) return;
     
     const formData = new FormData();
     formData.append('action', 'complete_evaluation');
@@ -1403,7 +1403,7 @@ async function completeEvaluation(evalId) {
 }
 
 async function archiveEvaluation(evalId) {
-    if (!confirm('Archive this evaluation?')) return;
+    if (!await showConfirmModal('Archive this evaluation?')) return;
     
     const formData = new FormData();
     formData.append('action', 'archive_evaluation');
@@ -1474,7 +1474,7 @@ function copyShareLink() {
 }
 
 async function revokeShareLink(evalId) {
-    if (!confirm('Revoke public access to this evaluation?')) return;
+    if (!await showConfirmModal('Revoke public access to this evaluation?')) return;
     
     const formData = new FormData();
     formData.append('action', 'revoke_share_link');
@@ -1522,7 +1522,7 @@ async function saveTeamEvaluation() {
         return;
     }
     
-    if (!confirm(`Save ${scores.length} skill scores for ${athleteName}?`)) {
+    if (!await showConfirmModal(`Save ${scores.length} skill scores for ${athleteName}?`)) {
         return;
     }
     

@@ -610,8 +610,8 @@ function toggleNotification(id) {
 }
 
 // Delete Notification
-function deleteNotification(id) {
-    if (!confirm('Are you sure you want to delete this notification? This action cannot be undone.')) {
+async function deleteNotification(id) {
+    if (!await showConfirmModal('Are you sure you want to delete this notification? This action cannot be undone.')) {
         return;
     }
     

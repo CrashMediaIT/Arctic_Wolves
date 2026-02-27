@@ -559,8 +559,8 @@ $cartCount = $cartData['item_count'];
             });
         }
         
-        function removeItem(cartKey) {
-            if (!confirm('Remove this item from cart?')) return;
+        async function removeItem(cartKey) {
+            if (!await showConfirmModal('Remove this item from cart?')) return;
             
             const formData = new FormData();
             formData.append('action', 'remove_item');

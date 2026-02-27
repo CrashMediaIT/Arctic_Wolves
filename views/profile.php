@@ -1229,10 +1229,10 @@ $errors = [
             });
             
             // Disable 2FA
-            document.getElementById('tfa-disable-btn').addEventListener('click', function() {
+            document.getElementById('tfa-disable-btn').addEventListener('click', async function() {
                 var code = document.getElementById('tfa-disable-code').value.trim();
                 if (!code || code.length !== 6) { alert('Please enter your current 6-digit code'); return; }
-                if (!confirm('Are you sure you want to disable two-factor authentication?')) return;
+                if (!await showConfirmModal('Are you sure you want to disable two-factor authentication?')) return;
                 
                 this.disabled = true;
                 var btn = this;
@@ -1519,8 +1519,8 @@ function toggleStatsEdit() {
 document.addEventListener('DOMContentLoaded', function() {
     // Handle remove team form submissions
     document.querySelectorAll('.remove-team-form').forEach(form => {
-        form.addEventListener('submit', function(e) {
-            if (!confirm('Remove this team from your history?')) {
+        form.addEventListener('submit', async function(e) {
+            if (!await showConfirmModal('Remove this team from your history?')) {
                 e.preventDefault();
             }
         });

@@ -685,8 +685,8 @@ function clockIn() {
     });
 }
 
-function startLunch() {
-    if (!confirm('Start your lunch break?')) return;
+async function startLunch() {
+    if (!await showConfirmModal('Start your lunch break?')) return;
     
     fetch('process_time_tracking.php', {
         method: 'POST',
@@ -737,14 +737,14 @@ function endLunch() {
     });
 }
 
-function logoutOnly() {
-    if (!confirm('Log out but keep your shift running? Use this if you need to restart the POS system.')) return;
+async function logoutOnly() {
+    if (!await showConfirmModal('Log out but keep your shift running? Use this if you need to restart the POS system.')) return;
     
     window.location.href = 'logout.php?keep_shift=1';
 }
 
-function endShift() {
-    if (!confirm('End your shift and log out? This will stop your time tracking for today.')) return;
+async function endShift() {
+    if (!await showConfirmModal('End your shift and log out? This will stop your time tracking for today.')) return;
     
     fetch('process_time_tracking.php', {
         method: 'POST',

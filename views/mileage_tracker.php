@@ -604,7 +604,7 @@ function displayLogs(logs) {
 }
 
 async function deleteLog(logId) {
-    if (!confirm('Are you sure you want to delete this log?')) return;
+    if (!await showConfirmModal('Are you sure you want to delete this log?')) return;
     
     const formData = new FormData();
     formData.append('action', 'delete');

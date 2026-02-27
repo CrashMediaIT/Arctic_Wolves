@@ -1123,8 +1123,8 @@ function updateQuantity(key, delta) {
     renderCart();
 }
 
-function clearCart() {
-    if (cart.length > 0 && !confirm('Clear all items from cart?')) return;
+async function clearCart() {
+    if (cart.length > 0 && !await showConfirmModal('Clear all items from cart?')) return;
     cart = [];
     renderCart();
 }

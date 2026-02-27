@@ -682,8 +682,8 @@ function showAuditDetail(logId) {
     }
 }
 
-function restoreAuditEntry(logId) {
-    if (!confirm('Are you sure you want to revert this change? This will restore the previous values.')) return;
+async function restoreAuditEntry(logId) {
+    if (!await showConfirmModal('Are you sure you want to revert this change? This will restore the previous values.')) return;
     
     var csrfToken = '<?php echo htmlspecialchars($csrf_token, ENT_QUOTES); ?>';
     
@@ -1043,8 +1043,8 @@ function addBlocklistEntry(e) {
     return false;
 }
 
-function removeBlocklistEntry(entryId) {
-    if (!confirm('Are you sure you want to remove this entry?')) return;
+async function removeBlocklistEntry(entryId) {
+    if (!await showConfirmModal('Are you sure you want to remove this entry?')) return;
 
     fetch('process_settings.php', {
         method: 'POST',
@@ -1067,8 +1067,8 @@ function removeBlocklistEntry(entryId) {
     .catch(function() { alert('An error occurred'); });
 }
 
-function removeRestriction(restrictionId) {
-    if (!confirm('Are you sure you want to delete this restriction and all its entries?')) return;
+async function removeRestriction(restrictionId) {
+    if (!await showConfirmModal('Are you sure you want to delete this restriction and all its entries?')) return;
 
     fetch('process_settings.php', {
         method: 'POST',
@@ -1255,8 +1255,8 @@ function togglePosWhitelistEntry(entryId, newStatus) {
     .catch(function() { alert('An error occurred'); });
 }
 
-function removePosWhitelistEntry(entryId) {
-    if (!confirm('Are you sure you want to remove this IP from the POS whitelist?')) return;
+async function removePosWhitelistEntry(entryId) {
+    if (!await showConfirmModal('Are you sure you want to remove this IP from the POS whitelist?')) return;
 
     fetch('process_settings.php', {
         method: 'POST',
