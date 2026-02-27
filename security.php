@@ -25,7 +25,7 @@ function setSecurityHeaders($extraConnectSrc = []) {
     }
     
     // Build connect-src with optional extra origins (e.g., RustFS endpoint for direct uploads)
-    $connectSrc = "'self' wss: https://maps.googleapis.com https://places.googleapis.com https://www.google.com";
+    $connectSrc = "'self' wss: https://maps.googleapis.com https://places.googleapis.com https://www.google.com https://cdn.jsdelivr.net";
     foreach ($extraConnectSrc as $src) {
         $connectSrc .= ' ' . $src;
     }
