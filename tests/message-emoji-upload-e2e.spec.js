@@ -345,8 +345,8 @@ test.describe('Widget Size Toggle', () => {
         const content = fs.readFileSync(path.join(ROOT, 'dashboard.php'), 'utf-8');
         
         expect(content).toContain('title="Compact view"');
-        expect(content).toContain('title="Half size with emoji & file support"');
-        expect(content).toContain('title="Full size with emoji & file support"');
+        expect(content).toContain('title="Half size"');
+        expect(content).toContain('title="Full size"');
     });
 
     test('messages view should NOT have size toggle', () => {
@@ -392,12 +392,11 @@ test.describe('Image Paste Support', () => {
         expect(content).toContain('Cannot paste image: file size exceeds 25MB limit');
     });
 
-    test('should have paste hint always visible in messages view', () => {
+    test('should not have paste hint text in messages view (icon-only buttons)', () => {
         const content = fs.readFileSync(path.join(ROOT, 'views', 'messages.php'), 'utf-8');
         
-        expect(content).toContain('msg-paste-hint');
-        expect(content).toContain('Paste images');
-        expect(content).toContain('fa-paste');
+        expect(content).not.toContain('msg-paste-hint');
+        expect(content).not.toContain('Paste images');
     });
 
     test('widget should have paste event listener', () => {
@@ -407,11 +406,11 @@ test.describe('Image Paste Support', () => {
         expect(content).toContain('clipboardData');
     });
 
-    test('widget should have paste hint in toolbar', () => {
+    test('widget should not have paste hint text (icon-only buttons)', () => {
         const content = fs.readFileSync(path.join(ROOT, 'dashboard.php'), 'utf-8');
         
-        expect(content).toContain('messenger-paste-hint');
-        expect(content).toContain('Paste images');
+        expect(content).not.toContain('messenger-paste-hint');
+        expect(content).not.toContain('Paste images');
     });
 });
 
