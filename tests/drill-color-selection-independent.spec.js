@@ -187,4 +187,45 @@ test.describe('Items use activeColor when placed', () => {
     const freehandHandler = content.substring(freehandSection, freehandEnd);
     expect(freehandHandler).toContain('color: this.activeColor');
   });
+
+  test('player position tools use activeColor instead of hardcoded colors', () => {
+    const content = readFile('js/drill_designer.js');
+    // Find the player positions placement block
+    const posSection = content.indexOf('if (playerPositions[this.currentTool])');
+    expect(posSection).toBeGreaterThan(-1);
+    const posBlock = content.substring(posSection, posSection + 300);
+    // Should use activeColor, not pos.color
+    expect(posBlock).toContain('color: this.activeColor');
+    expect(posBlock).not.toContain('color: pos.color');
+  });
+});
+
+// =====================================================
+// 5. Color preset buttons do not have white border
+// =====================================================
+
+test.describe('Color preset buttons have no misleading borders', () => {
+  test('black color preset does not have a white border', () => {
+    const content = readFile('views/drills_create.php');
+    // Find the black color preset button
+    const blackBtn = content.indexOf('data-color-preset="#000000"');
+    expect(blackBtn).toBeGreaterThan(-1);
+    const btnLine = content.substring(blackBtn - 50, blackBtn + 200);
+    // Should NOT have border:2px solid #fff
+    expect(btnLine).not.toContain('border:2px solid #fff');
+    // Should have transparent border like all others
+    expect(btnLine).toContain('border:2px solid transparent');
+  });
+
+  test('active color selection uses visible double-ring indicator', () => {
+    const content = readFile('views/drills_create.php');
+    // Find the .drill-color.active CSS
+    const activeSection = content.indexOf('.drill-color.active');
+    expect(activeSection).toBeGreaterThan(-1);
+    const activeBlock = content.substring(activeSection, activeSection + 200);
+    // Should use a double-ring box-shadow for visibility
+    expect(activeBlock).toContain('box-shadow');
+    // Should include a scale transform
+    expect(activeBlock).toContain('transform: scale');
+  });
 });

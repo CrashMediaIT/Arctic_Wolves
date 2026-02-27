@@ -140,7 +140,7 @@ if ($editDrillId) {
                                     <input type="color" id="drill-color-picker" data-drill-action="color-picker" value="#000000" title="Select Color">
                                     <div class="active-color-circle" style="background-color: #000000;"></div>
                                 </div>
-                                <button class="drill-color" data-color-preset="#000000" style="width:24px;height:24px;border-radius:50%;border:2px solid #fff;cursor:pointer;background:#000000;" title="Black"></button>
+                                <button class="drill-color" data-color-preset="#000000" style="width:24px;height:24px;border-radius:50%;border:2px solid transparent;cursor:pointer;background:#000000;" title="Black"></button>
                                 <button class="drill-color" data-color-preset="#c41e3a" style="width:24px;height:24px;border-radius:50%;border:2px solid transparent;cursor:pointer;background:#c41e3a;" title="Red"></button>
                                 <button class="drill-color" data-color-preset="#0033a0" style="width:24px;height:24px;border-radius:50%;border:2px solid transparent;cursor:pointer;background:#0033a0;" title="Blue"></button>
                                 <button class="drill-color" data-color-preset="#00bfff" style="width:24px;height:24px;border-radius:50%;border:2px solid transparent;cursor:pointer;background:#00bfff;" title="Light Blue"></button>
@@ -433,7 +433,8 @@ if ($editDrillId) {
     border-color: var(--primary) !important;
 }
 .drill-color.active {
-    box-shadow: 0 0 0 2px var(--primary-light);
+    box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--primary, #3b82f6);
+    transform: scale(1.15);
 }
 
 /* Stick icon special styling - golden color for visibility */
