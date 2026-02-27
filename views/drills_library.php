@@ -1311,13 +1311,19 @@ function renderDrillThumbnails() {
         // Get center logo URL
         const centerLogoUrl = preview.getAttribute('data-center-logo') || '';
         
-        // Set canvas size
-        canvas.width = preview.offsetWidth || 340;
-        canvas.height = preview.offsetHeight || 200;
+        // Set canvas size with high-DPI support for sharp rendering
+        const dpr = window.devicePixelRatio || 1;
+        const cssWidth = preview.offsetWidth || 340;
+        const cssHeight = preview.offsetHeight || 200;
+        canvas.width = cssWidth * dpr;
+        canvas.height = cssHeight * dpr;
+        canvas.style.width = cssWidth + 'px';
+        canvas.style.height = cssHeight + 'px';
         
         const ctx = canvas.getContext('2d');
-        const w = canvas.width;
-        const h = canvas.height;
+        ctx.scale(dpr, dpr);
+        const w = cssWidth;
+        const h = cssHeight;
         
         // Function to render the thumbnail using shared IceCanvasRenderer
         function renderThumbnail(logoImage, logoLoaded) {

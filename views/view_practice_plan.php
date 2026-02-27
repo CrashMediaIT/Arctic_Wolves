@@ -805,17 +805,23 @@ function renderDrillCanvas(canvas, diagramDataStr) {
     const NHL_RINK_ASPECT_RATIO = 200 / 85; // ≈ 2.35
     const containerWidth = container.offsetWidth || 600;
     
-    // Set canvas dimensions:
+    // Set canvas dimensions with high-DPI support for sharp rendering
     // - Primary: Use container's explicit height if set via CSS
     // - Fallback: Calculate from width using NHL rink aspect ratio
     // - Last resort: Use 350px default
     const calculatedHeight = Math.round(containerWidth / NHL_RINK_ASPECT_RATIO);
-    canvas.width = containerWidth;
-    canvas.height = container.offsetHeight > 0 ? container.offsetHeight : (calculatedHeight || 350);
+    const dpr = window.devicePixelRatio || 1;
+    const cssWidth = containerWidth;
+    const cssHeight = container.offsetHeight > 0 ? container.offsetHeight : (calculatedHeight || 350);
+    canvas.width = cssWidth * dpr;
+    canvas.height = cssHeight * dpr;
+    canvas.style.width = cssWidth + 'px';
+    canvas.style.height = cssHeight + 'px';
     
     const ctx = canvas.getContext('2d');
-    const w = canvas.width;
-    const h = canvas.height;
+    ctx.scale(dpr, dpr);
+    const w = cssWidth;
+    const h = cssHeight;
     
     // Parse diagram data - handle both old format (array) and new format (object with dimensions)
     let diagramData = [];

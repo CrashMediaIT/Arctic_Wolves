@@ -75,7 +75,12 @@ if (!empty($drill['diagram_data'])) {
 // Note: For production, consider using a configured BASE_URL constant
 $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
 $host = htmlspecialchars($_SERVER['SERVER_NAME'] ?? $_SERVER['HTTP_HOST'] ?? 'localhost');
-$shareUrl = $protocol . '://' . $host . '/dashboard.php?page=view_drill&id=' . urlencode($drillId) . '&shared=true';
+$shareUrl = '';
+if (!empty($drill['share_token'])) {
+    $shareUrl = $protocol . '://' . $host . '/drill_share.php?token=' . urlencode($drill['share_token']);
+}
+
+$canManageSharing = isset($_SESSION['user_id']) && ($drill['created_by'] == $_SESSION['user_id'] || in_array($user_role ?? '', ['admin', 'coach']));
 ?>
 
 <div class="page-header">
@@ -98,9 +103,11 @@ $shareUrl = $protocol . '://' . $host . '/dashboard.php?page=view_drill&id=' . u
         <div class="card-header">
             <h3><i class="fas fa-drafting-compass"></i> Drill Diagram</h3>
             <div class="card-actions">
+                <?php if (!empty($shareUrl)): ?>
                 <button class="btn btn-secondary" onclick="copyShareLink()">
                     <i class="fas fa-share-alt"></i> Share
                 </button>
+                <?php endif; ?>
                 <button class="btn btn-secondary" onclick="exportDiagram()">
                     <i class="fas fa-download"></i> Export Image
                 </button>
@@ -254,13 +261,39 @@ $shareUrl = $protocol . '://' . $host . '/dashboard.php?page=view_drill&id=' . u
             <h3><i class="fas fa-link"></i> Share This Drill</h3>
         </div>
         <div class="card-body">
+            <?php if (!empty($shareUrl)): ?>
             <div class="share-link-wrapper">
                 <input type="text" id="share-url-input" class="form-input" value="<?php echo htmlspecialchars($shareUrl); ?>" readonly>
                 <button class="btn btn-primary" onclick="copyShareLink()">
                     <i class="fas fa-copy"></i> Copy Link
                 </button>
             </div>
-            <p class="share-hint"><i class="fas fa-info-circle"></i> Share this link with your team or other coaches to view this drill.</p>
+            <p class="share-hint"><i class="fas fa-info-circle"></i> Anyone with this link can view this drill without logging in.</p>
+            <?php if ($canManageSharing): ?>
+            <form method="POST" action="process_drills.php" style="margin-top: 10px;">
+                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
+                <input type="hidden" name="action" value="remove_share_token">
+                <input type="hidden" name="drill_id" value="<?php echo $drillId; ?>">
+                <button type="submit" class="btn btn-secondary" style="font-size: 12px;">
+                    <i class="fas fa-unlink"></i> Remove Share Link
+                </button>
+            </form>
+            <?php endif; ?>
+            <?php else: ?>
+            <?php if ($canManageSharing): ?>
+            <form method="POST" action="process_drills.php">
+                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
+                <input type="hidden" name="action" value="generate_share_token">
+                <input type="hidden" name="drill_id" value="<?php echo $drillId; ?>">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-share-alt"></i> Generate Share Link
+                </button>
+            </form>
+            <p class="share-hint"><i class="fas fa-info-circle"></i> Generate a public link to share this drill with anyone, no login required.</p>
+            <?php else: ?>
+            <p class="share-hint"><i class="fas fa-info-circle"></i> Only the drill creator or a coach/admin can generate a share link.</p>
+            <?php endif; ?>
+            <?php endif; ?>
         </div>
     </div>
 </div>
@@ -465,18 +498,24 @@ document.addEventListener('DOMContentLoaded', function() {
     const canvas = document.getElementById('drill-view-canvas-el');
     if (!container || !canvas) return;
     
-    // Set canvas size
-    canvas.width = container.offsetWidth;
-    canvas.height = container.offsetHeight;
+    // Set canvas size with high-DPI support for sharp rendering
+    let dpr = window.devicePixelRatio || 1;
+    let cssWidth = container.offsetWidth;
+    let cssHeight = container.offsetHeight;
+    canvas.width = cssWidth * dpr;
+    canvas.height = cssHeight * dpr;
+    canvas.style.width = cssWidth + 'px';
+    canvas.style.height = cssHeight + 'px';
     
     const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
     const diagramDataRaw = <?php echo json_encode($drill['diagram_data'] ?? ''); ?>;
     const centerLogoUrl = container.dataset.centerLogo || '';
     
     // Parse diagram data and extract dimensions
     let diagramObjects = [];
-    let sourceWidth = canvas.width;
-    let sourceHeight = canvas.height;
+    let sourceWidth = cssWidth;
+    let sourceHeight = cssHeight;
     let iceView = 'full'; // Default ice view
     
     try {
@@ -487,8 +526,8 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if (parsed && parsed.objects && Array.isArray(parsed.objects)) {
             // New format with canvas dimensions
             diagramObjects = parsed.objects;
-            sourceWidth = parsed.canvasWidth || canvas.width;
-            sourceHeight = parsed.canvasHeight || canvas.height;
+            sourceWidth = parsed.canvasWidth || cssWidth;
+            sourceHeight = parsed.canvasHeight || cssHeight;
             // Get saved ice view
             if (parsed.iceView) {
                 iceView = parsed.iceView;
@@ -503,18 +542,18 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to render everything
     function renderDrill() {
-        drawViewRink(ctx, canvas.width, canvas.height, iceView);
+        drawViewRink(ctx, cssWidth, cssHeight, iceView);
         
         if (diagramObjects.length > 0) {
             // Use uniform scaling to preserve object proportions
             // Take the minimum scale to fit content while maintaining aspect ratio
-            const scaleX = canvas.width / sourceWidth;
-            const scaleY = canvas.height / sourceHeight;
+            const scaleX = cssWidth / sourceWidth;
+            const scaleY = cssHeight / sourceHeight;
             const uniformScale = Math.min(scaleX, scaleY);
             
             // Calculate offset to center content if aspect ratios don't match exactly
-            const offsetX = (canvas.width - sourceWidth * uniformScale) / 2;
-            const offsetY = (canvas.height - sourceHeight * uniformScale) / 2;
+            const offsetX = (cssWidth - sourceWidth * uniformScale) / 2;
+            const offsetY = (cssHeight - sourceHeight * uniformScale) / 2;
             
             diagramObjects.forEach(obj => {
                 // Create a scaled copy of the object with uniform scaling
@@ -527,8 +566,14 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to initialize canvas dimensions and render
     function initializeAndRender() {
-        canvas.width = container.offsetWidth;
-        canvas.height = container.offsetHeight;
+        dpr = window.devicePixelRatio || 1;
+        cssWidth = container.offsetWidth;
+        cssHeight = container.offsetHeight;
+        canvas.width = cssWidth * dpr;
+        canvas.height = cssHeight * dpr;
+        canvas.style.width = cssWidth + 'px';
+        canvas.style.height = cssHeight + 'px';
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         renderDrill();
     }
     
@@ -585,9 +630,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Handle resize
     window.addEventListener('resize', function() {
-        canvas.width = container.offsetWidth;
-        canvas.height = container.offsetHeight;
-        renderDrill();
+        initializeAndRender();
     });
 });
 

@@ -1073,3 +1073,12 @@ function ensureUserDataEncrypted($pdo) {
     
     return $results;
 }
+
+/**
+ * Generate a cryptographically secure share token
+ * Used for creating shareable links for drills, practice plans, etc.
+ * @return string 64-character hex string
+ */
+function generateShareToken() {
+    return bin2hex(random_bytes(32));
+}
