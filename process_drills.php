@@ -1076,7 +1076,7 @@ if ($action === 'generate_share_token') {
     requirePermission($pdo, $user_id, $user_role, 'create_drills');
     
     $drill_id = intval($_POST['drill_id']);
-    $share_token = bin2hex(random_bytes(32));
+    $share_token = generateShareToken();
     
     try {
         $stmt = $pdo->prepare("UPDATE drills SET share_token = ? WHERE id = ? AND created_by = ?");

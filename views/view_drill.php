@@ -79,6 +79,8 @@ $shareUrl = '';
 if (!empty($drill['share_token'])) {
     $shareUrl = $protocol . '://' . $host . '/drill_share.php?token=' . urlencode($drill['share_token']);
 }
+
+$canManageSharing = isset($_SESSION['user_id']) && ($drill['created_by'] == $_SESSION['user_id'] || in_array($user_role ?? '', ['admin', 'coach']));
 ?>
 
 <div class="page-header">
@@ -267,7 +269,7 @@ if (!empty($drill['share_token'])) {
                 </button>
             </div>
             <p class="share-hint"><i class="fas fa-info-circle"></i> Anyone with this link can view this drill without logging in.</p>
-            <?php if (isset($_SESSION['user_id']) && ($drill['created_by'] == $_SESSION['user_id'] || in_array($user_role ?? '', ['admin', 'coach']))): ?>
+            <?php if ($canManageSharing): ?>
             <form method="POST" action="process_drills.php" style="margin-top: 10px;">
                 <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
                 <input type="hidden" name="action" value="remove_share_token">
@@ -278,7 +280,7 @@ if (!empty($drill['share_token'])) {
             </form>
             <?php endif; ?>
             <?php else: ?>
-            <?php if (isset($_SESSION['user_id']) && ($drill['created_by'] == $_SESSION['user_id'] || in_array($user_role ?? '', ['admin', 'coach']))): ?>
+            <?php if ($canManageSharing): ?>
             <form method="POST" action="process_drills.php">
                 <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
                 <input type="hidden" name="action" value="generate_share_token">
