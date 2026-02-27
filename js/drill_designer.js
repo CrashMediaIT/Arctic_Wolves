@@ -685,7 +685,7 @@ class DrillDesigner {
                 type: 'player',
                 x: x,
                 y: y,
-                color: pos.color,
+                color: this.activeColor,
                 label: pos.label,
                 isCoach: pos.isCoach || false,
                 rotation: 0
