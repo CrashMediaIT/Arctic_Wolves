@@ -358,8 +358,6 @@ if ($action === 'import_ihs_practice_plan') {
     try {
         $drills = json_decode($drills_json, true) ?: [];
         
-        $pdo->beginTransaction();
-        
         // Build description with import source
         $full_description = $description;
         if (!empty($ihs_url)) {
@@ -372,32 +370,50 @@ if ($action === 'import_ihs_practice_plan') {
             $duration_minutes = intval($matches[1]);
         }
         
+        // Phase 1: Download all drill images BEFORE opening the DB transaction.
+        // cURL downloads can take 30+ seconds per image and would leave the
+        // MySQL connection idle inside a transaction, risking timeouts.
+        $drill_images = [];
+        foreach ($drills as $idx => $drill) {
+            $drill_title = trim($drill['title'] ?? '');
+            if (empty($drill_title)) {
+                continue;
+            }
+            $rink_image_url = trim($drill['rink_image'] ?? '');
+            if (!empty($rink_image_url) && filter_var($rink_image_url, FILTER_VALIDATE_URL)) {
+                try {
+                    $drill_images[$idx] = downloadAndSaveDrillImage($rink_image_url, $user_id);
+                } catch (\Throwable $imgErr) {
+                    ErrorLogger::error("Drill image download failed for '$drill_title': " . $imgErr->getMessage());
+                    $drill_images[$idx] = ['local_path' => '', 'nextcloud_path' => null];
+                }
+            }
+        }
+        
+        // Phase 2: All database operations in a single fast transaction
+        $pdo->beginTransaction();
+        
         // Create the practice plan
         $stmt = $pdo->prepare("
-            INSERT INTO practice_plans (name, description, focus_area, age_group, duration_minutes, created_by, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, NOW())
+            INSERT INTO practice_plans (name, title, description, focus_area, age_group, duration_minutes, total_duration, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        $stmt->execute([$title, $full_description, $focus_area, $age_group, $duration_minutes, $user_id]);
+        $stmt->execute([$title, $title, $full_description, $focus_area, $age_group, $duration_minutes, $duration_minutes, $user_id]);
         $plan_id = $pdo->lastInsertId();
         
         // Create each drill and add to the practice plan
-        // First, check if drill with same name already exists in library
         $drill_order = 0;
-        foreach ($drills as $drill) {
+        foreach ($drills as $idx => $drill) {
             $drill_title = trim($drill['title'] ?? '');
             if (empty($drill_title)) {
                 continue;
             }
             
             // Check if a drill with this name already exists in the drill library
-            // Prioritize drills owned by the same user, then fall back to any drill with the same title
             $existing_drill_stmt = $pdo->prepare("
-                SELECT id FROM drills 
-                WHERE title = ? 
-                ORDER BY (created_by = ?) DESC, created_at DESC 
-                LIMIT 1
+                SELECT id FROM drills WHERE title = ? LIMIT 1
             ");
-            $existing_drill_stmt->execute([$drill_title, $user_id]);
+            $existing_drill_stmt->execute([$drill_title]);
             $existing_drill = $existing_drill_stmt->fetch();
             
             if ($existing_drill) {
@@ -405,15 +421,11 @@ if ($action === 'import_ihs_practice_plan') {
                 $drill_id = $existing_drill['id'];
             } else {
                 // Create a new drill since it doesn't exist in the library
-                
-                // Download and save the rink image if available
                 $custom_image = '';
                 $drill_nc_path = null;
-                $rink_image_url = trim($drill['rink_image'] ?? '');
-                if (!empty($rink_image_url) && filter_var($rink_image_url, FILTER_VALIDATE_URL)) {
-                    $img_result = downloadAndSaveDrillImage($rink_image_url, $user_id);
-                    $custom_image = $img_result['local_path'] ?? '';
-                    $drill_nc_path = $img_result['nextcloud_path'] ?? null;
+                if (isset($drill_images[$idx])) {
+                    $custom_image = $drill_images[$idx]['local_path'] ?? '';
+                    $drill_nc_path = $drill_images[$idx]['nextcloud_path'] ?? null;
                 }
                 
                 // Determine category from drill title or use General
@@ -459,10 +471,10 @@ if ($action === 'import_ihs_practice_plan') {
                 $drill_coaching_points = trim($drill['coaching_points'] ?? '');
                 $drill_progression = trim($drill['progression'] ?? '');
                 
-                // Create the drill with sections in their own columns
+                // Create the drill
                 $drill_stmt = $pdo->prepare("
-                    INSERT INTO drills (title, description, setup, coaching_points, progression, category_id, custom_image, ihs_source_url, created_by, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                    INSERT INTO drills (title, description, setup, coaching_points, progression, category_id, custom_image, ihs_source_url, created_by)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ");
                 $drill_stmt->execute([
                     $drill_title,
@@ -477,9 +489,14 @@ if ($action === 'import_ihs_practice_plan') {
                 ]);
                 $drill_id = $pdo->lastInsertId();
                 
-                // Store Nextcloud path for persistent recovery
+                // Store cloud storage path if available
                 if (!empty($drill_nc_path)) {
-                    $pdo->prepare("UPDATE drills SET nextcloud_image_path = ? WHERE id = ?")->execute([$drill_nc_path, $drill_id]);
+                    try {
+                        $pdo->prepare("UPDATE drills SET nextcloud_image_path = ? WHERE id = ?")->execute([$drill_nc_path, $drill_id]);
+                    } catch (\Throwable $ncErr) {
+                        // Column may not exist yet — non-fatal
+                        error_log("nextcloud_image_path update skipped: " . $ncErr->getMessage());
+                    }
                 }
             }
             
@@ -514,8 +531,10 @@ if ($action === 'import_ihs_practice_plan') {
         header("Location: dashboard.php?page=practice_library&status=plan_imported");
         exit();
         
-    } catch (Exception $e) {
-        $pdo->rollBack();
+    } catch (\Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         ErrorLogger::error("IHS Practice Plan Import Error: " . $e->getMessage());
         header("Location: dashboard.php?page=practice_import&error=import_failed");
         exit();
@@ -1089,11 +1108,22 @@ if ($action === 'import_json') {
                         if ($existing_drill) {
                             $drill_id = $existing_drill['id'];
                         } else {
+                            // Map category from export data
+                            $new_cat_id = null;
+                            if (!empty($drill_assoc['category_name'])) {
+                                $cat_check = $pdo->prepare("SELECT id FROM drill_categories WHERE name = ?");
+                                $cat_check->execute([$drill_assoc['category_name']]);
+                                $cat_row = $cat_check->fetch(PDO::FETCH_ASSOC);
+                                if ($cat_row) {
+                                    $new_cat_id = $cat_row['id'];
+                                }
+                            }
+                            
                             // Create the drill
                             $drill_stmt = $pdo->prepare("
                                 INSERT INTO drills (title, description, setup, coaching_points, progression,
-                                    created_by, diagram_data, video_url, ihs_source_url)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                    category_id, created_by, diagram_data, video_url, ihs_source_url)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                             ");
                             $drill_stmt->execute([
                                 $drill_title,
@@ -1101,6 +1131,7 @@ if ($action === 'import_json') {
                                 $drill_assoc['setup'] ?? null,
                                 $drill_assoc['coaching_points'] ?? null,
                                 $drill_assoc['progression'] ?? null,
+                                $new_cat_id,
                                 $user_id,
                                 $drill_assoc['diagram_data'] ?? null,
                                 $drill_assoc['video_url'] ?? null,
