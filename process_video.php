@@ -267,6 +267,11 @@ function handleVideoUpload() {
         $pdo->prepare("UPDATE videos SET nextcloud_path = ? WHERE id = ?")->execute([$persist['nextcloud_path'], $video_id]);
     }
     
+    // Trigger HLS transcoding via companion server (fire-and-forget)
+    if (!empty($persist['object_key'])) {
+        triggerHlsTranscode($pdo, $video_id, $persist['object_key']);
+    }
+    
     // Log and notify — wrapped in try-catch so failures don't break the upload response
     try {
         logSecurityEvent('video_upload', "Video uploaded for athlete ID: $athlete_id", $user_id);
@@ -428,6 +433,11 @@ function handleAthleteVideoUpload() {
     // Store Nextcloud path for persistent recovery
     if (!empty($persist['nextcloud_path'])) {
         $pdo->prepare("UPDATE videos SET nextcloud_path = ? WHERE id = ?")->execute([$persist['nextcloud_path'], $video_id]);
+    }
+    
+    // Trigger HLS transcoding via companion server (fire-and-forget)
+    if (!empty($persist['object_key'])) {
+        triggerHlsTranscode($pdo, $video_id, $persist['object_key']);
     }
     
     // Log and notify — wrapped in try-catch so failures don't break the upload response
@@ -645,7 +655,9 @@ function handleConfirmAthleteUpload() {
     $pdo->prepare("UPDATE videos SET nextcloud_path = ? WHERE id = ?")->execute([$proxy_url, $video_id]);
 
     // Trigger HLS transcoding via companion server (fire-and-forget)
-    triggerHlsTranscode($pdo, $video_id, $object_key);
+    if (!empty($object_key)) {
+        triggerHlsTranscode($pdo, $video_id, $object_key);
+    }
 
     // Clean up the session
     unset($_SESSION['pending_video_upload']);
@@ -784,6 +796,11 @@ function handleDrillVideoUpload() {
     
     $video_id = $pdo->lastInsertId();
     Auditor::log($pdo, $user_id, 'create', 'videos', $video_id, ['action' => 'Drill video uploaded']);
+    
+    // Trigger HLS transcoding via companion server (fire-and-forget)
+    if (!empty($persist['object_key'])) {
+        triggerHlsTranscode($pdo, $video_id, $persist['object_key']);
+    }
     
     // Log the action - wrapped to not break upload response
     try {
