@@ -105,6 +105,36 @@ test.describe('Color selection applies to selected objects', () => {
 });
 
 // =====================================================
+// 2b. Color handlers use stopPropagation to prevent tool switching
+// =====================================================
+
+test.describe('Color handlers prevent event propagation', () => {
+  test('color picker input handler calls stopPropagation', () => {
+    const content = readFile('js/drill_designer.js');
+    const inputHandlerStart = content.indexOf("colorPicker.addEventListener('input'");
+    const inputHandlerEnd = content.indexOf('});', inputHandlerStart);
+    const inputHandler = content.substring(inputHandlerStart, inputHandlerEnd);
+    expect(inputHandler).toContain('e.stopPropagation()');
+  });
+
+  test('color picker change handler calls stopPropagation', () => {
+    const content = readFile('js/drill_designer.js');
+    const changeHandlerStart = content.indexOf("colorPicker.addEventListener('change'");
+    const changeHandlerEnd = content.indexOf('});', changeHandlerStart);
+    const changeHandler = content.substring(changeHandlerStart, changeHandlerEnd);
+    expect(changeHandler).toContain('e.stopPropagation()');
+  });
+
+  test('color preset click handler calls stopPropagation', () => {
+    const content = readFile('js/drill_designer.js');
+    const presetHandlerStart = content.indexOf("document.querySelectorAll('[data-color-preset]').forEach");
+    const paintBtnSection = content.indexOf("// Paint tool button", presetHandlerStart);
+    const presetHandler = content.substring(presetHandlerStart, paintBtnSection);
+    expect(presetHandler).toContain('e.stopPropagation()');
+  });
+});
+
+// =====================================================
 // 3. Paint tool button still works independently
 // =====================================================
 
@@ -119,10 +149,10 @@ test.describe('Paint tool button works independently', () => {
     expect(paintHandler).toContain("this.currentTool = 'paint'");
   });
 
-  test('selectPaintTool method still exists for backward compatibility', () => {
+  test('selectPaintTool method is removed to prevent auto-selection', () => {
     const content = readFile('js/drill_designer.js');
-    expect(content).toContain('selectPaintTool()');
-    expect(content).toContain("this.currentTool = 'paint'");
+    // selectPaintTool should not exist as a method definition
+    expect(content).not.toContain('selectPaintTool() {');
   });
 });
 
