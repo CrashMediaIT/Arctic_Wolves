@@ -191,14 +191,14 @@ class DrillDesigner {
             colorPicker.addEventListener('input', (e) => {
                 this.activeColor = e.target.value;
                 this.updateActiveColorDisplay();
-                // Auto-select paint tool when color is selected
-                this.selectPaintTool();
+                // Apply color to selected object if any (use case 3)
+                this.applyColorToSelected();
             });
             colorPicker.addEventListener('change', (e) => {
                 this.activeColor = e.target.value;
                 this.updateActiveColorDisplay();
-                // Auto-select paint tool when color is selected
-                this.selectPaintTool();
+                // Apply color to selected object if any (use case 3)
+                this.applyColorToSelected();
             });
         }
         
@@ -219,8 +219,8 @@ class DrillDesigner {
                 document.querySelectorAll('[data-color-preset]').forEach(b => b.classList.remove('active'));
                 e.currentTarget.classList.add('active');
                 
-                // Auto-select paint tool when color preset is clicked
-                this.selectPaintTool();
+                // Apply color to selected object if any (use case 3)
+                this.applyColorToSelected();
             });
         });
         
