@@ -461,7 +461,7 @@ function sendMessage($pdo, $user_id) {
                 'id' => $message_id,
                 'from_user_id' => $user_id,
                 'to_user_id' => $to_user_id,
-                'message_body' => $display_body ?: $message_body,
+                'message_body' => $display_body !== '' ? $display_body : $message_body,
                 'is_read' => 0,
                 'read_at' => null,
                 'created_at' => date('Y-m-d H:i:s'),

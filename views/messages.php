@@ -1128,13 +1128,13 @@ function renderAttachments(attachments) {
         const isImage = (att.mime_type || '').startsWith('image/');
         if (isImage) {
             // For images, show inline preview
-            const src = att.file_path.startsWith('http') ? att.file_path : att.file_path;
+            const src = att.file_path;
             html += `<a href="${encodeURI(src)}" target="_blank" rel="noopener noreferrer">
                 <img class="msg-attachment-img" src="${encodeURI(src)}" alt="${escapeHtml(att.filename)}" loading="lazy">
             </a>`;
         } else {
             // For files, show download link
-            const src = att.file_path.startsWith('http') ? att.file_path : att.file_path;
+            const src = att.file_path;
             const icon = getFileIcon(att.mime_type);
             const sizeStr = att.file_size ? formatFileSize(att.file_size) : '';
             html += `<a class="msg-attachment-item" href="${encodeURI(src)}" target="_blank" rel="noopener noreferrer" download="${escapeHtml(att.filename)}">
