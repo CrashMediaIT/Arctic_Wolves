@@ -93,7 +93,7 @@ if ($action === 'import_drills') {
                 INSERT INTO drills (
                     title, description, category_id, coaching_points, video_url,
                     custom_image, ihs_source_url, created_by
-                ) VALUES (?, ?, ?, ?, ?, ?, 'ihs_import', ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, 'ihs://import/drill', ?)
             ");
             $stmt->execute([
                 $title,
@@ -200,7 +200,7 @@ if ($action === 'import_plans') {
                 $stmt = $pdo->prepare("
                     INSERT INTO drills (
                         title, description, coaching_points, ihs_source_url, created_by
-                    ) VALUES (?, ?, ?, 'ihs_import', ?)
+                    ) VALUES (?, ?, ?, 'ihs://import/drill', ?)
                 ");
                 $stmt->execute([
                     $drill_title,
