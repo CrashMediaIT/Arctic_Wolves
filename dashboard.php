@@ -1157,11 +1157,24 @@ function switchAthlete(athleteId) {
                 <button id="messengerMinimizeBtn" class="messenger-icon-btn" title="Minimize"><i class="fas fa-minus"></i></button>
             </div>
             <div id="messengerMessages" class="messenger-messages"></div>
+            <div class="messenger-typing-indicator" id="widgetTypingIndicator" style="display:none;">
+                <div class="typing-dots"><span></span><span></span><span></span></div>
+                <span>typing...</span>
+            </div>
             <div class="messenger-input-area">
                 <div class="messenger-input-toolbar">
-                    <button class="messenger-toolbar-btn" onclick="toggleWidgetEmojiPicker()" title="Emoji" aria-label="Insert emoji">
-                        <i class="far fa-face-smile"></i>
-                    </button>
+                    <div class="widget-emoji-picker-container">
+                        <button class="messenger-toolbar-btn" onclick="toggleWidgetEmojiPicker()" title="Emoji" aria-label="Insert emoji">
+                            <i class="far fa-face-smile"></i>
+                        </button>
+                        <div class="widget-emoji-picker-panel" id="widgetEmojiPicker">
+                            <div class="widget-emoji-picker-search">
+                                <input type="text" id="widgetEmojiSearch" placeholder="Search emoji...">
+                            </div>
+                            <div class="widget-emoji-picker-categories" id="widgetEmojiCategories"></div>
+                            <div class="widget-emoji-picker-grid" id="widgetEmojiGrid"></div>
+                        </div>
+                    </div>
                     <button class="messenger-toolbar-btn" onclick="document.getElementById('messengerFileInput').click()" title="Attach file" aria-label="Attach file or image">
                         <i class="fas fa-paperclip"></i>
                     </button>
@@ -1239,15 +1252,36 @@ function switchAthlete(athleteId) {
 .messenger-toolbar-btn { width: 32px; height: 32px; background: rgba(255,255,255,0.06); border: 1px solid var(--border, #2D2D3F); color: #8b949e; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; font-size: 14px; }
 .messenger-toolbar-btn:hover { background: rgba(107, 70, 193, 0.15); color: #c4b5fd; }
 .messenger-panel.widget-size-default .messenger-input-toolbar { display: none; }
-.messenger-panel.widget-size-half { width: 540px; max-height: 70vh; }
-.messenger-panel.widget-size-half .messenger-messages { max-height: calc(70vh - 160px); }
+.messenger-panel.widget-size-half { width: 540px; max-height: 75vh; }
+.messenger-panel.widget-size-half .messenger-messages { max-height: calc(75vh - 160px); }
+.messenger-panel.widget-size-half .messenger-conversations { max-height: calc(75vh - 120px); }
 .messenger-panel.widget-size-half .messenger-input-toolbar { display: flex; }
 .messenger-panel.widget-size-full { width: 680px; max-height: 95vh; }
 .messenger-panel.widget-size-full .messenger-messages { max-height: calc(95vh - 160px); }
+.messenger-panel.widget-size-full .messenger-conversations { max-height: calc(95vh - 120px); }
 .messenger-panel.widget-size-full .messenger-input-toolbar { display: flex; }
 @media (max-width: 480px) {
     .messenger-panel { width: calc(100vw - 32px); right: -8px; bottom: 64px; max-height: 70vh; }
 }
+/* Widget Emoji Picker */
+.widget-emoji-picker-container { position: relative; }
+.widget-emoji-picker-panel { display: none; position: absolute; bottom: 44px; left: 0; width: 320px; max-height: 400px; background: var(--bg-card, #16161F); border: 1px solid var(--border, #2D2D3F); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 100; overflow: hidden; flex-direction: column; }
+.widget-emoji-picker-panel.show { display: flex; }
+.widget-emoji-picker-search { padding: 10px 12px; border-bottom: 1px solid var(--border, #2D2D3F); }
+.widget-emoji-picker-search input { width: 100%; padding: 8px 10px; background: var(--bg-main, #0a0a0f); border: 1px solid var(--border, #2D2D3F); border-radius: 6px; color: #fff; font-size: 13px; outline: none; box-sizing: border-box; }
+.widget-emoji-picker-categories { display: flex; gap: 4px; padding: 8px 12px; border-bottom: 1px solid var(--border, #2D2D3F); justify-content: space-between; }
+.widget-emoji-cat-btn { padding: 6px 8px; background: none; border: none; font-size: 18px; cursor: pointer; border-radius: 6px; transition: background 0.15s; flex-shrink: 0; }
+.widget-emoji-cat-btn:hover, .widget-emoji-cat-btn.active { background: rgba(107, 70, 193, 0.2); }
+.widget-emoji-picker-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; padding: 10px; overflow-y: auto; flex: 1; max-height: 300px; }
+.widget-emoji-btn { display: flex; align-items: center; justify-content: center; padding: 6px; background: none; border: none; font-size: 22px; cursor: pointer; border-radius: 6px; transition: background 0.12s; line-height: 1; }
+.widget-emoji-btn:hover { background: rgba(107, 70, 193, 0.2); }
+/* Widget Typing Indicator */
+.messenger-typing-indicator { padding: 4px 16px 2px; display: flex; align-items: center; gap: 8px; color: var(--text-dim, #94a3b8); font-size: 12px; }
+.messenger-typing-indicator .typing-dots { display: flex; gap: 3px; align-items: center; }
+.messenger-typing-indicator .typing-dots span { width: 5px; height: 5px; background: var(--primary, #6B46C1); border-radius: 50%; animation: widgetTypingBounce 1.4s infinite both; }
+.messenger-typing-indicator .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.messenger-typing-indicator .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes widgetTypingBounce { 0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
 </style>
 
 <script>
@@ -1338,9 +1372,11 @@ function switchAthlete(athleteId) {
         loadContacts();
     });
 
-    function loadConversations() {
+    function loadConversations(silent) {
         var container = document.getElementById('messengerConversations');
-        container.innerHTML = '<div class="messenger-loading"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+        if (!silent) {
+            container.innerHTML = '<div class="messenger-loading"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+        }
         fetch('process_messages.php?action=get_conversations')
             .then(function(r) { return r.json(); })
             .then(function(data) {
@@ -1348,6 +1384,22 @@ function switchAthlete(athleteId) {
                     container.innerHTML = '<div class="messenger-empty"><i class="fas fa-inbox" style="font-size:32px; display:block; margin-bottom:12px; opacity:0.3;"></i>No conversations yet</div>';
                     return;
                 }
+                // Check for new unread messages in non-active conversations
+                if (silent && widgetInitialLoadDone) {
+                    data.conversations.forEach(function(c) {
+                        var convId = c.conversation_id;
+                        var unread = parseInt(c.unread_count || 0);
+                        var prevUnread = widgetPrevUnreadCounts[convId] || 0;
+                        if (unread > prevUnread && parseInt(convId) !== currentConvId) {
+                            playWidgetNotificationSound();
+                        }
+                    });
+                }
+                widgetPrevUnreadCounts = {};
+                data.conversations.forEach(function(c) {
+                    widgetPrevUnreadCounts[c.conversation_id] = parseInt(c.unread_count || 0);
+                });
+                widgetInitialLoadDone = true;
                 var html = '';
                 data.conversations.forEach(function(c) {
                     var initials = getInitials(c.first_name, c.last_name);
@@ -1361,6 +1413,7 @@ function switchAthlete(athleteId) {
                     if (unread) html += '<div class="messenger-conv-unread-dot"></div>';
                     html += '</div>';
                 });
+                if (silent && container.innerHTML === html) return;
                 container.innerHTML = html;
                 container.querySelectorAll('.messenger-conv-item').forEach(function(item) {
                     item.addEventListener('click', function() {
@@ -1374,7 +1427,9 @@ function switchAthlete(athleteId) {
                 });
             })
             .catch(function() {
-                container.innerHTML = '<div class="messenger-empty">Failed to load conversations</div>';
+                if (!silent) {
+                    container.innerHTML = '<div class="messenger-empty">Failed to load conversations</div>';
+                }
             });
     }
 
@@ -1386,21 +1441,28 @@ function switchAthlete(athleteId) {
         });
     });
 
-    function loadMessages(convId) {
+    function loadMessages(convId, silent) {
         var container = document.getElementById('messengerMessages');
-        container.innerHTML = '<div class="messenger-loading"><i class="fas fa-spinner fa-spin"></i></div>';
+        if (!silent) {
+            container.innerHTML = '<div class="messenger-loading"><i class="fas fa-spinner fa-spin"></i></div>';
+        }
         fetch('process_messages.php?action=get_messages&conversation_id=' + convId)
             .then(function(r) { return r.json(); })
             .then(function(data) {
-                if (!data.success) { container.innerHTML = '<div class="messenger-empty">Failed to load messages</div>'; return; }
-                renderMessages(data.messages || []);
+                if (!data.success) {
+                    if (!silent) { container.innerHTML = '<div class="messenger-empty">Failed to load messages</div>'; }
+                    return;
+                }
+                renderMessages(data.messages || [], silent);
             })
             .catch(function() {
-                container.innerHTML = '<div class="messenger-empty">Error loading messages</div>';
+                if (!silent) {
+                    container.innerHTML = '<div class="messenger-empty">Error loading messages</div>';
+                }
             });
     }
 
-    function renderMessages(messages) {
+    function renderMessages(messages, silent) {
         var container = document.getElementById('messengerMessages');
         if (messages.length === 0) {
             container.innerHTML = '<div class="messenger-empty">No messages yet. Start the conversation!</div>';
@@ -1414,6 +1476,7 @@ function switchAthlete(athleteId) {
             html += '<span class="msg-time">' + formatTime(m.created_at) + '</span>';
             html += '</div>';
         });
+        if (silent && container.innerHTML === html) return;
         container.innerHTML = html;
         container.scrollTop = container.scrollHeight;
     }
@@ -1458,13 +1521,69 @@ function switchAthlete(athleteId) {
     function startChatPoll() {
         stopChatPoll();
         chatPollInterval = setInterval(function() {
-            if (currentConvId) loadMessages(currentConvId);
+            if (currentConvId) loadMessages(currentConvId, true);
         }, 10000);
+        startTypingPoll();
     }
 
     function stopChatPoll() {
         if (chatPollInterval) { clearInterval(chatPollInterval); chatPollInterval = null; }
+        stopTypingPoll();
     }
+
+    // === Typing Indicator ===
+    var widgetTypingSendTimeout = null;
+    document.getElementById('messengerInput').addEventListener('input', function() {
+        if (currentConvId) {
+            if (widgetTypingSendTimeout) return;
+            widgetTypingSendTimeout = setTimeout(function() { widgetTypingSendTimeout = null; }, 2000);
+            var formData = new FormData();
+            formData.append('action', 'set_typing');
+            formData.append('conversation_id', currentConvId);
+            formData.append('csrf_token', csrfToken);
+            fetch('process_messages.php', { method: 'POST', body: formData }).catch(function() {});
+        }
+    });
+
+    var widgetTypingPollInterval = null;
+    function startTypingPoll() {
+        stopTypingPoll();
+        widgetTypingPollInterval = setInterval(function() {
+            if (currentConvId) {
+                fetch('process_messages.php?action=get_typing_status&conversation_id=' + currentConvId)
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        var indicator = document.getElementById('widgetTypingIndicator');
+                        indicator.style.display = (data.success && data.typing) ? 'flex' : 'none';
+                    })
+                    .catch(function() {});
+            }
+        }, 3000);
+    }
+    function stopTypingPoll() {
+        if (widgetTypingPollInterval) { clearInterval(widgetTypingPollInterval); widgetTypingPollInterval = null; }
+        document.getElementById('widgetTypingIndicator').style.display = 'none';
+    }
+
+    // === Notification Sound ===
+    function playWidgetNotificationSound() {
+        try {
+            var ctx = new (window.AudioContext || window.webkitAudioContext)();
+            var osc = ctx.createOscillator();
+            var gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.frequency.setValueAtTime(880, ctx.currentTime);
+            osc.frequency.setValueAtTime(660, ctx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.3, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+            osc.start(ctx.currentTime);
+            osc.stop(ctx.currentTime + 0.3);
+        } catch (e) { /* ignore audio errors */ }
+    }
+
+    var widgetPrevUnreadCounts = {};
+    var widgetInitialLoadDone = false;
 
     function loadContacts() {
         var container = document.getElementById('messengerContacts');
@@ -1547,6 +1666,8 @@ function switchAthlete(athleteId) {
                 }
             })
             .catch(function() {});
+        // Also check for new messages to trigger notification sound
+        loadConversations(true);
     }
     updateWidgetBadge();
     setInterval(updateWidgetBadge, 30000);
@@ -1562,18 +1683,83 @@ function setWidgetSize(size) {
     });
 }
 
-// === Widget Emoji Picker Toggle ===
+// === Widget Emoji Picker ===
+var widgetEmojiData = {
+    'Smileys': ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🥴','😵','🤯','🥳','🥸','😎','🤓','🧐'],
+    'Gestures': ['👍','👎','👊','✊','🤛','🤜','👏','🙌','👐','🤲','🤝','🙏','✌️','🤞','🤟','🤘','👌','🤌','🤏','👈','👉','👆','👇','☝️','✋','🤚','🖐️','🖖','👋','🤙','💪','🦾','🖕'],
+    'Hearts': ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❣️','💕','💞','💓','💗','💖','💘','💝','💟','♥️','🫶','🥹'],
+    'Sports': ['⚽','🏀','🏈','⚾','🎾','🏐','🏉','🎱','🏓','🏸','🏒','🥅','⛳','🏹','🎣','⛸️','🥊','🎿','⛷️','🏋️','🤸','🏊','🚴','🏃','🧗'],
+    'Objects': ['📎','📁','📂','📄','📊','📈','📉','📝','✏️','📌','📍','🔗','📷','📸','🎥','📹','💻','📱','⌚','🔔','🔒','🔑','🏆','🎯','🎉','🎊','🎁'],
+    'Nature': ['🌟','⭐','🌙','☀️','🌈','🔥','💧','❄️','🍀','🌸','🌻','🌺','🌲','🌊','🐺','🐻','🦅','🐾','🦁','🐯'],
+    'Food': ['☕','🍕','🍔','🍟','🌭','🍿','🧁','🍩','🍪','🎂','🍫','🍬','🍭','🍎','🍊','🍋','🍌','🍉','🍇','🍓']
+};
+
+(function initWidgetEmojiPicker() {
+    var catContainer = document.getElementById('widgetEmojiCategories');
+    var categories = Object.keys(widgetEmojiData);
+
+    catContainer.innerHTML = categories.map(function(cat, i) {
+        var icon = widgetEmojiData[cat][0];
+        return '<button class="widget-emoji-cat-btn ' + (i === 0 ? 'active' : '') + '" onclick="showWidgetEmojiCategory(\'' + cat + '\', this)" title="' + cat + '">' + icon + '</button>';
+    }).join('');
+
+    showWidgetEmojiCategory(categories[0]);
+
+    document.getElementById('widgetEmojiSearch').addEventListener('input', function() {
+        var q = this.value.toLowerCase();
+        if (!q) {
+            showWidgetEmojiCategory(categories[0]);
+            return;
+        }
+        var results = [];
+        for (var cat in widgetEmojiData) {
+            if (cat.toLowerCase().indexOf(q) !== -1) {
+                results = results.concat(widgetEmojiData[cat]);
+            }
+        }
+        if (results.length === 0) {
+            for (var c in widgetEmojiData) {
+                results = results.concat(widgetEmojiData[c]);
+            }
+        }
+        renderWidgetEmojiGrid(results);
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.widget-emoji-picker-container')) {
+            document.getElementById('widgetEmojiPicker').classList.remove('show');
+        }
+    });
+})();
+
+function showWidgetEmojiCategory(cat, btn) {
+    document.querySelectorAll('.widget-emoji-cat-btn').forEach(function(b) { b.classList.remove('active'); });
+    if (btn) btn.classList.add('active');
+    else { var first = document.querySelector('.widget-emoji-cat-btn'); if (first) first.classList.add('active'); }
+    renderWidgetEmojiGrid(widgetEmojiData[cat] || []);
+}
+
+function renderWidgetEmojiGrid(emojis) {
+    document.getElementById('widgetEmojiGrid').innerHTML = emojis.map(function(e) {
+        return '<button class="widget-emoji-btn" onclick="insertWidgetEmoji(\'' + e + '\')" title="' + e + '">' + e + '</button>';
+    }).join('');
+}
+
 function toggleWidgetEmojiPicker() {
-    // Emoji picker placeholder - inserts common emojis via prompt
-    var emoji = prompt('Type an emoji or pick from: 😀 👍 ❤️ 🎉 🏒 ⭐ 🔥 💪');
-    if (emoji) {
-        var input = document.getElementById('messengerInput');
-        var start = input.selectionStart;
-        var end = input.selectionEnd;
-        input.value = input.value.substring(0, start) + emoji + input.value.substring(end);
-        input.focus();
-        input.selectionStart = input.selectionEnd = start + emoji.length;
+    var picker = document.getElementById('widgetEmojiPicker');
+    picker.classList.toggle('show');
+    if (picker.classList.contains('show')) {
+        document.getElementById('widgetEmojiSearch').focus();
     }
+}
+
+function insertWidgetEmoji(emoji) {
+    var input = document.getElementById('messengerInput');
+    var start = input.selectionStart;
+    var end = input.selectionEnd;
+    input.value = input.value.substring(0, start) + emoji + input.value.substring(end);
+    input.focus();
+    input.selectionStart = input.selectionEnd = start + emoji.length;
 }
 
 // Handle paste events on messenger widget input

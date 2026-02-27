@@ -9,6 +9,7 @@ test-results/
 
 # Logs
 logs/*.log
+logs/typing/
 error_log.txt
 test_results.log
 

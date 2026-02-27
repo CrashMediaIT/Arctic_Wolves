@@ -44,6 +44,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         case 'unread_count':
             getUnreadCount($pdo, $user_id);
             break;
+        case 'get_typing_status':
+            $conversation_id = intval($_GET['conversation_id'] ?? 0);
+            getTypingStatus($pdo, $user_id, $conversation_id);
+            break;
         default:
             echo json_encode(['success' => false, 'message' => 'Invalid action']);
     }
@@ -68,6 +72,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             break;
         case 'mark_read':
             markRead($pdo, $user_id);
+            break;
+        case 'set_typing':
+            setTyping($pdo, $user_id);
             break;
         default:
             echo json_encode(['success' => false, 'message' => 'Invalid action']);
@@ -524,5 +531,81 @@ function getUnreadCount($pdo, $user_id) {
     } catch (PDOException $e) {
         ErrorLogger::error("Messages - unread count error: " . $e->getMessage());
         echo json_encode(['success' => true, 'count' => 0]);
+    }
+}
+
+/**
+ * Set typing status for a conversation (uses a lightweight file-based approach)
+ */
+function setTyping($pdo, $user_id) {
+    $conversation_id = intval($_POST['conversation_id'] ?? 0);
+    if (!$conversation_id) {
+        echo json_encode(['success' => false, 'message' => 'Conversation ID required']);
+        return;
+    }
+    
+    try {
+        // Verify user is a participant
+        $check = $pdo->prepare("SELECT id FROM conversations WHERE id = ? AND (participant_one_id = ? OR participant_two_id = ?)");
+        $check->execute([$conversation_id, $user_id, $user_id]);
+        if ($check->rowCount() === 0) {
+            echo json_encode(['success' => false, 'message' => 'Access denied']);
+            return;
+        }
+        
+        // Store typing status in a temp file (lightweight, no DB table needed)
+        $typing_dir = __DIR__ . '/logs/typing';
+        if (!is_dir($typing_dir)) {
+            mkdir($typing_dir, 0755, true);
+        }
+        $typing_file = $typing_dir . '/conv_' . $conversation_id . '_user_' . $user_id . '.tmp';
+        file_put_contents($typing_file, time());
+        
+        echo json_encode(['success' => true]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => 'Failed to set typing status']);
+    }
+}
+
+/**
+ * Get typing status for a conversation
+ */
+function getTypingStatus($pdo, $user_id, $conversation_id) {
+    if (!$conversation_id) {
+        echo json_encode(['success' => true, 'typing' => false]);
+        return;
+    }
+    
+    try {
+        // Verify user is a participant and find the other user
+        $check = $pdo->prepare("
+            SELECT participant_one_id, participant_two_id FROM conversations 
+            WHERE id = ? AND (participant_one_id = ? OR participant_two_id = ?)
+        ");
+        $check->execute([$conversation_id, $user_id, $user_id]);
+        $conv = $check->fetch();
+        if (!$conv) {
+            echo json_encode(['success' => true, 'typing' => false]);
+            return;
+        }
+        
+        $other_user_id = ($conv['participant_one_id'] == $user_id) ? $conv['participant_two_id'] : $conv['participant_one_id'];
+        
+        $typing_file = __DIR__ . '/logs/typing/conv_' . $conversation_id . '_user_' . $other_user_id . '.tmp';
+        $is_typing = false;
+        if (file_exists($typing_file)) {
+            $last_typed = intval(file_get_contents($typing_file));
+            // Consider typing if within last 5 seconds
+            if (time() - $last_typed < 5) {
+                $is_typing = true;
+            } else {
+                // Clean up stale file
+                @unlink($typing_file);
+            }
+        }
+        
+        echo json_encode(['success' => true, 'typing' => $is_typing]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => true, 'typing' => false]);
     }
 }

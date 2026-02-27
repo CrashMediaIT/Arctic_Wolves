@@ -67,6 +67,86 @@ test.describe('Message Emoji Picker UI', () => {
     });
 });
 
+test.describe('Dashboard Widget Emoji Picker UI', () => {
+    test('dashboard.php should contain widget emoji picker elements', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'dashboard.php'), 'utf-8');
+        
+        // Emoji picker button
+        expect(content).toContain('toggleWidgetEmojiPicker()');
+        expect(content).toContain('fa-face-smile');
+        
+        // Emoji picker panel structure (not a prompt)
+        expect(content).toContain('id="widgetEmojiPicker"');
+        expect(content).toContain('widget-emoji-picker-panel');
+        expect(content).toContain('widget-emoji-picker-grid');
+        expect(content).toContain('widget-emoji-picker-categories');
+        expect(content).toContain('id="widgetEmojiSearch"');
+    });
+
+    test('dashboard.php should NOT use prompt() for emoji input', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'dashboard.php'), 'utf-8');
+        
+        // The old prompt-based approach should be gone
+        expect(content).not.toContain("prompt('Type an emoji");
+    });
+
+    test('dashboard widget should define emoji data with multiple categories', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'dashboard.php'), 'utf-8');
+        
+        expect(content).toContain('widgetEmojiData');
+        expect(content).toContain("'Smileys'");
+        expect(content).toContain("'Gestures'");
+        expect(content).toContain("'Hearts'");
+        expect(content).toContain("'Sports'");
+        expect(content).toContain("'Objects'");
+        expect(content).toContain("'Nature'");
+        expect(content).toContain("'Food'");
+    });
+
+    test('dashboard widget should have insertWidgetEmoji function', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'dashboard.php'), 'utf-8');
+        
+        expect(content).toContain('function insertWidgetEmoji(emoji)');
+        expect(content).toContain("getElementById('messengerInput')");
+    });
+
+    test('dashboard widget emoji picker should have search functionality', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'dashboard.php'), 'utf-8');
+        
+        expect(content).toContain('widgetEmojiSearch');
+        expect(content).toContain('Search emoji...');
+    });
+
+    test('dashboard widget emoji picker should close on outside click', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'dashboard.php'), 'utf-8');
+        
+        expect(content).toContain("closest('.widget-emoji-picker-container')");
+        expect(content).toContain("classList.remove('show')");
+    });
+});
+
+test.describe('Dashboard Widget Size Constraints', () => {
+    test('half size should expand both width and height (diagonal expansion)', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'dashboard.php'), 'utf-8');
+        
+        // Half size should have both width and max-height set
+        expect(content).toMatch(/widget-size-half\s*\{[^}]*width:\s*540px/);
+        expect(content).toMatch(/widget-size-half\s*\{[^}]*max-height:\s*75vh/);
+        // Conversations list should also grow taller
+        expect(content).toContain('widget-size-half .messenger-conversations');
+    });
+
+    test('full size should expand both width and height (diagonal expansion)', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'dashboard.php'), 'utf-8');
+        
+        // Full size should have both width and max-height set
+        expect(content).toMatch(/widget-size-full\s*\{[^}]*width:\s*680px/);
+        expect(content).toMatch(/widget-size-full\s*\{[^}]*max-height:\s*95vh/);
+        // Conversations list should also grow taller
+        expect(content).toContain('widget-size-full .messenger-conversations');
+    });
+});
+
 test.describe('File Upload Choose-File Skip', () => {
     test('app.js should skip message toolbar file inputs from choose-file enhancement', () => {
         const content = fs.readFileSync(path.join(ROOT, 'js', 'app.js'), 'utf-8');
@@ -474,5 +554,179 @@ test.describe('Emoji Picker Sizing Fix', () => {
             content.indexOf('}', content.indexOf('.emoji-picker-categories')) + 1
         );
         expect(catSection).toContain('justify-content: space-between');
+    });
+});
+
+test.describe('Typing Indicator - Messages View', () => {
+    test('views/messages.php should have typing indicator element', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'views', 'messages.php'), 'utf-8');
+        
+        expect(content).toContain('id="typingIndicator"');
+        expect(content).toContain('msg-typing-indicator');
+        expect(content).toContain('typing-dots');
+        expect(content).toContain('typing...');
+    });
+
+    test('should have typing indicator CSS with animation', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'views', 'messages.php'), 'utf-8');
+        
+        expect(content).toContain('.msg-typing-indicator');
+        expect(content).toContain('typing-dots');
+        expect(content).toContain('@keyframes typingBounce');
+    });
+
+    test('should send typing status on input', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'views', 'messages.php'), 'utf-8');
+        
+        expect(content).toContain('sendTypingStatus');
+        expect(content).toContain("action', 'set_typing'");
+    });
+
+    test('should poll for typing status', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'views', 'messages.php'), 'utf-8');
+        
+        expect(content).toContain('checkTypingStatus');
+        expect(content).toContain('get_typing_status');
+    });
+
+    test('should hide typing indicator when opening a new conversation', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'views', 'messages.php'), 'utf-8');
+        
+        // openConversation should reset the typing indicator
+        const openConvSection = content.substring(
+            content.indexOf('function openConversation'),
+            content.indexOf('function openConversation') + 500
+        );
+        expect(openConvSection).toContain('typingIndicator');
+    });
+});
+
+test.describe('Typing Indicator - Dashboard Widget', () => {
+    test('dashboard.php should have widget typing indicator element', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'dashboard.php'), 'utf-8');
+        
+        expect(content).toContain('id="widgetTypingIndicator"');
+        expect(content).toContain('messenger-typing-indicator');
+        expect(content).toContain('typing-dots');
+        expect(content).toContain('typing...');
+    });
+
+    test('should have widget typing indicator CSS with animation', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'dashboard.php'), 'utf-8');
+        
+        expect(content).toContain('.messenger-typing-indicator');
+        expect(content).toContain('@keyframes widgetTypingBounce');
+    });
+
+    test('should send typing status on widget input', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'dashboard.php'), 'utf-8');
+        
+        expect(content).toContain("action', 'set_typing'");
+        expect(content).toContain('widgetTypingSendTimeout');
+    });
+
+    test('should poll for typing status in widget chat', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'dashboard.php'), 'utf-8');
+        
+        expect(content).toContain('startTypingPoll');
+        expect(content).toContain('stopTypingPoll');
+        expect(content).toContain('get_typing_status');
+    });
+});
+
+test.describe('Notification Sound - Messages View', () => {
+    test('views/messages.php should have notification sound function', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'views', 'messages.php'), 'utf-8');
+        
+        expect(content).toContain('playNotificationSound');
+        expect(content).toContain('AudioContext');
+    });
+
+    test('should track unread counts to detect new messages', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'views', 'messages.php'), 'utf-8');
+        
+        expect(content).toContain('prevUnreadCounts');
+        expect(content).toContain('initialLoadDone');
+    });
+
+    test('should NOT play sound when active conversation receives message', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'views', 'messages.php'), 'utf-8');
+        
+        // Should check convId != activeConversationId before playing sound
+        expect(content).toContain('activeConversationId');
+        expect(content).toContain('playNotificationSound');
+        // Must skip the currently open conversation
+        const loadConvSection = content.substring(
+            content.indexOf('function loadConversations'),
+            content.indexOf('function loadConversations') + 1000
+        );
+        expect(loadConvSection).toContain('!== activeConversationId');
+    });
+});
+
+test.describe('Notification Sound - Dashboard Widget', () => {
+    test('dashboard.php should have widget notification sound function', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'dashboard.php'), 'utf-8');
+        
+        expect(content).toContain('playWidgetNotificationSound');
+        expect(content).toContain('AudioContext');
+    });
+
+    test('should track unread counts in widget', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'dashboard.php'), 'utf-8');
+        
+        expect(content).toContain('widgetPrevUnreadCounts');
+        expect(content).toContain('widgetInitialLoadDone');
+    });
+
+    test('should NOT play sound when open widget conversation receives message', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'dashboard.php'), 'utf-8');
+        
+        // Should check convId != currentConvId before playing sound
+        const loadConvSection = content.substring(
+            content.indexOf('function loadConversations'),
+            content.indexOf('function loadConversations') + 1500
+        );
+        expect(loadConvSection).toContain('!== currentConvId');
+        expect(loadConvSection).toContain('playWidgetNotificationSound');
+    });
+});
+
+test.describe('Typing Status Backend', () => {
+    test('process_messages.php should have set_typing POST action', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'process_messages.php'), 'utf-8');
+        
+        expect(content).toContain("case 'set_typing':");
+        expect(content).toContain('function setTyping');
+    });
+
+    test('process_messages.php should have get_typing_status GET action', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'process_messages.php'), 'utf-8');
+        
+        expect(content).toContain("case 'get_typing_status':");
+        expect(content).toContain('function getTypingStatus');
+    });
+
+    test('set_typing should verify conversation participation', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'process_messages.php'), 'utf-8');
+        
+        const setTypingSection = content.substring(
+            content.indexOf('function setTyping'),
+            content.indexOf('function setTyping') + 800
+        );
+        expect(setTypingSection).toContain('participant_one_id');
+        expect(setTypingSection).toContain('participant_two_id');
+    });
+
+    test('get_typing_status should use a 5-second timeout window', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'process_messages.php'), 'utf-8');
+        
+        const getTypingSection = content.substring(
+            content.indexOf('function getTypingStatus'),
+            content.indexOf('function getTypingStatus') + 1500
+        );
+        // Should consider typing only within last 5 seconds
+        expect(getTypingSection).toContain('< 5');
+        expect(getTypingSection).toContain('is_typing');
     });
 });
