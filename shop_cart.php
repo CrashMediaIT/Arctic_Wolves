@@ -551,7 +551,7 @@ $cartCount = $cartData['item_count'];
                         item.querySelector('.cart-item-price').textContent = '$' + (itemData.price * itemData.quantity).toFixed(2);
                     }
                 } else {
-                    alert(data.message || 'Failed to update quantity');
+                    showToast(data.message || 'Failed to update quantity', 'error');
                 }
             })
             .catch(error => {

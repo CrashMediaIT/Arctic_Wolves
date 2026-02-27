@@ -152,7 +152,7 @@ unset($_SESSION['2fa_error']);
                 btn.disabled = false;
                 btnText.style.display = 'inline';
                 btnSpinner.style.display = 'none';
-                alert('An error occurred. Please try again.');
+                showToast('An error occurred. Please try again.', 'error');
             });
         });
         

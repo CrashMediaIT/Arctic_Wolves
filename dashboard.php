@@ -730,9 +730,9 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
                     if (data.success) { window.location.href = 'dashboard.php?page=home'; }
-                    else { alert('Error: ' + (data.message || 'Failed to switch role')); }
+                    else { showToast('Error: ' + (data.message || 'Failed to switch role'), 'error'); }
                 })
-                .catch(function() { alert('An error occurred. Please try again.'); });
+                .catch(function() { showToast('An error occurred. Please try again.', 'error'); });
             });
         }
         
@@ -747,7 +747,7 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
                 .then(function(data) {
                     if (data.success) { window.location.href = 'dashboard.php?page=home'; }
                 })
-                .catch(function() { alert('An error occurred. Please try again.'); });
+                .catch(function() { showToast('An error occurred. Please try again.', 'error'); });
             });
         }
     });
@@ -1107,7 +1107,7 @@ function switchAthlete(athleteId) {
             if (data.success) {
                 location.reload();
             } else {
-                alert('Failed to switch athlete view');
+                showToast('Failed to switch athlete view', 'error');
             }
         });
     }
@@ -1585,10 +1585,10 @@ document.getElementById('messengerInput').addEventListener('paste', function(e) 
             var blob = items[i].getAsFile();
             if (!blob) continue;
             if (blob.size > 25 * 1024 * 1024) {
-                alert('Cannot paste image: file size exceeds 25MB limit');
+                showToast('Cannot paste image: file size exceeds 25MB limit', 'error');
                 return;
             }
-            alert('Image pasted - full file upload coming soon');
+            showToast('Image pasted - full file upload coming soon', 'info');
             break;
         }
     }

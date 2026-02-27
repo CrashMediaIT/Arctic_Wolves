@@ -931,7 +931,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             function validateSetupEncryptionKey() {
                 var key = document.getElementById('setup-encryption-key').value.trim();
                 if (!/^[a-fA-F0-9]{64}$/.test(key)) {
-                    alert('The encryption key must be exactly 64 hexadecimal characters (0-9, a-f).');
+                    showToast('The encryption key must be exactly 64 hexadecimal characters (0-9, a-f).', 'error');
                     return false;
                 }
                 return true;

@@ -868,7 +868,7 @@ if ($db_connected && $pdo) {
             const firstName = document.querySelector('input[name="first_name"]').value.trim();
             const lastName = document.querySelector('input[name="last_name"]').value.trim();
             if (!namePattern.test(firstName) || !namePattern.test(lastName)) {
-                alert('Names may only contain letters, spaces, hyphens, and apostrophes.');
+                showToast('Names may only contain letters, spaces, hyphens, and apostrophes.', 'error');
                 return false;
             }
 
@@ -876,14 +876,14 @@ if ($db_connected && $pdo) {
             const email = document.querySelector('input[name="email"]').value.trim();
             const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (!emailPattern.test(email)) {
-                alert('Please enter a valid email address.');
+                showToast('Please enter a valid email address.', 'error');
                 return false;
             }
 
             // Validate phone (optional, digits and + only)
             const phone = document.querySelector('input[name="phone"]').value.trim();
             if (phone && !/^[0-9+\-\s().]{0,20}$/.test(phone)) {
-                alert('Please enter a valid phone number.');
+                showToast('Please enter a valid phone number.', 'error');
                 return false;
             }
 
@@ -891,28 +891,28 @@ if ($db_connected && $pdo) {
             const confirmPassword = document.querySelector('input[name="confirm_password"]').value;
             
             if (password !== confirmPassword) {
-                alert('Passwords do not match!');
+                showToast('Passwords do not match!', 'error');
                 return false;
             }
             
             if (password.length < 8) {
-                alert('Password must be at least 8 characters long.');
+                showToast('Password must be at least 8 characters long.', 'error');
                 return false;
             }
 
             // Password complexity: at least one uppercase, one lowercase, one digit
             if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
-                alert('Password must contain at least one uppercase letter, one lowercase letter, and one digit.');
+                showToast('Password must contain at least one uppercase letter, one lowercase letter, and one digit.', 'error');
                 return false;
             }
 
             // Validate agreements
             if (!document.getElementById('waiver_accepted').checked) {
-                alert('You must accept the Hockey Player Safety Waiver to register.');
+                showToast('You must accept the Hockey Player Safety Waiver to register.', 'error');
                 return false;
             }
             if (!document.getElementById('privacy_accepted').checked) {
-                alert('You must accept the Privacy Policy to register.');
+                showToast('You must accept the Privacy Policy to register.', 'error');
                 return false;
             }
             
@@ -921,7 +921,7 @@ if ($db_connected && $pdo) {
             if (role === 'parent') {
                 const athleteCards = document.querySelectorAll('.athlete-card');
                 if (athleteCards.length === 0) {
-                    alert('Please add at least one athlete.');
+                    showToast('Please add at least one athlete.', 'error');
                     return false;
                 }
             }

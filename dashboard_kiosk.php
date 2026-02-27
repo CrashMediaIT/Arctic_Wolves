@@ -1016,7 +1016,7 @@ function closeSizeModal() {
 
 function addToCartWithSize() {
     if (!selectedSize) {
-        alert('Please select a size');
+        showToast('Please select a size', 'error');
         return;
     }
     addToCart(currentProduct.id, currentProduct.name, currentProduct.price, selectedSize);
@@ -1141,17 +1141,17 @@ function processCardPayment() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('Payment successful! Transaction #' + data.transaction_number);
+            showToast('Payment successful! Transaction #' + data.transaction_number, 'success');
             cart = [];
             renderCart();
             document.getElementById('customer-user-id').value = '';
         } else {
-            alert('Payment failed: ' + (data.message || 'Unknown error'));
+            showToast('Payment failed: ' + (data.message || 'Unknown error'), 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred. Please try again.');
+        showToast('An error occurred. Please try again.', 'error');
     })
     .finally(() => {
         btn.disabled = false;
@@ -1172,7 +1172,7 @@ function openCashModal() {
     
     const receivedAmount = parseFloat(received);
     if (isNaN(receivedAmount) || receivedAmount < total) {
-        alert('Insufficient amount');
+        showToast('Insufficient amount', 'error');
         return;
     }
     
@@ -1195,17 +1195,17 @@ function openCashModal() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('Payment successful!\nTransaction #' + data.transaction_number + '\nChange: $' + change.toFixed(2));
+            showToast('Payment successful! Transaction #' + data.transaction_number + ' | Change: $' + change.toFixed(2), 'success');
             cart = [];
             renderCart();
             document.getElementById('customer-user-id').value = '';
         } else {
-            alert('Payment failed: ' + (data.message || 'Unknown error'));
+            showToast('Payment failed: ' + (data.message || 'Unknown error'), 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred. Please try again.');
+        showToast('An error occurred. Please try again.', 'error');
     });
 }
 
