@@ -58,9 +58,9 @@ test.describe('Companion .env.example', () => {
     expect(c).toContain('main application');
   });
 
-  test('should state no environment variables are required', () => {
+  test('should state ENCRYPTION_KEY env var is required', () => {
     const c = content();
-    expect(c).toContain('No environment variables are required');
+    expect(c).toContain('ENCRYPTION_KEY');
   });
 });
 
@@ -78,14 +78,13 @@ test.describe('Companion app.py configuration', () => {
     expect(c).toContain('CONFIG_FILE');
   });
 
-  test('should load encryption key from file, not env var', () => {
+  test('should load encryption key from ENCRYPTION_KEY env var with file fallback', () => {
     const c = content();
     expect(c).toContain('KEY_FILE');
     expect(c).toContain('_read_key_file');
     expect(c).toContain('_write_key_file');
-    // Should NOT reference ENCRYPTION_KEY env var
-    expect(c).not.toContain("os.getenv(\"ENCRYPTION_KEY\"");
-    expect(c).not.toContain("os.getenv('ENCRYPTION_KEY'");
+    // Should read ENCRYPTION_KEY env var first, then fall back to key file
+    expect(c).toContain("ENCRYPTION_KEY");
   });
 
   test('should have a first-run setup page', () => {
@@ -96,9 +95,9 @@ test.describe('Companion app.py configuration', () => {
     expect(c).toContain('def setup_save');
   });
 
-  test('should redirect to setup when no key exists', () => {
+  test('should redirect to setup when no key or account exists', () => {
     const c = content();
-    expect(c).toContain('_require_setup');
+    expect(c).toContain('_before_request');
     expect(c).toContain('before_request');
   });
 
@@ -341,13 +340,12 @@ test.describe('Companion Docker configuration', () => {
     expect(c).toContain('volumes:');
   });
 
-  test('docker-compose.yml should NOT require any env file or environment vars', () => {
+  test('docker-compose.yml should have ENCRYPTION_KEY environment variable', () => {
     const c = readFile('companion/docker-compose.yml');
     expect(c).not.toContain('env_file');
-    expect(c).not.toContain('environment:');
+    expect(c).toContain('ENCRYPTION_KEY');
     expect(c).not.toContain('API_KEY=');
     expect(c).not.toContain('S3_ENDPOINT=');
-    expect(c).not.toContain('ENCRYPTION_KEY=');
   });
 
   test('Dockerfile should NOT set env var defaults for config', () => {

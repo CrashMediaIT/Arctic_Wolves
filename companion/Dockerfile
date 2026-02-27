@@ -28,8 +28,10 @@ USER companion
 
 EXPOSE 5100
 
-# No environment variables are required.  The encryption key and all other
-# settings are configured through the web UI setup page on first start and
-# stored on the persistent /config volume.
+# The ENCRYPTION_KEY env var is recommended (64-char hex string).  If omitted,
+# one is auto-generated on the persistent volume.  All other settings (admin
+# account, API key, RustFS credentials, hardware acceleration) are configured
+# through the web UI setup page on first start and stored on the persistent
+# /config volume.
 
 CMD ["gunicorn", "--bind", "0.0.0.0:5100", "--workers", "1", "--threads", "4", "--timeout", "7200", "app:app"]

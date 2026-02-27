@@ -358,10 +358,10 @@ test.describe('Setup wizard node role selection (app.py)', () => {
     expect(c).toContain('selectRole');
   });
 
-  test('master setup should walk through encryption key step', () => {
+  test('master setup should walk through account creation step', () => {
     const c = content();
-    expect(c).toContain('step-master-key');
-    expect(c).toContain('saveMasterKey');
+    expect(c).toContain('step-master-account');
+    expect(c).toContain('saveAccount');
   });
 
   test('master setup should walk through RustFS step', () => {
@@ -406,14 +406,13 @@ test.describe('Setup wizard node role selection (app.py)', () => {
     expect(setupFunc).toContain('s3_configured');
   });
 
-  test('slave setup should auto-generate encryption key', () => {
+  test('slave setup should auto-generate encryption key if not in env', () => {
     const c = content();
     const setupFunc = c.substring(
       c.indexOf('def setup_save'),
       c.indexOf('# Import redirect')
     );
     expect(setupFunc).toContain('secrets.token_hex');
-    expect(setupFunc).toContain('auto-generated');
   });
 
   test('master setup should reload runtime globals from loaded config', () => {
@@ -422,8 +421,8 @@ test.describe('Setup wizard node role selection (app.py)', () => {
       c.indexOf('def setup_save'),
       c.indexOf('# Import redirect')
     );
-    expect(setupFunc).toContain('Reload runtime globals');
     expect(setupFunc).toContain('S3_ENDPOINT');
+    expect(setupFunc).toContain('ADMIN_USERNAME');
   });
 });
 

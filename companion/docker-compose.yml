@@ -2,15 +2,18 @@
 # Worker/integration service for the main Arctic Wolves application.
 #
 # Quick start:
-#   1. docker compose up -d
-#   2. Visit http://localhost:5100 — the setup page appears on first run
-#   3. Generate or paste an encryption key
-#   4. Go to Settings → Generate API Key, then enter it in the main app
+#   1. Set ENCRYPTION_KEY below (64-char hex string) — recommended for
+#      consistent encryption across container recreations.  If omitted,
+#      one is auto-generated and written to the persistent volume.
+#   2. docker compose up -d
+#   3. Visit http://localhost:5100 — the setup page appears on first run.
+#   4. Create an admin account, configure S3/RustFS, generate an API key.
+#   5. Enter the generated API key in the main app's Game Plan Settings.
 #
-# No environment variables are required.  All configuration (encryption key,
-# API key, RustFS credentials, hardware acceleration) is managed through the
-# companion web UI and stored in an encrypted config file on the persistent
-# volume.  The encryption key persists across container updates.
+# The ENCRYPTION_KEY env var is required.  All other configuration (admin
+# account, API key, RustFS credentials, hardware acceleration) is managed
+# through the companion web UI and stored in an encrypted config file on
+# the persistent volume.
 #
 # To build locally instead of pulling from GHCR, uncomment "build" and comment "image":
 #   build: .
@@ -23,14 +26,10 @@ services:
     restart: unless-stopped
     ports:
       - "5100:5100"
+    environment:
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}  # Recommended: 64-char hex string for config encryption
     volumes:
-      - companion_config:/config  # Persistent: encryption key + encrypted config
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5100/setup')"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
+      - companion_config:/config  # Persistent: encrypted config file
 
 volumes:
   companion_config:
