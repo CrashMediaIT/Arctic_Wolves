@@ -315,11 +315,13 @@ CREATE TABLE IF NOT EXISTS `drills` (
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     `version` INT DEFAULT 1,
     `parent_drill_id` INT DEFAULT NULL,
+    `share_token` VARCHAR(64) DEFAULT NULL,
     FOREIGN KEY (`category_id`) REFERENCES `drill_categories`(`id`) ON DELETE SET NULL,
     FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`parent_drill_id`) REFERENCES `drills`(`id`) ON DELETE SET NULL,
     INDEX `idx_category` (`category_id`),
-    INDEX `idx_created_by` (`created_by`)
+    INDEX `idx_created_by` (`created_by`),
+    INDEX `idx_share_token` (`share_token`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Practice Plan-Drill association

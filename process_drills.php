@@ -1069,6 +1069,47 @@ if ($action === 'import_json') {
     }
 }
 
+// =========================================================
+// GENERATE/REGENERATE SHARE TOKEN FOR DRILL
+// =========================================================
+if ($action === 'generate_share_token') {
+    requirePermission($pdo, $user_id, $user_role, 'create_drills');
+    
+    $drill_id = intval($_POST['drill_id']);
+    $share_token = bin2hex(random_bytes(32));
+    
+    try {
+        $stmt = $pdo->prepare("UPDATE drills SET share_token = ? WHERE id = ? AND created_by = ?");
+        $stmt->execute([$share_token, $drill_id, $user_id]);
+        Auditor::log($pdo, $user_id, 'update', 'drills', $drill_id, ['action' => 'share_token_generated']);
+        header("Location: dashboard.php?page=view_drill&id=$drill_id&status=token_generated");
+        exit();
+    } catch (PDOException $e) {
+        header("Location: dashboard.php?page=view_drill&id=$drill_id&error=token_failed");
+        exit();
+    }
+}
+
+// =========================================================
+// REMOVE SHARE TOKEN FOR DRILL
+// =========================================================
+if ($action === 'remove_share_token') {
+    requirePermission($pdo, $user_id, $user_role, 'create_drills');
+    
+    $drill_id = intval($_POST['drill_id']);
+    
+    try {
+        $stmt = $pdo->prepare("UPDATE drills SET share_token = NULL WHERE id = ? AND created_by = ?");
+        $stmt->execute([$drill_id, $user_id]);
+        Auditor::log($pdo, $user_id, 'update', 'drills', $drill_id, ['action' => 'share_token_removed']);
+        header("Location: dashboard.php?page=view_drill&id=$drill_id&status=token_removed");
+        exit();
+    } catch (PDOException $e) {
+        header("Location: dashboard.php?page=view_drill&id=$drill_id&error=token_failed");
+        exit();
+    }
+}
+
 // Fallback
 header("Location: dashboard.php?page=drills");
 exit();

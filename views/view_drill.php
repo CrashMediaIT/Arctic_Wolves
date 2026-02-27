@@ -75,7 +75,10 @@ if (!empty($drill['diagram_data'])) {
 // Note: For production, consider using a configured BASE_URL constant
 $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
 $host = htmlspecialchars($_SERVER['SERVER_NAME'] ?? $_SERVER['HTTP_HOST'] ?? 'localhost');
-$shareUrl = $protocol . '://' . $host . '/dashboard.php?page=view_drill&id=' . urlencode($drillId) . '&shared=true';
+$shareUrl = '';
+if (!empty($drill['share_token'])) {
+    $shareUrl = $protocol . '://' . $host . '/drill_share.php?token=' . urlencode($drill['share_token']);
+}
 ?>
 
 <div class="page-header">
@@ -98,9 +101,11 @@ $shareUrl = $protocol . '://' . $host . '/dashboard.php?page=view_drill&id=' . u
         <div class="card-header">
             <h3><i class="fas fa-drafting-compass"></i> Drill Diagram</h3>
             <div class="card-actions">
+                <?php if (!empty($shareUrl)): ?>
                 <button class="btn btn-secondary" onclick="copyShareLink()">
                     <i class="fas fa-share-alt"></i> Share
                 </button>
+                <?php endif; ?>
                 <button class="btn btn-secondary" onclick="exportDiagram()">
                     <i class="fas fa-download"></i> Export Image
                 </button>
@@ -254,13 +259,39 @@ $shareUrl = $protocol . '://' . $host . '/dashboard.php?page=view_drill&id=' . u
             <h3><i class="fas fa-link"></i> Share This Drill</h3>
         </div>
         <div class="card-body">
+            <?php if (!empty($shareUrl)): ?>
             <div class="share-link-wrapper">
                 <input type="text" id="share-url-input" class="form-input" value="<?php echo htmlspecialchars($shareUrl); ?>" readonly>
                 <button class="btn btn-primary" onclick="copyShareLink()">
                     <i class="fas fa-copy"></i> Copy Link
                 </button>
             </div>
-            <p class="share-hint"><i class="fas fa-info-circle"></i> Share this link with your team or other coaches to view this drill.</p>
+            <p class="share-hint"><i class="fas fa-info-circle"></i> Anyone with this link can view this drill without logging in.</p>
+            <?php if (isset($_SESSION['user_id']) && ($drill['created_by'] == $_SESSION['user_id'] || in_array($user_role ?? '', ['admin', 'coach']))): ?>
+            <form method="POST" action="process_drills.php" style="margin-top: 10px;">
+                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
+                <input type="hidden" name="action" value="remove_share_token">
+                <input type="hidden" name="drill_id" value="<?php echo $drillId; ?>">
+                <button type="submit" class="btn btn-secondary" style="font-size: 12px;">
+                    <i class="fas fa-unlink"></i> Remove Share Link
+                </button>
+            </form>
+            <?php endif; ?>
+            <?php else: ?>
+            <?php if (isset($_SESSION['user_id']) && ($drill['created_by'] == $_SESSION['user_id'] || in_array($user_role ?? '', ['admin', 'coach']))): ?>
+            <form method="POST" action="process_drills.php">
+                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
+                <input type="hidden" name="action" value="generate_share_token">
+                <input type="hidden" name="drill_id" value="<?php echo $drillId; ?>">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-share-alt"></i> Generate Share Link
+                </button>
+            </form>
+            <p class="share-hint"><i class="fas fa-info-circle"></i> Generate a public link to share this drill with anyone, no login required.</p>
+            <?php else: ?>
+            <p class="share-hint"><i class="fas fa-info-circle"></i> Only the drill creator or a coach/admin can generate a share link.</p>
+            <?php endif; ?>
+            <?php endif; ?>
         </div>
     </div>
 </div>
