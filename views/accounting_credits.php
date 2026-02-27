@@ -452,13 +452,13 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Handle approve/reject actions
     document.querySelectorAll('[data-action="approve"], [data-action="reject"]').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
+        btn.addEventListener('click', async function(e) {
             e.preventDefault();
             var action = this.getAttribute('data-action');
             var id = this.getAttribute('data-id');
             var confirmMsg = action === 'approve' ? 'Approve this credit/refund?' : 'Reject this credit/refund?';
             
-            if (!confirm(confirmMsg)) return;
+            if (!await showConfirmModal(confirmMsg)) return;
             
             fetch('process_refunds.php', {
                 method: 'POST',

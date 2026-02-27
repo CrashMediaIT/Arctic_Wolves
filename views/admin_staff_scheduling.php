@@ -937,8 +937,8 @@ function submitSchedule(e) {
     });
 }
 
-function deleteSchedule(scheduleId) {
-    if (!confirm('Delete this schedule?')) return;
+async function deleteSchedule(scheduleId) {
+    if (!await showConfirmModal('Delete this schedule?')) return;
     
     fetch('process_time_tracking.php', {
         method: 'POST',

@@ -1075,8 +1075,8 @@ function editJob(jobId) {
 }
 
 // Delete job
-function deleteJob(jobId) {
-    if (!confirm('Are you sure you want to delete this backup job?')) {
+async function deleteJob(jobId) {
+    if (!await showConfirmModal('Are you sure you want to delete this backup job?')) {
         return;
     }
     
@@ -1125,8 +1125,8 @@ function toggleJobStatus(jobId, currentStatus) {
 }
 
 // Run backup now
-function runBackupNow(jobId) {
-    if (!confirm('Run this backup job now?')) {
+async function runBackupNow(jobId) {
+    if (!await showConfirmModal('Run this backup job now?')) {
         return;
     }
     
@@ -1225,8 +1225,8 @@ function downloadBackup(filename) {
 }
 
 // Backup to file (download directly)
-function backupToFile() {
-    if (!confirm('Create a backup and download it to your computer?')) {
+async function backupToFile() {
+    if (!await showConfirmModal('Create a backup and download it to your computer?')) {
         return;
     }
     
@@ -1254,8 +1254,8 @@ function backupToFile() {
 }
 
 // Force backup to RustFS
-function forceRustFSBackup() {
-    if (!confirm('Force an immediate backup to RustFS?')) {
+async function forceRustFSBackup() {
+    if (!await showConfirmModal('Force an immediate backup to RustFS?')) {
         return;
     }
     

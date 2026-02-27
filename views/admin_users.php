@@ -487,12 +487,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Handle toggle-status buttons for users
     document.querySelectorAll('[data-action="toggle-status"]').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
+        btn.addEventListener('click', async function(e) {
             e.preventDefault();
             var userId = this.getAttribute('data-id');
             var isCurrentlyActive = this.classList.contains('danger');
             
-            if (!confirm('Are you sure you want to ' + (isCurrentlyActive ? 'disable' : 'enable') + ' this user?')) return;
+            if (!await showConfirmModal('Are you sure you want to ' + (isCurrentlyActive ? 'disable' : 'enable') + ' this user?')) return;
             
             fetch('process_admin_action.php', {
                 method: 'POST',
@@ -1788,8 +1788,8 @@ document.getElementById('edit-profile-image-form').addEventListener('submit', fu
 });
 
 // Remove profile image (edit modal)
-document.getElementById('edit-remove-profile-image').addEventListener('click', function() {
-    if (!confirm('Are you sure you want to remove the profile image?')) return;
+document.getElementById('edit-remove-profile-image').addEventListener('click', async function() {
+    if (!await showConfirmModal('Are you sure you want to remove the profile image?')) return;
     
     var userId = document.getElementById('edit-user-id').value;
     var formData = new FormData();
@@ -1950,8 +1950,8 @@ function loadParentAssignments(userId) {
 }
 
 // Remove parent assignment
-function removeParentAssignment(managedId, userId) {
-    if (!confirm('Remove this parent assignment?')) return;
+async function removeParentAssignment(managedId, userId) {
+    if (!await showConfirmModal('Remove this parent assignment?')) return;
     
     var formData = new FormData();
     formData.append('action', 'admin_remove_parent');

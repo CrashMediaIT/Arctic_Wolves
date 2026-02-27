@@ -479,7 +479,7 @@ function submitCreateLabel(e) {
         headers: { 'X-Requested-With': 'XMLHttpRequest' }
     })
     .then(response => response.json())
-    .then(data => {
+    .then(async data => {
         submitBtn.innerHTML = originalText;
         submitBtn.disabled = false;
         
@@ -489,7 +489,7 @@ function submitCreateLabel(e) {
             
             // If label URL is returned, offer to print
             if (data.label_url) {
-                if (confirm('Would you like to print the shipping label now?')) {
+                if (await showConfirmModal('Would you like to print the shipping label now?')) {
                     window.open(data.label_url, '_blank');
                 }
             }

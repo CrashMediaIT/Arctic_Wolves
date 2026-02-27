@@ -740,7 +740,7 @@ document.getElementById('refundForm').addEventListener('submit', async function(
         confirmMsg = 'Are you sure you want to exchange this booking for a different session?';
     }
     
-    if (!confirm(confirmMsg)) {
+    if (!await showConfirmModal(confirmMsg)) {
         return;
     }
     

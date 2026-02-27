@@ -715,11 +715,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Handle Delete Practice Plan button
     document.querySelectorAll('[data-action="delete-plan"]').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
+        btn.addEventListener('click', async function(e) {
             e.preventDefault();
             var planId = this.getAttribute('data-plan-id');
             
-            if (confirm('Are you sure you want to delete this practice plan? This action cannot be undone.')) {
+            if (await showConfirmModal('Are you sure you want to delete this practice plan? This action cannot be undone.')) {
                 var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '<?= htmlspecialchars($_SESSION["csrf_token"] ?? "", ENT_QUOTES) ?>';
                 
                 fetch('process_practice_plans.php', {

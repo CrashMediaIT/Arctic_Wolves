@@ -1192,14 +1192,14 @@ function downloadInvoice(invoiceId) {
     window.location.href = 'process_admin_action.php?action=download_invoice&invoice_id=' + invoiceId;
 }
 
-function emailInvoice(invoiceId) {
+async function emailInvoice(invoiceId) {
     const csrfToken = document.querySelector('[name="csrf_token"]')?.value;
     if (!csrfToken) {
         alert('Security error: Please refresh the page.');
         return;
     }
     
-    if (confirm('Send invoice email to the client?')) {
+    if (await showConfirmModal('Send invoice email to the client?')) {
         fetch('process_admin_action.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -1213,14 +1213,14 @@ function emailInvoice(invoiceId) {
     }
 }
 
-function sendStripePaymentLink(invoiceId, email, amount) {
+async function sendStripePaymentLink(invoiceId, email, amount) {
     const csrfToken = document.querySelector('[name="csrf_token"]')?.value;
     if (!csrfToken) {
         alert('Security error: Please refresh the page.');
         return;
     }
     
-    if (confirm('Send Stripe payment link to ' + email + ' for $' + amount.toFixed(2) + '?')) {
+    if (await showConfirmModal('Send Stripe payment link to ' + email + ' for $' + amount.toFixed(2) + '?')) {
         fetch('process_admin_action.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

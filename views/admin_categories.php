@@ -1963,13 +1963,13 @@ try {
     
     // Handle delete buttons
     document.querySelectorAll('[data-action="delete"]').forEach(button => {
-        button.addEventListener('click', function(e) {
+        button.addEventListener('click', async function(e) {
             e.stopImmediatePropagation();
             const id = this.getAttribute('data-id');
             const type = this.getAttribute('data-type');
             const name = this.getAttribute('data-name');
             
-            if (confirm('Are you sure you want to delete "' + name + '"? This action cannot be undone.')) {
+            if (await showConfirmModal('Are you sure you want to delete "' + name + '"? This action cannot be undone.')) {
                 const csrfInput = document.querySelector('input[name="csrf_token"]');
                 const csrfToken = csrfInput ? csrfInput.value : '';
                 
@@ -2044,11 +2044,11 @@ try {
     
     // Handle delete skill level buttons
     document.querySelectorAll('[data-action="delete-skill-level"]').forEach(button => {
-        button.addEventListener('click', function() {
+        button.addEventListener('click', async function() {
             const id = this.getAttribute('data-id');
             const name = this.getAttribute('data-name');
             
-            if (confirm('Are you sure you want to delete skill level "' + name + '"? Sessions using it will have the field set to NULL.')) {
+            if (await showConfirmModal('Are you sure you want to delete skill level "' + name + '"? Sessions using it will have the field set to NULL.')) {
                 document.getElementById('delete-skill-level-id').value = id;
                 document.getElementById('delete-skill-level-form').submit();
             }

@@ -312,8 +312,8 @@ function closeModal() {
     document.getElementById('typeModal').classList.remove('active');
 }
 
-function deleteType(id) {
-    if (!confirm('Are you sure you want to delete this session type?')) return;
+async function deleteType(id) {
+    if (!await showConfirmModal('Are you sure you want to delete this session type?')) return;
     
     fetch('process_admin_action.php', {
         method: 'POST',

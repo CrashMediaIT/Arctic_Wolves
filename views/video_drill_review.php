@@ -1458,10 +1458,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Delete video buttons
     document.querySelectorAll('[data-action="delete-video"]').forEach(btn => {
-        btn.addEventListener('click', function() {
+        btn.addEventListener('click', async function() {
             const videoId = this.dataset.videoId;
             const videoTitle = this.dataset.videoTitle || 'this video';
-            if (!confirm('Are you sure you want to delete "' + videoTitle + '"? This cannot be undone.')) {
+            if (!await showConfirmModal('Are you sure you want to delete "' + videoTitle + '"? This cannot be undone.')) {
                 return;
             }
             const card = this.closest('.video-card');

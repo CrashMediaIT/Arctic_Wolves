@@ -438,14 +438,14 @@ function getCategoryCount($pdo, $table, $column, $category_id) {
             return str.charAt(0).toUpperCase() + str.slice(1);
         }
 
-        function deleteCategory(type, id, name, count) {
+        async function deleteCategory(type, id, name, count) {
             let message = 'Are you sure you want to delete the category "' + name + '"?';
             if (count > 0) {
                 message += '\n\nWarning: This category is used by ' + count + ' plan(s). ';
                 message += 'Deleting it will set those plans\' categories to NULL.';
             }
 
-            if (!confirm(message)) return;
+            if (!await showConfirmModal(message)) return;
             
             fetch('../process_plan_categories.php', {
                 method: 'POST',

@@ -523,8 +523,8 @@ function renderStats(stats) {
 }
 
 // Delete speed measurement
-function deleteSpeed(speedId) {
-    if (!confirm('Delete this measurement?')) return;
+async function deleteSpeed(speedId) {
+    if (!await showConfirmModal('Delete this measurement?')) return;
     
     const formData = new FormData();
     formData.append('action', 'delete_speed');

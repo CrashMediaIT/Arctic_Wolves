@@ -865,8 +865,8 @@ function clearFormInputs() {
     });
 }
 
-function clearForm() {
-    if (confirm('Are you sure you want to clear all ratings and notes for this athlete?')) {
+async function clearForm() {
+    if (await showConfirmModal('Are you sure you want to clear all ratings and notes for this athlete?')) {
         clearFormInputs();
         // Also clear from cache
         const athleteId = document.getElementById('current-athlete-id').value;

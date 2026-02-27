@@ -3244,8 +3244,8 @@ function toggleCenterIceLogoInput() {
     if (urlRow) urlRow.style.display = method.value === 'url' ? '' : 'none';
 }
 
-function removeCenterIceLogo() {
-    if (!confirm('Are you sure you want to remove the center ice logo?')) return;
+async function removeCenterIceLogo() {
+    if (!await showConfirmModal('Are you sure you want to remove the center ice logo?')) return;
     
     const formData = new FormData();
     formData.append('action', 'remove_center_ice_logo');
@@ -3284,8 +3284,8 @@ function previewBcBackground(input, previewId) {
     }
 }
 
-function resetThemeColors() {
-    if (!confirm('Reset all theme colors to default values?')) return;
+async function resetThemeColors() {
+    if (!await showConfirmModal('Reset all theme colors to default values?')) return;
     
     const defaults = {
         'theme_primary_color': '#6B46C1',
@@ -3373,8 +3373,8 @@ function runDatabaseBackup(btn) {
     });
 }
 
-function runDatabaseOptimize(btn) {
-    if (!confirm('This will check, repair and optimize all database tables. Continue?')) return;
+async function runDatabaseOptimize(btn) {
+    if (!await showConfirmModal('This will check, repair and optimize all database tables. Continue?')) return;
     
     const originalText = btn.innerHTML;
     btn.disabled = true;
@@ -3412,8 +3412,8 @@ function runDatabaseOptimize(btn) {
     });
 }
 
-function runClearCache(btn) {
-    if (!confirm('Clear all cached data and temporary files?')) return;
+async function runClearCache(btn) {
+    if (!await showConfirmModal('Clear all cached data and temporary files?')) return;
     
     const originalText = btn.innerHTML;
     btn.disabled = true;
@@ -3580,7 +3580,7 @@ async function githubCheckForUpdates() {
 }
 
 async function githubApplyUpdate() {
-    if (!confirm('Apply the latest update from GitHub?\n\nThis will update system files. Your configuration, uploads, and encryption keys are preserved automatically.\n\nThe page will reload when complete.')) {
+    if (!await showConfirmModal('Apply the latest update from GitHub?\n\nThis will update system files. Your configuration, uploads, and encryption keys are preserved automatically.\n\nThe page will reload when complete.')) {
         return;
     }
     
@@ -3789,8 +3789,8 @@ function checkStripeUpdates() {
     });
 }
 
-function updateStripeLibrary() {
-    if (!confirm('Update the Stripe PHP library?\n\nThis will download the latest version from GitHub.\n\nMake sure you have a backup before proceeding.')) return;
+async function updateStripeLibrary() {
+    if (!await showConfirmModal('Update the Stripe PHP library?\n\nThis will download the latest version from GitHub.\n\nMake sure you have a backup before proceeding.')) return;
     
     const btn = event.target.closest('button');
     const originalText = btn.innerHTML;
@@ -5048,7 +5048,7 @@ function validateEncryptionKey() {
     return true;
 }
 
-function validateEncryptionKeyUpdate() {
+async function validateEncryptionKeyUpdate() {
     // Validate the current key field
     const currentKeyInput = document.getElementById('current-encryption-key-input');
     if (currentKeyInput) {
@@ -5067,11 +5067,11 @@ function validateEncryptionKeyUpdate() {
     }
     
     // Multiple verification prompts
-    if (!confirm('WARNING: You are about to change the encryption key.\n\nChanging the encryption key will make ALL previously encrypted data unreadable unless you decrypt it first with the current key.\n\nAre you sure you want to proceed?')) {
+    if (!await showConfirmModal('WARNING: You are about to change the encryption key.\n\nChanging the encryption key will make ALL previously encrypted data unreadable unless you decrypt it first with the current key.\n\nAre you sure you want to proceed?')) {
         return false;
     }
     
-    if (!confirm('FINAL CONFIRMATION: This action cannot be undone.\n\nPlease confirm that you have:\n1. Backed up your current encryption key\n2. Backed up your database\n3. Understand that existing encrypted data will become unreadable\n\nDo you want to continue with the key change?')) {
+    if (!await showConfirmModal('FINAL CONFIRMATION: This action cannot be undone.\n\nPlease confirm that you have:\n1. Backed up your current encryption key\n2. Backed up your database\n3. Understand that existing encrypted data will become unreadable\n\nDo you want to continue with the key change?')) {
         return false;
     }
     
@@ -5182,8 +5182,8 @@ function saveNdiCamera() {
     });
 }
 
-function deleteNdiCamera(cameraId, cameraName) {
-    if (!confirm('Are you sure you want to delete the camera "' + cameraName + '"? This action cannot be undone.')) {
+async function deleteNdiCamera(cameraId, cameraName) {
+    if (!await showConfirmModal('Are you sure you want to delete the camera "' + cameraName + '"? This action cannot be undone.')) {
         return;
     }
 
@@ -5415,9 +5415,9 @@ function testNode(node) {
     });
 }
 
-function removeNode(node) {
+async function removeNode(node) {
     var safeNode = node.replace(/['"\\]/g, '\\$&');
-    if (!confirm('Remove node ' + safeNode + ' from the cluster configuration?')) return;
+    if (!await showConfirmModal('Remove node ' + safeNode + ' from the cluster configuration?')) return;
     var result = document.getElementById('add-node-result');
     clusterPost('remove_cluster_node', { node: node })
     .then(data => {

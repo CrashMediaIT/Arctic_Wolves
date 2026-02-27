@@ -320,8 +320,8 @@ function addDirectoryEntry() {
     .catch(() => showNotification('Error adding directory entry', 'error'));
 }
 
-function deleteDirectoryEntry(id, name) {
-    if (!confirm('Remove "' + name + '" from the directory?')) return;
+async function deleteDirectoryEntry(id, name) {
+    if (!await showConfirmModal('Remove "' + name + '" from the directory?')) return;
     const csrfToken = document.querySelector('#add-directory-entry-form [name="csrf_token"]').value;
 
     fetch('process_profile_update.php', {

@@ -569,8 +569,8 @@ function editCategory(category) {
     openModal('edit-category-modal');
 }
 
-function toggleCategoryStatus(id, currentStatus) {
-    if (!confirm('Are you sure you want to ' + (currentStatus ? 'deactivate' : 'activate') + ' this category?')) {
+async function toggleCategoryStatus(id, currentStatus) {
+    if (!await showConfirmModal('Are you sure you want to ' + (currentStatus ? 'deactivate' : 'activate') + ' this category?')) {
         return;
     }
     
@@ -599,13 +599,13 @@ function toggleCategoryStatus(id, currentStatus) {
     });
 }
 
-function deleteCategory(category) {
+async function deleteCategory(category) {
     if (category.product_count > 0) {
         alert('Cannot delete category "' + category.name + '" because it has ' + category.product_count + ' products. Please move or delete the products first.');
         return;
     }
     
-    if (!confirm('Are you sure you want to delete "' + category.name + '"? This action cannot be undone.')) {
+    if (!await showConfirmModal('Are you sure you want to delete "' + category.name + '"? This action cannot be undone.')) {
         return;
     }
     

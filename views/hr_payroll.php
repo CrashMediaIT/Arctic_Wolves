@@ -768,8 +768,8 @@ $provinces = [
         });
     }
 
-    function applyHoursToPayroll() {
-        if (!confirm('Apply these hours to the current payroll run? This will update the hours worked for hourly employees.')) {
+    async function applyHoursToPayroll() {
+        if (!await showConfirmModal('Apply these hours to the current payroll run? This will update the hours worked for hourly employees.')) {
             return;
         }
         
@@ -1133,8 +1133,8 @@ function closeEditPayrollModal() {
 
 // Remove from payroll confirmation
 document.querySelectorAll('.remove-payroll').forEach(btn => {
-    btn.addEventListener('click', function() {
-        if (confirm('Are you sure you want to remove this employee from payroll?')) {
+    btn.addEventListener('click', async function() {
+        if (await showConfirmModal('Are you sure you want to remove this employee from payroll?')) {
             const form = document.createElement('form');
             form.method = 'POST';
             form.action = 'process_payroll.php';

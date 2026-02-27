@@ -489,6 +489,10 @@
     </footer>
 
     <script>
+        function showConfirmModal(message) {
+            return new Promise(resolve => resolve(window.confirm(message)));
+        }
+
         const API_BASE = window.location.origin;
 
         function getApiKey() {
@@ -591,7 +595,7 @@
 
         /* --- Cancel a job --- */
         async function cancelJob(jobId) {
-            if (!confirm('Cancel this job?')) return;
+            if (!await showConfirmModal('Cancel this job?')) return;
             try {
                 const res = await fetch(API_BASE + '/api/job/' + jobId, { method: 'DELETE', headers: apiHeaders() });
                 if (!res.ok) { alert('Failed to cancel job'); }
@@ -683,7 +687,7 @@
 
         /* --- Generate API Key --- */
         async function generateApiKey() {
-            if (!confirm('Generate a new API key? This will replace the current key.')) return;
+            if (!await showConfirmModal('Generate a new API key? This will replace the current key.')) return;
             try {
                 const res = await fetch(API_BASE + '/api/generate-key', {
                     method: 'POST', headers: apiHeaders()
@@ -785,7 +789,7 @@
         }
 
         async function removeNode(nodeId) {
-            if (!confirm('Remove this slave node?')) return;
+            if (!await showConfirmModal('Remove this slave node?')) return;
             try {
                 var res = await fetch(API_BASE + '/api/nodes/' + nodeId, {
                     method: 'DELETE', headers: apiHeaders()

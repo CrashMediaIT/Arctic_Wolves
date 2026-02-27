@@ -875,7 +875,7 @@ function calculatePayrollHours(e) {
     });
 }
 
-function syncToPayroll() {
+async function syncToPayroll() {
     const startDate = document.getElementById('payroll-start').value;
     const endDate = document.getElementById('payroll-end').value;
     const staffId = document.getElementById('payroll-staff').value;
@@ -885,7 +885,7 @@ function syncToPayroll() {
         return;
     }
     
-    if (!confirm('This will update the payroll system with time tracking data for the selected period. Continue?')) {
+    if (!await showConfirmModal('This will update the payroll system with time tracking data for the selected period. Continue?')) {
         return;
     }
     

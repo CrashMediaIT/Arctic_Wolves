@@ -1186,8 +1186,8 @@ function populateFromOnboarding(select) {
 }
 
 // Send contract for signature
-function sendForSignature(contractId) {
-    if (!confirm('Send this contract for e-signature? An email will be sent to the employee with a signing link.')) {
+async function sendForSignature(contractId) {
+    if (!await showConfirmModal('Send this contract for e-signature? An email will be sent to the employee with a signing link.')) {
         return;
     }
     
@@ -1215,8 +1215,8 @@ function sendForSignature(contractId) {
 }
 
 // Resend contract email
-function resendContract(contractId) {
-    if (!confirm('Resend the e-signature request email?')) {
+async function resendContract(contractId) {
+    if (!await showConfirmModal('Resend the e-signature request email?')) {
         return;
     }
     
@@ -1243,8 +1243,8 @@ function resendContract(contractId) {
 }
 
 // Cancel contract
-function cancelContract(contractId) {
-    if (!confirm('Cancel this contract? This action cannot be undone.')) {
+async function cancelContract(contractId) {
+    if (!await showConfirmModal('Cancel this contract? This action cannot be undone.')) {
         return;
     }
     
@@ -1622,8 +1622,8 @@ function cloneTemplate(templateId, templateName) {
 }
 
 // Delete template
-function deleteTemplate(templateId, templateName) {
-    if (!confirm(`Are you sure you want to delete the template "${templateName}"? This action cannot be undone.`)) {
+async function deleteTemplate(templateId, templateName) {
+    if (!await showConfirmModal(`Are you sure you want to delete the template "${templateName}"? This action cannot be undone.`)) {
         return;
     }
     
