@@ -28,6 +28,7 @@ import boto3
 import requests as http_requests
 from botocore.config import Config as BotoConfig
 from flask import Flask, request, jsonify, render_template, session
+from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 
 # Optional: cryptography for AES-256-CBC (fallback to a pure-Python impl)
@@ -52,9 +53,9 @@ logger = logging.getLogger("companion")
 # Docker volume so they survive container updates.  The encryption matches the
 # main application's PII FieldEncryption scheme.
 #
-# The encryption key itself is stored at /config/encryption.key on the
-# persistent volume.  On first start the companion shows a setup page where
-# you generate or enter the key.  After a container update the key persists.
+# The encryption key is read from the ENCRYPTION_KEY environment variable.
+# If not set, it falls back to /config/encryption.key on the persistent volume.
+# On first start the companion shows a setup page to create an admin account.
 
 CONFIG_DIR = os.getenv("CONFIG_DIR", "/config")
 CONFIG_FILE = os.path.join(CONFIG_DIR, "companion_config.enc")
@@ -85,8 +86,10 @@ def _write_key_file(hex_key: str) -> bool:
 
 
 def _get_cipher_key() -> bytes | None:
-    """Return the raw 32-byte key from the key file, or None."""
-    hex_key = _read_key_file()
+    """Return the raw 32-byte key — from ENCRYPTION_KEY env var or key file."""
+    hex_key = os.getenv("ENCRYPTION_KEY", "").strip()
+    if not hex_key:
+        hex_key = _read_key_file()
     if not hex_key or len(hex_key) < 64:
         return None
     try:
@@ -174,10 +177,9 @@ def _save_persistent_config(cfg: dict) -> bool:
 
 
 # Load all settings from the encrypted persistent config file.
-# No environment variables are used.  The encryption key is stored
-# at /config/encryption.key (entered via the setup page on first start).
-# Everything else is entered through the companion web UI (Settings tab)
-# and persisted in the encrypted config file on the Docker volume.
+# The encryption key comes from the ENCRYPTION_KEY env var (preferred)
+# or /config/encryption.key (fallback).  Everything else is entered
+# through the companion web UI and persisted in the encrypted config file.
 _persisted = _load_persistent_config()
 
 def _pcfg(key: str, default: str = "") -> str:
@@ -217,6 +219,11 @@ def _load_slave_nodes() -> list:
     return []
 
 SLAVE_NODES: list = _load_slave_nodes()
+
+# Admin account — created during setup, used for dashboard login.
+# Stored in the encrypted config; propagated from master to slaves.
+ADMIN_USERNAME = _pcfg("admin_username")
+ADMIN_PASSWORD_HASH = _pcfg("admin_password_hash")
 
 # Internal constants (not user-configurable)
 FFMPEG_PATH = "ffmpeg"
@@ -312,10 +319,10 @@ def _s3_list_objects(s3, prefix: str) -> list:
 # ---------------------------------------------------------------------------
 
 def _require_api_key():
-    """Validate X-API-Key header. Returns error response or None."""
+    """Validate X-API-Key header **or** logged-in session. Returns error response or None."""
     if not API_KEY:
         return None  # no key configured – skip auth (dev mode)
-    if session.get("companion_ui"):
+    if session.get("logged_in"):
         return None  # browser dashboard session – skip API key check
     key = request.headers.get("X-API-Key", "")
     if key != API_KEY:
@@ -596,6 +603,57 @@ def _create_job(cmd: list[str], description: str, output_path: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Login Page
+# ---------------------------------------------------------------------------
+
+LOGIN_TEMPLATE = """<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Companion — Login</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',system-ui,sans-serif}
+body{background:#0A0A0F;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh}
+.card{background:#16161F;border:1px solid #2D2D3F;border-radius:16px;padding:40px;max-width:400px;width:100%}
+h1{font-size:1.8rem;font-weight:900;margin-bottom:8px}
+h1 span{color:#6B46C1}
+p{color:#A8A8B8;font-size:14px;line-height:1.6;margin-bottom:24px}
+label{display:block;font-size:13px;font-weight:700;margin-bottom:6px;color:#A8A8B8}
+input{width:100%;padding:10px 14px;border:1px solid #2D2D3F;border-radius:8px;background:#0A0A0F;color:#fff;font-size:14px;margin-bottom:16px}
+.btn{width:100%;padding:12px 20px;border:none;border-radius:8px;cursor:pointer;font-weight:800;font-size:13px;text-transform:uppercase;background:#6B46C1;color:#fff}
+.btn:hover{background:#7C3AED}
+.error{color:#EF4444;font-size:13px;margin-bottom:12px;display:none}
+</style></head><body>
+<div class="card">
+<h1>Video <span>Companion</span></h1>
+<p>Sign in to the companion dashboard.</p>
+<form id="login-form" onsubmit="return doLogin(event)">
+<label for="username">Username</label>
+<input id="username" type="text" placeholder="Username" autocomplete="username" required>
+<label for="password">Password</label>
+<input id="password" type="password" placeholder="Password" autocomplete="current-password" required>
+<div class="error" id="err"></div>
+<button type="submit" class="btn">Sign In</button>
+</form>
+</div>
+<script>
+async function doLogin(e){
+ e.preventDefault();
+ var err=document.getElementById('err');err.style.display='none';
+ var u=document.getElementById('username').value.trim();
+ var p=document.getElementById('password').value;
+ if(!u||!p){err.textContent='Please enter username and password.';err.style.display='block';return false;}
+ try{
+  var r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
+  var d=await r.json();
+  if(r.ok&&d.success){window.location.href='/';}
+  else{err.textContent=d.error||'Login failed.';err.style.display='block';}
+ }catch{err.textContent='Network error.';err.style.display='block';}
+ return false;
+}
+</script></body></html>"""
+
+
+# ---------------------------------------------------------------------------
 # First-Run Setup — generate or enter the encryption key
 # ---------------------------------------------------------------------------
 
@@ -661,22 +719,26 @@ select{cursor:pointer;appearance:none}
 </div>
 </div>
 
-<!-- Step 2 (Master): Encryption Key -->
-<div class="step" id="step-master-key">
+<!-- Step 2 (Master): Create Account -->
+<div class="step" id="step-master-account">
 <div class="step-indicator"><span class="step-dot done"></span><span class="step-dot active"></span><span class="step-dot"></span><span class="step-dot"></span></div>
-<p><strong>Master Setup — Step 1:</strong> Enter or generate an AES-256 encryption key.<br>
-This key encrypts the config file on the persistent volume. If you have an existing key,
-entering it will load your saved settings.</p>
+<p><strong>Master Setup — Step 1:</strong> Create an admin account for the companion dashboard.
+This account will also be synced to any slave nodes you connect later.</p>
 <div class="form-group">
-<label for="ek">Encryption Key (64-char hex)</label>
-<input id="ek" type="text" placeholder="Paste existing key or click Generate" autocomplete="off">
-<div class="hint">Generate with: <code>python -c "import os; print(os.urandom(32).hex())"</code></div>
+<label for="admin-user">Username</label>
+<input id="admin-user" type="text" placeholder="Enter a username" autocomplete="off">
 </div>
-<div class="error" id="err-key"></div>
-<div id="key-loaded-msg" class="success"></div>
+<div class="form-group">
+<label for="admin-pass">Password</label>
+<input id="admin-pass" type="password" placeholder="Enter a password" autocomplete="new-password">
+</div>
+<div class="form-group">
+<label for="admin-pass2">Confirm Password</label>
+<input id="admin-pass2" type="password" placeholder="Confirm password" autocomplete="new-password">
+</div>
+<div class="error" id="err-account"></div>
 <div class="actions">
-<button type="button" class="btn btn-primary" onclick="saveMasterKey()">Save Key &amp; Continue</button>
-<button type="button" class="btn btn-secondary" onclick="genKey()">Generate Key</button>
+<button type="button" class="btn btn-primary" onclick="saveAccount()">Create Account &amp; Continue</button>
 </div>
 </div>
 
@@ -766,32 +828,28 @@ function nextFromRole(){
  err.style.display='none';
  document.getElementById('step-role').className='step';
  if(selectedRole==='master'){
-  document.getElementById('step-master-key').className='step active';
+  document.getElementById('step-master-account').className='step active';
  } else {
   saveSlaveSetup();
  }
 }
-function genKey(){
- var a=new Uint8Array(32);crypto.getRandomValues(a);
- document.getElementById('ek').value=Array.from(a,function(b){return b.toString(16).padStart(2,'0')}).join('');
-}
-async function saveMasterKey(){
- var err=document.getElementById('err-key');err.style.display='none';
- var msg=document.getElementById('key-loaded-msg');msg.style.display='none';
- var key=document.getElementById('ek').value.trim();
- if(!/^[0-9a-fA-F]{64}$/.test(key)){err.textContent='Key must be exactly 64 hex characters.';err.style.display='block';return;}
- var r=await fetch('/api/setup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:key,node_role:'master'})});
+async function saveAccount(){
+ var err=document.getElementById('err-account');err.style.display='none';
+ var u=document.getElementById('admin-user').value.trim();
+ var p=document.getElementById('admin-pass').value;
+ var p2=document.getElementById('admin-pass2').value;
+ if(!u||u.length<3){err.textContent='Username must be at least 3 characters.';err.style.display='block';return;}
+ if(!p||p.length<6){err.textContent='Password must be at least 6 characters.';err.style.display='block';return;}
+ if(p!==p2){err.textContent='Passwords do not match.';err.style.display='block';return;}
+ var r=await fetch('/api/setup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({node_role:'master',admin_username:u,admin_password:p})});
  var d=await r.json();
  if(!d.success){err.textContent=d.error||'Setup failed.';err.style.display='block';return;}
- if(d.config_loaded){
-  msg.textContent='Existing settings loaded from persistent config.';msg.style.display='block';
-  if(d.s3_configured){
-   document.getElementById('setup-s3-endpoint').value=d.config.s3_endpoint||'';
-   document.getElementById('setup-s3-bucket').value=d.config.s3_bucket||'';
-   document.getElementById('setup-s3-region').value=d.config.s3_region||'us-east-1';
-  }
+ if(d.config_loaded&&d.s3_configured){
+  document.getElementById('setup-s3-endpoint').value=d.config.s3_endpoint||'';
+  document.getElementById('setup-s3-bucket').value=d.config.s3_bucket||'';
+  document.getElementById('setup-s3-region').value=d.config.s3_region||'us-east-1';
  }
- document.getElementById('step-master-key').className='step';
+ document.getElementById('step-master-account').className='step';
  document.getElementById('step-master-rustfs').className='step active';
 }
 async function saveMasterRustFS(){
@@ -849,7 +907,7 @@ async function slaveGenerateApiKey(){
   document.getElementById('finish-slave-btn').style.display='';
  } else {err.textContent=d.error||'Failed to generate key.';err.style.display='block';}
 }
-function finishSetup(){window.location.href='/';}
+function finishSetup(){window.location.href='/login';}
 </script></body></html>"""
 
 
@@ -857,24 +915,21 @@ function finishSetup(){window.location.href='/';}
 def setup_page():
     """Show the setup page.  Accessible even after initial setup so users
     can re-run the wizard after a companion update."""
-    session["companion_ui"] = True
     return SETUP_TEMPLATE, 200, {"Content-Type": "text/html"}
 
 
 @app.route("/api/setup", methods=["POST"])
 def setup_save():
-    """Save the encryption key and node role from the setup wizard.
+    """Save the node role and admin account from the setup wizard.
 
-    Master setup: requires a 64-char hex encryption key.  If the key matches
-    an existing encrypted config file the saved settings are loaded and
-    returned so the wizard can pre-populate the RustFS fields.
+    Master setup: requires admin_username and admin_password.  If an existing
+    encrypted config file can be read (using the ENCRYPTION_KEY env var) the
+    saved settings are loaded and returned so the wizard can pre-populate
+    the RustFS fields.
 
-    Slave setup: auto-generates an encryption key (slaves get their real
-    settings synced from the master later).  Only needs API key generation.
+    Slave setup: auto-generates an encryption key file if ENCRYPTION_KEY env
+    var is not set.  The admin account will be synced from the master later.
     """
-    # Allow re-running setup (e.g. after a companion update)
-    already_configured = _get_cipher_key() is not None
-
     data = request.get_json(silent=True) or {}
     node_role = str(data.get("node_role", "master")).lower()
     if node_role not in ("master", "slave"):
@@ -883,49 +938,48 @@ def setup_save():
     global _persisted, API_KEY, MAIN_APP_URL, HW_ACCEL, MAX_CONCURRENT_JOBS
     global S3_ENDPOINT, S3_ACCESS_KEY, S3_SECRET_KEY, S3_BUCKET, S3_REGION
     global S3_USE_SSL, S3_VERIFY_SSL, NODE_ROLE, SLAVE_NODES
+    global ADMIN_USERNAME, ADMIN_PASSWORD_HASH
 
-    if node_role == "slave":
-        # Slave nodes auto-generate their encryption key
-        hex_key = secrets.token_hex(32)
+    # Ensure we have an encryption key (from env or generate one)
+    if _get_cipher_key() is None:
+        hex_key = os.getenv("ENCRYPTION_KEY", "").strip()
+        if not hex_key:
+            hex_key = secrets.token_hex(32)
         if not _write_key_file(hex_key):
             return jsonify({"success": False, "error": "Failed to write key file. Check volume permissions."}), 500
 
-        # Save minimal config with slave role
+    if node_role == "slave":
+        # Slave nodes — minimal config; account synced from master later
         _persisted = _load_persistent_config()
         NODE_ROLE = "slave"
         cfg = _persisted.copy() if _persisted else {}
         cfg["node_role"] = "slave"
         _save_persistent_config(cfg)
         SLAVE_NODES = _load_slave_nodes()
-        logger.info("Slave setup complete — encryption key auto-generated")
+        logger.info("Slave setup complete")
         return jsonify({"success": True, "node_role": "slave"})
 
-    # Master setup — requires explicit encryption key
-    hex_key = str(data.get("key", "")).strip()
+    # Master setup — requires admin account
+    username = str(data.get("admin_username", "")).strip()
+    password = str(data.get("admin_password", ""))
 
-    if not hex_key or len(hex_key) != 64:
-        return jsonify({"success": False, "error": "Key must be exactly 64 hex characters."}), 400
+    if not username or len(username) < 3:
+        return jsonify({"success": False, "error": "Username must be at least 3 characters."}), 400
+    if not password or len(password) < 6:
+        return jsonify({"success": False, "error": "Password must be at least 6 characters."}), 400
 
-    try:
-        bytes.fromhex(hex_key)
-    except ValueError:
-        return jsonify({"success": False, "error": "Key must be valid hexadecimal."}), 400
-
-    if not _write_key_file(hex_key):
-        return jsonify({"success": False, "error": "Failed to write key file. Check volume permissions."}), 500
-
-    # Reload the persisted config now that we have a key
+    # Load existing config if available
     _persisted = _load_persistent_config()
     SLAVE_NODES = _load_slave_nodes()
 
-    # Check if existing config was loaded
     config_loaded = bool(_persisted)
     s3_configured = bool(_persisted.get("s3_endpoint"))
 
-    # Always set master role
     NODE_ROLE = "master"
+    ADMIN_USERNAME = username
+    ADMIN_PASSWORD_HASH = generate_password_hash(password)
+
     if _persisted:
-        # Reload runtime globals from loaded config
         API_KEY = _persisted.get("api_key", API_KEY)
         MAIN_APP_URL = _persisted.get("main_app_url", MAIN_APP_URL)
         HW_ACCEL = _persisted.get("hw_accel", HW_ACCEL)
@@ -941,10 +995,15 @@ def setup_save():
         S3_USE_SSL = str(_persisted.get("s3_use_ssl", S3_USE_SSL)).lower() in ("true", "1", "yes")
         S3_VERIFY_SSL = str(_persisted.get("s3_verify_ssl", S3_VERIFY_SSL)).lower() in ("true", "1", "yes")
 
-    # Persist the master role into config
+    # Persist config with account and master role
     cfg = _persisted.copy() if _persisted else {}
     cfg["node_role"] = "master"
+    cfg["admin_username"] = ADMIN_USERNAME
+    cfg["admin_password_hash"] = ADMIN_PASSWORD_HASH
     _save_persistent_config(cfg)
+
+    # Set session so subsequent setup steps (S3, API key) work without login
+    session["logged_in"] = True
 
     response = {
         "success": True,
@@ -961,7 +1020,7 @@ def setup_save():
             "hw_accel": HW_ACCEL or "auto",
         }
 
-    logger.info("Master setup complete — encryption key saved (config_loaded=%s)", config_loaded)
+    logger.info("Master setup complete — admin account created (config_loaded=%s)", config_loaded)
     return jsonify(response)
 
 
@@ -969,21 +1028,67 @@ def setup_save():
 from flask import redirect as flask_redirect
 
 
+@app.route("/login")
+def login_page():
+    """Show the login page."""
+    # If already logged in, go to dashboard
+    if session.get("logged_in"):
+        return flask_redirect("/")
+    # If no admin account exists, go to setup
+    if not ADMIN_USERNAME:
+        return flask_redirect("/setup")
+    return LOGIN_TEMPLATE, 200, {"Content-Type": "text/html"}
+
+
+@app.route("/api/login", methods=["POST"])
+def api_login():
+    """Authenticate and create a session."""
+    data = request.get_json(silent=True) or {}
+    username = str(data.get("username", "")).strip()
+    password = str(data.get("password", ""))
+
+    if not ADMIN_USERNAME or not ADMIN_PASSWORD_HASH:
+        return jsonify({"success": False, "error": "No account configured. Run setup first."}), 400
+
+    if not secrets.compare_digest(username, ADMIN_USERNAME) or not check_password_hash(ADMIN_PASSWORD_HASH, password):
+        return jsonify({"success": False, "error": "Invalid username or password."}), 401
+
+    session["logged_in"] = True
+    return jsonify({"success": True})
+
+
+@app.route("/logout")
+def logout():
+    """Clear the session and redirect to login."""
+    session.clear()
+    return flask_redirect("/login")
+
+
 @app.before_request
-def _require_setup():
-    """If no encryption key exists, redirect everything to the setup page."""
-    if _get_cipher_key() is not None:
-        return None  # key exists, proceed normally
-    # Allow setup endpoints through
-    if request.path in ("/setup", "/api/setup"):
+def _before_request():
+    """Handle setup redirect and login enforcement."""
+    allowed = ("/setup", "/api/setup", "/login", "/api/login", "/logout")
+    if request.path in allowed or request.path.startswith("/static"):
         return None
-    # Allow static assets (favicon etc.)
-    if request.path.startswith("/static"):
-        return None
-    # Redirect browser requests to setup; return 503 for API calls
-    if request.path.startswith("/api/"):
-        return jsonify({"error": "Setup required", "setup_url": "/setup"}), 503
-    return flask_redirect("/setup")
+
+    # No encryption key → need setup
+    if _get_cipher_key() is None:
+        if request.path.startswith("/api/"):
+            return jsonify({"error": "Setup required", "setup_url": "/setup"}), 503
+        return flask_redirect("/setup")
+
+    # No admin account → need setup
+    if not ADMIN_USERNAME:
+        if request.path.startswith("/api/"):
+            return jsonify({"error": "Setup required", "setup_url": "/setup"}), 503
+        return flask_redirect("/setup")
+
+    # Browser requests need login
+    if not request.path.startswith("/api/"):
+        if not session.get("logged_in"):
+            return flask_redirect("/login")
+
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -993,7 +1098,6 @@ def _require_setup():
 @app.route("/")
 def index():
     """Serve the companion dashboard UI."""
-    session["companion_ui"] = True
     return render_template("index.html")
 
 
@@ -1326,6 +1430,7 @@ def update_config():
     global API_KEY, MAIN_APP_URL, HW_ACCEL, MAX_CONCURRENT_JOBS
     global S3_ENDPOINT, S3_ACCESS_KEY, S3_SECRET_KEY, S3_BUCKET, S3_REGION
     global S3_USE_SSL, S3_VERIFY_SSL, NODE_ROLE
+    global ADMIN_USERNAME, ADMIN_PASSWORD_HASH
 
     data = request.get_json(silent=True) or {}
     updated = []
@@ -1388,6 +1493,14 @@ def update_config():
         NODE_ROLE = role
         updated.append("node_role")
 
+    if "admin_username" in data:
+        ADMIN_USERNAME = str(data["admin_username"])
+        updated.append("admin_username")
+
+    if "admin_password_hash" in data:
+        ADMIN_PASSWORD_HASH = str(data["admin_password_hash"])
+        updated.append("admin_password_hash")
+
     if not updated:
         return jsonify({"error": "No recognized configuration fields in request"}), 400
 
@@ -1406,6 +1519,8 @@ def update_config():
         "s3_verify_ssl": str(S3_VERIFY_SSL).lower(),
         "node_role": NODE_ROLE,
         "slave_nodes": SLAVE_NODES,
+        "admin_username": ADMIN_USERNAME,
+        "admin_password_hash": ADMIN_PASSWORD_HASH,
     }
     persisted = _save_persistent_config(cfg)
 
@@ -1548,6 +1663,7 @@ def _get_master_settings_payload() -> dict:
 
     Hardware acceleration (hw_accel) is intentionally excluded because slave
     nodes may have different GPU hardware and should configure this locally.
+    Includes admin account so the same login works across all nodes.
     """
     return {
         "s3_endpoint": S3_ENDPOINT,
@@ -1559,6 +1675,8 @@ def _get_master_settings_payload() -> dict:
         "s3_verify_ssl": S3_VERIFY_SSL,
         "main_app_url": MAIN_APP_URL,
         "max_concurrent_jobs": MAX_CONCURRENT_JOBS,
+        "admin_username": ADMIN_USERNAME,
+        "admin_password_hash": ADMIN_PASSWORD_HASH,
     }
 
 
