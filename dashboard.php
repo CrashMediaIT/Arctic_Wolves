@@ -1238,10 +1238,10 @@ function switchAthlete(athleteId) {
 .messenger-toolbar-btn:hover { background: rgba(107, 70, 193, 0.15); color: #c4b5fd; }
 .messenger-paste-hint { font-size: 11px; color: #8b949e; display: flex; align-items: center; gap: 4px; }
 .messenger-panel.widget-size-default .messenger-input-toolbar { display: none; }
-.messenger-panel.widget-size-half { width: 480px; max-height: calc(60vh); }
+.messenger-panel.widget-size-half { width: 480px; max-height: 60vh; }
 .messenger-panel.widget-size-half .messenger-messages { max-height: calc(60vh - 180px); }
 .messenger-panel.widget-size-half .messenger-input-toolbar { display: flex; }
-.messenger-panel.widget-size-full { width: 600px; max-height: calc(90vh); }
+.messenger-panel.widget-size-full { width: 600px; max-height: 90vh; }
 .messenger-panel.widget-size-full .messenger-messages { max-height: calc(90vh - 180px); }
 .messenger-panel.widget-size-full .messenger-input-toolbar { display: flex; }
 @media (max-width: 480px) {
@@ -1573,7 +1573,7 @@ document.getElementById('messengerInput').addEventListener('paste', function(e) 
                 alert('Cannot paste image: file size exceeds 25MB limit');
                 return;
             }
-            alert('Image pasted — full file upload coming soon');
+            alert('Image pasted - full file upload coming soon');
             break;
         }
     }
