@@ -345,8 +345,9 @@ $start_with_user = isset($_GET['user_id']) ? intval($_GET['user_id']) : 0;
     /* Input area toolbar */
     .msg-input-toolbar {
         display: flex;
-        align-items: center;
+        flex-direction: column;
         gap: 4px;
+        flex-shrink: 0;
     }
     .msg-toolbar-btn {
         width: 36px;
@@ -651,15 +652,6 @@ $start_with_user = isset($_GET['user_id']) ? intval($_GET['user_id']) : 0;
         text-transform: capitalize;
     }
     
-    /* Paste hint */
-    .msg-paste-hint {
-        font-size: 11px;
-        color: #8b949e;
-        padding: 0 4px;
-        display: flex;
-        align-items: center;
-        gap: 4px;
-    }
     
     /* Responsive */
     @media (max-width: 768px) {
@@ -754,7 +746,6 @@ $start_with_user = isset($_GET['user_id']) ? intval($_GET['user_id']) : 0;
                         <i class="fas fa-paperclip"></i>
                     </button>
                     <input type="file" id="fileInput" multiple accept="image/*,.pdf,.doc,.docx,.txt,.xls,.xlsx,.csv" style="display:none" onchange="handleFileSelect(this)">
-                    <span class="msg-paste-hint"><i class="fas fa-paste"></i> Paste images</span>
                 </div>
                 <textarea class="msg-input" id="msgInput" rows="1" placeholder="Type a message..." maxlength="5000" aria-label="Message input"></textarea>
                 <button class="msg-send-btn" id="sendBtn" onclick="sendMessage()" disabled title="Send" aria-label="Send message">
