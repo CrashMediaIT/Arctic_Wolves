@@ -327,12 +327,12 @@ $tax_name = $settings['tax_name'] ?? 'HST';
     background: white;
     padding: 16px;
     border-radius: 8px;
-    border-left: 4px solid var(--primary, #7000a4);
+    border-left: 4px solid var(--primary, #6B46C1);
 }
 
 .credit-balance {
     font-size: 24px;
-    color: var(--primary, #7000a4);
+    color: var(--primary, #6B46C1);
     margin: 10px 0;
 }
 
@@ -357,9 +357,9 @@ $tax_name = $settings['tax_name'] ?? 'HST';
 }
 
 .filter-btn.active, .filter-btn:hover {
-    background: var(--primary, #7000a4);
+    background: var(--primary, #6B46C1);
     color: white;
-    border-color: var(--primary, #7000a4);
+    border-color: var(--primary, #6B46C1);
 }
 
 .packages-grid {
@@ -424,7 +424,7 @@ $tax_name = $settings['tax_name'] ?? 'HST';
 }
 
 .detail-item i {
-    color: var(--primary, #7000a4);
+    color: var(--primary, #6B46C1);
     width: 20px;
 }
 
@@ -450,7 +450,7 @@ $tax_name = $settings['tax_name'] ?? 'HST';
 .price-total {
     font-size: 20px;
     font-weight: bold;
-    color: var(--primary, #7000a4);
+    color: var(--primary, #6B46C1);
     margin-top: 5px;
 }
 
@@ -479,7 +479,7 @@ $tax_name = $settings['tax_name'] ?? 'HST';
 .btn-purchase {
     width: 100%;
     padding: 12px;
-    background: var(--primary, #7000a4);
+    background: var(--primary, #6B46C1);
     color: white;
     border: none;
     border-radius: 5px;
@@ -496,7 +496,7 @@ $tax_name = $settings['tax_name'] ?? 'HST';
     display: block;
     text-align: center;
     margin-top: 10px;
-    color: var(--primary, #7000a4);
+    color: var(--primary, #6B46C1);
     text-decoration: none;
 }
 
@@ -529,7 +529,7 @@ $tax_name = $settings['tax_name'] ?? 'HST';
 }
 
 .addon-option:hover {
-    border-color: var(--primary, #7000a4);
+    border-color: var(--primary, #6B46C1);
     background: #faf5ff;
 }
 
@@ -557,7 +557,7 @@ $tax_name = $settings['tax_name'] ?? 'HST';
 .addon-price {
     font-size: 13px;
     font-weight: 600;
-    color: var(--primary, #7000a4);
+    color: var(--primary, #6B46C1);
 }
 
 .schedule-detail {

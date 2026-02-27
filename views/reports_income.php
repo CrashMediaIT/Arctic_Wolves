@@ -235,7 +235,7 @@ $tax_name = $settings['tax_name'] ?? 'HST';
 }
 
 .btn-primary {
-    background: var(--primary, #7000a4);
+    background: var(--primary, #6B46C1);
     color: white;
     border: none;
     padding: 8px 20px;
@@ -248,7 +248,7 @@ $tax_name = $settings['tax_name'] ?? 'HST';
     padding: 24px;
     border-radius: 10px;
     margin-bottom: 20px;
-    border-left: 4px solid var(--primary, #7000a4);
+    border-left: 4px solid var(--primary, #6B46C1);
 }
 
 .summary-row {
@@ -315,7 +315,7 @@ td {
 }
 
 .badge-package {
-    background: #7000a4;
+    background: #6B46C1;
     color: white;
 }
 </style>

@@ -1018,7 +1018,7 @@ try {
 }
 
 .logo-upload-area:hover {
-    border-color: var(--primary, #7000a4);
+    border-color: var(--primary, #6B46C1);
     background: rgba(112, 0, 164, 0.05);
 }
 
@@ -1032,7 +1032,7 @@ try {
 
 .logo-upload-placeholder i {
     font-size: 32px;
-    color: var(--primary, #7000a4);
+    color: var(--primary, #6B46C1);
     opacity: 0.6;
 }
 

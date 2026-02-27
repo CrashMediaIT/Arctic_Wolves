@@ -40,7 +40,7 @@ $csrf_token = $_SESSION['csrf_token'];
 
 <style>
     :root {
-        --primary: #7000a4;
+        --primary: #6B46C1;
     }
     
     .backup-header {

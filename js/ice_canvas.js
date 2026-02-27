@@ -105,7 +105,7 @@ const IceCanvasRenderer = {
             ctx.drawImage(options.logoImage, logoX, logoY, logoWidth, logoHeight);
         } else {
             // Fallback to text branding - matches drill_designer.js exactly
-            ctx.fillStyle = '#7000a4';
+            ctx.fillStyle = '#6B46C1';
             ctx.font = 'bold 48px Inter, sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';

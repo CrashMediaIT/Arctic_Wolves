@@ -59,7 +59,7 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
 
 <style>
     :root {
-        --primary: #7000a4;
+        --primary: #6B46C1;
     }
     
     .theme-header {
@@ -317,7 +317,7 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
     }
     
     .preview-btn-primary {
-        background: var(--primary, #7000a4);
+        background: var(--primary, #6B46C1);
         color: #fff;
     }
     
@@ -328,7 +328,7 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
     
     .preview-btn-secondary {
         background: transparent;
-        color: var(--primary, #7000a4);
+        color: var(--primary, #6B46C1);
         border: 1px solid var(--border, #1e293b);
     }
     
@@ -353,7 +353,7 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
     
     .preview-nav-item.active {
         background: rgba(112, 0, 164, 0.1);
-        color: var(--primary, #7000a4);
+        color: var(--primary, #6B46C1);
     }
     
     .preview-status {

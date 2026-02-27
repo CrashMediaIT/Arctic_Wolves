@@ -1249,14 +1249,14 @@ function generatePDFHTML($report_type, $data, $parameters) {
         <title><?= htmlspecialchars(ucwords(str_replace('_', ' ', $report_type))) ?> Report</title>
         <style>
             body { font-family: Arial, sans-serif; margin: 40px; color: #333; }
-            .header { background: #7000a4; color: #fff; padding: 30px; margin: -40px -40px 30px -40px; }
+            .header { background: #6B46C1; color: #fff; padding: 30px; margin: -40px -40px 30px -40px; }
             .header h1 { margin: 0; font-size: 28px; }
             .header .meta { margin-top: 10px; font-size: 14px; opacity: 0.9; }
             table { width: 100%; border-collapse: collapse; margin-top: 20px; }
             th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
-            th { background: #f8f9fa; font-weight: 700; color: #7000a4; }
+            th { background: #f8f9fa; font-weight: 700; color: #6B46C1; }
             tr:hover { background: #f8f9fa; }
-            .footer { margin-top: 40px; padding-top: 20px; border-top: 2px solid #7000a4; text-align: center; color: #666; font-size: 12px; }
+            .footer { margin-top: 40px; padding-top: 20px; border-top: 2px solid #6B46C1; text-align: center; color: #666; font-size: 12px; }
         </style>
     </head>
     <body>

@@ -1523,7 +1523,7 @@ function renderDrillCanvas(drillId, diagramDataStr) {
     // Draw center branding (subtle)
     ctx.save();
     ctx.globalAlpha = 0.08;
-    ctx.fillStyle = '#7000a4';
+    ctx.fillStyle = '#6B46C1';
     ctx.font = 'bold 32px Inter, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';

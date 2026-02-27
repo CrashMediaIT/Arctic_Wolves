@@ -204,7 +204,7 @@ requirePermission($pdo, $_SESSION['user_id'], $_SESSION['user_role'], 'manage_se
         .alert-error {
             background: rgba(220, 53, 69, 0.2);
             border: 1px solid rgba(220, 53, 69, 0.4);
-            color: #7000a4;
+            color: #6B46C1;
         }
 
         @media (max-width: 1024px) {

@@ -486,9 +486,9 @@ $is_staff = in_array($user_role, ['admin', 'coach', 'coach_plus', 'team_coach', 
 
 .program-filter .filter-btn.active,
 .program-filter .filter-btn:hover {
-    background: var(--primary, #7000a4);
+    background: var(--primary, #6B46C1);
     color: white;
-    border-color: var(--primary, #7000a4);
+    border-color: var(--primary, #6B46C1);
 }
 
 .programs-grid {
@@ -508,11 +508,11 @@ $is_staff = in_array($user_role, ['admin', 'coach', 'coach_plus', 'team_coach', 
 .program-card:hover {
     transform: translateY(-4px);
     box-shadow: 0 8px 24px rgba(0,0,0,0.3);
-    border-color: var(--primary, #7000a4);
+    border-color: var(--primary, #6B46C1);
 }
 
 .program-card.highlighted {
-    border-color: var(--primary, #7000a4);
+    border-color: var(--primary, #6B46C1);
     box-shadow: 0 0 20px rgba(112, 0, 164, 0.3);
 }
 
@@ -580,7 +580,7 @@ $is_staff = in_array($user_role, ['admin', 'coach', 'coach_plus', 'team_coach', 
 }
 
 .detail-item i {
-    color: var(--primary, #7000a4);
+    color: var(--primary, #6B46C1);
     width: 20px;
     text-align: center;
 }
@@ -598,7 +598,7 @@ $is_staff = in_array($user_role, ['admin', 'coach', 'coach_plus', 'team_coach', 
 }
 
 .schedule-toggle a {
-    color: var(--primary, #7000a4);
+    color: var(--primary, #6B46C1);
     text-decoration: none;
     font-size: 13px;
     font-weight: 600;
@@ -688,7 +688,7 @@ $is_staff = in_array($user_role, ['admin', 'coach', 'coach_plus', 'team_coach', 
 .price-total {
     font-size: 1.1rem;
     font-weight: 700;
-    color: var(--primary, #7000a4);
+    color: var(--primary, #6B46C1);
     margin-top: 4px;
 }
 
@@ -725,7 +725,7 @@ $is_staff = in_array($user_role, ['admin', 'coach', 'coach_plus', 'team_coach', 
 }
 
 .addon-option:hover {
-    border-color: var(--primary, #7000a4);
+    border-color: var(--primary, #6B46C1);
 }
 
 .addon-info {
@@ -749,7 +749,7 @@ $is_staff = in_array($user_role, ['admin', 'coach', 'coach_plus', 'team_coach', 
 .addon-price {
     font-size: 13px;
     font-weight: 600;
-    color: var(--primary, #7000a4);
+    color: var(--primary, #6B46C1);
 }
 
 .addon-price.included {
@@ -778,7 +778,7 @@ $is_staff = in_array($user_role, ['admin', 'coach', 'coach_plus', 'team_coach', 
 .btn-register {
     width: 100%;
     padding: 14px;
-    background: var(--primary, #7000a4);
+    background: var(--primary, #6B46C1);
     color: white;
     border: none;
     border-radius: 8px;
@@ -859,7 +859,7 @@ $is_staff = in_array($user_role, ['admin', 'coach', 'coach_plus', 'team_coach', 
 }
 
 .view-toggle-bar .view-btn.active {
-    background: var(--primary, #7000a4);
+    background: var(--primary, #6B46C1);
     color: white;
 }
 
@@ -921,7 +921,7 @@ $is_staff = in_array($user_role, ['admin', 'coach', 'coach_plus', 'team_coach', 
 
 .camp-calendar-day.today {
     background: rgba(112, 0, 164, 0.1);
-    border: 2px solid var(--primary, #7000a4);
+    border: 2px solid var(--primary, #6B46C1);
 }
 
 .camp-calendar-day .day-number {
@@ -932,7 +932,7 @@ $is_staff = in_array($user_role, ['admin', 'coach', 'coach_plus', 'team_coach', 
 }
 
 .camp-calendar-day.today .day-number {
-    color: var(--primary, #7000a4);
+    color: var(--primary, #6B46C1);
 }
 
 .camp-event {

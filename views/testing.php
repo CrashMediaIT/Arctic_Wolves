@@ -28,8 +28,8 @@ $server_software = $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown';
 
 <style>
     :root {
-        --primary: #7000a4;
-        --neon: #7000a4;
+        --primary: #6B46C1;
+        --neon: #6B46C1;
     }
     .testing-header {
         background: linear-gradient(135deg, var(--primary) 0%, #4a0070 100%);

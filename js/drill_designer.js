@@ -906,7 +906,7 @@ class DrillDesigner {
             ctx.drawImage(this.centerLogoImage, logoX, logoY, logoWidth, logoHeight);
         } else {
             // Fallback to text branding
-            ctx.fillStyle = '#7000a4';
+            ctx.fillStyle = '#6B46C1';
             ctx.font = 'bold 48px Inter, sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';

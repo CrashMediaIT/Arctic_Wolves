@@ -25,7 +25,7 @@ $settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings"
 
 <style>
     :root {
-        --primary: #7000a4;
+        --primary: #6B46C1;
     }
     .page-header {
         background: linear-gradient(135deg, var(--primary) 0%, #4a0070 100%);

@@ -40,7 +40,7 @@ $csrf_token = generateCsrfToken();
 
 <style>
     :root {
-        --primary: #7000a4;
+        --primary: #6B46C1;
         --danger: #ef4444;
     }
     

@@ -406,7 +406,7 @@ function notifyAdmins($count, $vulnerabilities, $scan_id) {
             
             <div style='text-align: center; margin: 30px 0;'>
                 <a href='{$data['app_url']}/dashboard.php?page=security_scans&scan_id=$scan_id' 
-                   style='background: #7000a4; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 700;'>
+                   style='background: #6B46C1; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 700;'>
                    View Full Scan Results
                 </a>
             </div>

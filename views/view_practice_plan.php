@@ -901,7 +901,7 @@ function drawRink(ctx, w, h, iceView) {
         
         ctx.drawImage(centerLogoImage, (w - logoWidth) / 2, (h - logoHeight) / 2, logoWidth, logoHeight);
     } else {
-        ctx.fillStyle = '#7000a4';
+        ctx.fillStyle = '#6B46C1';
         ctx.font = 'bold 28px Inter, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
