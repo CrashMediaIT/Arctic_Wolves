@@ -125,13 +125,23 @@ CREATE TABLE IF NOT EXISTS `practice_plans` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `name` VARCHAR(255) NOT NULL,
     `description` TEXT DEFAULT NULL,
+    `focus_area` VARCHAR(255) DEFAULT NULL,
+    `age_group` VARCHAR(50) DEFAULT NULL,
+    `duration_minutes` INT DEFAULT 60,
+    `difficulty_level` ENUM('beginner', 'intermediate', 'advanced', 'elite') DEFAULT 'intermediate',
     `created_by` INT NOT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     `version` INT DEFAULT 1,
     `parent_plan_id` INT DEFAULT NULL,
+    `share_token` VARCHAR(64) DEFAULT NULL,
+    `total_duration` INT DEFAULT 60,
+    `title` VARCHAR(255) DEFAULT NULL,
     FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`parent_plan_id`) REFERENCES `practice_plans`(`id`) ON DELETE SET NULL
+    FOREIGN KEY (`parent_plan_id`) REFERENCES `practice_plans`(`id`) ON DELETE SET NULL,
+    INDEX `idx_focus_area` (`focus_area`),
+    INDEX `idx_share_token` (`share_token`),
+    INDEX `idx_age_group` (`age_group`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Session-Practice Plan association

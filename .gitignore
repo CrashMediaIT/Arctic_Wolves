@@ -70,3 +70,5 @@ android-tv/*.idsig
 # Update system deferred files
 .update_deferred.json
 *.pending
+node_modules/
+test-results/
