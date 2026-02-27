@@ -48,15 +48,16 @@ test.describe('File upload zone skips custom upload areas', () => {
 // =====================================================
 
 test.describe('Contextual drag-and-drop', () => {
-  test('should create a choose file button (hidden by default, shown on init)', () => {
+  test('should NOT create a choose file button (removed in favor of drop zone)', () => {
     const content = readFile('js/app.js');
-    expect(content).toContain('file-choose-btn');
-    expect(content).toContain('Choose File');
+    expect(content).not.toContain('file-choose-btn');
+    expect(content).not.toContain('Choose File');
+    expect(content).not.toContain('fa-folder-open');
   });
 
-  test('drop zone should be hidden by default (display:none)', () => {
+  test('drop zone should be visible by default (display:block)', () => {
     const content = readFile('js/app.js');
-    expect(content).toContain("display:none;border:2px dashed");
+    expect(content).toContain("display:block;border:2px dashed");
   });
 
   test('should listen for dragenter on document to show drop zones', () => {

@@ -929,8 +929,8 @@
     // ===================================================================
 
     /**
-     * Initialize file upload with contextual drag and drop.
-     * Drop zones are hidden by default and only appear when a file
+     * Initialize file upload with drag and drop zones.
+     * Drop zones are always visible and highlight when a file
      * is dragged into the browser window.
      */
     function initializeFileUploads() {
@@ -948,20 +948,12 @@
                 return;
             }
 
-            // Create a choose-file button shown by default
-            var btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'file-choose-btn';
-            btn.style.cssText = 'display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:8px;background:rgba(107,70,193,0.15);color:#8B5CF6;border:1px solid rgba(107,70,193,0.3);cursor:pointer;font-size:14px;font-weight:600;font-family:Inter,sans-serif;transition:background 0.2s;';
-            btn.innerHTML = '<i class="fas fa-folder-open"></i> Choose File';
-            btn.addEventListener('click', function(e) { e.preventDefault(); input.click(); });
-
-            // Create contextual drop zone (hidden until drag enters window)
+            // Create drop zone for drag-and-drop file uploads
             var zone = document.createElement('div');
             zone.className = 'file-upload-zone';
-            zone.style.cssText = 'display:none;border:2px dashed #2D2D3F;border-radius:8px;padding:40px;text-align:center;background:#13131A;cursor:pointer;transition:all 0.3s ease;';
-            zone.innerHTML = '<div class="upload-icon" style="font-size:48px;color:#6B46C1;margin-bottom:16px;"><i class="fas fa-folder-open"></i></div>' +
-                '<div class="upload-text" style="color:#E0E0E0;margin-bottom:8px;">Drop file here</div>' +
+            zone.style.cssText = 'display:block;border:2px dashed #2D2D3F;border-radius:8px;padding:40px;text-align:center;background:#13131A;cursor:pointer;transition:all 0.3s ease;';
+            zone.innerHTML = '<div class="upload-icon" style="font-size:48px;color:#6B46C1;margin-bottom:16px;"><i class="fas fa-cloud-arrow-up"></i></div>' +
+                '<div class="upload-text" style="color:#E0E0E0;margin-bottom:8px;">Drop file here or click to browse</div>' +
                 '<div class="upload-hint" style="color:#9CA3AF;font-size:12px;">Supported formats vary by field</div>';
 
             zone.addEventListener('click', function() { input.click(); });
@@ -987,23 +979,22 @@
                 }
             });
 
-            input.parentNode.insertBefore(btn, input);
             input.parentNode.insertBefore(zone, input);
             input.style.display = 'none';
-            dragZones.push({ zone: zone, btn: btn });
+            dragZones.push({ zone: zone });
 
             // Show file name when selected
             input.addEventListener('change', function() {
                 var fileName = this.files[0] ? this.files[0].name : '';
-                if (fileName) {
-                    btn.innerHTML = '<i class="fas fa-check" style="color:#10B981;"></i> ' + fileName;
-                } else {
-                    btn.innerHTML = '<i class="fas fa-folder-open"></i> Choose File';
-                }
                 var textDiv = zone.querySelector('.upload-text');
-                if (textDiv && fileName) {
-                    textDiv.textContent = fileName;
-                    textDiv.style.color = '#10B981';
+                if (textDiv) {
+                    if (fileName) {
+                        textDiv.textContent = fileName;
+                        textDiv.style.color = '#10B981';
+                    } else {
+                        textDiv.textContent = 'Drop file here or click to browse';
+                        textDiv.style.color = '#E0E0E0';
+                    }
                 }
             });
         });
@@ -1015,8 +1006,8 @@
                 dragCounter++;
                 if (dragCounter === 1) {
                     dragZones.forEach(function(item) {
-                        item.zone.style.display = 'block';
-                        item.btn.style.display = 'none';
+                        item.zone.style.borderColor = '#7C3AED';
+                        item.zone.style.background = '#1A1A2E';
                     });
                 }
             });
@@ -1027,8 +1018,8 @@
                 if (dragCounter <= 0) {
                     dragCounter = 0;
                     dragZones.forEach(function(item) {
-                        item.zone.style.display = 'none';
-                        item.btn.style.display = 'inline-flex';
+                        item.zone.style.borderColor = '#2D2D3F';
+                        item.zone.style.background = '#13131A';
                     });
                 }
             });
@@ -1036,8 +1027,8 @@
             document.addEventListener('drop', function(e) {
                 dragCounter = 0;
                 dragZones.forEach(function(item) {
-                    item.zone.style.display = 'none';
-                    item.btn.style.display = 'inline-flex';
+                    item.zone.style.borderColor = '#2D2D3F';
+                    item.zone.style.background = '#13131A';
                 });
             });
         }
