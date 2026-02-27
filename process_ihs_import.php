@@ -91,19 +91,14 @@ if ($action === 'import_drills') {
             // Insert drill
             $stmt = $pdo->prepare("
                 INSERT INTO drills (
-                    title, description, category_id, duration_minutes, skill_level,
-                    age_group, equipment_needed, coaching_points, video_url,
-                    custom_image, imported_from_ihs, created_by
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+                    title, description, category_id, coaching_points, video_url,
+                    custom_image, ihs_source_url, created_by
+                ) VALUES (?, ?, ?, ?, ?, ?, 'ihs://import/drill', ?)
             ");
             $stmt->execute([
                 $title,
                 $drill['description'] ?? '',
                 $category_id,
-                $drill['duration'] ?? null,
-                $drill['skill_level'] ?? 'all',
-                $drill['age_group'] ?? '',
-                $drill['equipment'] ?? '',
                 $drill['coaching_points'] ?? '',
                 $drill['video_url'] ?? '',
                 $drill['image_url'] ?? $drill['image'] ?? $drill['photo_url'] ?? '',
@@ -163,19 +158,22 @@ if ($action === 'import_plans') {
         $pdo->beginTransaction();
         
         // Create practice plan
+        // Build description with import source marker
+        $plan_description = $plan['description'] ?? '';
+        $plan_description .= "\n\n---\nImported from IHS";
+        
         $stmt = $pdo->prepare("
             INSERT INTO practice_plans (
-                title, description, total_duration, age_group, focus_area,
-                is_public, imported_from_ihs, created_by
-            ) VALUES (?, ?, ?, ?, ?, ?, 1, ?)
+                name, title, description, total_duration, age_group, focus_area, created_by
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
             $title,
-            $plan['description'] ?? '',
+            $title,
+            $plan_description,
             $plan['total_duration'] ?? 60,
             $plan['age_group'] ?? '',
             $plan['focus_area'] ?? '',
-            $make_public ? 1 : 0,
             $user_id
         ]);
         
@@ -201,13 +199,13 @@ if ($action === 'import_plans') {
                 // Create new drill
                 $stmt = $pdo->prepare("
                     INSERT INTO drills (
-                        title, description, duration_minutes, imported_from_ihs, created_by
-                    ) VALUES (?, ?, ?, 1, ?)
+                        title, description, coaching_points, ihs_source_url, created_by
+                    ) VALUES (?, ?, ?, 'ihs://import/drill', ?)
                 ");
                 $stmt->execute([
                     $drill_title,
                     $drill_ref['description'] ?? '',
-                    $drill_ref['duration'] ?? null,
+                    $drill_ref['coaching_points'] ?? '',
                     $user_id
                 ]);
                 $drill_id = $pdo->lastInsertId();
@@ -219,7 +217,7 @@ if ($action === 'import_plans') {
             // Add drill to plan
             $stmt = $pdo->prepare("
                 INSERT INTO practice_plan_drills (
-                    plan_id, drill_id, order_index, duration_minutes, notes
+                    practice_plan_id, drill_id, drill_order, duration_minutes, notes
                 ) VALUES (?, ?, ?, ?, ?)
             ");
             $stmt->execute([
