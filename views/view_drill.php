@@ -465,18 +465,24 @@ document.addEventListener('DOMContentLoaded', function() {
     const canvas = document.getElementById('drill-view-canvas-el');
     if (!container || !canvas) return;
     
-    // Set canvas size
-    canvas.width = container.offsetWidth;
-    canvas.height = container.offsetHeight;
+    // Set canvas size with high-DPI support for sharp rendering
+    let dpr = window.devicePixelRatio || 1;
+    let cssWidth = container.offsetWidth;
+    let cssHeight = container.offsetHeight;
+    canvas.width = cssWidth * dpr;
+    canvas.height = cssHeight * dpr;
+    canvas.style.width = cssWidth + 'px';
+    canvas.style.height = cssHeight + 'px';
     
     const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
     const diagramDataRaw = <?php echo json_encode($drill['diagram_data'] ?? ''); ?>;
     const centerLogoUrl = container.dataset.centerLogo || '';
     
     // Parse diagram data and extract dimensions
     let diagramObjects = [];
-    let sourceWidth = canvas.width;
-    let sourceHeight = canvas.height;
+    let sourceWidth = cssWidth;
+    let sourceHeight = cssHeight;
     let iceView = 'full'; // Default ice view
     
     try {
@@ -487,8 +493,8 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if (parsed && parsed.objects && Array.isArray(parsed.objects)) {
             // New format with canvas dimensions
             diagramObjects = parsed.objects;
-            sourceWidth = parsed.canvasWidth || canvas.width;
-            sourceHeight = parsed.canvasHeight || canvas.height;
+            sourceWidth = parsed.canvasWidth || cssWidth;
+            sourceHeight = parsed.canvasHeight || cssHeight;
             // Get saved ice view
             if (parsed.iceView) {
                 iceView = parsed.iceView;
@@ -503,18 +509,18 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to render everything
     function renderDrill() {
-        drawViewRink(ctx, canvas.width, canvas.height, iceView);
+        drawViewRink(ctx, cssWidth, cssHeight, iceView);
         
         if (diagramObjects.length > 0) {
             // Use uniform scaling to preserve object proportions
             // Take the minimum scale to fit content while maintaining aspect ratio
-            const scaleX = canvas.width / sourceWidth;
-            const scaleY = canvas.height / sourceHeight;
+            const scaleX = cssWidth / sourceWidth;
+            const scaleY = cssHeight / sourceHeight;
             const uniformScale = Math.min(scaleX, scaleY);
             
             // Calculate offset to center content if aspect ratios don't match exactly
-            const offsetX = (canvas.width - sourceWidth * uniformScale) / 2;
-            const offsetY = (canvas.height - sourceHeight * uniformScale) / 2;
+            const offsetX = (cssWidth - sourceWidth * uniformScale) / 2;
+            const offsetY = (cssHeight - sourceHeight * uniformScale) / 2;
             
             diagramObjects.forEach(obj => {
                 // Create a scaled copy of the object with uniform scaling
@@ -527,8 +533,14 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to initialize canvas dimensions and render
     function initializeAndRender() {
-        canvas.width = container.offsetWidth;
-        canvas.height = container.offsetHeight;
+        dpr = window.devicePixelRatio || 1;
+        cssWidth = container.offsetWidth;
+        cssHeight = container.offsetHeight;
+        canvas.width = cssWidth * dpr;
+        canvas.height = cssHeight * dpr;
+        canvas.style.width = cssWidth + 'px';
+        canvas.style.height = cssHeight + 'px';
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         renderDrill();
     }
     
@@ -585,9 +597,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Handle resize
     window.addEventListener('resize', function() {
-        canvas.width = container.offsetWidth;
-        canvas.height = container.offsetHeight;
-        renderDrill();
+        initializeAndRender();
     });
 });
 

@@ -1180,13 +1180,19 @@ function renderDrillSelectorThumbnails() {
         
         const centerLogoUrl = preview.getAttribute('data-center-logo') || '';
         
-        // Set canvas size to match container
-        canvas.width = preview.offsetWidth || 280;
-        canvas.height = preview.offsetHeight || 140;
+        // Set canvas size with high-DPI support for sharp rendering
+        const dpr = window.devicePixelRatio || 1;
+        const cssWidth = preview.offsetWidth || 280;
+        const cssHeight = preview.offsetHeight || 140;
+        canvas.width = cssWidth * dpr;
+        canvas.height = cssHeight * dpr;
+        canvas.style.width = cssWidth + 'px';
+        canvas.style.height = cssHeight + 'px';
         
         const ctx = canvas.getContext('2d');
-        const w = canvas.width;
-        const h = canvas.height;
+        ctx.scale(dpr, dpr);
+        const w = cssWidth;
+        const h = cssHeight;
         
         function renderThumbnail(logoImage, logoLoaded) {
             // Use the shared IceCanvasRenderer for consistent rink drawing
