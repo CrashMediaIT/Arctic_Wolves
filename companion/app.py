@@ -907,7 +907,7 @@ async function slaveGenerateApiKey(){
   document.getElementById('finish-slave-btn').style.display='';
  } else {err.textContent=d.error||'Failed to generate key.';err.style.display='block';}
 }
-function finishSetup(){window.location.href='/login';}
+function finishSetup(){window.location.href='/';}
 </script></body></html>"""
 
 

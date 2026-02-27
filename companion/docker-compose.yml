@@ -2,7 +2,9 @@
 # Worker/integration service for the main Arctic Wolves application.
 #
 # Quick start:
-#   1. Set ENCRYPTION_KEY below (64-char hex string).
+#   1. Set ENCRYPTION_KEY below (64-char hex string) — recommended for
+#      consistent encryption across container recreations.  If omitted,
+#      one is auto-generated and written to the persistent volume.
 #   2. docker compose up -d
 #   3. Visit http://localhost:5100 — the setup page appears on first run.
 #   4. Create an admin account, configure S3/RustFS, generate an API key.
@@ -25,7 +27,7 @@ services:
     ports:
       - "5100:5100"
     environment:
-      - ENCRYPTION_KEY=${ENCRYPTION_KEY}  # Required: 64-char hex string for config encryption
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}  # Recommended: 64-char hex string for config encryption
     volumes:
       - companion_config:/config  # Persistent: encrypted config file
 
