@@ -757,7 +757,7 @@ async function toggleSchedule(scheduleId, status) {
 
 // Delete schedule
 async function deleteSchedule(scheduleId, name) {
-    if (!confirm('Are you sure you want to delete "' + name + '"?\n\nThis action cannot be undone.')) return;
+    if (!await showConfirmModal('Are you sure you want to delete "' + name + '"?\n\nThis action cannot be undone.')) return;
     
     var formData = new FormData();
     formData.append('csrf_token', csrfToken);
@@ -780,7 +780,7 @@ async function deleteSchedule(scheduleId, name) {
 
 // Delete report
 async function deleteReport(reportId) {
-    if (!confirm('Are you sure you want to delete this report?')) return;
+    if (!await showConfirmModal('Are you sure you want to delete this report?')) return;
     
     var formData = new FormData();
     formData.append('csrf_token', csrfToken);

@@ -752,14 +752,14 @@ function editExpense(expense) {
     document.getElementById('expenseModal').classList.add('active');
 }
 
-function deleteExpense(id) {
+async function deleteExpense(id) {
     // Validate id is a number
     id = parseInt(id, 10);
     if (isNaN(id) || id <= 0) {
         alert('Invalid expense ID');
         return;
     }
-    if (confirm('Are you sure you want to delete this expense?')) {
+    if (await showConfirmModal('Are you sure you want to delete this expense?')) {
         var form = document.createElement('form');
         form.method = 'POST';
         form.action = 'process_expenses.php';
@@ -811,8 +811,8 @@ function editPayee(payee) {
     document.getElementById('payeeModal').classList.add('active');
 }
 
-function deletePayee(id) {
-    if (confirm('Are you sure you want to delete this payee?')) {
+async function deletePayee(id) {
+    if (await showConfirmModal('Are you sure you want to delete this payee?')) {
         fetch('process_expenses.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -868,8 +868,8 @@ document.getElementById('virtualCardForm').addEventListener('submit', function(e
     });
 });
 
-function activateCard(id) {
-    if (confirm('Activate this virtual card?')) {
+async function activateCard(id) {
+    if (await showConfirmModal('Activate this virtual card?')) {
         fetch('process_expenses.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -887,8 +887,8 @@ function activateCard(id) {
 function openBatchModal() { document.getElementById('batchModal').classList.add('active'); }
 function closeBatchModal() { document.getElementById('batchModal').classList.remove('active'); }
 
-function processBatch(id) {
-    if (confirm('Process all payments in this batch?')) {
+async function processBatch(id) {
+    if (await showConfirmModal('Process all payments in this batch?')) {
         fetch('process_expenses.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

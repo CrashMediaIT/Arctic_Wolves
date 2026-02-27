@@ -1294,13 +1294,13 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Handle delete-category buttons
     document.querySelectorAll('[data-action="delete-category"]').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
+        btn.addEventListener('click', async function(e) {
             e.preventDefault();
             var categoryId = this.getAttribute('data-category-id');
             var category = categoriesData.find(function(c) { return c.id == categoryId; });
             var name = category ? category.name : 'this category';
             
-            if (confirm('Are you sure you want to delete "' + name + '"? This cannot be undone.')) {
+            if (await showConfirmModal('Are you sure you want to delete "' + name + '"? This cannot be undone.')) {
                 ajaxPost('delete_category', { category_id: categoryId });
             }
         });
@@ -1334,13 +1334,13 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Handle delete-skill buttons
     document.querySelectorAll('[data-action="delete-skill"]').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
+        btn.addEventListener('click', async function(e) {
             e.preventDefault();
             var skillId = this.getAttribute('data-skill-id');
             var skill = skillsData.find(function(s) { return s.id == skillId; });
             var name = skill ? skill.name : 'this skill';
             
-            if (confirm('Are you sure you want to delete "' + name + '"? This cannot be undone.')) {
+            if (await showConfirmModal('Are you sure you want to delete "' + name + '"? This cannot be undone.')) {
                 ajaxPost('delete_skill', { skill_id: skillId });
             }
         });
@@ -1634,8 +1634,8 @@ function openEditEvaluationModal(templateId) {
     });
 }
 
-function removeEvalFromSession(sessionEvalId, templateId) {
-    if (!confirm('Remove this evaluation from the session?')) return;
+async function removeEvalFromSession(sessionEvalId, templateId) {
+    if (!await showConfirmModal('Remove this evaluation from the session?')) return;
     
     var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '';
     var formData = new FormData();
@@ -1660,8 +1660,8 @@ function removeEvalFromSession(sessionEvalId, templateId) {
     .catch(function() { alert('An error occurred'); });
 }
 
-function deleteEvaluation(templateId, evalName) {
-    if (!confirm('Are you sure you want to delete "' + evalName + '"? This cannot be undone.')) return;
+async function deleteEvaluation(templateId, evalName) {
+    if (!await showConfirmModal('Are you sure you want to delete "' + evalName + '"? This cannot be undone.')) return;
     
     var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '';
     if (!csrfToken) {

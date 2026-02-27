@@ -1039,8 +1039,8 @@ function manageInventory(product) {
         });
 }
 
-function toggleProductStatus(id, currentStatus) {
-    if (!confirm('Are you sure you want to ' + (currentStatus ? 'deactivate' : 'activate') + ' this product?')) {
+async function toggleProductStatus(id, currentStatus) {
+    if (!await showConfirmModal('Are you sure you want to ' + (currentStatus ? 'deactivate' : 'activate') + ' this product?')) {
         return;
     }
     
@@ -1069,8 +1069,8 @@ function toggleProductStatus(id, currentStatus) {
     });
 }
 
-function deleteProduct(product) {
-    if (!confirm('Are you sure you want to delete "' + product.name + '"? This action cannot be undone.')) {
+async function deleteProduct(product) {
+    if (!await showConfirmModal('Are you sure you want to delete "' + product.name + '"? This action cannot be undone.')) {
         return;
     }
     

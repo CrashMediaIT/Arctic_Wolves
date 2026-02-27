@@ -1148,14 +1148,14 @@ function renderCampCalendar() {
     grid.innerHTML = html;
 }
 
-function cancelPackageRegistration(userPackageId, packageType) {
+async function cancelPackageRegistration(userPackageId, packageType) {
     var policyMsg = '';
     if (packageType === 'camp') {
         policyMsg = 'Camp cancellation policy: Full refund for cancellations made 14 days or more before camp start.\n\n';
     } else if (packageType === 'multi_week') {
         policyMsg = 'Program cancellation policy: Sessions within 48 hours are not refundable. Remaining sessions will be refunded.\n\n';
     }
-    if (!confirm(policyMsg + 'Are you sure you want to cancel this registration?')) return;
+    if (!await showConfirmModal(policyMsg + 'Are you sure you want to cancel this registration?')) return;
     
     var csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
     fetch('process_packages.php', {
@@ -1260,8 +1260,8 @@ function loadRegistrations(packageId) {
     });
 }
 
-function cancelRegistration(userPackageId, packageId) {
-    if (!confirm('Cancel this registration and automatically refund the user?')) return;
+async function cancelRegistration(userPackageId, packageId) {
+    if (!await showConfirmModal('Cancel this registration and automatically refund the user?')) return;
     
     var csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
     fetch('process_packages.php', {

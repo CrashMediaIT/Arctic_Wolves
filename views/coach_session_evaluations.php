@@ -1324,7 +1324,7 @@ async function importCSV() {
 }
 
 async function removeAthlete(athleteId) {
-    if (!confirm('Are you sure you want to remove this athlete from the evaluation?')) {
+    if (!await showConfirmModal('Are you sure you want to remove this athlete from the evaluation?')) {
         return;
     }
     

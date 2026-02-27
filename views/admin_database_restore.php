@@ -1196,8 +1196,8 @@ function updateRestoreButton() {
     document.getElementById('restoreButton').disabled = !checkbox.checked;
 }
 
-function startRestore() {
-    if (!confirm('FINAL WARNING: This will delete all current data. Are you absolutely sure?')) {
+async function startRestore() {
+    if (!await showConfirmModal('FINAL WARNING: This will delete all current data. Are you absolutely sure?')) {
         return;
     }
     

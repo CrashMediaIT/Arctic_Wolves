@@ -459,8 +459,8 @@ function closeModal() {
     document.getElementById('locationModal').classList.remove('active');
 }
 
-function deleteLocation(id) {
-    if (!confirm('Are you sure you want to delete this location?')) return;
+async function deleteLocation(id) {
+    if (!await showConfirmModal('Are you sure you want to delete this location?')) return;
     
     var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '';
     

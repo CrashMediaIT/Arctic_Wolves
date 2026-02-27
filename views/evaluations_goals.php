@@ -904,8 +904,8 @@ function toggleStep(stepId, isChecked) {
     });
 }
 
-function approveStep(stepId) {
-    if (!confirm('Approve this step?')) return;
+async function approveStep(stepId) {
+    if (!await showConfirmModal('Approve this step?')) return;
     
     fetch('process_eval_goal_approval.php', {
         method: 'POST',
@@ -996,8 +996,8 @@ function fallbackCopyText(input) {
     }
 }
 
-function revokeShareLink(evalId) {
-    if (!confirm('Revoke public access to this evaluation?')) return;
+async function revokeShareLink(evalId) {
+    if (!await showConfirmModal('Revoke public access to this evaluation?')) return;
     
     fetch('process_eval_goals.php', {
         method: 'POST',
