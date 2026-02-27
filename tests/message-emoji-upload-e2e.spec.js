@@ -366,6 +366,25 @@ test.describe('Widget Size Toggle', () => {
         // Should not have any rule hiding the toolbar
         expect(content).not.toContain('.messages-container.size-default .msg-input-toolbar');
     });
+
+    test('toolbar buttons should be stacked vertically in messages view', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'views', 'messages.php'), 'utf-8');
+        
+        const toolbarSection = content.substring(
+            content.indexOf('.msg-input-toolbar'),
+            content.indexOf('}', content.indexOf('.msg-input-toolbar')) + 1
+        );
+        expect(toolbarSection).toContain('flex-direction: column');
+    });
+
+    test('toolbar buttons should be stacked vertically in widget', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'dashboard.php'), 'utf-8');
+        
+        expect(content).toContain('flex-direction: column');
+        // Toolbar should contain both emoji and file upload buttons
+        expect(content).toContain('fa-face-smile');
+        expect(content).toContain('fa-paperclip');
+    });
 });
 
 test.describe('Image Paste Support', () => {
