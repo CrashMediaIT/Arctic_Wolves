@@ -23,31 +23,34 @@ function readFile(relativePath) {
 test.describe('All upload handlers trigger HLS transcoding', () => {
   const content = () => readFile('process_video.php');
 
-  test('handleVideoUpload should call triggerHlsTranscode', () => {
+  test('handleVideoUpload should call triggerHlsTranscode with guard', () => {
     const c = content();
     const funcStart = c.indexOf('function handleVideoUpload()');
     const funcEnd = c.indexOf('\nfunction ', funcStart + 1);
     const func = c.substring(funcStart, funcEnd);
     expect(func).toContain('triggerHlsTranscode');
     expect(func).toContain("persist['object_key']");
+    expect(func).toContain("!empty($persist['object_key'])");
   });
 
-  test('handleAthleteVideoUpload should call triggerHlsTranscode', () => {
+  test('handleAthleteVideoUpload should call triggerHlsTranscode with guard', () => {
     const c = content();
     const funcStart = c.indexOf('function handleAthleteVideoUpload()');
     const funcEnd = c.indexOf('\nfunction ', funcStart + 1);
     const func = c.substring(funcStart, funcEnd);
     expect(func).toContain('triggerHlsTranscode');
     expect(func).toContain("persist['object_key']");
+    expect(func).toContain("!empty($persist['object_key'])");
   });
 
-  test('handleDrillVideoUpload should call triggerHlsTranscode', () => {
+  test('handleDrillVideoUpload should call triggerHlsTranscode with guard', () => {
     const c = content();
     const funcStart = c.indexOf('function handleDrillVideoUpload()');
     const funcEnd = c.indexOf('\nfunction ', funcStart + 1);
     const func = c.substring(funcStart, funcEnd);
     expect(func).toContain('triggerHlsTranscode');
     expect(func).toContain("persist['object_key']");
+    expect(func).toContain("!empty($persist['object_key'])");
   });
 
   test('handleConfirmAthleteUpload should call triggerHlsTranscode', () => {
