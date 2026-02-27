@@ -117,8 +117,10 @@ if ($action === 'import_drills') {
         header("Location: dashboard.php?page=ihs_import&status=drills_imported&count=$imported&skipped=$skipped");
         exit();
         
-    } catch (Exception $e) {
-        $pdo->rollBack();
+    } catch (\Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         logSecurityEvent('ihs_import_error', "IHS import error: " . $e->getMessage(), $user_id);
         header("Location: dashboard.php?page=ihs_import&error=import_failed");
         exit();
@@ -238,8 +240,10 @@ if ($action === 'import_plans') {
         header("Location: dashboard.php?page=ihs_import&status=plan_imported&id=$plan_id");
         exit();
         
-    } catch (Exception $e) {
-        $pdo->rollBack();
+    } catch (\Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         logSecurityEvent('ihs_import_error', "IHS import error: " . $e->getMessage(), $user_id);
         header("Location: dashboard.php?page=ihs_import&error=import_failed");
         exit();
