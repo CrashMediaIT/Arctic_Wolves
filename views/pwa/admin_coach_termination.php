@@ -332,7 +332,7 @@ function mCtCoachChanged() {
     }
 }
 
-function mCtSubmit(e) {
+async function mCtSubmit(e) {
     e.preventDefault();
     var sel = document.getElementById('mCtCoach');
     var opt = sel.options[sel.selectedIndex];
@@ -346,7 +346,7 @@ function mCtSubmit(e) {
               '- Soft-delete the coach account\n\n' +
               'Type "TERMINATE" to confirm:';
 
-    var confirmation = prompt(msg);
+    var confirmation = await showPromptModal(msg);
     if (confirmation !== 'TERMINATE') {
         showToast('Termination cancelled. You must type "TERMINATE" to confirm.', 'error');
         return;

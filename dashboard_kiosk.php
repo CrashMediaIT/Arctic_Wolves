@@ -1159,7 +1159,7 @@ function processCardPayment() {
     });
 }
 
-function openCashModal() {
+async function openCashModal() {
     // For now, process cash payment directly
     if (cart.length === 0) return;
     
@@ -1167,7 +1167,7 @@ function openCashModal() {
     const tax = subtotal * (taxRate / 100);
     const total = subtotal + tax;
     
-    const received = prompt('Total: $' + total.toFixed(2) + '\n\nEnter amount received:');
+    const received = await showPromptModal('Total: $' + total.toFixed(2) + ' — Enter amount received:');
     if (received === null) return;
     
     const receivedAmount = parseFloat(received);

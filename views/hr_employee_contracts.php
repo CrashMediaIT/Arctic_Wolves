@@ -1590,8 +1590,8 @@ document.getElementById('edit-template-form')?.addEventListener('submit', functi
 });
 
 // Clone template
-function cloneTemplate(templateId, templateName) {
-    const newName = prompt('Enter a name for the cloned template:', templateName + ' (Copy)');
+async function cloneTemplate(templateId, templateName) {
+    const newName = await showPromptModal('Enter a name for the cloned template:', templateName + ' (Copy)');
     
     if (!newName) {
         return;

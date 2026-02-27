@@ -1563,9 +1563,9 @@ function setWidgetSize(size) {
 }
 
 // === Widget Emoji Picker Toggle ===
-function toggleWidgetEmojiPicker() {
+async function toggleWidgetEmojiPicker() {
     // Emoji picker placeholder - inserts common emojis via prompt
-    var emoji = prompt('Type an emoji or pick from: 😀 👍 ❤️ 🎉 🏒 ⭐ 🔥 💪');
+    var emoji = await showPromptModal('Type an emoji or pick from: 😀 👍 ❤️ 🎉 🏒 ⭐ 🔥 💪');
     if (emoji) {
         var input = document.getElementById('messengerInput');
         var start = input.selectionStart;

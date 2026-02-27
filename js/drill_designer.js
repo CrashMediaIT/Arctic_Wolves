@@ -598,7 +598,7 @@ class DrillDesigner {
         }
     }
     
-    handleClick(e) {
+    async handleClick(e) {
         // Line tools and select shouldn't add objects on click
         if (this.currentTool === 'select' || LINE_TOOLS.includes(this.currentTool)) {
             return;
@@ -646,7 +646,7 @@ class DrillDesigner {
         
         // Handle text tool with prompt
         if (this.currentTool === 'text') {
-            const text = prompt('Enter text:');
+            const text = await showPromptModal('Enter text:');
             if (text) {
                 this.objects.push({
                     type: 'text',

@@ -485,7 +485,7 @@ function showCoachInfo() {
     }
 }
 
-function submitTermination(event) {
+async function submitTermination(event) {
     event.preventDefault();
     
     const coachSelect = document.getElementById('coachToTerminate');
@@ -501,7 +501,7 @@ function submitTermination(event) {
                           `- Create a complete audit trail\n\n` +
                           `Type "TERMINATE" to confirm:`;
     
-    const confirmation = prompt(confirmMessage);
+    const confirmation = await showPromptModal(confirmMessage);
     
     if (confirmation !== 'TERMINATE') {
         showToast('Termination cancelled. You must type "TERMINATE" to confirm.', 'info');

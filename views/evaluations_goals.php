@@ -927,8 +927,8 @@ async function approveStep(stepId) {
     });
 }
 
-function rejectStep(stepId) {
-    const note = prompt('Reason for rejection (optional):');
+async function rejectStep(stepId) {
+    const note = await showPromptModal('Reason for rejection (optional):');
     
     fetch('process_eval_goal_approval.php', {
         method: 'POST',
