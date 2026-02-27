@@ -377,7 +377,7 @@ test.describe('Image Paste Support', () => {
         const content = fs.readFileSync(path.join(ROOT, 'views', 'messages.php'), 'utf-8');
         
         expect(content).toContain('pendingFiles.length >= 5');
-        expect(content).toContain('Pasted image exceeds 25MB limit');
+        expect(content).toContain('Cannot paste image: file size exceeds 25MB limit');
     });
 
     test('should have paste hint visible in expanded modes', () => {

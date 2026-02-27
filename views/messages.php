@@ -927,11 +927,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 const filename = 'pasted-image-' + Date.now() + '.' + ext;
                 const file = new File([blob], filename, { type: blob.type });
                 if (pendingFiles.length >= 5) {
-                    alert('Maximum 5 attachments per message');
+                    alert('Cannot paste image: maximum 5 attachments per message');
                     return;
                 }
                 if (file.size > 25 * 1024 * 1024) {
-                    alert('Pasted image exceeds 25MB limit');
+                    alert('Cannot paste image: file size exceeds 25MB limit');
                     return;
                 }
                 pendingFiles.push(file);
