@@ -759,12 +759,12 @@ $provinces = [
                 document.getElementById('totalHours').textContent = totalHours.toFixed(2) + ' hrs';
                 document.getElementById('totalGross').textContent = '$' + totalGross.toFixed(2);
             } else {
-                alert(data.message || 'Failed to load hours');
+                showToast(data.message || 'Failed to load hours', 'error');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('An error occurred while loading hours');
+            showToast('An error occurred while loading hours', 'error');
         });
     }
 
@@ -791,14 +791,14 @@ $provinces = [
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert('Hours have been applied to payroll. Go to "Run Payroll" tab to process payments.');
+                showToast('Hours have been applied to payroll. Go to "Run Payroll" tab to process payments.', 'success');
             } else {
-                alert(data.message || 'Failed to apply hours');
+                showToast(data.message || 'Failed to apply hours', 'error');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('An error occurred');
+            showToast('An error occurred', 'error');
         });
     }
     </script>

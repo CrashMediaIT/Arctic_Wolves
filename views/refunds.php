@@ -596,10 +596,10 @@ async function searchBookings() {
         if (result.success) {
             displayBookings(result.bookings);
         } else {
-            alert('Error: ' + result.message);
+            showToast('Error: ' + result.message, 'error');
         }
     } catch (error) {
-        alert('Error searching bookings: ' + error.message);
+        showToast('Error searching bookings: ' + error.message, 'error');
     }
 }
 
@@ -758,14 +758,14 @@ document.getElementById('refundForm').addEventListener('submit', async function(
             const successMsg = method === 'refund' ? 'Refund processed successfully!' :
                              method === 'credit' ? 'Store credit issued successfully!' :
                              'Booking exchange completed successfully!';
-            alert(successMsg);
+            showToast(successMsg, 'success');
             closeRefundModal();
             searchBookings();
         } else {
-            alert('Error: ' + result.message);
+            showToast('Error: ' + result.message, 'error');
         }
     } catch (error) {
-        alert('Error processing request: ' + error.message);
+        showToast('Error processing request: ' + error.message, 'error');
     }
 });
 
@@ -788,10 +788,10 @@ async function loadRefundHistory() {
         if (result.success) {
             displayRefundHistory(result.refunds);
         } else {
-            alert('Error: ' + result.message);
+            showToast('Error: ' + result.message, 'error');
         }
     } catch (error) {
-        alert('Error loading refund history: ' + error.message);
+        showToast('Error loading refund history: ' + error.message, 'error');
     }
 }
 

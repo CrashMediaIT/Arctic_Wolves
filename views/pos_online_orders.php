@@ -431,12 +431,12 @@ function updateOrderStatus(orderId, newStatus) {
             persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
-            alert('Failed to update status: ' + (data.message || 'Unknown error'));
+            showToast('Failed to update status: ' + (data.message || 'Unknown error'), 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Error updating order status');
+        showToast('Error updating order status', 'error');
     });
 }
 
@@ -485,7 +485,7 @@ function submitCreateLabel(e) {
         
         if (data.success) {
             closeModal('create-label-modal');
-            alert('Shipping label created successfully!\nTracking: ' + (data.tracking_number || 'N/A'));
+            showToast('Shipping label created successfully!\nTracking: ' + (data.tracking_number || 'N/A'), 'success');
             
             // If label URL is returned, offer to print
             if (data.label_url) {
@@ -496,20 +496,20 @@ function submitCreateLabel(e) {
             
             location.reload();
         } else {
-            alert('Error: ' + (data.message || 'Failed to create shipping label'));
+            showToast('Error: ' + (data.message || 'Failed to create shipping label'), 'error');
         }
     })
     .catch(error => {
         submitBtn.innerHTML = originalText;
         submitBtn.disabled = false;
         console.error('Error:', error);
-        alert('An error occurred while creating the label. Please try again.');
+        showToast('An error occurred while creating the label. Please try again.', 'error');
     });
 }
 
 function printLabel(labelUrl, labelId) {
     if (!labelUrl) {
-        alert('No label URL available for this shipment.');
+        showToast('No label URL available for this shipment.', 'error');
         return;
     }
     
@@ -561,14 +561,14 @@ function submitShipOrder(e) {
             persistToast(data.message || 'Order shipped successfully!', 'success');
             location.reload();
         } else {
-            alert('Error: ' + (data.message || 'Failed to ship order'));
+            showToast('Error: ' + (data.message || 'Failed to ship order'), 'error');
         }
     })
     .catch(error => {
         submitBtn.innerHTML = originalText;
         submitBtn.disabled = false;
         console.error('Error:', error);
-        alert('An error occurred. Please try again.');
+        showToast('An error occurred. Please try again.', 'error');
     });
 }
 

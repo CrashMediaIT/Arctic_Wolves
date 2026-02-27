@@ -1195,7 +1195,7 @@ function downloadInvoice(invoiceId) {
 async function emailInvoice(invoiceId) {
     const csrfToken = document.querySelector('[name="csrf_token"]')?.value;
     if (!csrfToken) {
-        alert('Security error: Please refresh the page.');
+        showToast('Security error: Please refresh the page.', 'error');
         return;
     }
     
@@ -1207,16 +1207,16 @@ async function emailInvoice(invoiceId) {
         })
         .then(response => response.json())
         .then(data => {
-            alert(data.success ? 'Invoice email sent successfully!' : ('Error: ' + (data.message || 'Failed to send email')));
+            if (data.success) { showToast('Invoice email sent successfully!', 'success'); } else { showToast('Error: ' + (data.message || 'Failed to send email'), 'error'); }
         })
-        .catch(() => alert('Error sending invoice email.'));
+        .catch(() => showToast('Error sending invoice email.', 'error'));
     }
 }
 
 async function sendStripePaymentLink(invoiceId, email, amount) {
     const csrfToken = document.querySelector('[name="csrf_token"]')?.value;
     if (!csrfToken) {
-        alert('Security error: Please refresh the page.');
+        showToast('Security error: Please refresh the page.', 'error');
         return;
     }
     
@@ -1228,9 +1228,9 @@ async function sendStripePaymentLink(invoiceId, email, amount) {
         })
         .then(response => response.json())
         .then(data => {
-            alert(data.success ? 'Stripe payment link sent successfully!' : ('Error: ' + (data.message || 'Failed to send payment link')));
+            if (data.success) { showToast('Stripe payment link sent successfully!', 'success'); } else { showToast('Error: ' + (data.message || 'Failed to send payment link'), 'error'); }
         })
-        .catch(() => alert('Error sending Stripe payment link.'));
+        .catch(() => showToast('Error sending Stripe payment link.', 'error'));
     }
 }
 
@@ -1335,7 +1335,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 submitBtn.innerHTML = originalText;
                 submitBtn.disabled = false;
                 console.error('Error:', error);
-                alert('Error creating invoice. Please try again.');
+                showToast('Error creating invoice. Please try again.', 'error');
             });
         });
     }

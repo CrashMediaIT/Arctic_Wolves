@@ -1066,14 +1066,14 @@ function handleFileSelect(file) {
     const isValid = validExtensions.some(ext => fileName.endsWith(ext));
     
     if (!isValid) {
-        alert('Invalid file type. Please select a .sql or .sql.gz file.');
+        showToast('Invalid file type. Please select a .sql or .sql.gz file.', 'error');
         return;
     }
     
     // Validate file size (500MB max)
     const maxSize = 500 * 1024 * 1024;
     if (file.size > maxSize) {
-        alert('File is too large. Maximum size is 500MB.');
+        showToast('File is too large. Maximum size is 500MB.', 'error');
         return;
     }
     
@@ -1132,7 +1132,7 @@ function selectBackup(element, path, name, size) {
 
 function proceedToVerify() {
     if (!selectedFile && !selectedBackupPath) {
-        alert('Please select a backup file first.');
+        showToast('Please select a backup file first.', 'info');
         return;
     }
     
@@ -1166,13 +1166,13 @@ function proceedToVerify() {
             updateVerificationStats(data.metadata);
             goToStep(2);
         } else {
-            alert('Error analyzing backup: ' + (data.message || 'Unknown error'));
+            showToast('Error analyzing backup: ' + (data.message || 'Unknown error'), 'error');
             nextBtn.disabled = false;
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Failed to analyze backup file. Please try again.');
+        showToast('Failed to analyze backup file. Please try again.', 'error');
         nextBtn.innerHTML = originalText;
         nextBtn.disabled = false;
     });

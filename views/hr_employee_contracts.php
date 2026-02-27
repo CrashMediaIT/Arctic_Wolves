@@ -1206,11 +1206,11 @@ async function sendForSignature(contractId) {
             persistToast('Contract sent for signature successfully!', 'success');
             location.reload();
         } else {
-            alert('Error: ' + data.message);
+            showToast('Error: ' + data.message, 'error');
         }
     })
     .catch(error => {
-        alert('Error sending contract: ' + error);
+        showToast('Error sending contract: ' + error, 'error');
     });
 }
 
@@ -1232,13 +1232,13 @@ async function resendContract(contractId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('E-signature request resent!');
+            showToast('E-signature request resent!', 'success');
         } else {
-            alert('Error: ' + data.message);
+            showToast('Error: ' + data.message, 'error');
         }
     })
     .catch(error => {
-        alert('Error resending: ' + error);
+        showToast('Error resending: ' + error, 'error');
     });
 }
 
@@ -1263,11 +1263,11 @@ async function cancelContract(contractId) {
             persistToast('Contract cancelled.', 'success');
             location.reload();
         } else {
-            alert('Error: ' + data.message);
+            showToast('Error: ' + data.message, 'error');
         }
     })
     .catch(error => {
-        alert('Error cancelling contract: ' + error);
+        showToast('Error cancelling contract: ' + error, 'error');
     });
 }
 
@@ -1284,14 +1284,14 @@ document.getElementById('new-contract-form')?.addEventListener('submit', functio
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('Contract created successfully!');
+            showToast('Contract created successfully!', 'success');
             window.location.href = '?page=employee_contracts&tab=list';
         } else {
-            alert('Error: ' + data.message);
+            showToast('Error: ' + data.message, 'error');
         }
     })
     .catch(error => {
-        alert('Error creating contract: ' + error);
+        showToast('Error creating contract: ' + error, 'error');
     });
 });
 
@@ -1320,13 +1320,13 @@ document.getElementById('create-template-form')?.addEventListener('submit', func
             persistToast('Template created successfully! The template is now available in DocuSeal.', 'success');
             location.reload();
         } else {
-            alert('Error: ' + data.message);
+            showToast('Error: ' + data.message, 'error');
             btn.innerHTML = originalText;
             btn.disabled = false;
         }
     })
     .catch(error => {
-        alert('Error creating template: ' + error);
+        showToast('Error creating template: ' + error, 'error');
         btn.innerHTML = originalText;
         btn.disabled = false;
     });
@@ -1353,13 +1353,13 @@ function refreshDocuSealTemplates() {
             updateTemplatesTable(data.templates);
             document.getElementById('docuseal-template-count').textContent = data.count + ' Templates';
         } else {
-            alert('Error: ' + data.message);
+            showToast('Error: ' + data.message, 'error');
         }
         btn.innerHTML = originalText;
         btn.disabled = false;
     })
     .catch(error => {
-        alert('Error refreshing templates: ' + error);
+        showToast('Error refreshing templates: ' + error, 'error');
         btn.innerHTML = originalText;
         btn.disabled = false;
     });
@@ -1581,11 +1581,11 @@ document.getElementById('edit-template-form')?.addEventListener('submit', functi
             closeEditModal();
             location.reload();
         } else {
-            alert('Error: ' + data.message);
+            showToast('Error: ' + data.message, 'error');
         }
     })
     .catch(error => {
-        alert('Error updating template: ' + error);
+        showToast('Error updating template: ' + error, 'error');
     });
 });
 
@@ -1613,11 +1613,11 @@ function cloneTemplate(templateId, templateName) {
             persistToast('Template cloned successfully!', 'success');
             location.reload();
         } else {
-            alert('Error: ' + data.message);
+            showToast('Error: ' + data.message, 'error');
         }
     })
     .catch(error => {
-        alert('Error cloning template: ' + error);
+        showToast('Error cloning template: ' + error, 'error');
     });
 }
 
@@ -1642,11 +1642,11 @@ async function deleteTemplate(templateId, templateName) {
             persistToast('Template deleted successfully!', 'success');
             location.reload();
         } else {
-            alert('Error: ' + data.message);
+            showToast('Error: ' + data.message, 'error');
         }
     })
     .catch(error => {
-        alert('Error deleting template: ' + error);
+        showToast('Error deleting template: ' + error, 'error');
     });
 }
 

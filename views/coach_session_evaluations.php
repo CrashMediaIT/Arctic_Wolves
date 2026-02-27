@@ -1202,7 +1202,7 @@ async function addExistingAthlete() {
     const userId = document.getElementById('existing-user-select').value;
     
     if (!userId) {
-        alert('Please search and select an athlete');
+        showToast('Please search and select an athlete', 'info');
         return;
     }
     
@@ -1226,10 +1226,10 @@ async function addExistingAthlete() {
             // Re-initialize typeahead to reset selection
             initAthleteTypeahead();
         } else {
-            alert(data.message);
+            showToast(data.message, 'error');
         }
     } catch (error) {
-        alert('Error adding athlete');
+        showToast('Error adding athlete', 'error');
     }
 }
 
@@ -1242,7 +1242,7 @@ async function addManualAthlete() {
     const notes = document.getElementById('manual-notes').value.trim();
     
     if (!firstName || !lastName) {
-        alert('First name and last name are required');
+        showToast('First name and last name are required', 'error');
         return;
     }
     
@@ -1273,10 +1273,10 @@ async function addManualAthlete() {
             document.getElementById('manual-dob').value = '';
             document.getElementById('manual-notes').value = '';
         } else {
-            alert(data.message);
+            showToast(data.message, 'error');
         }
     } catch (error) {
-        alert('Error adding athlete');
+        showToast('Error adding athlete', 'error');
     }
 }
 
@@ -1285,7 +1285,7 @@ async function importCSV() {
     const fileInput = document.getElementById('csv-file');
     
     if (!fileInput.files.length) {
-        alert('Please select a CSV file');
+        showToast('Please select a CSV file', 'error');
         return;
     }
     
@@ -1345,10 +1345,10 @@ async function removeAthlete(athleteId) {
         if (data.success) {
             await loadAthletes(evaluationId);
         } else {
-            alert(data.message);
+            showToast(data.message, 'error');
         }
     } catch (error) {
-        alert('Error removing athlete');
+        showToast('Error removing athlete', 'error');
     }
 }
 

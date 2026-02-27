@@ -3236,7 +3236,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     persistToast(data.message || 'Operation completed successfully', 'success');
                     location.reload();
                 } else {
-                    alert('Error: ' + (data.message || 'Unknown error'));
+                    showToast('Error: ' + (data.message || 'Unknown error'), 'error');
                 }
             })
             .catch(function(err) {
@@ -3245,7 +3245,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     submitBtn.disabled = false;
                 }
                 console.error(err);
-                alert('Error saving changes. Please try again.');
+                showToast('Error saving changes. Please try again.', 'error');
             });
         });
     }
@@ -3795,7 +3795,7 @@ function filterSessions() {
 var selectedPackageSessions = [];
 function addSessionToPackage(sessionId, sessionName) {
     if (selectedPackageSessions.find(s => s.id === sessionId)) {
-        alert('This session is already added to the package.');
+        showToast('This session is already added to the package.', 'info');
         return;
     }
     

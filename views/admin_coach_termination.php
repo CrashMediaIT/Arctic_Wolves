@@ -504,7 +504,7 @@ function submitTermination(event) {
     const confirmation = prompt(confirmMessage);
     
     if (confirmation !== 'TERMINATE') {
-        alert('Termination cancelled. You must type "TERMINATE" to confirm.');
+        showToast('Termination cancelled. You must type "TERMINATE" to confirm.', 'info');
         return;
     }
     
@@ -521,16 +521,16 @@ function submitTermination(event) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('SUCCESS: ' + data.message + '\n\nBackup created: ' + (data.backup_file || 'N/A'));
+            showToast('SUCCESS: ' + data.message + '\n\nBackup created: ' + (data.backup_file || 'N/A'), 'success');
             window.location.href = '?page=admin_team_coaches';
         } else {
-            alert('ERROR: ' + data.message);
+            showToast('ERROR: ' + data.message, 'error');
             submitBtn.disabled = false;
             submitBtn.innerHTML = '<i class="fas fa-user-times"></i> Terminate Coach and Transfer Data';
         }
     })
     .catch(error => {
-        alert('ERROR: ' + error.message);
+        showToast('ERROR: ' + error.message, 'error');
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<i class="fas fa-user-times"></i> Terminate Coach and Transfer Data';
     });

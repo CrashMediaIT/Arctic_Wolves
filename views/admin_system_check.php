@@ -417,11 +417,11 @@ async function runValidation() {
         if (data.success) {
             displayResults(data.results);
         } else {
-            alert('Error running validation: ' + (data.error || 'Unknown error'));
+            showToast('Error running validation: ' + (data.error || 'Unknown error'), 'error');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('Error running validation. Please try again.');
+        showToast('Error running validation. Please try again.', 'error');
     } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-play"></i> Run Validation';

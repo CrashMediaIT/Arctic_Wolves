@@ -656,7 +656,7 @@ function closeSessionDetailModal() { document.getElementById('sessionDetailModal
 function openAssignPlanModal(sessionId, currentPlanId) {
     // Validate sessionId is numeric to prevent XSS
     if (!/^\d+$/.test(sessionId)) {
-        alert('Invalid session ID.');
+        showToast('Invalid session ID.', 'error');
         return;
     }
     document.getElementById('assignPlanSessionId').value = sessionId;
@@ -693,7 +693,7 @@ document.addEventListener('keydown', function(e) { if (e.key === 'Escape') docum
 document.getElementById('assignPlanForm')?.addEventListener('submit', function(e) {
     const sessionId = document.getElementById('assignPlanSessionId').value;
     // Validate sessionId is numeric
-    if (!/^\d+$/.test(sessionId)) { e.preventDefault(); alert('Invalid session ID.'); return; }
+    if (!/^\d+$/.test(sessionId)) { e.preventDefault(); showToast('Invalid session ID.', 'error'); return; }
 });
 document.getElementById('privateSessionForm')?.addEventListener('submit', function(e) {
     // Form validation is handled by HTML5 required attributes

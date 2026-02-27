@@ -1452,7 +1452,7 @@ document.addEventListener('DOMContentLoaded', function() {
         btn.addEventListener('click', function() {
             const sessionId = this.dataset.sessionId;
             // In a real implementation, this would open a modal or navigate to session videos
-            alert('View videos for session ' + sessionId + '\n\nThis would show all videos from this session.');
+            showToast('View videos for session ' + sessionId + '\n\nThis would show all videos from this session.', 'info');
         });
     });
 

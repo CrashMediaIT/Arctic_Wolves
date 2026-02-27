@@ -2226,7 +2226,7 @@ function editGoal(goalId) {
         })
         .catch(err => {
             console.error('Error fetching goal:', err);
-            alert('Failed to load goal data. Please try again.');
+            showToast('Failed to load goal data. Please try again.', 'error');
         });
 }
 
@@ -2382,12 +2382,12 @@ function toggleStep(stepId, goalId, isCompleted) {
             persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload(); // Refresh main view
         } else {
-            alert('Error: ' + (data.message || 'Failed to update step'));
+            showToast('Error: ' + (data.message || 'Failed to update step'), 'error');
         }
     })
     .catch(err => {
         console.error('Error toggling step:', err);
-        alert('Failed to update step. Please try again.');
+        showToast('Failed to update step. Please try again.', 'error');
     });
 }
 
@@ -2414,12 +2414,12 @@ async function completeGoal(goalId) {
             persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
-            alert('Error: ' + (data.message || 'Failed to complete goal'));
+            showToast('Error: ' + (data.message || 'Failed to complete goal'), 'error');
         }
     })
     .catch(err => {
         console.error('Error completing goal:', err);
-        alert('Failed to complete goal. Please try again.');
+        showToast('Failed to complete goal. Please try again.', 'error');
     });
 }
 

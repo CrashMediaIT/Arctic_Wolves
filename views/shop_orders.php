@@ -459,14 +459,14 @@ function submitShipOrder(e) {
             persistToast(data.message || 'Order shipped successfully!', 'success');
             location.reload();
         } else {
-            alert('Error: ' + (data.message || 'Failed to ship order'));
+            showToast('Error: ' + (data.message || 'Failed to ship order'), 'error');
         }
     })
     .catch(error => {
         submitBtn.innerHTML = originalText;
         submitBtn.disabled = false;
         console.error('Error:', error);
-        alert('An error occurred. Please try again.');
+        showToast('An error occurred. Please try again.', 'error');
     });
 }
 

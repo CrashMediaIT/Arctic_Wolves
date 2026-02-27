@@ -525,7 +525,7 @@ uploadSection.addEventListener('drop', (e) => {
     if (files.length > 0 && files[0].name.endsWith('.zip')) {
         handleFile(files[0]);
     } else {
-        alert('Please select a ZIP file');
+        showToast('Please select a ZIP file', 'error');
     }
 });
 
@@ -565,7 +565,7 @@ function formatFileSize(bytes) {
 
 async function startImport() {
     if (!selectedFile) {
-        alert('Please select a file first');
+        showToast('Please select a file first', 'info');
         return;
     }
     

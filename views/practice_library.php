@@ -746,12 +746,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         // Show success message
                         showSuccessMessage('Practice plan deleted successfully!');
                     } else {
-                        alert('Error: ' + (data.message || 'Failed to delete practice plan'));
+                        showToast('Error: ' + (data.message || 'Failed to delete practice plan'), 'error');
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    alert('An error occurred while deleting the practice plan.');
+                    showToast('An error occurred while deleting the practice plan.', 'error');
                 });
             }
         });
@@ -924,14 +924,14 @@ function copyLibraryShareLink() {
     input.setSelectionRange(0, input.value.length);
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(input.value).then(function() {
-            alert('Share link copied to clipboard!');
+            showToast('Share link copied to clipboard!', 'success');
         }).catch(function() {
             document.execCommand('copy');
-            alert('Share link copied to clipboard!');
+            showToast('Share link copied to clipboard!', 'success');
         });
     } else {
         document.execCommand('copy');
-        alert('Share link copied to clipboard!');
+        showToast('Share link copied to clipboard!', 'success');
     }
 }
 

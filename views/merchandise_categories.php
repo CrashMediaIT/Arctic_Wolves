@@ -590,7 +590,7 @@ async function toggleCategoryStatus(id, currentStatus) {
             persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
-            alert('Error: ' + (data.message || 'Unknown error'));
+            showToast('Error: ' + (data.message || 'Unknown error'), 'error');
         }
     })
     .catch(error => {
@@ -601,7 +601,7 @@ async function toggleCategoryStatus(id, currentStatus) {
 
 async function deleteCategory(category) {
     if (category.product_count > 0) {
-        alert('Cannot delete category "' + category.name + '" because it has ' + category.product_count + ' products. Please move or delete the products first.');
+        showToast('Cannot delete category "' + category.name + '" because it has ' + category.product_count + ' products. Please move or delete the products first.', 'error');
         return;
     }
     
@@ -625,7 +625,7 @@ async function deleteCategory(category) {
             persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
-            alert('Error: ' + (data.message || 'Unknown error'));
+            showToast('Error: ' + (data.message || 'Unknown error'), 'error');
         }
     })
     .catch(error => {

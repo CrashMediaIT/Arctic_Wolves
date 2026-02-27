@@ -1167,13 +1167,13 @@ async function cancelPackageRegistration(userPackageId, packageType) {
     .then(function(r) { return r.json(); })
     .then(function(data) {
         if (data.success) {
-            alert(data.message || 'Registration cancelled successfully.');
+            showToast(data.message || 'Registration cancelled successfully.', 'success');
             location.reload();
         } else {
-            alert('Error: ' + (data.message || 'Failed to cancel registration'));
+            showToast('Error: ' + (data.message || 'Failed to cancel registration'), 'error');
         }
     })
-    .catch(function() { alert('Failed to process cancellation'); });
+    .catch(function() { showToast('Failed to process cancellation', 'error'); });
 }
 
 function scrollToPackage(packageId) {
@@ -1273,13 +1273,13 @@ async function cancelRegistration(userPackageId, packageId) {
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            alert('Registration cancelled and refund initiated.');
+            showToast('Registration cancelled and refund initiated.', 'success');
             loadRegistrations(packageId);
         } else {
-            alert('Error: ' + (data.message || 'Failed to cancel registration'));
+            showToast('Error: ' + (data.message || 'Failed to cancel registration'), 'error');
         }
     })
-    .catch(function() { alert('Failed to process cancellation'); });
+    .catch(function() { showToast('Failed to process cancellation', 'error'); });
 }
 
 function escHtml(str) {
