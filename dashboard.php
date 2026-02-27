@@ -1157,6 +1157,10 @@ function switchAthlete(athleteId) {
                 <button id="messengerMinimizeBtn" class="messenger-icon-btn" title="Minimize"><i class="fas fa-minus"></i></button>
             </div>
             <div id="messengerMessages" class="messenger-messages"></div>
+            <div class="messenger-typing-indicator" id="widgetTypingIndicator" style="display:none;">
+                <div class="typing-dots"><span></span><span></span><span></span></div>
+                <span>typing...</span>
+            </div>
             <div class="messenger-input-area">
                 <div class="messenger-input-toolbar">
                     <div class="widget-emoji-picker-container">
@@ -1271,6 +1275,13 @@ function switchAthlete(athleteId) {
 .widget-emoji-picker-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; padding: 10px; overflow-y: auto; flex: 1; max-height: 300px; }
 .widget-emoji-btn { display: flex; align-items: center; justify-content: center; padding: 6px; background: none; border: none; font-size: 22px; cursor: pointer; border-radius: 6px; transition: background 0.12s; line-height: 1; }
 .widget-emoji-btn:hover { background: rgba(107, 70, 193, 0.2); }
+/* Widget Typing Indicator */
+.messenger-typing-indicator { padding: 4px 16px 2px; display: flex; align-items: center; gap: 8px; color: var(--text-dim, #94a3b8); font-size: 12px; }
+.messenger-typing-indicator .typing-dots { display: flex; gap: 3px; align-items: center; }
+.messenger-typing-indicator .typing-dots span { width: 5px; height: 5px; background: var(--primary, #6B46C1); border-radius: 50%; animation: widgetTypingBounce 1.4s infinite both; }
+.messenger-typing-indicator .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.messenger-typing-indicator .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes widgetTypingBounce { 0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
 </style>
 
 <script>
@@ -1373,6 +1384,22 @@ function switchAthlete(athleteId) {
                     container.innerHTML = '<div class="messenger-empty"><i class="fas fa-inbox" style="font-size:32px; display:block; margin-bottom:12px; opacity:0.3;"></i>No conversations yet</div>';
                     return;
                 }
+                // Check for new unread messages in non-active conversations
+                if (silent && widgetInitialLoadDone) {
+                    data.conversations.forEach(function(c) {
+                        var convId = c.conversation_id;
+                        var unread = parseInt(c.unread_count || 0);
+                        var prevUnread = widgetPrevUnreadCounts[convId] || 0;
+                        if (unread > prevUnread && parseInt(convId) !== currentConvId) {
+                            playWidgetNotificationSound();
+                        }
+                    });
+                }
+                widgetPrevUnreadCounts = {};
+                data.conversations.forEach(function(c) {
+                    widgetPrevUnreadCounts[c.conversation_id] = parseInt(c.unread_count || 0);
+                });
+                widgetInitialLoadDone = true;
                 var html = '';
                 data.conversations.forEach(function(c) {
                     var initials = getInitials(c.first_name, c.last_name);
@@ -1496,11 +1523,67 @@ function switchAthlete(athleteId) {
         chatPollInterval = setInterval(function() {
             if (currentConvId) loadMessages(currentConvId, true);
         }, 10000);
+        startTypingPoll();
     }
 
     function stopChatPoll() {
         if (chatPollInterval) { clearInterval(chatPollInterval); chatPollInterval = null; }
+        stopTypingPoll();
     }
+
+    // === Typing Indicator ===
+    var widgetTypingSendTimeout = null;
+    document.getElementById('messengerInput').addEventListener('input', function() {
+        if (currentConvId) {
+            if (widgetTypingSendTimeout) return;
+            widgetTypingSendTimeout = setTimeout(function() { widgetTypingSendTimeout = null; }, 2000);
+            var formData = new FormData();
+            formData.append('action', 'set_typing');
+            formData.append('conversation_id', currentConvId);
+            formData.append('csrf_token', csrfToken);
+            fetch('process_messages.php', { method: 'POST', body: formData }).catch(function() {});
+        }
+    });
+
+    var widgetTypingPollInterval = null;
+    function startTypingPoll() {
+        stopTypingPoll();
+        widgetTypingPollInterval = setInterval(function() {
+            if (currentConvId) {
+                fetch('process_messages.php?action=get_typing_status&conversation_id=' + currentConvId)
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        var indicator = document.getElementById('widgetTypingIndicator');
+                        indicator.style.display = (data.success && data.typing) ? 'flex' : 'none';
+                    })
+                    .catch(function() {});
+            }
+        }, 3000);
+    }
+    function stopTypingPoll() {
+        if (widgetTypingPollInterval) { clearInterval(widgetTypingPollInterval); widgetTypingPollInterval = null; }
+        document.getElementById('widgetTypingIndicator').style.display = 'none';
+    }
+
+    // === Notification Sound ===
+    function playWidgetNotificationSound() {
+        try {
+            var ctx = new (window.AudioContext || window.webkitAudioContext)();
+            var osc = ctx.createOscillator();
+            var gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.frequency.setValueAtTime(880, ctx.currentTime);
+            osc.frequency.setValueAtTime(660, ctx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.3, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+            osc.start(ctx.currentTime);
+            osc.stop(ctx.currentTime + 0.3);
+        } catch (e) { /* ignore audio errors */ }
+    }
+
+    var widgetPrevUnreadCounts = {};
+    var widgetInitialLoadDone = false;
 
     function loadContacts() {
         var container = document.getElementById('messengerContacts');
@@ -1583,6 +1666,8 @@ function switchAthlete(athleteId) {
                 }
             })
             .catch(function() {});
+        // Also check for new messages to trigger notification sound
+        loadConversations(true);
     }
     updateWidgetBadge();
     setInterval(updateWidgetBadge, 30000);

@@ -501,6 +501,33 @@ $start_with_user = isset($_GET['user_id']) ? intval($_GET['user_id']) : 0;
     }
     
     /* Input Area */
+    .msg-typing-indicator {
+        padding: 4px 24px 2px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--text-dim, #94a3b8);
+        font-size: 12px;
+        background: var(--card-bg, #16161F);
+    }
+    .typing-dots {
+        display: flex;
+        gap: 3px;
+        align-items: center;
+    }
+    .typing-dots span {
+        width: 6px;
+        height: 6px;
+        background: var(--primary, #6B46C1);
+        border-radius: 50%;
+        animation: typingBounce 1.4s infinite both;
+    }
+    .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes typingBounce {
+        0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+        40% { transform: scale(1); opacity: 1; }
+    }
     .msg-input-area {
         padding: 16px 24px;
         border-top: 1px solid var(--border, #2D2D3F);
@@ -727,6 +754,10 @@ $start_with_user = isset($_GET['user_id']) ? intval($_GET['user_id']) : 0;
                 </div>
             </div>
             <div class="msg-body" id="chatBody"></div>
+            <div class="msg-typing-indicator" id="typingIndicator" style="display:none;">
+                <div class="typing-dots"><span></span><span></span><span></span></div>
+                <span class="typing-text">typing...</span>
+            </div>
             <div class="msg-pending-attachments" id="pendingAttachments"></div>
             <div class="msg-input-area">
                 <div class="msg-input-toolbar">
@@ -870,8 +901,70 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+    
+    // === Typing Indicator ===
+    let typingTimeout = null;
+    input.addEventListener('input', function() {
+        if (activeConversationId) {
+            sendTypingStatus(activeConversationId);
+        }
+    });
+    
+    // Poll typing status every 3 seconds
+    setInterval(function() {
+        if (activeConversationId) {
+            checkTypingStatus(activeConversationId);
+        }
+    }, 3000);
 });
 
+// Notification sound using Web Audio API
+function playNotificationSound() {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.frequency.setValueAtTime(660, ctx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.3);
+    } catch (e) { /* ignore audio errors */ }
+}
+
+// Track last known message IDs for notification sound
+let lastKnownMessageIds = new Set();
+let initialLoadDone = false;
+
+// Typing status: send to server (debounced)
+let typingSendTimeout = null;
+function sendTypingStatus(convId) {
+    if (typingSendTimeout) return;
+    typingSendTimeout = setTimeout(function() { typingSendTimeout = null; }, 2000);
+    const formData = new FormData();
+    formData.append('action', 'set_typing');
+    formData.append('conversation_id', convId);
+    formData.append('csrf_token', csrfToken);
+    fetch('process_messages.php', { method: 'POST', body: formData }).catch(function() {});
+}
+
+// Check if other user is typing
+function checkTypingStatus(convId) {
+    fetch('process_messages.php?action=get_typing_status&conversation_id=' + convId)
+        .then(r => r.json())
+        .then(data => {
+            const indicator = document.getElementById('typingIndicator');
+            if (data.success && data.typing) {
+                indicator.style.display = 'flex';
+            } else {
+                indicator.style.display = 'none';
+            }
+        })
+        .catch(function() {});
+}
 function updateSendButton() {
     const input = document.getElementById('msgInput');
     document.getElementById('sendBtn').disabled = !input.value.trim() && pendingFiles.length === 0;
@@ -1039,11 +1132,29 @@ function getRoleBadge(role) {
 }
 
 // Load conversations
+let prevUnreadCounts = {};
 function loadConversations(silent) {
     fetch('process_messages.php?action=get_conversations')
         .then(r => r.json())
         .then(data => {
             if (data.success) {
+                // Check for new unread messages in non-active conversations
+                if (silent && initialLoadDone) {
+                    (data.conversations || []).forEach(c => {
+                        const convId = c.conversation_id;
+                        const unread = parseInt(c.unread_count || 0);
+                        const prevUnread = prevUnreadCounts[convId] || 0;
+                        if (unread > prevUnread && parseInt(convId) !== activeConversationId) {
+                            playNotificationSound();
+                        }
+                    });
+                }
+                // Store current unread counts
+                prevUnreadCounts = {};
+                (data.conversations || []).forEach(c => {
+                    prevUnreadCounts[c.conversation_id] = parseInt(c.unread_count || 0);
+                });
+                initialLoadDone = true;
                 conversations = data.conversations;
                 renderConversations();
             }
@@ -1109,6 +1220,7 @@ function openConversation(convId, otherUserId, firstName, lastName, role) {
     activeConversationId = convId;
     pendingFiles = [];
     renderPendingAttachments();
+    document.getElementById('typingIndicator').style.display = 'none';
     
     document.getElementById('noChatSelected').style.display = 'none';
     document.getElementById('chatView').style.display = 'flex';
