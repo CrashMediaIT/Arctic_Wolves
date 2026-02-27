@@ -489,8 +489,37 @@
     </footer>
 
     <script>
-        function showConfirmModal(message) {
-            return new Promise(resolve => resolve(window.confirm(message)));
+        function showConfirmModal(message, confirmText, cancelText) {
+            confirmText = confirmText || 'Confirm';
+            cancelText = cancelText || 'Cancel';
+            return new Promise(function(resolve) {
+                var overlay = document.createElement('div');
+                overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:10001;';
+                var card = document.createElement('div');
+                card.style.cssText = 'background:#1e1e2e;border:1px solid #333;border-radius:12px;padding:32px;max-width:420px;width:90%;text-align:center;';
+                var msg = document.createElement('p');
+                msg.textContent = message;
+                msg.style.cssText = 'color:#fff;font-size:15px;margin-bottom:24px;line-height:1.5;';
+                var actions = document.createElement('div');
+                actions.style.cssText = 'display:flex;gap:12px;justify-content:center;';
+                var cancelBtn = document.createElement('button');
+                cancelBtn.textContent = cancelText;
+                cancelBtn.style.cssText = 'padding:10px 24px;border-radius:8px;border:1px solid #555;background:transparent;color:#fff;cursor:pointer;font-size:14px;';
+                var confirmBtn = document.createElement('button');
+                confirmBtn.textContent = confirmText;
+                confirmBtn.style.cssText = 'padding:10px 24px;border-radius:8px;border:none;background:#6B46C1;color:white;cursor:pointer;font-size:14px;';
+                function cleanup(result) { overlay.remove(); resolve(result); }
+                cancelBtn.addEventListener('click', function() { cleanup(false); });
+                confirmBtn.addEventListener('click', function() { cleanup(true); });
+                overlay.addEventListener('click', function(e) { if (e.target === overlay) cleanup(false); });
+                actions.appendChild(cancelBtn);
+                actions.appendChild(confirmBtn);
+                card.appendChild(msg);
+                card.appendChild(actions);
+                overlay.appendChild(card);
+                document.body.appendChild(overlay);
+                confirmBtn.focus();
+            });
         }
 
         const API_BASE = window.location.origin;
