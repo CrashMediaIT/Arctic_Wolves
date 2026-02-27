@@ -97,9 +97,12 @@ test.describe('IHS import: drill existence check is simple', () => {
     expect(block).not.toMatch(/ORDER BY\s*\(created_by\s*=\s*\?\)/);
   });
 
-  test('drill SELECT should use simple LIMIT 1', () => {
+  test('drill SELECT should use simple queries with user fallback', () => {
     const block = getIHSImportBlock();
-    expect(block).toMatch(/SELECT id FROM drills WHERE title = \? LIMIT 1/);
+    // Should have a user-specific query first
+    expect(block).toContain('WHERE title = ? AND created_by = ?');
+    // Followed by a fallback to any match
+    expect(block).toContain('WHERE title = ? LIMIT 1');
   });
 });
 

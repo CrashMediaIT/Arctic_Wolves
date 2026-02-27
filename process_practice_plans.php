@@ -410,11 +410,20 @@ if ($action === 'import_ihs_practice_plan') {
             }
             
             // Check if a drill with this name already exists in the drill library
-            $existing_drill_stmt = $pdo->prepare("
-                SELECT id FROM drills WHERE title = ? LIMIT 1
-            ");
-            $existing_drill_stmt->execute([$drill_title]);
+            // Prefer drills owned by the current user; fall back to any match
+            $existing_drill_stmt = $pdo->prepare(
+                "SELECT id FROM drills WHERE title = ? AND created_by = ? LIMIT 1"
+            );
+            $existing_drill_stmt->execute([$drill_title, $user_id]);
             $existing_drill = $existing_drill_stmt->fetch();
+            
+            if (!$existing_drill) {
+                $existing_drill_stmt = $pdo->prepare(
+                    "SELECT id FROM drills WHERE title = ? LIMIT 1"
+                );
+                $existing_drill_stmt->execute([$drill_title]);
+                $existing_drill = $existing_drill_stmt->fetch();
+            }
             
             if ($existing_drill) {
                 // Use the existing drill from the library
@@ -495,7 +504,7 @@ if ($action === 'import_ihs_practice_plan') {
                         $pdo->prepare("UPDATE drills SET nextcloud_image_path = ? WHERE id = ?")->execute([$drill_nc_path, $drill_id]);
                     } catch (\Throwable $ncErr) {
                         // Column may not exist yet — non-fatal
-                        error_log("nextcloud_image_path update skipped: " . $ncErr->getMessage());
+                        ErrorLogger::error("nextcloud_image_path update skipped: " . $ncErr->getMessage());
                     }
                 }
             }
