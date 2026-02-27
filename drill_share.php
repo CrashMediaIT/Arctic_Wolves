@@ -81,28 +81,33 @@ $coachName = $drill ? htmlspecialchars(trim(($drill['first_name'] ?? '') . ' ' .
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-body: #0f1419;
-            --bg-card: #1a2332;
-            --bg-card-hover: #1e2a3a;
-            --text-primary: #e8eaed;
-            --text-dim: #9aa0a6;
-            --text-white: #ffffff;
-            --primary: #7000a4;
-            --primary-light: #9b30d9;
-            --border-color: rgba(255,255,255,0.08);
+            --bg-main: #0A0A0F;
+            --bg-secondary: #13131A;
+            --bg-card: #16161F;
+            --primary: #6B46C1;
+            --primary-hover: #7C3AED;
+            --primary-light: #8B5CF6;
+            --accent: #8B5CF6;
+            --text-white: #FFFFFF;
+            --text-primary: #FFFFFF;
+            --text-secondary: #A8A8B8;
+            --text-dim: #A8A8B8;
+            --border: #2D2D3F;
+            --border-light: #3A3A4F;
             --radius: 12px;
         }
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
-            font-family: 'Inter', sans-serif;
-            background: var(--bg-body);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-main);
             color: var(--text-primary);
             line-height: 1.6;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
+            -webkit-font-smoothing: antialiased;
         }
 
         .container {
@@ -114,7 +119,7 @@ $coachName = $drill ? htmlspecialchars(trim(($drill['first_name'] ?? '') . ' ' .
 
         .content-card {
             background: var(--bg-card);
-            border: 1px solid var(--border-color);
+            border: 1px solid var(--border);
             border-radius: var(--radius);
             margin-bottom: 24px;
             overflow: hidden;
@@ -124,32 +129,14 @@ $coachName = $drill ? htmlspecialchars(trim(($drill['first_name'] ?? '') . ' ' .
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 16px 20px;
-            border-bottom: 1px solid var(--border-color);
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            background: linear-gradient(135deg, rgba(107, 70, 193, 0.05) 0%, transparent 100%);
+            min-height: 64px;
         }
 
         .card-header h3 {
             font-size: 16px;
-            font-weight: 600;
-            color: var(--text-white);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .card-header h3 i { color: var(--primary-light); }
-
-        .card-body { padding: 20px; }
-
-        .card-actions { display: flex; gap: 10px; }
-
-        /* Page header */
-        .page-header {
-            margin-bottom: 24px;
-        }
-
-        .page-title {
-            font-size: 24px;
             font-weight: 700;
             color: var(--text-white);
             display: flex;
@@ -157,7 +144,30 @@ $coachName = $drill ? htmlspecialchars(trim(($drill['first_name'] ?? '') . ' ' .
             gap: 10px;
         }
 
-        .page-title i { color: var(--primary-light); }
+        .card-header h3 i { color: var(--primary); font-size: 18px; }
+
+        .card-body { padding: 24px; }
+
+        .card-actions { display: flex; gap: 10px; }
+
+        /* Page header */
+        .page-header {
+            margin-bottom: 24px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .page-title {
+            font-size: 28px;
+            font-weight: 900;
+            color: var(--text-white);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            letter-spacing: -0.5px;
+        }
+
+        .page-title i { color: var(--primary); font-size: 26px; }
 
         .page-meta {
             margin-top: 8px;
@@ -185,24 +195,27 @@ $coachName = $drill ? htmlspecialchars(trim(($drill['first_name'] ?? '') . ' ' .
         .btn {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            padding: 8px 16px;
+            justify-content: center;
+            gap: 8px;
+            padding: 0 24px;
+            height: 45px;
             border: none;
             border-radius: 8px;
-            font-size: 13px;
-            font-weight: 600;
+            font-size: 14px;
+            font-weight: 700;
             font-family: 'Inter', sans-serif;
             cursor: pointer;
             text-decoration: none;
-            transition: background 0.2s;
+            transition: all 0.3s ease;
         }
 
         .btn-secondary {
-            background: rgba(255,255,255,0.08);
-            color: var(--text-primary);
+            background: var(--border);
+            color: #E0E0E0;
+            border: 1px solid var(--border-light);
         }
 
-        .btn-secondary:hover { background: rgba(255,255,255,0.14); }
+        .btn-secondary:hover { background: var(--border-light); border-color: var(--primary); transform: translateY(-1px); }
 
         /* Diagram */
         .drill-diagram-view {
@@ -284,7 +297,7 @@ $coachName = $drill ? htmlspecialchars(trim(($drill['first_name'] ?? '') . ' ' .
         }
 
         .detail-section h4 i {
-            color: var(--primary-light);
+            color: var(--primary);
             margin-right: 4px;
         }
 
@@ -342,7 +355,7 @@ $coachName = $drill ? htmlspecialchars(trim(($drill['first_name'] ?? '') . ' ' .
         .share-footer {
             text-align: center;
             padding: 24px 16px;
-            border-top: 1px solid var(--border-color);
+            border-top: 1px solid var(--border);
             color: var(--text-dim);
             font-size: 13px;
         }
@@ -466,7 +479,7 @@ $coachName = $drill ? htmlspecialchars(trim(($drill['first_name'] ?? '') . ' ' .
                         <div class="detail-section">
                             <h4><i class="fas fa-video"></i> Video</h4>
                             <?php if ($youtubeId): ?>
-                            <div style="position: relative; width: 100%; max-width: 640px; padding-bottom: 56.25%; height: 0; overflow: hidden; margin-bottom: 12px; border-radius: 8px; background: var(--bg-body);">
+                            <div style="position: relative; width: 100%; max-width: 640px; padding-bottom: 56.25%; height: 0; overflow: hidden; margin-bottom: 12px; border-radius: 8px; background: var(--bg-main);">
                                 <iframe
                                     style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; border-radius: 8px;"
                                     src="https://www.youtube.com/embed/<?php echo htmlspecialchars($youtubeId); ?>"
@@ -499,7 +512,7 @@ $coachName = $drill ? htmlspecialchars(trim(($drill['first_name'] ?? '') . ' ' .
                         ?>
                         <div class="detail-section">
                             <h4><i class="fas fa-film"></i> Uploaded Video</h4>
-                            <video controls style="width: 100%; max-width: 640px; border-radius: 8px; background: var(--bg-body);">
+                            <video controls style="width: 100%; max-width: 640px; border-radius: 8px; background: var(--bg-main);">
                                 <source src="<?php echo htmlspecialchars($videoPath); ?>" type="<?php echo $videoMimeType; ?>">
                                 Your browser does not support the video tag.
                             </video>
