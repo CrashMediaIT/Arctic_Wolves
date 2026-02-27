@@ -180,9 +180,9 @@ function mCreateSkillEval(e) {
     fetch('process_eval_skills.php', { method: 'POST', body: fd })
         .then(function(r) { return r.json(); })
         .then(function(data) {
-            if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); } else { alert(data.message || 'Error'); }
+            if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); } else { showToast(data.message || 'Error', 'error'); }
         })
-        .catch(function() { alert('Error creating evaluation'); });
+        .catch(function() { showToast('Error creating evaluation', 'error'); });
 }
 
 function mSubmitScore(e) {
@@ -192,9 +192,9 @@ function mSubmitScore(e) {
     fetch('process_eval_skills.php', { method: 'POST', body: fd })
         .then(function(r) { return r.json(); })
         .then(function(data) {
-            if (data.success) { mCloseSheet('mSkillScoreOv', 'mSkillScoreSh'); e.target.reset(); alert('Score saved!'); }
-            else { alert(data.message || 'Error saving score'); }
+            if (data.success) { mCloseSheet('mSkillScoreOv', 'mSkillScoreSh'); e.target.reset(); showToast('Score saved!', 'success'); }
+            else { showToast(data.message || 'Error saving score', 'error'); }
         })
-        .catch(function() { alert('Error saving score'); });
+        .catch(function() { showToast('Error saving score', 'error'); });
 }
 </script>

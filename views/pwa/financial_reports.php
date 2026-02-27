@@ -197,8 +197,8 @@ document.getElementById('mFinRepForm').addEventListener('submit', async function
     try {
         var r = await fetch('process_reports.php', {method:'POST', body:fd});
         var d = await r.json();
-        if (d.success) { alert(d.message || 'Report generated'); mFinRepClose(); }
-        else { alert(d.message || 'Error generating report'); }
-    } catch(err) { alert('An error occurred'); }
+        if (d.success) { showToast(d.message || 'Report generated', 'success'); mFinRepClose(); }
+        else { showToast(d.message || 'Error generating report', 'error'); }
+    } catch(err) { showToast('An error occurred', 'error'); }
 });
 </script>

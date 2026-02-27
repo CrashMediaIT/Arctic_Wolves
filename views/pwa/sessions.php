@@ -888,9 +888,9 @@ async function mCancelBooking(bookingId) {
         .then(function(r) { return r.json(); })
         .then(function(data) {
             if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
-            else { alert(data.message || 'Failed to cancel booking'); }
+            else { showToast(data.message || 'Failed to cancel booking', 'error'); }
         })
-        .catch(function() { alert('Network error. Please try again.'); });
+        .catch(function() { showToast('Network error. Please try again.', 'error'); });
 }
 
 async function mCancelSession(sessionId) {
@@ -903,9 +903,9 @@ async function mCancelSession(sessionId) {
         .then(function(r) { return r.json(); })
         .then(function(data) {
             if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
-            else { alert(data.message || 'Failed to cancel session'); }
+            else { showToast(data.message || 'Failed to cancel session', 'error'); }
         })
-        .catch(function() { alert('Network error. Please try again.'); });
+        .catch(function() { showToast('Network error. Please try again.', 'error'); });
 }
 
 function mBookSession(sessionId) {
@@ -925,10 +925,10 @@ function mJoinWaitlist(sessionId) {
                 persistToast(data.message || 'Added to waitlist!', 'success');
                 location.reload();
             } else {
-                alert(data.message || 'Failed to join waitlist');
+                showToast(data.message || 'Failed to join waitlist', 'error');
             }
         })
-        .catch(function() { alert('Network error. Please try again.'); });
+        .catch(function() { showToast('Network error. Please try again.', 'error'); });
 }
 
 async function mLeaveWaitlist(sessionId) {
@@ -941,8 +941,8 @@ async function mLeaveWaitlist(sessionId) {
         .then(function(r) { return r.json(); })
         .then(function(data) {
             if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
-            else { alert(data.message || 'Failed to leave waitlist'); }
+            else { showToast(data.message || 'Failed to leave waitlist', 'error'); }
         })
-        .catch(function() { alert('Network error. Please try again.'); });
+        .catch(function() { showToast('Network error. Please try again.', 'error'); });
 }
 </script>

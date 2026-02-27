@@ -275,7 +275,7 @@ async function mCalComplete(sessionId, btn) {
                 if (actions) actions.remove();
             }
         })
-        .catch(function() { alert('Network error. Please try again.'); btn.disabled = false; });
+        .catch(function() { showToast('Network error. Please try again.', 'error'); btn.disabled = false; });
 }
 
 async function mCalCancel(sessionId, btn) {
@@ -296,6 +296,6 @@ async function mCalCancel(sessionId, btn) {
                 if (actions) actions.remove();
             }
         })
-        .catch(function() { alert('Network error. Please try again.'); btn.disabled = false; });
+        .catch(function() { showToast('Network error. Please try again.', 'error'); btn.disabled = false; });
 }
 </script>

@@ -478,10 +478,10 @@ if (!function_exists('mMsgTimeAgo')) {
                     if (card) card.remove();
                     updateCount();
                 } else {
-                    alert(data.message || 'Failed to delete conversation');
+                    showToast(data.message || 'Failed to delete conversation', 'error');
                 }
             })
-            .catch(function() { alert('Failed to delete conversation'); });
+            .catch(function() { showToast('Failed to delete conversation', 'error'); });
     };
 
     function updateCount() {
@@ -625,13 +625,13 @@ if (!function_exists('mMsgTimeAgo')) {
                     if (data.conversation_id) activeConvId = data.conversation_id;
                     loadChatMessages(activeConvId, false);
                 } else {
-                    alert(data.message || 'Failed to send');
+                    showToast(data.message || 'Failed to send', 'error');
                     chatInput.value = text;
                     chatSendBtn.disabled = false;
                 }
             })
             .catch(function() {
-                alert('Network error');
+                showToast('Network error', 'error');
                 chatInput.value = text;
                 chatSendBtn.disabled = false;
             });

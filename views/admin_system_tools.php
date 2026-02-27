@@ -3101,7 +3101,7 @@ function copyApiKey() {
     const key = keyEl.textContent.trim();
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(key).then(function() {
-            alert('API key copied to clipboard!');
+            showToast('API key copied to clipboard!', 'success');
         });
     } else {
         // Fallback for older browsers
@@ -3113,7 +3113,7 @@ function copyApiKey() {
         textarea.select();
         document.execCommand('copy');
         document.body.removeChild(textarea);
-        alert('API key copied to clipboard!');
+        showToast('API key copied to clipboard!', 'success');
     }
 }
 
@@ -3131,13 +3131,13 @@ function closeSmtpTestModal() {
 function sendSmtpTestEmail() {
     const testEmail = document.getElementById('smtp-test-email').value.trim();
     if (!testEmail) {
-        alert('Please enter an email address.');
+        showToast('Please enter an email address.', 'error');
         return;
     }
     
     // Validate email format
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(testEmail)) {
-        alert('Please enter a valid email address.');
+        showToast('Please enter a valid email address.', 'error');
         return;
     }
     
@@ -3163,16 +3163,16 @@ function sendSmtpTestEmail() {
         closeSmtpTestModal();
         
         if (data.success) {
-            alert('Success: Test email sent successfully!\n\nCheck your inbox for the test email.');
+            showToast('Success: Test email sent successfully! Check your inbox for the test email.', 'success');
         } else {
-            alert('Error: Failed to send test email:\n\n' + (data.message || 'Unknown error'));
+            showToast('Error: Failed to send test email: ' + (data.message || 'Unknown error'), 'error');
         }
     })
     .catch(error => {
         btn.disabled = false;
         btn.innerHTML = originalText;
         closeSmtpTestModal();
-        alert('Error: Failed to test SMTP connection');
+        showToast('Error: Failed to test SMTP connection', 'error');
         console.error('Error:', error);
     });
 }
@@ -3183,7 +3183,7 @@ function testGoogleMapsAPI() {
     const apiKey = apiKeyInput ? apiKeyInput.value.trim() : '';
     
     if (!apiKey) {
-        alert('Please enter a Google Maps API key first.');
+        showToast('Please enter a Google Maps API key first.', 'error');
         return;
     }
     
@@ -3208,15 +3208,15 @@ function testGoogleMapsAPI() {
         btn.innerHTML = originalText;
         
         if (data.success) {
-            alert('Success: ' + data.message);
+            showToast('Success: ' + data.message, 'success');
         } else {
-            alert('Error: ' + data.message);
+            showToast('Error: ' + data.message, 'error');
         }
     })
     .catch(error => {
         btn.disabled = false;
         btn.innerHTML = originalText;
-        alert('Error: Failed to test Google Maps API. Please try again.');
+        showToast('Error: Failed to test Google Maps API. Please try again.', 'error');
         console.error('Error:', error);
     });
 }
@@ -3268,7 +3268,7 @@ async function removeCenterIceLogo() {
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Failed to remove center ice logo');
+        showToast('Failed to remove center ice logo', 'error');
     });
 }
 
@@ -3472,15 +3472,15 @@ function testRustFSConnection() {
         btn.innerHTML = originalText;
 
         if (data.success) {
-            alert('Success: RustFS Connection Successful!\n\n' + (data.message || 'Connected successfully.'));
+            showToast('Success: RustFS Connection Successful! ' + (data.message || 'Connected successfully.'), 'success');
         } else {
-            alert('Error: RustFS Connection Failed\n\n' + (data.message || 'Could not connect to server'));
+            showToast('Error: RustFS Connection Failed. ' + (data.message || 'Could not connect to server'), 'error');
         }
     })
     .catch(error => {
         btn.disabled = false;
         btn.innerHTML = originalText;
-        alert('Error testing RustFS connection');
+        showToast('Error testing RustFS connection', 'error');
         console.error('Error:', error);
     });
 }
@@ -3784,7 +3784,7 @@ function checkStripeUpdates() {
     .catch(error => {
         btn.disabled = false;
         btn.innerHTML = originalText;
-        alert('Error checking Stripe updates');
+        showToast('Error checking Stripe updates', 'error');
         console.error('Error:', error);
     });
 }
@@ -3815,13 +3815,13 @@ async function updateStripeLibrary() {
             persistToast('Success: Stripe Library Updated! ' + (data.message || 'Update completed successfully.'), 'success');
             location.reload();
         } else {
-            alert('Error: Update Failed\n\n' + (data.message || 'Unknown error'));
+            showToast('Error: Update Failed. ' + (data.message || 'Unknown error'), 'error');
         }
     })
     .catch(error => {
         btn.disabled = false;
         btn.innerHTML = originalText;
-        alert('Error updating Stripe library');
+        showToast('Error updating Stripe library', 'error');
         console.error('Error:', error);
     });
 }
@@ -4985,15 +4985,15 @@ function testSmtpConnection() {
         btn.disabled = false;
         
         if (data.success) {
-            alert('Success: SMTP Connection Successful!\n\nTest email sent successfully.');
+            showToast('Success: SMTP Connection Successful! Test email sent successfully.', 'success');
         } else {
-            alert('Error: SMTP Connection Failed\n\n' + (data.message || 'Could not connect to SMTP server'));
+            showToast('Error: SMTP Connection Failed. ' + (data.message || 'Could not connect to SMTP server'), 'error');
         }
     })
     .catch(error => {
         btn.innerHTML = originalText;
         btn.disabled = false;
-        alert('Error testing SMTP connection');
+        showToast('Error testing SMTP connection', 'error');
         console.error('Error:', error);
     });
 }
@@ -5018,15 +5018,15 @@ function testPaperlessConnection() {
         btn.disabled = false;
         
         if (data.success) {
-            alert('Success: Paperless-NGX Connection Successful!\n\n' + (data.message || 'Connected successfully'));
+            showToast('Success: Paperless-NGX Connection Successful! ' + (data.message || 'Connected successfully'), 'success');
         } else {
-            alert('Error: Paperless-NGX Connection Failed\n\n' + (data.message || 'Could not connect to Paperless-NGX server'));
+            showToast('Error: Paperless-NGX Connection Failed. ' + (data.message || 'Could not connect to Paperless-NGX server'), 'error');
         }
     })
     .catch(error => {
         btn.innerHTML = originalText;
         btn.disabled = false;
-        alert('Error testing Paperless-NGX connection');
+        showToast('Error testing Paperless-NGX connection', 'error');
         console.error('Error:', error);
     });
 }
@@ -5042,7 +5042,7 @@ function generateEncryptionKey() {
 function validateEncryptionKey() {
     const key = document.getElementById('encryption-key-input').value.trim();
     if (!/^[a-fA-F0-9]{64}$/.test(key)) {
-        alert('The encryption key must be exactly 64 hexadecimal characters (0-9, a-f).');
+        showToast('The encryption key must be exactly 64 hexadecimal characters (0-9, a-f).', 'error');
         return false;
     }
     return true;
@@ -5054,7 +5054,7 @@ async function validateEncryptionKeyUpdate() {
     if (currentKeyInput) {
         const currentKey = currentKeyInput.value.trim();
         if (!/^[a-fA-F0-9]{64}$/.test(currentKey)) {
-            alert('The current encryption key must be exactly 64 hexadecimal characters (0-9, a-f).');
+            showToast('The current encryption key must be exactly 64 hexadecimal characters (0-9, a-f).', 'error');
             return false;
         }
     }
@@ -5062,7 +5062,7 @@ async function validateEncryptionKeyUpdate() {
     // Validate the new key field
     const newKey = document.getElementById('encryption-key-input').value.trim();
     if (!/^[a-fA-F0-9]{64}$/.test(newKey)) {
-        alert('The new encryption key must be exactly 64 hexadecimal characters (0-9, a-f).');
+        showToast('The new encryption key must be exactly 64 hexadecimal characters (0-9, a-f).', 'error');
         return false;
     }
     
@@ -5096,12 +5096,12 @@ function toggleNdiCamera(cameraId, newState) {
             persistToast(data.message || 'Operation completed successfully', 'success');
             window.location.reload();
         } else {
-            alert('Error: ' + (data.message || 'Failed to update camera status'));
+            showToast('Error: ' + (data.message || 'Failed to update camera status'), 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred while updating camera status.');
+        showToast('An error occurred while updating camera status.', 'error');
     });
 }
 
@@ -5126,12 +5126,12 @@ function editNdiCamera(cameraId) {
             document.getElementById('edit-ndi-camera-location').value = data.camera.location || '';
             document.getElementById('ndi-camera-edit-modal').style.display = 'flex';
         } else {
-            alert('Error: ' + (data.message || 'Failed to load camera details'));
+            showToast('Error: ' + (data.message || 'Failed to load camera details'), 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred while loading camera details.');
+        showToast('An error occurred while loading camera details.', 'error');
     });
 }
 
@@ -5148,7 +5148,7 @@ function saveNdiCamera() {
     const location = document.getElementById('edit-ndi-camera-location').value.trim();
 
     if (!name || !ip) {
-        alert('Camera name and IP address are required.');
+        showToast('Camera name and IP address are required.', 'error');
         return;
     }
 
@@ -5173,12 +5173,12 @@ function saveNdiCamera() {
             persistToast(data.message || 'Operation completed successfully', 'success');
             window.location.reload();
         } else {
-            alert('Error: ' + (data.message || 'Failed to update camera'));
+            showToast('Error: ' + (data.message || 'Failed to update camera'), 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred while saving camera changes.');
+        showToast('An error occurred while saving camera changes.', 'error');
     });
 }
 
@@ -5202,12 +5202,12 @@ async function deleteNdiCamera(cameraId, cameraName) {
             persistToast(data.message || 'Operation completed successfully', 'success');
             window.location.reload();
         } else {
-            alert('Error: ' + (data.message || 'Failed to delete camera'));
+            showToast('Error: ' + (data.message || 'Failed to delete camera'), 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred while deleting the camera.');
+        showToast('An error occurred while deleting the camera.', 'error');
     });
 }
 

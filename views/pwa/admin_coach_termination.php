@@ -348,7 +348,7 @@ function mCtSubmit(e) {
 
     var confirmation = prompt(msg);
     if (confirmation !== 'TERMINATE') {
-        alert('Termination cancelled. You must type "TERMINATE" to confirm.');
+        showToast('Termination cancelled. You must type "TERMINATE" to confirm.', 'error');
         return;
     }
 
@@ -365,16 +365,16 @@ function mCtSubmit(e) {
     .then(function(r) { return r.json(); })
     .then(function(data) {
         if (data.success) {
-            alert('SUCCESS: ' + data.message + '\n\nBackup created: ' + (data.backup_file || 'N/A'));
+            showToast('SUCCESS: ' + data.message + ' Backup created: ' + (data.backup_file || 'N/A'), 'success');
             window.location.href = '?page=admin_team_coaches';
         } else {
-            alert('ERROR: ' + data.message);
+            showToast('ERROR: ' + data.message, 'error');
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-user-times"></i> Terminate Coach';
         }
     })
     .catch(function(err) {
-        alert('ERROR: ' + err.message);
+        showToast('ERROR: ' + err.message, 'error');
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-user-times"></i> Terminate Coach';
     });

@@ -522,6 +522,15 @@
             });
         }
 
+        function showToast(message, type) {
+            type = type || 'info';
+            var toast = document.createElement('div');
+            toast.textContent = message;
+            toast.style.cssText = 'position:fixed;top:20px;right:20px;padding:16px 24px;background:' + (type === 'success' ? '#10B981' : type === 'error' ? '#EF4444' : '#6B46C1') + ';color:white;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:10000;font-size:14px;';
+            document.body.appendChild(toast);
+            setTimeout(function() { toast.remove(); }, 3000);
+        }
+
         const API_BASE = window.location.origin;
 
         function getApiKey() {
@@ -627,8 +636,8 @@
             if (!await showConfirmModal('Cancel this job?')) return;
             try {
                 const res = await fetch(API_BASE + '/api/job/' + jobId, { method: 'DELETE', headers: apiHeaders() });
-                if (!res.ok) { alert('Failed to cancel job'); }
-            } catch { alert('Failed to cancel job'); }
+                if (!res.ok) { showToast('Failed to cancel job', 'error'); }
+            } catch { showToast('Failed to cancel job', 'error'); }
             refreshJobs();
         }
 
@@ -728,10 +737,10 @@
                     loadConfig();
                     refreshHealth();
                 } else {
-                    alert(d.error || 'Failed to generate API key');
+                    showToast(d.error || 'Failed to generate API key', 'error');
                 }
             } catch {
-                alert('Network error while generating API key');
+                showToast('Network error while generating API key', 'error');
             }
         }
 
@@ -824,8 +833,8 @@
                     method: 'DELETE', headers: apiHeaders()
                 });
                 if (res.ok) { refreshNodes(); }
-                else { alert('Failed to remove node'); }
-            } catch { alert('Network error'); }
+                else { showToast('Failed to remove node', 'error'); }
+            } catch { showToast('Network error', 'error'); }
         }
 
         async function syncAllNodes() {

@@ -269,7 +269,7 @@ function mOpenEditGoal(id) {
             document.getElementById('mEditDate').value = g.target_date || '';
             document.getElementById('mEditStatus').value = g.status || 'active';
             mOpenSheet('mAgoalEditOv', 'mAgoalEditSh');
-        }).catch(function() { alert('Error loading goal'); });
+        }).catch(function() { showToast('Error loading goal', 'error'); });
 }
 function mOpenProgress(id) { document.getElementById('mProgGoalId').value = id; mOpenSheet('mAgoalProgOv', 'mAgoalProgSh'); }
 async function mDeleteGoal(id) { if (await showConfirmModal('Delete this goal?')) { document.getElementById('mDeleteGoalId').value = id; document.getElementById('mDeleteGoalForm').submit(); } }

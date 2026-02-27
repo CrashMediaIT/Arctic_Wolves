@@ -316,13 +316,13 @@ try {
                 persistToast(data.message || 'Operation completed successfully', 'success');
                 location.reload();
             } else {
-                alert('Error: ' + (data.message || 'Failed to save'));
+                showToast('Error: ' + (data.message || 'Failed to save'), 'error');
             }
         })
         .catch(function() {
             btn.textContent = origText;
             btn.disabled = false;
-            alert('An error occurred. Please try again.');
+            showToast('An error occurred. Please try again.', 'error');
         });
     });
 })();

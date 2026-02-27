@@ -223,7 +223,7 @@ $totalCats = count($categories);
 
     window.mDeleteCat = async function(card) {
         if (parseInt(card.dataset.products) > 0) {
-            alert('Cannot delete category with ' + card.dataset.products + ' products. Move or delete them first.');
+            showToast('Cannot delete category with ' + card.dataset.products + ' products. Move or delete them first.', 'error');
             return;
         }
         if (!await showConfirmModal('Delete "' + card.dataset.name + '"?')) return;

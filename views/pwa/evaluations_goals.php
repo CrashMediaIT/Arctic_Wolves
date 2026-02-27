@@ -362,6 +362,6 @@ function mOpenEditEgGoal(id) {
             document.getElementById('mEgEditDate').value = g.target_date || '';
             document.getElementById('mEgEditStatus').value = g.status || 'active';
             mOpenSheet('mEgEditOv', 'mEgEditSh');
-        }).catch(function(e) { alert('Could not load goal data. Please try again.'); });
+        }).catch(function(e) { showToast('Could not load goal data. Please try again.', 'error'); });
 }
 </script>

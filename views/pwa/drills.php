@@ -644,7 +644,7 @@ function mDeleteDrill(drillId) {
                     throw new Error('Server returned ' + r.status);
                 }
             })
-            .catch(function(err) { alert('Delete failed: ' + err.message); });
+            .catch(function(err) { showToast('Delete failed: ' + err.message, 'error'); });
     });
 }
 
@@ -715,14 +715,14 @@ function mGetSelectedIds() {
 
 function mBulkCreatePlan() {
     var ids = mGetSelectedIds();
-    if (ids.length === 0) { alert('Please select at least one drill.'); return; }
+    if (ids.length === 0) { showToast('Please select at least one drill.', 'info'); return; }
     sessionStorage.setItem('drillsToAdd', JSON.stringify(ids.map(Number)));
     window.location.href = '?page=practice_create';
 }
 
 function mBulkDelete() {
     var ids = mGetSelectedIds();
-    if (ids.length === 0) { alert('Please select at least one drill.'); return; }
+    if (ids.length === 0) { showToast('Please select at least one drill.', 'info'); return; }
 
     mShowConfirm('Delete ' + ids.length + ' selected drill(s)? This cannot be undone.', function() {
         var body = new URLSearchParams();
@@ -737,9 +737,9 @@ function mBulkDelete() {
             })
             .then(function(data) {
                 if (data.success) { window.location.reload(); }
-                else { alert('Delete failed: ' + (data.message || 'Unknown error')); }
+                else { showToast('Delete failed: ' + (data.message || 'Unknown error'), 'error'); }
             })
-            .catch(function(err) { alert('Delete failed: ' + err.message); });
+            .catch(function(err) { showToast('Delete failed: ' + err.message, 'error'); });
     });
 }
 </script>

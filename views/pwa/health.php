@@ -249,7 +249,7 @@ var mCurrentHealthTab = 'workouts';
 var mCsrf = document.querySelector('[name="csrf_token"]') ? document.querySelector('[name="csrf_token"]').value : '';
 
 function mCheckCsrf() {
-    if (!mCsrf) { alert('Session expired. Please refresh the page.'); return false; }
+    if (!mCsrf) { showToast('Session expired. Please refresh the page.', 'error'); return false; }
     return true;
 }
 
@@ -297,7 +297,7 @@ function mSaveWorkout() {
     if (!mCheckCsrf()) return;
     var id = document.getElementById('mWorkoutId').value;
     var title = document.getElementById('mWorkoutTitle').value.trim();
-    if (!title) { alert('Workout title is required'); return; }
+    if (!title) { showToast('Workout title is required', 'error'); return; }
     var body = new URLSearchParams({
         action: id ? 'update_plan' : 'create_plan',
         csrf_token: mCsrf,
@@ -311,8 +311,8 @@ function mSaveWorkout() {
         method: 'POST', headers: {'Content-Type':'application/x-www-form-urlencoded','X-Requested-With':'XMLHttpRequest'}, body: body
     }).then(function(r) { return r.json(); }).then(function(d) {
         if (d.success) { mCloseModal('mWorkoutModal'); persistToast(d.message || 'Operation completed successfully', 'success'); location.reload(); }
-        else { alert(d.message || 'Error saving workout'); }
-    }).catch(function() { alert('Network error'); });
+        else { showToast(d.message || 'Error saving workout', 'error'); }
+    }).catch(function() { showToast('Network error', 'error'); });
 }
 
 async function mDeleteWorkout(id) {
@@ -323,8 +323,8 @@ async function mDeleteWorkout(id) {
         body: new URLSearchParams({ action: 'delete_plan', id: id, csrf_token: mCsrf })
     }).then(function(r) { return r.json(); }).then(function(d) {
         if (d.success) { var el = document.getElementById('mw-' + id); if (el) el.remove(); }
-        else { alert(d.message || 'Error'); }
-    }).catch(function() { alert('Network error'); });
+        else { showToast(d.message || 'Error', 'error'); }
+    }).catch(function() { showToast('Network error', 'error'); });
 }
 
 function mEditMeal(id, name, desc, cal) {
@@ -340,7 +340,7 @@ function mSaveMeal() {
     if (!mCheckCsrf()) return;
     var id = document.getElementById('mMealId').value;
     var name = document.getElementById('mMealName').value.trim();
-    if (!name) { alert('Meal plan name is required'); return; }
+    if (!name) { showToast('Meal plan name is required', 'error'); return; }
     var body = new URLSearchParams({
         action: id ? 'update_plan' : 'create_plan',
         csrf_token: mCsrf,
@@ -353,8 +353,8 @@ function mSaveMeal() {
         method: 'POST', headers: {'Content-Type':'application/x-www-form-urlencoded','X-Requested-With':'XMLHttpRequest'}, body: body
     }).then(function(r) { return r.json(); }).then(function(d) {
         if (d.success) { mCloseModal('mMealModal'); persistToast(d.message || 'Operation completed successfully', 'success'); location.reload(); }
-        else { alert(d.message || 'Error saving meal plan'); }
-    }).catch(function() { alert('Network error'); });
+        else { showToast(d.message || 'Error saving meal plan', 'error'); }
+    }).catch(function() { showToast('Network error', 'error'); });
 }
 
 async function mDeleteMeal(id) {
@@ -365,8 +365,8 @@ async function mDeleteMeal(id) {
         body: new URLSearchParams({ action: 'delete_plan', id: id, csrf_token: mCsrf })
     }).then(function(r) { return r.json(); }).then(function(d) {
         if (d.success) { var el = document.getElementById('mm-' + id); if (el) el.remove(); }
-        else { alert(d.message || 'Error'); }
-    }).catch(function() { alert('Network error'); });
+        else { showToast(d.message || 'Error', 'error'); }
+    }).catch(function() { showToast('Network error', 'error'); });
 }
 
 // Close modals on overlay click

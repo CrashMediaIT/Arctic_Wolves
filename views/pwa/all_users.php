@@ -277,8 +277,8 @@ async function toggleUserStatus(userId, btn) {
     .then(function(r) { return r.json(); })
     .then(function(data) {
         if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
-        else { alert(data.message || 'Failed to toggle status'); }
+        else { showToast(data.message || 'Failed to toggle status', 'error'); }
     })
-    .catch(function() { alert('Request failed'); });
+    .catch(function() { showToast('Request failed', 'error'); });
 }
 </script>
