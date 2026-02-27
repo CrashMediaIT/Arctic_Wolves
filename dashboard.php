@@ -1159,9 +1159,18 @@ function switchAthlete(athleteId) {
             <div id="messengerMessages" class="messenger-messages"></div>
             <div class="messenger-input-area">
                 <div class="messenger-input-toolbar">
-                    <button class="messenger-toolbar-btn" onclick="toggleWidgetEmojiPicker()" title="Emoji" aria-label="Insert emoji">
-                        <i class="far fa-face-smile"></i>
-                    </button>
+                    <div class="widget-emoji-picker-container">
+                        <button class="messenger-toolbar-btn" onclick="toggleWidgetEmojiPicker()" title="Emoji" aria-label="Insert emoji">
+                            <i class="far fa-face-smile"></i>
+                        </button>
+                        <div class="widget-emoji-picker-panel" id="widgetEmojiPicker">
+                            <div class="widget-emoji-picker-search">
+                                <input type="text" id="widgetEmojiSearch" placeholder="Search emoji...">
+                            </div>
+                            <div class="widget-emoji-picker-categories" id="widgetEmojiCategories"></div>
+                            <div class="widget-emoji-picker-grid" id="widgetEmojiGrid"></div>
+                        </div>
+                    </div>
                     <button class="messenger-toolbar-btn" onclick="document.getElementById('messengerFileInput').click()" title="Attach file" aria-label="Attach file or image">
                         <i class="fas fa-paperclip"></i>
                     </button>
@@ -1239,15 +1248,29 @@ function switchAthlete(athleteId) {
 .messenger-toolbar-btn { width: 32px; height: 32px; background: rgba(255,255,255,0.06); border: 1px solid var(--border, #2D2D3F); color: #8b949e; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; font-size: 14px; }
 .messenger-toolbar-btn:hover { background: rgba(107, 70, 193, 0.15); color: #c4b5fd; }
 .messenger-panel.widget-size-default .messenger-input-toolbar { display: none; }
-.messenger-panel.widget-size-half { width: 540px; max-height: 70vh; }
-.messenger-panel.widget-size-half .messenger-messages { max-height: calc(70vh - 160px); }
+.messenger-panel.widget-size-half { width: 540px; max-height: 75vh; }
+.messenger-panel.widget-size-half .messenger-messages { max-height: calc(75vh - 160px); }
+.messenger-panel.widget-size-half .messenger-conversations { max-height: calc(75vh - 120px); }
 .messenger-panel.widget-size-half .messenger-input-toolbar { display: flex; }
 .messenger-panel.widget-size-full { width: 680px; max-height: 95vh; }
 .messenger-panel.widget-size-full .messenger-messages { max-height: calc(95vh - 160px); }
+.messenger-panel.widget-size-full .messenger-conversations { max-height: calc(95vh - 120px); }
 .messenger-panel.widget-size-full .messenger-input-toolbar { display: flex; }
 @media (max-width: 480px) {
     .messenger-panel { width: calc(100vw - 32px); right: -8px; bottom: 64px; max-height: 70vh; }
 }
+/* Widget Emoji Picker */
+.widget-emoji-picker-container { position: relative; }
+.widget-emoji-picker-panel { display: none; position: absolute; bottom: 44px; left: 0; width: 320px; max-height: 400px; background: var(--bg-card, #16161F); border: 1px solid var(--border, #2D2D3F); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 100; overflow: hidden; flex-direction: column; }
+.widget-emoji-picker-panel.show { display: flex; }
+.widget-emoji-picker-search { padding: 10px 12px; border-bottom: 1px solid var(--border, #2D2D3F); }
+.widget-emoji-picker-search input { width: 100%; padding: 8px 10px; background: var(--bg-main, #0a0a0f); border: 1px solid var(--border, #2D2D3F); border-radius: 6px; color: #fff; font-size: 13px; outline: none; box-sizing: border-box; }
+.widget-emoji-picker-categories { display: flex; gap: 4px; padding: 8px 12px; border-bottom: 1px solid var(--border, #2D2D3F); justify-content: space-between; }
+.widget-emoji-cat-btn { padding: 6px 8px; background: none; border: none; font-size: 18px; cursor: pointer; border-radius: 6px; transition: background 0.15s; flex-shrink: 0; }
+.widget-emoji-cat-btn:hover, .widget-emoji-cat-btn.active { background: rgba(107, 70, 193, 0.2); }
+.widget-emoji-picker-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; padding: 10px; overflow-y: auto; flex: 1; max-height: 300px; }
+.widget-emoji-btn { display: flex; align-items: center; justify-content: center; padding: 6px; background: none; border: none; font-size: 22px; cursor: pointer; border-radius: 6px; transition: background 0.12s; line-height: 1; }
+.widget-emoji-btn:hover { background: rgba(107, 70, 193, 0.2); }
 </style>
 
 <script>
@@ -1562,18 +1585,83 @@ function setWidgetSize(size) {
     });
 }
 
-// === Widget Emoji Picker Toggle ===
+// === Widget Emoji Picker ===
+var widgetEmojiData = {
+    'Smileys': ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🥴','😵','🤯','🥳','🥸','😎','🤓','🧐'],
+    'Gestures': ['👍','👎','👊','✊','🤛','🤜','👏','🙌','👐','🤲','🤝','🙏','✌️','🤞','🤟','🤘','👌','🤌','🤏','👈','👉','👆','👇','☝️','✋','🤚','🖐️','🖖','👋','🤙','💪','🦾','🖕'],
+    'Hearts': ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❣️','💕','💞','💓','💗','💖','💘','💝','💟','♥️','🫶','🥹'],
+    'Sports': ['⚽','🏀','🏈','⚾','🎾','🏐','🏉','🎱','🏓','🏸','🏒','🥅','⛳','🏹','🎣','⛸️','🥊','🎿','⛷️','🏋️','🤸','🏊','🚴','🏃','🧗'],
+    'Objects': ['📎','📁','📂','📄','📊','📈','📉','📝','✏️','📌','📍','🔗','📷','📸','🎥','📹','💻','📱','⌚','🔔','🔒','🔑','🏆','🎯','🎉','🎊','🎁'],
+    'Nature': ['🌟','⭐','🌙','☀️','🌈','🔥','💧','❄️','🍀','🌸','🌻','🌺','🌲','🌊','🐺','🐻','🦅','🐾','🦁','🐯'],
+    'Food': ['☕','🍕','🍔','🍟','🌭','🍿','🧁','🍩','🍪','🎂','🍫','🍬','🍭','🍎','🍊','🍋','🍌','🍉','🍇','🍓']
+};
+
+(function initWidgetEmojiPicker() {
+    var catContainer = document.getElementById('widgetEmojiCategories');
+    var categories = Object.keys(widgetEmojiData);
+
+    catContainer.innerHTML = categories.map(function(cat, i) {
+        var icon = widgetEmojiData[cat][0];
+        return '<button class="widget-emoji-cat-btn ' + (i === 0 ? 'active' : '') + '" onclick="showWidgetEmojiCategory(\'' + cat + '\', this)" title="' + cat + '">' + icon + '</button>';
+    }).join('');
+
+    showWidgetEmojiCategory(categories[0]);
+
+    document.getElementById('widgetEmojiSearch').addEventListener('input', function() {
+        var q = this.value.toLowerCase();
+        if (!q) {
+            showWidgetEmojiCategory(categories[0]);
+            return;
+        }
+        var results = [];
+        for (var cat in widgetEmojiData) {
+            if (cat.toLowerCase().indexOf(q) !== -1) {
+                results = results.concat(widgetEmojiData[cat]);
+            }
+        }
+        if (results.length === 0) {
+            for (var c in widgetEmojiData) {
+                results = results.concat(widgetEmojiData[c]);
+            }
+        }
+        renderWidgetEmojiGrid(results);
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.widget-emoji-picker-container')) {
+            document.getElementById('widgetEmojiPicker').classList.remove('show');
+        }
+    });
+})();
+
+function showWidgetEmojiCategory(cat, btn) {
+    document.querySelectorAll('.widget-emoji-cat-btn').forEach(function(b) { b.classList.remove('active'); });
+    if (btn) btn.classList.add('active');
+    else { var first = document.querySelector('.widget-emoji-cat-btn'); if (first) first.classList.add('active'); }
+    renderWidgetEmojiGrid(widgetEmojiData[cat] || []);
+}
+
+function renderWidgetEmojiGrid(emojis) {
+    document.getElementById('widgetEmojiGrid').innerHTML = emojis.map(function(e) {
+        return '<button class="widget-emoji-btn" onclick="insertWidgetEmoji(\'' + e + '\')" title="' + e + '">' + e + '</button>';
+    }).join('');
+}
+
 function toggleWidgetEmojiPicker() {
-    // Emoji picker placeholder - inserts common emojis via prompt
-    var emoji = prompt('Type an emoji or pick from: 😀 👍 ❤️ 🎉 🏒 ⭐ 🔥 💪');
-    if (emoji) {
-        var input = document.getElementById('messengerInput');
-        var start = input.selectionStart;
-        var end = input.selectionEnd;
-        input.value = input.value.substring(0, start) + emoji + input.value.substring(end);
-        input.focus();
-        input.selectionStart = input.selectionEnd = start + emoji.length;
+    var picker = document.getElementById('widgetEmojiPicker');
+    picker.classList.toggle('show');
+    if (picker.classList.contains('show')) {
+        document.getElementById('widgetEmojiSearch').focus();
     }
+}
+
+function insertWidgetEmoji(emoji) {
+    var input = document.getElementById('messengerInput');
+    var start = input.selectionStart;
+    var end = input.selectionEnd;
+    input.value = input.value.substring(0, start) + emoji + input.value.substring(end);
+    input.focus();
+    input.selectionStart = input.selectionEnd = start + emoji.length;
 }
 
 // Handle paste events on messenger widget input

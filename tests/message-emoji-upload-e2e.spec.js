@@ -67,6 +67,86 @@ test.describe('Message Emoji Picker UI', () => {
     });
 });
 
+test.describe('Dashboard Widget Emoji Picker UI', () => {
+    test('dashboard.php should contain widget emoji picker elements', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'dashboard.php'), 'utf-8');
+        
+        // Emoji picker button
+        expect(content).toContain('toggleWidgetEmojiPicker()');
+        expect(content).toContain('fa-face-smile');
+        
+        // Emoji picker panel structure (not a prompt)
+        expect(content).toContain('id="widgetEmojiPicker"');
+        expect(content).toContain('widget-emoji-picker-panel');
+        expect(content).toContain('widget-emoji-picker-grid');
+        expect(content).toContain('widget-emoji-picker-categories');
+        expect(content).toContain('id="widgetEmojiSearch"');
+    });
+
+    test('dashboard.php should NOT use prompt() for emoji input', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'dashboard.php'), 'utf-8');
+        
+        // The old prompt-based approach should be gone
+        expect(content).not.toContain("prompt('Type an emoji");
+    });
+
+    test('dashboard widget should define emoji data with multiple categories', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'dashboard.php'), 'utf-8');
+        
+        expect(content).toContain('widgetEmojiData');
+        expect(content).toContain("'Smileys'");
+        expect(content).toContain("'Gestures'");
+        expect(content).toContain("'Hearts'");
+        expect(content).toContain("'Sports'");
+        expect(content).toContain("'Objects'");
+        expect(content).toContain("'Nature'");
+        expect(content).toContain("'Food'");
+    });
+
+    test('dashboard widget should have insertWidgetEmoji function', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'dashboard.php'), 'utf-8');
+        
+        expect(content).toContain('function insertWidgetEmoji(emoji)');
+        expect(content).toContain("getElementById('messengerInput')");
+    });
+
+    test('dashboard widget emoji picker should have search functionality', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'dashboard.php'), 'utf-8');
+        
+        expect(content).toContain('widgetEmojiSearch');
+        expect(content).toContain('Search emoji...');
+    });
+
+    test('dashboard widget emoji picker should close on outside click', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'dashboard.php'), 'utf-8');
+        
+        expect(content).toContain("closest('.widget-emoji-picker-container')");
+        expect(content).toContain("classList.remove('show')");
+    });
+});
+
+test.describe('Dashboard Widget Size Constraints', () => {
+    test('half size should expand both width and height (diagonal expansion)', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'dashboard.php'), 'utf-8');
+        
+        // Half size should have both width and max-height set
+        expect(content).toMatch(/widget-size-half\s*\{[^}]*width:\s*540px/);
+        expect(content).toMatch(/widget-size-half\s*\{[^}]*max-height:\s*75vh/);
+        // Conversations list should also grow taller
+        expect(content).toContain('widget-size-half .messenger-conversations');
+    });
+
+    test('full size should expand both width and height (diagonal expansion)', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'dashboard.php'), 'utf-8');
+        
+        // Full size should have both width and max-height set
+        expect(content).toMatch(/widget-size-full\s*\{[^}]*width:\s*680px/);
+        expect(content).toMatch(/widget-size-full\s*\{[^}]*max-height:\s*95vh/);
+        // Conversations list should also grow taller
+        expect(content).toContain('widget-size-full .messenger-conversations');
+    });
+});
+
 test.describe('File Upload Choose-File Skip', () => {
     test('app.js should skip message toolbar file inputs from choose-file enhancement', () => {
         const content = fs.readFileSync(path.join(ROOT, 'js', 'app.js'), 'utf-8');
