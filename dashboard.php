@@ -1361,9 +1361,11 @@ function switchAthlete(athleteId) {
         loadContacts();
     });
 
-    function loadConversations() {
+    function loadConversations(silent) {
         var container = document.getElementById('messengerConversations');
-        container.innerHTML = '<div class="messenger-loading"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+        if (!silent) {
+            container.innerHTML = '<div class="messenger-loading"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+        }
         fetch('process_messages.php?action=get_conversations')
             .then(function(r) { return r.json(); })
             .then(function(data) {
@@ -1384,6 +1386,7 @@ function switchAthlete(athleteId) {
                     if (unread) html += '<div class="messenger-conv-unread-dot"></div>';
                     html += '</div>';
                 });
+                if (silent && container.innerHTML === html) return;
                 container.innerHTML = html;
                 container.querySelectorAll('.messenger-conv-item').forEach(function(item) {
                     item.addEventListener('click', function() {
@@ -1397,7 +1400,9 @@ function switchAthlete(athleteId) {
                 });
             })
             .catch(function() {
-                container.innerHTML = '<div class="messenger-empty">Failed to load conversations</div>';
+                if (!silent) {
+                    container.innerHTML = '<div class="messenger-empty">Failed to load conversations</div>';
+                }
             });
     }
 
@@ -1409,21 +1414,28 @@ function switchAthlete(athleteId) {
         });
     });
 
-    function loadMessages(convId) {
+    function loadMessages(convId, silent) {
         var container = document.getElementById('messengerMessages');
-        container.innerHTML = '<div class="messenger-loading"><i class="fas fa-spinner fa-spin"></i></div>';
+        if (!silent) {
+            container.innerHTML = '<div class="messenger-loading"><i class="fas fa-spinner fa-spin"></i></div>';
+        }
         fetch('process_messages.php?action=get_messages&conversation_id=' + convId)
             .then(function(r) { return r.json(); })
             .then(function(data) {
-                if (!data.success) { container.innerHTML = '<div class="messenger-empty">Failed to load messages</div>'; return; }
-                renderMessages(data.messages || []);
+                if (!data.success) {
+                    if (!silent) { container.innerHTML = '<div class="messenger-empty">Failed to load messages</div>'; }
+                    return;
+                }
+                renderMessages(data.messages || [], silent);
             })
             .catch(function() {
-                container.innerHTML = '<div class="messenger-empty">Error loading messages</div>';
+                if (!silent) {
+                    container.innerHTML = '<div class="messenger-empty">Error loading messages</div>';
+                }
             });
     }
 
-    function renderMessages(messages) {
+    function renderMessages(messages, silent) {
         var container = document.getElementById('messengerMessages');
         if (messages.length === 0) {
             container.innerHTML = '<div class="messenger-empty">No messages yet. Start the conversation!</div>';
@@ -1437,6 +1449,7 @@ function switchAthlete(athleteId) {
             html += '<span class="msg-time">' + formatTime(m.created_at) + '</span>';
             html += '</div>';
         });
+        if (silent && container.innerHTML === html) return;
         container.innerHTML = html;
         container.scrollTop = container.scrollHeight;
     }
@@ -1481,7 +1494,7 @@ function switchAthlete(athleteId) {
     function startChatPoll() {
         stopChatPoll();
         chatPollInterval = setInterval(function() {
-            if (currentConvId) loadMessages(currentConvId);
+            if (currentConvId) loadMessages(currentConvId, true);
         }, 10000);
     }
 
