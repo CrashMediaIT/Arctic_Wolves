@@ -661,7 +661,7 @@ function sendRefundEmail($to_email, $name, $refund_amount, $credit_amount, $sess
         $body = "
         <html>
         <body style='font-family: Arial, sans-serif; color: #333;'>
-            <h2 style='color: #7000a4;'>Refund Processed</h2>
+            <h2 style='color: #6B46C1;'>Refund Processed</h2>
             <p>Hi $name,</p>
             <p>Your refund has been processed successfully.</p>
             <div style='background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0;'>
@@ -680,7 +680,7 @@ function sendRefundEmail($to_email, $name, $refund_amount, $credit_amount, $sess
         $body = "
         <html>
         <body style='font-family: Arial, sans-serif; color: #333;'>
-            <h2 style='color: #7000a4;'>Store Credit Issued</h2>
+            <h2 style='color: #6B46C1;'>Store Credit Issued</h2>
             <p>Hi $name,</p>
             <p>You have been issued store credit instead of a refund.</p>
             <div style='background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0;'>
@@ -690,7 +690,7 @@ function sendRefundEmail($to_email, $name, $refund_amount, $credit_amount, $sess
                 <strong>Reason:</strong> " . htmlspecialchars($reason) . "
             </div>
             <p>This credit can be applied to any future booking. It will be automatically available at checkout.</p>
-            <p><a href='https://" . $_SERVER['HTTP_HOST'] . "/dashboard.php?page=user_credits' style='background: #7000a4; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin-top: 10px;'>View My Credits</a></p>
+            <p><a href='https://" . $_SERVER['HTTP_HOST'] . "/dashboard.php?page=user_credits' style='background: #6B46C1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin-top: 10px;'>View My Credits</a></p>
             <p>If you have any questions, please contact us.</p>
             <p>Best regards,<br>Arctic Wolves Team</p>
         </body>
@@ -701,7 +701,7 @@ function sendRefundEmail($to_email, $name, $refund_amount, $credit_amount, $sess
         $body = "
         <html>
         <body style='font-family: Arial, sans-serif; color: #333;'>
-            <h2 style='color: #7000a4;'>Booking Exchange Completed</h2>
+            <h2 style='color: #6B46C1;'>Booking Exchange Completed</h2>
             <p>Hi $name,</p>
             <p>Your booking has been successfully exchanged.</p>
             <div style='background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0;'>
@@ -710,7 +710,7 @@ function sendRefundEmail($to_email, $name, $refund_amount, $credit_amount, $sess
                 <strong>Reason:</strong> " . htmlspecialchars($reason) . "
             </div>
             <p>Your new booking is confirmed. You can view it in your dashboard.</p>
-            <p><a href='https://" . $_SERVER['HTTP_HOST'] . "/dashboard.php?page=session_history' style='background: #7000a4; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin-top: 10px;'>View My Bookings</a></p>
+            <p><a href='https://" . $_SERVER['HTTP_HOST'] . "/dashboard.php?page=session_history' style='background: #6B46C1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin-top: 10px;'>View My Bookings</a></p>
             <p>If you have any questions, please contact us.</p>
             <p>Best regards,<br>Arctic Wolves Team</p>
         </body>

@@ -74,8 +74,8 @@ $teams = $teams_stmt->fetchAll();
 
 <style>
     :root {
-        --primary: #7000a4;
-        --neon: #7000a4;
+        --primary: #6B46C1;
+        --neon: #6B46C1;
     }
     .athlete-header {
         background: linear-gradient(135deg, var(--primary) 0%, #4a0070 100%);

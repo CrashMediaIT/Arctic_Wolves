@@ -1209,15 +1209,15 @@ if ($action == 'download_invoice' || (isset($_GET['action']) && $_GET['action'] 
     <title>Invoice ' . htmlspecialchars($invoice['invoice_number']) . '</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 40px; color: #333; }
-        .header { border-bottom: 2px solid #7000a4; padding-bottom: 20px; margin-bottom: 30px; }
-        .header h1 { color: #7000a4; margin: 0; font-size: 28px; }
+        .header { border-bottom: 2px solid #6B46C1; padding-bottom: 20px; margin-bottom: 30px; }
+        .header h1 { color: #6B46C1; margin: 0; font-size: 28px; }
         .invoice-info { display: flex; justify-content: space-between; margin-bottom: 30px; }
         .invoice-info div { flex: 1; }
         .invoice-info h3 { margin: 0 0 10px 0; font-size: 14px; color: #666; text-transform: uppercase; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
-        th { background: #f8f9fa; font-weight: 700; color: #7000a4; }
-        .total-row { font-weight: bold; font-size: 18px; background: #7000a4; color: white; }
+        th { background: #f8f9fa; font-weight: 700; color: #6B46C1; }
+        .total-row { font-weight: bold; font-size: 18px; background: #6B46C1; color: white; }
         .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; color: #666; font-size: 12px; }
     </style>
 </head>
@@ -1354,18 +1354,18 @@ if ($action == 'view_invoice' || (isset($_GET['action']) && $_GET['action'] == '
     <style>
         body { font-family: Arial, sans-serif; margin: 40px; color: #333; background: #f5f5f5; }
         .invoice-container { background: white; max-width: 800px; margin: 0 auto; padding: 40px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .header { border-bottom: 2px solid #7000a4; padding-bottom: 20px; margin-bottom: 30px; }
-        .header h1 { color: #7000a4; margin: 0; font-size: 28px; }
+        .header { border-bottom: 2px solid #6B46C1; padding-bottom: 20px; margin-bottom: 30px; }
+        .header h1 { color: #6B46C1; margin: 0; font-size: 28px; }
         .invoice-info { display: flex; justify-content: space-between; margin-bottom: 30px; }
         .invoice-info div { flex: 1; }
         .invoice-info h3 { margin: 0 0 10px 0; font-size: 14px; color: #666; text-transform: uppercase; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
-        th { background: #f8f9fa; font-weight: 700; color: #7000a4; }
-        .total-row { font-weight: bold; font-size: 18px; background: #7000a4; color: white; }
+        th { background: #f8f9fa; font-weight: 700; color: #6B46C1; }
+        .total-row { font-weight: bold; font-size: 18px; background: #6B46C1; color: white; }
         .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; color: #666; font-size: 12px; }
         .actions { margin-top: 20px; text-align: center; }
-        .btn { padding: 10px 20px; background: #7000a4; color: white; border: none; border-radius: 6px; cursor: pointer; text-decoration: none; margin: 0 5px; }
+        .btn { padding: 10px 20px; background: #6B46C1; color: white; border: none; border-radius: 6px; cursor: pointer; text-decoration: none; margin: 0 5px; }
         .btn:hover { background: #5a0080; }
     </style>
 </head>

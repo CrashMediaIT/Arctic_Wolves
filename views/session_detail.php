@@ -47,7 +47,7 @@ if ($session['practice_plan_id']) {
 
 <style>
     :root {
-        --primary: #7000a4;
+        --primary: #6B46C1;
     }
     .page-header {
         display: flex;

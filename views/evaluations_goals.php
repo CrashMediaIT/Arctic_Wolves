@@ -53,7 +53,7 @@ $evaluations = decryptUserRows($evaluations);
 
 <style>
     :root {
-        --primary: #7000a4;
+        --primary: #6B46C1;
         --primary-hover: #5a0083;
         --danger: #ef4444;
         --success: #10b981;

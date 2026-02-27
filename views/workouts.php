@@ -44,7 +44,7 @@ $simple_workouts = decryptUserRows($simple_workouts);
 
 <style>
     :root {
-        --primary: #7000a4;
+        --primary: #6B46C1;
     }
     .page-header {
         display: flex;

@@ -209,7 +209,7 @@ try {
  */
 function buildMarketingEmailBody($packages, $customMessage, $includeChildPickup) {
     $theme = getThemeSettings();
-    $primary = htmlspecialchars($theme['primary_color'] ?? '#7000a4', ENT_QUOTES, 'UTF-8');
+    $primary = htmlspecialchars($theme['primary_color'] ?? '#6B46C1', ENT_QUOTES, 'UTF-8');
     $bg = htmlspecialchars($theme['background_color'] ?? '#0a0f16', ENT_QUOTES, 'UTF-8');
     $cardBg = htmlspecialchars($theme['card_background_color'] ?? '#0d1117', ENT_QUOTES, 'UTF-8');
     $textMuted = htmlspecialchars($theme['text_muted_color'] ?? '#64748b', ENT_QUOTES, 'UTF-8');

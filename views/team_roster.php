@@ -828,7 +828,7 @@ if ($team) {
 }
 
 .roster-modal-header h2 i {
-    color: var(--primary, #7000a4);
+    color: var(--primary, #6B46C1);
 }
 
 .roster-modal-close {
@@ -875,7 +875,7 @@ if ($team) {
 
 .roster-form-input:focus {
     outline: none;
-    border-color: var(--primary, #7000a4);
+    border-color: var(--primary, #6B46C1);
 }
 
 .roster-modal-footer {

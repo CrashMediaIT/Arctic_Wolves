@@ -122,6 +122,9 @@ try {
                     <button type="button" class="btn-sm btn-secondary" data-action="view-plan" data-plan-id="<?= $plan['id'] ?>">
                         <i class="fas fa-eye"></i> View
                     </button>
+                    <button type="button" class="btn-sm btn-secondary" onclick="openLibraryShareModal(<?= $plan['id'] ?>, '<?= htmlspecialchars($plan['share_token'] ?? '') ?>')">
+                        <i class="fas fa-share-alt"></i> Share
+                    </button>
                     <button type="button" class="btn-sm btn-secondary" data-action="edit-plan" data-plan-id="<?= $plan['id'] ?>">
                         <i class="fas fa-edit"></i> Edit
                     </button>
@@ -155,6 +158,46 @@ try {
         </div>
         <div class="modal-body" id="practice-view-content">
             <div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> Loading practice plan...</div>
+        </div>
+    </div>
+</div>
+
+<!-- Share Practice Plan Modal -->
+<div id="library-share-modal" class="modal">
+    <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-share-alt"></i> Share Practice Plan</h2>
+            <button class="modal-close" aria-label="Close modal" onclick="closeLibraryShareModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="libraryShareGenerate">
+                <p style="color: var(--text-dim, #A8A8B8); margin-bottom: 12px;">Generate a shareable link to this practice plan:</p>
+                <form method="POST" action="process_practice_plans.php" id="libraryShareForm">
+                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                    <input type="hidden" name="plan_id" id="librarySharePlanId">
+                    <input type="hidden" name="action" value="generate_share_token">
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">
+                        <i class="fas fa-link"></i> Generate Share Link
+                    </button>
+                </form>
+            </div>
+            <div id="libraryShareDisplay" style="display: none;">
+                <p style="color: var(--text-dim, #A8A8B8); margin-bottom: 10px;">Share this link with others:</p>
+                <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                    <input type="text" id="libraryShareLinkInput" class="form-input" readonly style="flex: 1; background: var(--bg-main, #0A0A0F); border: 1px solid var(--border, #2D2D3F); color: #fff; padding: 10px 14px; border-radius: 8px; font-size: 13px;">
+                    <button class="btn btn-primary" onclick="copyLibraryShareLink()">
+                        <i class="fas fa-copy"></i> Copy
+                    </button>
+                </div>
+                <form method="POST" action="process_practice_plans.php">
+                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                    <input type="hidden" name="plan_id" id="libraryRemoveSharePlanId">
+                    <input type="hidden" name="action" value="remove_share_token">
+                    <button type="submit" class="btn btn-secondary" style="width: 100%;" onclick="return confirm('Remove share link? The current link will no longer work.');">
+                        <i class="fas fa-unlink"></i> Remove Share Link
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
 </div>
@@ -852,5 +895,49 @@ function formatDate(dateStr) {
     return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
+// Share modal functions
+function openLibraryShareModal(planId, shareToken) {
+    document.getElementById('library-share-modal').classList.add('active');
+    document.getElementById('librarySharePlanId').value = planId;
+    document.getElementById('libraryRemoveSharePlanId').value = planId;
+
+    if (shareToken) {
+        var baseUrl = window.location.origin + window.location.pathname.replace('dashboard.php', '');
+        var shareUrl = baseUrl + 'practice_plan_share.php?token=' + shareToken;
+        document.getElementById('libraryShareLinkInput').value = shareUrl;
+        document.getElementById('libraryShareGenerate').style.display = 'none';
+        document.getElementById('libraryShareDisplay').style.display = 'block';
+    } else {
+        document.getElementById('libraryShareGenerate').style.display = 'block';
+        document.getElementById('libraryShareDisplay').style.display = 'none';
+    }
+}
+
+function closeLibraryShareModal() {
+    document.getElementById('library-share-modal').classList.remove('active');
+}
+
+function copyLibraryShareLink() {
+    var input = document.getElementById('libraryShareLinkInput');
+    if (!input) return;
+    input.select();
+    input.setSelectionRange(0, input.value.length);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(input.value).then(function() {
+            alert('Share link copied to clipboard!');
+        }).catch(function() {
+            document.execCommand('copy');
+            alert('Share link copied to clipboard!');
+        });
+    } else {
+        document.execCommand('copy');
+        alert('Share link copied to clipboard!');
+    }
+}
+
+// Close share modal on backdrop click
+document.getElementById('library-share-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeLibraryShareModal();
+});
 
 </script>

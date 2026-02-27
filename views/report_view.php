@@ -39,7 +39,7 @@ $report_type_display = ucwords(str_replace('_', ' ', $report['report_type']));
 
 <style>
     :root {
-        --primary: #7000a4;
+        --primary: #6B46C1;
     }
     .report-view-container {
         max-width: 1200px;
@@ -178,7 +178,7 @@ $report_type_display = ucwords(str_replace('_', ' ', $report['report_type']));
                             echo '<tr>';
                             foreach ($row as $cell) {
                                 $tag = $is_header ? 'th' : 'td';
-                                $style = $is_header ? 'background: #7000a4; color: #fff; padding: 12px; text-align: left;' : 'padding: 12px; border-bottom: 1px solid #1e293b;';
+                                $style = $is_header ? 'background: #6B46C1; color: #fff; padding: 12px; text-align: left;' : 'padding: 12px; border-bottom: 1px solid #1e293b;';
                                 echo "<$tag style='$style'>" . htmlspecialchars($cell) . "</$tag>";
                             }
                             echo '</tr>';

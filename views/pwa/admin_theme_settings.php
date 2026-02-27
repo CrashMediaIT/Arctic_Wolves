@@ -24,7 +24,7 @@ try {
 } catch (Exception $e) { $theme_colors = []; }
 
 $defaults = [
-    'primary_color' => '#7000a4',
+    'primary_color' => '#6B46C1',
     'secondary_color' => '#c0c0c0',
     'background_color' => '#06080b',
     'card_background_color' => '#0d1117',

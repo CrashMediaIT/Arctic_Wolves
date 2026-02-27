@@ -15,7 +15,7 @@ if ($user_role !== 'admin') {
 
 <style>
     :root {
-        --primary: #7000a4;
+        --primary: #6B46C1;
         --success: #10b981;
         --warning: #f59e0b;
         --danger: #ef4444;

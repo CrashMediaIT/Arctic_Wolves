@@ -69,7 +69,7 @@ try {
 
 // Theme defaults
 $theme_defaults = [
-    'primary_color' => '#7000a4',
+    'primary_color' => '#6B46C1',
     'secondary_color' => '#c0c0c0',
     'background_color' => '#06080b',
     'logo_url' => '',
@@ -3288,7 +3288,7 @@ function resetThemeColors() {
     if (!confirm('Reset all theme colors to default values?')) return;
     
     const defaults = {
-        'theme_primary_color': '#7000a4',
+        'theme_primary_color': '#6B46C1',
         'theme_secondary_color': '#c0c0c0',
         'theme_background_color': '#06080b'
     };

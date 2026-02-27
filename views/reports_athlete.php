@@ -226,8 +226,8 @@ $tax_name = $settings['tax_name'] ?? 'HST';
 
 .athlete-card:hover,
 .athlete-card.active {
-    background: var(--primary, #7000a4);
-    border-color: var(--primary, #7000a4);
+    background: var(--primary, #6B46C1);
+    border-color: var(--primary, #6B46C1);
     color: white;
 }
 
@@ -259,7 +259,7 @@ $tax_name = $settings['tax_name'] ?? 'HST';
 }
 
 .btn-export {
-    background: var(--primary, #7000a4);
+    background: var(--primary, #6B46C1);
     color: white;
     border: none;
     padding: 10px 20px;
@@ -324,7 +324,7 @@ td {
 }
 
 .badge-package {
-    background: #7000a4;
+    background: #6B46C1;
     color: white;
 }
 

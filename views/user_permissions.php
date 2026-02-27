@@ -59,8 +59,8 @@ $role_perm_ids = array_column($role_permissions, 'id');
 
 <style>
     :root {
-        --primary: #7000a4;
-        --neon: #7000a4;
+        --primary: #6B46C1;
+        --neon: #6B46C1;
     }
     .permissions-header {
         background: linear-gradient(135deg, var(--primary) 0%, #4a0070 100%);

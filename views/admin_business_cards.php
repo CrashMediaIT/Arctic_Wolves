@@ -580,12 +580,12 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
                     Select Camps & Programs <span style="color: #ef4444;">*</span>
                 </label>
                 <?php if (empty($campPkgs)): ?>
-                    <p style="color: #64748b; font-size: 13px;">No active camps or programs found. Create one in <a href="?page=admin_packages" style="color: var(--primary, #7000a4);">Package Management</a> first.</p>
+                    <p style="color: #64748b; font-size: 13px;">No active camps or programs found. Create one in <a href="?page=admin_packages" style="color: var(--primary, #6B46C1);">Package Management</a> first.</p>
                 <?php else: ?>
                     <div style="display: grid; gap: 8px;">
                         <?php foreach ($campPkgs as $cpkg): ?>
                         <label style="display: flex; gap: 12px; padding: 12px; background: #06080b; border: 1px solid #1e293b; border-radius: 8px; cursor: pointer; transition: all 0.2s; align-items: center;"
-                               onmouseover="this.style.borderColor='var(--primary, #7000a4)'" onmouseout="this.style.borderColor='#1e293b'">
+                               onmouseover="this.style.borderColor='var(--primary, #6B46C1)'" onmouseout="this.style.borderColor='#1e293b'">
                             <input type="checkbox" name="package_ids[]" value="<?php echo $cpkg['id']; ?>" style="width: 18px; height: 18px;">
                             <div style="flex: 1;">
                                 <span style="color: #e2e8f0; font-weight: 600;"><?php echo htmlspecialchars($cpkg['name']); ?></span>
@@ -631,7 +631,7 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
             </div>
             
             <div style="display: flex; gap: 12px; justify-content: flex-end;">
-                <button type="submit" id="sendCampaignBtn" style="padding: 12px 24px; background: var(--primary, #7000a4); color: #fff; border: none; border-radius: 8px; font-weight: 700; font-size: 14px; cursor: pointer; transition: all 0.2s;"
+                <button type="submit" id="sendCampaignBtn" style="padding: 12px 24px; background: var(--primary, #6B46C1); color: #fff; border: none; border-radius: 8px; font-weight: 700; font-size: 14px; cursor: pointer; transition: all 0.2s;"
                         <?php echo empty($campPkgs) ? 'disabled style="opacity: 0.5;"' : ''; ?>>
                     <i class="fas fa-paper-plane"></i> Send Campaign
                 </button>
