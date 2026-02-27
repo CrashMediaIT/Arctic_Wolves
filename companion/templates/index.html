@@ -187,8 +187,8 @@
             margin-bottom: 16px; grid-column: 1 / -1;
         }
         label.toggle-row { display: flex; align-items: center; gap: 10px; }
-        .toggle { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
-        .toggle input { opacity: 0; width: 0; height: 0; }
+        .toggle { position: relative; display: inline-block; width: 40px; height: 22px; flex-shrink: 0; }
+        .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
         .toggle .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
             background: var(--border); border-radius: 22px; transition: 0.3s; }
         .toggle .slider::before { content: ''; position: absolute; height: 16px; width: 16px;
@@ -507,11 +507,7 @@
         async function refreshHealth() {
             try {
                 const res = await fetch(API_BASE + '/api/health', { headers: apiHeaders() });
-                if (res.status === 401) {
-                    const key = prompt('Enter API Key:');
-                    if (key) { localStorage.setItem('companion_api_key', key); return refreshHealth(); }
-                    return;
-                }
+                if (!res.ok) return;
                 const d = await res.json();
 
                 document.getElementById('version').textContent = d.version || '—';

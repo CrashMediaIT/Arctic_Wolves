@@ -27,7 +27,7 @@ from pathlib import Path
 import boto3
 import requests as http_requests
 from botocore.config import Config as BotoConfig
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, session
 from dotenv import load_dotenv
 
 # Optional: cryptography for AES-256-CBC (fallback to a pure-Python impl)
@@ -41,6 +41,7 @@ except ImportError:
 load_dotenv()
 
 app = Flask(__name__)
+app.secret_key = secrets.token_hex(32)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("companion")
 
@@ -314,6 +315,8 @@ def _require_api_key():
     """Validate X-API-Key header. Returns error response or None."""
     if not API_KEY:
         return None  # no key configured – skip auth (dev mode)
+    if session.get("companion_ui"):
+        return None  # browser dashboard session – skip API key check
     key = request.headers.get("X-API-Key", "")
     if key != API_KEY:
         return jsonify({"error": "Unauthorized"}), 401
@@ -852,9 +855,9 @@ function finishSetup(){window.location.href='/';}
 
 @app.route("/setup")
 def setup_page():
-    """Show the first-run setup page (only when no encryption key exists)."""
-    if _get_cipher_key() is not None:
-        return flask_redirect("/")
+    """Show the setup page.  Accessible even after initial setup so users
+    can re-run the wizard after a companion update."""
+    session["companion_ui"] = True
     return SETUP_TEMPLATE, 200, {"Content-Type": "text/html"}
 
 
@@ -869,8 +872,8 @@ def setup_save():
     Slave setup: auto-generates an encryption key (slaves get their real
     settings synced from the master later).  Only needs API key generation.
     """
-    if _get_cipher_key() is not None:
-        return jsonify({"success": False, "error": "Already configured. Use Settings to change the key."}), 400
+    # Allow re-running setup (e.g. after a companion update)
+    already_configured = _get_cipher_key() is not None
 
     data = request.get_json(silent=True) or {}
     node_role = str(data.get("node_role", "master")).lower()
@@ -990,6 +993,7 @@ def _require_setup():
 @app.route("/")
 def index():
     """Serve the companion dashboard UI."""
+    session["companion_ui"] = True
     return render_template("index.html")
 
 
