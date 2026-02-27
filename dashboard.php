@@ -1191,6 +1191,7 @@ function switchAthlete(athleteId) {
 .messenger-conv-preview { font-size: 12px; color: var(--text-dim, #94a3b8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .messenger-conv-unread-dot { width: 10px; height: 10px; background: var(--primary, #6B46C1); border-radius: 50%; flex-shrink: 0; }
 .messenger-loading { text-align: center; padding: 32px; color: var(--text-dim, #94a3b8); font-size: 13px; }
+#messengerChatView, #messengerNewView { flex-direction: column; }
 .messenger-chat-header { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--border, #2D2D3F); }
 .messenger-chat-header span { flex: 1; font-size: 15px; font-weight: 600; color: var(--text-white, #fff); }
 .messenger-messages { flex: 1; overflow-y: auto; padding: 16px; max-height: 320px; min-height: 200px; display: flex; flex-direction: column; gap: 8px; }
