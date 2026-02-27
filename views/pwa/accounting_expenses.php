@@ -747,8 +747,8 @@ $periodLabel = $periodLabels[$period] ?? 'This Month';
     };
 
     // Delete expense
-    window.mDeleteExpense = function(id) {
-        if (confirm('Are you sure you want to delete this expense?')) {
+    window.mDeleteExpense = async function(id) {
+        if (await showConfirmModal('Are you sure you want to delete this expense?')) {
             document.getElementById('mDeleteExpenseId').value = id;
             document.getElementById('mDeleteForm').submit();
         }

@@ -315,9 +315,9 @@ function mSaveWorkout() {
     }).catch(function() { alert('Network error'); });
 }
 
-function mDeleteWorkout(id) {
+async function mDeleteWorkout(id) {
     if (!mCheckCsrf()) return;
-    if (!confirm('Delete this workout?')) return;
+    if (!await showConfirmModal('Delete this workout?')) return;
     fetch('process_workout.php', {
         method: 'POST', headers: {'Content-Type':'application/x-www-form-urlencoded','X-Requested-With':'XMLHttpRequest'},
         body: new URLSearchParams({ action: 'delete_plan', id: id, csrf_token: mCsrf })
@@ -357,9 +357,9 @@ function mSaveMeal() {
     }).catch(function() { alert('Network error'); });
 }
 
-function mDeleteMeal(id) {
+async function mDeleteMeal(id) {
     if (!mCheckCsrf()) return;
-    if (!confirm('Delete this meal plan?')) return;
+    if (!await showConfirmModal('Delete this meal plan?')) return;
     fetch('process_nutrition.php', {
         method: 'POST', headers: {'Content-Type':'application/x-www-form-urlencoded','X-Requested-With':'XMLHttpRequest'},
         body: new URLSearchParams({ action: 'delete_plan', id: id, csrf_token: mCsrf })

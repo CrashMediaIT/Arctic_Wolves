@@ -206,8 +206,8 @@ function mWkEdit(id, title, diff, dur) {
     document.getElementById('mWkOverlay').classList.add('active');
     document.getElementById('mWkSheet').classList.add('active');
 }
-function mWkDelete(id) {
-    if (confirm('Delete this workout?')) {
+async function mWkDelete(id) {
+    if (await showConfirmModal('Delete this workout?')) {
         document.getElementById('mWkDeleteId').value = id;
         document.getElementById('mWkDeleteForm').submit();
     }

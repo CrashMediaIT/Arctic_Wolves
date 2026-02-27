@@ -272,5 +272,5 @@ function mOpenEditGoal(id) {
         }).catch(function() { alert('Error loading goal'); });
 }
 function mOpenProgress(id) { document.getElementById('mProgGoalId').value = id; mOpenSheet('mAgoalProgOv', 'mAgoalProgSh'); }
-function mDeleteGoal(id) { if (confirm('Delete this goal?')) { document.getElementById('mDeleteGoalId').value = id; document.getElementById('mDeleteGoalForm').submit(); } }
+async function mDeleteGoal(id) { if (await showConfirmModal('Delete this goal?')) { document.getElementById('mDeleteGoalId').value = id; document.getElementById('mDeleteGoalForm').submit(); } }
 </script>

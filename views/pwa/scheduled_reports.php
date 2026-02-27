@@ -264,8 +264,8 @@ function mSrToggle(id, activate) {
         .catch(function(){ alert('An error occurred'); });
 }
 
-function mSrDelete(id, name) {
-    if (!confirm('Delete "' + name + '"? This cannot be undone.')) return;
+async function mSrDelete(id, name) {
+    if (!await showConfirmModal('Delete "' + name + '"? This cannot be undone.')) return;
     var fd = new FormData();
     fd.append('csrf_token', document.querySelector('#mSrForm input[name="csrf_token"]').value);
     fd.append('action', 'schedule_delete');

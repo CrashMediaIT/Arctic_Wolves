@@ -262,8 +262,8 @@ try {
         modal.classList.remove('m-show');
     };
 
-    window.mDeleteProduct = function(id) {
-        if (confirm('Are you sure you want to delete this product? This cannot be undone.')) {
+    window.mDeleteProduct = async function(id) {
+        if (await showConfirmModal('Are you sure you want to delete this product? This cannot be undone.')) {
             document.getElementById('mProductDeleteId').value = id;
             document.getElementById('mProductDeleteForm').submit();
         }

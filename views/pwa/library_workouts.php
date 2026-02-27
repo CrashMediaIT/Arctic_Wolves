@@ -230,8 +230,8 @@ function mLwEdit(id, title, desc, diff) {
     document.getElementById('mLwOverlay').classList.add('active');
     document.getElementById('mLwSheet').classList.add('active');
 }
-function mLwDelete(id) {
-    if (confirm('Delete this workout template?')) {
+async function mLwDelete(id) {
+    if (await showConfirmModal('Delete this workout template?')) {
         document.getElementById('mLwDeleteId').value = id;
         document.getElementById('mLwDeleteForm').submit();
     }

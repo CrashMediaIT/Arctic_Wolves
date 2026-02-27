@@ -462,10 +462,10 @@ if (!function_exists('mMsgTimeAgo')) {
     }
 
     /* ---- Delete conversation ---- */
-    window.mDeleteConv = function(e, convId) {
+    window.mDeleteConv = async function(e, convId) {
         e.preventDefault();
         e.stopPropagation();
-        if (!confirm('Delete this conversation?')) return;
+        if (!await showConfirmModal('Delete this conversation?')) return;
         var body = new URLSearchParams();
         body.set('action', 'delete_conversation');
         body.set('conversation_id', convId);

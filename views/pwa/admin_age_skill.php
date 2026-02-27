@@ -461,9 +461,9 @@ try {
 
     // Delete Age Group buttons
     document.querySelectorAll('.m-delete-age-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
+        btn.addEventListener('click', async function() {
             var name = this.getAttribute('data-name');
-            if (confirm('Delete age group "' + name + '"? Sessions using it will have the field set to NULL.')) {
+            if (await showConfirmModal('Delete age group "' + name + '"? Sessions using it will have the field set to NULL.')) {
                 document.getElementById('m-delete-age-id').value = this.getAttribute('data-id');
                 document.getElementById('m-delete-age-form').submit();
             }
@@ -472,9 +472,9 @@ try {
 
     // Delete Skill Level buttons
     document.querySelectorAll('.m-delete-skill-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
+        btn.addEventListener('click', async function() {
             var name = this.getAttribute('data-name');
-            if (confirm('Delete skill level "' + name + '"? Sessions and teams using it will have the field set to NULL.')) {
+            if (await showConfirmModal('Delete skill level "' + name + '"? Sessions and teams using it will have the field set to NULL.')) {
                 document.getElementById('m-delete-skill-id').value = this.getAttribute('data-id');
                 document.getElementById('m-delete-skill-form').submit();
             }

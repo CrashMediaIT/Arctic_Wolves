@@ -265,8 +265,8 @@ try {
 
     window.mEditPkg = function(card) { mOpenPkgSheet('edit', card); };
 
-    window.mDeletePkg = function(card) {
-        if (!confirm('Delete "' + card.dataset.name + '"?')) return;
+    window.mDeletePkg = async function(card) {
+        if (!await showConfirmModal('Delete "' + card.dataset.name + '"?')) return;
         fetch('process_packages.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },

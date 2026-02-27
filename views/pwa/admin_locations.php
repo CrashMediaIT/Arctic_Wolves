@@ -217,8 +217,8 @@ try {
         modal.classList.remove('m-show');
     };
 
-    window.mDeleteLocation = function(id) {
-        if (confirm('Are you sure you want to delete this location?')) {
+    window.mDeleteLocation = async function(id) {
+        if (await showConfirmModal('Are you sure you want to delete this location?')) {
             document.getElementById('mLocDeleteId').value = id;
             document.getElementById('mLocDeleteForm').submit();
         }

@@ -149,8 +149,8 @@ try {
 
     window.mEditType = function(card) { mOpenSheet('edit', card); };
 
-    window.mDeleteType = function(card) {
-        if (!confirm('Delete this session type?')) return;
+    window.mDeleteType = async function(card) {
+        if (!await showConfirmModal('Delete this session type?')) return;
         fetch('process_admin_action.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },

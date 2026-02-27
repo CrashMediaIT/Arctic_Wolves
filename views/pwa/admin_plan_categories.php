@@ -250,11 +250,11 @@ $totalCount = count($workout_categories) + count($nutrition_categories) + count(
         createOverlay.classList.remove('m-active');
     };
 
-    window.mPlanCatDelete = function(card) {
+    window.mPlanCatDelete = async function(card) {
         var catName = card.dataset.name;
         var catId = card.dataset.id;
         var catType = card.dataset.type;
-        if (!confirm('Delete "' + catName + '"?')) return;
+        if (!await showConfirmModal('Delete "' + catName + '"?')) return;
 
         fetch('process_plan_categories.php', {
             method: 'POST',

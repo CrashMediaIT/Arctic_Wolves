@@ -331,8 +331,8 @@ function mRefundToast(msg, isError) {
 }
 
 /* Approve / Reject action */
-function mRefundAction(action, id) {
-    if (!confirm(action === 'approve' ? 'Approve this refund?' : 'Reject this refund?')) return;
+async function mRefundAction(action, id) {
+    if (!await showConfirmModal(action === 'approve' ? 'Approve this refund?' : 'Reject this refund?')) return;
     var csrfToken = document.querySelector('#m-refund-create-form input[name="csrf_token"]');
     var formData = new FormData();
     formData.append('action', action);

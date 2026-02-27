@@ -221,12 +221,12 @@ $totalCats = count($categories);
 
     window.mEditCat = function(card) { mOpenCatSheet('edit', card); };
 
-    window.mDeleteCat = function(card) {
+    window.mDeleteCat = async function(card) {
         if (parseInt(card.dataset.products) > 0) {
             alert('Cannot delete category with ' + card.dataset.products + ' products. Move or delete them first.');
             return;
         }
-        if (!confirm('Delete "' + card.dataset.name + '"?')) return;
+        if (!await showConfirmModal('Delete "' + card.dataset.name + '"?')) return;
         fetch('process_merchandise_categories.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },

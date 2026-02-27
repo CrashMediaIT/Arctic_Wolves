@@ -267,8 +267,8 @@ function closeUserSheet() {
     document.getElementById('mEditUserSheet').classList.remove('active');
 }
 
-function toggleUserStatus(userId, btn) {
-    if (!confirm('Toggle this user\'s status?')) return;
+async function toggleUserStatus(userId, btn) {
+    if (!await showConfirmModal('Toggle this user\'s status?')) return;
     fetch('process_admin_action.php', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},

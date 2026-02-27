@@ -226,8 +226,8 @@ try {
         return false;
     };
 
-    window.mBcardDel = function(id) {
-        if (!confirm('Delete this business card?')) return;
+    window.mBcardDel = async function(id) {
+        if (!await showConfirmModal('Delete this business card?')) return;
         var fd = new FormData();
         fd.append('action', 'delete');
         fd.append('id', id);

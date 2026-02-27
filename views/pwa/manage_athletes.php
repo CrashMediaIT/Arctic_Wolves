@@ -413,8 +413,8 @@ $totalAthletes = count($athletes);
     });
 
     // Remove confirmation
-    window.mManageAthConfirmRemove = function(btn) {
-        if (confirm('Remove this athlete from your managed list?')) {
+    window.mManageAthConfirmRemove = async function(btn) {
+        if (await showConfirmModal('Remove this athlete from your managed list?')) {
             btn.closest('form').submit();
         }
     };

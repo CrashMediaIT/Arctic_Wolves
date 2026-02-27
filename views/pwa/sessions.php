@@ -878,8 +878,8 @@ function mEsc(str) {
     return d.innerHTML;
 }
 
-function mCancelBooking(bookingId) {
-    if (!confirm('Cancel this booking?')) return;
+async function mCancelBooking(bookingId) {
+    if (!await showConfirmModal('Cancel this booking?')) return;
     var form = new FormData();
     form.append('action', 'cancel_booking');
     form.append('booking_id', bookingId);
@@ -893,8 +893,8 @@ function mCancelBooking(bookingId) {
         .catch(function() { alert('Network error. Please try again.'); });
 }
 
-function mCancelSession(sessionId) {
-    if (!confirm('Cancel this session for all attendees?')) return;
+async function mCancelSession(sessionId) {
+    if (!await showConfirmModal('Cancel this session for all attendees?')) return;
     var form = new FormData();
     form.append('action', 'cancel_session');
     form.append('session_id', sessionId);
@@ -931,8 +931,8 @@ function mJoinWaitlist(sessionId) {
         .catch(function() { alert('Network error. Please try again.'); });
 }
 
-function mLeaveWaitlist(sessionId) {
-    if (!confirm('Leave the waitlist for this session?')) return;
+async function mLeaveWaitlist(sessionId) {
+    if (!await showConfirmModal('Leave the waitlist for this session?')) return;
     var form = new FormData();
     form.append('action', 'leave_waitlist');
     form.append('session_id', sessionId);

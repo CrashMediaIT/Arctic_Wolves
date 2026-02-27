@@ -244,8 +244,8 @@ try {
         return false;
     };
 
-    window.mSessTplDel = function(id) {
-        if (!confirm('Delete this template?')) return;
+    window.mSessTplDel = async function(id) {
+        if (!await showConfirmModal('Delete this template?')) return;
         var fd = new FormData();
         fd.append('action', 'delete');
         fd.append('id', id);

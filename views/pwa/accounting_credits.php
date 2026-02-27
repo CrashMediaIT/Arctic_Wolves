@@ -491,11 +491,11 @@ $modalUsers = [];
 
     // Approve / Reject actions
     document.querySelectorAll('[data-credit-action]').forEach(function(btn) {
-        btn.addEventListener('click', function() {
+        btn.addEventListener('click', async function() {
             var action = this.getAttribute('data-credit-action');
             var id = this.getAttribute('data-credit-id');
             var label = action === 'approve' ? 'Approve' : 'Reject';
-            if (!confirm(label + ' this credit/refund?')) return;
+            if (!await showConfirmModal(label + ' this credit/refund?')) return;
 
             var self = this;
             self.disabled = true;

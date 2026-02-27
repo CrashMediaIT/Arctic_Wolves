@@ -215,8 +215,8 @@ function submitCreateContract(e) {
             msgEl.textContent = 'Network error';
         });
 }
-function cancelContract(id) {
-    if (!confirm('Cancel this contract? This cannot be undone.')) return;
+async function cancelContract(id) {
+    if (!await showConfirmModal('Cancel this contract? This cannot be undone.')) return;
     const fd = new FormData();
     fd.append('action', 'cancel');
     fd.append('contract_id', id);
