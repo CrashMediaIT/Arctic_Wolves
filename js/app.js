@@ -987,9 +987,14 @@
             input.addEventListener('change', function() {
                 var fileName = this.files[0] ? this.files[0].name : '';
                 var textDiv = zone.querySelector('.upload-text');
-                if (textDiv && fileName) {
-                    textDiv.textContent = fileName;
-                    textDiv.style.color = '#10B981';
+                if (textDiv) {
+                    if (fileName) {
+                        textDiv.textContent = fileName;
+                        textDiv.style.color = '#10B981';
+                    } else {
+                        textDiv.textContent = 'Drop file here or click to browse';
+                        textDiv.style.color = '#E0E0E0';
+                    }
                 }
             });
         });
