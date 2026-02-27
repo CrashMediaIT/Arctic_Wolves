@@ -1299,8 +1299,8 @@ function toggleStep(stepId, goalId, isCompleted) {
     });
 }
 
-function completeGoal(goalId) {
-    if (!confirm('Mark this goal as completed?')) return;
+async function completeGoal(goalId) {
+    if (!await showConfirmModal('Mark this goal as completed?')) return;
     
     const formData = new FormData();
     formData.append('action', 'complete_goal');
@@ -1317,7 +1317,7 @@ function completeGoal(goalId) {
             persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
-            alert('Error: ' + data.message);
+            showToast('Error: ' + data.message, 'error');
         }
     });
 }

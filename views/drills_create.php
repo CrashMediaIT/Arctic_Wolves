@@ -887,7 +887,7 @@ function saveDrillDraft() {
 }
 
 // Load draft on page load
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     // Check if we're in edit mode by looking at URL params or sessionStorage
     const urlParams = new URLSearchParams(window.location.search);
     const editId = urlParams.get('edit');
@@ -944,7 +944,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load draft if not in edit mode
     const draft = localStorage.getItem('drill_draft');
     if (draft) {
-        const loadDraft = confirm('You have a saved draft. Would you like to load it?');
+        const loadDraft = await showConfirmModal('You have a saved draft. Would you like to load it?');
         if (loadDraft) {
             const draftData = JSON.parse(draft);
             Object.keys(draftData).forEach(key => {
@@ -967,7 +967,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Cancel with confirmation
-function cancelDrillCreation() {
+async function cancelDrillCreation() {
     // Check if form has any data
     const form = document.querySelector('.drill-form');
     const formData = new FormData(form);
@@ -986,7 +986,7 @@ function cancelDrillCreation() {
     }
     
     if (hasData) {
-        const confirmed = confirm('You have unsaved changes. Are you sure you want to leave? Your progress will be lost.');
+        const confirmed = await showConfirmModal('You have unsaved changes. Are you sure you want to leave? Your progress will be lost.');
         if (!confirmed) {
             return;
         }

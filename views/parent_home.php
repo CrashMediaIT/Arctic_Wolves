@@ -429,7 +429,7 @@ try {
                     <?= csrfTokenInput() ?>
                     <input type="hidden" name="action" value="revoke_invitation">
                     <input type="hidden" name="invitation_id" value="<?= $inv['id'] ?>">
-                    <button type="submit" class="btn btn-secondary" style="padding: 8px 16px; font-size: 13px; background: transparent; border: 1px solid #ef4444; color: #ef4444;" onclick="return confirm('Revoke this invitation?')">
+                    <button type="submit" class="btn btn-secondary" style="padding: 8px 16px; font-size: 13px; background: transparent; border: 1px solid #ef4444; color: #ef4444;" data-confirm="Revoke this invitation?">
                         <i class="fas fa-times"></i> Revoke
                     </button>
                 </form>

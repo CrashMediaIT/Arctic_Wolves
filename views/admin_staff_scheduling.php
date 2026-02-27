@@ -828,7 +828,7 @@ function submitPin(e) {
     const pin = document.getElementById('pin-input').value;
     
     if (!/^\d{4}$/.test(pin)) {
-        alert('Please enter exactly 4 digits');
+        showToast('Please enter exactly 4 digits', 'error');
         return;
     }
     
@@ -849,12 +849,12 @@ function submitPin(e) {
             closePinModal();
             location.reload();
         } else {
-            alert(data.message || 'Failed to set PIN');
+            showToast(data.message || 'Failed to set PIN', 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred');
+        showToast('An error occurred', 'error');
     });
 }
 
@@ -928,17 +928,17 @@ function submitSchedule(e) {
             closeScheduleModal();
             location.reload();
         } else {
-            alert(data.message || 'Failed to save schedule');
+            showToast(data.message || 'Failed to save schedule', 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred');
+        showToast('An error occurred', 'error');
     });
 }
 
-function deleteSchedule(scheduleId) {
-    if (!confirm('Delete this schedule?')) return;
+async function deleteSchedule(scheduleId) {
+    if (!await showConfirmModal('Delete this schedule?')) return;
     
     fetch('process_time_tracking.php', {
         method: 'POST',
@@ -955,12 +955,12 @@ function deleteSchedule(scheduleId) {
             persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
-            alert(data.message || 'Failed to delete schedule');
+            showToast(data.message || 'Failed to delete schedule', 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred');
+        showToast('An error occurred', 'error');
     });
 }
 

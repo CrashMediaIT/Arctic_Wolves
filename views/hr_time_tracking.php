@@ -812,14 +812,14 @@ function generateReport(e) {
                 a.download = `time_report_${new Date().toISOString().split('T')[0]}.csv`;
                 a.click();
             } else if (data.success) {
-                alert('Report generated successfully');
+                showToast('Report generated successfully', 'success');
             } else {
-                alert(data.message || 'Failed to generate report');
+                showToast(data.message || 'Failed to generate report', 'error');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('An error occurred while generating the report');
+            showToast('An error occurred while generating the report', 'error');
         });
     }
 }
@@ -866,26 +866,26 @@ function calculatePayrollHours(e) {
             });
             document.getElementById('preview-breakdown').innerHTML = breakdownHtml;
         } else {
-            alert(data.message || 'Failed to calculate hours');
+            showToast(data.message || 'Failed to calculate hours', 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred');
+        showToast('An error occurred', 'error');
     });
 }
 
-function syncToPayroll() {
+async function syncToPayroll() {
     const startDate = document.getElementById('payroll-start').value;
     const endDate = document.getElementById('payroll-end').value;
     const staffId = document.getElementById('payroll-staff').value;
     
     if (!startDate || !endDate) {
-        alert('Please select a pay period first');
+        showToast('Please select a pay period first', 'info');
         return;
     }
     
-    if (!confirm('This will update the payroll system with time tracking data for the selected period. Continue?')) {
+    if (!await showConfirmModal('This will update the payroll system with time tracking data for the selected period. Continue?')) {
         return;
     }
     
@@ -903,14 +903,14 @@ function syncToPayroll() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('Time tracking data synced to payroll successfully');
+            showToast('Time tracking data synced to payroll successfully', 'success');
         } else {
-            alert(data.message || 'Failed to sync to payroll');
+            showToast(data.message || 'Failed to sync to payroll', 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred');
+        showToast('An error occurred', 'error');
     });
 }
 </script>

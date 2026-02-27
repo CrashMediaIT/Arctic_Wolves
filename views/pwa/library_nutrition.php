@@ -231,8 +231,8 @@ function mLnEdit(id, name, desc, cal) {
     document.getElementById('mLnOverlay').classList.add('active');
     document.getElementById('mLnSheet').classList.add('active');
 }
-function mLnDelete(id) {
-    if (confirm('Delete this nutrition plan?')) {
+async function mLnDelete(id) {
+    if (await showConfirmModal('Delete this nutrition plan?')) {
         document.getElementById('mLnDeleteId').value = id;
         document.getElementById('mLnDeleteForm').submit();
     }

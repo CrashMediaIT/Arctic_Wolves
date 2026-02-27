@@ -463,10 +463,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Handle run/toggle/delete buttons via AJAX
     document.querySelectorAll('[data-action="run"]').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
+        btn.addEventListener('click', async function(e) {
             e.preventDefault();
             var jobId = this.getAttribute('data-id');
-            if (!confirm('Run this cron job now?')) return;
+            if (!await showConfirmModal('Run this cron job now?')) return;
             
             fetch('process_cron_jobs.php', {
                 method: 'POST',
@@ -510,11 +510,11 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     document.querySelectorAll('[data-action="delete"]').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
+        btn.addEventListener('click', async function(e) {
             e.preventDefault();
             e.stopImmediatePropagation();
             var jobId = this.getAttribute('data-id');
-            if (!confirm('Are you sure you want to delete this cron job?')) return;
+            if (!await showConfirmModal('Are you sure you want to delete this cron job?')) return;
             
             fetch('process_cron_jobs.php', {
                 method: 'POST',

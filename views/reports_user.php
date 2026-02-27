@@ -762,7 +762,7 @@ function exportUserCSV() {
     var activeTab = document.querySelector('.user-reports .tab-content.active');
     if (!activeTab) return;
     var table = activeTab.querySelector('.data-table');
-    if (!table) { alert('No data to export'); return; }
+    if (!table) { showToast('No data to export', 'info'); return; }
 
     var csv = [];
     var rows = table.querySelectorAll('tr');

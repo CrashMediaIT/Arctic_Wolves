@@ -193,7 +193,7 @@ try {
                     <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
                     <input type="hidden" name="plan_id" id="libraryRemoveSharePlanId">
                     <input type="hidden" name="action" value="remove_share_token">
-                    <button type="submit" class="btn btn-secondary" style="width: 100%;" onclick="return confirm('Remove share link? The current link will no longer work.');">
+                    <button type="submit" class="btn btn-secondary" style="width: 100%;" data-confirm="Remove share link? The current link will no longer work.">
                         <i class="fas fa-unlink"></i> Remove Share Link
                     </button>
                 </form>
@@ -715,11 +715,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Handle Delete Practice Plan button
     document.querySelectorAll('[data-action="delete-plan"]').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
+        btn.addEventListener('click', async function(e) {
             e.preventDefault();
             var planId = this.getAttribute('data-plan-id');
             
-            if (confirm('Are you sure you want to delete this practice plan? This action cannot be undone.')) {
+            if (await showConfirmModal('Are you sure you want to delete this practice plan? This action cannot be undone.')) {
                 var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '<?= htmlspecialchars($_SESSION["csrf_token"] ?? "", ENT_QUOTES) ?>';
                 
                 fetch('process_practice_plans.php', {
@@ -746,12 +746,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         // Show success message
                         showSuccessMessage('Practice plan deleted successfully!');
                     } else {
-                        alert('Error: ' + (data.message || 'Failed to delete practice plan'));
+                        showToast('Error: ' + (data.message || 'Failed to delete practice plan'), 'error');
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    alert('An error occurred while deleting the practice plan.');
+                    showToast('An error occurred while deleting the practice plan.', 'error');
                 });
             }
         });
@@ -924,14 +924,14 @@ function copyLibraryShareLink() {
     input.setSelectionRange(0, input.value.length);
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(input.value).then(function() {
-            alert('Share link copied to clipboard!');
+            showToast('Share link copied to clipboard!', 'success');
         }).catch(function() {
             document.execCommand('copy');
-            alert('Share link copied to clipboard!');
+            showToast('Share link copied to clipboard!', 'success');
         });
     } else {
         document.execCommand('copy');
-        alert('Share link copied to clipboard!');
+        showToast('Share link copied to clipboard!', 'success');
     }
 }
 

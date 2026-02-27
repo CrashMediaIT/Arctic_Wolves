@@ -282,8 +282,8 @@ $totalSchedules = count($schedules);
         .catch(function() { showAlert('error', 'Network error'); });
     };
 
-    window.mSchedDelete = function(id) {
-        if (!confirm('Delete this schedule?')) return;
+    window.mSchedDelete = async function(id) {
+        if (!await showConfirmModal('Delete this schedule?')) return;
         fetch('process_reports.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },

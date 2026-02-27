@@ -290,8 +290,8 @@ function mVidShowToast(msg, type) {
     setTimeout(function() { t.classList.remove('m-toast-show'); }, 3000);
 }
 
-function mVidDelete(videoId) {
-    if (!confirm('Delete this video? This cannot be undone.')) return;
+async function mVidDelete(videoId) {
+    if (!await showConfirmModal('Delete this video? This cannot be undone.')) return;
     var body = new FormData();
     body.append('action', 'delete_video');
     body.append('video_id', videoId);

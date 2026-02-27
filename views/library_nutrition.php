@@ -983,10 +983,10 @@ document.querySelectorAll('[data-action="edit-meal"]').forEach(button => {
 
 // Delete meal handler
 document.querySelectorAll('[data-action="delete-meal"]').forEach(button => {
-    button.addEventListener('click', function() {
+    button.addEventListener('click', async function() {
         const id = this.dataset.id;
         const name = this.dataset.name;
-        if (confirm('Are you sure you want to delete "' + name + '"?')) {
+        if (await showConfirmModal('Are you sure you want to delete "' + name + '"?')) {
             const csrfToken = document.querySelector('input[name="csrf_token"]').value;
             fetch('process_nutrition.php', {
                 method: 'POST',
@@ -996,7 +996,7 @@ document.querySelectorAll('[data-action="delete-meal"]').forEach(button => {
             .then(r => r.json())
             .then(data => {
                 if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
-                else alert('Error: ' + data.message);
+                else showToast('Error: ' + data.message, 'error');
             });
         }
     });
@@ -1097,17 +1097,17 @@ document.querySelectorAll('[data-action="view-plan"]').forEach(button => {
             document.getElementById('view-plan-modal').querySelector('.modal-body').innerHTML = mealsHtml;
             openModal('view-plan-modal');
         } else {
-            alert('Meals in this plan:\\n\\n' + meals.map(m => '• ' + (m.food_name || m.name || 'Meal')).join('\\n'));
+            showToast('Meals in this plan:\\n\\n' + meals.map(m => '• ' + (m.food_name || m.name || 'Meal')).join('\\n'), 'info');
         }
     });
 });
 
 // Delete plan handler
 document.querySelectorAll('[data-action="delete-plan"]').forEach(button => {
-    button.addEventListener('click', function() {
+    button.addEventListener('click', async function() {
         const id = this.dataset.id;
         const name = this.dataset.name;
-        if (confirm('Are you sure you want to delete "' + name + '"? This will also remove all athlete assignments.')) {
+        if (await showConfirmModal('Are you sure you want to delete "' + name + '"? This will also remove all athlete assignments.')) {
             const csrfToken = document.querySelector('input[name="csrf_token"]').value;
             fetch('process_nutrition.php', {
                 method: 'POST',
@@ -1117,7 +1117,7 @@ document.querySelectorAll('[data-action="delete-plan"]').forEach(button => {
             .then(r => r.json())
             .then(data => {
                 if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
-                else alert('Error: ' + data.message);
+                else showToast('Error: ' + data.message, 'error');
             });
         }
     });
@@ -1265,7 +1265,7 @@ document.querySelectorAll('.modal form, #create-plan-form').forEach(form => {
                 persistToast(data.message || 'Operation completed successfully', 'success');
                 location.reload();
             } else {
-                alert('Error: ' + (data.message || 'Unknown error'));
+                showToast('Error: ' + (data.message || 'Unknown error'), 'error');
             }
         })
         .catch(err => {
@@ -1432,14 +1432,14 @@ document.getElementById('assign-nutrition-athletes-form').addEventListener('subm
             persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
-            alert('Error: ' + (data.message || 'Unknown error'));
+            showToast('Error: ' + (data.message || 'Unknown error'), 'error');
         }
     })
     .catch(err => {
         submitBtn.innerHTML = originalText;
         submitBtn.disabled = false;
         console.error(err);
-        alert('An error occurred. Please try again.');
+        showToast('An error occurred. Please try again.', 'error');
     });
 });
 </script>

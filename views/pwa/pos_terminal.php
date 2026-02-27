@@ -419,10 +419,10 @@ function mProcessCard() {
             mClosePosSheet();
             mShowPosToast('Payment successful! #' + data.transaction_number);
         } else {
-            alert('Payment failed: ' + (data.message || 'Unknown error'));
+            showToast('Payment failed: ' + (data.message || 'Unknown error'), 'error');
         }
     })
-    .catch(function() { alert('An error occurred. Please try again.'); })
+    .catch(function() { showToast('An error occurred. Please try again.', 'error'); })
     .finally(function() { btn.disabled = false; btn.innerHTML = '<i class="fas fa-credit-card"></i> Card'; });
 }
 
@@ -451,13 +451,13 @@ function mProcessCash() {
             mClosePosSheet();
             mShowPosToast('Cash sale complete! #' + data.transaction_number);
         } else {
-            alert('Payment failed: ' + (data.message || 'Unknown error'));
+            showToast('Payment failed: ' + (data.message || 'Unknown error'), 'error');
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-check"></i> Complete Sale';
         }
     })
     .catch(function() {
-        alert('An error occurred. Please try again.');
+        showToast('An error occurred. Please try again.', 'error');
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-check"></i> Complete Sale';
     });

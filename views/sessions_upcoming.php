@@ -1472,7 +1472,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Add click handlers for cancel-session buttons
     document.querySelectorAll('[data-action="cancel-session"]').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
+        btn.addEventListener('click', async function(e) {
             e.preventDefault();
             
             const sessionId = this.getAttribute('data-session-id');
@@ -1488,7 +1488,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (typeof window.showToast === 'function') {
                     window.showToast('This is a demo session. Book a real session to manage cancellations.', 'info');
                 } else {
-                    alert('This is a demo session. Book a real session to manage cancellations.');
+                    showToast('This is a demo session. Book a real session to manage cancellations.', 'info');
                 }
                 return false;
             }
@@ -1498,7 +1498,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (typeof window.showToast === 'function') {
                     window.showToast('Unable to cancel: Booking ID not found', 'error');
                 } else {
-                    alert('Unable to cancel: Booking ID not found');
+                    showToast('Unable to cancel: Booking ID not found', 'error');
                 }
                 return false;
             }
@@ -1508,7 +1508,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 (sessionCard.querySelector('.session-title')?.textContent || 'this session') : 
                 'this session';
             
-            if (!confirm(`Are you sure you want to cancel ${sessionTitle}?\n\nCancellation Policy: Sessions must be cancelled at least 48 hours before the session start time to be eligible for a refund.`)) {
+            if (!await showConfirmModal(`Are you sure you want to cancel ${sessionTitle}?\n\nCancellation Policy: Sessions must be cancelled at least 48 hours before the session start time to be eligible for a refund.`)) {
                 return false;
             }
             
@@ -1535,7 +1535,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (typeof window.showToast === 'function') {
                         window.showToast(data.message, 'success');
                     } else {
-                        alert(data.message);
+                        showToast(data.message, 'success');
                     }
                     
                     // Remove the session card from the list after a short delay
@@ -1560,7 +1560,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (typeof window.showToast === 'function') {
                         window.showToast(data.message || 'Failed to cancel booking', 'error');
                     } else {
-                        alert(data.message || 'Failed to cancel booking');
+                        showToast(data.message || 'Failed to cancel booking', 'error');
                     }
                     
                     // Re-enable button
@@ -1574,7 +1574,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (typeof window.showToast === 'function') {
                     window.showToast('An error occurred while cancelling the booking', 'error');
                 } else {
-                    alert('An error occurred while cancelling the booking');
+                    showToast('An error occurred while cancelling the booking', 'error');
                 }
                 
                 // Re-enable button

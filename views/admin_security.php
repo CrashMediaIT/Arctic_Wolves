@@ -682,8 +682,8 @@ function showAuditDetail(logId) {
     }
 }
 
-function restoreAuditEntry(logId) {
-    if (!confirm('Are you sure you want to revert this change? This will restore the previous values.')) return;
+async function restoreAuditEntry(logId) {
+    if (!await showConfirmModal('Are you sure you want to revert this change? This will restore the previous values.')) return;
     
     var csrfToken = '<?php echo htmlspecialchars($csrf_token, ENT_QUOTES); ?>';
     
@@ -698,10 +698,10 @@ function restoreAuditEntry(logId) {
             persistToast('Change reverted successfully', 'success');
             location.reload();
         } else {
-            alert('Error: ' + (data.message || 'Failed to revert'));
+            showToast('Error: ' + (data.message || 'Failed to revert'), 'error');
         }
     })
-    .catch(function() { alert('An error occurred'); });
+    .catch(function() { showToast('An error occurred', 'error'); });
 }
 </script>
 
@@ -1043,8 +1043,8 @@ function addBlocklistEntry(e) {
     return false;
 }
 
-function removeBlocklistEntry(entryId) {
-    if (!confirm('Are you sure you want to remove this entry?')) return;
+async function removeBlocklistEntry(entryId) {
+    if (!await showConfirmModal('Are you sure you want to remove this entry?')) return;
 
     fetch('process_settings.php', {
         method: 'POST',
@@ -1061,14 +1061,14 @@ function removeBlocklistEntry(entryId) {
                 setTimeout(function() { row.remove(); }, 300);
             }
         } else {
-            alert('Error: ' + (data.message || 'Failed to remove entry'));
+            showToast('Error: ' + (data.message || 'Failed to remove entry'), 'error');
         }
     })
-    .catch(function() { alert('An error occurred'); });
+    .catch(function() { showToast('An error occurred', 'error'); });
 }
 
-function removeRestriction(restrictionId) {
-    if (!confirm('Are you sure you want to delete this restriction and all its entries?')) return;
+async function removeRestriction(restrictionId) {
+    if (!await showConfirmModal('Are you sure you want to delete this restriction and all its entries?')) return;
 
     fetch('process_settings.php', {
         method: 'POST',
@@ -1085,10 +1085,10 @@ function removeRestriction(restrictionId) {
                 setTimeout(function() { card.remove(); }, 300);
             }
         } else {
-            alert('Error: ' + (data.message || 'Failed to remove restriction'));
+            showToast('Error: ' + (data.message || 'Failed to remove restriction'), 'error');
         }
     })
-    .catch(function() { alert('An error occurred'); });
+    .catch(function() { showToast('An error occurred', 'error'); });
 }
 </script>
 
@@ -1249,14 +1249,14 @@ function togglePosWhitelistEntry(entryId, newStatus) {
             persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
-            alert('Error: ' + (data.message || 'Failed to update entry'));
+            showToast('Error: ' + (data.message || 'Failed to update entry'), 'error');
         }
     })
-    .catch(function() { alert('An error occurred'); });
+    .catch(function() { showToast('An error occurred', 'error'); });
 }
 
-function removePosWhitelistEntry(entryId) {
-    if (!confirm('Are you sure you want to remove this IP from the POS whitelist?')) return;
+async function removePosWhitelistEntry(entryId) {
+    if (!await showConfirmModal('Are you sure you want to remove this IP from the POS whitelist?')) return;
 
     fetch('process_settings.php', {
         method: 'POST',
@@ -1273,10 +1273,10 @@ function removePosWhitelistEntry(entryId) {
                 setTimeout(function() { row.remove(); }, 300);
             }
         } else {
-            alert('Error: ' + (data.message || 'Failed to remove entry'));
+            showToast('Error: ' + (data.message || 'Failed to remove entry'), 'error');
         }
     })
-    .catch(function() { alert('An error occurred'); });
+    .catch(function() { showToast('An error occurred', 'error'); });
 }
 </script>
 

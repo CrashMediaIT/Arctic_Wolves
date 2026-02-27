@@ -229,7 +229,7 @@ $error = isset($_GET['error']) ? $_GET['error'] : '';
                             </div>
                             
                             <form method="POST" action="process_manage_athletes.php" style="display: inline;" 
-                                  onsubmit="return confirm('Are you sure you want to remove this athlete from your managed list?');">
+                                  data-confirm="Are you sure you want to remove this athlete from your managed list?">
                                 <?= csrfTokenInput() ?>
                                 <input type="hidden" name="action" value="remove_athlete">
                                 <input type="hidden" name="managed_id" value="<?= $athlete['managed_id'] ?>">

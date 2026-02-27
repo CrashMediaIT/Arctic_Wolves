@@ -259,13 +259,13 @@ function mSrToggle(id, activate) {
         .then(function(r){ return r.json(); })
         .then(function(d){
             if (d.success) { persistToast(d.message || 'Operation completed successfully', 'success'); location.reload(); }
-            else { alert(d.message || 'Error'); }
+            else { showToast(d.message || 'Error', 'error'); }
         })
-        .catch(function(){ alert('An error occurred'); });
+        .catch(function(){ showToast('An error occurred', 'error'); });
 }
 
-function mSrDelete(id, name) {
-    if (!confirm('Delete "' + name + '"? This cannot be undone.')) return;
+async function mSrDelete(id, name) {
+    if (!await showConfirmModal('Delete "' + name + '"? This cannot be undone.')) return;
     var fd = new FormData();
     fd.append('csrf_token', document.querySelector('#mSrForm input[name="csrf_token"]').value);
     fd.append('action', 'schedule_delete');
@@ -274,9 +274,9 @@ function mSrDelete(id, name) {
         .then(function(r){ return r.json(); })
         .then(function(d){
             if (d.success) { persistToast(d.message || 'Operation completed successfully', 'success'); location.reload(); }
-            else { alert(d.message || 'Error'); }
+            else { showToast(d.message || 'Error', 'error'); }
         })
-        .catch(function(){ alert('An error occurred'); });
+        .catch(function(){ showToast('An error occurred', 'error'); });
 }
 
 document.getElementById('mSrForm').addEventListener('submit', async function(e) {
@@ -286,7 +286,7 @@ document.getElementById('mSrForm').addEventListener('submit', async function(e) 
         var r = await fetch('process_reports.php', {method:'POST', body:fd});
         var d = await r.json();
         if (d.success) { mSrCloseSheet(); persistToast(d.message || 'Operation completed successfully', 'success'); location.reload(); }
-        else { alert(d.message || 'Error saving schedule'); }
-    } catch(err) { alert('An error occurred'); }
+        else { showToast(d.message || 'Error saving schedule', 'error'); }
+    } catch(err) { showToast('An error occurred', 'error'); }
 });
 </script>

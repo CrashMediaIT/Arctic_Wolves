@@ -142,7 +142,7 @@ $totalAthletes = count($athletes);
                 </a>
                 <?php if ($is_coach && !$isInactive): ?>
                 <div class="m-athletes-card-actions">
-                    <form method="POST" action="process_manage_athletes.php" onsubmit="return confirm('Deactivate this athlete?');">
+                    <form method="POST" action="process_manage_athletes.php" data-confirm="Deactivate this athlete?">
                         <?= csrfTokenInput() ?>
                         <input type="hidden" name="action" value="remove_athlete">
                         <input type="hidden" name="athlete_id" value="<?= (int)$a['id'] ?>">

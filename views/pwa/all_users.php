@@ -267,8 +267,8 @@ function closeUserSheet() {
     document.getElementById('mEditUserSheet').classList.remove('active');
 }
 
-function toggleUserStatus(userId, btn) {
-    if (!confirm('Toggle this user\'s status?')) return;
+async function toggleUserStatus(userId, btn) {
+    if (!await showConfirmModal('Toggle this user\'s status?')) return;
     fetch('process_admin_action.php', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -277,8 +277,8 @@ function toggleUserStatus(userId, btn) {
     .then(function(r) { return r.json(); })
     .then(function(data) {
         if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
-        else { alert(data.message || 'Failed to toggle status'); }
+        else { showToast(data.message || 'Failed to toggle status', 'error'); }
     })
-    .catch(function() { alert('Request failed'); });
+    .catch(function() { showToast('Request failed', 'error'); });
 }
 </script>

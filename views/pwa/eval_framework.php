@@ -358,15 +358,15 @@ function mEvalEditSkill(s) {
     document.getElementById('mEvalOverlay').classList.add('m-active');
 }
 
-function mEvalDeleteCat(id, name) {
-    if (confirm('Delete category "' + name + '"? This cannot be undone.')) {
+async function mEvalDeleteCat(id, name) {
+    if (await showConfirmModal('Delete category "' + name + '"? This cannot be undone.')) {
         document.getElementById('mEvalDeleteCatId').value = id;
         document.getElementById('mEvalDeleteCatForm').submit();
     }
 }
 
-function mEvalDeleteSkill(id, name) {
-    if (confirm('Delete skill "' + name + '"? This cannot be undone.')) {
+async function mEvalDeleteSkill(id, name) {
+    if (await showConfirmModal('Delete skill "' + name + '"? This cannot be undone.')) {
         document.getElementById('mEvalDeleteSkillId').value = id;
         document.getElementById('mEvalDeleteSkillForm').submit();
     }

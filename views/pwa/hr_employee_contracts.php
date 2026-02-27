@@ -215,8 +215,8 @@ function submitCreateContract(e) {
             msgEl.textContent = 'Network error';
         });
 }
-function cancelContract(id) {
-    if (!confirm('Cancel this contract? This cannot be undone.')) return;
+async function cancelContract(id) {
+    if (!await showConfirmModal('Cancel this contract? This cannot be undone.')) return;
     const fd = new FormData();
     fd.append('action', 'cancel');
     fd.append('contract_id', id);
@@ -224,9 +224,9 @@ function cancelContract(id) {
     fetch('process_employee_contracts.php', { method: 'POST', body: fd })
         .then(r => r.json())
         .then(data => {
-            alert(data.message || (data.success ? 'Cancelled' : 'Error'));
+            showToast(data.message || (data.success ? 'Cancelled' : 'Error'), 'info');
             if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
         })
-        .catch(() => alert('Network error'));
+        .catch(() => showToast('Network error', 'error'));
 }
 </script>

@@ -551,7 +551,7 @@ $cartCount = $cartData['item_count'];
                         item.querySelector('.cart-item-price').textContent = '$' + (itemData.price * itemData.quantity).toFixed(2);
                     }
                 } else {
-                    alert(data.message || 'Failed to update quantity');
+                    showToast(data.message || 'Failed to update quantity', 'error');
                 }
             })
             .catch(error => {
@@ -559,8 +559,8 @@ $cartCount = $cartData['item_count'];
             });
         }
         
-        function removeItem(cartKey) {
-            if (!confirm('Remove this item from cart?')) return;
+        async function removeItem(cartKey) {
+            if (!await showConfirmModal('Remove this item from cart?')) return;
             
             const formData = new FormData();
             formData.append('action', 'remove_item');

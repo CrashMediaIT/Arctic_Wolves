@@ -851,7 +851,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         
         function addToCart() {
             if (hasSizes && !selectedSize) {
-                alert('Please select a size');
+                showToast('Please select a size', 'error');
                 return;
             }
             
@@ -885,12 +885,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         notification.style.display = 'none';
                     }, 3000);
                 } else {
-                    alert(data.message || 'Failed to add to cart');
+                    showToast(data.message || 'Failed to add to cart', 'error');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('An error occurred. Please try again.');
+                showToast('An error occurred. Please try again.', 'error');
             })
             .finally(() => {
                 btn.disabled = false;
@@ -900,7 +900,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         
         function buyNow() {
             if (hasSizes && !selectedSize) {
-                alert('Please select a size');
+                showToast('Please select a size', 'error');
                 return;
             }
             
@@ -920,12 +920,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 if (data.success) {
                     window.location.href = 'shop_cart.php';
                 } else {
-                    alert(data.message || 'Failed to add to cart');
+                    showToast(data.message || 'Failed to add to cart', 'error');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('An error occurred. Please try again.');
+                showToast('An error occurred. Please try again.', 'error');
             });
         }
     </script>

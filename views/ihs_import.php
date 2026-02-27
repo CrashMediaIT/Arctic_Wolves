@@ -340,7 +340,7 @@ function previewDrills() {
     const preview = document.getElementById('drill-preview');
     
     if (!data.trim()) {
-        alert('Please paste drill data first');
+        showToast('Please paste drill data first', 'info');
         return;
     }
     
@@ -359,7 +359,7 @@ function previewDrills() {
         preview.innerHTML = html;
         preview.style.display = 'block';
     } catch (e) {
-        alert('Invalid JSON format. Please check your data.');
+        showToast('Invalid JSON format. Please check your data.', 'error');
     }
 }
 
@@ -368,7 +368,7 @@ function previewPlans() {
     const preview = document.getElementById('plan-preview');
     
     if (!data.trim()) {
-        alert('Please paste practice plan data first');
+        showToast('Please paste practice plan data first', 'info');
         return;
     }
     
@@ -386,7 +386,7 @@ function previewPlans() {
         preview.innerHTML = html;
         preview.style.display = 'block';
     } catch (e) {
-        alert('Invalid JSON format. Please check your data.');
+        showToast('Invalid JSON format. Please check your data.', 'error');
     }
 }
 </script>

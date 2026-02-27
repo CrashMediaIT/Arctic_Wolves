@@ -769,8 +769,8 @@ function mGoalSubmit(e) {
     return false;
 }
 
-function mGoalDelete(id) {
-    if (!confirm('Delete this goal? This action cannot be undone.')) return;
+async function mGoalDelete(id) {
+    if (!await showConfirmModal('Delete this goal? This action cannot be undone.')) return;
     var data = new FormData();
     data.append('action', 'delete_goal');
     data.append('goal_id', id);
@@ -791,8 +791,8 @@ function mGoalDelete(id) {
 }
 
 /* Complete Goal */
-function mGoalComplete(id) {
-    if (!confirm('Mark this goal as completed?')) return;
+async function mGoalComplete(id) {
+    if (!await showConfirmModal('Mark this goal as completed?')) return;
     var data = new FormData();
     data.append('action', 'complete_goal');
     data.append('goal_id', id);
@@ -811,8 +811,8 @@ function mGoalComplete(id) {
 }
 
 /* Archive Goal */
-function mGoalArchive(id) {
-    if (!confirm('Archive this goal?')) return;
+async function mGoalArchive(id) {
+    if (!await showConfirmModal('Archive this goal?')) return;
     var data = new FormData();
     data.append('action', 'archive_goal');
     data.append('goal_id', id);
@@ -842,7 +842,7 @@ function mGoalSliderChange(id, val) {
     if (label) label.textContent = val + '%';
 }
 
-function mGoalSaveProgress(id) {
+async function mGoalSaveProgress(id) {
     var slider = document.querySelector('#m-prog-' + id + ' .m-progress-slider');
     if (!slider) return;
     var val = slider.value;
@@ -852,7 +852,7 @@ function mGoalSaveProgress(id) {
     data.append('title', document.querySelector('.m-goal-card[data-goal-id="' + id + '"] .m-goal-title').textContent.trim());
     data.append('completion_percentage', val);
     if (parseInt(val) >= 100) {
-        if (!confirm('Setting progress to 100% will mark this goal as completed. Continue?')) return;
+        if (!await showConfirmModal('Setting progress to 100% will mark this goal as completed. Continue?')) return;
         data.append('status', 'completed');
     }
     var tokenInput = document.querySelector('#mGoalForm input[name="csrf_token"]');

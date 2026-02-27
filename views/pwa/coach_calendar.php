@@ -256,8 +256,8 @@ function mCalSetRange(range) {
     document.getElementById('m-cal-filter-form').submit();
 }
 
-function mCalComplete(sessionId, btn) {
-    if (!confirm('Mark this session as completed?')) return;
+async function mCalComplete(sessionId, btn) {
+    if (!await showConfirmModal('Mark this session as completed?')) return;
     btn.disabled = true;
     var form = new FormData();
     form.append('action', 'update_status');
@@ -275,11 +275,11 @@ function mCalComplete(sessionId, btn) {
                 if (actions) actions.remove();
             }
         })
-        .catch(function() { alert('Network error. Please try again.'); btn.disabled = false; });
+        .catch(function() { showToast('Network error. Please try again.', 'error'); btn.disabled = false; });
 }
 
-function mCalCancel(sessionId, btn) {
-    if (!confirm('Cancel this session? This cannot be undone.')) return;
+async function mCalCancel(sessionId, btn) {
+    if (!await showConfirmModal('Cancel this session? This cannot be undone.')) return;
     btn.disabled = true;
     var form = new FormData();
     form.append('action', 'cancel_session');
@@ -296,6 +296,6 @@ function mCalCancel(sessionId, btn) {
                 if (actions) actions.remove();
             }
         })
-        .catch(function() { alert('Network error. Please try again.'); btn.disabled = false; });
+        .catch(function() { showToast('Network error. Please try again.', 'error'); btn.disabled = false; });
 }
 </script>

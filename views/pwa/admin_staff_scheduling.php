@@ -332,9 +332,9 @@ try {
 
     // Delete buttons
     document.querySelectorAll('.m-staffsched-delete-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
+        btn.addEventListener('click', async function() {
             var card = btn.closest('.m-staffsched-card');
-            if (!confirm('Delete this schedule?')) return;
+            if (!await showConfirmModal('Delete this schedule?')) return;
             fetch('process_time_tracking.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },

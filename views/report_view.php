@@ -204,7 +204,7 @@ $report_type_display = ucwords(str_replace('_', ' ', $report['report_type']));
 function copyLink() {
     const url = window.location.href;
     navigator.clipboard.writeText(url).then(() => {
-        alert('Share link copied to clipboard!');
+        showToast('Share link copied to clipboard!', 'success');
     });
 }
 </script>

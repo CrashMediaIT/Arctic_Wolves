@@ -737,8 +737,8 @@ function mResEdit(section, data) {
 }
 
 /* Delete a resource */
-function mResDel(section, id, name) {
-    if (confirm('Delete "' + name + '"? This cannot be undone.')) {
+async function mResDel(section, id, name) {
+    if (await showConfirmModal('Delete "' + name + '"? This cannot be undone.')) {
         var cfg = mSectionConfig[section];
         document.getElementById('mResDelType').value = cfg ? cfg.editType : section;
         document.getElementById('mResDelId').value = id;

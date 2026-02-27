@@ -130,13 +130,13 @@ try {
                 <div class="m-onboard-meta"><?= htmlspecialchars(ucwords(str_replace('_', ' ', $rec['onboarding_status'] ?? ''))) ?> · <?= htmlspecialchars(ucwords(str_replace('_', ' ', $rec['role'] ?? ''))) ?></div>
             </div>
             <div class="m-card-actions" style="width:100%;">
-                <form method="POST" action="process_onboarding.php" style="display:inline;" onsubmit="return confirm('Mark as completed?');">
+                <form method="POST" action="process_onboarding.php" style="display:inline;" data-confirm="Mark as completed?">
                     <?= csrfTokenInput() ?>
                     <input type="hidden" name="action" value="complete">
                     <input type="hidden" name="onboarding_id" value="<?= $rec['id'] ?>">
                     <button type="submit" class="m-btn-sm" style="background:rgba(16,185,129,0.15);color:#10B981;"><i class="fas fa-check"></i> Complete</button>
                 </form>
-                <form method="POST" action="process_onboarding.php" style="display:inline;" onsubmit="return confirm('Cancel this onboarding?');">
+                <form method="POST" action="process_onboarding.php" style="display:inline;" data-confirm="Cancel this onboarding?">
                     <?= csrfTokenInput() ?>
                     <input type="hidden" name="action" value="cancel">
                     <input type="hidden" name="onboarding_id" value="<?= $rec['id'] ?>">

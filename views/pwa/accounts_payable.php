@@ -282,9 +282,9 @@ $csrf_token = $_SESSION['csrf_token'] ?? '';
 
     // Mark as Paid
     document.querySelectorAll('[data-ap-mark]').forEach(function(btn) {
-        btn.addEventListener('click', function() {
+        btn.addEventListener('click', async function() {
             var id = this.getAttribute('data-ap-mark');
-            if (!confirm('Mark this bill as paid?')) return;
+            if (!await showConfirmModal('Mark this bill as paid?')) return;
             var self = this;
             self.disabled = true;
             fetch('process_expenses.php', {
@@ -311,8 +311,8 @@ $csrf_token = $_SESSION['csrf_token'] ?? '';
 
     // Delete
     document.querySelectorAll('[data-ap-delete]').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            if (!confirm('Delete this bill?')) return;
+        btn.addEventListener('click', async function() {
+            if (!await showConfirmModal('Delete this bill?')) return;
             document.getElementById('mApDeleteId').value = this.getAttribute('data-ap-delete');
             document.getElementById('mApDeleteForm').submit();
         });

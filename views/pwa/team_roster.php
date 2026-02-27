@@ -262,8 +262,8 @@ if ($isCoachOrAdmin) {
         document.getElementById('mRosterOverlay').style.display = 'none';
     };
 
-    window.mRosterRemove = function(rosterId) {
-        if (!confirm('Remove this player from the roster?')) return;
+    window.mRosterRemove = async function(rosterId) {
+        if (!await showConfirmModal('Remove this player from the roster?')) return;
         var form = document.createElement('form');
         form.method = 'POST';
         form.action = 'process_admin_team_coaches.php';

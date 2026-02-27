@@ -254,7 +254,7 @@ function updateRosterFilter() {
                                 style="height:28px;padding:0 10px;font-size:11px;margin-right:4px;">
                                 <i class="fas fa-pen"></i>
                             </button>
-                            <form method="POST" action="/process_video.php" style="display:inline;" onsubmit="return confirm('Remove this player from the roster?')">
+                            <form method="POST" action="/process_video.php" style="display:inline;" data-confirm="Remove this player from the roster?">
                                 <?php if (function_exists('csrfTokenInput')) echo csrfTokenInput(); ?>
                                 <input type="hidden" name="action" value="remove_roster_player">
                                 <input type="hidden" name="player_id" value="<?= (int)$player['id'] ?>">

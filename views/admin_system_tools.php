@@ -2060,7 +2060,7 @@ foreach ($url_keys as $uk) {
                 <button type="submit" class="btn btn-primary" data-action="save">
                     <i class="fas fa-save"></i> Save Landing Page Settings
                 </button>
-                <button type="button" class="btn btn-secondary" onclick="if(confirm('This will clear all custom landing page content. After clearing, click Save to apply the changes and use default values.')) { document.querySelectorAll('#landing-tab input, #landing-tab textarea').forEach(el => el.value = ''); }">
+                <button type="button" class="btn btn-secondary" onclick="showConfirmModal('This will clear all custom landing page content. After clearing, click Save to apply the changes and use default values.').then(function(ok){ if(ok){ document.querySelectorAll('#landing-tab input, #landing-tab textarea').forEach(el => el.value = ''); } })">
                     <i class="fas fa-undo"></i> Reset to Defaults
                 </button>
             </div>
@@ -2225,7 +2225,7 @@ foreach ($url_keys as $uk) {
                                     </td>
                                     <td style="padding: 12px 16px; text-align: right;">
                                         <?php if ($ak['is_active'] && !$is_expired): ?>
-                                        <form method="POST" action="process_settings.php" style="display: inline;" onsubmit="return confirm('Are you sure you want to revoke this API key? Any applications using it will lose access.');">
+                                        <form method="POST" action="process_settings.php" style="display: inline;" data-confirm="Are you sure you want to revoke this API key? Any applications using it will lose access.">
                                             <?php echo csrfTokenInput(); ?>
                                             <input type="hidden" name="action" value="revoke_api_key">
                                             <input type="hidden" name="api_key_id" value="<?php echo (int)$ak['id']; ?>">
@@ -2234,7 +2234,7 @@ foreach ($url_keys as $uk) {
                                             </button>
                                         </form>
                                         <?php endif; ?>
-                                        <form method="POST" action="process_settings.php" style="display: inline;" onsubmit="return confirm('Permanently delete this API key?');">
+                                        <form method="POST" action="process_settings.php" style="display: inline;" data-confirm="Permanently delete this API key?">
                                             <?php echo csrfTokenInput(); ?>
                                             <input type="hidden" name="action" value="delete_api_key">
                                             <input type="hidden" name="api_key_id" value="<?php echo (int)$ak['id']; ?>">
@@ -3101,7 +3101,7 @@ function copyApiKey() {
     const key = keyEl.textContent.trim();
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(key).then(function() {
-            alert('API key copied to clipboard!');
+            showToast('API key copied to clipboard!', 'success');
         });
     } else {
         // Fallback for older browsers
@@ -3113,7 +3113,7 @@ function copyApiKey() {
         textarea.select();
         document.execCommand('copy');
         document.body.removeChild(textarea);
-        alert('API key copied to clipboard!');
+        showToast('API key copied to clipboard!', 'success');
     }
 }
 
@@ -3131,13 +3131,13 @@ function closeSmtpTestModal() {
 function sendSmtpTestEmail() {
     const testEmail = document.getElementById('smtp-test-email').value.trim();
     if (!testEmail) {
-        alert('Please enter an email address.');
+        showToast('Please enter an email address.', 'error');
         return;
     }
     
     // Validate email format
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(testEmail)) {
-        alert('Please enter a valid email address.');
+        showToast('Please enter a valid email address.', 'error');
         return;
     }
     
@@ -3163,16 +3163,16 @@ function sendSmtpTestEmail() {
         closeSmtpTestModal();
         
         if (data.success) {
-            alert('Success: Test email sent successfully!\n\nCheck your inbox for the test email.');
+            showToast('Success: Test email sent successfully! Check your inbox for the test email.', 'success');
         } else {
-            alert('Error: Failed to send test email:\n\n' + (data.message || 'Unknown error'));
+            showToast('Error: Failed to send test email: ' + (data.message || 'Unknown error'), 'error');
         }
     })
     .catch(error => {
         btn.disabled = false;
         btn.innerHTML = originalText;
         closeSmtpTestModal();
-        alert('Error: Failed to test SMTP connection');
+        showToast('Error: Failed to test SMTP connection', 'error');
         console.error('Error:', error);
     });
 }
@@ -3183,7 +3183,7 @@ function testGoogleMapsAPI() {
     const apiKey = apiKeyInput ? apiKeyInput.value.trim() : '';
     
     if (!apiKey) {
-        alert('Please enter a Google Maps API key first.');
+        showToast('Please enter a Google Maps API key first.', 'error');
         return;
     }
     
@@ -3208,15 +3208,15 @@ function testGoogleMapsAPI() {
         btn.innerHTML = originalText;
         
         if (data.success) {
-            alert('Success: ' + data.message);
+            showToast('Success: ' + data.message, 'success');
         } else {
-            alert('Error: ' + data.message);
+            showToast('Error: ' + data.message, 'error');
         }
     })
     .catch(error => {
         btn.disabled = false;
         btn.innerHTML = originalText;
-        alert('Error: Failed to test Google Maps API. Please try again.');
+        showToast('Error: Failed to test Google Maps API. Please try again.', 'error');
         console.error('Error:', error);
     });
 }
@@ -3244,8 +3244,8 @@ function toggleCenterIceLogoInput() {
     if (urlRow) urlRow.style.display = method.value === 'url' ? '' : 'none';
 }
 
-function removeCenterIceLogo() {
-    if (!confirm('Are you sure you want to remove the center ice logo?')) return;
+async function removeCenterIceLogo() {
+    if (!await showConfirmModal('Are you sure you want to remove the center ice logo?')) return;
     
     const formData = new FormData();
     formData.append('action', 'remove_center_ice_logo');
@@ -3268,7 +3268,7 @@ function removeCenterIceLogo() {
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Failed to remove center ice logo');
+        showToast('Failed to remove center ice logo', 'error');
     });
 }
 
@@ -3284,8 +3284,8 @@ function previewBcBackground(input, previewId) {
     }
 }
 
-function resetThemeColors() {
-    if (!confirm('Reset all theme colors to default values?')) return;
+async function resetThemeColors() {
+    if (!await showConfirmModal('Reset all theme colors to default values?')) return;
     
     const defaults = {
         'theme_primary_color': '#6B46C1',
@@ -3373,8 +3373,8 @@ function runDatabaseBackup(btn) {
     });
 }
 
-function runDatabaseOptimize(btn) {
-    if (!confirm('This will check, repair and optimize all database tables. Continue?')) return;
+async function runDatabaseOptimize(btn) {
+    if (!await showConfirmModal('This will check, repair and optimize all database tables. Continue?')) return;
     
     const originalText = btn.innerHTML;
     btn.disabled = true;
@@ -3412,8 +3412,8 @@ function runDatabaseOptimize(btn) {
     });
 }
 
-function runClearCache(btn) {
-    if (!confirm('Clear all cached data and temporary files?')) return;
+async function runClearCache(btn) {
+    if (!await showConfirmModal('Clear all cached data and temporary files?')) return;
     
     const originalText = btn.innerHTML;
     btn.disabled = true;
@@ -3472,15 +3472,15 @@ function testRustFSConnection() {
         btn.innerHTML = originalText;
 
         if (data.success) {
-            alert('Success: RustFS Connection Successful!\n\n' + (data.message || 'Connected successfully.'));
+            showToast('Success: RustFS Connection Successful! ' + (data.message || 'Connected successfully.'), 'success');
         } else {
-            alert('Error: RustFS Connection Failed\n\n' + (data.message || 'Could not connect to server'));
+            showToast('Error: RustFS Connection Failed. ' + (data.message || 'Could not connect to server'), 'error');
         }
     })
     .catch(error => {
         btn.disabled = false;
         btn.innerHTML = originalText;
-        alert('Error testing RustFS connection');
+        showToast('Error testing RustFS connection', 'error');
         console.error('Error:', error);
     });
 }
@@ -3580,7 +3580,7 @@ async function githubCheckForUpdates() {
 }
 
 async function githubApplyUpdate() {
-    if (!confirm('Apply the latest update from GitHub?\n\nThis will update system files. Your configuration, uploads, and encryption keys are preserved automatically.\n\nThe page will reload when complete.')) {
+    if (!await showConfirmModal('Apply the latest update from GitHub?\n\nThis will update system files. Your configuration, uploads, and encryption keys are preserved automatically.\n\nThe page will reload when complete.')) {
         return;
     }
     
@@ -3784,13 +3784,13 @@ function checkStripeUpdates() {
     .catch(error => {
         btn.disabled = false;
         btn.innerHTML = originalText;
-        alert('Error checking Stripe updates');
+        showToast('Error checking Stripe updates', 'error');
         console.error('Error:', error);
     });
 }
 
-function updateStripeLibrary() {
-    if (!confirm('Update the Stripe PHP library?\n\nThis will download the latest version from GitHub.\n\nMake sure you have a backup before proceeding.')) return;
+async function updateStripeLibrary() {
+    if (!await showConfirmModal('Update the Stripe PHP library?\n\nThis will download the latest version from GitHub.\n\nMake sure you have a backup before proceeding.')) return;
     
     const btn = event.target.closest('button');
     const originalText = btn.innerHTML;
@@ -3815,13 +3815,13 @@ function updateStripeLibrary() {
             persistToast('Success: Stripe Library Updated! ' + (data.message || 'Update completed successfully.'), 'success');
             location.reload();
         } else {
-            alert('Error: Update Failed\n\n' + (data.message || 'Unknown error'));
+            showToast('Error: Update Failed. ' + (data.message || 'Unknown error'), 'error');
         }
     })
     .catch(error => {
         btn.disabled = false;
         btn.innerHTML = originalText;
-        alert('Error updating Stripe library');
+        showToast('Error updating Stripe library', 'error');
         console.error('Error:', error);
     });
 }
@@ -4985,15 +4985,15 @@ function testSmtpConnection() {
         btn.disabled = false;
         
         if (data.success) {
-            alert('Success: SMTP Connection Successful!\n\nTest email sent successfully.');
+            showToast('Success: SMTP Connection Successful! Test email sent successfully.', 'success');
         } else {
-            alert('Error: SMTP Connection Failed\n\n' + (data.message || 'Could not connect to SMTP server'));
+            showToast('Error: SMTP Connection Failed. ' + (data.message || 'Could not connect to SMTP server'), 'error');
         }
     })
     .catch(error => {
         btn.innerHTML = originalText;
         btn.disabled = false;
-        alert('Error testing SMTP connection');
+        showToast('Error testing SMTP connection', 'error');
         console.error('Error:', error);
     });
 }
@@ -5018,15 +5018,15 @@ function testPaperlessConnection() {
         btn.disabled = false;
         
         if (data.success) {
-            alert('Success: Paperless-NGX Connection Successful!\n\n' + (data.message || 'Connected successfully'));
+            showToast('Success: Paperless-NGX Connection Successful! ' + (data.message || 'Connected successfully'), 'success');
         } else {
-            alert('Error: Paperless-NGX Connection Failed\n\n' + (data.message || 'Could not connect to Paperless-NGX server'));
+            showToast('Error: Paperless-NGX Connection Failed. ' + (data.message || 'Could not connect to Paperless-NGX server'), 'error');
         }
     })
     .catch(error => {
         btn.innerHTML = originalText;
         btn.disabled = false;
-        alert('Error testing Paperless-NGX connection');
+        showToast('Error testing Paperless-NGX connection', 'error');
         console.error('Error:', error);
     });
 }
@@ -5042,19 +5042,19 @@ function generateEncryptionKey() {
 function validateEncryptionKey() {
     const key = document.getElementById('encryption-key-input').value.trim();
     if (!/^[a-fA-F0-9]{64}$/.test(key)) {
-        alert('The encryption key must be exactly 64 hexadecimal characters (0-9, a-f).');
+        showToast('The encryption key must be exactly 64 hexadecimal characters (0-9, a-f).', 'error');
         return false;
     }
     return true;
 }
 
-function validateEncryptionKeyUpdate() {
+async function validateEncryptionKeyUpdate() {
     // Validate the current key field
     const currentKeyInput = document.getElementById('current-encryption-key-input');
     if (currentKeyInput) {
         const currentKey = currentKeyInput.value.trim();
         if (!/^[a-fA-F0-9]{64}$/.test(currentKey)) {
-            alert('The current encryption key must be exactly 64 hexadecimal characters (0-9, a-f).');
+            showToast('The current encryption key must be exactly 64 hexadecimal characters (0-9, a-f).', 'error');
             return false;
         }
     }
@@ -5062,16 +5062,16 @@ function validateEncryptionKeyUpdate() {
     // Validate the new key field
     const newKey = document.getElementById('encryption-key-input').value.trim();
     if (!/^[a-fA-F0-9]{64}$/.test(newKey)) {
-        alert('The new encryption key must be exactly 64 hexadecimal characters (0-9, a-f).');
+        showToast('The new encryption key must be exactly 64 hexadecimal characters (0-9, a-f).', 'error');
         return false;
     }
     
     // Multiple verification prompts
-    if (!confirm('WARNING: You are about to change the encryption key.\n\nChanging the encryption key will make ALL previously encrypted data unreadable unless you decrypt it first with the current key.\n\nAre you sure you want to proceed?')) {
+    if (!await showConfirmModal('WARNING: You are about to change the encryption key.\n\nChanging the encryption key will make ALL previously encrypted data unreadable unless you decrypt it first with the current key.\n\nAre you sure you want to proceed?')) {
         return false;
     }
     
-    if (!confirm('FINAL CONFIRMATION: This action cannot be undone.\n\nPlease confirm that you have:\n1. Backed up your current encryption key\n2. Backed up your database\n3. Understand that existing encrypted data will become unreadable\n\nDo you want to continue with the key change?')) {
+    if (!await showConfirmModal('FINAL CONFIRMATION: This action cannot be undone.\n\nPlease confirm that you have:\n1. Backed up your current encryption key\n2. Backed up your database\n3. Understand that existing encrypted data will become unreadable\n\nDo you want to continue with the key change?')) {
         return false;
     }
     
@@ -5096,12 +5096,12 @@ function toggleNdiCamera(cameraId, newState) {
             persistToast(data.message || 'Operation completed successfully', 'success');
             window.location.reload();
         } else {
-            alert('Error: ' + (data.message || 'Failed to update camera status'));
+            showToast('Error: ' + (data.message || 'Failed to update camera status'), 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred while updating camera status.');
+        showToast('An error occurred while updating camera status.', 'error');
     });
 }
 
@@ -5126,12 +5126,12 @@ function editNdiCamera(cameraId) {
             document.getElementById('edit-ndi-camera-location').value = data.camera.location || '';
             document.getElementById('ndi-camera-edit-modal').style.display = 'flex';
         } else {
-            alert('Error: ' + (data.message || 'Failed to load camera details'));
+            showToast('Error: ' + (data.message || 'Failed to load camera details'), 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred while loading camera details.');
+        showToast('An error occurred while loading camera details.', 'error');
     });
 }
 
@@ -5148,7 +5148,7 @@ function saveNdiCamera() {
     const location = document.getElementById('edit-ndi-camera-location').value.trim();
 
     if (!name || !ip) {
-        alert('Camera name and IP address are required.');
+        showToast('Camera name and IP address are required.', 'error');
         return;
     }
 
@@ -5173,17 +5173,17 @@ function saveNdiCamera() {
             persistToast(data.message || 'Operation completed successfully', 'success');
             window.location.reload();
         } else {
-            alert('Error: ' + (data.message || 'Failed to update camera'));
+            showToast('Error: ' + (data.message || 'Failed to update camera'), 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred while saving camera changes.');
+        showToast('An error occurred while saving camera changes.', 'error');
     });
 }
 
-function deleteNdiCamera(cameraId, cameraName) {
-    if (!confirm('Are you sure you want to delete the camera "' + cameraName + '"? This action cannot be undone.')) {
+async function deleteNdiCamera(cameraId, cameraName) {
+    if (!await showConfirmModal('Are you sure you want to delete the camera "' + cameraName + '"? This action cannot be undone.')) {
         return;
     }
 
@@ -5202,12 +5202,12 @@ function deleteNdiCamera(cameraId, cameraName) {
             persistToast(data.message || 'Operation completed successfully', 'success');
             window.location.reload();
         } else {
-            alert('Error: ' + (data.message || 'Failed to delete camera'));
+            showToast('Error: ' + (data.message || 'Failed to delete camera'), 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred while deleting the camera.');
+        showToast('An error occurred while deleting the camera.', 'error');
     });
 }
 
@@ -5415,9 +5415,9 @@ function testNode(node) {
     });
 }
 
-function removeNode(node) {
+async function removeNode(node) {
     var safeNode = node.replace(/['"\\]/g, '\\$&');
-    if (!confirm('Remove node ' + safeNode + ' from the cluster configuration?')) return;
+    if (!await showConfirmModal('Remove node ' + safeNode + ' from the cluster configuration?')) return;
     var result = document.getElementById('add-node-result');
     clusterPost('remove_cluster_node', { node: node })
     .then(data => {

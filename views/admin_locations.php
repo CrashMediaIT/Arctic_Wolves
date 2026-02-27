@@ -459,8 +459,8 @@ function closeModal() {
     document.getElementById('locationModal').classList.remove('active');
 }
 
-function deleteLocation(id) {
-    if (!confirm('Are you sure you want to delete this location?')) return;
+async function deleteLocation(id) {
+    if (!await showConfirmModal('Are you sure you want to delete this location?')) return;
     
     var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '';
     
@@ -560,13 +560,13 @@ function testGoogleAPI() {
             const message = document.createElement('div');
             message.innerHTML = data.message;
             const text = message.innerText || message.textContent;
-            alert('Success: ' + text);
+            showToast('Success: ' + text, 'success');
         } else {
-            alert('Failed: Test failed:\n\n' + data.message);
+            showToast('Failed: Test failed:\n\n' + data.message, 'error');
         }
     })
     .catch(err => {
-        alert('Error: Error testing API:\n\n' + err.message);
+        showToast('Error: Error testing API:\n\n' + err.message, 'error');
     });
 }
 

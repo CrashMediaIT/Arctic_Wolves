@@ -752,14 +752,14 @@ function editExpense(expense) {
     document.getElementById('expenseModal').classList.add('active');
 }
 
-function deleteExpense(id) {
+async function deleteExpense(id) {
     // Validate id is a number
     id = parseInt(id, 10);
     if (isNaN(id) || id <= 0) {
-        alert('Invalid expense ID');
+        showToast('Invalid expense ID', 'error');
         return;
     }
-    if (confirm('Are you sure you want to delete this expense?')) {
+    if (await showConfirmModal('Are you sure you want to delete this expense?')) {
         var form = document.createElement('form');
         form.method = 'POST';
         form.action = 'process_expenses.php';
@@ -811,8 +811,8 @@ function editPayee(payee) {
     document.getElementById('payeeModal').classList.add('active');
 }
 
-function deletePayee(id) {
-    if (confirm('Are you sure you want to delete this payee?')) {
+async function deletePayee(id) {
+    if (await showConfirmModal('Are you sure you want to delete this payee?')) {
         fetch('process_expenses.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -821,7 +821,7 @@ function deletePayee(id) {
         .then(r => r.json())
         .then(data => {
             if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
-            else { alert(data.message || 'Error deleting payee'); }
+            else { showToast(data.message || 'Error deleting payee', 'error'); }
         });
     }
 }
@@ -836,7 +836,7 @@ document.getElementById('payeeForm').addEventListener('submit', function(e) {
     .then(r => r.json())
     .then(data => {
         if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
-        else { alert(data.message || 'Error saving payee'); }
+        else { showToast(data.message || 'Error saving payee', 'error'); }
     });
 });
 
@@ -863,13 +863,13 @@ document.getElementById('virtualCardForm').addEventListener('submit', function(e
             persistToast('Virtual card created successfully!', 'success');
             location.reload();
         } else {
-            alert(data.message || 'Error creating virtual card');
+            showToast(data.message || 'Error creating virtual card', 'error');
         }
     });
 });
 
-function activateCard(id) {
-    if (confirm('Activate this virtual card?')) {
+async function activateCard(id) {
+    if (await showConfirmModal('Activate this virtual card?')) {
         fetch('process_expenses.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -878,7 +878,7 @@ function activateCard(id) {
         .then(r => r.json())
         .then(data => {
             if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
-            else { alert(data.message || 'Error activating card'); }
+            else { showToast(data.message || 'Error activating card', 'error'); }
         });
     }
 }
@@ -887,8 +887,8 @@ function activateCard(id) {
 function openBatchModal() { document.getElementById('batchModal').classList.add('active'); }
 function closeBatchModal() { document.getElementById('batchModal').classList.remove('active'); }
 
-function processBatch(id) {
-    if (confirm('Process all payments in this batch?')) {
+async function processBatch(id) {
+    if (await showConfirmModal('Process all payments in this batch?')) {
         fetch('process_expenses.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -896,11 +896,11 @@ function processBatch(id) {
         })
         .then(r => r.json())
         .then(data => {
-            alert(data.message || (data.success ? 'Batch processed' : 'Error'));
+            showToast(data.message || (data.success ? 'Batch processed' : 'Error'), data.success ? 'success' : 'error');
             if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
         });
     }
 }
 
-function viewBatch(id) { alert('Batch details view coming soon'); }
+function viewBatch(id) { showToast('Batch details view coming soon', 'info'); }
 </script>

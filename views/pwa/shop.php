@@ -253,10 +253,10 @@ function mShopAddToCart(productId, btn) {
             badge.style.display = 'flex';
             mShowShopToast('Added to cart!');
         } else {
-            alert(data.message || 'Could not add to cart');
+            showToast(data.message || 'Could not add to cart', 'error');
         }
     })
-    .catch(function() { alert('An error occurred.'); })
+    .catch(function() { showToast('An error occurred.', 'error'); })
     .finally(function() { btn.disabled = false; btn.innerHTML = '<i class="fas fa-cart-plus"></i> Add to Cart'; });
 }
 

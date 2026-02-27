@@ -1144,7 +1144,7 @@ function performDeleteDrill(drillId) {
                 });
             }
         })
-        .catch(function(err) { alert('Delete failed: ' + err.message); });
+        .catch(function(err) { showToast('Delete failed: ' + err.message, 'error'); });
 }
 
 // Update drill count display
@@ -1209,7 +1209,7 @@ function getSelectedDrillIds() {
 function bulkCreatePracticePlan() {
     var ids = getSelectedDrillIds();
     if (ids.length === 0) {
-        alert('Please select at least one drill.');
+        showToast('Please select at least one drill.', 'info');
         return;
     }
     
@@ -1221,7 +1221,7 @@ function bulkCreatePracticePlan() {
 function bulkDeleteDrills() {
     var ids = getSelectedDrillIds();
     if (ids.length === 0) {
-        alert('Please select at least one drill.');
+        showToast('Please select at least one drill.', 'info');
         return;
     }
     
@@ -1260,10 +1260,10 @@ function performBulkDeleteDrills(ids) {
                     showNotification(data.message, 'success');
                 }
             } else {
-                alert('Delete failed: ' + (data.message || 'Unknown error'));
+                showToast('Delete failed: ' + (data.message || 'Unknown error'), 'error');
             }
         })
-        .catch(function(err) { alert('Delete failed: ' + err.message); });
+        .catch(function(err) { showToast('Delete failed: ' + err.message, 'error'); });
 }
 
 // Render ice rink thumbnails for all drill cards using shared IceCanvasRenderer

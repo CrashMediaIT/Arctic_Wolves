@@ -2382,13 +2382,13 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Handle toggle-status buttons
     document.querySelectorAll('[data-action="toggle-status"]').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
+        btn.addEventListener('click', async function(e) {
             e.preventDefault();
             var itemId = this.getAttribute('data-id');
             var itemType = this.getAttribute('data-type');
             var button = this;
             
-            if (!confirm('Are you sure you want to toggle the status of this ' + itemType + '?')) return;
+            if (!await showConfirmModal('Are you sure you want to toggle the status of this ' + itemType + '?')) return;
             
             var endpoint = 'process_admin_action.php';
             var action = 'toggle_' + itemType + '_status';
@@ -2429,13 +2429,13 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Handle delete buttons with confirmation
     document.querySelectorAll('[data-action="delete"]').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
+        btn.addEventListener('click', async function(e) {
             e.preventDefault();
             e.stopImmediatePropagation();
             var itemId = this.getAttribute('data-id');
             var itemType = this.getAttribute('data-type');
             
-            if (!confirm('Are you sure you want to delete this ' + itemType + '? This cannot be undone.')) return;
+            if (!await showConfirmModal('Are you sure you want to delete this ' + itemType + '? This cannot be undone.')) return;
             
             var endpoint = 'process_admin_action.php';
             var bodyData = 'action=delete_' + itemType + '&csrf_token=' + encodeURIComponent(csrfToken);
@@ -2702,8 +2702,8 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     
     // Function to remove a session date
-    window.removeSessionDate = function(dateId, btn) {
-        if (!confirm('Are you sure you want to remove this session date? This action cannot be undone.')) {
+    window.removeSessionDate = async function(dateId, btn) {
+        if (!await showConfirmModal('Are you sure you want to remove this session date? This action cannot be undone.')) {
             return;
         }
         
@@ -3236,7 +3236,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     persistToast(data.message || 'Operation completed successfully', 'success');
                     location.reload();
                 } else {
-                    alert('Error: ' + (data.message || 'Unknown error'));
+                    showToast('Error: ' + (data.message || 'Unknown error'), 'error');
                 }
             })
             .catch(function(err) {
@@ -3245,7 +3245,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     submitBtn.disabled = false;
                 }
                 console.error(err);
-                alert('Error saving changes. Please try again.');
+                showToast('Error saving changes. Please try again.', 'error');
             });
         });
     }
@@ -3795,7 +3795,7 @@ function filterSessions() {
 var selectedPackageSessions = [];
 function addSessionToPackage(sessionId, sessionName) {
     if (selectedPackageSessions.find(s => s.id === sessionId)) {
-        alert('This session is already added to the package.');
+        showToast('This session is already added to the package.', 'info');
         return;
     }
     
@@ -3887,9 +3887,9 @@ function bulkDeleteAllSelected() {
     performBulkDelete(checked);
 }
 
-function performBulkDelete(checkedItems) {
+async function performBulkDelete(checkedItems) {
     var count = checkedItems.length;
-    if (!confirm('Are you sure you want to delete ' + count + ' item(s)? This cannot be undone.')) return;
+    if (!await showConfirmModal('Are you sure you want to delete ' + count + ' item(s)? This cannot be undone.')) return;
 
     var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '';
     var items = [];

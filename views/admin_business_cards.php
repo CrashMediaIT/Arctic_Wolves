@@ -1075,7 +1075,7 @@ function switchMarketingTab(tab) {
 // Email Campaign Functions
 // =====================================================
 
-function sendCampaign(e) {
+async function sendCampaign(e) {
     e.preventDefault();
     
     var form = document.getElementById('campaignForm');
@@ -1089,7 +1089,7 @@ function sendCampaign(e) {
         return;
     }
     
-    if (!confirm('Send this campaign to the selected recipients?')) {
+    if (!await showConfirmModal('Send this campaign to the selected recipients?')) {
         return;
     }
     

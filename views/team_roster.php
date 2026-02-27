@@ -311,7 +311,7 @@ if ($team) {
             <div class="player-actions">
                 <a href="?page=athlete_detail&id=<?= $player['id'] ?>" class="btn-secondary btn-small"><i class="fas fa-eye"></i> Profile</a>
                 <?php if (in_array($user_role, ['admin', 'superadmin', 'coach', 'team_coach'])): ?>
-                <form method="POST" action="process_admin_team_coaches.php" style="display: inline;" onsubmit="return confirm('Remove this player from the roster?');">
+                <form method="POST" action="process_admin_team_coaches.php" style="display: inline;" data-confirm="Remove this player from the roster?">
                     <?= csrfTokenInput() ?>
                     <input type="hidden" name="action" value="remove_roster_athlete">
                     <input type="hidden" name="roster_id" value="<?= $player['roster_id'] ?>">

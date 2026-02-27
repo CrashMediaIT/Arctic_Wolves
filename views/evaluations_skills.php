@@ -1265,10 +1265,10 @@ async function createEvaluation(e) {
         if (data.success) {
             window.location = '?page=evaluations_skills&eval_id=' + data.evaluation_id + '&athlete_id=' + formData.get('athlete_id');
         } else {
-            alert('Error: ' + data.message);
+            showToast('Error: ' + data.message, 'error');
         }
     } catch (error) {
-        alert('Error creating evaluation');
+        showToast('Error creating evaluation', 'error');
     }
 }
 
@@ -1294,7 +1294,7 @@ async function saveScore(scoreId, value) {
                 input.classList.remove('has-score');
             }
         } else {
-            alert('Error saving score');
+            showToast('Error saving score', 'error');
         }
     } catch (error) {
         console.error('Error:', error);
@@ -1317,7 +1317,7 @@ async function saveNotes(scoreId, type, value) {
         const data = await response.json();
         
         if (!data.success) {
-            alert('Error saving notes');
+            showToast('Error saving notes', 'error');
         }
     } catch (error) {
         console.error('Error:', error);
@@ -1344,15 +1344,15 @@ async function uploadMedia(scoreId, file) {
             persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
-            alert('Error uploading media: ' + data.message);
+            showToast('Error uploading media: ' + data.message, 'error');
         }
     } catch (error) {
-        alert('Error uploading media');
+        showToast('Error uploading media', 'error');
     }
 }
 
 async function deleteMedia(mediaId) {
-    if (!confirm('Delete this media?')) return;
+    if (!await showConfirmModal('Delete this media?')) return;
     
     const formData = new FormData();
     formData.append('action', 'delete_media');
@@ -1369,15 +1369,15 @@ async function deleteMedia(mediaId) {
         if (data.success) {
             document.querySelector(`[data-media-id="${mediaId}"]`).remove();
         } else {
-            alert('Error deleting media');
+            showToast('Error deleting media', 'error');
         }
     } catch (error) {
-        alert('Error deleting media');
+        showToast('Error deleting media', 'error');
     }
 }
 
 async function completeEvaluation(evalId) {
-    if (!confirm('Mark this evaluation as completed?')) return;
+    if (!await showConfirmModal('Mark this evaluation as completed?')) return;
     
     const formData = new FormData();
     formData.append('action', 'complete_evaluation');
@@ -1395,15 +1395,15 @@ async function completeEvaluation(evalId) {
             persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
-            alert('Error completing evaluation');
+            showToast('Error completing evaluation', 'error');
         }
     } catch (error) {
-        alert('Error completing evaluation');
+        showToast('Error completing evaluation', 'error');
     }
 }
 
 async function archiveEvaluation(evalId) {
-    if (!confirm('Archive this evaluation?')) return;
+    if (!await showConfirmModal('Archive this evaluation?')) return;
     
     const formData = new FormData();
     formData.append('action', 'archive_evaluation');
@@ -1421,10 +1421,10 @@ async function archiveEvaluation(evalId) {
             persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
-            alert('Error archiving evaluation');
+            showToast('Error archiving evaluation', 'error');
         }
     } catch (error) {
-        alert('Error archiving evaluation');
+        showToast('Error archiving evaluation', 'error');
     }
 }
 
@@ -1459,22 +1459,22 @@ async function generateShareLink(evalId) {
             `;
             document.getElementById('shareModal').classList.add('active');
         } else {
-            alert('Error generating share link');
+            showToast('Error generating share link', 'error');
         }
     } catch (error) {
-        alert('Error generating share link');
+        showToast('Error generating share link', 'error');
     }
 }
 
 function copyShareLink() {
     const url = document.getElementById('shareUrl').textContent;
     navigator.clipboard.writeText(url).then(() => {
-        alert('Link copied to clipboard!');
+        showToast('Link copied to clipboard!', 'success');
     });
 }
 
 async function revokeShareLink(evalId) {
-    if (!confirm('Revoke public access to this evaluation?')) return;
+    if (!await showConfirmModal('Revoke public access to this evaluation?')) return;
     
     const formData = new FormData();
     formData.append('action', 'revoke_share_link');
@@ -1490,12 +1490,12 @@ async function revokeShareLink(evalId) {
         
         if (data.success) {
             closeShareModal();
-            alert('Public access revoked');
+            showToast('Public access revoked', 'success');
         } else {
-            alert('Error revoking access');
+            showToast('Error revoking access', 'error');
         }
     } catch (error) {
-        alert('Error revoking access');
+        showToast('Error revoking access', 'error');
     }
 }
 
@@ -1518,11 +1518,11 @@ async function saveTeamEvaluation() {
     });
     
     if (scores.length === 0) {
-        alert('Please enter at least one skill score before saving.');
+        showToast('Please enter at least one skill score before saving.', 'error');
         return;
     }
     
-    if (!confirm(`Save ${scores.length} skill scores for ${athleteName}?`)) {
+    if (!await showConfirmModal(`Save ${scores.length} skill scores for ${athleteName}?`)) {
         return;
     }
     
@@ -1545,11 +1545,11 @@ async function saveTeamEvaluation() {
             // Keep same URL for easy athlete switching
             location.reload();
         } else {
-            alert('Error saving evaluation: ' + (data.error || 'Unknown error'));
+            showToast('Error saving evaluation: ' + (data.error || 'Unknown error'), 'error');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('Error saving evaluation. Please try again.');
+        showToast('Error saving evaluation. Please try again.', 'error');
     }
 }
 </script>

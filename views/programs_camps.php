@@ -1148,14 +1148,14 @@ function renderCampCalendar() {
     grid.innerHTML = html;
 }
 
-function cancelPackageRegistration(userPackageId, packageType) {
+async function cancelPackageRegistration(userPackageId, packageType) {
     var policyMsg = '';
     if (packageType === 'camp') {
         policyMsg = 'Camp cancellation policy: Full refund for cancellations made 14 days or more before camp start.\n\n';
     } else if (packageType === 'multi_week') {
         policyMsg = 'Program cancellation policy: Sessions within 48 hours are not refundable. Remaining sessions will be refunded.\n\n';
     }
-    if (!confirm(policyMsg + 'Are you sure you want to cancel this registration?')) return;
+    if (!await showConfirmModal(policyMsg + 'Are you sure you want to cancel this registration?')) return;
     
     var csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
     fetch('process_packages.php', {
@@ -1167,13 +1167,13 @@ function cancelPackageRegistration(userPackageId, packageType) {
     .then(function(r) { return r.json(); })
     .then(function(data) {
         if (data.success) {
-            alert(data.message || 'Registration cancelled successfully.');
+            showToast(data.message || 'Registration cancelled successfully.', 'success');
             location.reload();
         } else {
-            alert('Error: ' + (data.message || 'Failed to cancel registration'));
+            showToast('Error: ' + (data.message || 'Failed to cancel registration'), 'error');
         }
     })
-    .catch(function() { alert('Failed to process cancellation'); });
+    .catch(function() { showToast('Failed to process cancellation', 'error'); });
 }
 
 function scrollToPackage(packageId) {
@@ -1260,8 +1260,8 @@ function loadRegistrations(packageId) {
     });
 }
 
-function cancelRegistration(userPackageId, packageId) {
-    if (!confirm('Cancel this registration and automatically refund the user?')) return;
+async function cancelRegistration(userPackageId, packageId) {
+    if (!await showConfirmModal('Cancel this registration and automatically refund the user?')) return;
     
     var csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
     fetch('process_packages.php', {
@@ -1273,13 +1273,13 @@ function cancelRegistration(userPackageId, packageId) {
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            alert('Registration cancelled and refund initiated.');
+            showToast('Registration cancelled and refund initiated.', 'success');
             loadRegistrations(packageId);
         } else {
-            alert('Error: ' + (data.message || 'Failed to cancel registration'));
+            showToast('Error: ' + (data.message || 'Failed to cancel registration'), 'error');
         }
     })
-    .catch(function() { alert('Failed to process cancellation'); });
+    .catch(function() { showToast('Failed to process cancellation', 'error'); });
 }
 
 function escHtml(str) {

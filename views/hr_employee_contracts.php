@@ -812,7 +812,7 @@ try {
                     
                     <div style="display: flex; gap: 12px; flex-wrap: wrap;">
                         <button type="submit" name="action" value="update_template" class="btn btn-secondary"><i class="fas fa-save"></i> Save Draft</button>
-                        <button type="submit" name="action" value="publish_and_force_resign" class="btn btn-primary" onclick="return confirm('This will require ALL users to re-accept the updated <?= htmlspecialchars($agr_tpl['agreement_type'] === 'waiver' ? 'waiver' : 'privacy policy') ?> on their next login. Continue?')">
+                        <button type="submit" name="action" value="publish_and_force_resign" class="btn btn-primary" data-confirm="This will require ALL users to re-accept the updated <?= htmlspecialchars($agr_tpl['agreement_type'] === 'waiver' ? 'waiver' : 'privacy policy') ?> on their next login. Continue?">
                             <i class="fas fa-bullhorn"></i> Publish &amp; Force Re-sign
                         </button>
                         <button type="button" class="btn btn-secondary" onclick="toggleEditAgreement(<?= $agr_tpl['id'] ?>)"><i class="fas fa-times"></i> Cancel</button>
@@ -1186,8 +1186,8 @@ function populateFromOnboarding(select) {
 }
 
 // Send contract for signature
-function sendForSignature(contractId) {
-    if (!confirm('Send this contract for e-signature? An email will be sent to the employee with a signing link.')) {
+async function sendForSignature(contractId) {
+    if (!await showConfirmModal('Send this contract for e-signature? An email will be sent to the employee with a signing link.')) {
         return;
     }
     
@@ -1206,17 +1206,17 @@ function sendForSignature(contractId) {
             persistToast('Contract sent for signature successfully!', 'success');
             location.reload();
         } else {
-            alert('Error: ' + data.message);
+            showToast('Error: ' + data.message, 'error');
         }
     })
     .catch(error => {
-        alert('Error sending contract: ' + error);
+        showToast('Error sending contract: ' + error, 'error');
     });
 }
 
 // Resend contract email
-function resendContract(contractId) {
-    if (!confirm('Resend the e-signature request email?')) {
+async function resendContract(contractId) {
+    if (!await showConfirmModal('Resend the e-signature request email?')) {
         return;
     }
     
@@ -1232,19 +1232,19 @@ function resendContract(contractId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('E-signature request resent!');
+            showToast('E-signature request resent!', 'success');
         } else {
-            alert('Error: ' + data.message);
+            showToast('Error: ' + data.message, 'error');
         }
     })
     .catch(error => {
-        alert('Error resending: ' + error);
+        showToast('Error resending: ' + error, 'error');
     });
 }
 
 // Cancel contract
-function cancelContract(contractId) {
-    if (!confirm('Cancel this contract? This action cannot be undone.')) {
+async function cancelContract(contractId) {
+    if (!await showConfirmModal('Cancel this contract? This action cannot be undone.')) {
         return;
     }
     
@@ -1263,11 +1263,11 @@ function cancelContract(contractId) {
             persistToast('Contract cancelled.', 'success');
             location.reload();
         } else {
-            alert('Error: ' + data.message);
+            showToast('Error: ' + data.message, 'error');
         }
     })
     .catch(error => {
-        alert('Error cancelling contract: ' + error);
+        showToast('Error cancelling contract: ' + error, 'error');
     });
 }
 
@@ -1284,14 +1284,14 @@ document.getElementById('new-contract-form')?.addEventListener('submit', functio
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('Contract created successfully!');
+            showToast('Contract created successfully!', 'success');
             window.location.href = '?page=employee_contracts&tab=list';
         } else {
-            alert('Error: ' + data.message);
+            showToast('Error: ' + data.message, 'error');
         }
     })
     .catch(error => {
-        alert('Error creating contract: ' + error);
+        showToast('Error creating contract: ' + error, 'error');
     });
 });
 
@@ -1320,13 +1320,13 @@ document.getElementById('create-template-form')?.addEventListener('submit', func
             persistToast('Template created successfully! The template is now available in DocuSeal.', 'success');
             location.reload();
         } else {
-            alert('Error: ' + data.message);
+            showToast('Error: ' + data.message, 'error');
             btn.innerHTML = originalText;
             btn.disabled = false;
         }
     })
     .catch(error => {
-        alert('Error creating template: ' + error);
+        showToast('Error creating template: ' + error, 'error');
         btn.innerHTML = originalText;
         btn.disabled = false;
     });
@@ -1353,13 +1353,13 @@ function refreshDocuSealTemplates() {
             updateTemplatesTable(data.templates);
             document.getElementById('docuseal-template-count').textContent = data.count + ' Templates';
         } else {
-            alert('Error: ' + data.message);
+            showToast('Error: ' + data.message, 'error');
         }
         btn.innerHTML = originalText;
         btn.disabled = false;
     })
     .catch(error => {
-        alert('Error refreshing templates: ' + error);
+        showToast('Error refreshing templates: ' + error, 'error');
         btn.innerHTML = originalText;
         btn.disabled = false;
     });
@@ -1581,17 +1581,17 @@ document.getElementById('edit-template-form')?.addEventListener('submit', functi
             closeEditModal();
             location.reload();
         } else {
-            alert('Error: ' + data.message);
+            showToast('Error: ' + data.message, 'error');
         }
     })
     .catch(error => {
-        alert('Error updating template: ' + error);
+        showToast('Error updating template: ' + error, 'error');
     });
 });
 
 // Clone template
-function cloneTemplate(templateId, templateName) {
-    const newName = prompt('Enter a name for the cloned template:', templateName + ' (Copy)');
+async function cloneTemplate(templateId, templateName) {
+    const newName = await showPromptModal('Enter a name for the cloned template:', templateName + ' (Copy)');
     
     if (!newName) {
         return;
@@ -1613,17 +1613,17 @@ function cloneTemplate(templateId, templateName) {
             persistToast('Template cloned successfully!', 'success');
             location.reload();
         } else {
-            alert('Error: ' + data.message);
+            showToast('Error: ' + data.message, 'error');
         }
     })
     .catch(error => {
-        alert('Error cloning template: ' + error);
+        showToast('Error cloning template: ' + error, 'error');
     });
 }
 
 // Delete template
-function deleteTemplate(templateId, templateName) {
-    if (!confirm(`Are you sure you want to delete the template "${templateName}"? This action cannot be undone.`)) {
+async function deleteTemplate(templateId, templateName) {
+    if (!await showConfirmModal(`Are you sure you want to delete the template "${templateName}"? This action cannot be undone.`)) {
         return;
     }
     
@@ -1642,11 +1642,11 @@ function deleteTemplate(templateId, templateName) {
             persistToast('Template deleted successfully!', 'success');
             location.reload();
         } else {
-            alert('Error: ' + data.message);
+            showToast('Error: ' + data.message, 'error');
         }
     })
     .catch(error => {
-        alert('Error deleting template: ' + error);
+        showToast('Error deleting template: ' + error, 'error');
     });
 }
 

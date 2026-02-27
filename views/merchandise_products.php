@@ -1039,8 +1039,8 @@ function manageInventory(product) {
         });
 }
 
-function toggleProductStatus(id, currentStatus) {
-    if (!confirm('Are you sure you want to ' + (currentStatus ? 'deactivate' : 'activate') + ' this product?')) {
+async function toggleProductStatus(id, currentStatus) {
+    if (!await showConfirmModal('Are you sure you want to ' + (currentStatus ? 'deactivate' : 'activate') + ' this product?')) {
         return;
     }
     
@@ -1060,7 +1060,7 @@ function toggleProductStatus(id, currentStatus) {
             persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
-            alert('Error: ' + (data.message || 'Unknown error'));
+            showToast('Error: ' + (data.message || 'Unknown error'), 'error');
         }
     })
     .catch(error => {
@@ -1069,8 +1069,8 @@ function toggleProductStatus(id, currentStatus) {
     });
 }
 
-function deleteProduct(product) {
-    if (!confirm('Are you sure you want to delete "' + product.name + '"? This action cannot be undone.')) {
+async function deleteProduct(product) {
+    if (!await showConfirmModal('Are you sure you want to delete "' + product.name + '"? This action cannot be undone.')) {
         return;
     }
     
@@ -1090,7 +1090,7 @@ function deleteProduct(product) {
             persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
-            alert('Error: ' + (data.message || 'Unknown error'));
+            showToast('Error: ' + (data.message || 'Unknown error'), 'error');
         }
     })
     .catch(error => {
@@ -1197,7 +1197,7 @@ function recordShipment(product) {
         })
         .catch(function(error) {
             console.error('Error fetching sizes:', error);
-            alert('Error loading product sizes. Please try again.');
+            showToast('Error loading product sizes. Please try again.', 'error');
         });
 }
 
@@ -1287,7 +1287,7 @@ function stockAudit(product) {
         })
         .catch(function(error) {
             console.error('Error fetching sizes:', error);
-            alert('Error loading product sizes. Please try again.');
+            showToast('Error loading product sizes. Please try again.', 'error');
         });
 }
 

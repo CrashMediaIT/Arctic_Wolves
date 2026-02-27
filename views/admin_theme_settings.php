@@ -1540,7 +1540,7 @@ function saveAllThemeSettings() {
 
 // Reset theme
 async function resetTheme() {
-    if (!confirm('Are you sure you want to reset all colors to their default values?')) {
+    if (!await showConfirmModal('Are you sure you want to reset all colors to their default values?')) {
         return;
     }
     
@@ -1673,7 +1673,7 @@ document.getElementById('programForm').addEventListener('submit', async function
 
 // Delete program
 async function deleteProgram(programId) {
-    if (!confirm('Are you sure you want to delete this training program?')) {
+    if (!await showConfirmModal('Are you sure you want to delete this training program?')) {
         return;
     }
     
@@ -1730,7 +1730,7 @@ document.querySelectorAll('input[name="center_ice_logo_method"]').forEach(functi
 
 // Remove center ice logo
 async function removeCenterIceLogo() {
-    if (!confirm('Are you sure you want to remove the center ice logo?')) {
+    if (!await showConfirmModal('Are you sure you want to remove the center ice logo?')) {
         return;
     }
     

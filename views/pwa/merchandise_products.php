@@ -198,8 +198,8 @@ $totalProducts = count($products);
 
     window.mEditProd = function(card) { mOpenProdSheet('edit', card); };
 
-    window.mDeleteProd = function(card) {
-        if (!confirm('Delete "' + card.dataset.name + '"?')) return;
+    window.mDeleteProd = async function(card) {
+        if (!await showConfirmModal('Delete "' + card.dataset.name + '"?')) return;
         fetch('process_merchandise_products.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },

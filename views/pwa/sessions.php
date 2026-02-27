@@ -878,8 +878,8 @@ function mEsc(str) {
     return d.innerHTML;
 }
 
-function mCancelBooking(bookingId) {
-    if (!confirm('Cancel this booking?')) return;
+async function mCancelBooking(bookingId) {
+    if (!await showConfirmModal('Cancel this booking?')) return;
     var form = new FormData();
     form.append('action', 'cancel_booking');
     form.append('booking_id', bookingId);
@@ -888,13 +888,13 @@ function mCancelBooking(bookingId) {
         .then(function(r) { return r.json(); })
         .then(function(data) {
             if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
-            else { alert(data.message || 'Failed to cancel booking'); }
+            else { showToast(data.message || 'Failed to cancel booking', 'error'); }
         })
-        .catch(function() { alert('Network error. Please try again.'); });
+        .catch(function() { showToast('Network error. Please try again.', 'error'); });
 }
 
-function mCancelSession(sessionId) {
-    if (!confirm('Cancel this session for all attendees?')) return;
+async function mCancelSession(sessionId) {
+    if (!await showConfirmModal('Cancel this session for all attendees?')) return;
     var form = new FormData();
     form.append('action', 'cancel_session');
     form.append('session_id', sessionId);
@@ -903,9 +903,9 @@ function mCancelSession(sessionId) {
         .then(function(r) { return r.json(); })
         .then(function(data) {
             if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
-            else { alert(data.message || 'Failed to cancel session'); }
+            else { showToast(data.message || 'Failed to cancel session', 'error'); }
         })
-        .catch(function() { alert('Network error. Please try again.'); });
+        .catch(function() { showToast('Network error. Please try again.', 'error'); });
 }
 
 function mBookSession(sessionId) {
@@ -925,14 +925,14 @@ function mJoinWaitlist(sessionId) {
                 persistToast(data.message || 'Added to waitlist!', 'success');
                 location.reload();
             } else {
-                alert(data.message || 'Failed to join waitlist');
+                showToast(data.message || 'Failed to join waitlist', 'error');
             }
         })
-        .catch(function() { alert('Network error. Please try again.'); });
+        .catch(function() { showToast('Network error. Please try again.', 'error'); });
 }
 
-function mLeaveWaitlist(sessionId) {
-    if (!confirm('Leave the waitlist for this session?')) return;
+async function mLeaveWaitlist(sessionId) {
+    if (!await showConfirmModal('Leave the waitlist for this session?')) return;
     var form = new FormData();
     form.append('action', 'leave_waitlist');
     form.append('session_id', sessionId);
@@ -941,8 +941,8 @@ function mLeaveWaitlist(sessionId) {
         .then(function(r) { return r.json(); })
         .then(function(data) {
             if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
-            else { alert(data.message || 'Failed to leave waitlist'); }
+            else { showToast(data.message || 'Failed to leave waitlist', 'error'); }
         })
-        .catch(function() { alert('Network error. Please try again.'); });
+        .catch(function() { showToast('Network error. Please try again.', 'error'); });
 }
 </script>

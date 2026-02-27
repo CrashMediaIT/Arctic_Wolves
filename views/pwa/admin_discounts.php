@@ -177,8 +177,8 @@ try {
 
     window.mEditDisc = function(card) { mOpenDiscSheet('edit', card); };
 
-    window.mDeleteDisc = function(card) {
-        if (!confirm('Delete this discount code?')) return;
+    window.mDeleteDisc = async function(card) {
+        if (!await showConfirmModal('Delete this discount code?')) return;
         fetch('process_admin_action.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },

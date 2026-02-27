@@ -1372,8 +1372,8 @@ function escapeHtml(str) {
     return div.innerHTML;
 }
 
-function deletePackage(id, name) {
-    if (!confirm('Are you sure you want to delete the package "' + name + '"?')) return;
+async function deletePackage(id, name) {
+    if (!await showConfirmModal('Are you sure you want to delete the package "' + name + '"?')) return;
     
     fetch('process_packages.php', {
         method: 'POST',

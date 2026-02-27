@@ -426,8 +426,8 @@ function closeModal() {
     document.getElementById('discountModal').classList.remove('active');
 }
 
-function deleteDiscount(id) {
-    if (!confirm('Are you sure you want to delete this discount code?')) return;
+async function deleteDiscount(id) {
+    if (!await showConfirmModal('Are you sure you want to delete this discount code?')) return;
     
     fetch('process_admin_action.php', {
         method: 'POST',

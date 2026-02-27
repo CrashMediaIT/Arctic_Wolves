@@ -290,8 +290,8 @@ try {
             .finally(function() { btn.disabled = false; btn.innerHTML = '<i class="fas fa-plus-circle"></i> Record'; });
     };
 
-    window.mDelSpeed = function(id) {
-        if (!confirm('Delete this measurement?')) return;
+    window.mDelSpeed = async function(id) {
+        if (!await showConfirmModal('Delete this measurement?')) return;
         var fd = new FormData();
         fd.append('action', 'delete_speed');
         fd.append('speed_id', id);

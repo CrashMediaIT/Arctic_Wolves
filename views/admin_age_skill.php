@@ -309,7 +309,7 @@ requirePermission($pdo, $_SESSION['user_id'], $_SESSION['user_role'], 'manage_se
                             <input type="hidden" name="action" value="delete_age_group">
                             <input type="hidden" name="id" value="<?= $ag['id'] ?>">
                             <button type="submit" class="btn-icon delete" 
-                                    onclick="return confirm('Delete this age group? Sessions using it will have the field set to NULL.')">
+                                    data-confirm="Delete this age group? Sessions using it will have the field set to NULL.">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </form>
@@ -377,7 +377,7 @@ requirePermission($pdo, $_SESSION['user_id'], $_SESSION['user_role'], 'manage_se
                             <input type="hidden" name="action" value="delete_skill_level">
                             <input type="hidden" name="id" value="<?= $sl['id'] ?>">
                             <button type="submit" class="btn-icon delete" 
-                                    onclick="return confirm('Delete this skill level? Sessions and teams using it will have the field set to NULL.')">
+                                    data-confirm="Delete this skill level? Sessions and teams using it will have the field set to NULL.">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </form>

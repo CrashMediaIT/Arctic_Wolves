@@ -786,11 +786,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Delete schedule
     document.querySelectorAll('.schedule-delete-btn').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
+        btn.addEventListener('click', async function(e) {
             e.preventDefault();
             var scheduleId = this.getAttribute('data-schedule-id');
             
-            if (!confirm('Are you sure you want to delete this schedule?')) {
+            if (!await showConfirmModal('Are you sure you want to delete this schedule?')) {
                 return;
             }
             

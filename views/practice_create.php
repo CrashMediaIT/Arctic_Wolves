@@ -1017,7 +1017,7 @@ function submitPracticePlan() {
 }
 
 // Load draft on page load
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     // Load existing drills if editing
     <?php if ($is_editing && !empty($edit_drills)): ?>
     var existingDrills = <?= json_encode(array_values(array_filter(array_map(function($d) {
@@ -1043,7 +1043,7 @@ document.addEventListener('DOMContentLoaded', function() {
     <?php else: ?>
     const draft = localStorage.getItem('practice_plan_draft');
     if (draft) {
-        const loadDraft = confirm('You have a saved draft. Would you like to load it?');
+        const loadDraft = await showConfirmModal('You have a saved draft. Would you like to load it?');
         if (loadDraft) {
             const draftData = JSON.parse(draft);
             if (draftData.drills) {

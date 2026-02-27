@@ -816,7 +816,7 @@ async function toggleSchedule(scheduleId, activate) {
 
 // Delete schedule
 async function deleteSchedule(scheduleId, reportName) {
-    if (!confirm(`Are you sure you want to delete the scheduled report "${reportName}"?\n\nThis action cannot be undone.`)) {
+    if (!await showConfirmModal(`Are you sure you want to delete the scheduled report "${reportName}"?\n\nThis action cannot be undone.`)) {
         return;
     }
     

@@ -759,17 +759,17 @@ $provinces = [
                 document.getElementById('totalHours').textContent = totalHours.toFixed(2) + ' hrs';
                 document.getElementById('totalGross').textContent = '$' + totalGross.toFixed(2);
             } else {
-                alert(data.message || 'Failed to load hours');
+                showToast(data.message || 'Failed to load hours', 'error');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('An error occurred while loading hours');
+            showToast('An error occurred while loading hours', 'error');
         });
     }
 
-    function applyHoursToPayroll() {
-        if (!confirm('Apply these hours to the current payroll run? This will update the hours worked for hourly employees.')) {
+    async function applyHoursToPayroll() {
+        if (!await showConfirmModal('Apply these hours to the current payroll run? This will update the hours worked for hourly employees.')) {
             return;
         }
         
@@ -791,14 +791,14 @@ $provinces = [
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert('Hours have been applied to payroll. Go to "Run Payroll" tab to process payments.');
+                showToast('Hours have been applied to payroll. Go to "Run Payroll" tab to process payments.', 'success');
             } else {
-                alert(data.message || 'Failed to apply hours');
+                showToast(data.message || 'Failed to apply hours', 'error');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('An error occurred');
+            showToast('An error occurred', 'error');
         });
     }
     </script>
@@ -1133,8 +1133,8 @@ function closeEditPayrollModal() {
 
 // Remove from payroll confirmation
 document.querySelectorAll('.remove-payroll').forEach(btn => {
-    btn.addEventListener('click', function() {
-        if (confirm('Are you sure you want to remove this employee from payroll?')) {
+    btn.addEventListener('click', async function() {
+        if (await showConfirmModal('Are you sure you want to remove this employee from payroll?')) {
             const form = document.createElement('form');
             form.method = 'POST';
             form.action = 'process_payroll.php';

@@ -887,11 +887,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 const filename = 'pasted-image-' + Date.now() + '.' + ext;
                 const file = new File([blob], filename, { type: blob.type });
                 if (pendingFiles.length >= 5) {
-                    alert('Cannot paste image: maximum 5 attachments per message');
+                    showToast('Cannot paste image: maximum 5 attachments per message', 'error');
                     return;
                 }
                 if (file.size > 25 * 1024 * 1024) {
-                    alert('Cannot paste image: file size exceeds 25MB limit');
+                    showToast('Cannot paste image: file size exceeds 25MB limit', 'error');
                     return;
                 }
                 pendingFiles.push(file);
@@ -1046,13 +1046,13 @@ function insertEmoji(emoji) {
 function handleFileSelect(input) {
     const files = Array.from(input.files);
     if (pendingFiles.length + files.length > 5) {
-        alert('Maximum 5 attachments per message');
+        showToast('Maximum 5 attachments per message', 'error');
         input.value = '';
         return;
     }
     for (const file of files) {
         if (file.size > 25 * 1024 * 1024) {
-            alert(`File "${file.name}" exceeds 25MB limit`);
+            showToast(`File "${file.name}" exceeds 25MB limit`, 'error');
             continue;
         }
         pendingFiles.push(file);
@@ -1403,14 +1403,14 @@ function sendMessage() {
             loadMessages(activeConversationId);
             loadConversations(true);
         } else {
-            alert(data.message || 'Failed to send message');
+            showToast(data.message || 'Failed to send message', 'error');
             input.value = text;
         }
         updateSendButton();
     })
     .catch(err => {
         console.error('Send error:', err);
-        alert('Failed to send message. Please try again.');
+        showToast('Failed to send message. Please try again.', 'error');
         input.value = text;
         document.getElementById('sendBtn').disabled = false;
     });

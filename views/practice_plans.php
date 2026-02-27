@@ -916,7 +916,7 @@ try {
                         </button>
                     <?php endif; ?>
                     <?php if ($can_delete && $plan['created_by'] == $user_id): ?>
-                        <form method="POST" action="process_practice_plans.php" style="display: inline;" onsubmit="return confirm('Delete this practice plan?');" data-form-type="delete">
+                        <form method="POST" action="process_practice_plans.php" style="display: inline;" data-confirm="Delete this practice plan?" data-form-type="delete">
                             <?= csrfTokenInput() ?>
                             <input type="hidden" name="action" value="delete_plan">
                             <input type="hidden" name="plan_id" value="<?= $plan['id'] ?>">
@@ -1083,7 +1083,7 @@ try {
                 <?= csrfTokenInput() ?>
                 <input type="hidden" name="plan_id" id="removeSharePlanId">
                 <input type="hidden" name="action" value="remove_share_token">
-                <button type="submit" class="btn btn-secondary" style="width: 100%;" onclick="return confirm('Remove share link? The current link will no longer work.');">
+                <button type="submit" class="btn btn-secondary" style="width: 100%;" data-confirm="Remove share link? The current link will no longer work.">
                     <i class="fas fa-times"></i> Remove Share Link
                 </button>
             </form>
