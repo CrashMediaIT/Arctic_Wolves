@@ -307,3 +307,118 @@ test.describe('Database Schema Support', () => {
         expect(messagesTable).toContain('utf8mb4');
     });
 });
+
+test.describe('Conversation View Size Toggle', () => {
+    test('should have size toggle buttons in chat header', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'views', 'messages.php'), 'utf-8');
+        
+        expect(content).toContain('msg-size-toggle');
+        expect(content).toContain('msg-size-btn');
+        expect(content).toContain('data-size="default"');
+        expect(content).toContain('data-size="half"');
+        expect(content).toContain('data-size="full"');
+    });
+
+    test('should have setConversationSize function', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'views', 'messages.php'), 'utf-8');
+        
+        expect(content).toContain('function setConversationSize(size)');
+        expect(content).toContain("classList.add('size-' + size)");
+        expect(content).toContain("'size-default', 'size-half', 'size-full'");
+    });
+
+    test('messages container should start with size-default class', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'views', 'messages.php'), 'utf-8');
+        
+        expect(content).toContain('class="messages-container size-default"');
+    });
+
+    test('default size should hide emoji/file upload toolbar', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'views', 'messages.php'), 'utf-8');
+        
+        expect(content).toContain('.messages-container.size-default .msg-input-toolbar');
+        expect(content).toContain('display: none');
+    });
+
+    test('half and full sizes should have distinct CSS height rules', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'views', 'messages.php'), 'utf-8');
+        
+        expect(content).toContain('.messages-container.size-half');
+        expect(content).toContain('.messages-container.size-full');
+    });
+
+    test('size toggle buttons should have descriptive titles', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'views', 'messages.php'), 'utf-8');
+        
+        expect(content).toContain('title="Compact view"');
+        expect(content).toContain('title="Half size with emoji & file support"');
+        expect(content).toContain('title="Full size with emoji & file support"');
+    });
+});
+
+test.describe('Image Paste Support', () => {
+    test('should have paste event listener on message input', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'views', 'messages.php'), 'utf-8');
+        
+        expect(content).toContain("addEventListener('paste'");
+        expect(content).toContain('clipboardData');
+        expect(content).toContain("indexOf('image')");
+    });
+
+    test('should create File object from pasted image blob', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'views', 'messages.php'), 'utf-8');
+        
+        expect(content).toContain('getAsFile()');
+        expect(content).toContain('new File([blob]');
+        expect(content).toContain('pasted-image-');
+    });
+
+    test('should enforce attachment limits for pasted images', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'views', 'messages.php'), 'utf-8');
+        
+        expect(content).toContain('pendingFiles.length >= 5');
+        expect(content).toContain('Cannot paste image: file size exceeds 25MB limit');
+    });
+
+    test('should have paste hint visible in expanded modes', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'views', 'messages.php'), 'utf-8');
+        
+        expect(content).toContain('msg-paste-hint');
+        expect(content).toContain('Paste images');
+        expect(content).toContain('fa-paste');
+    });
+});
+
+test.describe('Emoji Picker Sizing Fix', () => {
+    test('emoji picker panel should be wider than 320px', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'views', 'messages.php'), 'utf-8');
+        
+        // Panel should be at least 360px wide for proper emoji display
+        expect(content).toContain('width: 360px');
+    });
+
+    test('emoji picker should have larger max-height', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'views', 'messages.php'), 'utf-8');
+        
+        // Panel max-height should be at least 400px
+        expect(content).toContain('max-height: 420px');
+    });
+
+    test('emoji grid should have adequate height for visible emojis', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'views', 'messages.php'), 'utf-8');
+        
+        // Grid max-height should be at least 280px for comfortable scrolling
+        expect(content).toContain('max-height: 300px');
+    });
+
+    test('emoji categories should use space-between layout', () => {
+        const content = fs.readFileSync(path.join(ROOT, 'views', 'messages.php'), 'utf-8');
+        
+        // Categories should be spread across the width to avoid scrolling
+        const catSection = content.substring(
+            content.indexOf('.emoji-picker-categories'),
+            content.indexOf('}', content.indexOf('.emoji-picker-categories')) + 1
+        );
+        expect(catSection).toContain('justify-content: space-between');
+    });
+});
