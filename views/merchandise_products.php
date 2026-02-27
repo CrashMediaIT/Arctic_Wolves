@@ -1060,7 +1060,7 @@ async function toggleProductStatus(id, currentStatus) {
             persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
-            alert('Error: ' + (data.message || 'Unknown error'));
+            showToast('Error: ' + (data.message || 'Unknown error'), 'error');
         }
     })
     .catch(error => {
@@ -1090,7 +1090,7 @@ async function deleteProduct(product) {
             persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
-            alert('Error: ' + (data.message || 'Unknown error'));
+            showToast('Error: ' + (data.message || 'Unknown error'), 'error');
         }
     })
     .catch(error => {
@@ -1197,7 +1197,7 @@ function recordShipment(product) {
         })
         .catch(function(error) {
             console.error('Error fetching sizes:', error);
-            alert('Error loading product sizes. Please try again.');
+            showToast('Error loading product sizes. Please try again.', 'error');
         });
 }
 
@@ -1287,7 +1287,7 @@ function stockAudit(product) {
         })
         .catch(function(error) {
             console.error('Error fetching sizes:', error);
-            alert('Error loading product sizes. Please try again.');
+            showToast('Error loading product sizes. Please try again.', 'error');
         });
 }
 

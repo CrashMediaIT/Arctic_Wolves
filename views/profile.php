@@ -1181,13 +1181,13 @@ $errors = [
                             codesDiv.appendChild(codeEl);
                         });
                     } else {
-                        alert('Error: ' + (data.message || 'Setup failed'));
+                        showToast('Error: ' + (data.message || 'Setup failed'), 'error');
                     }
                     document.getElementById('tfa-setup-btn').disabled = false;
                     document.getElementById('tfa-setup-btn').innerHTML = '<i class="fas fa-shield-halved"></i> Enable Two-Factor Authentication';
                 })
                 .catch(function() {
-                    alert('An error occurred. Please try again.');
+                    showToast('An error occurred. Please try again.', 'error');
                     document.getElementById('tfa-setup-btn').disabled = false;
                     document.getElementById('tfa-setup-btn').innerHTML = '<i class="fas fa-shield-halved"></i> Enable Two-Factor Authentication';
                 });
@@ -1202,7 +1202,7 @@ $errors = [
             // Verify and enable
             document.getElementById('tfa-confirm-btn').addEventListener('click', function() {
                 var code = document.getElementById('tfa-verify-code').value.trim();
-                if (!code || code.length !== 6) { alert('Please enter a 6-digit code'); return; }
+                if (!code || code.length !== 6) { showToast('Please enter a 6-digit code', 'error'); return; }
                 
                 this.disabled = true;
                 this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
@@ -1220,18 +1220,18 @@ $errors = [
                         document.getElementById('tfa-enabled-section').style.display = 'block';
                         if (typeof showNotification === 'function') showNotification('Two-factor authentication enabled!', 'success');
                     } else {
-                        alert(data.message || 'Invalid code');
+                        showToast(data.message || 'Invalid code', 'error');
                     }
                     btn.disabled = false;
                     btn.innerHTML = '<i class="fas fa-check"></i> Verify & Enable';
                 })
-                .catch(function() { alert('An error occurred.'); btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Verify & Enable'; });
+                .catch(function() { showToast('An error occurred.', 'error'); btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Verify & Enable'; });
             });
             
             // Disable 2FA
             document.getElementById('tfa-disable-btn').addEventListener('click', async function() {
                 var code = document.getElementById('tfa-disable-code').value.trim();
-                if (!code || code.length !== 6) { alert('Please enter your current 6-digit code'); return; }
+                if (!code || code.length !== 6) { showToast('Please enter your current 6-digit code', 'error'); return; }
                 if (!await showConfirmModal('Are you sure you want to disable two-factor authentication?')) return;
                 
                 this.disabled = true;
@@ -1250,11 +1250,11 @@ $errors = [
                         document.getElementById('tfa-disable-code').value = '';
                         if (typeof showNotification === 'function') showNotification('Two-factor authentication disabled', 'success');
                     } else {
-                        alert(data.message || 'Failed to disable 2FA');
+                        showToast(data.message || 'Failed to disable 2FA', 'error');
                     }
                     btn.disabled = false;
                 })
-                .catch(function() { alert('An error occurred.'); btn.disabled = false; });
+                .catch(function() { showToast('An error occurred.', 'error'); btn.disabled = false; });
             });
         });
         </script>
@@ -1601,7 +1601,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Revert the toggle if save failed
                     toggle.checked = !toggle.checked;
                     console.error('[Notification Prefs] Save failed:', data.message || data.error);
-                    alert('Failed to save preference: ' + (data.message || data.error || 'Unknown error'));
+                    showToast('Failed to save preference: ' + (data.message || data.error || 'Unknown error'), 'error');
                 }
             })
             .catch(error => {
@@ -1612,7 +1612,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('[Notification Prefs] Error saving preference:', error);
                 // Revert the toggle on error
                 toggle.checked = !toggle.checked;
-                alert('Error saving preference: ' + error.message);
+                showToast('Error saving preference: ' + error.message, 'error');
             });
         });
     } else {

@@ -698,10 +698,10 @@ async function restoreAuditEntry(logId) {
             persistToast('Change reverted successfully', 'success');
             location.reload();
         } else {
-            alert('Error: ' + (data.message || 'Failed to revert'));
+            showToast('Error: ' + (data.message || 'Failed to revert'), 'error');
         }
     })
-    .catch(function() { alert('An error occurred'); });
+    .catch(function() { showToast('An error occurred', 'error'); });
 }
 </script>
 
@@ -1061,10 +1061,10 @@ async function removeBlocklistEntry(entryId) {
                 setTimeout(function() { row.remove(); }, 300);
             }
         } else {
-            alert('Error: ' + (data.message || 'Failed to remove entry'));
+            showToast('Error: ' + (data.message || 'Failed to remove entry'), 'error');
         }
     })
-    .catch(function() { alert('An error occurred'); });
+    .catch(function() { showToast('An error occurred', 'error'); });
 }
 
 async function removeRestriction(restrictionId) {
@@ -1085,10 +1085,10 @@ async function removeRestriction(restrictionId) {
                 setTimeout(function() { card.remove(); }, 300);
             }
         } else {
-            alert('Error: ' + (data.message || 'Failed to remove restriction'));
+            showToast('Error: ' + (data.message || 'Failed to remove restriction'), 'error');
         }
     })
-    .catch(function() { alert('An error occurred'); });
+    .catch(function() { showToast('An error occurred', 'error'); });
 }
 </script>
 
@@ -1249,10 +1249,10 @@ function togglePosWhitelistEntry(entryId, newStatus) {
             persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
-            alert('Error: ' + (data.message || 'Failed to update entry'));
+            showToast('Error: ' + (data.message || 'Failed to update entry'), 'error');
         }
     })
-    .catch(function() { alert('An error occurred'); });
+    .catch(function() { showToast('An error occurred', 'error'); });
 }
 
 async function removePosWhitelistEntry(entryId) {
@@ -1273,10 +1273,10 @@ async function removePosWhitelistEntry(entryId) {
                 setTimeout(function() { row.remove(); }, 300);
             }
         } else {
-            alert('Error: ' + (data.message || 'Failed to remove entry'));
+            showToast('Error: ' + (data.message || 'Failed to remove entry'), 'error');
         }
     })
-    .catch(function() { alert('An error occurred'); });
+    .catch(function() { showToast('An error occurred', 'error'); });
 }
 </script>
 

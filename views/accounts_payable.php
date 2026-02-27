@@ -756,7 +756,7 @@ async function deleteExpense(id) {
     // Validate id is a number
     id = parseInt(id, 10);
     if (isNaN(id) || id <= 0) {
-        alert('Invalid expense ID');
+        showToast('Invalid expense ID', 'error');
         return;
     }
     if (await showConfirmModal('Are you sure you want to delete this expense?')) {
@@ -821,7 +821,7 @@ async function deletePayee(id) {
         .then(r => r.json())
         .then(data => {
             if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
-            else { alert(data.message || 'Error deleting payee'); }
+            else { showToast(data.message || 'Error deleting payee', 'error'); }
         });
     }
 }
@@ -836,7 +836,7 @@ document.getElementById('payeeForm').addEventListener('submit', function(e) {
     .then(r => r.json())
     .then(data => {
         if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
-        else { alert(data.message || 'Error saving payee'); }
+        else { showToast(data.message || 'Error saving payee', 'error'); }
     });
 });
 
@@ -863,7 +863,7 @@ document.getElementById('virtualCardForm').addEventListener('submit', function(e
             persistToast('Virtual card created successfully!', 'success');
             location.reload();
         } else {
-            alert(data.message || 'Error creating virtual card');
+            showToast(data.message || 'Error creating virtual card', 'error');
         }
     });
 });
@@ -878,7 +878,7 @@ async function activateCard(id) {
         .then(r => r.json())
         .then(data => {
             if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
-            else { alert(data.message || 'Error activating card'); }
+            else { showToast(data.message || 'Error activating card', 'error'); }
         });
     }
 }
@@ -896,11 +896,11 @@ async function processBatch(id) {
         })
         .then(r => r.json())
         .then(data => {
-            alert(data.message || (data.success ? 'Batch processed' : 'Error'));
+            showToast(data.message || (data.success ? 'Batch processed' : 'Error'), data.success ? 'success' : 'error');
             if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
         });
     }
 }
 
-function viewBatch(id) { alert('Batch details view coming soon'); }
+function viewBatch(id) { showToast('Batch details view coming soon', 'info'); }
 </script>

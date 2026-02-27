@@ -747,12 +747,12 @@ function viewEvaluation(evalId) {
                 renderEvaluationDetail(data.evaluation, data.steps);
                 openModal('evaluationDetailModal');
             } else {
-                alert('Error loading evaluation: ' + data.message);
+                showToast('Error loading evaluation: ' + data.message, 'error');
             }
         })
         .catch(err => {
             console.error('Error:', err);
-            alert('Failed to load evaluation');
+            showToast('Failed to load evaluation', 'error');
         });
 }
 
@@ -895,12 +895,12 @@ function toggleStep(stepId, isChecked) {
             const evalId = new URLSearchParams(window.location.search).get('evaluation_id');
             viewEvaluation(evalId || data.evaluation_id);
         } else {
-            alert('Error: ' + data.message);
+            showToast('Error: ' + data.message, 'error');
         }
     })
     .catch(err => {
         console.error('Error:', err);
-        alert('Failed to update step');
+        showToast('Failed to update step', 'error');
     });
 }
 
@@ -922,7 +922,7 @@ async function approveStep(stepId) {
             persistToast('Step approved!', 'success');
             location.reload();
         } else {
-            alert('Error: ' + data.message);
+            showToast('Error: ' + data.message, 'error');
         }
     });
 }
@@ -946,7 +946,7 @@ function rejectStep(stepId) {
             persistToast('Step rejected', 'success');
             location.reload();
         } else {
-            alert('Error: ' + data.message);
+            showToast('Error: ' + data.message, 'error');
         }
     });
 }
@@ -966,7 +966,7 @@ function generateShareLink(evalId) {
         if (data.success) {
             viewEvaluation(evalId);
         } else {
-            alert('Error: ' + data.message);
+            showToast('Error: ' + data.message, 'error');
         }
     });
 }
@@ -976,7 +976,7 @@ function copyShareLink() {
     
     if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(input.value).then(() => {
-            alert('Link copied to clipboard!');
+            showToast('Link copied to clipboard!', 'success');
         }).catch(err => {
             console.error('Failed to copy:', err);
             fallbackCopyText(input);
@@ -990,9 +990,9 @@ function fallbackCopyText(input) {
     input.select();
     try {
         document.execCommand('copy');
-        alert('Link copied to clipboard!');
+        showToast('Link copied to clipboard!', 'success');
     } catch (err) {
-        alert('Failed to copy link. Please copy manually.');
+        showToast('Failed to copy link. Please copy manually.', 'error');
     }
 }
 
@@ -1013,7 +1013,7 @@ async function revokeShareLink(evalId) {
         if (data.success) {
             viewEvaluation(evalId);
         } else {
-            alert('Error: ' + data.message);
+            showToast('Error: ' + data.message, 'error');
         }
     });
 }
@@ -1044,12 +1044,12 @@ document.getElementById('evaluationForm').addEventListener('submit', function(e)
             persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
-            alert('Error: ' + data.message);
+            showToast('Error: ' + data.message, 'error');
         }
     })
     .catch(err => {
         console.error('Error:', err);
-        alert('Failed to save evaluation');
+        showToast('Failed to save evaluation', 'error');
     });
 });
 
@@ -1067,12 +1067,12 @@ document.getElementById('addStepForm').addEventListener('submit', function(e) {
             closeModal('addStepModal');
             viewEvaluation(document.getElementById('stepEvalId').value);
         } else {
-            alert('Error: ' + data.message);
+            showToast('Error: ' + data.message, 'error');
         }
     })
     .catch(err => {
         console.error('Error:', err);
-        alert('Failed to add step');
+        showToast('Failed to add step', 'error');
     });
 });
 

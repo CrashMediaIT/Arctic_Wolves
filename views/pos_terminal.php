@@ -1085,7 +1085,7 @@ function closeSizeModal() {
 
 function addToCartWithSize() {
     if (!selectedSize) {
-        alert('Please select a size');
+        showToast('Please select a size', 'error');
         return;
     }
     addToCart(currentProduct.id, currentProduct.name, currentProduct.price, selectedSize);
@@ -1210,17 +1210,17 @@ function processCardPayment() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('Payment successful! Transaction #' + data.transaction_number);
+            showToast('Payment successful! Transaction #' + data.transaction_number, 'success');
             cart = [];
             renderCart();
             document.getElementById('customer-user-id').value = '';
         } else {
-            alert('Payment failed: ' + (data.message || 'Unknown error'));
+            showToast('Payment failed: ' + (data.message || 'Unknown error'), 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred. Please try again.');
+        showToast('An error occurred. Please try again.', 'error');
     })
     .finally(() => {
         btn.disabled = false;
@@ -1339,7 +1339,7 @@ function processCashPayment() {
     const total = subtotal + tax;
     
     if (receivedAmount < total) {
-        alert('Insufficient payment amount');
+        showToast('Insufficient payment amount', 'error');
         return;
     }
     
@@ -1384,14 +1384,14 @@ function processCashPayment() {
                 closeCashModal();
             }, 2000);
         } else {
-            alert('Payment failed: ' + (data.message || 'Unknown error'));
+            showToast('Payment failed: ' + (data.message || 'Unknown error'), 'error');
             confirmBtn.disabled = false;
             confirmBtn.innerHTML = '<i class="fas fa-check"></i> Complete Sale';
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred. Please try again.');
+        showToast('An error occurred. Please try again.', 'error');
         confirmBtn.disabled = false;
         confirmBtn.innerHTML = '<i class="fas fa-check"></i> Complete Sale';
     });

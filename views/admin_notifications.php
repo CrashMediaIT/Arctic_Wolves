@@ -600,12 +600,12 @@ function toggleNotification(id) {
             persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
-            alert('Error: ' + (data.message || 'Failed to toggle notification'));
+            showToast('Error: ' + (data.message || 'Failed to toggle notification'), 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred while updating the notification');
+        showToast('An error occurred while updating the notification', 'error');
     });
 }
 
@@ -630,12 +630,12 @@ async function deleteNotification(id) {
             persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
-            alert('Error: ' + (data.message || 'Failed to delete notification'));
+            showToast('Error: ' + (data.message || 'Failed to delete notification'), 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred while deleting the notification');
+        showToast('An error occurred while deleting the notification', 'error');
     });
 }
 
@@ -664,14 +664,14 @@ document.getElementById('notification-form').addEventListener('submit', function
             persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
-            alert('Error: ' + (data.message || 'Failed to save notification'));
+            showToast('Error: ' + (data.message || 'Failed to save notification'), 'error');
         }
     })
     .catch(error => {
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalText;
         console.error('Error:', error);
-        alert('An error occurred while saving the notification');
+        showToast('An error occurred while saving the notification', 'error');
     });
 });
 

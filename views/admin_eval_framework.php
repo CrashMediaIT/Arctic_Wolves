@@ -1654,10 +1654,10 @@ async function removeEvalFromSession(sessionEvalId, templateId) {
             // Reload the modal to refresh sessions list
             openEditEvaluationModal(templateId);
         } else {
-            alert('Error: ' + (data.message || 'Failed to remove'));
+            showToast('Error: ' + (data.message || 'Failed to remove'), 'error');
         }
     })
-    .catch(function() { alert('An error occurred'); });
+    .catch(function() { showToast('An error occurred', 'error'); });
 }
 
 async function deleteEvaluation(templateId, evalName) {
@@ -1666,7 +1666,7 @@ async function deleteEvaluation(templateId, evalName) {
     var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '';
     if (!csrfToken) {
         console.warn('CSRF token not found');
-        alert('Security token not found. Please refresh the page and try again.');
+        showToast('Security token not found. Please refresh the page and try again.', 'error');
         return;
     }
     var formData = new FormData();
@@ -1690,10 +1690,10 @@ async function deleteEvaluation(templateId, evalName) {
             setTimeout(function() { if (div.parentElement) div.remove(); }, 3000);
             loadEvaluationLibrary();
         } else {
-            alert('Error: ' + (data.message || 'Delete failed'));
+            showToast('Error: ' + (data.message || 'Delete failed'), 'error');
         }
     })
-    .catch(function() { alert('An error occurred'); });
+    .catch(function() { showToast('An error occurred', 'error'); });
 }
 
 // Load library on page if on library tab

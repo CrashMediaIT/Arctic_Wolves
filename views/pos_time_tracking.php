@@ -676,12 +676,12 @@ function clockIn() {
             persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
-            alert(data.message || 'Failed to clock in');
+            showToast(data.message || 'Failed to clock in', 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred');
+        showToast('An error occurred', 'error');
     });
 }
 
@@ -703,12 +703,12 @@ async function startLunch() {
             persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
-            alert(data.message || 'Failed to start lunch break');
+            showToast(data.message || 'Failed to start lunch break', 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred');
+        showToast('An error occurred', 'error');
     });
 }
 
@@ -728,12 +728,12 @@ function endLunch() {
             persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
-            alert(data.message || 'Failed to end lunch break');
+            showToast(data.message || 'Failed to end lunch break', 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred');
+        showToast('An error occurred', 'error');
     });
 }
 
@@ -758,15 +758,15 @@ async function endShift() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('Shift ended. Total hours: ' + data.total_hours);
+            showToast('Shift ended. Total hours: ' + data.total_hours, 'success');
             window.location.href = 'logout.php';
         } else {
-            alert(data.message || 'Failed to end shift');
+            showToast(data.message || 'Failed to end shift', 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred');
+        showToast('An error occurred', 'error');
     });
 }
 </script>

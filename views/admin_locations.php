@@ -560,13 +560,13 @@ function testGoogleAPI() {
             const message = document.createElement('div');
             message.innerHTML = data.message;
             const text = message.innerText || message.textContent;
-            alert('Success: ' + text);
+            showToast('Success: ' + text, 'success');
         } else {
-            alert('Failed: Test failed:\n\n' + data.message);
+            showToast('Failed: Test failed:\n\n' + data.message, 'error');
         }
     })
     .catch(err => {
-        alert('Error: Error testing API:\n\n' + err.message);
+        showToast('Error: Error testing API:\n\n' + err.message, 'error');
     });
 }
 

@@ -1001,7 +1001,7 @@ document.querySelectorAll('[data-action="delete-exercise"]').forEach(button => {
             .then(r => r.json())
             .then(data => {
                 if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
-                else alert('Error: ' + data.message);
+                else showToast('Error: ' + data.message, 'error');
             });
         }
     });
@@ -1113,7 +1113,7 @@ document.querySelectorAll('[data-action="view-plan"]').forEach(button => {
             document.getElementById('view-plan-modal').querySelector('.modal-body').innerHTML = exercisesHtml;
             openModal('view-plan-modal');
         } else {
-            alert('Exercises in this plan:\\n\\n' + exercises.map((ex, i) => (i+1) + '. ' + (ex.exercise_name || 'Exercise')).join('\\n'));
+            showToast('Exercises in this plan:\\n\\n' + exercises.map((ex, i) => (i+1) + '. ' + (ex.exercise_name || 'Exercise')).join('\\n'), 'info');
         }
     });
 });
@@ -1133,7 +1133,7 @@ document.querySelectorAll('[data-action="delete-plan"]').forEach(button => {
             .then(r => r.json())
             .then(data => {
                 if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
-                else alert('Error: ' + data.message);
+                else showToast('Error: ' + data.message, 'error');
             });
         }
     });
@@ -1298,7 +1298,7 @@ document.querySelectorAll('.modal form, #create-plan-form').forEach(form => {
                 persistToast(data.message || 'Operation completed successfully', 'success');
                 location.reload();
             } else {
-                alert('Error: ' + (data.message || 'Unknown error'));
+                showToast('Error: ' + (data.message || 'Unknown error'), 'error');
             }
         })
         .catch(err => {
@@ -1456,14 +1456,14 @@ document.getElementById('assign-athletes-form').addEventListener('submit', funct
             persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
-            alert('Error: ' + (data.message || 'Unknown error'));
+            showToast('Error: ' + (data.message || 'Unknown error'), 'error');
         }
     })
     .catch(err => {
         submitBtn.innerHTML = originalText;
         submitBtn.disabled = false;
         console.error(err);
-        alert('An error occurred. Please try again.');
+        showToast('An error occurred. Please try again.', 'error');
     });
 });
 </script>

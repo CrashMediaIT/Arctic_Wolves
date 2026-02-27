@@ -490,7 +490,7 @@ async function calculateDistance() {
     const waypoints = getWaypoints();
     
     if (waypoints.length < 2) {
-        alert('Please enter at least start and end locations');
+        showToast('Please enter at least start and end locations', 'error');
         return;
     }
     
@@ -521,10 +521,10 @@ async function calculateDistance() {
             document.getElementById('distanceDisplay').style.display = 'block';
             document.getElementById('submitBtn').disabled = false;
         } else {
-            alert('Error: ' + result.message);
+            showToast('Error: ' + result.message, 'error');
         }
     } catch (error) {
-        alert('Error calculating distance: ' + error.message);
+        showToast('Error calculating distance: ' + error.message, 'error');
     }
 }
 
@@ -542,17 +542,17 @@ document.getElementById('mileageForm').addEventListener('submit', async function
         const result = await response.json();
         
         if (result.success) {
-            alert('Trip logged successfully!');
+            showToast('Trip logged successfully!', 'success');
             this.reset();
             document.getElementById('distanceDisplay').style.display = 'none';
             document.getElementById('submitBtn').disabled = true;
             document.getElementById('formAction').value = 'create';
             loadLogs();
         } else {
-            alert('Error: ' + result.message);
+            showToast('Error: ' + result.message, 'error');
         }
     } catch (error) {
-        alert('Error saving trip: ' + error.message);
+        showToast('Error saving trip: ' + error.message, 'error');
     }
 });
 
@@ -622,10 +622,10 @@ async function deleteLog(logId) {
         if (result.success) {
             loadLogs();
         } else {
-            alert('Error: ' + result.message);
+            showToast('Error: ' + result.message, 'error');
         }
     } catch (error) {
-        alert('Error deleting log: ' + error.message);
+        showToast('Error deleting log: ' + error.message, 'error');
     }
 }
 
