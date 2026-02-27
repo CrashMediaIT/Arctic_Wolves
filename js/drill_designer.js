@@ -185,16 +185,18 @@ class DrillDesigner {
         if (rotateBtn) rotateBtn.addEventListener('click', () => this.rotateSelected());
         if (shareBtn) shareBtn.addEventListener('click', () => this.shareLink());
         
-        // Color picker
+        // Color picker - color selection must NOT change the active tool
         const colorPicker = document.querySelector('[data-drill-action="color-picker"]');
         if (colorPicker) {
             colorPicker.addEventListener('input', (e) => {
+                e.stopPropagation();
                 this.activeColor = e.target.value;
                 this.updateActiveColorDisplay();
                 // Apply color to selected object if any (use case 3)
                 this.applyColorToSelected();
             });
             colorPicker.addEventListener('change', (e) => {
+                e.stopPropagation();
                 this.activeColor = e.target.value;
                 this.updateActiveColorDisplay();
                 // Apply color to selected object if any (use case 3)
@@ -202,9 +204,10 @@ class DrillDesigner {
             });
         }
         
-        // Color presets
+        // Color presets - color selection must NOT change the active tool
         document.querySelectorAll('[data-color-preset]').forEach(btn => {
             btn.addEventListener('click', (e) => {
+                e.stopPropagation();
                 const color = e.currentTarget.getAttribute('data-color-preset');
                 this.activeColor = color;
                 this.updateActiveColorDisplay();
@@ -215,7 +218,7 @@ class DrillDesigner {
                     colorPicker.value = color;
                 }
                 
-                // Update active state on preset buttons
+                // Update active state on preset buttons only (not tool buttons)
                 document.querySelectorAll('[data-color-preset]').forEach(b => b.classList.remove('active'));
                 e.currentTarget.classList.add('active');
                 
@@ -224,7 +227,7 @@ class DrillDesigner {
             });
         });
         
-        // Paint tool button
+        // Paint tool button - must be manually clicked to activate
         const paintBtn = document.querySelector('[data-tool="paint"]');
         if (paintBtn) {
             paintBtn.addEventListener('click', (e) => {
@@ -232,17 +235,6 @@ class DrillDesigner {
                 document.querySelectorAll('.tool-btn, .drill-tool').forEach(b => b.classList.remove('active'));
                 e.currentTarget.classList.add('active');
             });
-        }
-    }
-    
-    // Helper method to automatically select the paint tool when a color is chosen
-    selectPaintTool() {
-        this.currentTool = 'paint';
-        // Update UI to show paint tool as active
-        document.querySelectorAll('.tool-btn, .drill-tool').forEach(b => b.classList.remove('active'));
-        const paintBtn = document.querySelector('[data-tool="paint"]');
-        if (paintBtn) {
-            paintBtn.classList.add('active');
         }
     }
     
