@@ -160,7 +160,7 @@ requirePermission($pdo, $user_id, $user_role, 'import_from_ihs');
     <i class="fas fa-info-circle"></i>
     <strong>About IHS Import:</strong> This feature allows you to import drills and practice plans from 
     IHS Hockey (International Hockey School) format. You can import individual drills or complete practice plans.
-    All imported content will be tagged with <code>imported_from_ihs = 1</code> for tracking purposes.
+    All imported drills will be tracked via their IHS source reference for easy identification.
 </div>
 
 <!-- Import Drills Section -->
@@ -299,15 +299,15 @@ Example JSON format:
     $imports = $pdo->query("
         SELECT 'drill' as type, id, title, created_at 
         FROM drills 
-        WHERE imported_from_ihs = 1 
+        WHERE ihs_source_url IS NOT NULL 
         ORDER BY created_at DESC 
         LIMIT 5
     ")->fetchAll();
     
     $plan_imports = $pdo->query("
-        SELECT 'plan' as type, id, title, created_at 
+        SELECT 'plan' as type, id, COALESCE(name, title) as title, created_at 
         FROM practice_plans 
-        WHERE imported_from_ihs = 1 
+        WHERE description LIKE '%Imported from IHS%' 
         ORDER BY created_at DESC 
         LIMIT 5
     ")->fetchAll();
