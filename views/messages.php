@@ -377,8 +377,8 @@ $start_with_user = isset($_GET['user_id']) ? intval($_GET['user_id']) : 0;
         position: absolute;
         bottom: 44px;
         left: 0;
-        width: 320px;
-        max-height: 320px;
+        width: 360px;
+        max-height: 420px;
         background: var(--card-bg, #16161F);
         border: 1px solid var(--border, #2D2D3F);
         border-radius: 12px;
@@ -407,16 +407,16 @@ $start_with_user = isset($_GET['user_id']) ? intval($_GET['user_id']) : 0;
     }
     .emoji-picker-categories {
         display: flex;
-        gap: 2px;
-        padding: 6px 10px;
+        gap: 4px;
+        padding: 8px 12px;
         border-bottom: 1px solid var(--border, #2D2D3F);
-        overflow-x: auto;
+        justify-content: space-between;
     }
     .emoji-cat-btn {
-        padding: 4px 8px;
+        padding: 6px 8px;
         background: none;
         border: none;
-        font-size: 16px;
+        font-size: 18px;
         cursor: pointer;
         border-radius: 6px;
         transition: background 0.15s;
@@ -428,20 +428,20 @@ $start_with_user = isset($_GET['user_id']) ? intval($_GET['user_id']) : 0;
     .emoji-picker-grid {
         display: grid;
         grid-template-columns: repeat(8, 1fr);
-        gap: 2px;
-        padding: 8px;
+        gap: 4px;
+        padding: 10px;
         overflow-y: auto;
         flex: 1;
-        max-height: 220px;
+        max-height: 300px;
     }
     .emoji-btn {
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 4px;
+        padding: 6px;
         background: none;
         border: none;
-        font-size: 20px;
+        font-size: 22px;
         cursor: pointer;
         border-radius: 6px;
         transition: background 0.12s;
@@ -651,6 +651,67 @@ $start_with_user = isset($_GET['user_id']) ? intval($_GET['user_id']) : 0;
         text-transform: capitalize;
     }
     
+    /* Conversation View Size Toggle */
+    .msg-size-toggle {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        margin-left: 12px;
+    }
+    .msg-size-btn {
+        padding: 4px 10px;
+        background: rgba(255,255,255,0.06);
+        border: 1px solid var(--border, #2D2D3F);
+        color: #8b949e;
+        font-size: 11px;
+        font-weight: 600;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background 0.2s, color 0.2s, border-color 0.2s;
+        white-space: nowrap;
+    }
+    .msg-size-btn:hover {
+        background: rgba(107, 70, 193, 0.15);
+        color: #c4b5fd;
+    }
+    .msg-size-btn.active {
+        background: var(--primary, #6B46C1);
+        color: #fff;
+        border-color: var(--primary, #6B46C1);
+    }
+    
+    /* Default size: hide toolbar */
+    .messages-container.size-default .msg-input-toolbar {
+        display: none;
+    }
+    
+    /* Half size */
+    .messages-container.size-half {
+        height: calc(100vh - 70px);
+    }
+    
+    /* Full size */
+    .messages-container.size-full {
+        height: calc(100vh - 40px);
+    }
+    .messages-container.size-full .msg-body {
+        padding: 24px 28px;
+    }
+    
+    /* Paste hint */
+    .msg-paste-hint {
+        font-size: 11px;
+        color: #8b949e;
+        padding: 0 4px;
+        display: none;
+        align-items: center;
+        gap: 4px;
+    }
+    .messages-container.size-half .msg-paste-hint,
+    .messages-container.size-full .msg-paste-hint {
+        display: flex;
+    }
+    
     /* Responsive */
     @media (max-width: 768px) {
         .messages-container {
@@ -684,7 +745,7 @@ $start_with_user = isset($_GET['user_id']) ? intval($_GET['user_id']) : 0;
     <p class="page-description">Send and receive messages with your coaches and athletes.</p>
 </div>
 
-<div class="messages-container" id="messagesContainer">
+<div class="messages-container size-default" id="messagesContainer">
     <!-- Sidebar -->
     <div class="msg-sidebar" id="msgSidebar">
         <div class="msg-sidebar-header">
@@ -720,6 +781,17 @@ $start_with_user = isset($_GET['user_id']) ? intval($_GET['user_id']) : 0;
                     <h3 id="chatName"></h3>
                     <p id="chatRole"></p>
                 </div>
+                <div class="msg-size-toggle" id="msgSizeToggle">
+                    <button class="msg-size-btn active" data-size="default" onclick="setConversationSize('default')" title="Compact view">
+                        <i class="fas fa-compress"></i> Default
+                    </button>
+                    <button class="msg-size-btn" data-size="half" onclick="setConversationSize('half')" title="Half size with emoji & file support">
+                        <i class="fas fa-up-right-and-down-left-from-center"></i> Half
+                    </button>
+                    <button class="msg-size-btn" data-size="full" onclick="setConversationSize('full')" title="Full size with emoji & file support">
+                        <i class="fas fa-expand"></i> Full
+                    </button>
+                </div>
                 <div class="msg-e2e-badge" title="Messages are end-to-end encrypted">
                     <i class="fas fa-lock"></i> Encrypted
                 </div>
@@ -744,6 +816,7 @@ $start_with_user = isset($_GET['user_id']) ? intval($_GET['user_id']) : 0;
                         <i class="fas fa-paperclip"></i>
                     </button>
                     <input type="file" id="fileInput" multiple accept="image/*,.pdf,.doc,.docx,.txt,.xls,.xlsx,.csv" style="display:none" onchange="handleFileSelect(this)">
+                    <span class="msg-paste-hint"><i class="fas fa-paste"></i> Paste images</span>
                 </div>
                 <textarea class="msg-input" id="msgInput" rows="1" placeholder="Type a message..." maxlength="5000" aria-label="Message input"></textarea>
                 <button class="msg-send-btn" id="sendBtn" onclick="sendMessage()" disabled title="Send" aria-label="Send message">
@@ -841,11 +914,50 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('emojiPicker').classList.remove('show');
         }
     });
+    
+    // Handle paste events for image paste support
+    document.getElementById('msgInput').addEventListener('paste', function(e) {
+        const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+                e.preventDefault();
+                const blob = items[i].getAsFile();
+                if (!blob) continue;
+                const ext = blob.type.split('/')[1] || 'png';
+                const filename = 'pasted-image-' + Date.now() + '.' + ext;
+                const file = new File([blob], filename, { type: blob.type });
+                if (pendingFiles.length >= 5) {
+                    alert('Maximum 5 attachments per message');
+                    return;
+                }
+                if (file.size > 25 * 1024 * 1024) {
+                    alert('Pasted image exceeds 25MB limit');
+                    return;
+                }
+                pendingFiles.push(file);
+                renderPendingAttachments();
+                updateSendButton();
+                break;
+            }
+        }
+    });
 });
 
 function updateSendButton() {
     const input = document.getElementById('msgInput');
     document.getElementById('sendBtn').disabled = !input.value.trim() && pendingFiles.length === 0;
+}
+
+// === Conversation Size Toggle ===
+function setConversationSize(size) {
+    const container = document.getElementById('messagesContainer');
+    container.classList.remove('size-default', 'size-half', 'size-full');
+    container.classList.add('size-' + size);
+    
+    // Update active button
+    document.querySelectorAll('.msg-size-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.size === size);
+    });
 }
 
 // === Emoji Picker ===
