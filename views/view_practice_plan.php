@@ -64,7 +64,7 @@ if ($planId) {
 }
 
 if (!$plan) {
-    echo '<div class="content-card"><div class="card-body"><p class="text-center">Practice plan not found.</p><a href="?page=practice_plans" class="btn btn-primary">Back to Practice Plans</a></div></div>';
+    echo '<div class="content-card"><div class="card-body"><p class="text-center">Practice plan not found.</p><a href="?page=practice_library" class="btn btn-primary">Back to Practice Plans</a></div></div>';
     return;
 }
 
@@ -88,7 +88,7 @@ $totalDuration = $plan['total_duration'] ?? $calculatedDuration;
 
 <div class="page-header">
     <div class="page-header-left">
-        <a href="?page=practice_plans" class="btn btn-secondary" style="margin-right: 15px;">
+        <a href="?page=practice_library" class="btn btn-secondary" style="margin-right: 15px;">
             <i class="fas fa-arrow-left"></i> Back to Plans
         </a>
         <div>
@@ -122,7 +122,7 @@ $totalDuration = $plan['total_duration'] ?? $calculatedDuration;
                 </button>
                 <?php endif; ?>
                 <?php if (isset($_SESSION['user_id']) && ($plan['created_by'] == $_SESSION['user_id'] || in_array($user_role ?? '', ['admin', 'coach']))): ?>
-                <a href="?page=practice_plans&edit=<?php echo $planId; ?>" class="btn btn-primary">
+                <a href="?page=practice_create&edit=<?php echo $planId; ?>" class="btn btn-primary">
                     <i class="fas fa-edit"></i> Edit Plan
                 </a>
                 <?php endif; ?>

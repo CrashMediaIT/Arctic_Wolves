@@ -37,8 +37,8 @@ if ($session['practice_plan_id']) {
         SELECT ppd.*, d.title, d.description, d.coaching_points, d.equipment_needed
         FROM practice_plan_drills ppd
         INNER JOIN drills d ON ppd.drill_id = d.id
-        WHERE ppd.plan_id = ?
-        ORDER BY ppd.order_index ASC
+        WHERE ppd.practice_plan_id = ?
+        ORDER BY ppd.drill_order ASC
     ");
     $drill_stmt->execute([$session['practice_plan_id']]);
     $drills = $drill_stmt->fetchAll();

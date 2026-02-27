@@ -40,7 +40,7 @@ $stmt = $pdo->prepare("
            COUNT(ppd.id) as drill_count
     FROM practice_plans pp
     LEFT JOIN users u ON pp.created_by = u.id
-    LEFT JOIN practice_plan_drills ppd ON pp.id = ppd.plan_id
+    LEFT JOIN practice_plan_drills ppd ON pp.id = ppd.practice_plan_id
     $where_clause
     GROUP BY pp.id
     ORDER BY pp.created_at DESC
@@ -1741,7 +1741,7 @@ function applyFilters() {
     const ageGroup = document.getElementById('ageGroupFilter').value;
     const focus = document.getElementById('focusFilter').value;
     
-    let url = 'dashboard.php?page=practice_plans';
+    let url = 'dashboard.php?page=practice_library';
     if (ageGroup) url += '&age_group=' + encodeURIComponent(ageGroup);
     if (focus) url += '&focus=' + encodeURIComponent(focus);
     

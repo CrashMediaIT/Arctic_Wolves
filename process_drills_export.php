@@ -20,7 +20,7 @@ $user_id = $_SESSION['user_id'];
 $user_role = $_SESSION['user_role'] ?? 'athlete';
 
 // Only coaches and admins can export drills
-if (!in_array($user_role, ['admin', 'coach'])) {
+if (!in_array($user_role, ['admin', 'coach', 'health_coach'])) {
     http_response_code(403);
     exit('Access denied');
 }

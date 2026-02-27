@@ -42,7 +42,7 @@ if ($action === 'save_plan' || $action === 'create' || $action === 'update' || $
     $drills = isset($_POST['drills']) ? json_decode($_POST['drills'], true) : [];
     
     if (empty($name)) {
-        header("Location: dashboard.php?page=practice_plans&error=title_required");
+        header("Location: dashboard.php?page=practice_library&error=title_required");
         exit();
     }
     
@@ -235,10 +235,10 @@ if ($action === 'generate_share_token') {
         $stmt = $pdo->prepare("UPDATE practice_plans SET share_token = ? WHERE id = ? AND created_by = ?");
         $stmt->execute([$share_token, $plan_id, $user_id]);
         Auditor::log($pdo, $user_id, 'update', 'practice_plans', $plan_id, ['action' => 'share_token_generated']);
-        header("Location: dashboard.php?page=practice_plans&status=token_generated&plan_id=$plan_id");
+        header("Location: dashboard.php?page=practice_library&status=token_generated&plan_id=$plan_id");
         exit();
     } catch (PDOException $e) {
-        header("Location: dashboard.php?page=practice_plans&error=token_failed");
+        header("Location: dashboard.php?page=practice_library&error=token_failed");
         exit();
     }
 }
@@ -255,10 +255,10 @@ if ($action === 'remove_share_token') {
         $stmt = $pdo->prepare("UPDATE practice_plans SET share_token = NULL WHERE id = ? AND created_by = ?");
         $stmt->execute([$plan_id, $user_id]);
         Auditor::log($pdo, $user_id, 'update', 'practice_plans', $plan_id, ['action' => 'share_token_removed']);
-        header("Location: dashboard.php?page=practice_plans&status=token_removed");
+        header("Location: dashboard.php?page=practice_library&status=token_removed");
         exit();
     } catch (PDOException $e) {
-        header("Location: dashboard.php?page=practice_plans&error=token_failed");
+        header("Location: dashboard.php?page=practice_library&error=token_failed");
         exit();
     }
 }
@@ -1150,5 +1150,5 @@ if ($action === 'import_json') {
 }
 
 // Fallback
-header("Location: dashboard.php?page=practice_plans");
+header("Location: dashboard.php?page=practice_library");
 exit();
