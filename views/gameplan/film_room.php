@@ -635,15 +635,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
                     if (!data.success) throw new Error(data.error || 'Failed to get upload URL');
-                    var presignedUrl = data.presigned_url;
-                    var contentType = data.content_type || videoFile.type || 'application/octet-stream';
                     var uploadNonce = data.upload_nonce;
                     status.textContent = 'Uploading to cloud storage...';
                     return new Promise(function(resolve, reject) {
+                        var proxyData = new FormData();
+                        proxyData.append('action', 'proxy_video_upload');
+                        proxyData.append('csrf_token', csrfToken);
+                        proxyData.append('upload_nonce', uploadNonce);
+                        proxyData.append('video_file', videoFile);
+
                         var xhr = new XMLHttpRequest();
                         vrCurrentUploadXhr = xhr;
-                        xhr.open('PUT', presignedUrl, true);
-                        xhr.setRequestHeader('Content-Type', contentType);
+                        xhr.open('POST', '/process_video.php', true);
                         xhr.upload.onprogress = function(ev) {
                             if (ev.lengthComputable) {
                                 var pct = Math.round((ev.loaded / ev.total) * 100);
@@ -653,11 +656,16 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
                         };
                         xhr.onload = function() {
-                            if (xhr.status >= 200 && xhr.status < 300) resolve(uploadNonce);
-                            else reject(new Error('Cloud upload failed (HTTP ' + xhr.status + ')'));
+                            try {
+                                var resp = JSON.parse(xhr.responseText);
+                                if (resp.success) resolve(resp.upload_nonce);
+                                else reject(new Error(resp.error || 'Cloud upload failed'));
+                            } catch (e) {
+                                reject(new Error('Cloud upload failed (HTTP ' + xhr.status + ')'));
+                            }
                         };
                         xhr.onerror = function() { reject(new Error('Network error during upload')); };
-                        xhr.send(videoFile);
+                        xhr.send(proxyData);
                     });
                 })
                 .then(function(uploadNonce) {

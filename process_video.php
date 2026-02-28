@@ -78,6 +78,10 @@ try {
         case 'confirm_video_upload':
             handleConfirmVideoUpload();
             break;
+
+        case 'proxy_video_upload':
+            handleProxyVideoUpload();
+            break;
         
         case 'upload_drill_video':
             handleDrillVideoUpload();
@@ -678,6 +682,86 @@ function handleConfirmAthleteUpload() {
         'success'  => true,
         'video_id' => $video_id,
         'redirect' => 'dashboard.php?page=coaches_reviews&success=video_uploaded',
+    ]);
+    exit;
+}
+
+/**
+ * Server-side proxy for video uploads.  The browser sends the file here
+ * (same-origin POST) and PHP streams it to RustFS using curl, bypassing
+ * cross-origin / CORS issues that block direct browser-to-S3 PUTs.
+ *
+ * Expects:
+ *   - upload_nonce  (from the get_*_upload_url step)
+ *   - csrf_token
+ *   - video_file    (the file in $_FILES)
+ *
+ * On success returns { success: true, upload_nonce: "..." } so the browser
+ * can continue with the existing confirm_video_upload / confirm_athlete_upload
+ * step unchanged.
+ */
+function handleProxyVideoUpload() {
+    global $pdo, $user_id;
+
+    header('Content-Type: application/json');
+
+    $upload_nonce = $_POST['upload_nonce'] ?? '';
+    if (empty($upload_nonce)) {
+        throw new Exception('Missing upload nonce');
+    }
+
+    // Look up the pending upload in either session key
+    $pending = null;
+    $session_key = null;
+    foreach (['pending_video_upload_general', 'pending_video_upload'] as $key) {
+        if (!empty($_SESSION[$key]) && hash_equals($_SESSION[$key]['nonce'], $upload_nonce)) {
+            $pending = $_SESSION[$key];
+            $session_key = $key;
+            break;
+        }
+    }
+
+    if (!$pending) {
+        throw new Exception('Invalid or expired upload session. Please try again.');
+    }
+
+    // Expire sessions older than 2 hours
+    if ((time() - $pending['created_at']) > 7200) {
+        unset($_SESSION[$session_key]);
+        throw new Exception('Upload session expired. Please try again.');
+    }
+
+    // Validate the uploaded file
+    if (empty($_FILES['video_file']) || $_FILES['video_file']['error'] !== UPLOAD_ERR_OK) {
+        $err_code = $_FILES['video_file']['error'] ?? -1;
+        throw new Exception('File upload failed (error code ' . $err_code . ')');
+    }
+
+    $tmp_path    = $_FILES['video_file']['tmp_name'];
+    $object_key  = $pending['object_key'];
+    $content_type = $pending['content_type'] ?? 'application/octet-stream';
+
+    // Upload to RustFS from the server (no CORS involved)
+    $rustfs = getRustFSSettings($pdo);
+    if (!isRustFSConfigured($rustfs)) {
+        throw new Exception('Cloud storage is not configured. Please contact an administrator.');
+    }
+
+    $file_size = filesize($tmp_path);
+    if ($file_size > 50 * 1024 * 1024) {
+        // Use streaming upload for files > 50 MB to avoid memory issues
+        $result = uploadLargeFileToRustFS($rustfs, $tmp_path, $object_key, $content_type);
+    } else {
+        $result = uploadToRustFS($rustfs, $tmp_path, $object_key, $content_type);
+    }
+
+    if (!$result['success']) {
+        throw new Exception('Cloud storage upload failed: ' . ($result['message'] ?? 'Unknown error'));
+    }
+
+    echo json_encode([
+        'success'      => true,
+        'upload_nonce' => $upload_nonce,
     ]);
     exit;
 }
