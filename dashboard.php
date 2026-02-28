@@ -328,6 +328,7 @@ $allowed_pages = [
     // Profile and Settings
     'profile'                 => 'views/profile.php',
     'settings'                => 'views/settings.php',
+    'gameplan'                => 'views/gameplan.php',
 ];
 
 $view_file = $allowed_pages[$page] ?? 'views/home.php';
@@ -895,6 +896,9 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             </a>
             <a href="?page=inventory_management" class="nav-link <?= $page=='inventory_management'?'active':'' ?>">
                 <i class="fa-solid fa-warehouse icon"></i> Inventory & Orders
+            </a>
+            <a href="?page=pos_online_orders" class="nav-link <?= $page=='pos_online_orders'?'active':'' ?>">
+                <i class="fa-solid fa-shipping-fast icon"></i> Online Orders
             </a>
             <a href="?page=pos_time_tracking" class="nav-link <?= $page=='pos_time_tracking'?'active':'' ?>">
                 <i class="fa-solid fa-clock icon"></i> Time Tracking
