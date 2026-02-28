@@ -25,6 +25,14 @@ try {
             if (!empty($parsedEndpoint['port'])) $origin .= ':' . $parsedEndpoint['port'];
             $extraConnectSrc[] = $origin;
         }
+        if (!empty($rustfs['rustfs_public_endpoint'])) {
+            $pubParsed = parse_url(rtrim($rustfs['rustfs_public_endpoint'], '/'));
+            if ($pubParsed && !empty($pubParsed['host'])) {
+                $pubOrigin = ($pubParsed['scheme'] ?? 'https') . '://' . $pubParsed['host'];
+                if (!empty($pubParsed['port'])) $pubOrigin .= ':' . $pubParsed['port'];
+                if ($pubOrigin !== ($origin ?? '')) $extraConnectSrc[] = $pubOrigin;
+            }
+        }
     }
 } catch (Exception $e) {}
 

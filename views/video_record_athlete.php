@@ -219,6 +219,9 @@ try {
                     </div>
                     <span class="upload-progress-percent" id="uploadProgressPercent">0%</span>
                     <span class="upload-progress-status" id="uploadProgressStatus">Preparing upload...</span>
+                    <button type="button" class="btn btn-danger" id="cancelUploadBtn" style="margin-top: 16px;">
+                        <i class="fas fa-times"></i> Cancel Upload
+                    </button>
                 </div>
             </div>
         </form>
@@ -861,7 +864,24 @@ document.addEventListener('DOMContentLoaded', function() {
     // Video upload — direct-to-RustFS via presigned URL (3-step flow)
     // Bypasses PHP file-size limits so large videos upload reliably.
     var uploadForm = document.getElementById('video-upload-form');
+    var currentUploadXhr = null; // Track active XHR for cancel support
     if (uploadForm) {
+        // Cancel upload handler
+        var cancelBtn = document.getElementById('cancelUploadBtn');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', function() {
+                if (currentUploadXhr) {
+                    currentUploadXhr.abort();
+                    currentUploadXhr = null;
+                }
+                var overlay = document.getElementById('uploadProgressOverlay');
+                var submitBtn = document.getElementById('submit-upload-btn');
+                overlay.style.display = 'none';
+                submitBtn.disabled = false;
+                showToast('Upload cancelled.', 'info');
+            });
+        }
+
         uploadForm.addEventListener('submit', function(e) {
             e.preventDefault();
 
@@ -916,6 +936,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     // ---------- Step 2: PUT file directly to RustFS ----------
                     return new Promise(function(resolve, reject) {
                         var xhr = new XMLHttpRequest();
+                        currentUploadXhr = xhr;
                         xhr.open('PUT', presignedUrl, true);
                         xhr.setRequestHeader('Content-Type', contentType);
 
@@ -974,6 +995,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     var legacyData = new FormData(uploadForm);
                     legacyData.set('action', 'athlete_upload_video');
                     var legacyXhr = new XMLHttpRequest();
+                    currentUploadXhr = legacyXhr;
                     legacyXhr.open('POST', uploadForm.action, true);
                     legacyXhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
                     legacyXhr.upload.onprogress = function(ev) {

@@ -565,7 +565,7 @@ function handleGetAthleteUploadUrl() {
         throw new Exception('Cloud storage is not configured. Please contact an administrator.');
     }
 
-    $presigned = generatePresignedUploadUrl($rustfs, $object_key, $file_type, 3600);
+    $presigned = generatePresignedUploadUrl($rustfs, $object_key, $file_type, 3600, $rustfs['rustfs_public_endpoint'] ?? null);
     if (!$presigned['success']) {
         throw new Exception('Failed to generate upload URL: ' . ($presigned['message'] ?? 'Unknown error'));
     }
@@ -794,7 +794,7 @@ function handleGetVideoUploadUrl() {
         throw new Exception('Cloud storage is not configured. Please contact an administrator.');
     }
 
-    $presigned = generatePresignedUploadUrl($rustfs, $object_key, $file_type, 3600);
+    $presigned = generatePresignedUploadUrl($rustfs, $object_key, $file_type, 3600, $rustfs['rustfs_public_endpoint'] ?? null);
     if (!$presigned['success']) {
         throw new Exception('Failed to generate upload URL: ' . ($presigned['message'] ?? 'Unknown error'));
     }

@@ -16,6 +16,7 @@ require_once __DIR__ . '/../db_config.php';
 function getRustFSSettings($pdo) {
     $keys = [
         'rustfs_endpoint',
+        'rustfs_public_endpoint',
         'rustfs_access_key',
         'rustfs_secret_key',
         'rustfs_bucket',
@@ -680,13 +681,16 @@ function listRustFSObjects($settings, $prefix = '', $max_keys = 1000) {
  * Uses AWS Signature V4 query-string authentication so the client can
  * PUT a file directly to S3-compatible storage without knowing the secret key.
  *
- * @param array  $settings     RustFS settings
- * @param string $object_key   S3 object key (e.g., 'Images/videos/athlete/video_123.mp4')
- * @param string $content_type MIME type the client will send (e.g., 'video/mp4')
- * @param int    $expires      URL validity in seconds (default: 3600)
+ * @param array       $settings        RustFS settings
+ * @param string      $object_key      S3 object key (e.g., 'Images/videos/athlete/video_123.mp4')
+ * @param string      $content_type    MIME type the client will send (e.g., 'video/mp4')
+ * @param int         $expires         URL validity in seconds (default: 3600)
+ * @param string|null $public_endpoint Optional browser-facing base URL (e.g., 'https://tnode1.example.com').
+ *                                     When set, the presigned URL uses this host/scheme instead of the
+ *                                     internal endpoint so uploads work through a reverse proxy (HAProxy).
  * @return array ['success'=>bool, 'url'=>string|null, 'object_key'=>string, 'message'=>string|null]
  */
-function generatePresignedUploadUrl($settings, $object_key, $content_type = 'application/octet-stream', $expires = 3600) {
+function generatePresignedUploadUrl($settings, $object_key, $content_type = 'application/octet-stream', $expires = 3600, $public_endpoint = null) {
     if (!isRustFSConfigured($settings)) {
         return ['success' => false, 'url' => null, 'object_key' => $object_key, 'message' => 'RustFS is not configured'];
     }
@@ -696,9 +700,18 @@ function generatePresignedUploadUrl($settings, $object_key, $content_type = 'app
         $url = getRustFSPublicUrl($settings, $object_key);
         $parsed = parse_url($url);
 
-        $host = $parsed['host'] . (isset($parsed['port']) ? ':' . $parsed['port'] : '');
         $path = $parsed['path'] ?? '/';
-        $scheme = $parsed['scheme'] ?? 'https';
+
+        // When a public endpoint is provided (browser-facing URL behind HAProxy),
+        // use its scheme/host/port so the presigned URL is reachable from the browser.
+        if (!empty($public_endpoint)) {
+            $pub = parse_url(rtrim($public_endpoint, '/'));
+            $scheme = $pub['scheme'] ?? 'https';
+            $host = $pub['host'] . (isset($pub['port']) ? ':' . $pub['port'] : '');
+        } else {
+            $host = $parsed['host'] . (isset($parsed['port']) ? ':' . $parsed['port'] : '');
+            $scheme = $parsed['scheme'] ?? 'https';
+        }
 
         $region = $settings['rustfs_region'] ?? 'us-east-1';
         $access_key = $settings['rustfs_access_key'];
