@@ -102,6 +102,10 @@
             <i class="fas fa-hockey-puck"></i> Shot Speed
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
+        <a href="?page=coach_video_reviews" class="pwa-menu-item">
+            <i class="fas fa-film"></i> Coach Video Reviews
+            <i class="fas fa-chevron-right menu-chevron"></i>
+        </a>
         <a href="?page=record_drill_video" class="pwa-menu-item">
             <i class="fas fa-video"></i> Video Recording
             <i class="fas fa-chevron-right menu-chevron"></i>
