@@ -277,6 +277,9 @@ try {
     <div class="progress-bar">
         <div class="progress-fill" id="progressFill"></div>
     </div>
+    <button type="button" class="btn btn-danger" id="cancelDrillUploadBtn" style="margin-top: 10px; font-size: 13px;">
+        <i class="fas fa-times"></i> Cancel Upload
+    </button>
 </div>
 
 <!-- Recent Recordings -->
@@ -793,6 +796,20 @@ document.addEventListener('DOMContentLoaded', function() {
     const previewOverlay = document.getElementById('previewOverlay');
     const recordingIndicator = document.getElementById('recordingIndicator');
     const recordedVideoContainer = document.getElementById('recordedVideoContainer');
+
+    // Track active XHR for cancel support
+    var drillUploadXhr = null;
+    var cancelDrillBtn = document.getElementById('cancelDrillUploadBtn');
+    if (cancelDrillBtn) {
+        cancelDrillBtn.addEventListener('click', function() {
+            if (drillUploadXhr) {
+                drillUploadXhr.abort();
+                drillUploadXhr = null;
+            }
+            document.getElementById('uploadProgress').style.display = 'none';
+            showToast('Upload cancelled.', 'info');
+        });
+    }
     
     const startCameraBtn = document.getElementById('startCameraBtn');
     const flipCameraBtn = document.getElementById('flipCameraBtn');
@@ -970,6 +987,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         try {
             const xhr = new XMLHttpRequest();
+            drillUploadXhr = xhr;
             xhr.open('POST', 'process_video.php', true);
             
             xhr.upload.onprogress = function(e) {
@@ -1103,6 +1121,7 @@ document.addEventListener('DOMContentLoaded', function() {
         uploadFileBtn.disabled = true;
 
         var xhr = new XMLHttpRequest();
+        drillUploadXhr = xhr;
         xhr.open('POST', 'process_video.php', true);
 
         xhr.upload.onprogress = function(e) {

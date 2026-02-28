@@ -229,6 +229,9 @@ if (!function_exists('vr_format_duration')) {
                 <div id="vrUploadProgressBar" style="width:0%; height:100%; background:var(--gp-primary-light, #6B46C1); border-radius:8px; transition:width 0.3s;"></div>
             </div>
             <div id="vrUploadProgressPercent" style="text-align:right; font-size:12px; margin-top:4px; color:var(--gp-text-dim, #888);">0%</div>
+            <button type="button" class="btn btn-danger" id="vrCancelUploadBtn" style="margin-top: 10px; font-size: 13px;">
+                <i class="fas fa-times"></i> Cancel Upload
+            </button>
         </div>
     </form>
 </div>
@@ -577,7 +580,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // AJAX upload handler — direct-to-RustFS via presigned URL (3-step flow)
     var uploadForm = document.getElementById('vrUploadForm');
+    var vrCurrentUploadXhr = null;
     if (uploadForm) {
+        var vrCancelBtn = document.getElementById('vrCancelUploadBtn');
+        if (vrCancelBtn) {
+            vrCancelBtn.addEventListener('click', function() {
+                if (vrCurrentUploadXhr) {
+                    vrCurrentUploadXhr.abort();
+                    vrCurrentUploadXhr = null;
+                }
+                document.getElementById('vrUploadProgressOverlay').style.display = 'none';
+                document.getElementById('vrUploadSubmitBtn').disabled = false;
+                frToast('Upload cancelled.');
+            });
+        }
+
         uploadForm.addEventListener('submit', function(e) {
             e.preventDefault();
             var submitBtn = document.getElementById('vrUploadSubmitBtn');
@@ -624,6 +641,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     status.textContent = 'Uploading to cloud storage...';
                     return new Promise(function(resolve, reject) {
                         var xhr = new XMLHttpRequest();
+                        vrCurrentUploadXhr = xhr;
                         xhr.open('PUT', presignedUrl, true);
                         xhr.setRequestHeader('Content-Type', contentType);
                         xhr.upload.onprogress = function(ev) {
@@ -668,6 +686,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     percent.textContent = '0%';
                     var legacyData = new FormData(uploadForm);
                     var legacyXhr = new XMLHttpRequest();
+                    vrCurrentUploadXhr = legacyXhr;
                     legacyXhr.open('POST', uploadForm.action, true);
                     legacyXhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
                     legacyXhr.upload.onprogress = function(ev) {
