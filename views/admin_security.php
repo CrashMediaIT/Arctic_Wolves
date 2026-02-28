@@ -1384,7 +1384,7 @@ if ($dep_summary) {
         <div class="card-label">Critical / High</div>
     </div>
     <div class="audit-summary-card">
-        <div class="card-value" style="color: #F59E0B;"><?php echo (int)($dep_summary['total_outdated'] ?? 0); ?></div>
+        <div class="card-value" style="color: <?php echo ($dep_summary['total_outdated'] ?? 0) > 0 ? '#F59E0B' : '#10b981'; ?>;"><?php echo (int)($dep_summary['total_outdated'] ?? 0); ?></div>
         <div class="card-label">Outdated Packages</div>
     </div>
 </div>
@@ -1509,7 +1509,7 @@ if ($dep_summary) {
     <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
         <h3><i class="fas fa-history"></i> Security Scan History</h3>
         <p style="font-size: 12px; color: var(--text-muted, #64748b); margin: 0;">
-            Automated scans run weekly via cron. <?php if ($dep_summary): ?>Last dependency check: <?php echo htmlspecialchars($dep_summary['checked_at']); ?><?php endif; ?>
+            Automated scans run every Sunday at 2 AM. <?php if ($dep_summary): ?>Last dependency check: <?php echo htmlspecialchars($dep_summary['checked_at']); ?><?php endif; ?>
         </p>
     </div>
     <div class="card-body" style="overflow-x: auto;">
