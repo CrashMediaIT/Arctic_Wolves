@@ -209,20 +209,17 @@ endif;
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (!data.success) throw new Error(data.error || 'Failed to get upload URL');
+                var presignedUrl = data.presigned_url;
+                var contentType = data.content_type || blob.type || 'video/webm';
                 var uploadNonce = data.upload_nonce;
 
                 statusEl.textContent = 'Uploading to cloud storage...';
 
-                // Step 2: Upload file via server proxy (avoids CORS)
+                // Step 2: PUT directly to RustFS
                 return new Promise(function(resolve, reject) {
-                    var proxyData = new FormData();
-                    proxyData.append('action', 'proxy_video_upload');
-                    proxyData.append('csrf_token', csrfToken);
-                    proxyData.append('upload_nonce', uploadNonce);
-                    proxyData.append('video_file', blob, 'drill_video.webm');
-
                     var xhr = new XMLHttpRequest();
-                    xhr.open('POST', 'process_video.php', true);
+                    xhr.open('PUT', presignedUrl, true);
+                    xhr.setRequestHeader('Content-Type', contentType);
                     xhr.upload.onprogress = function(ev) {
                         if (ev.lengthComputable) {
                             var pct = Math.round((ev.loaded / ev.total) * 100);
@@ -231,16 +228,11 @@ endif;
                         }
                     };
                     xhr.onload = function() {
-                        try {
-                            var resp = JSON.parse(xhr.responseText);
-                            if (resp.success) resolve(resp.upload_nonce);
-                            else reject(new Error(resp.error || 'Cloud upload failed'));
-                        } catch (e) {
-                            reject(new Error('Cloud upload failed (HTTP ' + xhr.status + ')'));
-                        }
+                        if (xhr.status >= 200 && xhr.status < 300) resolve(uploadNonce);
+                        else reject(new Error('Cloud upload failed (HTTP ' + xhr.status + ')'));
                     };
                     xhr.onerror = function() { reject(new Error('Network error')); };
-                    xhr.send(proxyData);
+                    xhr.send(blob);
                 });
             })
             .then(function(uploadNonce) {
