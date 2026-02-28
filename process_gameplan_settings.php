@@ -1,7 +1,7 @@
 <?php
 /**
  * Process Game Plan Settings
- * Handles saving companion server, hardware acceleration, and video storage settings.
+ * Handles saving companion server connection settings.
  */
 
 session_start();
@@ -77,67 +77,6 @@ try {
             upsertGameplanSetting($pdo, 'gameplan_app_url', $gameplan_app_url);
             Auditor::log($pdo, $user_id, 'update', 'system_settings', null, ['action' => 'Updated companion server settings']);
 
-            header('Location: dashboard.php?page=system_tools&tab=gameplan&success=settings_saved');
-            exit;
-
-        case 'save_hw_accel':
-            $hw_enabled = isset($_POST['hw_accel_enabled']) ? '1' : '0';
-            $hw_method = $_POST['hw_accel_method'] ?? 'auto';
-
-            $allowed_methods = ['auto', 'nvenc', 'qsv', 'vaapi', 'amf', 'none'];
-            if (!in_array($hw_method, $allowed_methods, true)) {
-                $hw_method = 'auto';
-            }
-
-            upsertGameplanSetting($pdo, 'gameplan_hw_accel_enabled', $hw_enabled);
-            upsertGameplanSetting($pdo, 'gameplan_hw_accel_method', $hw_method);
-            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, ['action' => 'Updated hardware acceleration settings']);
-
-            header('Location: dashboard.php?page=system_tools&tab=gameplan&success=settings_saved');
-            exit;
-
-        case 'save_video_storage':
-            $storage_type = $_POST['video_storage_type'] ?? 'local';
-            $storage_path = trim($_POST['video_storage_path'] ?? '/videos');
-
-            $allowed_types = ['local', 'nfs', 'smb'];
-            if (!in_array($storage_type, $allowed_types, true)) {
-                $storage_type = 'local';
-            }
-
-            // Validate path is not empty and doesn't contain suspicious characters
-            if (empty($storage_path) || preg_match('/[;&|`$]/', $storage_path)) {
-                throw new Exception('Invalid video storage path');
-            }
-
-            upsertGameplanSetting($pdo, 'gameplan_video_storage_type', $storage_type);
-            upsertGameplanSetting($pdo, 'gameplan_video_storage_path', $storage_path);
-
-            // NFS settings
-            if ($storage_type === 'nfs') {
-                $nfs_server = trim($_POST['nfs_server'] ?? '');
-                $nfs_export = trim($_POST['nfs_export'] ?? '');
-                $nfs_options = trim($_POST['nfs_options'] ?? 'rw,sync,no_subtree_check');
-
-                upsertGameplanSetting($pdo, 'gameplan_nfs_server', $nfs_server);
-                upsertGameplanSetting($pdo, 'gameplan_nfs_export', $nfs_export);
-                upsertGameplanSetting($pdo, 'gameplan_nfs_options', $nfs_options);
-            }
-
-            // SMB settings
-            if ($storage_type === 'smb') {
-                $smb_server = trim($_POST['smb_server'] ?? '');
-                $smb_share = trim($_POST['smb_share'] ?? '');
-                $smb_username = trim($_POST['smb_username'] ?? '');
-                $smb_domain = trim($_POST['smb_domain'] ?? '');
-
-                upsertGameplanSetting($pdo, 'gameplan_smb_server', $smb_server);
-                upsertGameplanSetting($pdo, 'gameplan_smb_share', $smb_share);
-                upsertGameplanSetting($pdo, 'gameplan_smb_username', $smb_username);
-                upsertGameplanSetting($pdo, 'gameplan_smb_domain', $smb_domain);
-            }
-
-            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, ['action' => 'Updated video storage settings', 'storage_type' => $storage_type]);
             header('Location: dashboard.php?page=system_tools&tab=gameplan&success=settings_saved');
             exit;
 
