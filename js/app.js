@@ -25,6 +25,14 @@
     // ===================================================================
 
     /**
+     * Escape HTML special characters to prevent XSS when inserting into innerHTML
+     */
+    function escapeHtml(str) {
+        var map = {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'};
+        return String(str).replace(/[&<>"']/g, function(c) { return map[c]; });
+    }
+
+    /**
      * Persist a toast message in sessionStorage so it survives a page reload
      */
     function persistToast(message, type = 'info') {
@@ -324,7 +332,7 @@
                     if (!noResults) {
                         const tr = document.createElement('tr');
                         tr.className = 'no-results';
-                        tr.innerHTML = `<td colspan="100" style="text-align: center; padding: 20px; color: #9CA3AF;">No results found for "${searchTerm.replace(/[&<>"']/g, function(c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; })}"</td>`;
+                        tr.innerHTML = `<td colspan="100" style="text-align: center; padding: 20px; color: #9CA3AF;">No results found for "${escapeHtml(searchTerm)}"</td>`;
                         table.querySelector('tbody').appendChild(tr);
                     }
                 } else if (noResults) {
