@@ -288,7 +288,7 @@ job_semaphore = threading.Semaphore(MAX_CONCURRENT_JOBS)
 def _get_s3_client():
     """Create a boto3 S3 client configured for RustFS."""
     if not S3_ENDPOINT or not S3_ACCESS_KEY or not S3_SECRET_KEY:
-        missing = [k for k, v in [("endpoint", S3_ENDPOINT), ("access_key", S3_ACCESS_KEY), ("secret_key", S3_SECRET_KEY)] if not v]
+        missing = [k for k, v in {"endpoint": S3_ENDPOINT, "access_key": S3_ACCESS_KEY, "secret_key": S3_SECRET_KEY}.items() if not v]
         logger.warning("S3 client unavailable — missing: %s", ", ".join(missing))
         return None
     scheme = "https" if S3_USE_SSL else "http"
