@@ -191,13 +191,13 @@ test.describe('Browser confirm() replaced with in-app modal', () => {
     expect(deleteSection).toContain('showConfirmModal');
   });
 
-  test('delete-video action should use showConfirmModal', () => {
-    const content = readFile('js/app.js');
-    const deleteVideoSection = content.substring(
-      content.indexOf('data-action="delete-video"'),
-      content.indexOf('data-action="delete-video"') + 1500
-    );
-    expect(deleteVideoSection).toContain('showConfirmModal');
+  test('delete-video action should be handled by page-level handlers, not app.js', () => {
+    // The global delete-video handler was removed from app.js to prevent
+    // duplicate confirmation modals. Each page manages its own delete flow.
+    const coachReviews = readFile('views/video_coach_reviews.php');
+    expect(coachReviews).toContain("getElementById('confirmDeleteBtn')");
+    const drillReview = readFile('views/video_drill_review.php');
+    expect(drillReview).toContain('showConfirmModal');
   });
 });
 
