@@ -34,7 +34,7 @@ test.describe('gameplan.php includes RustFS endpoint in CSP connect-src', () => 
     const content = readFile('gameplan.php');
     expect(content).toContain('getRustFSSettings($pdo)');
     expect(content).toContain('isRustFSConfigured($rustfs)');
-    expect(content).toContain("parse_url(rtrim($rustfs['rustfs_endpoint']");
+    expect(content).toContain("parse_url(rtrim($rustfs['rustfs_endpoint'], '/'))");
   });
 
   test('should build origin from parsed endpoint', () => {

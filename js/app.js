@@ -1657,9 +1657,9 @@
             });
         });
         
-        // Delete video action — only bind when no page-level handler exists.
+        // Delete video action — page-level handlers only.
         // Pages like video_coach_reviews.php and video_drill_review.php manage
-        // their own delete-video confirmation and AJAX; binding here as well
+        // their own delete-video confirmation and AJAX; a global handler here
         // would show a duplicate confirmation modal.
     }
 
