@@ -653,15 +653,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
                 .then(function(result) {
                     if (result.success) {
-                        bar.style.width = '100%'; percent.textContent = '100%';
+                        bar.style.width = '100%';
+                        percent.textContent = '100%';
                         status.textContent = 'Upload complete! Redirecting...';
                         window.location.href = result.redirect || '/gameplan.php?page=film_room&tab=upload&success=source_uploaded';
-                    } else { throw new Error(result.error || 'Confirmation failed'); }
+                    } else {
+                        throw new Error(result.error || 'Confirmation failed');
+                    }
                 })
                 .catch(function(err) {
                     console.warn('Direct upload failed, falling back:', err.message);
                     status.textContent = 'Retrying via server...';
-                    bar.style.width = '0%'; percent.textContent = '0%';
+                    bar.style.width = '0%';
+                    percent.textContent = '0%';
                     var legacyData = new FormData(uploadForm);
                     var legacyXhr = new XMLHttpRequest();
                     legacyXhr.open('POST', uploadForm.action, true);
@@ -669,18 +673,32 @@ document.addEventListener('DOMContentLoaded', function() {
                     legacyXhr.upload.onprogress = function(ev) {
                         if (ev.lengthComputable) {
                             var pct = Math.round((ev.loaded / ev.total) * 100);
-                            bar.style.width = pct + '%'; percent.textContent = pct + '%';
+                            bar.style.width = pct + '%';
+                            percent.textContent = pct + '%';
                             status.textContent = pct < 100 ? 'Uploading video... ' + pct + '%' : 'Processing upload...';
                         }
                     };
                     legacyXhr.onload = function() {
                         try {
                             var resp = JSON.parse(legacyXhr.responseText);
-                            if (resp.success) { bar.style.width = '100%'; percent.textContent = '100%'; status.textContent = 'Upload complete! Redirecting...'; window.location.href = resp.redirect || '/gameplan.php?page=film_room&tab=upload&success=source_uploaded'; }
-                            else { status.textContent = 'Upload failed: ' + (resp.error || 'Unknown error'); submitBtn.disabled = false; }
-                        } catch (parseErr) { status.textContent = 'Upload failed: Server error.'; submitBtn.disabled = false; }
+                            if (resp.success) {
+                                bar.style.width = '100%';
+                                percent.textContent = '100%';
+                                status.textContent = 'Upload complete! Redirecting...';
+                                window.location.href = resp.redirect || '/gameplan.php?page=film_room&tab=upload&success=source_uploaded';
+                            } else {
+                                status.textContent = 'Upload failed: ' + (resp.error || 'Unknown error');
+                                submitBtn.disabled = false;
+                            }
+                        } catch (parseErr) {
+                            status.textContent = 'Upload failed: Server error.';
+                            submitBtn.disabled = false;
+                        }
                     };
-                    legacyXhr.onerror = function() { status.textContent = 'Upload failed: Network error.'; submitBtn.disabled = false; };
+                    legacyXhr.onerror = function() {
+                        status.textContent = 'Upload failed: Network error.';
+                        submitBtn.disabled = false;
+                    };
                     legacyXhr.send(legacyData);
                 });
         });

@@ -664,13 +664,23 @@ document.addEventListener('DOMContentLoaded', function() {
                         try {
                             var resp = JSON.parse(legacyXhr.responseText);
                             if (resp.success) {
-                                bar.style.width = '100%'; percent.textContent = '100%';
+                                bar.style.width = '100%';
+                                percent.textContent = '100%';
                                 status.textContent = 'Upload complete! Redirecting...';
                                 window.location.href = resp.redirect || '/gameplan.php?page=film_room&tab=upload&success=source_uploaded';
-                            } else { status.textContent = 'Upload failed: ' + (resp.error || 'Unknown error'); submitBtn.disabled = false; }
-                        } catch (parseErr) { status.textContent = 'Upload failed: Server returned an unexpected response.'; submitBtn.disabled = false; }
+                            } else {
+                                status.textContent = 'Upload failed: ' + (resp.error || 'Unknown error');
+                                submitBtn.disabled = false;
+                            }
+                        } catch (parseErr) {
+                            status.textContent = 'Upload failed: Server returned an unexpected response.';
+                            submitBtn.disabled = false;
+                        }
                     };
-                    legacyXhr.onerror = function() { status.textContent = 'Upload failed: Network error.'; submitBtn.disabled = false; };
+                    legacyXhr.onerror = function() {
+                        status.textContent = 'Upload failed: Network error.';
+                        submitBtn.disabled = false;
+                    };
                     legacyXhr.send(legacyData);
                 });
         });
