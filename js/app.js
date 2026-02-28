@@ -324,7 +324,7 @@
                     if (!noResults) {
                         const tr = document.createElement('tr');
                         tr.className = 'no-results';
-                        tr.innerHTML = `<td colspan="100" style="text-align: center; padding: 20px; color: #9CA3AF;">No results found for "${searchTerm}"</td>`;
+                        tr.innerHTML = `<td colspan="100" style="text-align: center; padding: 20px; color: #9CA3AF;">No results found for "${searchTerm.replace(/[&<>"']/g, function(c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; })}"</td>`;
                         table.querySelector('tbody').appendChild(tr);
                     }
                 } else if (noResults) {
@@ -1465,8 +1465,10 @@
                 });
             }
 
-            // Set title
-            document.getElementById('aw-vp-title').innerHTML = '<i class="fas fa-play-circle"></i> ' + (title || 'Video Player');
+            // Set title (escape HTML to prevent XSS)
+            var titleEl = document.getElementById('aw-vp-title');
+            titleEl.innerHTML = '<i class="fas fa-play-circle"></i> ';
+            titleEl.appendChild(document.createTextNode(title || 'Video Player'));
 
             // Determine MIME type from URL
             var mimeType = 'video/mp4';
@@ -1531,7 +1533,12 @@
                 // Video.js not loaded yet — fallback to plain HTML5 <video>
                 vjsEl = document.getElementById('aw-vp-video');
                 if (vjsEl) {
-                    vjsEl.innerHTML = '<source src="' + videoUrl + '" type="' + mimeType + '">Your browser does not support this video format.';
+                    vjsEl.innerHTML = '';
+                    var source = document.createElement('source');
+                    source.src = videoUrl;
+                    source.type = mimeType;
+                    vjsEl.appendChild(source);
+                    vjsEl.appendChild(document.createTextNode('Your browser does not support this video format.'));
                     vjsEl.load();
                 }
             }

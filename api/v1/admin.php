@@ -157,6 +157,8 @@ function handleSystemHealth($auth) {
         $allowed_tables = ['users', 'sessions', 'teams', 'bookings', 'videos', 'notifications'];
         $counts = [];
         foreach ($allowed_tables as $table) {
+            // Double-check table name is alphanumeric (defense in depth)
+            if (!preg_match('/^[a-z_]+$/', $table)) continue;
             $stmt = $pdo->query("SELECT COUNT(*) FROM `" . $table . "`");
             $counts[$table] = (int) $stmt->fetchColumn();
         }
