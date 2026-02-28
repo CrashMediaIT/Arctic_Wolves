@@ -24,8 +24,23 @@ require_once __DIR__ . '/lib/site_branding.php';
 $site_logo_url = getSiteLogoUrl($pdo ?? null);
 $site_favicon_url = getSiteFaviconUrl($pdo ?? null);
 
-// Set security headers
-setSecurityHeaders();
+// Build extra CSP connect-src origins (e.g., RustFS endpoint for direct video uploads)
+$extraConnectSrc = [];
+try {
+    require_once __DIR__ . '/cloud_config.php';
+    $rustfs = getRustFSSettings($pdo);
+    if (isRustFSConfigured($rustfs)) {
+        $parsedEndpoint = parse_url(rtrim($rustfs['rustfs_endpoint'], '/'));
+        if ($parsedEndpoint && !empty($parsedEndpoint['host'])) {
+            $origin = ($parsedEndpoint['scheme'] ?? 'https') . '://' . $parsedEndpoint['host'];
+            if (!empty($parsedEndpoint['port'])) $origin .= ':' . $parsedEndpoint['port'];
+            $extraConnectSrc[] = $origin;
+        }
+    }
+} catch (Exception $e) {}
+
+// Set security headers including CSP (with RustFS origin if configured)
+setSecurityHeaders($extraConnectSrc);
 
 // Generate CSRF token
 CSRFProtection::generateToken();

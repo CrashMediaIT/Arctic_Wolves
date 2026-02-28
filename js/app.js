@@ -1657,49 +1657,10 @@
             });
         });
         
-        // Delete video action
-        document.querySelectorAll('[data-action="delete-video"]').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const videoId = this.getAttribute('data-video-id');
-                // Validate videoId is numeric
-                if (!videoId || !/^\d+$/.test(videoId)) {
-                    console.error('Invalid video ID:', videoId);
-                    return;
-                }
-                
-                showConfirmModal('Are you sure you want to delete this video? This will also remove any associated review.', 'Delete', 'Cancel').then(function(confirmed) {
-                    if (confirmed) {
-                        const csrfToken = document.querySelector('[name="csrf_token"]')?.value;
-                        if (!csrfToken) {
-                            showToast('Security token missing. Please refresh the page.', 'error');
-                            return;
-                        }
-                        
-                        // Send delete request
-                        fetch('process_video.php', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/x-www-form-urlencoded',
-                            },
-                            body: `action=delete_video&video_id=${encodeURIComponent(videoId)}&csrf_token=${encodeURIComponent(csrfToken)}`
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                persistToast('Video deleted successfully', 'success');
-                                window.location.reload();
-                            } else {
-                                showToast(data.message || 'Failed to delete video', 'error');
-                            }
-                        })
-                        .catch(error => {
-                            showToast('An error occurred', 'error');
-                            console.error('Delete video error:', error);
-                        });
-                    }
-                });
-            });
-        });
+        // Delete video action — only bind when no page-level handler exists.
+        // Pages like video_coach_reviews.php and video_drill_review.php manage
+        // their own delete-video confirmation and AJAX; binding here as well
+        // would show a duplicate confirmation modal.
     }
 
     // ===================================================================
