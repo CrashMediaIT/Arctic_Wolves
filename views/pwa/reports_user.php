@@ -144,7 +144,7 @@ $csrf_token = generateCsrfToken();
 
 /* Summary stats */
 .m-rpt-user-summary {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px;
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 16px;
 }
 .m-rpt-user-stat {
     background: #16161F; border: 1px solid #2D2D3F; border-radius: 12px;
