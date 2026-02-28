@@ -4686,9 +4686,15 @@ ADD COLUMN IF NOT EXISTS `file_path` VARCHAR(500) DEFAULT NULL COMMENT 'RustFS U
 ALTER TABLE `videos`
 ADD COLUMN IF NOT EXISTS `hls_url` VARCHAR(500) DEFAULT NULL COMMENT 'HLS master playlist URL (api/media.php proxy path)' AFTER `video_url`,
 ADD COLUMN IF NOT EXISTS `hls_status` ENUM('pending', 'processing', 'ready', 'failed') DEFAULT NULL COMMENT 'HLS transcoding status' AFTER `hls_url`,
-ADD COLUMN IF NOT EXISTS `hls_job_id` VARCHAR(36) DEFAULT NULL COMMENT 'Companion server HLS transcode job ID' AFTER `hls_status`;
+ADD COLUMN IF NOT EXISTS `hls_job_id` VARCHAR(36) DEFAULT NULL COMMENT 'Companion server HLS transcode job ID' AFTER `hls_status`,
+ADD COLUMN IF NOT EXISTS `hls_master_url` VARCHAR(500) DEFAULT NULL COMMENT 'S3 key to master.m3u8 manifest' AFTER `hls_job_id`,
+ADD COLUMN IF NOT EXISTS `hls_segments_path` VARCHAR(500) DEFAULT NULL COMMENT 'S3 prefix containing HLS segments' AFTER `hls_master_url`;
 
--- Companion server settings for HLS transcoding
+-- Companion server settings for HLS transcoding (keys match process_gameplan_settings.php)
 INSERT IGNORE INTO `system_settings` (`setting_key`, `setting_value`, `setting_type`, `description`) VALUES
-('companion_url', NULL, 'text', 'Video companion server URL (e.g., http://companion:5100)'),
-('companion_api_key', NULL, 'password', 'Video companion server API key');
+('gameplan_companion_url', NULL, 'text', 'Video companion server URL (e.g., http://companion:5100)'),
+('gameplan_companion_api_key', NULL, 'password', 'Video companion server API key'),
+('gameplan_app_url', NULL, 'text', 'Main application URL for companion callbacks (e.g., https://arcticwolves.ca)');
+
+-- Clean up legacy companion settings with wrong key names (if they exist)
+DELETE FROM `system_settings` WHERE `setting_key` IN ('companion_url', 'companion_api_key') AND `setting_value` IS NULL;
