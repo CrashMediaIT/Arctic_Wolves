@@ -252,10 +252,10 @@ test.describe('Simplified upload JS in video_record_athlete.php', () => {
     expect(content).toContain('upload.onprogress');
   });
 
-  test('should POST form data directly to process_video.php', () => {
+  test('should POST form metadata to get presigned URL', () => {
     const content = readFile('views/video_record_athlete.php');
     expect(content).toContain('new FormData()');
-    expect(content).toContain("xhr.open('POST', 'process_video.php'");
+    expect(content).toContain("get_video_upload_url");
   });
 
   test('should prevent default form submission', () => {
@@ -265,27 +265,28 @@ test.describe('Simplified upload JS in video_record_athlete.php', () => {
 
   test('should handle upload success with redirect', () => {
     const content = readFile('views/video_record_athlete.php');
-    expect(content).toContain('response.success');
+    expect(content).toContain('result.success');
     expect(content).toContain('window.location.href');
   });
 
   test('should handle upload errors gracefully', () => {
     const content = readFile('views/video_record_athlete.php');
-    expect(content).toContain('xhr.onerror');
+    expect(content).toContain('onerror');
     expect(content).toContain('submitBtn.disabled = false');
   });
 
-  test('should show saving to cloud storage status', () => {
+  test('should upload directly to cloud storage via presigned URL', () => {
     const content = readFile('views/video_record_athlete.php');
-    expect(content).toContain('Saving to cloud storage');
+    expect(content).toContain('presignedUrl');
+    expect(content).toContain('Uploading to cloud storage');
   });
 
-  test('should not use complex presigned URL multi-step flow', () => {
+  test('should use 3-step presigned URL flow with legacy fallback', () => {
     const content = readFile('views/video_record_athlete.php');
-    expect(content).not.toContain('get_athlete_upload_url');
-    expect(content).not.toContain('presignedUrl');
-    expect(content).not.toContain('confirm_athlete_upload');
-    expect(content).not.toContain('fallbackServerUpload');
+    expect(content).toContain('get_video_upload_url');
+    expect(content).toContain('presigned_url');
+    expect(content).toContain('confirm_video_upload');
+    expect(content).toContain('Fall back to legacy');
   });
 });
 
