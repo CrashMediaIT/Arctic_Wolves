@@ -25,17 +25,6 @@ try {
 
 $companion_url = $gameplan_settings['gameplan_companion_url'] ?? '';
 $companion_api_key = $gameplan_settings['gameplan_companion_api_key'] ?? '';
-$hw_accel_enabled = ($gameplan_settings['gameplan_hw_accel_enabled'] ?? '0') === '1';
-$hw_accel_method = $gameplan_settings['gameplan_hw_accel_method'] ?? 'auto';
-$video_storage_type = $gameplan_settings['gameplan_video_storage_type'] ?? 'local';
-$video_storage_path = $gameplan_settings['gameplan_video_storage_path'] ?? '/videos';
-$nfs_server = $gameplan_settings['gameplan_nfs_server'] ?? '';
-$nfs_export = $gameplan_settings['gameplan_nfs_export'] ?? '';
-$nfs_options = $gameplan_settings['gameplan_nfs_options'] ?? 'rw,sync,no_subtree_check';
-$smb_server = $gameplan_settings['gameplan_smb_server'] ?? '';
-$smb_share = $gameplan_settings['gameplan_smb_share'] ?? '';
-$smb_username = $gameplan_settings['gameplan_smb_username'] ?? '';
-$smb_domain = $gameplan_settings['gameplan_smb_domain'] ?? '';
 $gameplan_url = $gameplan_settings['gameplan_app_url'] ?? 'https://gameplan.arcticwolves.ca';
 
 $success = $_GET['success'] ?? '';
@@ -134,7 +123,7 @@ $error = $_GET['error'] ?? '';
 <div class="m-gps">
     <div class="m-gps-header">
         <h2 class="m-gps-title"><i class="fas fa-chess-board"></i> Game Plan Settings</h2>
-        <p class="m-gps-sub">Companion server, hardware &amp; storage</p>
+        <p class="m-gps-sub">Companion server configuration</p>
     </div>
 
     <div class="m-gps-body">
@@ -192,119 +181,6 @@ $error = $_GET['error'] ?? '';
             </div>
         </div>
 
-        <!-- Hardware Acceleration -->
-        <div class="m-gps-card">
-            <div class="m-gps-card-header">
-                <span class="m-gps-card-title"><i class="fas fa-microchip"></i> Hardware Accel</span>
-            </div>
-            <div class="m-gps-card-body">
-                <p class="m-gps-card-desc">GPU-accelerated video processing on the companion server.</p>
-                <form method="POST" action="process_gameplan_settings.php">
-                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>">
-                    <input type="hidden" name="action" value="save_hw_accel">
-                    <input type="hidden" name="hw_accel_enabled" id="mHwAccelVal" value="<?= $hw_accel_enabled ? '1' : '0' ?>">
-
-                    <div class="m-gps-toggle-row">
-                        <div class="m-gps-toggle-info">
-                            <h4>Enable GPU Acceleration</h4>
-                            <p>Use GPU for encoding &amp; decoding</p>
-                        </div>
-                        <button type="button" class="m-gps-toggle <?= $hw_accel_enabled ? 'on' : '' ?>" id="mHwToggle" onclick="mGpsToggleHw()"></button>
-                    </div>
-
-                    <div id="mHwOptions" style="<?= $hw_accel_enabled ? '' : 'display:none;' ?>">
-                        <div class="m-gps-field">
-                            <label>Method</label>
-                            <select name="hw_accel_method">
-                                <option value="auto" <?= $hw_accel_method === 'auto' ? 'selected' : '' ?>>Auto-Detect</option>
-                                <option value="nvenc" <?= $hw_accel_method === 'nvenc' ? 'selected' : '' ?>>NVIDIA NVENC</option>
-                                <option value="qsv" <?= $hw_accel_method === 'qsv' ? 'selected' : '' ?>>Intel QSV</option>
-                                <option value="vaapi" <?= $hw_accel_method === 'vaapi' ? 'selected' : '' ?>>VA-API (Linux)</option>
-                                <option value="amf" <?= $hw_accel_method === 'amf' ? 'selected' : '' ?>>AMD AMF</option>
-                                <option value="none" <?= $hw_accel_method === 'none' ? 'selected' : '' ?>>Software Only</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <button type="submit" class="m-gps-btn m-gps-btn-primary" style="margin-top:4px;"><i class="fas fa-save"></i> Save Hardware</button>
-                </form>
-            </div>
-        </div>
-
-        <!-- Video Storage -->
-        <div class="m-gps-card">
-            <div class="m-gps-card-header">
-                <span class="m-gps-card-title"><i class="fas fa-hard-drive"></i> Video Storage</span>
-            </div>
-            <div class="m-gps-card-body">
-                <p class="m-gps-card-desc">Where video files are stored. Both app and companion need access to same location.</p>
-                <form method="POST" action="process_gameplan_settings.php">
-                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>">
-                    <input type="hidden" name="action" value="save_video_storage">
-
-                    <div class="m-gps-field">
-                        <label>Storage Type</label>
-                        <select name="video_storage_type" id="mStorageType" onchange="mGpsStorageType(this.value)">
-                            <option value="local" <?= $video_storage_type === 'local' ? 'selected' : '' ?>>Local Directory</option>
-                            <option value="nfs" <?= $video_storage_type === 'nfs' ? 'selected' : '' ?>>NFS Mount</option>
-                            <option value="smb" <?= $video_storage_type === 'smb' ? 'selected' : '' ?>>SMB/CIFS Mount</option>
-                        </select>
-                    </div>
-
-                    <div class="m-gps-field">
-                        <label>Storage Path *</label>
-                        <input type="text" name="video_storage_path" value="<?= htmlspecialchars($video_storage_path) ?>" placeholder="/videos">
-                        <small>Mount point for video files</small>
-                    </div>
-
-                    <!-- NFS Options -->
-                    <div id="mNfsOpts" style="<?= $video_storage_type === 'nfs' ? '' : 'display:none;' ?>">
-                        <div class="m-gps-field">
-                            <label>NFS Server</label>
-                            <input type="text" name="nfs_server" value="<?= htmlspecialchars($nfs_server) ?>" placeholder="nas.local">
-                        </div>
-                        <div class="m-gps-field">
-                            <label>NFS Export Path</label>
-                            <input type="text" name="nfs_export" value="<?= htmlspecialchars($nfs_export) ?>" placeholder="/volume1/videos">
-                        </div>
-                        <div class="m-gps-field">
-                            <label>Mount Options</label>
-                            <input type="text" name="nfs_options" value="<?= htmlspecialchars($nfs_options) ?>" placeholder="rw,sync,no_subtree_check">
-                        </div>
-                        <div class="m-gps-mount-cmd">
-                            <strong>NFS Mount Command</strong>
-                            <code>mount -t nfs <?= htmlspecialchars($nfs_server ?: 'nas.local') ?>:<?= htmlspecialchars($nfs_export ?: '/volume1/videos') ?> <?= htmlspecialchars($video_storage_path ?: '/videos') ?> -o <?= htmlspecialchars($nfs_options ?: 'rw,sync') ?></code>
-                        </div>
-                    </div>
-
-                    <!-- SMB Options -->
-                    <div id="mSmbOpts" style="<?= $video_storage_type === 'smb' ? '' : 'display:none;' ?>">
-                        <div class="m-gps-field">
-                            <label>SMB Server</label>
-                            <input type="text" name="smb_server" value="<?= htmlspecialchars($smb_server) ?>" placeholder="nas.local">
-                        </div>
-                        <div class="m-gps-field">
-                            <label>Share Name</label>
-                            <input type="text" name="smb_share" value="<?= htmlspecialchars($smb_share) ?>" placeholder="videos">
-                        </div>
-                        <div class="m-gps-field">
-                            <label>Username</label>
-                            <input type="text" name="smb_username" value="<?= htmlspecialchars($smb_username) ?>" placeholder="username">
-                        </div>
-                        <div class="m-gps-field">
-                            <label>Domain (optional)</label>
-                            <input type="text" name="smb_domain" value="<?= htmlspecialchars($smb_domain) ?>" placeholder="WORKGROUP">
-                        </div>
-                        <div class="m-gps-mount-cmd">
-                            <strong>SMB Mount Command</strong>
-                            <code>mount -t cifs //<?= htmlspecialchars($smb_server ?: 'nas.local') ?>/<?= htmlspecialchars($smb_share ?: 'videos') ?> <?= htmlspecialchars($video_storage_path ?: '/videos') ?> -o username=<?= htmlspecialchars($smb_username ?: 'user') ?>,uid=911,gid=911</code>
-                        </div>
-                    </div>
-
-                    <button type="submit" class="m-gps-btn m-gps-btn-primary"><i class="fas fa-save"></i> Save Storage</button>
-                </form>
-            </div>
-        </div>
     </div>
 </div>
 
@@ -319,21 +195,6 @@ function mGpsToggleVis(inputId, btn) {
         input.type = 'password';
         icon.className = 'fas fa-eye';
     }
-}
-
-function mGpsToggleHw() {
-    var toggle = document.getElementById('mHwToggle');
-    var val = document.getElementById('mHwAccelVal');
-    var opts = document.getElementById('mHwOptions');
-    toggle.classList.toggle('on');
-    var isOn = toggle.classList.contains('on');
-    val.value = isOn ? '1' : '0';
-    opts.style.display = isOn ? '' : 'none';
-}
-
-function mGpsStorageType(type) {
-    document.getElementById('mNfsOpts').style.display = (type === 'nfs') ? '' : 'none';
-    document.getElementById('mSmbOpts').style.display = (type === 'smb') ? '' : 'none';
 }
 
 function mGpsTestComp() {
