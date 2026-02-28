@@ -43,8 +43,48 @@ load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(32)
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+
+# ---------------------------------------------------------------------------
+# Logging — stdout + rotating file log in /config/logs/
+# ---------------------------------------------------------------------------
+LOG_FORMAT = "%(asctime)s [%(levelname)s] %(message)s"
+logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 logger = logging.getLogger("companion")
+
+# Add a rotating file handler so logs persist across container restarts
+try:
+    from logging.handlers import RotatingFileHandler
+    _log_dir = os.path.join(os.environ.get("CONFIG_DIR", "/config"), "logs")
+    os.makedirs(_log_dir, exist_ok=True)
+    _file_handler = RotatingFileHandler(
+        os.path.join(_log_dir, "companion.log"),
+        maxBytes=5 * 1024 * 1024,  # 5 MB per file
+        backupCount=3,
+    )
+    _file_handler.setLevel(logging.INFO)
+    _file_handler.setFormatter(logging.Formatter(LOG_FORMAT))
+    logger.addHandler(_file_handler)
+    logging.getLogger().addHandler(_file_handler)  # root logger too
+except Exception:
+    pass  # Fallback to stdout-only logging if /config is not writable
+
+
+# Flask error handler — log unhandled exceptions with full request context
+@app.errorhandler(Exception)
+def _handle_unhandled_exception(exc):
+    logger.error("Unhandled exception on %s %s: %s", request.method, request.path, exc, exc_info=True)
+    return jsonify({"error": "Internal server error"}), 500
+
+
+# Log every request and its outcome for debugging connectivity issues
+@app.after_request
+def _log_request(response):
+    # Skip noisy health-check logging at INFO level
+    if request.path == "/api/health" and response.status_code == 200:
+        logger.debug("%s %s → %s", request.method, request.path, response.status_code)
+    else:
+        logger.info("%s %s → %s", request.method, request.path, response.status_code)
+    return response
 
 # ---------------------------------------------------------------------------
 # Persistent Encrypted Configuration
@@ -248,6 +288,8 @@ job_semaphore = threading.Semaphore(MAX_CONCURRENT_JOBS)
 def _get_s3_client():
     """Create a boto3 S3 client configured for RustFS."""
     if not S3_ENDPOINT or not S3_ACCESS_KEY or not S3_SECRET_KEY:
+        missing = [k for k, v in [("endpoint", S3_ENDPOINT), ("access_key", S3_ACCESS_KEY), ("secret_key", S3_SECRET_KEY)] if not v]
+        logger.warning("S3 client unavailable — missing: %s", ", ".join(missing))
         return None
     scheme = "https" if S3_USE_SSL else "http"
     endpoint = S3_ENDPOINT
@@ -326,6 +368,7 @@ def _require_api_key():
         return None  # browser dashboard session – skip API key check
     key = request.headers.get("X-API-Key", "")
     if key != API_KEY:
+        logger.warning("Unauthorized API request: %s %s (IP=%s)", request.method, request.path, request.remote_addr)
         return jsonify({"error": "Unauthorized"}), 401
     return None
 
@@ -558,6 +601,7 @@ def _run_job(job_id: str, cmd: list[str]):
             jobs[job_id]["status"] = "running"
             jobs[job_id]["started_at"] = time.time()
 
+        logger.info("Job %s started: %s", job_id, " ".join(cmd[:6]))
         try:
             proc = subprocess.run(
                 cmd, capture_output=True, text=True, timeout=7200,
@@ -565,20 +609,24 @@ def _run_job(job_id: str, cmd: list[str]):
             with job_lock:
                 if proc.returncode == 0:
                     jobs[job_id]["status"] = "completed"
+                    logger.info("Job %s completed successfully", job_id)
                 else:
                     jobs[job_id]["status"] = "failed"
                     jobs[job_id]["error"] = proc.stderr[:2000]
+                    logger.error("Job %s failed (exit code %d): %s", job_id, proc.returncode, proc.stderr[:500])
                 jobs[job_id]["finished_at"] = time.time()
         except subprocess.TimeoutExpired:
             with job_lock:
                 jobs[job_id]["status"] = "failed"
                 jobs[job_id]["error"] = "Job timed out after 2 hours"
                 jobs[job_id]["finished_at"] = time.time()
+            logger.error("Job %s timed out after 2 hours", job_id)
         except Exception as exc:
             with job_lock:
                 jobs[job_id]["status"] = "failed"
                 jobs[job_id]["error"] = str(exc)[:2000]
                 jobs[job_id]["finished_at"] = time.time()
+            logger.error("Job %s exception: %s", job_id, exc)
 
 
 def _create_job(cmd: list[str], description: str, output_path: str) -> dict:
@@ -1137,8 +1185,8 @@ def health():
             if s3:
                 s3.head_bucket(Bucket=S3_BUCKET)
                 s3_connected = True
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("S3 health check failed (endpoint=%s bucket=%s): %s", S3_ENDPOINT, S3_BUCKET, exc)
 
     return jsonify({
         "status": "ok",
@@ -1175,6 +1223,7 @@ def probe():
     try:
         info = _probe_file(filepath)
     except Exception as exc:
+        logger.error("Probe failed for %s: %s", source, exc)
         return jsonify({"error": str(exc)}), 500
 
     # Extract useful summary
@@ -1345,8 +1394,10 @@ def thumbnail():
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
         if proc.returncode != 0:
+            logger.error("Thumbnail generation failed for %s: %s", source, proc.stderr[:500])
             return jsonify({"error": f"Thumbnail generation failed: {proc.stderr[:500]}"}), 500
     except Exception as exc:
+        logger.error("Thumbnail exception for %s: %s", source, exc)
         return jsonify({"error": str(exc)}), 500
 
     return jsonify({"status": "completed", "output": output})
@@ -1390,6 +1441,52 @@ def list_jobs():
     with job_lock:
         all_jobs = sorted(jobs.values(), key=lambda j: j.get("created_at", 0), reverse=True)
     return jsonify(all_jobs)
+
+
+@app.route("/api/logs", methods=["GET"])
+def get_logs():
+    """Return the most recent log entries from the persistent log file.
+
+    Query params:
+        lines  — number of lines to return (default 200, max 2000)
+        level  — filter by minimum level: DEBUG, INFO, WARNING, ERROR (default INFO)
+    """
+    auth_err = _require_api_key()
+    if auth_err:
+        return auth_err
+
+    max_lines = min(int(request.args.get("lines", 200)), 2000)
+    level_filter = request.args.get("level", "").upper()
+
+    log_path = os.path.join(os.environ.get("CONFIG_DIR", "/config"), "logs", "companion.log")
+    if not os.path.isfile(log_path):
+        return jsonify({"lines": [], "message": "Log file not found — logs are only on stdout"})
+
+    try:
+        with open(log_path, "r") as f:
+            all_lines = f.readlines()
+
+        # Tail the requested number of lines
+        tail = all_lines[-max_lines:] if len(all_lines) > max_lines else all_lines
+
+        # Optional level filter
+        if level_filter in ("DEBUG", "INFO", "WARNING", "ERROR"):
+            level_order = {"DEBUG": 0, "INFO": 1, "WARNING": 2, "ERROR": 3}
+            min_level = level_order.get(level_filter, 0)
+            filtered = []
+            for line in tail:
+                for lvl, order in level_order.items():
+                    if f"[{lvl}]" in line and order >= min_level:
+                        filtered.append(line.rstrip("\n"))
+                        break
+            tail = filtered
+        else:
+            tail = [l.rstrip("\n") for l in tail]
+
+        return jsonify({"lines": tail, "total": len(all_lines), "returned": len(tail)})
+    except Exception as exc:
+        logger.error("Failed to read log file: %s", exc)
+        return jsonify({"error": str(exc)}), 500
 
 
 # ---------------------------------------------------------------------------
@@ -1772,6 +1869,7 @@ def _send_callback(callback_url: str, payload: dict):
     with self-signed or internal certificates.
     """
     if not callback_url:
+        logger.info("No callback URL configured — skipping result notification for job %s", payload.get("job_id", "?"))
         return
     # Validate URL scheme to prevent SSRF to non-HTTP destinations
     from urllib.parse import urlparse
@@ -1827,6 +1925,7 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
             jobs[job_id]["status"] = "downloading"
             jobs[job_id]["started_at"] = time.time()
 
+        logger.info("HLS job %s: downloading source %s", job_id, s3_source_key)
         # Download source video
         if not _s3_download(s3, s3_source_key, local_source):
             raise RuntimeError(f"Failed to download {s3_source_key}")
@@ -1899,6 +1998,7 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
         with job_lock:
             jobs[job_id]["status"] = "uploading"
 
+        logger.info("HLS job %s: uploading segments to S3 prefix %s", job_id, s3_output_prefix)
         # Upload all HLS files to S3
         output_prefix = s3_output_prefix.rstrip("/")
         for root, _dirs, files in os.walk(hls_output):
@@ -1919,6 +2019,8 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
             jobs[job_id]["hls_manifest"] = f"{output_prefix}/master.m3u8"
             jobs[job_id]["finished_at"] = time.time()
             jobs[job_id]["variants"] = [v["label"] for v in variants]
+
+        logger.info("HLS job %s completed: %d variants, manifest=%s", job_id, len(variants), f"{output_prefix}/master.m3u8")
 
         # Notify the main application that transcoding is complete
         variant_playlists = {v["label"]: f"{output_prefix}/{v['label']}/playlist.m3u8" for v in variants}
@@ -1992,6 +2094,7 @@ def hls_transcode():
 
     s3 = _get_s3_client()
     if not s3:
+        logger.error("HLS transcode request rejected: S3/RustFS is not configured (endpoint=%s)", S3_ENDPOINT or "(empty)")
         return jsonify({"error": "S3/RustFS is not configured on companion server"}), 503
 
     data = request.get_json(silent=True) or {}
