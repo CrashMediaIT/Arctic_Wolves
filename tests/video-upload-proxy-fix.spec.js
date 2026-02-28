@@ -1,13 +1,13 @@
 /**
- * Tests for Server-Side Proxy Video Upload Fix
+ * Tests for Direct-to-RustFS Video Upload with CORS Configuration
  *
- * Verifies that the direct browser-to-S3 PUT (which fails due to CORS)
- * has been replaced with a server-side proxy upload flow:
+ * Verifies that uploads go directly from the browser to RustFS (not through PHP proxy):
  *
- * 1. process_video.php has a proxy_video_upload action and handler
- * 2. All upload views POST to the proxy instead of PUTting to presigned URL
- * 3. The proxy handler validates nonce, uploads via RustFS, returns nonce
- * 4. Legacy fallback is still available as a safety net
+ * 1. lib/rustfs_storage.php has ensureRustFSBucketCors() to set CORS on the bucket
+ * 2. generatePresignedUploadUrl() calls ensureRustFSBucketCors() automatically
+ * 3. process_settings.php applies CORS when RustFS settings are saved
+ * 4. All upload views PUT directly to the presigned URL (no proxy)
+ * 5. Legacy fallback is still available as a safety net
  */
 
 import { test, expect } from '@playwright/test';
@@ -21,107 +21,121 @@ function readFile(relativePath) {
 }
 
 // =====================================================
-// 1. process_video.php proxy_video_upload action
+// 1. ensureRustFSBucketCors in lib/rustfs_storage.php
 // =====================================================
 
-test.describe('proxy_video_upload action in process_video.php', () => {
-  test('should have proxy_video_upload case in switch', () => {
-    const content = readFile('process_video.php');
-    expect(content).toContain("case 'proxy_video_upload':");
-    expect(content).toContain('handleProxyVideoUpload()');
+test.describe('ensureRustFSBucketCors in lib/rustfs_storage.php', () => {
+  test('should define ensureRustFSBucketCors function', () => {
+    const content = readFile('lib/rustfs_storage.php');
+    expect(content).toContain('function ensureRustFSBucketCors(');
   });
 
-  test('should define handleProxyVideoUpload function', () => {
-    const content = readFile('process_video.php');
-    expect(content).toContain('function handleProxyVideoUpload()');
-  });
-
-  test('should validate upload_nonce from POST', () => {
-    const content = readFile('process_video.php');
-    const funcStart = content.indexOf('function handleProxyVideoUpload()');
+  test('should use PutBucketCors S3 API (/?cors endpoint)', () => {
+    const content = readFile('lib/rustfs_storage.php');
+    const funcStart = content.indexOf('function ensureRustFSBucketCors(');
     const funcEnd = content.indexOf('\nfunction ', funcStart + 1);
     const funcBody = content.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
 
-    expect(funcBody).toContain('upload_nonce');
-    expect(funcBody).toContain('hash_equals');
+    expect(funcBody).toContain('/?cors');
+    expect(funcBody).toContain('CORSConfiguration');
+    expect(funcBody).toContain('CORSRule');
   });
 
-  test('should check both session keys for pending upload', () => {
-    const content = readFile('process_video.php');
-    const funcStart = content.indexOf('function handleProxyVideoUpload()');
+  test('should allow PUT and GET methods in CORS policy', () => {
+    const content = readFile('lib/rustfs_storage.php');
+    const funcStart = content.indexOf('function ensureRustFSBucketCors(');
     const funcEnd = content.indexOf('\nfunction ', funcStart + 1);
     const funcBody = content.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
 
-    expect(funcBody).toContain('pending_video_upload_general');
-    expect(funcBody).toContain('pending_video_upload');
+    expect(funcBody).toContain('<AllowedMethod>PUT</AllowedMethod>');
+    expect(funcBody).toContain('<AllowedMethod>GET</AllowedMethod>');
   });
 
-  test('should accept uploaded file from $_FILES', () => {
-    const content = readFile('process_video.php');
-    const funcStart = content.indexOf('function handleProxyVideoUpload()');
+  test('should allow all origins for presigned URL uploads', () => {
+    const content = readFile('lib/rustfs_storage.php');
+    const funcStart = content.indexOf('function ensureRustFSBucketCors(');
     const funcEnd = content.indexOf('\nfunction ', funcStart + 1);
     const funcBody = content.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
 
-    expect(funcBody).toContain("$_FILES['video_file']");
-    expect(funcBody).toContain('UPLOAD_ERR_OK');
+    expect(funcBody).toContain('<AllowedOrigin>*</AllowedOrigin>');
   });
 
-  test('should use RustFS upload functions for server-side upload', () => {
-    const content = readFile('process_video.php');
-    const funcStart = content.indexOf('function handleProxyVideoUpload()');
+  test('should allow all headers in CORS policy', () => {
+    const content = readFile('lib/rustfs_storage.php');
+    const funcStart = content.indexOf('function ensureRustFSBucketCors(');
     const funcEnd = content.indexOf('\nfunction ', funcStart + 1);
     const funcBody = content.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
 
-    expect(funcBody).toContain('uploadLargeFileToRustFS');
-    expect(funcBody).toContain('uploadToRustFS');
-    expect(funcBody).toContain('getRustFSSettings');
+    expect(funcBody).toContain('<AllowedHeader>*</AllowedHeader>');
   });
 
-  test('should return JSON with success and upload_nonce', () => {
-    const content = readFile('process_video.php');
-    const funcStart = content.indexOf('function handleProxyVideoUpload()');
+  test('should use static cache to avoid repeat calls', () => {
+    const content = readFile('lib/rustfs_storage.php');
+    const funcStart = content.indexOf('function ensureRustFSBucketCors(');
     const funcEnd = content.indexOf('\nfunction ', funcStart + 1);
     const funcBody = content.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
 
-    expect(funcBody).toContain("'success'");
-    expect(funcBody).toContain("'upload_nonce'");
-    expect(funcBody).toContain('json_encode');
+    expect(funcBody).toContain('static $done');
   });
 
-  test('should expire sessions older than 2 hours', () => {
-    const content = readFile('process_video.php');
-    const funcStart = content.indexOf('function handleProxyVideoUpload()');
+  test('should sign request with signRustFSRequest', () => {
+    const content = readFile('lib/rustfs_storage.php');
+    const funcStart = content.indexOf('function ensureRustFSBucketCors(');
     const funcEnd = content.indexOf('\nfunction ', funcStart + 1);
     const funcBody = content.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
 
-    expect(funcBody).toContain('7200');
-    expect(funcBody).toContain('expired');
+    expect(funcBody).toContain('signRustFSRequest');
   });
 });
 
 // =====================================================
-// 2. Upload views use proxy instead of direct PUT
+// 2. generatePresignedUploadUrl calls ensureRustFSBucketCors
 // =====================================================
 
-test.describe('video_record_athlete.php uses proxy upload', () => {
-  test('should POST to process_video.php with proxy_video_upload action', () => {
+test.describe('generatePresignedUploadUrl calls ensureRustFSBucketCors', () => {
+  test('should call ensureRustFSBucketCors before generating URL', () => {
+    const content = readFile('lib/rustfs_storage.php');
+    const funcStart = content.indexOf('function generatePresignedUploadUrl(');
+    const funcEnd = content.indexOf('\nfunction ', funcStart + 1);
+    const funcBody = content.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
+
+    expect(funcBody).toContain('ensureRustFSBucketCors');
+  });
+});
+
+// =====================================================
+// 3. process_settings.php applies CORS on save
+// =====================================================
+
+test.describe('process_settings.php applies CORS when RustFS settings are saved', () => {
+  test('should call ensureRustFSBucketCors in update_rustfs case', () => {
+    const content = readFile('process_settings.php');
+    const caseStart = content.indexOf("case 'update_rustfs':");
+    const caseEnd = content.indexOf("case '", caseStart + 20);
+    const caseBody = content.substring(caseStart, caseEnd > -1 ? caseEnd : undefined);
+
+    expect(caseBody).toContain('ensureRustFSBucketCors');
+  });
+});
+
+// =====================================================
+// 4. All upload views PUT directly to presigned URL
+// =====================================================
+
+test.describe('video_record_athlete.php uses direct PUT', () => {
+  test('should PUT directly to presigned URL', () => {
     const content = readFile('views/video_record_athlete.php');
-    expect(content).toContain("proxyData.append('action', 'proxy_video_upload')");
+    expect(content).toContain("xhr.open('PUT', presignedUrl");
   });
 
-  test('should NOT have direct PUT to presigned URL', () => {
+  test('should NOT use proxy_video_upload', () => {
     const content = readFile('views/video_record_athlete.php');
-    expect(content).not.toContain("xhr.open('PUT', presignedUrl");
+    expect(content).not.toContain('proxy_video_upload');
   });
 
-  test('should send video_file in proxy FormData', () => {
+  test('should set Content-Type header on PUT', () => {
     const content = readFile('views/video_record_athlete.php');
-    expect(content).toContain("proxyData.append('video_file', videoFile)");
-  });
-
-  test('should send upload_nonce in proxy FormData', () => {
-    const content = readFile('views/video_record_athlete.php');
-    expect(content).toContain("proxyData.append('upload_nonce', uploadNonce)");
+    expect(content).toContain("xhr.setRequestHeader('Content-Type', contentType)");
   });
 
   test('should still have legacy fallback', () => {
@@ -131,76 +145,75 @@ test.describe('video_record_athlete.php uses proxy upload', () => {
   });
 });
 
-test.describe('video_coach_reviews.php uses proxy upload', () => {
-  test('should POST to process_video.php with proxy_video_upload action', () => {
+test.describe('video_coach_reviews.php uses direct PUT', () => {
+  test('should PUT directly to presigned URL', () => {
     const content = readFile('views/video_coach_reviews.php');
-    expect(content).toContain("proxyData.append('action', 'proxy_video_upload')");
+    expect(content).toContain("xhr.open('PUT', presignedUrl");
   });
 
-  test('should NOT have direct PUT to presigned URL', () => {
+  test('should NOT use proxy_video_upload', () => {
     const content = readFile('views/video_coach_reviews.php');
-    expect(content).not.toContain("xhr.open('PUT', presignedUrl");
+    expect(content).not.toContain('proxy_video_upload');
   });
 });
 
-test.describe('gp_film_room.php uses proxy upload', () => {
-  test('should POST to process_video.php with proxy_video_upload action', () => {
+test.describe('gp_film_room.php uses direct PUT', () => {
+  test('should PUT directly to presigned URL', () => {
     const content = readFile('views/gameplan/gp_film_room.php');
-    expect(content).toContain("proxyData.append('action', 'proxy_video_upload')");
+    expect(content).toContain("xhr.open('PUT', presignedUrl");
   });
 
-  test('should NOT have direct PUT to presigned URL', () => {
+  test('should NOT use proxy_video_upload', () => {
     const content = readFile('views/gameplan/gp_film_room.php');
-    expect(content).not.toContain("xhr.open('PUT', presignedUrl");
+    expect(content).not.toContain('proxy_video_upload');
   });
 });
 
-test.describe('film_room.php uses proxy upload', () => {
-  test('should POST to process_video.php with proxy_video_upload action', () => {
+test.describe('film_room.php uses direct PUT', () => {
+  test('should PUT directly to presigned URL', () => {
     const content = readFile('views/gameplan/film_room.php');
-    expect(content).toContain("proxyData.append('action', 'proxy_video_upload')");
+    expect(content).toContain("xhr.open('PUT', presignedUrl");
   });
 
-  test('should NOT have direct PUT to presigned URL', () => {
+  test('should NOT use proxy_video_upload', () => {
     const content = readFile('views/gameplan/film_room.php');
-    expect(content).not.toContain("xhr.open('PUT', presignedUrl");
+    expect(content).not.toContain('proxy_video_upload');
   });
 });
 
-test.describe('pwa/video_record_drill.php uses proxy upload', () => {
-  test('should POST to process_video.php with proxy_video_upload action', () => {
+test.describe('pwa/video_record_drill.php uses direct PUT', () => {
+  test('should PUT directly to presigned URL', () => {
     const content = readFile('views/pwa/video_record_drill.php');
-    expect(content).toContain("proxyData.append('action', 'proxy_video_upload')");
+    expect(content).toContain("xhr.open('PUT', presignedUrl");
   });
 
-  test('should NOT have direct PUT to presigned URL', () => {
+  test('should NOT use proxy_video_upload', () => {
     const content = readFile('views/pwa/video_record_drill.php');
-    expect(content).not.toContain("xhr.open('PUT', presignedUrl");
+    expect(content).not.toContain('proxy_video_upload');
   });
 });
 
 // =====================================================
-// 3. Presigned URL generation still exists (for session setup)
+// 5. No proxy_video_upload handler in process_video.php
 // =====================================================
 
-test.describe('Presigned URL generation preserved for session setup', () => {
-  test('get_video_upload_url action should still exist', () => {
+test.describe('process_video.php has no proxy handler', () => {
+  test('should NOT have proxy_video_upload case', () => {
+    const content = readFile('process_video.php');
+    expect(content).not.toContain("case 'proxy_video_upload':");
+  });
+
+  test('should NOT have handleProxyVideoUpload function', () => {
+    const content = readFile('process_video.php');
+    expect(content).not.toContain('function handleProxyVideoUpload()');
+  });
+
+  test('should still have presigned URL endpoints', () => {
     const content = readFile('process_video.php');
     expect(content).toContain("case 'get_video_upload_url':");
-  });
-
-  test('get_athlete_upload_url action should still exist', () => {
-    const content = readFile('process_video.php');
-    expect(content).toContain("case 'get_athlete_upload_url':");
-  });
-
-  test('confirm_video_upload action should still exist', () => {
-    const content = readFile('process_video.php');
     expect(content).toContain("case 'confirm_video_upload':");
-  });
-
-  test('confirm_athlete_upload action should still exist', () => {
-    const content = readFile('process_video.php');
+    expect(content).toContain("case 'get_athlete_upload_url':");
     expect(content).toContain("case 'confirm_athlete_upload':");
   });
 });
+

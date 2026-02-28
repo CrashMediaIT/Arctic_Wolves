@@ -128,24 +128,23 @@ test.describe('pwa_tablet.php includes RustFS endpoint in CSP connect-src', () =
 });
 
 // =====================================================
-// 5. Simplified upload — no more presigned URL flow
+// 5. Upload uses direct PUT to presigned URL with CORS
 // =====================================================
 
-test.describe('Upload uses server proxy to avoid CORS issues', () => {
-  test('should POST form data via proxy to process_video.php', () => {
+test.describe('Upload uses direct PUT to presigned URL (CORS configured on bucket)', () => {
+  test('should PUT directly to presigned URL on RustFS', () => {
     const content = readFile('views/video_record_athlete.php');
-    expect(content).toContain("proxyData.append('action', 'proxy_video_upload')");
-    expect(content).toContain("xhr.open('POST', 'process_video.php'");
+    expect(content).toContain("xhr.open('PUT', presignedUrl");
+    expect(content).toContain("xhr.setRequestHeader('Content-Type', contentType)");
   });
 
-  test('should not use direct PUT to presigned URL', () => {
+  test('should not use proxy_video_upload', () => {
     const content = readFile('views/video_record_athlete.php');
-    expect(content).not.toContain("xhr.open('PUT', presignedUrl");
+    expect(content).not.toContain('proxy_video_upload');
   });
 
-  test('should handle JSON parse errors with toast message', () => {
+  test('should handle errors with legacy fallback and toast message', () => {
     const content = readFile('views/video_record_athlete.php');
-    // The legacy fallback onload should have a catch for JSON parse
     expect(content).toContain('catch');
     expect(content).toContain('showToast');
     expect(content).toContain('submitBtn.disabled = false');
