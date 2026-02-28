@@ -160,7 +160,7 @@ $total_entries = count($directory_staff) + count($custom_entries);
         <?php if (count($directory_staff) > 0): ?>
         <div class="m-sip-section-label">Staff</div>
         <?php foreach ($directory_staff as $staff):
-            if ($staff['id'] == $current_user_id) continue;
+            if ($staff['id'] === $current_user_id) continue;
             $fullName = htmlspecialchars(($staff['first_name'] ?? '') . ' ' . ($staff['last_name'] ?? ''));
             $initials = htmlspecialchars(strtoupper(substr($staff['first_name'] ?? '', 0, 1) . substr($staff['last_name'] ?? '', 0, 1)));
             $jobTitle = htmlspecialchars($staff['job_title'] ?? ucfirst(str_replace('_', ' ', $staff['role'])));
@@ -241,7 +241,7 @@ $total_entries = count($directory_staff) + count($custom_entries);
                 <?php endif; ?>
                 <?php if ($isAdmin): ?>
                     <div class="m-sip-detail" style="margin-left:auto;">
-                        <button class="m-sip-delete-btn" onclick="deleteDirectoryEntry(<?= intval($entry['id']) ?>, '<?= htmlspecialchars(addslashes($entry['display_name'])) ?>')">
+                        <button class="m-sip-delete-btn" onclick="deleteDirectoryEntry(<?= intval($entry['id']) ?>, <?= htmlspecialchars(json_encode($entry['display_name']), ENT_QUOTES) ?>)">
                             <i class="fas fa-trash"></i> Remove
                         </button>
                     </div>
