@@ -2747,17 +2747,6 @@ foreach ($url_keys as $uk) {
 
     $gp_companion_url = $gameplan_settings['gameplan_companion_url'] ?? '';
     $gp_companion_api_key = $gameplan_settings['gameplan_companion_api_key'] ?? '';
-    $gp_hw_accel_enabled = ($gameplan_settings['gameplan_hw_accel_enabled'] ?? '0') === '1';
-    $gp_hw_accel_method = $gameplan_settings['gameplan_hw_accel_method'] ?? 'auto';
-    $gp_video_storage_type = $gameplan_settings['gameplan_video_storage_type'] ?? 'local';
-    $gp_video_storage_path = $gameplan_settings['gameplan_video_storage_path'] ?? '/videos';
-    $gp_nfs_server = $gameplan_settings['gameplan_nfs_server'] ?? '';
-    $gp_nfs_export = $gameplan_settings['gameplan_nfs_export'] ?? '';
-    $gp_nfs_options = $gameplan_settings['gameplan_nfs_options'] ?? 'rw,sync,no_subtree_check';
-    $gp_smb_server = $gameplan_settings['gameplan_smb_server'] ?? '';
-    $gp_smb_share = $gameplan_settings['gameplan_smb_share'] ?? '';
-    $gp_smb_username = $gameplan_settings['gameplan_smb_username'] ?? '';
-    $gp_smb_domain = $gameplan_settings['gameplan_smb_domain'] ?? '';
     $gp_gameplan_url = $gameplan_settings['gameplan_app_url'] ?? 'https://gameplan.arcticwolves.ca';
     ?>
 
@@ -2826,194 +2815,7 @@ foreach ($url_keys as $uk) {
         </div>
     </div>
 
-    <!-- Hardware Acceleration Settings -->
-    <div class="card">
-        <div class="card-header">
-            <h3><i class="fas fa-microchip"></i> Hardware Acceleration</h3>
-        </div>
-        <div class="card-body">
-            <p style="color:var(--text-secondary);font-size:13px;margin-bottom:20px;">
-                Enable hardware-accelerated video processing on the companion server. Requires a compatible GPU (NVIDIA, Intel, or AMD).
-            </p>
-            <form method="POST" action="process_gameplan_settings.php" data-form-type="gameplan_hw">
-                <?php echo csrfTokenInput(); ?>
-                <input type="hidden" name="action" value="save_hw_accel">
 
-                <div class="settings-list">
-                    <div class="setting-item">
-                        <div class="setting-info">
-                            <h4>Enable Hardware Acceleration</h4>
-                            <p>Use GPU for video encoding, decoding, and transcoding operations on the companion server</p>
-                        </div>
-                        <label class="toggle-switch">
-                            <input type="checkbox" name="hw_accel_enabled" value="1" <?= $gp_hw_accel_enabled ? 'checked' : '' ?> onchange="gpToggleHwOptions(this)">
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                </div>
-
-                <div id="gpHwAccelOptions" style="<?= $gp_hw_accel_enabled ? '' : 'display:none;' ?>margin-top:16px;">
-                    <div class="settings-list">
-                        <div class="setting-item">
-                            <div class="setting-info">
-                                <h4>Acceleration Method</h4>
-                                <p>Auto-detect will probe the companion server's GPU capabilities</p>
-                            </div>
-                            <select name="hw_accel_method" class="form-input" style="width: auto; min-width: 200px;">
-                                <option value="auto" <?= $gp_hw_accel_method === 'auto' ? 'selected' : '' ?>>Auto-Detect</option>
-                                <option value="nvenc" <?= $gp_hw_accel_method === 'nvenc' ? 'selected' : '' ?>>NVIDIA NVENC (CUDA)</option>
-                                <option value="qsv" <?= $gp_hw_accel_method === 'qsv' ? 'selected' : '' ?>>Intel Quick Sync Video (QSV)</option>
-                                <option value="vaapi" <?= $gp_hw_accel_method === 'vaapi' ? 'selected' : '' ?>>VA-API (Linux Intel/AMD)</option>
-                                <option value="amf" <?= $gp_hw_accel_method === 'amf' ? 'selected' : '' ?>>AMD AMF</option>
-                                <option value="none" <?= $gp_hw_accel_method === 'none' ? 'selected' : '' ?>>Software Only (CPU)</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="info-box" style="margin-top:16px;">
-                        <i class="fas fa-info-circle"></i>
-                        <p id="gpHwCapText">Save the companion server URL above and click "Test Connection" to detect hardware capabilities.</p>
-                    </div>
-                </div>
-
-                <div class="form-actions">
-                    <button type="submit" class="btn btn-primary" data-action="save"><i class="fas fa-save"></i> Save Hardware Settings</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Video Storage Configuration -->
-    <div class="card">
-        <div class="card-header">
-            <h3><i class="fas fa-hard-drive"></i> Video Storage</h3>
-        </div>
-        <div class="card-body">
-            <p style="color:var(--text-secondary);font-size:13px;margin-bottom:20px;">
-                Configure where video files are stored. Both the Game Plan app and the companion server must have
-                access to the same storage location. Use NFS or SMB mounts for network-attached storage.
-            </p>
-            <form method="POST" action="process_gameplan_settings.php" data-form-type="gameplan_storage">
-                <?php echo csrfTokenInput(); ?>
-                <input type="hidden" name="action" value="save_video_storage">
-
-                <div class="settings-list">
-                    <div class="setting-item">
-                        <div class="setting-info">
-                            <h4>Storage Type</h4>
-                            <p>Select the type of storage used for video files</p>
-                        </div>
-                        <select name="video_storage_type" class="form-input" id="gpStorageType" style="width: auto; min-width: 200px;" onchange="gpToggleStorageOptions(this.value)">
-                            <option value="local" <?= $gp_video_storage_type === 'local' ? 'selected' : '' ?>>Local Directory</option>
-                            <option value="nfs" <?= $gp_video_storage_type === 'nfs' ? 'selected' : '' ?>>NFS Mount</option>
-                            <option value="smb" <?= $gp_video_storage_type === 'smb' ? 'selected' : '' ?>>SMB/CIFS Mount</option>
-                        </select>
-                    </div>
-
-                    <div class="setting-item">
-                        <div class="setting-info">
-                            <h4>Video Storage Path</h4>
-                            <p>Local mount point where video files are stored (must be same path on both servers)</p>
-                        </div>
-                        <input type="text" name="video_storage_path" class="form-input" style="width: auto; min-width: 300px;"
-                               value="<?= htmlspecialchars($gp_video_storage_path) ?>"
-                               placeholder="/videos">
-                    </div>
-                </div>
-
-                <!-- NFS Options -->
-                <div id="gpNfsOptions" style="<?= $gp_video_storage_type === 'nfs' ? '' : 'display:none;' ?>margin-top:16px;">
-                    <div class="settings-list">
-                        <div class="setting-item">
-                            <div class="setting-info">
-                                <h4>NFS Server</h4>
-                                <p>NFS server hostname or IP address</p>
-                            </div>
-                            <input type="text" name="nfs_server" class="form-input" style="width: auto; min-width: 300px;"
-                                   value="<?= htmlspecialchars($gp_nfs_server) ?>"
-                                   placeholder="nas.local or 192.168.1.100">
-                        </div>
-                        <div class="setting-item">
-                            <div class="setting-info">
-                                <h4>NFS Export Path</h4>
-                                <p>The export path on the NFS server</p>
-                            </div>
-                            <input type="text" name="nfs_export" class="form-input" style="width: auto; min-width: 300px;"
-                                   value="<?= htmlspecialchars($gp_nfs_export) ?>"
-                                   placeholder="/volume1/videos">
-                        </div>
-                        <div class="setting-item">
-                            <div class="setting-info">
-                                <h4>NFS Mount Options</h4>
-                                <p>Options passed to the mount command</p>
-                            </div>
-                            <input type="text" name="nfs_options" class="form-input" style="width: auto; min-width: 300px;"
-                                   value="<?= htmlspecialchars($gp_nfs_options) ?>"
-                                   placeholder="rw,sync,no_subtree_check">
-                        </div>
-                    </div>
-
-                    <div class="info-box" style="margin-top:16px;">
-                        <i class="fas fa-terminal"></i>
-                        <p><strong>NFS Mount Command:</strong><br>
-                        <code style="font-size:12px;word-break:break-all;">mount -t nfs <?= htmlspecialchars($gp_nfs_server ?: 'nas.local') ?>:<?= htmlspecialchars($gp_nfs_export ?: '/volume1/videos') ?> <?= htmlspecialchars($gp_video_storage_path ?: '/videos') ?> -o <?= htmlspecialchars($gp_nfs_options ?: 'rw,sync') ?></code></p>
-                    </div>
-                </div>
-
-                <!-- SMB Options -->
-                <div id="gpSmbOptions" style="<?= $gp_video_storage_type === 'smb' ? '' : 'display:none;' ?>margin-top:16px;">
-                    <div class="settings-list">
-                        <div class="setting-item">
-                            <div class="setting-info">
-                                <h4>SMB/CIFS Server</h4>
-                                <p>SMB server hostname or IP address</p>
-                            </div>
-                            <input type="text" name="smb_server" class="form-input" style="width: auto; min-width: 300px;"
-                                   value="<?= htmlspecialchars($gp_smb_server) ?>"
-                                   placeholder="nas.local or 192.168.1.100">
-                        </div>
-                        <div class="setting-item">
-                            <div class="setting-info">
-                                <h4>Share Name</h4>
-                                <p>The SMB share name on the server</p>
-                            </div>
-                            <input type="text" name="smb_share" class="form-input" style="width: auto; min-width: 300px;"
-                                   value="<?= htmlspecialchars($gp_smb_share) ?>"
-                                   placeholder="videos">
-                        </div>
-                        <div class="setting-item">
-                            <div class="setting-info">
-                                <h4>SMB Username</h4>
-                                <p>Username for SMB authentication</p>
-                            </div>
-                            <input type="text" name="smb_username" class="form-input" style="width: auto; min-width: 300px;"
-                                   value="<?= htmlspecialchars($gp_smb_username) ?>"
-                                   placeholder="username">
-                        </div>
-                        <div class="setting-item">
-                            <div class="setting-info">
-                                <h4>SMB Domain</h4>
-                                <p>Domain for SMB authentication (optional)</p>
-                            </div>
-                            <input type="text" name="smb_domain" class="form-input" style="width: auto; min-width: 300px;"
-                                   value="<?= htmlspecialchars($gp_smb_domain) ?>"
-                                   placeholder="WORKGROUP">
-                        </div>
-                    </div>
-
-                    <div class="info-box" style="margin-top:16px;">
-                        <i class="fas fa-terminal"></i>
-                        <p><strong>SMB Mount Command:</strong><br>
-                        <code style="font-size:12px;word-break:break-all;">mount -t cifs //<?= htmlspecialchars($gp_smb_server ?: 'nas.local') ?>/<?= htmlspecialchars($gp_smb_share ?: 'videos') ?> <?= htmlspecialchars($gp_video_storage_path ?: '/videos') ?> -o username=<?= htmlspecialchars($gp_smb_username ?: 'user') ?>,uid=911,gid=911</code></p>
-                    </div>
-                </div>
-
-                <div class="form-actions">
-                    <button type="submit" class="btn btn-primary" data-action="save"><i class="fas fa-save"></i> Save Storage Settings</button>
-                </div>
-            </form>
-        </div>
-    </div>
 </div>
 
 <!-- NDI Camera Edit Modal -->
@@ -5224,14 +5026,6 @@ function gpToggleVisibility(inputId, button) {
     }
 }
 
-function gpToggleHwOptions(checkbox) {
-    document.getElementById('gpHwAccelOptions').style.display = checkbox.checked ? '' : 'none';
-}
-
-function gpToggleStorageOptions(type) {
-    document.getElementById('gpNfsOptions').style.display = (type === 'nfs') ? '' : 'none';
-    document.getElementById('gpSmbOptions').style.display = (type === 'smb') ? '' : 'none';
-}
 
 function gpShowTestAlert(type, message) {
     var container = document.getElementById('gpTestAlertContainer');
@@ -5280,21 +5074,6 @@ function gpTestCompanion() {
             if (data.success) {
                 statusBadge.className = 'badge badge-success';
                 statusBadge.textContent = 'Connected';
-                var cap = document.getElementById('gpHwCapText');
-                if (data.hw_accel) {
-                    cap.textContent = '';
-                    var strong = document.createElement('strong');
-                    strong.style.color = 'var(--success)';
-                    strong.innerHTML = '<i class="fas fa-check"></i> ';
-                    strong.appendChild(document.createTextNode('Server Online'));
-                    cap.appendChild(strong);
-                    cap.appendChild(document.createElement('br'));
-                    cap.appendChild(document.createTextNode('Available methods: ' + (data.hw_accel.available.join(', ') || 'none')));
-                    cap.appendChild(document.createElement('br'));
-                    cap.appendChild(document.createTextNode('Encoders: ' + (data.hw_accel.encoders.join(', ') || 'none')));
-                    cap.appendChild(document.createElement('br'));
-                    cap.appendChild(document.createTextNode('Decoders: ' + (data.hw_accel.decoders.join(', ') || 'none')));
-                }
                 gpShowTestAlert('success', 'Connection successful! Companion server is online.');
             } else {
                 statusBadge.className = 'badge badge-danger';
