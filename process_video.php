@@ -1439,6 +1439,14 @@ function handleUploadVideoSource() {
     try {
         logSecurityEvent('video_source_uploaded', "Video source uploaded: " . $file['name'], $user_id);
     } catch (Exception $e) { error_log("logSecurityEvent failed: " . $e->getMessage()); }
+
+    // Return JSON for XHR requests, redirect for standard form submissions
+    if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => true, 'source_id' => $source_id_new, 'redirect' => '/gameplan.php?page=film_room&tab=upload&success=source_uploaded']);
+        exit;
+    }
+
     header('Location: /gameplan.php?page=film_room&tab=upload&success=source_uploaded');
     exit;
 }

@@ -220,7 +220,15 @@ if (!function_exists('vr_format_duration')) {
             </div>
         </div>
         <div class="vr-form-actions">
-            <button type="submit" class="vr-btn-primary"><i class="fas fa-upload"></i> Upload Source</button>
+            <button type="submit" class="vr-btn-primary" id="vrUploadSubmitBtn"><i class="fas fa-upload"></i> Upload Source</button>
+        </div>
+        <!-- Upload progress overlay -->
+        <div id="vrUploadProgressOverlay" style="display:none; margin-top:16px; padding:16px; border-radius:10px; background:var(--gp-card, #1a1a2e); border:1px solid var(--gp-border, #333);">
+            <div style="font-weight:600; margin-bottom:8px;" id="vrUploadProgressStatus">Uploading video...</div>
+            <div style="width:100%; background:rgba(255,255,255,0.1); border-radius:8px; overflow:hidden; height:20px;">
+                <div id="vrUploadProgressBar" style="width:0%; height:100%; background:var(--gp-primary-light, #6B46C1); border-radius:8px; transition:width 0.3s;"></div>
+            </div>
+            <div id="vrUploadProgressPercent" style="text-align:right; font-size:12px; margin-top:4px; color:var(--gp-text-dim, #888);">0%</div>
         </div>
     </form>
 </div>
@@ -565,6 +573,74 @@ document.addEventListener('DOMContentLoaded', function() {
         fileName.textContent = f.name + ' (' + mb + ' MB)';
         selectedFile.style.display = 'flex';
         fileArea.style.display = 'none';
+    }
+
+    // AJAX upload handler — avoids 504 timeout on large file uploads
+    var uploadForm = document.getElementById('vrUploadForm');
+    if (uploadForm) {
+        uploadForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            var submitBtn = document.getElementById('vrUploadSubmitBtn');
+            var overlay = document.getElementById('vrUploadProgressOverlay');
+            var bar = document.getElementById('vrUploadProgressBar');
+            var percent = document.getElementById('vrUploadProgressPercent');
+            var status = document.getElementById('vrUploadProgressStatus');
+
+            if (!fileInput || !fileInput.files.length) {
+                frToast('Please select a video file.');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            overlay.style.display = 'block';
+            bar.style.width = '0%';
+            percent.textContent = '0%';
+            status.textContent = 'Uploading video...';
+
+            var formData = new FormData(uploadForm);
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', uploadForm.action, true);
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+
+            xhr.upload.onprogress = function(ev) {
+                if (ev.lengthComputable) {
+                    var pct = Math.round((ev.loaded / ev.total) * 100);
+                    bar.style.width = pct + '%';
+                    percent.textContent = pct + '%';
+                    status.textContent = pct < 100 ? 'Uploading video... ' + pct + '%' : 'Processing upload...';
+                }
+            };
+
+            xhr.onload = function() {
+                try {
+                    var resp = JSON.parse(xhr.responseText);
+                    if (resp.success) {
+                        bar.style.width = '100%';
+                        percent.textContent = '100%';
+                        status.textContent = 'Upload complete! Redirecting...';
+                        window.location.href = resp.redirect || '/gameplan.php?page=film_room&tab=upload&success=source_uploaded';
+                    } else {
+                        status.textContent = 'Upload failed: ' + (resp.error || 'Unknown error');
+                        submitBtn.disabled = false;
+                    }
+                } catch (parseErr) {
+                    status.textContent = 'Upload failed: Server returned an unexpected response.';
+                    submitBtn.disabled = false;
+                }
+            };
+
+            xhr.onerror = function() {
+                status.textContent = 'Upload failed: Network error. Please check your connection and try again.';
+                submitBtn.disabled = false;
+            };
+
+            xhr.ontimeout = function() {
+                status.textContent = 'Upload timed out. The file may be too large — please try again.';
+                submitBtn.disabled = false;
+            };
+
+            xhr.send(formData);
+        });
     }
 
     // Video player toggle with HLS support
