@@ -70,6 +70,14 @@ try {
         case 'confirm_athlete_upload':
             handleConfirmAthleteUpload();
             break;
+
+        case 'get_video_upload_url':
+            handleGetVideoUploadUrl();
+            break;
+
+        case 'confirm_video_upload':
+            handleConfirmVideoUpload();
+            break;
         
         case 'upload_drill_video':
             handleDrillVideoUpload();
@@ -671,6 +679,348 @@ function handleConfirmAthleteUpload() {
         'video_id' => $video_id,
         'redirect' => 'dashboard.php?page=coaches_reviews&success=video_uploaded',
     ]);
+    exit;
+}
+
+/**
+ * General-purpose presigned URL generator for all video upload types.
+ * Supports: athlete_video, coach_video, drill_video, video_source.
+ * The browser uploads directly to S3/RustFS, bypassing PHP for the file transfer.
+ */
+function handleGetVideoUploadUrl() {
+    global $pdo, $user_id, $user_role;
+
+    header('Content-Type: application/json');
+
+    $upload_type = $_POST['upload_type'] ?? 'athlete_video';
+    $allowed_types = ['athlete_video', 'coach_video', 'drill_video', 'video_source'];
+    if (!in_array($upload_type, $allowed_types)) {
+        throw new Exception('Invalid upload type');
+    }
+
+    // Role checks
+    $coach_roles = ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'];
+    if (in_array($upload_type, ['coach_video', 'drill_video', 'video_source'])) {
+        if (!in_array($user_role, $coach_roles)) {
+            throw new Exception('You do not have permission for this upload type');
+        }
+    }
+
+    // Validate file metadata
+    $file_name = $_POST['file_name'] ?? '';
+    $file_size = filter_input(INPUT_POST, 'file_size', FILTER_VALIDATE_INT);
+    $file_type = $_POST['file_type'] ?? 'video/mp4';
+
+    if (empty($file_name) || !$file_size) {
+        throw new Exception('File information is required');
+    }
+
+    if ($file_size > 10 * 1024 * 1024 * 1024) {
+        throw new Exception('File size exceeds the maximum limit of 10GB');
+    }
+
+    $file_extension = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
+    $allowed_extensions = ['mp4', 'mkv', 'mov', 'avi', 'webm'];
+    if (!in_array($file_extension, $allowed_extensions)) {
+        throw new Exception('Invalid video file type. Allowed: ' . implode(', ', $allowed_extensions));
+    }
+
+    $allowed_mimes = ['video/mp4', 'video/x-matroska', 'video/quicktime', 'video/x-msvideo', 'video/webm', 'video/avi'];
+    if (!in_array($file_type, $allowed_mimes)) {
+        $ext_to_mime = [
+            'mp4' => 'video/mp4', 'mkv' => 'video/x-matroska', 'mov' => 'video/quicktime',
+            'avi' => 'video/x-msvideo', 'webm' => 'video/webm',
+        ];
+        $file_type = $ext_to_mime[$file_extension] ?? 'application/octet-stream';
+    }
+
+    // Build the S3 object key based on upload type
+    $unique_suffix = uniqid('', true) . '_' . time() . '.' . $file_extension;
+
+    if ($upload_type === 'drill_video') {
+        // Drill videos: validate session/drill/athlete and build naming convention
+        $session_id = filter_input(INPUT_POST, 'session_id', FILTER_VALIDATE_INT);
+        $drill_id = filter_input(INPUT_POST, 'drill_id', FILTER_VALIDATE_INT);
+        $athlete_id = filter_input(INPUT_POST, 'athlete_id', FILTER_VALIDATE_INT);
+        $rep_number = filter_input(INPUT_POST, 'rep_number', FILTER_VALIDATE_INT) ?: 1;
+        if (!$session_id || !$drill_id || !$athlete_id) {
+            throw new Exception('Missing required fields: session, drill, and athlete are required');
+        }
+        $stmt = $pdo->prepare("SELECT title, session_date FROM sessions WHERE id = ?");
+        $stmt->execute([$session_id]);
+        $session_row = $stmt->fetch();
+        if (!$session_row) throw new Exception('Session not found');
+        $stmt = $pdo->prepare("SELECT title FROM drills WHERE id = ?");
+        $stmt->execute([$drill_id]);
+        $drill_row = $stmt->fetch();
+        if (!$drill_row) throw new Exception('Drill not found');
+        $stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
+        $stmt->execute([$athlete_id]);
+        $athlete_row = $stmt->fetch();
+        $athlete_row = decryptUserRow($athlete_row);
+        if (!$athlete_row) throw new Exception('Athlete not found');
+        $safe_session = str_replace(' ', '_', preg_replace('/[^a-zA-Z0-9\-_\s]/', '', $session_row['title'] ?? 'Session'));
+        $safe_drill = str_replace(' ', '_', preg_replace('/[^a-zA-Z0-9\-_\s]/', '', $drill_row['title']));
+        $safe_athlete = str_replace(' ', '_', preg_replace('/[^a-zA-Z0-9\-_\s]/', '', ($athlete_row['first_name'] ?? '') . ' ' . ($athlete_row['last_name'] ?? '')));
+        $filename = sprintf('%s-%s-%s-Rep%d.%s', $safe_session, $safe_drill, $safe_athlete, $rep_number, $file_extension);
+        $object_key = 'Images/DrillVideos/' . $filename;
+    } elseif ($upload_type === 'video_source') {
+        $filename = 'gp_source_' . $unique_suffix;
+        $object_key = 'Images/videos/gameplan/' . $filename;
+    } elseif ($upload_type === 'coach_video') {
+        $filename = 'video_' . $unique_suffix;
+        $object_key = 'Images/videos/coach/' . $filename;
+    } else {
+        // athlete_video
+        $presign_athlete_id = filter_input(INPUT_POST, 'athlete_id', FILTER_VALIDATE_INT) ?: $user_id;
+        $athlete_folder = 'athlete_' . $presign_athlete_id;
+        $stmt_name = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
+        $stmt_name->execute([$presign_athlete_id]);
+        $arow = $stmt_name->fetch();
+        if ($arow) {
+            $arow = decryptUserRow($arow);
+            $safe_name = preg_replace('/[^a-zA-Z0-9_-]/', '_', trim(($arow['first_name'] ?? '') . '_' . ($arow['last_name'] ?? '')));
+            if (!empty($safe_name) && $safe_name !== '_') {
+                $athlete_folder = $safe_name;
+            }
+        }
+        $filename = 'athlete_video_' . $unique_suffix;
+        $object_key = 'Images/videos/athlete/' . $athlete_folder . '/' . $filename;
+    }
+
+    // Generate presigned URL
+    $rustfs = getRustFSSettings($pdo);
+    if (!isRustFSConfigured($rustfs)) {
+        throw new Exception('Cloud storage is not configured. Please contact an administrator.');
+    }
+
+    $presigned = generatePresignedUploadUrl($rustfs, $object_key, $file_type, 3600);
+    if (!$presigned['success']) {
+        throw new Exception('Failed to generate upload URL: ' . ($presigned['message'] ?? 'Unknown error'));
+    }
+
+    // Store pending upload metadata in session
+    $upload_nonce = bin2hex(random_bytes(16));
+    $_SESSION['pending_video_upload_general'] = [
+        'nonce'          => $upload_nonce,
+        'upload_type'    => $upload_type,
+        'object_key'     => $object_key,
+        'original_name'  => $file_name,
+        'filename'       => $filename,
+        'content_type'   => $file_type,
+        'file_size'      => $file_size,
+        'created_at'     => time(),
+        // Type-specific metadata
+        'coach_id'       => filter_input(INPUT_POST, 'coach_id', FILTER_VALIDATE_INT),
+        'athlete_id'     => filter_input(INPUT_POST, 'athlete_id', FILTER_VALIDATE_INT) ?: $user_id,
+        'title'          => trim($_POST['title'] ?? ''),
+        'description'    => $_POST['description'] ?? '',
+        'video_category' => $_POST['video_category'] ?? 'drill',
+        'game_date'      => $_POST['game_date'] ?? null,
+        'team_played_on' => trim($_POST['team_played_on'] ?? ''),
+        'opponent_team'  => trim($_POST['opponent_team'] ?? ''),
+        // Drill-specific
+        'session_id'     => filter_input(INPUT_POST, 'session_id', FILTER_VALIDATE_INT),
+        'drill_id'       => filter_input(INPUT_POST, 'drill_id', FILTER_VALIDATE_INT),
+        'rep_number'     => filter_input(INPUT_POST, 'rep_number', FILTER_VALIDATE_INT) ?: 1,
+        // Video source-specific
+        'camera_angle'   => $_POST['camera_angle'] ?? '',
+        'game_id'        => filter_input(INPUT_POST, 'game_id', FILTER_VALIDATE_INT),
+        'team_id'        => filter_input(INPUT_POST, 'team_id', FILTER_VALIDATE_INT),
+        // Coach video-specific
+        'session_date'   => $_POST['session_date'] ?? null,
+        'drill_type'     => $_POST['drill_type'] ?? null,
+        'drill_name'     => $_POST['drill_name'] ?? null,
+        'rating'         => filter_input(INPUT_POST, 'rating', FILTER_VALIDATE_INT),
+    ];
+
+    echo json_encode([
+        'success'       => true,
+        'presigned_url' => $presigned['url'],
+        'object_key'    => $object_key,
+        'content_type'  => $file_type,
+        'upload_nonce'  => $upload_nonce,
+    ]);
+    exit;
+}
+
+/**
+ * Confirm that a direct-to-S3 upload completed and create the appropriate
+ * database record based on upload_type.  Called after the presigned PUT succeeds.
+ */
+function handleConfirmVideoUpload() {
+    global $pdo, $user_id;
+
+    header('Content-Type: application/json');
+
+    $upload_nonce = $_POST['upload_nonce'] ?? '';
+    $pending = $_SESSION['pending_video_upload_general'] ?? null;
+
+    if (!$pending || !hash_equals($pending['nonce'], $upload_nonce)) {
+        throw new Exception('Invalid or expired upload session. Please try again.');
+    }
+
+    if ((time() - $pending['created_at']) > 7200) {
+        unset($_SESSION['pending_video_upload_general']);
+        throw new Exception('Upload session expired. Please try again.');
+    }
+
+    $object_key  = $pending['object_key'];
+    $upload_type = $pending['upload_type'];
+
+    // Verify the object actually exists in RustFS
+    $rustfs = getRustFSSettings($pdo);
+    if (!rustfsObjectExists($rustfs, $object_key)) {
+        throw new Exception('Video file was not found in storage. The upload may have failed — please try again.');
+    }
+
+    $proxy_url = 'api/media.php?key=' . rawurlencode($object_key);
+    $video_id = null;
+    $source_id = null;
+    $redirect = '';
+
+    if ($upload_type === 'video_source') {
+        // Game Plan video source
+        $stmt = $pdo->prepare("
+            INSERT INTO vr_video_sources (filename, file_path, camera_angle, file_size, game_id, team_id, uploaded_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmt->execute([
+            $pending['original_name'],
+            $proxy_url,
+            $pending['camera_angle'],
+            $pending['file_size'],
+            $pending['game_id'],
+            $pending['team_id'],
+            $user_id
+        ]);
+        $source_id = $pdo->lastInsertId();
+        Auditor::log($pdo, $user_id, 'create', 'vr_video_sources', $source_id, ['action' => 'Video source uploaded (direct)']);
+        $pdo->prepare("UPDATE vr_video_sources SET nextcloud_path = ? WHERE id = ?")->execute([$proxy_url, $source_id]);
+        try { logSecurityEvent('video_source_uploaded', "Video source uploaded (direct): " . $pending['original_name'], $user_id); } catch (Exception $e) { error_log("logSecurityEvent failed: " . $e->getMessage()); }
+        $redirect = '/gameplan.php?page=film_room&tab=upload&success=source_uploaded';
+
+    } elseif ($upload_type === 'drill_video') {
+        // Drill video
+        $session_id  = $pending['session_id'];
+        $drill_id    = $pending['drill_id'];
+        $athlete_id  = $pending['athlete_id'];
+        $rep_number  = $pending['rep_number'];
+
+        $stmt = $pdo->prepare("SELECT title, session_date FROM sessions WHERE id = ?");
+        $stmt->execute([$session_id]);
+        $session_row = $stmt->fetch();
+        $session_name = $session_row['title'] ?? 'Session';
+        $session_date = $session_row['session_date'] ?? date('Y-m-d');
+
+        $stmt = $pdo->prepare("SELECT title FROM drills WHERE id = ?");
+        $stmt->execute([$drill_id]);
+        $drill_row = $stmt->fetch();
+        $drill_name = $drill_row['title'] ?? 'Drill';
+
+        $stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
+        $stmt->execute([$athlete_id]);
+        $athlete_row = $stmt->fetch();
+        $athlete_row = decryptUserRow($athlete_row);
+        $athlete_name = ($athlete_row['first_name'] ?? '') . ' ' . ($athlete_row['last_name'] ?? '');
+
+        $title = sprintf('%s - %s - %s (Rep %d)', $session_name, $drill_name, $athlete_name, $rep_number);
+        $description = sprintf('Drill video recorded during session on %s', date('M d, Y', strtotime($session_date)));
+
+        $stmt = $pdo->prepare("
+            INSERT INTO videos (
+                athlete_id, coach_id, title, description, video_url,
+                video_type, video_category, drill_id, session_id, rep_number,
+                nextcloud_path, local_path, is_uploaded_to_cloud,
+                status, upload_date
+            ) VALUES (
+                ?, ?, ?, ?, ?,
+                'drill_review', 'drill', ?, ?, ?,
+                ?, ?, 1,
+                'reviewed', NOW()
+            )
+        ");
+        $stmt->execute([
+            $athlete_id, $user_id, $title, $description, $proxy_url,
+            $drill_id, $session_id, $rep_number,
+            $proxy_url, $proxy_url
+        ]);
+        $video_id = $pdo->lastInsertId();
+        Auditor::log($pdo, $user_id, 'create', 'videos', $video_id, ['action' => 'Drill video uploaded (direct)']);
+        if (!empty($object_key)) { triggerHlsTranscode($pdo, $video_id, $object_key); }
+        try { logSecurityEvent('drill_video_upload', "Drill video uploaded (direct): $title (ID: $video_id)", $user_id); } catch (Exception $e) { error_log("logSecurityEvent failed: " . $e->getMessage()); }
+        $redirect = '';
+
+    } elseif ($upload_type === 'coach_video') {
+        // Coach review video
+        $athlete_id  = $pending['athlete_id'];
+        $drill_type  = $pending['drill_type'] ?? '';
+        $drill_name  = $pending['drill_name'] ?? '';
+        $session_date = $pending['session_date'] ?? date('Y-m-d');
+        $comments    = $pending['description'] ?? '';
+
+        $title = $drill_name . ' - ' . $drill_type;
+        $description = 'Session Date: ' . $session_date . ' | Drill Type: ' . $drill_type;
+
+        $stmt = $pdo->prepare("
+            INSERT INTO videos (
+                athlete_id, coach_id, title, description, video_url,
+                video_type, video_category, status, coach_notes, upload_date
+            ) VALUES (
+                ?, ?, ?, ?, ?,
+                'coach_review', 'drill', 'pending_review', ?, NOW()
+            )
+        ");
+        $stmt->execute([$athlete_id, $user_id, $title, $description, $proxy_url, $comments]);
+        $video_id = $pdo->lastInsertId();
+        Auditor::log($pdo, $user_id, 'create', 'videos', $video_id, ['action' => 'Coach video uploaded (direct)']);
+        $pdo->prepare("UPDATE videos SET nextcloud_path = ? WHERE id = ?")->execute([$proxy_url, $video_id]);
+        if (!empty($object_key)) { triggerHlsTranscode($pdo, $video_id, $object_key); }
+        try { logSecurityEvent('video_upload', "Video uploaded (direct) for athlete ID: $athlete_id", $user_id); } catch (Exception $e) { error_log("logSecurityEvent failed: " . $e->getMessage()); }
+        try { sendVideoNotification($pdo, $athlete_id, $user_id, $video_id, 'new_video'); } catch (Exception $e) { error_log("sendVideoNotification failed: " . $e->getMessage()); }
+        $redirect = 'dashboard.php?page=coaches_reviews&success=video_uploaded';
+
+    } else {
+        // athlete_video (default)
+        $coach_id    = $pending['coach_id'];
+        $athlete_id  = $pending['athlete_id'];
+        $title       = $pending['title'];
+        $description = $pending['description'];
+        $video_category = $pending['video_category'];
+        $game_date   = $pending['game_date'] ?: null;
+        $team_played_on = $pending['team_played_on'] ?: null;
+        $opponent_team  = $pending['opponent_team'] ?: null;
+
+        $stmt = $pdo->prepare("
+            INSERT INTO videos (
+                athlete_id, coach_id, title, description, video_url,
+                video_type, video_category, game_date, team_played_on, opponent_team,
+                status, upload_date
+            ) VALUES (
+                ?, ?, ?, ?, ?,
+                'uploaded_by_athlete', ?, ?, ?, ?,
+                'pending_review', NOW()
+            )
+        ");
+        $stmt->execute([
+            $athlete_id, $coach_id, $title, $description, $proxy_url,
+            $video_category, $game_date, $team_played_on, $opponent_team,
+        ]);
+        $video_id = $pdo->lastInsertId();
+        Auditor::log($pdo, $user_id, 'create', 'videos', $video_id, ['action' => 'Athlete video uploaded (direct)']);
+        $pdo->prepare("UPDATE videos SET nextcloud_path = ? WHERE id = ?")->execute([$proxy_url, $video_id]);
+        if (!empty($object_key)) { triggerHlsTranscode($pdo, $video_id, $object_key); }
+        try { logSecurityEvent('athlete_video_upload', "Athlete video uploaded (direct) for review, ID: $video_id", $athlete_id); } catch (Exception $e) { error_log("logSecurityEvent failed: " . $e->getMessage()); }
+        try { sendVideoUploadNotificationToCoach($pdo, $coach_id, $athlete_id, $video_id, $title); } catch (Exception $e) { error_log("sendVideoUploadNotificationToCoach failed: " . $e->getMessage()); }
+        $redirect = 'dashboard.php?page=coaches_reviews&success=video_uploaded';
+    }
+
+    unset($_SESSION['pending_video_upload_general']);
+
+    $response = ['success' => true, 'redirect' => $redirect];
+    if ($video_id) $response['video_id'] = $video_id;
+    if ($source_id) $response['source_id'] = $source_id;
+    echo json_encode($response);
     exit;
 }
 

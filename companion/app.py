@@ -1101,6 +1101,18 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/history")
+def history_page():
+    """Serve the job history page."""
+    return render_template("history.html")
+
+
+@app.route("/settings")
+def settings_page():
+    """Serve the settings page."""
+    return render_template("settings.html")
+
+
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
