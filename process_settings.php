@@ -195,6 +195,7 @@ try {
         case 'update_rustfs':
             require_once __DIR__ . '/lib/rustfs_storage.php';
             $rustfs_endpoint = trim($_POST['rustfs_endpoint'] ?? '');
+            $rustfs_public_endpoint = trim($_POST['rustfs_public_endpoint'] ?? '');
             $rustfs_access_key = trim($_POST['rustfs_access_key'] ?? '');
             $rustfs_secret_key = trim($_POST['rustfs_secret_key'] ?? '');
             $rustfs_bucket = trim($_POST['rustfs_bucket'] ?? '');
@@ -203,6 +204,7 @@ try {
             $rustfs_path_style = isset($_POST['rustfs_path_style']) ? '1' : '0';
 
             updateSetting($pdo, 'rustfs_endpoint', $rustfs_endpoint);
+            updateSetting($pdo, 'rustfs_public_endpoint', $rustfs_public_endpoint);
             updateSetting($pdo, 'rustfs_access_key', $rustfs_access_key);
             if (!empty($rustfs_secret_key)) {
                 $encrypted_key = encryptPassword($rustfs_secret_key);
