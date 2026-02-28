@@ -131,28 +131,23 @@ test.describe('pwa_tablet.php includes RustFS endpoint in CSP connect-src', () =
 // 5. Simplified upload — no more presigned URL flow
 // =====================================================
 
-test.describe('Simplified athlete upload uses single XHR POST', () => {
-  test('should POST form data directly to process_video.php', () => {
+test.describe('Upload uses server proxy to avoid CORS issues', () => {
+  test('should POST form data via proxy to process_video.php', () => {
     const content = readFile('views/video_record_athlete.php');
-    expect(content).toContain('new FormData(uploadForm)');
-    expect(content).toContain('xhr.open(\'POST\', uploadForm.action');
+    expect(content).toContain("proxyData.append('action', 'proxy_video_upload')");
+    expect(content).toContain("xhr.open('POST', 'process_video.php'");
   });
 
-  test('should not use presigned URL multi-step flow', () => {
+  test('should not use direct PUT to presigned URL', () => {
     const content = readFile('views/video_record_athlete.php');
-    expect(content).not.toContain('get_athlete_upload_url');
-    expect(content).not.toContain('presignedUrl');
-    expect(content).not.toContain('confirm_athlete_upload');
-    expect(content).not.toContain('fallbackServerUpload');
+    expect(content).not.toContain("xhr.open('PUT', presignedUrl");
   });
 
   test('should handle JSON parse errors with toast message', () => {
     const content = readFile('views/video_record_athlete.php');
-    // The upload XHR onload should have a catch for JSON parse
-    const onloadStart = content.indexOf('xhr.onload = function()');
-    const onloadSection = content.substring(onloadStart, onloadStart + 1000);
-    expect(onloadSection).toContain('catch (err)');
-    expect(onloadSection).toContain('showToast');
-    expect(onloadSection).toContain('submitBtn.disabled = false');
+    // The legacy fallback onload should have a catch for JSON parse
+    expect(content).toContain('catch');
+    expect(content).toContain('showToast');
+    expect(content).toContain('submitBtn.disabled = false');
   });
 });

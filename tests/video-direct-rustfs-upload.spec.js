@@ -275,16 +275,16 @@ test.describe('Simplified upload JS in video_record_athlete.php', () => {
     expect(content).toContain('submitBtn.disabled = false');
   });
 
-  test('should upload directly to cloud storage via presigned URL', () => {
+  test('should upload to cloud storage via server proxy', () => {
     const content = readFile('views/video_record_athlete.php');
-    expect(content).toContain('presignedUrl');
+    expect(content).toContain('proxy_video_upload');
     expect(content).toContain('Uploading to cloud storage');
   });
 
-  test('should use 3-step presigned URL flow with legacy fallback', () => {
+  test('should use 3-step flow with server proxy and legacy fallback', () => {
     const content = readFile('views/video_record_athlete.php');
     expect(content).toContain('get_video_upload_url');
-    expect(content).toContain('presigned_url');
+    expect(content).toContain('proxy_video_upload');
     expect(content).toContain('confirm_video_upload');
     expect(content).toContain('Fall back to legacy');
   });

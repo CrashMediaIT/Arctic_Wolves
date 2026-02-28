@@ -149,9 +149,9 @@ test.describe('Direct-to-RustFS upload flow in coach reviews', () => {
     expect(content).toContain("'action', 'confirm_athlete_upload'");
   });
 
-  test('should PUT file directly to presigned URL', () => {
+  test('should POST file via server proxy instead of direct PUT', () => {
     const content = readFile('views/video_coach_reviews.php');
-    expect(content).toContain("xhr.open('PUT', presignedUrl");
+    expect(content).toContain("proxyData.append('action', 'proxy_video_upload')");
   });
 
   test('should implement legacy fallback on direct upload failure', () => {
