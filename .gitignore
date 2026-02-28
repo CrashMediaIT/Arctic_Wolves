@@ -16,6 +16,7 @@ test_results.log
 # Temporary files
 tmp/*
 !tmp/.gitkeep
+!tmp/.htaccess
 cache/*
 !cache/.gitkeep
 
@@ -28,6 +29,7 @@ videos/*
 !videos/.gitkeep
 backups/*
 !backups/.gitkeep
+!backups/.htaccess
 persistent_uploads/
 
 # Environment configuration (if added in the future)

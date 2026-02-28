@@ -1,11 +1,12 @@
 <?php
 /**
  * Admin Security Center
- * Comprehensive security management with Login History, Audit Logs, Error Logs, and Registration Blocklist
+ * Comprehensive security management with Login History, Audit Logs, Error Logs, Registration Blocklist, and Security & Dependency Audit
  */
 
 require_once __DIR__ . '/../security.php';
 require_once __DIR__ . '/../lib/blocklist.php';
+require_once __DIR__ . '/../admin/dependency_checker.php';
 
 // Check if user is admin (or actual admin in persona mode)
 $actualRole = $_SESSION['persona_original_role'] ?? $user_role;
@@ -262,6 +263,47 @@ if ($security_tab === 'pos_whitelist') {
     }
 }
 
+// ---- SECURITY & DEPENDENCY AUDIT DATA ----
+$security_scans = [];
+$security_scans_total = 0;
+$dependency_results = null;
+
+if ($security_tab === 'security_audit') {
+    // Fetch recent security scan results from database
+    try {
+        $count_stmt = $pdo->query("SELECT COUNT(*) FROM security_scans");
+        $security_scans_total = (int)$count_stmt->fetchColumn();
+
+        $scan_stmt = $pdo->prepare("
+            SELECT ss.*, u.first_name as performer_first_name, u.last_name as performer_last_name
+            FROM security_scans ss
+            LEFT JOIN users u ON ss.performed_by = u.id
+            ORDER BY ss.scan_date DESC
+            LIMIT ? OFFSET ?
+        ");
+        $scan_stmt->execute([$per_page, $offset]);
+        $security_scans = $scan_stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($security_scans as &$ss_row) {
+            $ss_row['performer_first_name'] = FieldEncryption::decrypt($ss_row['performer_first_name'] ?? '');
+            $ss_row['performer_last_name'] = FieldEncryption::decrypt($ss_row['performer_last_name'] ?? '');
+            $ss_row['performer_name'] = trim(($ss_row['performer_first_name'] ?? '') . ' ' . ($ss_row['performer_last_name'] ?? ''));
+        }
+        unset($ss_row);
+    } catch (PDOException $e) {
+        error_log("Security center - security scans error: " . $e->getMessage());
+    }
+
+    // Run live dependency audit
+    try {
+        $checker = new DependencyChecker(dirname(__DIR__));
+        $dependency_results = $checker->runAllChecks();
+    } catch (Exception $e) {
+        error_log("Security center - dependency checker error: " . $e->getMessage());
+    }
+}
+
+$security_scans_total_pages = ceil($security_scans_total / $per_page);
+
 $login_total_pages = ceil($login_total / $per_page);
 $audit_total_pages = ceil($audit_total / $per_page);
 $error_total_pages = ceil($error_total / $per_page);
@@ -312,7 +354,7 @@ $error_total_pages = ceil($error_total / $per_page);
 <div class="page-header">
     <div class="page-header-content">
         <h1 class="page-title"><i class="fas fa-shield-halved"></i> Security Center</h1>
-        <p class="page-description">Monitor login activity, audit trails, system errors, and registration restrictions</p>
+        <p class="page-description">Monitor login activity, audit trails, system errors, registration restrictions, and security &amp; dependency audits</p>
     </div>
     <div class="page-header-stats">
         <div class="header-stat">
@@ -348,6 +390,9 @@ $error_total_pages = ceil($error_total / $per_page);
         <?php if ($security_tab === 'pos_whitelist' && $pos_whitelist_total > 0): ?>
         <span class="badge"><?php echo $pos_whitelist_total; ?></span>
         <?php endif; ?>
+    </a>
+    <a href="?page=admin_security&tab=security_audit" class="page-tab <?= $security_tab === 'security_audit' ? 'active' : '' ?>">
+        <i class="fas fa-magnifying-glass-chart"></i> Security &amp; Dependency Audit
     </a>
 </div>
 
@@ -1277,6 +1322,268 @@ async function removePosWhitelistEntry(entryId) {
         }
     })
     .catch(function() { showToast('An error occurred', 'error'); });
+}
+</script>
+
+<?php elseif ($security_tab === 'security_audit'): ?>
+
+<!-- Security & Dependency Audit Tab -->
+<style>
+    .audit-summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .audit-summary-card { background: var(--card-bg, #16161F); border: 1px solid var(--border, #2D2D3F); border-radius: 12px; padding: 20px; text-align: center; }
+    .audit-summary-card .card-value { font-size: 32px; font-weight: 700; margin: 0; }
+    .audit-summary-card .card-label { font-size: 12px; color: var(--text-muted, #64748b); margin-top: 4px; }
+    .audit-status-healthy { color: #10b981; }
+    .audit-status-warning { color: #F59E0B; }
+    .audit-status-critical { color: #ef4444; }
+    .dep-section-title { font-size: 15px; font-weight: 700; color: #fff; margin: 24px 0 12px; display: flex; align-items: center; gap: 8px; }
+    .dep-package-list { list-style: none; padding: 0; margin: 0; }
+    .dep-package-list li { padding: 10px 16px; border-bottom: 1px solid var(--border, #2D2D3F); font-size: 13px; display: flex; align-items: center; gap: 12px; }
+    .dep-package-list li:last-child { border-bottom: none; }
+    .dep-severity { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+    .dep-severity.critical { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+    .dep-severity.high { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+    .dep-severity.moderate, .dep-severity.medium { background: rgba(245, 158, 11, 0.15); color: #F59E0B; }
+    .dep-severity.low { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+    .dep-severity.info { background: rgba(107, 70, 193, 0.15); color: #a78bfa; }
+    .scan-history-row td { font-size: 13px; }
+    .findings-toggle { cursor: pointer; color: var(--primary, #6B46C1); text-decoration: underline; font-size: 12px; }
+    .findings-detail { display: none; margin-top: 8px; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px; font-size: 12px; max-height: 300px; overflow-y: auto; word-break: break-word; }
+    .findings-detail.show { display: block; }
+</style>
+
+<?php
+$dep_summary = $dependency_results['summary'] ?? null;
+$dep_npm = $dependency_results['npm'] ?? null;
+$dep_composer = $dependency_results['composer'] ?? null;
+
+$status_class = 'audit-status-healthy';
+$status_label = 'Healthy';
+if ($dep_summary) {
+    if ($dep_summary['status'] === 'critical') { $status_class = 'audit-status-critical'; $status_label = 'Critical'; }
+    elseif ($dep_summary['status'] === 'warning') { $status_class = 'audit-status-warning'; $status_label = 'Warning'; }
+}
+?>
+
+<!-- Dependency Audit Summary Cards -->
+<div class="audit-summary-grid">
+    <div class="audit-summary-card">
+        <div class="card-value <?php echo $status_class; ?>"><?php echo htmlspecialchars($status_label); ?></div>
+        <div class="card-label">Overall Status</div>
+    </div>
+    <div class="audit-summary-card">
+        <div class="card-value" style="color: <?php echo ($dep_summary['total_vulnerabilities'] ?? 0) > 0 ? '#ef4444' : '#10b981'; ?>;">
+            <?php echo (int)($dep_summary['total_vulnerabilities'] ?? 0); ?>
+        </div>
+        <div class="card-label">Dependency Vulnerabilities</div>
+    </div>
+    <div class="audit-summary-card">
+        <div class="card-value" style="color: <?php echo ($dep_summary['critical_high_vulnerabilities'] ?? 0) > 0 ? '#ef4444' : '#10b981'; ?>;">
+            <?php echo (int)($dep_summary['critical_high_vulnerabilities'] ?? 0); ?>
+        </div>
+        <div class="card-label">Critical / High</div>
+    </div>
+    <div class="audit-summary-card">
+        <div class="card-value" style="color: <?php echo ($dep_summary['total_outdated'] ?? 0) > 0 ? '#F59E0B' : '#10b981'; ?>;"><?php echo (int)($dep_summary['total_outdated'] ?? 0); ?></div>
+        <div class="card-label">Outdated Packages</div>
+    </div>
+</div>
+
+<!-- NPM Dependencies Section -->
+<div class="card" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h3><i class="fab fa-npm" style="color: #cb3837;"></i> NPM Dependencies</h3>
+    </div>
+    <div class="card-body">
+        <?php if (!$dep_npm || !$dep_npm['available']): ?>
+            <p style="color: var(--text-muted, #64748b); font-size: 13px; margin: 0;">
+                <i class="fas fa-info-circle"></i>
+                <?php echo htmlspecialchars(implode('. ', $dep_npm['errors'] ?? ['No npm dependencies detected.'])); ?>
+            </p>
+        <?php else: ?>
+            <?php if (!empty($dep_npm['declared_packages'])): ?>
+                <p style="color: var(--text-muted, #64748b); font-size: 13px; margin: 0 0 12px;">
+                    <strong><?php echo count($dep_npm['declared_packages']); ?></strong> declared packages
+                </p>
+            <?php endif; ?>
+
+            <?php if (!empty($dep_npm['vulnerabilities'])): ?>
+                <div class="dep-section-title"><i class="fas fa-exclamation-triangle" style="color: #ef4444;"></i> Vulnerabilities (<?php echo count($dep_npm['vulnerabilities']); ?>)</div>
+                <ul class="dep-package-list">
+                    <?php foreach ($dep_npm['vulnerabilities'] as $v): ?>
+                    <li>
+                        <span class="dep-severity <?php echo htmlspecialchars(strtolower($v['severity'] ?? 'info')); ?>"><?php echo htmlspecialchars($v['severity'] ?? 'unknown'); ?></span>
+                        <strong><?php echo htmlspecialchars($v['package'] ?? ''); ?></strong>
+                        <span style="color: var(--text-muted, #64748b);"><?php echo htmlspecialchars($v['title'] ?? ''); ?></span>
+                        <?php if (!empty($v['fix_available'])): ?>
+                            <span style="color: #10b981; font-size: 11px;"><i class="fas fa-wrench"></i> Fix available</span>
+                        <?php endif; ?>
+                    </li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php else: ?>
+                <p style="color: #10b981; font-size: 13px; margin: 8px 0 0;"><i class="fas fa-check-circle"></i> No known vulnerabilities found.</p>
+            <?php endif; ?>
+
+            <?php if (!empty($dep_npm['outdated'])): ?>
+                <div class="dep-section-title"><i class="fas fa-arrow-up" style="color: #F59E0B;"></i> Outdated Packages (<?php echo count($dep_npm['outdated']); ?>)</div>
+                <div style="overflow-x: auto;">
+                    <table class="log-table">
+                        <thead>
+                            <tr>
+                                <th>Package</th>
+                                <th>Current</th>
+                                <th>Wanted</th>
+                                <th>Latest</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($dep_npm['outdated'] as $o): ?>
+                            <tr>
+                                <td><strong><?php echo htmlspecialchars($o['package']); ?></strong></td>
+                                <td><code><?php echo htmlspecialchars($o['current']); ?></code></td>
+                                <td><code><?php echo htmlspecialchars($o['wanted']); ?></code></td>
+                                <td><code style="color: #10b981;"><?php echo htmlspecialchars($o['latest']); ?></code></td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+
+            <?php if (!empty($dep_npm['errors'])): ?>
+                <?php foreach ($dep_npm['errors'] as $err): ?>
+                <p style="color: #F59E0B; font-size: 12px; margin-top: 8px;"><i class="fas fa-exclamation-triangle"></i> <?php echo htmlspecialchars($err); ?></p>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        <?php endif; ?>
+    </div>
+</div>
+
+<!-- Composer Dependencies Section -->
+<div class="card" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h3><i class="fab fa-php" style="color: #777bb3;"></i> Composer / PHP Dependencies</h3>
+    </div>
+    <div class="card-body">
+        <?php if (!$dep_composer || !$dep_composer['available']): ?>
+            <p style="color: var(--text-muted, #64748b); font-size: 13px; margin: 0;">
+                <i class="fas fa-info-circle"></i>
+                <?php echo htmlspecialchars(implode('. ', $dep_composer['errors'] ?? ['No Composer dependencies detected.'])); ?>
+            </p>
+        <?php else: ?>
+            <?php if (!empty($dep_composer['declared_packages'])): ?>
+                <p style="color: var(--text-muted, #64748b); font-size: 13px; margin: 0 0 12px;">
+                    <strong><?php echo count($dep_composer['declared_packages']); ?></strong> composer manifest(s) found
+                </p>
+            <?php endif; ?>
+
+            <?php if (!empty($dep_composer['vulnerabilities'])): ?>
+                <div class="dep-section-title"><i class="fas fa-exclamation-triangle" style="color: #ef4444;"></i> Vulnerabilities (<?php echo count($dep_composer['vulnerabilities']); ?>)</div>
+                <ul class="dep-package-list">
+                    <?php foreach ($dep_composer['vulnerabilities'] as $v): ?>
+                    <li>
+                        <strong><?php echo htmlspecialchars($v['package'] ?? ''); ?></strong>
+                        <span style="color: var(--text-muted, #64748b);"><?php echo htmlspecialchars($v['title'] ?? ''); ?></span>
+                        <?php if (!empty($v['cve'])): ?>
+                            <span style="color: #F59E0B; font-size: 11px;"><?php echo htmlspecialchars($v['cve']); ?></span>
+                        <?php endif; ?>
+                    </li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php else: ?>
+                <p style="color: #10b981; font-size: 13px; margin: 8px 0 0;"><i class="fas fa-check-circle"></i> No known vulnerabilities found.</p>
+            <?php endif; ?>
+
+            <?php if (!empty($dep_composer['errors'])): ?>
+                <?php foreach ($dep_composer['errors'] as $err): ?>
+                <p style="color: #F59E0B; font-size: 12px; margin-top: 8px;"><i class="fas fa-exclamation-triangle"></i> <?php echo htmlspecialchars($err); ?></p>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        <?php endif; ?>
+    </div>
+</div>
+
+<!-- Security Scan History -->
+<div class="card">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <h3><i class="fas fa-history"></i> Security Scan History</h3>
+        <p style="font-size: 12px; color: var(--text-muted, #64748b); margin: 0;">
+            Automated scans run every Sunday at 2 AM. <?php if ($dep_summary): ?>Last dependency check: <?php echo htmlspecialchars($dep_summary['checked_at']); ?><?php endif; ?>
+        </p>
+    </div>
+    <div class="card-body" style="overflow-x: auto;">
+        <?php if (empty($security_scans)): ?>
+            <div style="text-align: center; padding: 40px 20px; color: var(--text-muted, #64748b);">
+                <i class="fas fa-search" style="font-size: 32px; display: block; margin-bottom: 12px; opacity: 0.5;"></i>
+                <p style="margin: 0; font-size: 14px;">No security scan records found. Scans run automatically every Sunday at 2 AM.</p>
+            </div>
+        <?php else: ?>
+            <table class="log-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Findings</th>
+                        <th>Duration</th>
+                        <th>Performed By</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($security_scans as $scan): ?>
+                    <tr class="scan-history-row">
+                        <td><?php echo date('M j, Y g:ia', strtotime($scan['scan_date'])); ?></td>
+                        <td><?php echo htmlspecialchars($scan['scan_type'] ?? 'vulnerability'); ?></td>
+                        <td>
+                            <span class="status-pill <?php echo htmlspecialchars($scan['status'] ?? 'info'); ?>">
+                                <?php echo htmlspecialchars(ucfirst($scan['status'] ?? 'unknown')); ?>
+                            </span>
+                        </td>
+                        <td>
+                            <strong style="color: <?php echo ($scan['findings_count'] ?? 0) > 0 ? '#ef4444' : '#10b981'; ?>;">
+                                <?php echo (int)($scan['findings_count'] ?? 0); ?>
+                            </strong>
+                        </td>
+                        <td><?php echo ($scan['duration_seconds'] ?? 0) > 0 ? $scan['duration_seconds'] . 's' : '—'; ?></td>
+                        <td><?php echo htmlspecialchars($scan['performer_name'] ?: 'System (Cron)'); ?></td>
+                        <td>
+                            <?php if (!empty($scan['findings_data'])): ?>
+                                <span class="findings-toggle" onclick="toggleFindings(this)">View</span>
+                                <div class="findings-detail"><pre style="margin:0;white-space:pre-wrap;color:var(--text,#94a3b8);"><?php echo htmlspecialchars($scan['findings_data']); ?></pre></div>
+                            <?php else: ?>
+                                —
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+
+            <?php if ($security_scans_total_pages > 1): ?>
+            <div class="pagination-bar">
+                <div class="pagination-info">
+                    Showing <?php echo $offset + 1; ?>–<?php echo min($offset + $per_page, $security_scans_total); ?> of <?php echo number_format($security_scans_total); ?> scans
+                </div>
+                <div class="pagination-links">
+                    <?php for ($i = 1; $i <= min($security_scans_total_pages, 10); $i++): ?>
+                    <a href="?page=admin_security&tab=security_audit&p=<?php echo $i; ?>" class="<?php echo $page_num === $i ? 'active' : ''; ?>"><?php echo $i; ?></a>
+                    <?php endfor; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+        <?php endif; ?>
+    </div>
+</div>
+
+<script>
+function toggleFindings(el) {
+    var detail = el.nextElementSibling;
+    if (detail) {
+        detail.classList.toggle('show');
+        el.textContent = detail.classList.contains('show') ? 'Hide' : 'View';
+    }
 }
 </script>
 

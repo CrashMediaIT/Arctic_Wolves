@@ -55,10 +55,11 @@ $sessions = $pdo->query("
     </div>
 
     <?php if (isset($_GET['status'])): ?>
-        <div class="alert alert-<?php echo $_GET['status'] === 'success' ? 'success' : 'error'; ?>">
+        <?php $pkg_status = $_GET['status'] === 'success' ? 'success' : 'error'; ?>
+        <div class="alert alert-<?php echo $pkg_status; ?>">
             <?php 
-            if ($_GET['status'] === 'success') {
-                echo $_GET['action'] === 'delete' ? 'Package deleted successfully!' : 'Package saved successfully!';
+            if ($pkg_status === 'success') {
+                echo ($_GET['action'] ?? '') === 'delete' ? 'Package deleted successfully!' : 'Package saved successfully!';
             } else {
                 echo 'An error occurred. Please try again.';
             }

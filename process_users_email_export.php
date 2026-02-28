@@ -17,6 +17,13 @@ if ($user_role !== 'admin') {
     exit('Access denied');
 }
 
+// Validate CSRF token for export requests
+$csrf_token = $_GET['csrf_token'] ?? $_POST['csrf_token'] ?? '';
+if (empty($csrf_token) || !isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $csrf_token)) {
+    http_response_code(403);
+    exit('Invalid or missing CSRF token');
+}
+
 try {
     $stmt = $pdo->prepare("
         SELECT u.first_name, u.last_name, u.email, u.role, u.created_at

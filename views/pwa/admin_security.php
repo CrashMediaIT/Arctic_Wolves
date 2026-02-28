@@ -4,6 +4,8 @@
  * Purpose-built for mobile phones, not a desktop adaptation.
  */
 
+require_once __DIR__ . '/../../admin/dependency_checker.php';
+
 if (!$isAdmin) {
     echo '<div style="padding:40px 20px;text-align:center;color:#EF4444;font-family:Inter,sans-serif;"><i class="fas fa-lock" style="font-size:32px;display:block;margin-bottom:12px;"></i>Admin access required</div>';
     return;
@@ -25,6 +27,14 @@ try {
     $stmt->execute();
     $recentFailed = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { /* silent */ }
+
+// Dependency audit data
+$pwaDependencyResults = null;
+try {
+    $checker = new DependencyChecker(dirname(dirname(__DIR__)));
+    $pwaDependencyResults = $checker->runAllChecks();
+} catch (Exception $e) { /* silent */ }
+$pwaDepSummary = $pwaDependencyResults['summary'] ?? null;
 
 function mSecTimeAgo($datetime) {
     $ts = strtotime($datetime);
@@ -102,5 +112,49 @@ function mSecTimeAgo($datetime) {
             </div>
         </div>
         <?php endforeach; ?>
+    <?php endif; ?>
+
+    <!-- Dependency Audit Section -->
+    <div class="m-security-section"><i class="fas fa-magnifying-glass-chart"></i> Dependency Audit</div>
+
+    <?php if ($pwaDepSummary): ?>
+    <div class="m-security-kpis">
+        <div class="m-security-kpi">
+            <div class="m-security-kpi-val" style="color:<?= ($pwaDepSummary['status'] === 'critical') ? '#EF4444' : (($pwaDepSummary['status'] === 'warning') ? '#F59E0B' : '#10B981') ?>;">
+                <?= htmlspecialchars(ucfirst($pwaDepSummary['status'])) ?>
+            </div>
+            <div class="m-security-kpi-label">Status</div>
+        </div>
+        <div class="m-security-kpi">
+            <div class="m-security-kpi-val" style="color:<?= ($pwaDepSummary['total_vulnerabilities'] > 0) ? '#EF4444' : '#10B981' ?>;">
+                <?= (int)$pwaDepSummary['total_vulnerabilities'] ?>
+            </div>
+            <div class="m-security-kpi-label">Vulnerabilities</div>
+        </div>
+    </div>
+
+    <?php if (!empty($pwaDependencyResults['npm']['vulnerabilities'])): ?>
+        <?php foreach (array_slice($pwaDependencyResults['npm']['vulnerabilities'], 0, 5) as $v): ?>
+        <div class="m-security-fail">
+            <div class="m-security-fail-icon" style="background:rgba(239,68,68,0.15);color:#EF4444;"><i class="fas fa-bug"></i></div>
+            <div class="m-security-fail-body">
+                <div class="m-security-fail-user"><?= htmlspecialchars($v['package'] ?? '') ?></div>
+                <div class="m-security-fail-meta">
+                    <?= htmlspecialchars($v['severity'] ?? '') ?> · <?= htmlspecialchars($v['title'] ?? '') ?>
+                </div>
+            </div>
+        </div>
+        <?php endforeach; ?>
+    <?php else: ?>
+        <div class="m-empty-state">
+            <i class="fas fa-shield-alt" style="color:#10B981;"></i>
+            <p>No dependency vulnerabilities found</p>
+        </div>
+    <?php endif; ?>
+    <?php else: ?>
+        <div class="m-empty-state">
+            <i class="fas fa-info-circle"></i>
+            <p>Dependency audit unavailable</p>
+        </div>
     <?php endif; ?>
 </div>
