@@ -177,19 +177,14 @@ endif;
     document.getElementById('mUploadForm').addEventListener('submit', function(e) {
         e.preventDefault();
         if (!blob) return;
-        var formData = new FormData();
-        formData.append('action', 'athlete_upload_video');
-        formData.append('video_file', blob, 'drill_video.webm');
-        formData.append('title', document.getElementById('mVideoTitle').value);
-        formData.append('video_category', 'drill');
+
         var csrfInput = this.querySelector('input[name="csrf_token"]');
-        if (csrfInput) formData.append('csrf_token', csrfInput.value);
+        var csrfToken = csrfInput ? csrfInput.value : '';
         var btn = document.getElementById('mBtnUpload');
+        var statusEl = document.getElementById('mUploadStatus');
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
 
-        // Create progress bar
-        var statusEl = document.getElementById('mUploadStatus');
         var progressWrap = document.createElement('div');
         progressWrap.style.cssText = 'width:100%;height:8px;background:#2D2D3F;border-radius:4px;margin-top:8px;overflow:hidden;';
         var progressBar = document.createElement('div');
@@ -197,46 +192,114 @@ endif;
         progressWrap.appendChild(progressBar);
         statusEl.parentNode.insertBefore(progressWrap, statusEl.nextSibling);
 
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', 'process_video.php', true);
+        // Step 1: get presigned URL
+        var formMeta = new FormData();
+        formMeta.append('action', 'get_video_upload_url');
+        formMeta.append('upload_type', 'athlete_video');
+        formMeta.append('csrf_token', csrfToken);
+        formMeta.append('title', document.getElementById('mVideoTitle').value);
+        formMeta.append('video_category', 'drill');
+        formMeta.append('file_name', 'drill_video.webm');
+        formMeta.append('file_size', blob.size);
+        formMeta.append('file_type', blob.type || 'video/webm');
 
-        xhr.upload.onprogress = function(ev) {
-            if (ev.lengthComputable) {
-                var pct = Math.round((ev.loaded / ev.total) * 100);
-                progressBar.style.width = pct + '%';
-                statusEl.textContent = pct < 100 ? 'Uploading... ' + pct + '%' : 'Processing...';
-            }
-        };
+        statusEl.textContent = 'Requesting upload URL...';
 
-        xhr.onload = function() {
-            try {
-                var data = JSON.parse(xhr.responseText);
-                if (data.success) {
+        fetch('process_video.php', { method: 'POST', body: formMeta })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.success) throw new Error(data.error || 'Failed to get upload URL');
+                var presignedUrl = data.presigned_url;
+                var contentType = data.content_type || blob.type || 'video/webm';
+                var uploadNonce = data.upload_nonce;
+
+                statusEl.textContent = 'Uploading to cloud storage...';
+
+                // Step 2: PUT directly to RustFS
+                return new Promise(function(resolve, reject) {
+                    var xhr = new XMLHttpRequest();
+                    xhr.open('PUT', presignedUrl, true);
+                    xhr.setRequestHeader('Content-Type', contentType);
+                    xhr.upload.onprogress = function(ev) {
+                        if (ev.lengthComputable) {
+                            var pct = Math.round((ev.loaded / ev.total) * 100);
+                            progressBar.style.width = pct + '%';
+                            statusEl.textContent = pct < 100 ? 'Uploading... ' + pct + '%' : 'Finalizing...';
+                        }
+                    };
+                    xhr.onload = function() {
+                        if (xhr.status >= 200 && xhr.status < 300) resolve(uploadNonce);
+                        else reject(new Error('Cloud upload failed (HTTP ' + xhr.status + ')'));
+                    };
+                    xhr.onerror = function() { reject(new Error('Network error')); };
+                    xhr.send(blob);
+                });
+            })
+            .then(function(uploadNonce) {
+                // Step 3: confirm upload
+                statusEl.textContent = 'Confirming upload...';
+                var confirmData = new FormData();
+                confirmData.append('action', 'confirm_video_upload');
+                confirmData.append('csrf_token', csrfToken);
+                confirmData.append('upload_nonce', uploadNonce);
+                return fetch('process_video.php', { method: 'POST', body: confirmData })
+                    .then(function(r) { return r.json(); });
+            })
+            .then(function(result) {
+                if (result.success) {
                     statusEl.textContent = 'Upload complete!';
                     btn.disabled = true;
                     btn.innerHTML = '<i class="fas fa-cloud-arrow-up"></i> Upload Video';
                     progressWrap.remove();
                     setTimeout(function() { location.reload(); }, 500);
-                    return;
+                } else {
+                    throw new Error(result.error || 'Confirmation failed');
                 }
-                statusEl.textContent = data.message || 'Upload failed';
-                btn.disabled = false;
-            } catch(err) {
-                statusEl.textContent = 'Upload failed. Please try again.';
-                btn.disabled = false;
-            }
-            btn.innerHTML = '<i class="fas fa-cloud-arrow-up"></i> Upload Video';
-            progressWrap.remove();
-        };
+            })
+            .catch(function(err) {
+                // Fall back to legacy server-side upload
+                console.warn('Direct upload failed, falling back:', err.message);
+                statusEl.textContent = 'Retrying via server...';
+                progressBar.style.width = '0%';
 
-        xhr.onerror = function() {
-            statusEl.textContent = 'Upload failed. Please try again.';
-            btn.innerHTML = '<i class="fas fa-cloud-arrow-up"></i> Upload Video';
-            btn.disabled = false;
-            progressWrap.remove();
-        };
-
-        xhr.send(formData);
+                var legacyData = new FormData();
+                legacyData.append('action', 'athlete_upload_video');
+                legacyData.append('video_file', blob, 'drill_video.webm');
+                legacyData.append('title', document.getElementById('mVideoTitle').value);
+                legacyData.append('video_category', 'drill');
+                if (csrfInput) legacyData.append('csrf_token', csrfInput.value);
+                var legacyXhr = new XMLHttpRequest();
+                legacyXhr.open('POST', 'process_video.php', true);
+                legacyXhr.upload.onprogress = function(ev) {
+                    if (ev.lengthComputable) {
+                        var pct = Math.round((ev.loaded / ev.total) * 100);
+                        progressBar.style.width = pct + '%';
+                        statusEl.textContent = pct < 100 ? 'Uploading... ' + pct + '%' : 'Processing...';
+                    }
+                };
+                legacyXhr.onload = function() {
+                    try {
+                        var data = JSON.parse(legacyXhr.responseText);
+                        if (data.success) {
+                            statusEl.textContent = 'Upload complete!';
+                            progressWrap.remove();
+                            setTimeout(function() { location.reload(); }, 500);
+                            return;
+                        }
+                        statusEl.textContent = data.message || 'Upload failed';
+                    } catch(parseErr) { statusEl.textContent = 'Upload failed.'; }
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-cloud-arrow-up"></i> Upload Video';
+                    progressWrap.remove();
+                };
+                legacyXhr.onerror = function() {
+                    statusEl.textContent = 'Upload failed. Please try again.';
+                    btn.innerHTML = '<i class="fas fa-cloud-arrow-up"></i> Upload Video';
+                    btn.disabled = false;
+                    progressWrap.remove();
+                };
+                legacyXhr.send(legacyData);
+            });
     });
 })();
 </script>

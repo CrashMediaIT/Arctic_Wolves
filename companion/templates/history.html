@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arctic Wolves — Job History</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-main: #0A0A0F;
+            --bg-card: #16161F;
+            --primary: #6B46C1;
+            --primary-hover: #7C3AED;
+            --accent: #8B5CF6;
+            --text-white: #FFFFFF;
+            --text-dim: #A8A8B8;
+            --border: #2D2D3F;
+            --container-padding: 24px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+        body { background: var(--bg-main); color: var(--text-white); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+
+        header {
+            background: rgba(6, 8, 11, 0.95);
+            backdrop-filter: blur(12px);
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 2000;
+        }
+        .container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 var(--container-padding); }
+        .nav-flex { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
+        .logo-text { font-weight: 900; font-size: 24px; letter-spacing: -1px; color: #fff; text-decoration: none; }
+        .logo-text span { color: var(--primary); }
+        .header-affiliation { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; margin-top: -4px; }
+        .nav-menu { display: flex; align-items: center; gap: 25px; }
+        .nav-menu a { color: #fff; text-decoration: none; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; transition: color 0.2s; }
+        .nav-menu a:hover { color: var(--primary); }
+        .nav-menu a.active { color: var(--primary); }
+
+        .section { padding: 40px 0; }
+        .section-header { margin-bottom: 30px; }
+        .section-header h2 { font-size: 1.5rem; font-weight: 800; margin-bottom: 4px; }
+        .eyebrow { color: var(--primary); text-transform: uppercase; font-size: 11px; font-weight: 900; letter-spacing: 2px; margin-bottom: 6px; display: block; }
+
+        .status-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-size: 11px; font-weight: 800; text-transform: uppercase;
+            padding: 6px 14px; border-radius: 4px;
+        }
+        .status-badge.ok { color: #22c55e; background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.2); }
+        .status-badge.error { color: #ef4444; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.2); }
+        .status-badge.warn { color: #f59e0b; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.2); }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .status-badge.ok .status-dot { background: #22c55e; box-shadow: 0 0 8px #22c55e; }
+        .status-badge.error .status-dot { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
+        .status-badge.warn .status-dot { background: #f59e0b; box-shadow: 0 0 8px #f59e0b; }
+
+        .jobs-table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+        .jobs-table th, .jobs-table td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 13px; }
+        .jobs-table th { color: var(--text-dim); font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 1px; }
+        .jobs-table tr:hover { background: rgba(107, 70, 193, 0.04); }
+        .job-status { padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: 800; text-transform: uppercase; }
+        .job-status.completed { color: #22c55e; background: rgba(34, 197, 94, 0.1); }
+        .job-status.running { color: var(--accent); background: rgba(139, 92, 246, 0.1); }
+        .job-status.queued { color: #f59e0b; background: rgba(245, 158, 11, 0.1); }
+        .job-status.failed { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+        .job-status.downloading, .job-status.transcoding, .job-status.uploading { color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
+        .empty-state { color: var(--text-dim); text-align: center; padding: 40px; font-size: 14px; }
+
+        .btn-secondary {
+            color: #fff; border: 1px solid var(--border); padding: 10px 24px;
+            text-decoration: none; font-weight: 800; border-radius: 4px;
+            display: inline-block; transition: 0.3s ease; background: transparent;
+            cursor: pointer; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .btn-secondary:hover { border-color: var(--accent); transform: translateY(-2px); }
+        .btn-sm { padding: 6px 14px; font-size: 11px; }
+
+        .filter-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 20px; }
+        .filter-btn {
+            padding: 6px 16px; border-radius: 4px; border: 1px solid var(--border);
+            background: transparent; color: var(--text-dim); font-size: 12px;
+            font-weight: 700; cursor: pointer; transition: 0.2s;
+        }
+        .filter-btn:hover { border-color: var(--accent); color: #fff; }
+        .filter-btn.active { border-color: var(--primary); color: var(--primary); background: rgba(107, 70, 193, 0.1); }
+
+        .site-footer {
+            background: #040608; padding: 24px 0;
+            border-top: 1px solid var(--border);
+            color: #475569; font-size: 11px; font-weight: 800;
+            text-transform: uppercase; letter-spacing: 1px;
+            margin-top: 60px;
+        }
+        .footer-flex { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+        .footer-flex a { color: var(--text-dim); text-decoration: none; font-size: 12px; }
+
+        @media (max-width: 768px) {
+            .nav-flex { flex-direction: column; gap: 12px; }
+            .nav-menu { gap: 16px; width: 100%; justify-content: center; }
+            .jobs-table { font-size: 12px; }
+            .jobs-table th, .jobs-table td { padding: 8px; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="container">
+            <div class="nav-flex">
+                <div>
+                    <a href="/" class="logo-text">Arctic<span>Wolves</span></a>
+                    <div class="header-affiliation">Video Companion Server</div>
+                </div>
+                <nav class="nav-menu">
+                    <a href="/">Dashboard</a>
+                    <a href="/history" class="active">History</a>
+                    <a href="/settings">Settings</a>
+                    <span id="health-badge" class="status-badge warn"><span class="status-dot"></span> Loading</span>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <section class="section">
+        <div class="container">
+            <div class="section-header" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px;">
+                <div>
+                    <span class="eyebrow">Processing</span>
+                    <h2>Job History</h2>
+                </div>
+                <button class="btn-secondary btn-sm" onclick="refreshJobs()">↻ Refresh</button>
+            </div>
+
+            <div class="filter-bar">
+                <button class="filter-btn active" data-filter="all" onclick="setFilter('all')">All</button>
+                <button class="filter-btn" data-filter="completed" onclick="setFilter('completed')">Completed</button>
+                <button class="filter-btn" data-filter="failed" onclick="setFilter('failed')">Failed</button>
+                <button class="filter-btn" data-filter="active" onclick="setFilter('active')">Active</button>
+            </div>
+
+            <div style="overflow-x:auto;">
+                <table class="jobs-table">
+                    <thead>
+                        <tr>
+                            <th>Job ID</th>
+                            <th>Description</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                            <th>Duration</th>
+                        </tr>
+                    </thead>
+                    <tbody id="jobs-body">
+                        <tr><td colspan="5" class="empty-state">Loading jobs…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-flex">
+                <span>Arctic Wolves Video Companion &copy; 2025 Crash Media IT</span>
+                <span><a href="/logout">Logout</a></span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        const API_BASE = window.location.origin;
+        let currentFilter = 'all';
+
+        function getApiKey() {
+            return localStorage.getItem('companion_api_key') || '';
+        }
+
+        function apiHeaders() {
+            const key = getApiKey();
+            const h = { 'Content-Type': 'application/json' };
+            if (key) h['X-API-Key'] = key;
+            return h;
+        }
+
+        function formatDuration(startTs, endTs) {
+            if (!startTs || !endTs) return '—';
+            var secs = Math.round(endTs - startTs);
+            if (secs < 60) return secs + 's';
+            if (secs < 3600) return Math.floor(secs / 60) + 'm ' + (secs % 60) + 's';
+            return Math.floor(secs / 3600) + 'h ' + Math.floor((secs % 3600) / 60) + 'm';
+        }
+
+        function setFilter(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-btn').forEach(function(btn) {
+                btn.classList.toggle('active', btn.dataset.filter === filter);
+            });
+            refreshJobs();
+        }
+
+        async function refreshJobs() {
+            try {
+                const res = await fetch(API_BASE + '/api/jobs', { headers: apiHeaders() });
+                if (!res.ok) return;
+                let jobsList = await res.json();
+
+                if (currentFilter === 'completed') {
+                    jobsList = jobsList.filter(function(j) { return j.status === 'completed'; });
+                } else if (currentFilter === 'failed') {
+                    jobsList = jobsList.filter(function(j) { return j.status === 'failed'; });
+                } else if (currentFilter === 'active') {
+                    jobsList = jobsList.filter(function(j) { return ['queued', 'running', 'downloading', 'transcoding', 'uploading'].indexOf(j.status) !== -1; });
+                }
+
+                const tbody = document.getElementById('jobs-body');
+                if (!jobsList.length) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No jobs found</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = jobsList.map(function(j) {
+                    var created = j.created_at ? new Date(j.created_at * 1000).toLocaleString() : '—';
+                    var duration = formatDuration(j.started_at, j.finished_at);
+                    var shortId = (j.id || '').substring(0, 8);
+                    return '<tr>' +
+                        '<td style="font-family:monospace;font-size:11px;">' + shortId + '…</td>' +
+                        '<td>' + (j.description || '—') + '</td>' +
+                        '<td><span class="job-status ' + j.status + '">' + j.status + '</span></td>' +
+                        '<td>' + created + '</td>' +
+                        '<td>' + duration + '</td>' +
+                        '</tr>';
+                }).join('');
+            } catch (e) {
+                document.getElementById('jobs-body').innerHTML = '<tr><td colspan="5" class="empty-state">Failed to load jobs</td></tr>';
+            }
+        }
+
+        async function refreshHealth() {
+            try {
+                const res = await fetch(API_BASE + '/api/health', { headers: apiHeaders() });
+                if (!res.ok) return;
+                const badge = document.getElementById('health-badge');
+                badge.className = 'status-badge ok';
+                badge.innerHTML = '<span class="status-dot"></span> Healthy';
+            } catch (e) {
+                const badge = document.getElementById('health-badge');
+                badge.className = 'status-badge error';
+                badge.innerHTML = '<span class="status-dot"></span> Offline';
+            }
+        }
+
+        refreshHealth();
+        refreshJobs();
+        setInterval(refreshHealth, 15000);
+        setInterval(refreshJobs, 10000);
+    </script>
+</body>
+</html>

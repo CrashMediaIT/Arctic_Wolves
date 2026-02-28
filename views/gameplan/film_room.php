@@ -575,7 +575,7 @@ document.addEventListener('DOMContentLoaded', function() {
         fileArea.style.display = 'none';
     }
 
-    // AJAX upload handler — avoids 504 timeout on large file uploads
+    // AJAX upload handler — direct-to-RustFS via presigned URL (3-step flow)
     var uploadForm = document.getElementById('vrUploadForm');
     if (uploadForm) {
         uploadForm.addEventListener('submit', function(e) {
@@ -591,55 +591,98 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
+            var videoFile = fileInput.files[0];
             submitBtn.disabled = true;
             overlay.style.display = 'block';
             bar.style.width = '0%';
             percent.textContent = '0%';
-            status.textContent = 'Uploading video...';
+            status.textContent = 'Requesting upload URL...';
 
-            var formData = new FormData(uploadForm);
-            var xhr = new XMLHttpRequest();
-            xhr.open('POST', uploadForm.action, true);
-            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            var csrfInput = uploadForm.querySelector('[name="csrf_token"]');
+            var csrfToken = csrfInput ? csrfInput.value : '';
+            var formMeta = new FormData();
+            formMeta.append('action', 'get_video_upload_url');
+            formMeta.append('upload_type', 'video_source');
+            formMeta.append('csrf_token', csrfToken);
+            formMeta.append('file_name', videoFile.name);
+            formMeta.append('file_size', videoFile.size);
+            formMeta.append('file_type', videoFile.type || 'video/mp4');
+            var camAngle = uploadForm.querySelector('[name="camera_angle"]');
+            if (camAngle) formMeta.append('camera_angle', camAngle.value);
+            var gameId = uploadForm.querySelector('[name="game_id"]');
+            if (gameId && gameId.value) formMeta.append('game_id', gameId.value);
+            var teamId = uploadForm.querySelector('[name="team_id"]');
+            if (teamId && teamId.value) formMeta.append('team_id', teamId.value);
 
-            xhr.upload.onprogress = function(ev) {
-                if (ev.lengthComputable) {
-                    var pct = Math.round((ev.loaded / ev.total) * 100);
-                    bar.style.width = pct + '%';
-                    percent.textContent = pct + '%';
-                    status.textContent = pct < 100 ? 'Uploading video... ' + pct + '%' : 'Processing upload...';
-                }
-            };
-
-            xhr.onload = function() {
-                try {
-                    var resp = JSON.parse(xhr.responseText);
-                    if (resp.success) {
-                        bar.style.width = '100%';
-                        percent.textContent = '100%';
+            fetch('/process_video.php', { method: 'POST', body: formMeta })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (!data.success) throw new Error(data.error || 'Failed to get upload URL');
+                    var presignedUrl = data.presigned_url;
+                    var contentType = data.content_type || videoFile.type || 'application/octet-stream';
+                    var uploadNonce = data.upload_nonce;
+                    status.textContent = 'Uploading to cloud storage...';
+                    return new Promise(function(resolve, reject) {
+                        var xhr = new XMLHttpRequest();
+                        xhr.open('PUT', presignedUrl, true);
+                        xhr.setRequestHeader('Content-Type', contentType);
+                        xhr.upload.onprogress = function(ev) {
+                            if (ev.lengthComputable) {
+                                var pct = Math.round((ev.loaded / ev.total) * 100);
+                                bar.style.width = pct + '%';
+                                percent.textContent = pct + '%';
+                                status.textContent = pct < 100 ? 'Uploading to cloud storage... ' + pct + '%' : 'Finalizing upload...';
+                            }
+                        };
+                        xhr.onload = function() {
+                            if (xhr.status >= 200 && xhr.status < 300) resolve(uploadNonce);
+                            else reject(new Error('Cloud upload failed (HTTP ' + xhr.status + ')'));
+                        };
+                        xhr.onerror = function() { reject(new Error('Network error during upload')); };
+                        xhr.send(videoFile);
+                    });
+                })
+                .then(function(uploadNonce) {
+                    status.textContent = 'Confirming upload...';
+                    var confirmData = new FormData();
+                    confirmData.append('action', 'confirm_video_upload');
+                    confirmData.append('csrf_token', csrfToken);
+                    confirmData.append('upload_nonce', uploadNonce);
+                    return fetch('/process_video.php', { method: 'POST', body: confirmData })
+                        .then(function(r) { return r.json(); });
+                })
+                .then(function(result) {
+                    if (result.success) {
+                        bar.style.width = '100%'; percent.textContent = '100%';
                         status.textContent = 'Upload complete! Redirecting...';
-                        window.location.href = resp.redirect || '/gameplan.php?page=film_room&tab=upload&success=source_uploaded';
-                    } else {
-                        status.textContent = 'Upload failed: ' + (resp.error || 'Unknown error');
-                        submitBtn.disabled = false;
-                    }
-                } catch (parseErr) {
-                    status.textContent = 'Upload failed: Server returned an unexpected response.';
-                    submitBtn.disabled = false;
-                }
-            };
-
-            xhr.onerror = function() {
-                status.textContent = 'Upload failed: Network error. Please check your connection and try again.';
-                submitBtn.disabled = false;
-            };
-
-            xhr.ontimeout = function() {
-                status.textContent = 'Upload timed out. The file may be too large — please try again.';
-                submitBtn.disabled = false;
-            };
-
-            xhr.send(formData);
+                        window.location.href = result.redirect || '/gameplan.php?page=film_room&tab=upload&success=source_uploaded';
+                    } else { throw new Error(result.error || 'Confirmation failed'); }
+                })
+                .catch(function(err) {
+                    console.warn('Direct upload failed, falling back:', err.message);
+                    status.textContent = 'Retrying via server...';
+                    bar.style.width = '0%'; percent.textContent = '0%';
+                    var legacyData = new FormData(uploadForm);
+                    var legacyXhr = new XMLHttpRequest();
+                    legacyXhr.open('POST', uploadForm.action, true);
+                    legacyXhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+                    legacyXhr.upload.onprogress = function(ev) {
+                        if (ev.lengthComputable) {
+                            var pct = Math.round((ev.loaded / ev.total) * 100);
+                            bar.style.width = pct + '%'; percent.textContent = pct + '%';
+                            status.textContent = pct < 100 ? 'Uploading video... ' + pct + '%' : 'Processing upload...';
+                        }
+                    };
+                    legacyXhr.onload = function() {
+                        try {
+                            var resp = JSON.parse(legacyXhr.responseText);
+                            if (resp.success) { bar.style.width = '100%'; percent.textContent = '100%'; status.textContent = 'Upload complete! Redirecting...'; window.location.href = resp.redirect || '/gameplan.php?page=film_room&tab=upload&success=source_uploaded'; }
+                            else { status.textContent = 'Upload failed: ' + (resp.error || 'Unknown error'); submitBtn.disabled = false; }
+                        } catch (parseErr) { status.textContent = 'Upload failed: Server error.'; submitBtn.disabled = false; }
+                    };
+                    legacyXhr.onerror = function() { status.textContent = 'Upload failed: Network error.'; submitBtn.disabled = false; };
+                    legacyXhr.send(legacyData);
+                });
         });
     }
 

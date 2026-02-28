@@ -858,7 +858,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Video upload with progress bar — matches working drill video upload pattern
+    // Video upload — direct-to-RustFS via presigned URL (3-step flow)
+    // Bypasses PHP file-size limits so large videos upload reliably.
     var uploadForm = document.getElementById('video-upload-form');
     if (uploadForm) {
         uploadForm.addEventListener('submit', function(e) {
@@ -880,66 +881,135 @@ document.addEventListener('DOMContentLoaded', function() {
             submitBtn.disabled = true;
             bar.style.width = '0%';
             percent.textContent = '0%';
-            status.textContent = 'Uploading video...';
+            status.textContent = 'Requesting upload URL...';
 
-            // Build FormData manually — matches the working drill video pattern
-            var formData = new FormData();
-            formData.append('action', 'athlete_upload_video');
-            formData.append('video_file', videoFile);
-            formData.append('title', document.getElementById('video_title').value);
-            formData.append('video_category', document.getElementById('video_type').value);
+            // Collect form values
+            var csrfToken = uploadForm.querySelector('input[name="csrf_token"]')?.value || '';
+            var formMeta = new FormData();
+            formMeta.append('action', 'get_video_upload_url');
+            formMeta.append('upload_type', 'athlete_video');
+            formMeta.append('csrf_token', csrfToken);
+            formMeta.append('title', document.getElementById('video_title').value);
+            formMeta.append('video_category', document.getElementById('video_type').value);
             var descEl = document.getElementById('video_description');
-            if (descEl) formData.append('description', descEl.value);
-            var teamEl = document.getElementById('team_id');
-            if (teamEl && teamEl.value) formData.append('team_id', teamEl.value);
-            var csrfToken = uploadForm.querySelector('input[name="csrf_token"]');
-            if (csrfToken) formData.append('csrf_token', csrfToken.value);
+            if (descEl) formMeta.append('description', descEl.value);
+            formMeta.append('file_name', videoFile.name);
+            formMeta.append('file_size', videoFile.size);
+            formMeta.append('file_type', videoFile.type || 'video/mp4');
             var coachInput = uploadForm.querySelector('input[name="coach_id"]');
-            if (coachInput) formData.append('coach_id', coachInput.value);
+            if (coachInput && coachInput.value) formMeta.append('coach_id', coachInput.value);
+            var teamEl = document.getElementById('team_id');
+            if (teamEl && teamEl.value) formMeta.append('team_id', teamEl.value);
 
-            var xhr = new XMLHttpRequest();
-            xhr.open('POST', 'process_video.php', true);
+            // ---------- Step 1: get presigned URL ----------
+            fetch('process_video.php', { method: 'POST', body: formMeta })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (!data.success) throw new Error(data.error || 'Failed to get upload URL');
 
-            xhr.upload.onprogress = function(e) {
-                if (e.lengthComputable) {
-                    var pct = Math.round((e.loaded / e.total) * 100);
-                    bar.style.width = pct + '%';
-                    percent.textContent = pct + '%';
-                    if (pct < 100) {
-                        status.textContent = 'Uploading video... ' + pct + '%';
-                    } else {
-                        status.textContent = 'Saving to cloud storage...';
-                    }
-                }
-            };
+                    var presignedUrl = data.presigned_url;
+                    var contentType = data.content_type || videoFile.type || 'application/octet-stream';
+                    var uploadNonce = data.upload_nonce;
 
-            xhr.onload = function() {
-                try {
-                    var response = JSON.parse(xhr.responseText);
-                    if (response.success) {
+                    status.textContent = 'Uploading to cloud storage...';
+
+                    // ---------- Step 2: PUT file directly to RustFS ----------
+                    return new Promise(function(resolve, reject) {
+                        var xhr = new XMLHttpRequest();
+                        xhr.open('PUT', presignedUrl, true);
+                        xhr.setRequestHeader('Content-Type', contentType);
+
+                        xhr.upload.onprogress = function(ev) {
+                            if (ev.lengthComputable) {
+                                var pct = Math.round((ev.loaded / ev.total) * 100);
+                                bar.style.width = pct + '%';
+                                percent.textContent = pct + '%';
+                                if (pct < 100) {
+                                    status.textContent = 'Uploading to cloud storage... ' + pct + '%';
+                                } else {
+                                    status.textContent = 'Finalizing upload...';
+                                }
+                            }
+                        };
+
+                        xhr.onload = function() {
+                            if (xhr.status >= 200 && xhr.status < 300) {
+                                resolve(uploadNonce);
+                            } else {
+                                reject(new Error('Cloud upload failed (HTTP ' + xhr.status + ')'));
+                            }
+                        };
+                        xhr.onerror = function() { reject(new Error('Network error during upload')); };
+                        xhr.send(videoFile);
+                    });
+                })
+                .then(function(uploadNonce) {
+                    // ---------- Step 3: confirm upload ----------
+                    status.textContent = 'Confirming upload...';
+                    var confirmData = new FormData();
+                    confirmData.append('action', 'confirm_video_upload');
+                    confirmData.append('csrf_token', csrfToken);
+                    confirmData.append('upload_nonce', uploadNonce);
+
+                    return fetch('process_video.php', { method: 'POST', body: confirmData })
+                        .then(function(r) { return r.json(); });
+                })
+                .then(function(result) {
+                    if (result.success) {
                         bar.style.width = '100%';
                         percent.textContent = '100%';
                         status.textContent = 'Upload complete! Redirecting...';
-                        window.location.href = response.redirect || 'dashboard.php?page=coaches_reviews&success=video_uploaded';
+                        window.location.href = result.redirect || 'dashboard.php?page=coaches_reviews&success=video_uploaded';
                     } else {
+                        throw new Error(result.error || 'Confirmation failed');
+                    }
+                })
+                .catch(function(err) {
+                    // Fall back to legacy server-side upload if presigned flow fails
+                    console.warn('Direct upload failed, falling back to server upload:', err.message);
+                    status.textContent = 'Retrying via server...';
+                    bar.style.width = '0%';
+                    percent.textContent = '0%';
+
+                    var legacyData = new FormData(uploadForm);
+                    legacyData.set('action', 'athlete_upload_video');
+                    var legacyXhr = new XMLHttpRequest();
+                    legacyXhr.open('POST', uploadForm.action, true);
+                    legacyXhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+                    legacyXhr.upload.onprogress = function(ev) {
+                        if (ev.lengthComputable) {
+                            var pct = Math.round((ev.loaded / ev.total) * 100);
+                            bar.style.width = pct + '%';
+                            percent.textContent = pct + '%';
+                            status.textContent = pct < 100 ? 'Uploading video...' : 'Processing...';
+                        }
+                    };
+                    legacyXhr.onload = function() {
+                        try {
+                            var resp = JSON.parse(legacyXhr.responseText);
+                            if (resp.success) {
+                                bar.style.width = '100%';
+                                percent.textContent = '100%';
+                                status.textContent = 'Upload complete! Redirecting...';
+                                window.location.href = resp.redirect || 'dashboard.php?page=coaches_reviews&success=video_uploaded';
+                            } else {
+                                overlay.style.display = 'none';
+                                submitBtn.disabled = false;
+                                showToast('Upload failed: ' + (resp.error || 'Please try again.'), 'error');
+                            }
+                        } catch (parseErr) {
+                            overlay.style.display = 'none';
+                            submitBtn.disabled = false;
+                            showToast('Upload failed: Server error', 'error');
+                        }
+                    };
+                    legacyXhr.onerror = function() {
                         overlay.style.display = 'none';
                         submitBtn.disabled = false;
-                        showToast('Upload failed: ' + (response.error || response.message || 'Please try again.'), 'error');
-                    }
-                } catch (err) {
-                    overlay.style.display = 'none';
-                    submitBtn.disabled = false;
-                    showToast('Upload failed: ' + (xhr.statusText || 'Server error'), 'error');
-                }
-            };
-
-            xhr.onerror = function() {
-                overlay.style.display = 'none';
-                submitBtn.disabled = false;
-                showToast('Upload failed. Please check your connection and try again.', 'error');
-            };
-
-            xhr.send(formData);
+                        showToast('Upload failed. Please check your connection and try again.', 'error');
+                    };
+                    legacyXhr.send(legacyData);
+                });
         });
     }
 });
