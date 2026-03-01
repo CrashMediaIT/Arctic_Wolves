@@ -269,18 +269,9 @@ $allowed_pages = [
 
 $view_file = $allowed_pages[$page] ?? 'views/home.php';
 
-// Use mobile-native PWA views only for pages with genuinely mobile-optimized layouts.
-// All other pages use the full desktop views rendered inside the PWA shell so that
-// coaches, admins and athletes get 100% feature parity with the desktop experience.
-$pwa_only_pages = [
-    'home',
-    'front_desk_home',
-    'parent_home',
-];
-$pwa_view_file = 'views/pwa/' . $page . '.php';
-if (in_array($page, $pwa_only_pages) && file_exists(__DIR__ . '/' . $pwa_view_file)) {
-    $view_file = $pwa_view_file;
-}
+// Every page uses the same desktop view files as dashboard.php so that the PWA has
+// 100% feature parity.  The PWA shell (header, bottom-tab bar) and css/pwa.css handle
+// the mobile-friendly layout; no stripped-down view overrides are used.
 
 // Determine active tab
 $tab_home     = in_array($page, ['home', 'front_desk_home', 'parent_home']);
