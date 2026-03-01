@@ -24,10 +24,21 @@ if ($isAnyCoach) {
     $goalsUserId = (int)$_SESSION['viewing_athlete_id'];
 }
 
+// Get athlete info when viewing another athlete's goals
+$goalAthleteInfo = null;
+if ($goalsUserId !== $user_id) {
+    try {
+        $aiStmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
+        $aiStmt->execute([$goalsUserId]);
+        $goalAthleteInfo = decryptUserRow($aiStmt->fetch(PDO::FETCH_ASSOC));
+    } catch (PDOException $e) { $goalAthleteInfo = null; }
+}
+
 // Filter parameters
 $filterStatus = $_GET['status'] ?? 'all';
 $filterCategory = $_GET['cat'] ?? '';
 $filterTag = $_GET['tag'] ?? '';
+$filterGroupBy = $_GET['group_by'] ?? '';
 
 // Build query with filters
 $whereClauses = ['athlete_id = ?'];
@@ -59,6 +70,7 @@ $goals = [];
 $categories = [];
 $allTags = [];
 try {
+    $groupBySQL = $filterGroupBy === 'category' ? 'g.category ASC, ' : '';
     $stmt = $pdo->prepare("
         SELECT g.id, COALESCE(g.title, g.goal_title) as title, g.description, g.status,
                g.completion_percentage, g.target_date, g.category, g.tags,
@@ -66,7 +78,7 @@ try {
                (SELECT COUNT(*) FROM goal_steps WHERE goal_id = g.id AND is_completed = 1) as completed_steps
         FROM goals g
         WHERE $whereSQL
-        ORDER BY CASE g.status WHEN 'active' THEN 1 WHEN 'in_progress' THEN 1 WHEN 'completed' THEN 2 ELSE 3 END,
+        ORDER BY {$groupBySQL}CASE g.status WHEN 'active' THEN 1 WHEN 'in_progress' THEN 1 WHEN 'completed' THEN 2 ELSE 3 END,
                  g.created_at DESC
         LIMIT 50
     ");
@@ -97,6 +109,19 @@ foreach ($goals as $g) {
     } else {
         $activeGoals[] = $g;
     }
+}
+
+$groupedGoals = [];
+if ($filterGroupBy === 'category') {
+    foreach ($goals as $g) {
+        $cat = !empty($g['category']) ? $g['category'] : 'Uncategorized';
+        $groupedGoals[$cat][] = $g;
+    }
+    uksort($groupedGoals, function($a, $b) {
+        if ($a === 'Uncategorized') return 1;
+        if ($b === 'Uncategorized') return -1;
+        return strcasecmp($a, $b);
+    });
 }
 
 $canEdit = $isAnyCoach || $isAdmin || ($goalsUserId === $user_id);
@@ -345,6 +370,7 @@ $canDelete = $isAnyCoach || $isAdmin;
 }
 .m-detail-step-title { font-size: 13px; font-weight: 600; color: #fff; }
 .m-detail-step-done-info { font-size: 11px; color: #10B981; margin-top: 3px; }
+.m-detail-step-desc { font-size: 12px; color: #A8A8B8; margin-top: 2px; }
 
 /* Progress history */
 .m-detail-history { margin-top: 16px; padding-top: 14px; border-top: 1px solid #2D2D3F; }
@@ -368,6 +394,24 @@ $canDelete = $isAnyCoach || $isAdmin;
 
 /* Steps count in footer */
 .m-goal-steps-count { font-size: 11px; color: #6B6B7B; display: flex; align-items: center; gap: 4px; }
+
+/* Group-by category sections */
+.m-category-group { margin-bottom: 20px; }
+.m-category-header {
+    font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 10px;
+    padding: 8px 12px; border-radius: 8px;
+    background: rgba(107,70,193,0.1); border-left: 3px solid #6B46C1;
+    display: flex; align-items: center; gap: 8px;
+}
+.m-category-header i { color: #8B5CF6; font-size: 12px; }
+.m-category-count { font-size: 11px; color: #6B6B7B; margin-left: auto; font-weight: 400; }
+
+/* Athlete viewing banner */
+.m-viewing-banner {
+    font-size: 12px; color: #A8A8B8; padding: 8px 12px; margin-bottom: 10px;
+    background: rgba(107,70,193,0.08); border-radius: 8px; border: 1px solid #2D2D3F;
+}
+.m-viewing-banner strong { color: #8B5CF6; }
 </style>
 
 <div class="m-goals">
@@ -376,8 +420,12 @@ $canDelete = $isAnyCoach || $isAdmin;
         <p class="m-goals-sub"><?= count($activeGoals) ?> active · <?= count($completedGoals) ?> completed</p>
     </div>
 
+    <?php if ($goalAthleteInfo): ?>
+    <div class="m-viewing-banner">Viewing goals for <strong><?= htmlspecialchars(trim(($goalAthleteInfo['first_name'] ?? '') . ' ' . ($goalAthleteInfo['last_name'] ?? ''))) ?></strong></div>
+    <?php endif; ?>
+
     <?php if ($isAnyCoach && !empty($athletes)): ?>
-    <select class="m-athlete-select" onchange="mGoalSwitchAthlete(this.value)" aria-label="Select athlete">
+    <select class="m-athlete-select" id="mGoalAthleteSelect" aria-label="Select athlete">
         <option value="">-- Select Athlete --</option>
         <?php foreach ($athletes as $a): ?>
         <option value="<?= (int)$a['id'] ?>" <?= $goalsUserId === (int)$a['id'] ? 'selected' : '' ?>><?= htmlspecialchars($a['name']) ?></option>
@@ -387,12 +435,12 @@ $canDelete = $isAnyCoach || $isAdmin;
 
     <!-- Filters -->
     <div class="m-filters">
-        <button type="button" class="m-filter-btn <?= $filterStatus === 'all' ? 'm-filter-active' : '' ?>" onclick="mGoalFilter('all')">All</button>
-        <button type="button" class="m-filter-btn <?= $filterStatus === 'active' ? 'm-filter-active' : '' ?>" onclick="mGoalFilter('active')">Active</button>
-        <button type="button" class="m-filter-btn <?= $filterStatus === 'completed' ? 'm-filter-active' : '' ?>" onclick="mGoalFilter('completed')">Completed</button>
-        <button type="button" class="m-filter-btn <?= $filterStatus === 'archived' ? 'm-filter-active' : '' ?>" onclick="mGoalFilter('archived')">Archived</button>
+        <button type="button" class="m-filter-btn <?= $filterStatus === 'all' ? 'm-filter-active' : '' ?>" data-filter-status="all">All</button>
+        <button type="button" class="m-filter-btn <?= $filterStatus === 'active' ? 'm-filter-active' : '' ?>" data-filter-status="active">Active</button>
+        <button type="button" class="m-filter-btn <?= $filterStatus === 'completed' ? 'm-filter-active' : '' ?>" data-filter-status="completed">Completed</button>
+        <button type="button" class="m-filter-btn <?= $filterStatus === 'archived' ? 'm-filter-active' : '' ?>" data-filter-status="archived">Archived</button>
         <?php if (!empty($categories)): ?>
-        <select class="m-filter-cat" onchange="mGoalFilterCat(this.value)" aria-label="Filter by category">
+        <select class="m-filter-cat" id="mGoalCatFilter" aria-label="Filter by category">
             <option value="">All Categories</option>
             <?php foreach ($categories as $cat): ?>
             <option value="<?= htmlspecialchars($cat) ?>" <?= $filterCategory === $cat ? 'selected' : '' ?>><?= htmlspecialchars($cat) ?></option>
@@ -400,13 +448,17 @@ $canDelete = $isAnyCoach || $isAdmin;
         </select>
         <?php endif; ?>
         <?php if (!empty($allTags)): ?>
-        <select class="m-filter-cat" onchange="mGoalFilterTag(this.value)" aria-label="Filter by tag">
+        <select class="m-filter-cat" id="mGoalTagFilter" aria-label="Filter by tag">
             <option value="">All Tags</option>
             <?php foreach ($allTags as $tag): ?>
             <option value="<?= htmlspecialchars($tag) ?>" <?= $filterTag === $tag ? 'selected' : '' ?>><?= htmlspecialchars($tag) ?></option>
             <?php endforeach; ?>
         </select>
         <?php endif; ?>
+        <select class="m-filter-cat" id="mGoalGroupBy" aria-label="Group by">
+            <option value="" <?= $filterGroupBy === '' ? 'selected' : '' ?>>No Grouping</option>
+            <option value="category" <?= $filterGroupBy === 'category' ? 'selected' : '' ?>>By Category</option>
+        </select>
     </div>
 
     <?php if (empty($goals)): ?>
@@ -414,12 +466,15 @@ $canDelete = $isAnyCoach || $isAdmin;
             <i class="fas fa-bullseye"></i>
             <p>No goals set yet</p>
         </div>
-    <?php else: ?>
-        <!-- Active Goals -->
-        <?php if (!empty($activeGoals)): ?>
-        <div class="m-section">
-            <h3 class="m-section-title">Active Goals</h3>
-            <?php foreach ($activeGoals as $g):
+    <?php elseif ($filterGroupBy === 'category' && !empty($groupedGoals)): ?>
+        <?php foreach ($groupedGoals as $catName => $catGoals): ?>
+        <div class="m-category-group">
+            <div class="m-category-header">
+                <i class="fas fa-folder"></i>
+                <?= htmlspecialchars($catName) ?>
+                <span class="m-category-count"><?= count($catGoals) ?> goal<?= count($catGoals) !== 1 ? 's' : '' ?></span>
+            </div>
+            <?php foreach ($catGoals as $g):
                 $pct = max(0, min(100, (int)($g['completion_percentage'] ?? 0)));
                 $status = strtolower($g['status'] ?? 'active');
                 $badgeClass = match($status) {
@@ -427,6 +482,7 @@ $canDelete = $isAnyCoach || $isAdmin;
                     'completed' => 'completed',
                     'paused' => 'paused',
                     'cancelled' => 'cancelled',
+                    'archived' => 'archived',
                     default => 'default',
                 };
                 $barColor = $pct >= 75 ? '#10B981' : ($pct >= 40 ? '#F59E0B' : '#8B5CF6');
@@ -437,8 +493,8 @@ $canDelete = $isAnyCoach || $isAdmin;
                     'status' => $status,
                 ]), ENT_QUOTES, 'UTF-8');
             ?>
-            <div class="m-goal-card" data-goal-id="<?= (int)$g['id'] ?>">
-                <div class="m-goal-card-body" role="button" tabindex="0" onclick="mGoalViewDetail(<?= (int)$g['id'] ?>)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();mGoalViewDetail(<?= (int)$g['id'] ?>)}">
+            <div class="m-goal-card" data-goal-id="<?= (int)$g['id'] ?>" data-goal-json="<?= $gJson ?>">
+                <div class="m-goal-card-body" role="button" tabindex="0" data-goal-detail="<?= (int)$g['id'] ?>">
                 <div class="m-goal-top">
                     <span class="m-goal-title"><?= htmlspecialchars($g['title'] ?? 'Untitled Goal') ?></span>
                     <span class="m-goal-badge m-goal-badge-<?= $badgeClass ?>"><?= htmlspecialchars(ucfirst($status)) ?></span>
@@ -469,18 +525,93 @@ $canDelete = $isAnyCoach || $isAdmin;
                 </div>
                 <?php if ($canEdit): ?>
                 <div class="m-goal-actions">
-                    <button type="button" class="m-goal-act m-goal-act-edit" onclick='mGoalEdit(<?= $gJson ?>)' aria-label="Edit <?= htmlspecialchars($g['title'] ?? 'goal') ?>"><i class="fas fa-pen"></i> Edit</button>
-                    <button type="button" class="m-goal-act m-goal-act-progress" onclick="mGoalToggleProgress(<?= (int)$g['id'] ?>, <?= $pct ?>)" aria-label="Update progress for <?= htmlspecialchars($g['title'] ?? 'goal') ?>"><i class="fas fa-chart-line"></i> Progress</button>
-                    <button type="button" class="m-goal-act m-goal-act-complete" onclick="mGoalComplete(<?= (int)$g['id'] ?>)" aria-label="Complete goal"><i class="fas fa-check"></i></button>
-                    <button type="button" class="m-goal-act m-goal-act-archive" onclick="mGoalArchive(<?= (int)$g['id'] ?>)" aria-label="Archive goal"><i class="fas fa-archive"></i></button>
+                    <button type="button" class="m-goal-act m-goal-act-edit" data-action="edit" aria-label="Edit <?= htmlspecialchars($g['title'] ?? 'goal') ?>"><i class="fas fa-pen"></i> Edit</button>
+                    <button type="button" class="m-goal-act m-goal-act-progress" data-action="progress" aria-label="Update progress"><i class="fas fa-chart-line"></i> Progress</button>
+                    <?php if ($status !== 'completed'): ?>
+                    <button type="button" class="m-goal-act m-goal-act-complete" data-action="complete" aria-label="Complete goal"><i class="fas fa-check"></i></button>
+                    <?php endif; ?>
+                    <button type="button" class="m-goal-act m-goal-act-archive" data-action="archive" aria-label="Archive goal"><i class="fas fa-archive"></i></button>
                     <?php if ($canDelete): ?>
-                    <button type="button" class="m-goal-act m-goal-act-delete" onclick="mGoalDelete(<?= (int)$g['id'] ?>)" aria-label="Delete <?= htmlspecialchars($g['title'] ?? 'goal') ?>"><i class="fas fa-trash-alt"></i></button>
+                    <button type="button" class="m-goal-act m-goal-act-delete" data-action="delete" aria-label="Delete <?= htmlspecialchars($g['title'] ?? 'goal') ?>"><i class="fas fa-trash-alt"></i></button>
                     <?php endif; ?>
                 </div>
                 <div class="m-progress-update" id="m-prog-<?= (int)$g['id'] ?>">
                     <div class="m-progress-val" id="m-prog-val-<?= (int)$g['id'] ?>"><?= $pct ?>%</div>
-                    <input type="range" class="m-progress-slider" min="0" max="100" value="<?= $pct ?>" oninput="mGoalSliderChange(<?= (int)$g['id'] ?>, this.value)">
-                    <button type="button" class="m-progress-save" onclick="mGoalSaveProgress(<?= (int)$g['id'] ?>)">Save Progress</button>
+                    <input type="range" class="m-progress-slider" min="0" max="100" value="<?= $pct ?>">
+                    <button type="button" class="m-progress-save">Save Progress</button>
+                </div>
+                <?php endif; ?>
+            </div>
+            <?php endforeach; ?>
+        </div>
+        <?php endforeach; ?>
+    <?php else: ?>
+        <!-- Active Goals -->
+        <?php if (!empty($activeGoals)): ?>
+        <div class="m-section">
+            <h3 class="m-section-title">Active Goals</h3>
+            <?php foreach ($activeGoals as $g):
+                $pct = max(0, min(100, (int)($g['completion_percentage'] ?? 0)));
+                $status = strtolower($g['status'] ?? 'active');
+                $badgeClass = match($status) {
+                    'active', 'in_progress' => 'active',
+                    'completed' => 'completed',
+                    'paused' => 'paused',
+                    'cancelled' => 'cancelled',
+                    default => 'default',
+                };
+                $barColor = $pct >= 75 ? '#10B981' : ($pct >= 40 ? '#F59E0B' : '#8B5CF6');
+                $gJson = htmlspecialchars(json_encode([
+                    'id' => (int)$g['id'], 'title' => $g['title'] ?? '',
+                    'description' => $g['description'] ?? '', 'category' => $g['category'] ?? '',
+                    'tags' => $g['tags'] ?? '', 'target_date' => $g['target_date'] ?? '',
+                    'status' => $status,
+                ]), ENT_QUOTES, 'UTF-8');
+            ?>
+            <div class="m-goal-card" data-goal-id="<?= (int)$g['id'] ?>" data-goal-json="<?= $gJson ?>">
+                <div class="m-goal-card-body" role="button" tabindex="0" data-goal-detail="<?= (int)$g['id'] ?>">
+                <div class="m-goal-top">
+                    <span class="m-goal-title"><?= htmlspecialchars($g['title'] ?? 'Untitled Goal') ?></span>
+                    <span class="m-goal-badge m-goal-badge-<?= $badgeClass ?>"><?= htmlspecialchars(ucfirst($status)) ?></span>
+                </div>
+                <?php if (!empty($g['description'])): ?>
+                <p class="m-goal-desc"><?= htmlspecialchars($g['description']) ?></p>
+                <?php endif; ?>
+                <div class="m-goal-progress">
+                    <div class="m-goal-progress-header">
+                        <span class="m-goal-progress-label">Progress</span>
+                        <span class="m-goal-progress-pct" id="m-pct-<?= (int)$g['id'] ?>"><?= $pct ?>%</span>
+                    </div>
+                    <div class="m-goal-progress-bar">
+                        <div class="m-goal-progress-fill" id="m-bar-<?= (int)$g['id'] ?>" style="width:<?= $pct ?>%;background:<?= $barColor ?>;"></div>
+                    </div>
+                </div>
+                <div class="m-goal-footer">
+                    <?php if (!empty($g['target_date'])): ?>
+                    <span class="m-goal-meta"><i class="fas fa-flag"></i> <?= date('M j, Y', strtotime($g['target_date'])) ?></span>
+                    <?php endif; ?>
+                    <?php if (!empty($g['category'])): ?>
+                    <span class="m-goal-meta"><i class="fas fa-tag"></i> <?= htmlspecialchars($g['category']) ?></span>
+                    <?php endif; ?>
+                    <?php if (((int)($g['total_steps'] ?? 0)) > 0): ?>
+                    <span class="m-goal-steps-count"><i class="fas fa-list-check"></i> <?= (int)$g['completed_steps'] ?>/<?= (int)$g['total_steps'] ?> steps</span>
+                    <?php endif; ?>
+                </div>
+                </div>
+                <?php if ($canEdit): ?>
+                <div class="m-goal-actions">
+                    <button type="button" class="m-goal-act m-goal-act-edit" data-action="edit" aria-label="Edit <?= htmlspecialchars($g['title'] ?? 'goal') ?>"><i class="fas fa-pen"></i> Edit</button>
+                    <button type="button" class="m-goal-act m-goal-act-progress" data-action="progress" aria-label="Update progress for <?= htmlspecialchars($g['title'] ?? 'goal') ?>"><i class="fas fa-chart-line"></i> Progress</button>
+                    <button type="button" class="m-goal-act m-goal-act-complete" data-action="complete" aria-label="Complete goal"><i class="fas fa-check"></i></button>
+                    <button type="button" class="m-goal-act m-goal-act-archive" data-action="archive" aria-label="Archive goal"><i class="fas fa-archive"></i></button>
+                    <?php if ($canDelete): ?>
+                    <button type="button" class="m-goal-act m-goal-act-delete" data-action="delete" aria-label="Delete <?= htmlspecialchars($g['title'] ?? 'goal') ?>"><i class="fas fa-trash-alt"></i></button>
+                    <?php endif; ?>
+                </div>
+                <div class="m-progress-update" id="m-prog-<?= (int)$g['id'] ?>">
+                    <div class="m-progress-val" id="m-prog-val-<?= (int)$g['id'] ?>"><?= $pct ?>%</div>
+                    <input type="range" class="m-progress-slider" min="0" max="100" value="<?= $pct ?>">
+                    <button type="button" class="m-progress-save">Save Progress</button>
                 </div>
                 <?php endif; ?>
             </div>
@@ -500,8 +631,8 @@ $canDelete = $isAnyCoach || $isAdmin;
                     'status' => 'completed',
                 ]), ENT_QUOTES, 'UTF-8');
             ?>
-            <div class="m-goal-card" data-goal-id="<?= (int)$g['id'] ?>">
-                <div class="m-goal-card-body" role="button" tabindex="0" onclick="mGoalViewDetail(<?= (int)$g['id'] ?>)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();mGoalViewDetail(<?= (int)$g['id'] ?>)}">
+            <div class="m-goal-card" data-goal-id="<?= (int)$g['id'] ?>" data-goal-json="<?= $gJson ?>">
+                <div class="m-goal-card-body" role="button" tabindex="0" data-goal-detail="<?= (int)$g['id'] ?>">
                 <div class="m-goal-top">
                     <span class="m-goal-title"><?= htmlspecialchars($g['title'] ?? 'Untitled Goal') ?></span>
                     <span class="m-goal-badge m-goal-badge-completed"><i class="fas fa-check"></i> Done</span>
@@ -525,10 +656,10 @@ $canDelete = $isAnyCoach || $isAdmin;
                 </div>
                 <?php if ($canEdit): ?>
                 <div class="m-goal-actions">
-                    <button type="button" class="m-goal-act m-goal-act-edit" onclick='mGoalEdit(<?= $gJson ?>)' aria-label="Edit <?= htmlspecialchars($g['title'] ?? 'goal') ?>"><i class="fas fa-pen"></i> Edit</button>
-                    <button type="button" class="m-goal-act m-goal-act-archive" onclick="mGoalArchive(<?= (int)$g['id'] ?>)" aria-label="Archive goal"><i class="fas fa-archive"></i> Archive</button>
+                    <button type="button" class="m-goal-act m-goal-act-edit" data-action="edit" aria-label="Edit <?= htmlspecialchars($g['title'] ?? 'goal') ?>"><i class="fas fa-pen"></i> Edit</button>
+                    <button type="button" class="m-goal-act m-goal-act-archive" data-action="archive" aria-label="Archive goal"><i class="fas fa-archive"></i> Archive</button>
                     <?php if ($canDelete): ?>
-                    <button type="button" class="m-goal-act m-goal-act-delete" onclick="mGoalDelete(<?= (int)$g['id'] ?>)" aria-label="Delete <?= htmlspecialchars($g['title'] ?? 'goal') ?>"><i class="fas fa-trash-alt"></i></button>
+                    <button type="button" class="m-goal-act m-goal-act-delete" data-action="delete" aria-label="Delete <?= htmlspecialchars($g['title'] ?? 'goal') ?>"><i class="fas fa-trash-alt"></i></button>
                     <?php endif; ?>
                 </div>
                 <?php endif; ?>
@@ -541,18 +672,18 @@ $canDelete = $isAnyCoach || $isAdmin;
 
 <!-- FAB: Create Goal -->
 <?php if ($canEdit): ?>
-<button type="button" class="m-goal-fab" onclick="mGoalCreate()" title="New Goal"><i class="fas fa-plus"></i></button>
+<button type="button" class="m-goal-fab" id="mGoalFab" title="New Goal"><i class="fas fa-plus"></i></button>
 <?php endif; ?>
 
 <!-- Modal: Create / Edit Goal -->
-<div class="m-goal-overlay" id="mGoalOverlay" onclick="if(event.target===this)mGoalCloseModal()">
+<div class="m-goal-overlay" id="mGoalOverlay">
     <div class="m-goal-modal">
         <div class="m-modal-header">
             <h3 class="m-modal-title" id="mGoalModalTitle">New Goal</h3>
-            <button type="button" class="m-modal-close" onclick="mGoalCloseModal()"><i class="fas fa-times"></i></button>
+            <button type="button" class="m-modal-close" data-close="mGoalOverlay"><i class="fas fa-times"></i></button>
         </div>
         <div class="m-modal-body">
-            <form id="mGoalForm" onsubmit="return mGoalSubmit(event)">
+            <form id="mGoalForm">
                 <?= csrfTokenInput() ?>
                 <input type="hidden" name="action" id="mGoalAction" value="create_goal">
                 <input type="hidden" name="goal_id" id="mGoalId" value="">
@@ -590,7 +721,7 @@ $canDelete = $isAnyCoach || $isAdmin;
                 <div class="m-steps-section">
                     <div class="m-steps-header">
                         <span class="m-steps-title">Steps</span>
-                        <button type="button" class="m-btn-add-step" onclick="mGoalAddStep()"><i class="fas fa-plus"></i> Add Step</button>
+                        <button type="button" class="m-btn-add-step" id="mGoalAddStepBtn"><i class="fas fa-plus"></i> Add Step</button>
                     </div>
                     <div id="mGoalStepsList"></div>
                 </div>
@@ -604,11 +735,11 @@ $canDelete = $isAnyCoach || $isAdmin;
 <div class="m-toast" id="mGoalToast"></div>
 
 <!-- Modal: Goal Detail -->
-<div class="m-goal-overlay" id="mGoalDetailOverlay" onclick="if(event.target===this)mGoalCloseDetail()">
+<div class="m-goal-overlay" id="mGoalDetailOverlay">
     <div class="m-goal-modal">
         <div class="m-modal-header">
             <h3 class="m-modal-title">Goal Details</h3>
-            <button type="button" class="m-modal-close" onclick="mGoalCloseDetail()"><i class="fas fa-times"></i></button>
+            <button type="button" class="m-modal-close" data-close="mGoalDetailOverlay"><i class="fas fa-times"></i></button>
         </div>
         <div class="m-modal-body" id="mGoalDetailContent">
             <p style="text-align:center;color:#6B6B7B;">Loading...</p>
@@ -617,14 +748,14 @@ $canDelete = $isAnyCoach || $isAdmin;
 </div>
 
 <!-- Modal: Add Progress Note -->
-<div class="m-goal-overlay" id="mGoalProgressOverlay" onclick="if(event.target===this)mGoalCloseProgressNote()">
+<div class="m-goal-overlay" id="mGoalProgressOverlay">
     <div class="m-goal-modal">
         <div class="m-modal-header">
             <h3 class="m-modal-title">Add Progress Note</h3>
-            <button type="button" class="m-modal-close" onclick="mGoalCloseProgressNote()"><i class="fas fa-times"></i></button>
+            <button type="button" class="m-modal-close" data-close="mGoalProgressOverlay"><i class="fas fa-times"></i></button>
         </div>
         <div class="m-modal-body">
-            <form id="mGoalProgressNoteForm" onsubmit="return mGoalSubmitProgressNote(event)">
+            <form id="mGoalProgressNoteForm">
                 <?= csrfTokenInput() ?>
                 <input type="hidden" name="action" value="update_progress">
                 <input type="hidden" name="goal_id" id="mGoalProgressNoteId" value="">
@@ -643,414 +774,558 @@ $canDelete = $isAnyCoach || $isAdmin;
 </div>
 
 <script>
-var mGoalStepCounter = 0;
-var mGoalCanEdit = <?= $canEdit ? 'true' : 'false' ?>;
+(function() {
+    'use strict';
+    var mGoalStepCounter = 0;
+    var mGoalCanEdit = <?= $canEdit ? 'true' : 'false' ?>;
 
-function mGoalSwitchAthlete(id) {
-    if (id) {
-        window.location.href = 'pwa.php?page=goals&athlete_id=' + encodeURIComponent(id);
+    /* ── Utility functions ────────────────────────────────────────── */
+    function mEscapeHtml(text) {
+        var div = document.createElement('div');
+        div.textContent = text || '';
+        return div.innerHTML;
     }
-}
 
-function mGoalFilter(status) {
-    var params = new URLSearchParams(window.location.search);
-    params.set('page', 'goals');
-    params.set('status', status);
-    window.location.href = 'pwa.php?' + params.toString();
-}
-
-function mGoalFilterCat(cat) {
-    var params = new URLSearchParams(window.location.search);
-    params.set('page', 'goals');
-    if (cat) { params.set('cat', cat); } else { params.delete('cat'); }
-    window.location.href = 'pwa.php?' + params.toString();
-}
-
-function mGoalFilterTag(tag) {
-    var params = new URLSearchParams(window.location.search);
-    params.set('page', 'goals');
-    if (tag) { params.set('tag', tag); } else { params.delete('tag'); }
-    window.location.href = 'pwa.php?' + params.toString();
-}
-
-/* Steps management in create/edit form */
-function mGoalAddStep() {
-    mGoalStepCounter++;
-    var html = '<div class="m-step-item" data-step-idx="' + mGoalStepCounter + '">'
-        + '<input type="text" name="steps[' + mGoalStepCounter + '][title]" placeholder="Step title" required>'
-        + '<input type="hidden" name="steps[' + mGoalStepCounter + '][order]" value="' + mGoalStepCounter + '">'
-        + '<button type="button" class="m-step-remove" onclick="mGoalRemoveStep(' + mGoalStepCounter + ')" aria-label="Remove step"><i class="fas fa-times"></i></button>'
-        + '</div>';
-    document.getElementById('mGoalStepsList').insertAdjacentHTML('beforeend', html);
-}
-
-function mGoalRemoveStep(idx) {
-    var el = document.querySelector('[data-step-idx="' + idx + '"]');
-    if (el) el.remove();
-}
-
-function mGoalCreate() {
-    document.getElementById('mGoalModalTitle').textContent = 'New Goal';
-    document.getElementById('mGoalAction').value = 'create_goal';
-    document.getElementById('mGoalId').value = '';
-    document.getElementById('mGoalSubmitBtn').textContent = 'Create Goal';
-    document.getElementById('mGoalForm').reset();
-    document.getElementById('mGoalStepsList').innerHTML = '';
-    mGoalStepCounter = 0;
-    document.getElementById('mGoalOverlay').classList.add('m-visible');
-}
-
-function mGoalEdit(g) {
-    document.getElementById('mGoalModalTitle').textContent = 'Edit Goal';
-    document.getElementById('mGoalAction').value = 'update_goal';
-    document.getElementById('mGoalId').value = g.id;
-    document.getElementById('mGoalTitle').value = g.title || '';
-    document.getElementById('mGoalDesc').value = g.description || '';
-    document.getElementById('mGoalTags').value = g.tags || '';
-    document.getElementById('mGoalDate').value = g.target_date || '';
-    document.getElementById('mGoalSubmitBtn').textContent = 'Save Changes';
-    var catSel = document.getElementById('mGoalCategory');
-    catSel.value = g.category || '';
-    if (catSel.value !== (g.category || '') && g.category) {
-        var opt = document.createElement('option');
-        opt.value = g.category;
-        opt.textContent = g.category;
-        catSel.appendChild(opt);
-        catSel.value = g.category;
+    function mEscapeAttr(text) {
+        return (text || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
-    // Load existing steps via AJAX
-    document.getElementById('mGoalStepsList').innerHTML = '';
-    mGoalStepCounter = 0;
-    fetch('process_goals.php?action=get_goal&goal_id=' + g.id, { credentials: 'same-origin' })
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-            if (data.steps && data.steps.length) {
-                data.steps.forEach(function(step) {
-                    mGoalStepCounter++;
-                    var html = '<div class="m-step-item" data-step-idx="' + mGoalStepCounter + '">'
-                        + '<input type="text" name="steps[' + mGoalStepCounter + '][title]" value="' + mEscapeAttr(step.title || '') + '" placeholder="Step title" required>'
-                        + '<input type="hidden" name="steps[' + mGoalStepCounter + '][id]" value="' + (step.id || '') + '">'
-                        + '<input type="hidden" name="steps[' + mGoalStepCounter + '][order]" value="' + mGoalStepCounter + '">'
-                        + '<button type="button" class="m-step-remove" onclick="mGoalRemoveStep(' + mGoalStepCounter + ')" aria-label="Remove step"><i class="fas fa-times"></i></button>'
-                        + '</div>';
-                    document.getElementById('mGoalStepsList').insertAdjacentHTML('beforeend', html);
-                });
-            }
-        })
-        .catch(function() {});
-    document.getElementById('mGoalOverlay').classList.add('m-visible');
-}
 
-function mGoalCloseModal() {
-    document.getElementById('mGoalOverlay').classList.remove('m-visible');
-}
-
-function mGoalSubmit(e) {
-    e.preventDefault();
-    var form = document.getElementById('mGoalForm');
-    var btn = document.getElementById('mGoalSubmitBtn');
-    btn.disabled = true;
-    btn.textContent = 'Saving...';
-    var data = new FormData(form);
-    fetch('process_goals.php', { method: 'POST', body: data, credentials: 'same-origin' })
-        .then(function(r) {
-            if (r.redirected || r.ok) {
-                persistToast('Goal saved!', 'success');
-                window.location.reload();
-            } else {
-                return r.text().then(function(t) { throw new Error(t || 'Save failed'); });
-            }
-        })
-        .catch(function(err) {
-            mGoalToast(err.message || 'Error saving goal', 'error');
-            btn.disabled = false;
-            btn.textContent = document.getElementById('mGoalAction').value === 'create_goal' ? 'Create Goal' : 'Save Changes';
-        });
-    return false;
-}
-
-async function mGoalDelete(id) {
-    if (!await showConfirmModal('Delete this goal? This action cannot be undone.')) return;
-    var data = new FormData();
-    data.append('action', 'delete_goal');
-    data.append('goal_id', id);
-    var tokenInput = document.querySelector('#mGoalForm input[name="csrf_token"]');
-    if (tokenInput) data.append('csrf_token', tokenInput.value);
-    fetch('process_goals.php', { method: 'POST', body: data, credentials: 'same-origin' })
-        .then(function(r) {
-            if (r.redirected || r.ok) {
-                persistToast('Goal deleted', 'success');
-                var card = document.querySelector('.m-goal-card[data-goal-id="' + id + '"]');
-                if (card) card.style.display = 'none';
-                window.location.reload();
-            } else {
-                return r.text().then(function(t) { throw new Error(t || 'Delete failed'); });
-            }
-        })
-        .catch(function(err) { mGoalToast(err.message || 'Error deleting goal', 'error'); });
-}
-
-/* Complete Goal */
-async function mGoalComplete(id) {
-    if (!await showConfirmModal('Mark this goal as completed?')) return;
-    var data = new FormData();
-    data.append('action', 'complete_goal');
-    data.append('goal_id', id);
-    var tokenInput = document.querySelector('#mGoalForm input[name="csrf_token"]');
-    if (tokenInput) data.append('csrf_token', tokenInput.value);
-    fetch('process_goals.php', { method: 'POST', body: data, credentials: 'same-origin' })
-        .then(function(r) {
-            if (r.redirected || r.ok) {
-                persistToast('Goal completed!', 'success');
-                window.location.reload();
-            } else {
-                return r.text().then(function(t) { throw new Error(t || 'Complete failed'); });
-            }
-        })
-        .catch(function(err) { mGoalToast(err.message || 'Error completing goal', 'error'); });
-}
-
-/* Archive Goal */
-async function mGoalArchive(id) {
-    if (!await showConfirmModal('Archive this goal?')) return;
-    var data = new FormData();
-    data.append('action', 'archive_goal');
-    data.append('goal_id', id);
-    var tokenInput = document.querySelector('#mGoalForm input[name="csrf_token"]');
-    if (tokenInput) data.append('csrf_token', tokenInput.value);
-    fetch('process_goals.php', { method: 'POST', body: data, credentials: 'same-origin' })
-        .then(function(r) {
-            if (r.redirected || r.ok) {
-                persistToast('Goal archived', 'success');
-                var card = document.querySelector('.m-goal-card[data-goal-id="' + id + '"]');
-                if (card) card.style.display = 'none';
-                window.location.reload();
-            } else {
-                return r.text().then(function(t) { throw new Error(t || 'Archive failed'); });
-            }
-        })
-        .catch(function(err) { mGoalToast(err.message || 'Error archiving goal', 'error'); });
-}
-
-function mGoalToggleProgress(id, current) {
-    var el = document.getElementById('m-prog-' + id);
-    if (el) el.classList.toggle('m-visible');
-}
-
-function mGoalSliderChange(id, val) {
-    var label = document.getElementById('m-prog-val-' + id);
-    if (label) label.textContent = val + '%';
-}
-
-async function mGoalSaveProgress(id) {
-    var slider = document.querySelector('#m-prog-' + id + ' .m-progress-slider');
-    if (!slider) return;
-    var val = slider.value;
-    var data = new FormData();
-    data.append('action', 'update_goal');
-    data.append('goal_id', id);
-    data.append('title', document.querySelector('.m-goal-card[data-goal-id="' + id + '"] .m-goal-title').textContent.trim());
-    data.append('completion_percentage', val);
-    if (parseInt(val) >= 100) {
-        if (!await showConfirmModal('Setting progress to 100% will mark this goal as completed. Continue?')) return;
-        data.append('status', 'completed');
+    function mFormatDate(dateStr) {
+        if (!dateStr) return '';
+        var d = new Date(dateStr);
+        return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
     }
-    var tokenInput = document.querySelector('#mGoalForm input[name="csrf_token"]');
-    if (tokenInput) data.append('csrf_token', tokenInput.value);
-    fetch('process_goals.php', { method: 'POST', body: data, credentials: 'same-origin' })
-        .then(function(r) {
-            if (r.redirected || r.ok) {
-                mGoalToast('Progress updated!', 'success');
-                var pctEl = document.getElementById('m-pct-' + id);
-                var barEl = document.getElementById('m-bar-' + id);
-                if (pctEl) pctEl.textContent = val + '%';
-                if (barEl) {
-                    barEl.style.width = val + '%';
-                    barEl.style.background = val >= 75 ? '#10B981' : (val >= 40 ? '#F59E0B' : '#8B5CF6');
+
+    function mGoalToast(msg, type) {
+        var el = document.getElementById('mGoalToast');
+        el.textContent = msg;
+        el.className = 'm-toast m-toast-' + (type || 'success');
+        el.style.display = 'block';
+        setTimeout(function() { el.style.display = 'none'; }, 2500);
+    }
+
+    function getCsrfToken() {
+        var tokenInput = document.querySelector('#mGoalForm input[name="csrf_token"]');
+        return tokenInput ? tokenInput.value : '';
+    }
+
+    function getGoalIdFromCard(el) {
+        var card = el.closest('.m-goal-card');
+        return card ? parseInt(card.getAttribute('data-goal-id'), 10) : 0;
+    }
+
+    function getGoalJsonFromCard(el) {
+        var card = el.closest('.m-goal-card');
+        if (!card) return null;
+        try { return JSON.parse(card.getAttribute('data-goal-json')); } catch(e) { return null; }
+    }
+
+    function updateFilterParam(key, value) {
+        var params = new URLSearchParams(window.location.search);
+        params.set('page', 'goals');
+        if (value) { params.set(key, value); } else { params.delete(key); }
+        window.location.href = 'pwa.php?' + params.toString();
+    }
+
+    function closeOverlay(id) {
+        var el = document.getElementById(id);
+        if (el) el.classList.remove('m-visible');
+    }
+
+    function openOverlay(id) {
+        var el = document.getElementById(id);
+        if (el) el.classList.add('m-visible');
+    }
+
+    /* ── Steps management ─────────────────────────────────────────── */
+    function mGoalAddStep(existingTitle, existingId) {
+        mGoalStepCounter++;
+        var idx = mGoalStepCounter;
+        var html = '<div class="m-step-item" data-step-idx="' + idx + '">'
+            + '<input type="text" name="steps[' + idx + '][title]" value="' + mEscapeAttr(existingTitle || '') + '" placeholder="Step title" required>'
+            + (existingId ? '<input type="hidden" name="steps[' + idx + '][id]" value="' + mEscapeAttr(String(existingId)) + '">' : '')
+            + '<input type="hidden" name="steps[' + idx + '][order]" value="' + idx + '">'
+            + '<button type="button" class="m-step-remove" data-step-idx="' + idx + '" aria-label="Remove step"><i class="fas fa-times"></i></button>'
+            + '</div>';
+        document.getElementById('mGoalStepsList').insertAdjacentHTML('beforeend', html);
+    }
+
+    /* ── Goal CRUD ────────────────────────────────────────────────── */
+    function mGoalCreate() {
+        document.getElementById('mGoalModalTitle').textContent = 'New Goal';
+        document.getElementById('mGoalAction').value = 'create_goal';
+        document.getElementById('mGoalId').value = '';
+        document.getElementById('mGoalSubmitBtn').textContent = 'Create Goal';
+        document.getElementById('mGoalForm').reset();
+        document.getElementById('mGoalStepsList').innerHTML = '';
+        mGoalStepCounter = 0;
+        openOverlay('mGoalOverlay');
+    }
+
+    function mGoalEdit(g) {
+        document.getElementById('mGoalModalTitle').textContent = 'Edit Goal';
+        document.getElementById('mGoalAction').value = 'update_goal';
+        document.getElementById('mGoalId').value = g.id;
+        document.getElementById('mGoalTitle').value = g.title || '';
+        document.getElementById('mGoalDesc').value = g.description || '';
+        document.getElementById('mGoalTags').value = g.tags || '';
+        document.getElementById('mGoalDate').value = g.target_date || '';
+        document.getElementById('mGoalSubmitBtn').textContent = 'Save Changes';
+        var catSel = document.getElementById('mGoalCategory');
+        catSel.value = g.category || '';
+        if (catSel.value !== (g.category || '') && g.category) {
+            var opt = document.createElement('option');
+            opt.value = g.category;
+            opt.textContent = g.category;
+            catSel.appendChild(opt);
+            catSel.value = g.category;
+        }
+        document.getElementById('mGoalStepsList').innerHTML = '';
+        mGoalStepCounter = 0;
+        fetch('process_goals.php?action=get_goal&goal_id=' + g.id, { credentials: 'same-origin' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.steps && data.steps.length) {
+                    data.steps.forEach(function(step) {
+                        mGoalAddStep(step.title, step.id);
+                    });
                 }
-                document.getElementById('m-prog-' + id).classList.remove('m-visible');
-                if (parseInt(val) >= 100) window.location.reload();
-            } else {
-                return r.text().then(function(t) { throw new Error(t || 'Update failed'); });
-            }
-        })
-        .catch(function(err) { mGoalToast(err.message || 'Error updating progress', 'error'); });
-}
-
-/* Goal Detail Modal */
-function mGoalViewDetail(goalId) {
-    document.getElementById('mGoalDetailContent').innerHTML = '<p style="text-align:center;color:#6B6B7B;">Loading...</p>';
-    document.getElementById('mGoalDetailOverlay').classList.add('m-visible');
-    fetch('process_goals.php?action=get_goal_detail&goal_id=' + goalId, { credentials: 'same-origin' })
-        .then(function(r) { return r.json(); })
-        .then(function(data) { mGoalRenderDetail(data); })
-        .catch(function() {
-            document.getElementById('mGoalDetailContent').innerHTML = '<p style="text-align:center;color:#EF4444;">Failed to load goal details.</p>';
-        });
-}
-
-function mGoalRenderDetail(data) {
-    var statusClass = 'default';
-    var s = (data.status || '').toLowerCase();
-    if (s === 'active' || s === 'in_progress') statusClass = 'active';
-    else if (s === 'completed') statusClass = 'completed';
-    else if (s === 'archived') statusClass = 'archived';
-
-    var html = '';
-    // Badges row
-    html += '<div class="m-detail-badges">';
-    if (data.category) html += '<span class="m-detail-category">' + mEscapeHtml(data.category) + '</span>';
-    html += '<span class="m-detail-status m-detail-status-' + statusClass + '">' + mEscapeHtml(data.status || 'active') + '</span>';
-    html += '</div>';
-
-    // Description
-    if (data.description) {
-        html += '<div class="m-detail-desc">' + mEscapeHtml(data.description) + '</div>';
+            })
+            .catch(function() {});
+        openOverlay('mGoalOverlay');
     }
 
-    // Tags
-    if (data.tags) {
-        html += '<div class="m-detail-tags">';
-        data.tags.split(',').forEach(function(t) {
-            t = t.trim();
-            if (t) html += '<span class="m-detail-tag">' + mEscapeHtml(t) + '</span>';
-        });
+    function mGoalSubmit(e) {
+        e.preventDefault();
+        var form = document.getElementById('mGoalForm');
+        var btn = document.getElementById('mGoalSubmitBtn');
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+        var data = new FormData(form);
+        fetch('process_goals.php', { method: 'POST', body: data, credentials: 'same-origin' })
+            .then(function(r) {
+                if (r.redirected || r.ok) {
+                    persistToast('Goal saved!', 'success');
+                    window.location.reload();
+                } else {
+                    return r.text().then(function(t) { throw new Error(t || 'Save failed'); });
+                }
+            })
+            .catch(function(err) {
+                mGoalToast(err.message || 'Error saving goal', 'error');
+                btn.disabled = false;
+                btn.textContent = document.getElementById('mGoalAction').value === 'create_goal' ? 'Create Goal' : 'Save Changes';
+            });
+    }
+
+    async function mGoalDelete(id) {
+        if (!await showConfirmModal('Delete this goal? This action cannot be undone.')) return;
+        var data = new FormData();
+        data.append('action', 'delete_goal');
+        data.append('goal_id', id);
+        data.append('csrf_token', getCsrfToken());
+        fetch('process_goals.php', { method: 'POST', body: data, credentials: 'same-origin' })
+            .then(function(r) {
+                if (r.redirected || r.ok) {
+                    persistToast('Goal deleted', 'success');
+                    var card = document.querySelector('.m-goal-card[data-goal-id="' + id + '"]');
+                    if (card) card.style.display = 'none';
+                    window.location.reload();
+                } else {
+                    return r.text().then(function(t) { throw new Error(t || 'Delete failed'); });
+                }
+            })
+            .catch(function(err) { mGoalToast(err.message || 'Error deleting goal', 'error'); });
+    }
+
+    async function mGoalComplete(id) {
+        if (!await showConfirmModal('Mark this goal as completed?')) return;
+        var data = new FormData();
+        data.append('action', 'complete_goal');
+        data.append('goal_id', id);
+        data.append('csrf_token', getCsrfToken());
+        fetch('process_goals.php', { method: 'POST', body: data, credentials: 'same-origin' })
+            .then(function(r) {
+                if (r.redirected || r.ok) {
+                    persistToast('Goal completed!', 'success');
+                    window.location.reload();
+                } else {
+                    return r.text().then(function(t) { throw new Error(t || 'Complete failed'); });
+                }
+            })
+            .catch(function(err) { mGoalToast(err.message || 'Error completing goal', 'error'); });
+    }
+
+    async function mGoalArchive(id) {
+        if (!await showConfirmModal('Archive this goal?')) return;
+        var data = new FormData();
+        data.append('action', 'archive_goal');
+        data.append('goal_id', id);
+        data.append('csrf_token', getCsrfToken());
+        fetch('process_goals.php', { method: 'POST', body: data, credentials: 'same-origin' })
+            .then(function(r) {
+                if (r.redirected || r.ok) {
+                    persistToast('Goal archived', 'success');
+                    var card = document.querySelector('.m-goal-card[data-goal-id="' + id + '"]');
+                    if (card) card.style.display = 'none';
+                    window.location.reload();
+                } else {
+                    return r.text().then(function(t) { throw new Error(t || 'Archive failed'); });
+                }
+            })
+            .catch(function(err) { mGoalToast(err.message || 'Error archiving goal', 'error'); });
+    }
+
+    async function mGoalSaveProgress(id) {
+        var slider = document.querySelector('#m-prog-' + id + ' .m-progress-slider');
+        if (!slider) return;
+        var val = slider.value;
+        var data = new FormData();
+        data.append('action', 'update_goal');
+        data.append('goal_id', id);
+        data.append('title', document.querySelector('.m-goal-card[data-goal-id="' + id + '"] .m-goal-title').textContent.trim());
+        data.append('completion_percentage', val);
+        if (parseInt(val) >= 100) {
+            if (!await showConfirmModal('Setting progress to 100% will mark this goal as completed. Continue?')) return;
+            data.append('status', 'completed');
+        }
+        data.append('csrf_token', getCsrfToken());
+        fetch('process_goals.php', { method: 'POST', body: data, credentials: 'same-origin' })
+            .then(function(r) {
+                if (r.redirected || r.ok) {
+                    mGoalToast('Progress updated!', 'success');
+                    var pctEl = document.getElementById('m-pct-' + id);
+                    var barEl = document.getElementById('m-bar-' + id);
+                    if (pctEl) pctEl.textContent = val + '%';
+                    if (barEl) {
+                        barEl.style.width = val + '%';
+                        barEl.style.background = val >= 75 ? '#10B981' : (val >= 40 ? '#F59E0B' : '#8B5CF6');
+                    }
+                    document.getElementById('m-prog-' + id).classList.remove('m-visible');
+                    if (parseInt(val) >= 100) window.location.reload();
+                } else {
+                    return r.text().then(function(t) { throw new Error(t || 'Update failed'); });
+                }
+            })
+            .catch(function(err) { mGoalToast(err.message || 'Error updating progress', 'error'); });
+    }
+
+    /* ── Goal Detail Modal ────────────────────────────────────────── */
+    function mGoalViewDetail(goalId) {
+        document.getElementById('mGoalDetailContent').innerHTML = '<p style="text-align:center;color:#6B6B7B;">Loading...</p>';
+        openOverlay('mGoalDetailOverlay');
+        fetch('process_goals.php?action=get_goal_detail&goal_id=' + goalId, { credentials: 'same-origin' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) { mGoalRenderDetail(data); })
+            .catch(function() {
+                document.getElementById('mGoalDetailContent').innerHTML = '<p style="text-align:center;color:#EF4444;">Failed to load goal details.</p>';
+            });
+    }
+
+    function mGoalRenderDetail(data) {
+        var statusClass = 'default';
+        var s = (data.status || '').toLowerCase();
+        if (s === 'active' || s === 'in_progress') statusClass = 'active';
+        else if (s === 'completed') statusClass = 'completed';
+        else if (s === 'archived') statusClass = 'archived';
+
+        var html = '';
+        html += '<div class="m-detail-badges">';
+        if (data.category) html += '<span class="m-detail-category">' + mEscapeHtml(data.category) + '</span>';
+        html += '<span class="m-detail-status m-detail-status-' + statusClass + '">' + mEscapeHtml(data.status || 'active') + '</span>';
         html += '</div>';
+
+        if (data.description) {
+            html += '<div class="m-detail-desc">' + mEscapeHtml(data.description) + '</div>';
+        }
+
+        if (data.tags) {
+            html += '<div class="m-detail-tags">';
+            data.tags.split(',').forEach(function(t) {
+                t = t.trim();
+                if (t) html += '<span class="m-detail-tag">' + mEscapeHtml(t) + '</span>';
+            });
+            html += '</div>';
+        }
+
+        var pct = Math.round(data.completion_percentage || 0);
+        var barColor = pct >= 75 ? '#10B981' : (pct >= 40 ? '#F59E0B' : '#8B5CF6');
+        html += '<div class="m-goal-progress"><div class="m-goal-progress-header">'
+            + '<span class="m-goal-progress-label">Overall Progress</span>'
+            + '<span class="m-goal-progress-pct">' + pct + '%</span></div>'
+            + '<div class="m-goal-progress-bar"><div class="m-goal-progress-fill" style="width:' + pct + '%;background:' + barColor + ';"></div></div></div>';
+
+        if (data.steps && data.steps.length > 0) {
+            html += '<div class="m-detail-steps"><div class="m-detail-steps-title">Steps</div>';
+            data.steps.forEach(function(step) {
+                var done = step.is_completed == 1;
+                html += '<div class="m-detail-step' + (done ? ' m-step-done' : '') + '">';
+                if (mGoalCanEdit) {
+                    html += '<input type="checkbox"' + (done ? ' checked' : '') + ' data-step-id="' + mEscapeAttr(String(step.id)) + '" data-goal-id="' + mEscapeAttr(String(data.id)) + '" class="m-detail-step-checkbox">';
+                } else {
+                    html += '<i class="fas ' + (done ? 'fa-check-circle' : 'fa-circle') + '" style="color:' + (done ? '#10B981' : '#6B6B7B') + ';margin-top:2px;"></i>';
+                }
+                html += '<div><div class="m-detail-step-title">' + mEscapeHtml(step.title || '') + '</div>';
+                if (step.description) {
+                    html += '<div class="m-detail-step-desc">' + mEscapeHtml(step.description) + '</div>';
+                }
+                if (done && step.completed_at) {
+                    html += '<div class="m-detail-step-done-info"><i class="fas fa-check"></i> Completed ' + mFormatDate(step.completed_at) + '</div>';
+                }
+                html += '</div></div>';
+            });
+            html += '</div>';
+        }
+
+        if (mGoalCanEdit) {
+            html += '<button type="button" class="m-btn-add-progress" data-progress-goal-id="' + mEscapeAttr(String(data.id)) + '"><i class="fas fa-plus"></i> Add Progress Note</button>';
+        }
+
+        if (data.progress && data.progress.length > 0) {
+            html += '<div class="m-detail-history"><div class="m-detail-history-title">Progress History</div>';
+            data.progress.forEach(function(entry) {
+                html += '<div class="m-detail-entry"><div class="m-detail-entry-header">'
+                    + '<span class="m-detail-entry-user">' + mEscapeHtml(entry.user_name || '') + '</span>'
+                    + '<span class="m-detail-entry-date">' + mFormatDate(entry.created_at) + '</span></div>'
+                    + '<div class="m-detail-entry-note">' + mEscapeHtml(entry.progress_note || '') + '</div></div>';
+            });
+            html += '</div>';
+        }
+
+        document.getElementById('mGoalDetailContent').innerHTML = html;
     }
 
-    // Progress bar
-    var pct = Math.round(data.completion_percentage || 0);
-    var barColor = pct >= 75 ? '#10B981' : (pct >= 40 ? '#F59E0B' : '#8B5CF6');
-    html += '<div class="m-goal-progress"><div class="m-goal-progress-header">'
-        + '<span class="m-goal-progress-label">Overall Progress</span>'
-        + '<span class="m-goal-progress-pct">' + pct + '%</span></div>'
-        + '<div class="m-goal-progress-bar"><div class="m-goal-progress-fill" style="width:' + pct + '%;background:' + barColor + ';"></div></div></div>';
+    function mGoalToggleStep(stepId, goalId, isChecked) {
+        var data = new FormData();
+        data.append('action', 'complete_step');
+        data.append('step_id', stepId);
+        data.append('goal_id', goalId);
+        data.append('is_completed', isChecked ? '1' : '0');
+        data.append('csrf_token', getCsrfToken());
+        fetch('process_goals.php', { method: 'POST', body: data, credentials: 'same-origin' })
+            .then(function(r) { return r.json(); })
+            .then(function(res) {
+                if (res.success) {
+                    mGoalViewDetail(goalId);
+                } else {
+                    mGoalToast(res.message || 'Error toggling step', 'error');
+                }
+            })
+            .catch(function() { mGoalToast('Error toggling step', 'error'); });
+    }
 
-    // Steps
-    if (data.steps && data.steps.length > 0) {
-        html += '<div class="m-detail-steps"><div class="m-detail-steps-title">Steps</div>';
-        data.steps.forEach(function(step) {
-            var done = step.is_completed == 1;
-            html += '<div class="m-detail-step' + (done ? ' m-step-done' : '') + '">';
-            if (mGoalCanEdit) {
-                html += '<input type="checkbox"' + (done ? ' checked' : '') + ' onchange="mGoalToggleStep(' + step.id + ',' + data.id + ',this.checked)">';
-            } else {
-                html += '<i class="fas ' + (done ? 'fa-check-circle' : 'fa-circle') + '" style="color:' + (done ? '#10B981' : '#6B6B7B') + ';margin-top:2px;"></i>';
-            }
-            html += '<div><div class="m-detail-step-title">' + mEscapeHtml(step.title || '') + '</div>';
-            if (done && step.completed_at) {
-                html += '<div class="m-detail-step-done-info"><i class="fas fa-check"></i> Completed ' + mFormatDate(step.completed_at) + '</div>';
-            }
-            html += '</div></div>';
+    function mGoalSubmitProgressNote(e) {
+        e.preventDefault();
+        var form = document.getElementById('mGoalProgressNoteForm');
+        var btn = document.getElementById('mGoalProgressNoteBtn');
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+        var data = new FormData(form);
+        fetch('process_goals.php', { method: 'POST', body: data, credentials: 'same-origin' })
+            .then(function(r) {
+                if (r.redirected || r.ok) {
+                    persistToast('Progress note added!', 'success');
+                    closeOverlay('mGoalProgressOverlay');
+                    var goalId = document.getElementById('mGoalProgressNoteId').value;
+                    if (goalId) mGoalViewDetail(parseInt(goalId));
+                    window.location.reload();
+                } else {
+                    return r.text().then(function(t) { throw new Error(t || 'Save failed'); });
+                }
+            })
+            .catch(function(err) {
+                mGoalToast(err.message || 'Error saving note', 'error');
+                btn.disabled = false;
+                btn.textContent = 'Save Progress Note';
+            });
+    }
+
+    /* ── Event Listeners (addEventListener only) ──────────────────── */
+    document.addEventListener('DOMContentLoaded', function() {
+
+        /* Athlete selector */
+        var athleteSelect = document.getElementById('mGoalAthleteSelect');
+        if (athleteSelect) {
+            athleteSelect.addEventListener('change', function() {
+                if (this.value) {
+                    window.location.href = 'pwa.php?page=goals&athlete_id=' + encodeURIComponent(this.value);
+                }
+            });
+        }
+
+        /* Status filter buttons */
+        document.querySelectorAll('[data-filter-status]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                updateFilterParam('status', this.getAttribute('data-filter-status'));
+            });
         });
-        html += '</div>';
-    }
 
-    // Add Progress Note button
-    if (mGoalCanEdit) {
-        html += '<button type="button" class="m-btn-add-progress" onclick="mGoalOpenProgressNote(' + data.id + ')"><i class="fas fa-plus"></i> Add Progress Note</button>';
-    }
+        /* Category filter */
+        var catFilter = document.getElementById('mGoalCatFilter');
+        if (catFilter) {
+            catFilter.addEventListener('change', function() {
+                updateFilterParam('cat', this.value);
+            });
+        }
 
-    // Progress history
-    if (data.progress && data.progress.length > 0) {
-        html += '<div class="m-detail-history"><div class="m-detail-history-title">Progress History</div>';
-        data.progress.forEach(function(entry) {
-            html += '<div class="m-detail-entry"><div class="m-detail-entry-header">'
-                + '<span class="m-detail-entry-user">' + mEscapeHtml(entry.user_name || '') + '</span>'
-                + '<span class="m-detail-entry-date">' + mFormatDate(entry.created_at) + '</span></div>'
-                + '<div class="m-detail-entry-note">' + mEscapeHtml(entry.progress_note || '') + '</div></div>';
-        });
-        html += '</div>';
-    }
+        /* Tag filter */
+        var tagFilter = document.getElementById('mGoalTagFilter');
+        if (tagFilter) {
+            tagFilter.addEventListener('change', function() {
+                updateFilterParam('tag', this.value);
+            });
+        }
 
-    document.getElementById('mGoalDetailContent').innerHTML = html;
-}
+        /* Group-by filter */
+        var groupByFilter = document.getElementById('mGoalGroupBy');
+        if (groupByFilter) {
+            groupByFilter.addEventListener('change', function() {
+                updateFilterParam('group_by', this.value);
+            });
+        }
 
-function mGoalCloseDetail() {
-    document.getElementById('mGoalDetailOverlay').classList.remove('m-visible');
-}
+        /* FAB - create goal */
+        var fab = document.getElementById('mGoalFab');
+        if (fab) {
+            fab.addEventListener('click', function() { mGoalCreate(); });
+        }
 
-/* Toggle Step Completion */
-function mGoalToggleStep(stepId, goalId, isChecked) {
-    var data = new FormData();
-    data.append('action', 'complete_step');
-    data.append('step_id', stepId);
-    data.append('goal_id', goalId);
-    data.append('is_completed', isChecked ? '1' : '0');
-    var tokenInput = document.querySelector('#mGoalForm input[name="csrf_token"]');
-    if (tokenInput) data.append('csrf_token', tokenInput.value);
-    fetch('process_goals.php', { method: 'POST', body: data, credentials: 'same-origin' })
-        .then(function(r) { return r.json(); })
-        .then(function(res) {
-            if (res.success) {
-                mGoalViewDetail(goalId);
-            } else {
-                mGoalToast(res.message || 'Error toggling step', 'error');
+        /* Goal card body clicks (detail view) - delegated */
+        document.addEventListener('click', function(e) {
+            var body = e.target.closest('[data-goal-detail]');
+            if (body) {
+                mGoalViewDetail(parseInt(body.getAttribute('data-goal-detail'), 10));
             }
-        })
-        .catch(function(err) { mGoalToast('Error toggling step', 'error'); });
-}
-
-/* Progress Note Modal */
-function mGoalOpenProgressNote(goalId) {
-    document.getElementById('mGoalProgressNoteForm').reset();
-    document.getElementById('mGoalProgressNoteId').value = goalId;
-    document.getElementById('mGoalProgressOverlay').classList.add('m-visible');
-}
-
-function mGoalCloseProgressNote() {
-    document.getElementById('mGoalProgressOverlay').classList.remove('m-visible');
-}
-
-function mGoalSubmitProgressNote(e) {
-    e.preventDefault();
-    var form = document.getElementById('mGoalProgressNoteForm');
-    var btn = document.getElementById('mGoalProgressNoteBtn');
-    btn.disabled = true;
-    btn.textContent = 'Saving...';
-    var data = new FormData(form);
-    fetch('process_goals.php', { method: 'POST', body: data, credentials: 'same-origin' })
-        .then(function(r) {
-            if (r.redirected || r.ok) {
-                persistToast('Progress note added!', 'success');
-                mGoalCloseProgressNote();
-                var goalId = document.getElementById('mGoalProgressNoteId').value;
-                if (goalId) mGoalViewDetail(parseInt(goalId));
-                window.location.reload();
-            } else {
-                return r.text().then(function(t) { throw new Error(t || 'Save failed'); });
-            }
-        })
-        .catch(function(err) {
-            mGoalToast(err.message || 'Error saving note', 'error');
-            btn.disabled = false;
-            btn.textContent = 'Save Progress Note';
         });
-    return false;
-}
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                var body = e.target.closest('[data-goal-detail]');
+                if (body) {
+                    e.preventDefault();
+                    mGoalViewDetail(parseInt(body.getAttribute('data-goal-detail'), 10));
+                }
+            }
+        });
 
-/* Utility functions */
-function mEscapeHtml(text) {
-    var div = document.createElement('div');
-    div.textContent = text || '';
-    return div.innerHTML;
-}
+        /* Goal card action buttons - delegated */
+        document.addEventListener('click', function(e) {
+            var btn = e.target.closest('[data-action]');
+            if (!btn) return;
+            var action = btn.getAttribute('data-action');
+            var goalId = getGoalIdFromCard(btn);
+            if (!goalId) return;
 
-function mEscapeAttr(text) {
-    return (text || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
+            switch (action) {
+                case 'edit':
+                    var g = getGoalJsonFromCard(btn);
+                    if (g) mGoalEdit(g);
+                    break;
+                case 'progress':
+                    var el = document.getElementById('m-prog-' + goalId);
+                    if (el) el.classList.toggle('m-visible');
+                    break;
+                case 'complete':
+                    mGoalComplete(goalId);
+                    break;
+                case 'archive':
+                    mGoalArchive(goalId);
+                    break;
+                case 'delete':
+                    mGoalDelete(goalId);
+                    break;
+            }
+        });
 
-function mFormatDate(dateStr) {
-    if (!dateStr) return '';
-    var d = new Date(dateStr);
-    return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-}
+        /* Progress slider input - delegated */
+        document.addEventListener('input', function(e) {
+            if (e.target.classList.contains('m-progress-slider')) {
+                var card = e.target.closest('.m-goal-card');
+                if (!card) return;
+                var id = card.getAttribute('data-goal-id');
+                var label = document.getElementById('m-prog-val-' + id);
+                if (label) label.textContent = e.target.value + '%';
+            }
+        });
 
-function mGoalToast(msg, type) {
-    var el = document.getElementById('mGoalToast');
-    el.textContent = msg;
-    el.className = 'm-toast m-toast-' + (type || 'success');
-    el.style.display = 'block';
-    setTimeout(function() { el.style.display = 'none'; }, 2500);
-}
+        /* Save progress button - delegated */
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.m-progress-save')) {
+                var card = e.target.closest('.m-goal-card');
+                if (card) mGoalSaveProgress(parseInt(card.getAttribute('data-goal-id'), 10));
+            }
+        });
+
+        /* Modal overlay backdrop clicks - close on background tap */
+        document.querySelectorAll('.m-goal-overlay').forEach(function(overlay) {
+            overlay.addEventListener('click', function(e) {
+                if (e.target === overlay) {
+                    overlay.classList.remove('m-visible');
+                }
+            });
+        });
+
+        /* Modal close buttons */
+        document.querySelectorAll('[data-close]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                closeOverlay(this.getAttribute('data-close'));
+            });
+        });
+
+        /* Create/Edit form submit */
+        var goalForm = document.getElementById('mGoalForm');
+        if (goalForm) {
+            goalForm.addEventListener('submit', function(e) { mGoalSubmit(e); });
+        }
+
+        /* Add step button */
+        var addStepBtn = document.getElementById('mGoalAddStepBtn');
+        if (addStepBtn) {
+            addStepBtn.addEventListener('click', function() { mGoalAddStep(); });
+        }
+
+        /* Remove step - delegated */
+        document.getElementById('mGoalStepsList').addEventListener('click', function(e) {
+            var removeBtn = e.target.closest('.m-step-remove');
+            if (removeBtn) {
+                var idx = removeBtn.getAttribute('data-step-idx');
+                var el = document.querySelector('.m-step-item[data-step-idx="' + idx + '"]');
+                if (el) el.remove();
+            }
+        });
+
+        /* Progress note form submit */
+        var progressForm = document.getElementById('mGoalProgressNoteForm');
+        if (progressForm) {
+            progressForm.addEventListener('submit', function(e) { mGoalSubmitProgressNote(e); });
+        }
+
+        /* Detail modal - delegated events for step checkboxes and progress note button */
+        document.getElementById('mGoalDetailContent').addEventListener('click', function(e) {
+            var progressBtn = e.target.closest('[data-progress-goal-id]');
+            if (progressBtn) {
+                var goalId = progressBtn.getAttribute('data-progress-goal-id');
+                document.getElementById('mGoalProgressNoteForm').reset();
+                document.getElementById('mGoalProgressNoteId').value = goalId;
+                openOverlay('mGoalProgressOverlay');
+            }
+        });
+        document.getElementById('mGoalDetailContent').addEventListener('change', function(e) {
+            if (e.target.classList.contains('m-detail-step-checkbox')) {
+                var stepId = parseInt(e.target.getAttribute('data-step-id'), 10);
+                var goalId = parseInt(e.target.getAttribute('data-goal-id'), 10);
+                mGoalToggleStep(stepId, goalId, e.target.checked);
+            }
+        });
+
+        /* Auto-open from URL params (matching desktop behavior) */
+        var urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('action') === 'create' && mGoalCanEdit) {
+            mGoalCreate();
+        }
+        var autoGoalId = urlParams.get('goal_id');
+        if (autoGoalId) {
+            mGoalViewDetail(parseInt(autoGoalId, 10));
+        }
+    });
+})();
 </script>
