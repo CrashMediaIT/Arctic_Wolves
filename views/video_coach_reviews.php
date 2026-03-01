@@ -952,6 +952,12 @@ document.addEventListener('DOMContentLoaded', function() {
             var ot = uploadForm.querySelector('[name="opponent_team"]');
             if (ot && ot.value) formMeta.append('opponent_team', ot.value);
 
+            // Shared state across upload steps
+            var uploadNonce = null;
+            var proxyUploadUrl = null;
+            var proxyToken = null;
+            var contentType = null;
+
             // ---------- Step 1: get presigned URL ----------
             fetch('process_video.php', { method: 'POST', body: formMeta })
                 .then(function(r) { return r.json(); })
@@ -959,8 +965,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (!data.success) throw new Error(data.error || 'Failed to get upload URL');
 
                     var presignedUrl = data.presigned_url;
-                    var contentType = data.content_type || file.type || 'application/octet-stream';
-                    var uploadNonce = data.upload_nonce;
+                    contentType = data.content_type || file.type || 'application/octet-stream';
+                    uploadNonce = data.upload_nonce;
+                    proxyUploadUrl = data.proxy_upload_url || null;
+                    proxyToken = data.proxy_token || null;
 
                     status.textContent = 'Uploading to cloud storage...';
 
@@ -998,7 +1006,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         xhr.onload = function() {
                             clearTimeout(connTimer);
                             if (xhr.status >= 200 && xhr.status < 300) {
-                                resolve(uploadNonce);
+                                resolve();
                             } else {
                                 reject(new Error('Cloud upload failed (HTTP ' + xhr.status + ')'));
                             }
@@ -1007,7 +1015,42 @@ document.addEventListener('DOMContentLoaded', function() {
                         xhr.send(file);
                     });
                 })
-                .then(function(uploadNonce) {
+                .catch(function(directErr) {
+                    // Direct upload failed — try the streaming proxy
+                    if (!proxyUploadUrl || !proxyToken) throw directErr;
+                    console.warn('Direct S3 upload failed:', directErr.message, '— trying streaming proxy');
+                    status.textContent = 'Retrying via server proxy...';
+                    bar.style.width = '0%';
+                    percent.textContent = '0%';
+
+                    return new Promise(function(resolve, reject) {
+                        var xhr = new XMLHttpRequest();
+                        xhr.open('PUT', proxyUploadUrl, true);
+                        xhr.setRequestHeader('Content-Type', contentType);
+                        xhr.setRequestHeader('X-Upload-Token', proxyToken);
+                        var uploadStarted = false;
+                        var connTimer = setTimeout(function() {
+                            if (!uploadStarted) { xhr.abort(); reject(new Error('Proxy connection timed out')); }
+                        }, 15000);
+                        xhr.upload.onprogress = function(ev) {
+                            if (!uploadStarted) { uploadStarted = true; clearTimeout(connTimer); }
+                            if (ev.lengthComputable) {
+                                var pct = Math.round((ev.loaded / ev.total) * 100);
+                                bar.style.width = pct + '%';
+                                percent.textContent = pct + '%';
+                                status.textContent = pct < 100 ? 'Uploading via server proxy... ' + pct + '%' : 'Finalizing upload...';
+                            }
+                        };
+                        xhr.onload = function() {
+                            clearTimeout(connTimer);
+                            if (xhr.status >= 200 && xhr.status < 300) resolve();
+                            else reject(new Error('Proxy upload failed (HTTP ' + xhr.status + ')'));
+                        };
+                        xhr.onerror = function() { clearTimeout(connTimer); reject(new Error('Network error during proxy upload')); };
+                        xhr.send(file);
+                    });
+                })
+                .then(function() {
                     // ---------- Step 3: confirm upload ----------
                     status.textContent = 'Confirming upload...';
                     var confirmData = new FormData();
@@ -1029,8 +1072,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 })
                 .catch(function(err) {
-                    // Fall back to legacy server-side upload if presigned flow fails
-                    console.warn('Direct upload failed, falling back to server upload:', err.message);
+                    // Fall back to legacy server-side upload if both direct and proxy fail
+                    console.warn('Direct + proxy upload failed, falling back to legacy upload:', err.message);
                     status.textContent = 'Retrying via server...';
                     bar.style.width = '0%';
                     percent.textContent = '0%';

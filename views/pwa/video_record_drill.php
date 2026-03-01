@@ -203,6 +203,12 @@ endif;
         formMeta.append('file_size', blob.size);
         formMeta.append('file_type', blob.type || 'video/webm');
 
+        // Shared state across upload steps
+        var uploadNonce = null;
+        var proxyUploadUrl = null;
+        var proxyToken = null;
+        var contentType = null;
+
         statusEl.textContent = 'Requesting upload URL...';
 
         fetch('process_video.php', { method: 'POST', body: formMeta })
@@ -210,8 +216,10 @@ endif;
             .then(function(data) {
                 if (!data.success) throw new Error(data.error || 'Failed to get upload URL');
                 var presignedUrl = data.presigned_url;
-                var contentType = data.content_type || blob.type || 'video/webm';
-                var uploadNonce = data.upload_nonce;
+                contentType = data.content_type || blob.type || 'video/webm';
+                uploadNonce = data.upload_nonce;
+                proxyUploadUrl = data.proxy_upload_url || null;
+                proxyToken = data.proxy_token || null;
 
                 statusEl.textContent = 'Uploading to cloud storage...';
 
@@ -235,14 +243,47 @@ endif;
                     };
                     xhr.onload = function() {
                         clearTimeout(connTimer);
-                        if (xhr.status >= 200 && xhr.status < 300) resolve(uploadNonce);
+                        if (xhr.status >= 200 && xhr.status < 300) resolve();
                         else reject(new Error('Cloud upload failed (HTTP ' + xhr.status + ')'));
                     };
                     xhr.onerror = function() { clearTimeout(connTimer); reject(new Error('Network error')); };
                     xhr.send(blob);
                 });
             })
-            .then(function(uploadNonce) {
+            .catch(function(directErr) {
+                // Direct upload failed — try the streaming proxy
+                if (!proxyUploadUrl || !proxyToken) throw directErr;
+                console.warn('Direct S3 upload failed:', directErr.message, '— trying streaming proxy');
+                statusEl.textContent = 'Retrying via server proxy...';
+                progressBar.style.width = '0%';
+
+                return new Promise(function(resolve, reject) {
+                    var xhr = new XMLHttpRequest();
+                    xhr.open('PUT', proxyUploadUrl, true);
+                    xhr.setRequestHeader('Content-Type', contentType);
+                    xhr.setRequestHeader('X-Upload-Token', proxyToken);
+                    var uploadStarted = false;
+                    var connTimer = setTimeout(function() {
+                        if (!uploadStarted) { xhr.abort(); reject(new Error('Proxy connection timed out')); }
+                    }, 15000);
+                    xhr.upload.onprogress = function(ev) {
+                        if (!uploadStarted) { uploadStarted = true; clearTimeout(connTimer); }
+                        if (ev.lengthComputable) {
+                            var pct = Math.round((ev.loaded / ev.total) * 100);
+                            progressBar.style.width = pct + '%';
+                            statusEl.textContent = pct < 100 ? 'Uploading via proxy... ' + pct + '%' : 'Finalizing...';
+                        }
+                    };
+                    xhr.onload = function() {
+                        clearTimeout(connTimer);
+                        if (xhr.status >= 200 && xhr.status < 300) resolve();
+                        else reject(new Error('Proxy upload failed (HTTP ' + xhr.status + ')'));
+                    };
+                    xhr.onerror = function() { clearTimeout(connTimer); reject(new Error('Network error during proxy upload')); };
+                    xhr.send(blob);
+                });
+            })
+            .then(function() {
                 // Step 3: confirm upload
                 statusEl.textContent = 'Confirming upload...';
                 var confirmData = new FormData();
@@ -264,8 +305,8 @@ endif;
                 }
             })
             .catch(function(err) {
-                // Fall back to legacy server-side upload
-                console.warn('Direct upload failed, falling back:', err.message);
+                // Fall back to legacy server-side upload if both direct and proxy fail
+                console.warn('Direct + proxy upload failed, falling back to legacy upload:', err.message);
                 statusEl.textContent = 'Retrying via server...';
                 progressBar.style.width = '0%';
 
