@@ -79,18 +79,22 @@ try {
 ?>
 <style>
 .m-drills { padding: 0; font-family: Inter, sans-serif; }
-.m-tabs {
-    display: flex; position: sticky; top: 0; z-index: 10;
-    background: #0A0A0F; border-bottom: 1px solid #2D2D3F;
-    padding: 0 16px;
+.m-segment-control {
+    display: flex; background: #1E1E2E; border-radius: 12px; padding: 4px;
+    margin: 0 16px 16px; position: relative; border: 1px solid #2D2D3F;
 }
-.m-tab {
-    flex: 1; text-align: center; padding: 14px 0; font-size: 13px; font-weight: 600;
-    color: #6B6B7B; border: none; background: none; cursor: pointer;
-    border-bottom: 2px solid transparent;
-    min-height: 44px; font-family: Inter, sans-serif;
+.m-segment {
+    flex: 1; padding: 10px 12px; border: none; background: transparent;
+    color: #A8A8B8; font-size: 13px; font-weight: 600; font-family: inherit;
+    cursor: pointer; border-radius: 10px; display: flex; align-items: center;
+    justify-content: center; gap: 6px; z-index: 1; transition: color 0.2s;
+    min-height: 44px; -webkit-tap-highlight-color: transparent;
 }
-.m-tab.m-tab-active { color: #8B5CF6; border-bottom-color: #8B5CF6; }
+.m-segment i { font-size: 14px; }
+.m-segment-active {
+    color: #fff; background: #6B46C1;
+    box-shadow: 0 2px 8px rgba(107,70,193,0.3);
+}
 .m-tab-panel { display: none; padding: 16px; }
 .m-tab-panel.m-tab-visible { display: block; }
 .m-drill-card {
@@ -293,9 +297,14 @@ try {
 </style>
 
 <div class="m-drills">
-    <div class="m-tabs">
-        <button class="m-tab m-tab-active" onclick="mDrillTab('mine', this)" type="button">My Drills</button>
-        <button class="m-tab" onclick="mDrillTab('library', this)" type="button">Library</button>
+    <div class="m-segment-control">
+        <button class="m-segment m-segment-active" data-panel="mine" aria-pressed="true">
+            <i class="fas fa-hockey-puck"></i> My Drills
+        </button>
+        <button class="m-segment" data-panel="library" aria-pressed="false">
+            <i class="fas fa-book"></i> Library
+        </button>
+        <div class="m-segment-slider"></div>
     </div>
 
     <!-- Import/Export toolbar -->
@@ -502,13 +511,21 @@ try {
 </div>
 
 <script>
-function mDrillTab(tabId, btn) {
-    document.querySelectorAll('.m-tab-panel').forEach(function(p) { p.classList.remove('m-tab-visible'); });
-    document.querySelectorAll('.m-tab').forEach(function(t) { t.classList.remove('m-tab-active'); });
-    var panel = document.getElementById('m-panel-' + tabId);
-    if (panel) panel.classList.add('m-tab-visible');
-    if (btn) btn.classList.add('m-tab-active');
-}
+document.querySelectorAll('.m-segment-control .m-segment').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        var control = this.closest('.m-segment-control');
+        control.querySelectorAll('.m-segment').forEach(function(s) {
+            s.classList.remove('m-segment-active');
+            s.setAttribute('aria-pressed', 'false');
+        });
+        this.classList.add('m-segment-active');
+        this.setAttribute('aria-pressed', 'true');
+        var panelId = this.getAttribute('data-panel');
+        document.querySelectorAll('.m-tab-panel').forEach(function(p) { p.classList.remove('m-tab-visible'); });
+        var target = document.getElementById('m-panel-' + panelId);
+        if (target) target.classList.add('m-tab-visible');
+    });
+});
 
 /* Client-side search filter */
 function mFilterDrills(panelKey, query) {

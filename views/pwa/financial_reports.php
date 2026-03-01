@@ -33,6 +33,18 @@ try {
 ?>
 <style>
 .m-reports { padding: 16px; font-family: Inter, sans-serif; }
+.m-reports-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6); z-index: 1000;
+}
+.m-reports-sheet {
+    display: none; position: fixed; bottom: 0; left: 0; right: 0;
+    z-index: 1001; background: #16161F; border-radius: 16px 16px 0 0;
+    max-height: 85vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    padding: 20px 16px 32px; font-family: Inter, sans-serif;
+}
+.m-reports-overlay.m-open { display: block; }
+.m-reports-sheet.m-open { display: block; }
 .m-reports-header { margin-bottom: 16px; }
 .m-reports-title { font-size: 17px; font-weight: 700; color: #fff; margin: 0; }
 .m-reports-sub { font-size: 12px; color: #A8A8B8; margin: 2px 0 0; }
@@ -116,8 +128,8 @@ try {
 </div>
 
 <!-- Generate Report Bottom Sheet -->
-<div class="m-reports-overlay" id="mFinRepOverlay" onclick="mFinRepClose()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1000;"></div>
-<div class="m-reports-sheet" id="mFinRepSheet" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:1001;background:#16161F;border-radius:16px 16px 0 0;max-height:85vh;overflow-y:auto;padding:20px 16px 32px;font-family:Inter,sans-serif;">
+<div class="m-reports-overlay" id="mFinRepOverlay" onclick="mFinRepClose()"></div>
+<div class="m-reports-sheet" id="mFinRepSheet">
     <div style="width:36px;height:4px;background:#2D2D3F;border-radius:2px;margin:0 auto 16px;"></div>
     <h3 style="font-size:17px;font-weight:700;color:#fff;margin:0 0 16px;" id="mFinRepTitle">Generate Report</h3>
     <form id="mFinRepForm" method="POST">
@@ -173,12 +185,12 @@ const reportNames = {revenue_summary:'Revenue Summary',expense_report:'Expense R
 function mFinRepOpen(type) {
     document.getElementById('mFinRepType').value = type;
     document.getElementById('mFinRepTitle').textContent = reportNames[type] || 'Generate Report';
-    document.getElementById('mFinRepOverlay').style.display = 'block';
-    document.getElementById('mFinRepSheet').style.display = 'block';
+    document.getElementById('mFinRepOverlay').classList.add('m-open');
+    document.getElementById('mFinRepSheet').classList.add('m-open');
 }
 function mFinRepClose() {
-    document.getElementById('mFinRepOverlay').style.display = 'none';
-    document.getElementById('mFinRepSheet').style.display = 'none';
+    document.getElementById('mFinRepOverlay').classList.remove('m-open');
+    document.getElementById('mFinRepSheet').classList.remove('m-open');
 }
 document.getElementById('mFinRepDateRange').addEventListener('change', function() {
     document.getElementById('mFinRepCustomDates').style.display = this.value === 'custom' ? 'block' : 'none';

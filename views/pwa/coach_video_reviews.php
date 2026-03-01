@@ -101,18 +101,22 @@ $selected_athlete = $_GET['athlete_id'] ?? null;
 .m-cvr-header { padding: 16px; }
 .m-cvr-title { font-size: 17px; font-weight: 700; color: #fff; margin: 0 0 2px 0; display: flex; align-items: center; gap: 8px; }
 .m-cvr-subtitle { font-size: 12px; color: #6B6B7B; margin: 0; }
-.m-cvr-tabs {
-    display: flex; position: sticky; top: 0; z-index: 10;
-    background: #0A0A0F; border-bottom: 1px solid #2D2D3F;
-    padding: 0 16px;
+.m-segment-control {
+    display: flex; background: #1E1E2E; border-radius: 12px; padding: 4px;
+    margin: 0 16px 16px; position: relative; border: 1px solid #2D2D3F;
 }
-.m-cvr-tab {
-    flex: 1; text-align: center; padding: 14px 0; font-size: 13px; font-weight: 600;
-    color: #6B6B7B; text-decoration: none;
-    border-bottom: 2px solid transparent;
-    min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+.m-segment {
+    flex: 1; padding: 10px 12px; border: none; background: transparent;
+    color: #A8A8B8; font-size: 13px; font-weight: 600; cursor: pointer;
+    border-radius: 10px; display: flex; align-items: center; justify-content: center;
+    gap: 6px; z-index: 1; transition: color 0.2s; min-height: 44px;
+    -webkit-tap-highlight-color: transparent; text-decoration: none;
 }
-.m-cvr-tab-active { color: #8B5CF6; border-bottom-color: #8B5CF6; }
+.m-segment i { font-size: 14px; }
+.m-segment-active {
+    color: #fff; background: #6B46C1;
+    box-shadow: 0 2px 8px rgba(107,70,193,0.3);
+}
 .m-cvr-badge {
     font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 12px;
 }
@@ -207,17 +211,17 @@ $selected_athlete = $_GET['athlete_id'] ?? null;
         <p class="m-cvr-subtitle">Review athlete videos and provide feedback</p>
     </div>
 
-    <!-- Sticky Tabs -->
-    <div class="m-cvr-tabs">
+    <!-- Segmented Control -->
+    <div class="m-segment-control">
         <a href="?page=coach_video_reviews&tab=pending"
-           class="m-cvr-tab <?= $active_tab === 'pending' ? 'm-cvr-tab-active' : '' ?>">
+           class="m-segment <?= $active_tab === 'pending' ? 'm-segment-active' : '' ?>" aria-pressed="<?= $active_tab === 'pending' ? 'true' : 'false' ?>">
             <i class="fas fa-clock"></i> Pending
             <?php if (count($pending_videos) > 0): ?>
                 <span class="m-cvr-badge m-cvr-badge-pending"><?= count($pending_videos) ?></span>
             <?php endif; ?>
         </a>
         <a href="?page=coach_video_reviews&tab=reviewed"
-           class="m-cvr-tab <?= $active_tab === 'reviewed' ? 'm-cvr-tab-active' : '' ?>">
+           class="m-segment <?= $active_tab === 'reviewed' ? 'm-segment-active' : '' ?>" aria-pressed="<?= $active_tab === 'reviewed' ? 'true' : 'false' ?>">
             <i class="fas fa-check-circle"></i> Reviewed
             <?php if (count($reviewed_videos) > 0): ?>
                 <span class="m-cvr-badge m-cvr-badge-reviewed"><?= count($reviewed_videos) ?></span>

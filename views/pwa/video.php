@@ -40,18 +40,54 @@ try {
 ?>
 <style>
 .m-video { padding: 0; font-family: Inter, sans-serif; }
-.m-tabs {
-    display: flex; position: sticky; top: 0; z-index: 10;
-    background: #0A0A0F; border-bottom: 1px solid #2D2D3F;
-    padding: 0 16px;
+.m-view-selector {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #1E1E2E;
+    border: 1px solid #2D2D3F;
+    border-radius: 12px;
+    padding: 8px 12px;
+    margin-bottom: 16px;
 }
-.m-tab {
-    flex: 1; text-align: center; padding: 14px 0; font-size: 13px; font-weight: 600;
-    color: #6B6B7B; border: none; background: none; cursor: pointer;
-    border-bottom: 2px solid transparent;
-    min-height: 44px; font-family: Inter, sans-serif;
+.m-view-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #8B5CF6;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
-.m-tab.m-tab-active { color: #8B5CF6; border-bottom-color: #8B5CF6; }
+.m-view-select {
+    flex: 1;
+    background: #16161F;
+    border: 1px solid #2D2D3F;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    padding: 10px 12px;
+    min-height: 44px;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%238B5CF6' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+}
+.m-view-select:focus {
+    outline: none;
+    border-color: #6B46C1;
+    box-shadow: 0 0 0 3px rgba(107,70,193,0.2);
+}
+.m-view-select option {
+    background: #16161F;
+    color: #fff;
+    padding: 8px;
+}
 .m-tab-panel { display: none; padding: 16px; }
 .m-tab-panel.m-tab-visible { display: block; }
 .m-video-card {
@@ -166,10 +202,15 @@ try {
     <div class="m-upload-bar">
         <a href="?page=record_video" class="m-upload-btn"><i class="fas fa-cloud-upload-alt"></i> Upload Video</a>
     </div>
-    <div class="m-tabs">
-        <button class="m-tab m-tab-active" onclick="mVidTab('drills', this)" type="button">Drill Review</button>
-        <button class="m-tab" onclick="mVidTab('coach', this)" type="button">Coach Review</button>
-        <button class="m-tab" onclick="mVidTab('record', this)" type="button">Record</button>
+    <div class="m-view-selector" style="margin:16px 16px 0;">
+        <label class="m-view-label" for="videoViewSelect">
+            <i class="fas fa-layer-group"></i> View
+        </label>
+        <select class="m-view-select" id="videoViewSelect" aria-label="Select video view">
+            <option value="drills" selected>📋 Drill Review</option>
+            <option value="coach">📊 Coach Review</option>
+            <option value="record">🎬 Record</option>
+        </select>
     </div>
 
     <!-- Drill Review Tab -->
@@ -275,13 +316,11 @@ try {
 <script>
 var mCsrfToken = <?= json_encode(CSRFProtection::generateToken()) ?>;
 
-function mVidTab(tabId, btn) {
+document.getElementById('videoViewSelect').addEventListener('change', function() {
     document.querySelectorAll('.m-tab-panel').forEach(function(p) { p.classList.remove('m-tab-visible'); });
-    document.querySelectorAll('.m-tab').forEach(function(t) { t.classList.remove('m-tab-active'); });
-    var panel = document.getElementById('m-panel-' + tabId);
-    if (panel) panel.classList.add('m-tab-visible');
-    if (btn) btn.classList.add('m-tab-active');
-}
+    var target = document.getElementById('m-panel-' + this.value);
+    if (target) target.classList.add('m-tab-visible');
+});
 
 function mVidShowToast(msg, type) {
     var t = document.getElementById('mToast');
