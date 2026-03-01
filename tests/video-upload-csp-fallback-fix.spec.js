@@ -34,8 +34,8 @@ test.describe('setSecurityHeaders accepts extra connect-src origins', () => {
     const funcEnd = content.indexOf('\nfunction ', funcStart + 1);
     const funcBody = content.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
 
-    // Should have the base connect-src string
-    expect(funcBody).toContain("'self' wss: https://maps.googleapis.com");
+    // Should have the base connect-src string (includes *.arcticwolves.ca for S3/RustFS subdomains)
+    expect(funcBody).toContain("'self' wss: https://*.arcticwolves.ca https://maps.googleapis.com");
     // Should iterate over extraConnectSrc
     expect(funcBody).toContain('foreach ($extraConnectSrc');
     expect(funcBody).toContain('$connectSrc');

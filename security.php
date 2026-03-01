@@ -25,7 +25,9 @@ function setSecurityHeaders($extraConnectSrc = []) {
     }
     
     // Build connect-src with optional extra origins (e.g., RustFS endpoint for direct uploads)
-    $connectSrc = "'self' wss: https://maps.googleapis.com https://places.googleapis.com https://www.google.com https://cdn.jsdelivr.net";
+    // Include *.arcticwolves.ca so S3/RustFS subdomains are always allowed even when
+    // the dynamic database lookup fails silently.
+    $connectSrc = "'self' wss: https://*.arcticwolves.ca https://maps.googleapis.com https://places.googleapis.com https://www.google.com https://cdn.jsdelivr.net";
     foreach ($extraConnectSrc as $src) {
         $connectSrc .= ' ' . $src;
     }
