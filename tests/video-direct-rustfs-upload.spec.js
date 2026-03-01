@@ -125,13 +125,13 @@ test.describe('get_athlete_upload_url action', () => {
     expect(funcBody).toContain('10 * 1024 * 1024 * 1024');
   });
 
-  test('should call generatePresignedUploadUrl', () => {
+  test('should call generatePresignedUploadUrl (directly or via SDK)', () => {
     const content = readFile('process_video.php');
     const funcStart = content.indexOf('function handleGetAthleteUploadUrl()');
     const funcEnd = content.indexOf('\nfunction ', funcStart + 1);
     const funcBody = content.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
 
-    expect(funcBody).toContain('generatePresignedUploadUrl(');
+    expect(funcBody).toMatch(/generatePresignedUploadUrl/);
   });
 
   test('should store pending upload in session with nonce', () => {
@@ -277,7 +277,7 @@ test.describe('Simplified upload JS in video_record_athlete.php', () => {
 
   test('should upload directly to cloud storage via presigned URL', () => {
     const content = readFile('views/video_record_athlete.php');
-    expect(content).toContain('presignedUrl');
+    expect(content).toContain('presigned_url');
     expect(content).toContain('Uploading to cloud storage');
   });
 

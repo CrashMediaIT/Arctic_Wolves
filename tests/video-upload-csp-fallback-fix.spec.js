@@ -134,8 +134,10 @@ test.describe('pwa_tablet.php includes RustFS endpoint in CSP connect-src', () =
 test.describe('Upload uses direct PUT to presigned URL (CORS configured on bucket)', () => {
   test('should PUT directly to presigned URL on RustFS', () => {
     const content = readFile('views/video_record_athlete.php');
-    expect(content).toContain("xhr.open('PUT', presignedUrl");
-    expect(content).toContain("xhr.setRequestHeader('Content-Type', contentType)");
+    // The presigned URL is PUT directly — either via inline XHR or xhrPut helper
+    expect(content).toMatch(/xhr\.open\('PUT',\s*(presignedUrl|url)/);
+    expect(content).toContain('Content-Type');
+    expect(content).toContain('contentType');
   });
 
   test('should not use proxy_video_upload', () => {

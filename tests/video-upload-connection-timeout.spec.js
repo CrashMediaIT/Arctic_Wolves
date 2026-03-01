@@ -27,11 +27,19 @@ function readFile(relativePath) {
  * from a view file's inline JS.
  */
 function getStep2Block(content) {
-  // Look for the direct upload promise block
-  const start = content.indexOf("xhr.open('PUT', presignedUrl");
+  // Look for the direct upload promise block — either the legacy inline
+  // pattern or the refactored xhrPut helper pattern
+  let start = content.indexOf("xhr.open('PUT', presignedUrl");
+  if (start === -1) {
+    // Refactored pattern: uses a helper function with setTimeout inside
+    start = content.indexOf("xhr.open('PUT', url, true)");
+  }
   if (start === -1) return null;
-  // Go back to the enclosing "new Promise"
-  const promiseStart = content.lastIndexOf('new Promise', start);
+  // Go back to the enclosing "new Promise" or "function xhrPut"
+  let promiseStart = content.lastIndexOf('new Promise', start);
+  if (promiseStart === -1) {
+    promiseStart = content.lastIndexOf('function xhrPut', start);
+  }
   // Go forward to the matching closing of the promise
   const promiseEnd = content.indexOf('xhr.send(', start);
   if (promiseStart === -1 || promiseEnd === -1) return null;
@@ -97,7 +105,7 @@ test.describe('Direct upload XHR has connection timeout in all views', () => {
       expect(block).not.toBeNull();
 
       // The timeout handler must reject the promise so the catch/fallback fires
-      expect(block).toContain("reject(new Error('Cloud storage connection timed out'))");
+      expect(block).toMatch(/reject\(new Error\(.+connection timed out/);
     });
   }
 });

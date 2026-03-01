@@ -156,7 +156,7 @@ test.describe('Direct-to-RustFS upload flow in coach reviews', () => {
 
   test('should implement legacy fallback on direct upload failure', () => {
     const content = readFile('views/video_coach_reviews.php');
-    expect(content).toContain('falling back to server upload');
+    expect(content).toMatch(/falling back to (server|legacy) upload/);
     expect(content).toContain("'action', 'athlete_upload_video'");
   });
 
