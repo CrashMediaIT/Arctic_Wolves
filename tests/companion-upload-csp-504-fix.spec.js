@@ -2,8 +2,9 @@
  * Tests for Companion Upload CSP and 504 Timeout Fix
  *
  * Verifies:
- * 1. Gameplan NGINX subdomain has CSP fallback header with cdn.jsdelivr.net
- *    in connect-src (prevents CSP errors on 504/error pages)
+ * 1. Gameplan NGINX server block has NO server-level CSP (PHP manages CSP exclusively
+ *    to prevent duplicate headers that block direct S3 uploads). CSP domains verified
+ *    in security.php instead.
  * 2. Film room upload forms use AJAX with progress to avoid 504 timeouts
  * 3. handleUploadVideoSource returns JSON for AJAX requests
  */
@@ -19,54 +20,40 @@ function readFile(relativePath) {
 }
 
 // =====================================================
-// 1. Gameplan NGINX subdomain CSP includes cdn.jsdelivr.net
+// 1. Gameplan NGINX server block has NO server-level CSP
+//    (CSP managed exclusively by PHP — verified in security.php)
 // =====================================================
 
-test.describe('Gameplan NGINX subdomain has CSP fallback', () => {
-  test('should include Content-Security-Policy header in gameplan server block', () => {
+test.describe('Gameplan NGINX server block CSP removed', () => {
+  test('should NOT have a server-level add_header Content-Security-Policy', () => {
     const content = readFile('deployment/arctic_wolves.conf');
-    // Find the gameplan server block
     const gameplanStart = content.indexOf('server_name gameplan.arcticwolves.ca;');
     expect(gameplanStart).toBeGreaterThan(0);
-    // Find the end of the gameplan server block (next server { or end of file)
     const gameplanEnd = content.indexOf('# =====', gameplanStart);
     const gameplanBlock = content.substring(gameplanStart, gameplanEnd > -1 ? gameplanEnd : undefined);
-    expect(gameplanBlock).toContain('Content-Security-Policy');
+    // Extract PHP location block boundary to check only server-level directives
+    const phpBlockStart = gameplanBlock.indexOf('location ~ \\.php$');
+    const serverLevelBlock = gameplanBlock.substring(0, phpBlockStart > -1 ? phpBlockStart : undefined);
+    const lines = serverLevelBlock.split('\n');
+    const cspAddHeaderLines = lines.filter(l => {
+      const trimmed = l.trim();
+      return trimmed.startsWith('add_header') && trimmed.includes('Content-Security-Policy');
+    });
+    expect(cspAddHeaderLines).toHaveLength(0);
   });
 
-  test('should include cdn.jsdelivr.net in gameplan CSP connect-src', () => {
-    const content = readFile('deployment/arctic_wolves.conf');
-    const gameplanStart = content.indexOf('server_name gameplan.arcticwolves.ca;');
-    const gameplanEnd = content.indexOf('# =====', gameplanStart);
-    const gameplanBlock = content.substring(gameplanStart, gameplanEnd > -1 ? gameplanEnd : undefined);
-    // Extract CSP from the gameplan block
-    const cspMatch = gameplanBlock.match(/Content-Security-Policy "([^"]+)"/);
-    expect(cspMatch).not.toBeNull();
-    // Extract connect-src
-    const connectSrcMatch = cspMatch[1].match(/connect-src\s+([^;]+);/);
+  test('security.php CSP connect-src should include cdn.jsdelivr.net', () => {
+    const content = readFile('security.php');
+    const connectSrcMatch = content.match(/\$connectSrc\s*=\s*"([^"]+)"/);
     expect(connectSrcMatch).not.toBeNull();
     expect(connectSrcMatch[1]).toContain('https://cdn.jsdelivr.net');
   });
 
-  test('should include www.google.com in gameplan CSP connect-src', () => {
-    const content = readFile('deployment/arctic_wolves.conf');
-    const gameplanStart = content.indexOf('server_name gameplan.arcticwolves.ca;');
-    const gameplanEnd = content.indexOf('# =====', gameplanStart);
-    const gameplanBlock = content.substring(gameplanStart, gameplanEnd > -1 ? gameplanEnd : undefined);
-    const cspMatch = gameplanBlock.match(/Content-Security-Policy "([^"]+)"/);
-    expect(cspMatch).not.toBeNull();
-    const connectSrcMatch = cspMatch[1].match(/connect-src\s+([^;]+);/);
+  test('security.php CSP connect-src should include www.google.com', () => {
+    const content = readFile('security.php');
+    const connectSrcMatch = content.match(/\$connectSrc\s*=\s*"([^"]+)"/);
     expect(connectSrcMatch).not.toBeNull();
     expect(connectSrcMatch[1]).toContain('https://www.google.com');
-  });
-
-  test('gameplan CSP should use always flag for error pages', () => {
-    const content = readFile('deployment/arctic_wolves.conf');
-    const gameplanStart = content.indexOf('server_name gameplan.arcticwolves.ca;');
-    const gameplanEnd = content.indexOf('# =====', gameplanStart);
-    const gameplanBlock = content.substring(gameplanStart, gameplanEnd > -1 ? gameplanEnd : undefined);
-    // The CSP header should end with 'always;' to apply to error pages (504, etc.)
-    expect(gameplanBlock).toMatch(/Content-Security-Policy\s+"[^"]+"\s+always;/);
   });
 });
 
