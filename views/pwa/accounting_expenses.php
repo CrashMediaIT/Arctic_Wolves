@@ -92,21 +92,22 @@ $periodLabel = $periodLabels[$period] ?? 'This Month';
 .m-expenses-summary-label { font-size: 12px; color: rgba(255,255,255,0.7); }
 .m-expenses-summary-value { font-size: 28px; font-weight: 700; color: #fff; margin-top: 4px; }
 
-/* Tab navigation */
-.m-tab-nav {
-    display: flex; gap: 0; margin-bottom: 16px;
-    background: #16161F; border-radius: 12px; padding: 4px;
-    border: 1px solid #2D2D3F;
+/* Segmented control */
+.m-segment-control {
+    display: flex; background: #1E1E2E; border-radius: 12px; padding: 4px;
+    margin-bottom: 16px; position: relative; border: 1px solid #2D2D3F;
 }
-.m-tab-btn {
-    flex: 1; padding: 10px 8px; border-radius: 10px; font-size: 12px; font-weight: 600;
-    text-align: center; color: #A8A8B8; background: transparent;
-    border: none; cursor: pointer; min-height: 44px;
-    font-family: Inter, sans-serif; text-decoration: none;
-    display: flex; align-items: center; justify-content: center; gap: 6px;
+.m-segment {
+    flex: 1; padding: 10px 12px; border: none; background: transparent;
+    color: #A8A8B8; font-size: 13px; font-weight: 600; cursor: pointer;
+    border-radius: 10px; display: flex; align-items: center; justify-content: center;
+    gap: 6px; z-index: 1; transition: color 0.2s; min-height: 44px;
+    -webkit-tap-highlight-color: transparent; text-decoration: none;
 }
-.m-tab-btn.active {
-    background: rgba(139,92,246,0.2); color: #8B5CF6;
+.m-segment i { font-size: 14px; }
+.m-segment-active {
+    color: #fff; background: #6B46C1;
+    box-shadow: 0 2px 8px rgba(107,70,193,0.3);
 }
 
 .m-expenses-filter {
@@ -295,12 +296,12 @@ $periodLabel = $periodLabels[$period] ?? 'This Month';
         <?php endif; ?>
     </div>
 
-    <!-- Tab Navigation -->
-    <div class="m-tab-nav">
-        <a href="?page=expenses&expenses_tab=expenses&period=<?= htmlspecialchars($period) ?>" class="m-tab-btn <?= $expenses_tab === 'expenses' ? 'active' : '' ?>">
+    <!-- Segmented Control -->
+    <div class="m-segment-control">
+        <a href="?page=expenses&expenses_tab=expenses&period=<?= htmlspecialchars($period) ?>" class="m-segment <?= $expenses_tab === 'expenses' ? 'm-segment-active' : '' ?>" aria-pressed="<?= $expenses_tab === 'expenses' ? 'true' : 'false' ?>">
             <i class="fas fa-file-invoice-dollar"></i> Expenses
         </a>
-        <a href="?page=expenses&expenses_tab=recurring" class="m-tab-btn <?= $expenses_tab === 'recurring' ? 'active' : '' ?>">
+        <a href="?page=expenses&expenses_tab=recurring" class="m-segment <?= $expenses_tab === 'recurring' ? 'm-segment-active' : '' ?>" aria-pressed="<?= $expenses_tab === 'recurring' ? 'true' : 'false' ?>">
             <i class="fas fa-sync-alt"></i> Recurring & Contracts
         </a>
     </div>
