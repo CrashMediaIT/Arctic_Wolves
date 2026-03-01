@@ -945,9 +945,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     var connTimer = setTimeout(function() {
                         if (!uploadStarted) {
                             xhr.abort();
-                            reject(new Error(label + ' connection timed out'));
+                            reject(new Error(label + ' connection timed out — check that the S3/RustFS endpoint is reachable from this browser'));
                         }
-                    }, 15000);
+                    }, 30000);
 
                     xhr.upload.onprogress = function(ev) {
                         if (!uploadStarted) { uploadStarted = true; clearTimeout(connTimer); }
@@ -971,7 +971,10 @@ document.addEventListener('DOMContentLoaded', function() {
                             reject(new Error(label + ' failed (HTTP ' + xhr.status + ')'));
                         }
                     };
-                    xhr.onerror = function() { clearTimeout(connTimer); reject(new Error('Network error during ' + label)); };
+                    xhr.onerror = function() {
+                        clearTimeout(connTimer);
+                        reject(new Error('Network error during ' + label + ' — ensure the S3/RustFS endpoint is accessible'));
+                    };
                     xhr.send(file);
                 });
             }

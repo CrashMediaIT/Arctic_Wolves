@@ -81,6 +81,10 @@ if (empty($upload_token) || empty($session_token) || !hash_equals($session_token
 // Invalidate token after use to prevent replay attacks
 unset($_SESSION['upload_proxy_token']);
 
+// Release session lock before the potentially long streaming upload.
+// This prevents blocking other requests from the same user during the upload.
+session_write_close();
+
 // ── Validate Content-Length ─────────────────────────────────────────────
 $content_length = (int)($_SERVER['CONTENT_LENGTH'] ?? 0);
 if ($content_length <= 0) {

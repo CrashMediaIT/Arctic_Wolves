@@ -112,8 +112,13 @@ function getRustFSPublicUrl($settings, $object_key) {
 function signRustFSRequest($method, $url, $headers, $payload, $access_key, $secret_key, $region = 'us-east-1', $service = 's3') {
     $parsed = parse_url($url);
     $host = $parsed['host'] . (isset($parsed['port']) ? ':' . $parsed['port'] : '');
-    $path = $parsed['path'] ?? '/';
     $query = $parsed['query'] ?? '';
+
+    // URI-encode each path segment per AWS Signature V4 spec.
+    // Forward slashes between segments are preserved unencoded.
+    $raw_path = $parsed['path'] ?? '/';
+    $segments = array_filter(explode('/', $raw_path), 'strlen');
+    $path = '/' . implode('/', array_map('rawurlencode', $segments));
 
     $now = new DateTime('UTC');
     $date_stamp = $now->format('Ymd');
@@ -332,6 +337,11 @@ function uploadLargeFileToRustFS($settings, $local_path, $object_key, $content_t
         $parsed = parse_url($url);
         $host = $parsed['host'] . (isset($parsed['port']) ? ':' . $parsed['port'] : '');
 
+        // URI-encode each path segment per AWS Signature V4 spec
+        $raw_path = $parsed['path'] ?? '/';
+        $segments = array_filter(explode('/', $raw_path), 'strlen');
+        $path = '/' . implode('/', array_map('rawurlencode', $segments));
+
         $now = new DateTime('UTC');
         $date_stamp = $now->format('Ymd');
         $amz_date = $now->format('Ymd\THis\Z');
@@ -353,7 +363,6 @@ function uploadLargeFileToRustFS($settings, $local_path, $object_key, $content_t
         }
         $signed_headers = implode(';', $signed_headers_list);
 
-        $path = $parsed['path'] ?? '/';
         $canonical_request = implode("\n", [
             'PUT', $path, '', $canonical_headers, $signed_headers, $payload_hash,
         ]);
@@ -382,6 +391,7 @@ function uploadLargeFileToRustFS($settings, $local_path, $object_key, $content_t
         $curl_headers = [
             'Content-Type: ' . $content_type,
             'Content-Length: ' . $file_size,
+            'Host: ' . $host,
             'Authorization: ' . $auth_header,
             'x-amz-date: ' . $amz_date,
             'x-amz-content-sha256: ' . $payload_hash,
@@ -389,7 +399,7 @@ function uploadLargeFileToRustFS($settings, $local_path, $object_key, $content_t
         ];
 
         $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_PUT, true);
+        curl_setopt($ch, CURLOPT_UPLOAD, true);
         curl_setopt($ch, CURLOPT_INFILE, $fh);
         curl_setopt($ch, CURLOPT_INFILESIZE, $file_size);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -1020,6 +1030,11 @@ function streamUploadToRustFS($settings, $input_stream, $content_length, $object
         $parsed = parse_url($url);
         $host = $parsed['host'] . (isset($parsed['port']) ? ':' . $parsed['port'] : '');
 
+        // URI-encode each path segment per AWS Signature V4 spec
+        $raw_path = $parsed['path'] ?? '/';
+        $segments = array_filter(explode('/', $raw_path), 'strlen');
+        $path = '/' . implode('/', array_map('rawurlencode', $segments));
+
         $now = new DateTime('UTC');
         $date_stamp = $now->format('Ymd');
         $amz_date = $now->format('Ymd\THis\Z');
@@ -1041,7 +1056,6 @@ function streamUploadToRustFS($settings, $input_stream, $content_length, $object
         }
         $signed_headers = implode(';', $signed_headers_list);
 
-        $path = $parsed['path'] ?? '/';
         $canonical_request = implode("\n", [
             'PUT', $path, '', $canonical_headers, $signed_headers, $payload_hash,
         ]);
@@ -1065,6 +1079,7 @@ function streamUploadToRustFS($settings, $input_stream, $content_length, $object
         $curl_headers = [
             'Content-Type: ' . $content_type,
             'Content-Length: ' . $content_length,
+            'Host: ' . $host,
             'Authorization: ' . $auth_header,
             'x-amz-date: ' . $amz_date,
             'x-amz-content-sha256: ' . $payload_hash,
@@ -1072,7 +1087,7 @@ function streamUploadToRustFS($settings, $input_stream, $content_length, $object
         ];
 
         $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_PUT, true);
+        curl_setopt($ch, CURLOPT_UPLOAD, true);
         curl_setopt($ch, CURLOPT_INFILE, $input_stream);
         curl_setopt($ch, CURLOPT_INFILESIZE, $content_length);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
