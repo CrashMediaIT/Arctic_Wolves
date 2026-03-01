@@ -57,6 +57,26 @@ function isRustFSConfigured($settings) {
 }
 
 /**
+ * Ensure an endpoint URL has a scheme prefix (http:// or https://).
+ *
+ * Without a scheme, PHP's parse_url() misinterprets 'host:port' as 'scheme:path',
+ * which breaks URL construction for presigned URLs and CSP origins — especially
+ * when using non-standard ports like Docker-mapped ports (e.g., 30292).
+ *
+ * @param string $url     Endpoint URL that may or may not have a scheme
+ * @param bool   $use_ssl Whether to default to https (true) or http (false)
+ * @return string URL with a scheme prefix
+ */
+function ensureEndpointScheme($url, $use_ssl = true) {
+    $url = trim($url);
+    if ($url === '') return $url;
+    if (strpos($url, 'http://') === 0 || strpos($url, 'https://') === 0) {
+        return $url;
+    }
+    return ($use_ssl ? 'https://' : 'http://') . $url;
+}
+
+/**
  * Build the base URL for the RustFS bucket.
  *
  * @param array $settings RustFS settings
@@ -68,10 +88,8 @@ function getRustFSBaseUrl($settings) {
     $use_ssl = ($settings['rustfs_use_ssl'] ?? '1') === '1';
     $path_style = ($settings['rustfs_path_style'] ?? '1') === '1';
 
-    // Ensure endpoint has a scheme
-    if (strpos($endpoint, 'http://') !== 0 && strpos($endpoint, 'https://') !== 0) {
-        $endpoint = ($use_ssl ? 'https://' : 'http://') . $endpoint;
-    }
+    // Ensure endpoint has a scheme (prevents parse_url misinterpreting host:port as scheme:path)
+    $endpoint = ensureEndpointScheme($endpoint, $use_ssl);
 
     if ($path_style) {
         return $endpoint . '/' . $bucket;
@@ -718,10 +736,8 @@ function ensureRustFSBucketCors($settings) {
         $use_ssl    = ($settings['rustfs_use_ssl'] ?? '1') === '1';
         $path_style = ($settings['rustfs_path_style'] ?? '1') === '1';
 
-        // Ensure scheme
-        if (strpos($endpoint, 'http://') !== 0 && strpos($endpoint, 'https://') !== 0) {
-            $endpoint = ($use_ssl ? 'https://' : 'http://') . $endpoint;
-        }
+        // Ensure scheme (prevents parse_url misinterpreting host:port as scheme:path)
+        $endpoint = ensureEndpointScheme($endpoint, $use_ssl);
 
         // Build the bucket-level URL
         if ($path_style) {
@@ -831,6 +847,10 @@ function generatePresignedUploadUrl($settings, $object_key, $content_type = 'app
         // When a public endpoint is provided (browser-facing URL behind HAProxy),
         // use its scheme/host/port so the presigned URL is reachable from the browser.
         if (!empty($public_endpoint)) {
+            // Ensure scheme prefix so parse_url correctly identifies host and port
+            // (without a scheme, 'host:30292' is misinterpreted as 'scheme:path')
+            $use_ssl = ($settings['rustfs_use_ssl'] ?? '1') === '1';
+            $public_endpoint = ensureEndpointScheme($public_endpoint, $use_ssl);
             $pub = parse_url(rtrim($public_endpoint, '/'));
             $scheme = $pub['scheme'] ?? 'https';
             $host = $pub['host'] . (isset($pub['port']) ? ':' . $pub['port'] : '');
@@ -933,6 +953,14 @@ function generatePresignedUploadUrl($settings, $object_key, $content_type = 'app
  * @return array ['success'=>bool, 'url'=>string|null, 'object_key'=>string, 'message'=>string|null]
  */
 function generatePresignedUploadUrlViaSdk($pdo, $settings, $object_key, $content_type = 'application/octet-stream', $expires = 3600, $public_endpoint = null) {
+    // Normalize the public endpoint so that bare 'host:port' values (common in
+    // Docker deployments, e.g. 's3.example.com:30292') are not misinterpreted
+    // by parse_url or the companion SDK.
+    if (!empty($public_endpoint)) {
+        $use_ssl = ($settings['rustfs_use_ssl'] ?? '1') === '1';
+        $public_endpoint = ensureEndpointScheme($public_endpoint, $use_ssl);
+    }
+
     // Try the companion server's SDK-based presign endpoint first
     try {
         $stmt = $pdo->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('gameplan_companion_url', 'gameplan_companion_api_key')");
