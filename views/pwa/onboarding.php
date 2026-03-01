@@ -1,1 +1,1 @@
-<?php include __DIR__ . "/hr_onboarding.php";
+<?php include __DIR__ . "/../hr_onboarding.php"; ?>

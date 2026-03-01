@@ -1,1 +1,1 @@
-<?php include __DIR__ . "/practice.php";
+<?php include __DIR__ . "/../practice.php"; ?>

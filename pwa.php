@@ -269,9 +269,12 @@ $allowed_pages = [
 
 $view_file = $allowed_pages[$page] ?? 'views/home.php';
 
-// Every page uses the same desktop view files as dashboard.php so that the PWA has
-// 100% feature parity.  The PWA shell (header, bottom-tab bar) and css/pwa.css handle
-// the mobile-friendly layout; no stripped-down view overrides are used.
+// Use the mobile-optimized PWA view when one exists; every PWA view is maintained
+// with full functionality parity to its desktop counterpart.
+$pwa_view_file = 'views/pwa/' . $page . '.php';
+if (file_exists(__DIR__ . '/' . $pwa_view_file)) {
+    $view_file = $pwa_view_file;
+}
 
 // Determine active tab
 $tab_home     = in_array($page, ['home', 'front_desk_home', 'parent_home']);

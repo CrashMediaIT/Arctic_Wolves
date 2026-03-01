@@ -1,1 +1,1 @@
-<?php include __DIR__ . "/finance_dashboard.php";
+<?php include __DIR__ . "/../finance_dashboard.php"; ?>
