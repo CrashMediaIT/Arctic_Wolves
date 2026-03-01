@@ -28,6 +28,10 @@
             <i class="fas fa-chart-line"></i> Performance Stats
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
+        <a href="?page=goals" class="pwa-menu-item">
+            <i class="fas fa-bullseye"></i> Goals
+            <i class="fas fa-chevron-right menu-chevron"></i>
+        </a>
         <a href="?page=messages" class="pwa-menu-item">
             <i class="fas fa-comments"></i> Messages
             <span id="nav-msg-badge" style="display:none;background:var(--primary);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto;margin-right:8px;"></span>
@@ -39,6 +43,10 @@
         </a>
         <a href="?page=health" class="pwa-menu-item">
             <i class="fas fa-heart-pulse"></i> Health
+            <i class="fas fa-chevron-right menu-chevron"></i>
+        </a>
+        <a href="?page=workouts" class="pwa-menu-item">
+            <i class="fas fa-dumbbell"></i> Workouts
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
         <a href="?page=shop" class="pwa-menu-item">
@@ -301,6 +309,12 @@
 <div class="pwa-menu-group">
     <div class="pwa-section-label">Account</div>
     <ul class="pwa-menu-list">
+        <?php if ($isStaff): ?>
+        <a href="?page=sip_settings" class="pwa-menu-item">
+            <i class="fas fa-address-book"></i> Company Directory
+            <i class="fas fa-chevron-right menu-chevron"></i>
+        </a>
+        <?php endif; ?>
         <a href="?page=profile" class="pwa-menu-item">
             <i class="fas fa-user-gear"></i> Profile Settings
             <i class="fas fa-chevron-right menu-chevron"></i>

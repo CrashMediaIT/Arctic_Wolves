@@ -471,7 +471,7 @@ body.pwa-body .card,
 body.pwa-body .content-card {
   border-radius: 14px;
   margin-bottom: 12px;
-  overflow: hidden;
+  overflow: visible;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 body.pwa-body .card-header {
@@ -610,6 +610,7 @@ body.pwa-body .modal-content {
   margin: 8px;
   max-width: calc(100% - 16px);
   max-height: 90vh;
+  overflow-y: auto;
   border-radius: 18px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
@@ -944,6 +945,8 @@ body.pwa-body .msg-new-btn {
 }
 body.pwa-body .conversation-list {
   max-height: 260px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 body.pwa-body .conversation-item {
   padding: 10px 12px;
@@ -1019,6 +1022,8 @@ body.pwa-body .msg-modal {
   width: calc(100% - 32px);
   max-width: 100%;
   max-height: 80vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   margin: 16px;
 }
 body.pwa-body .msg-modal-header {
@@ -2263,7 +2268,7 @@ body.pwa-body .dashboard-card,
 body.pwa-body .widget,
 body.pwa-body .panel {
   max-width: 100%;
-  overflow: hidden;
+  overflow: visible;
   box-sizing: border-box;
 }
 
@@ -2583,12 +2588,13 @@ body.pwa-body .panel {
   border-radius: 12px !important;
   margin-bottom: 10px !important;
   border: 1px solid var(--border, #2D2D3F) !important;
-  overflow: hidden !important;
+  overflow: visible !important;
 }
 body.pwa-body .card-body,
 body.pwa-body .card-content,
 body.pwa-body .widget-body {
   padding: 12px 14px !important;
+  overflow-y: auto;
 }
 
 /* ── L. Mobile Table Card Pattern ─────────────────────── */
