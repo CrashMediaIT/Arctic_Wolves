@@ -56,6 +56,18 @@ $srReportTypes = [
 ?>
 <style>
 .m-schedrpt { padding: 16px; font-family: Inter, sans-serif; padding-bottom: 80px; }
+.m-sr-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6); z-index: 1000;
+}
+.m-sr-sheet {
+    display: none; position: fixed; bottom: 0; left: 0; right: 0;
+    z-index: 1001; background: #16161F; border-radius: 16px 16px 0 0;
+    max-height: 85vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    padding: 20px 16px 32px; font-family: Inter, sans-serif;
+}
+.m-sr-overlay.m-open { display: block; }
+.m-sr-sheet.m-open { display: block; }
 .m-schedrpt-header { margin-bottom: 16px; }
 .m-schedrpt-title { font-size: 17px; font-weight: 700; color: #fff; margin: 0; }
 .m-schedrpt-sub { font-size: 12px; color: #A8A8B8; margin: 2px 0 0; }
@@ -150,9 +162,9 @@ $srReportTypes = [
 <button class="m-schedrpt-fab" onclick="mSrOpenCreate()"><i class="fas fa-plus"></i></button>
 
 <!-- Bottom Sheet Overlay -->
-<div id="mSrOverlay" onclick="mSrCloseSheet()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1000;"></div>
+<div class="m-sr-overlay" id="mSrOverlay" onclick="mSrCloseSheet()"></div>
 <!-- Bottom Sheet -->
-<div id="mSrSheet" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:1001;background:#16161F;border-radius:16px 16px 0 0;max-height:85vh;overflow-y:auto;padding:20px 16px 32px;font-family:Inter,sans-serif;">
+<div class="m-sr-sheet" id="mSrSheet">
     <div style="width:36px;height:4px;background:#2D2D3F;border-radius:2px;margin:0 auto 16px;"></div>
     <h3 style="font-size:17px;font-weight:700;color:#fff;margin:0 0 16px;" id="mSrSheetTitle">New Scheduled Report</h3>
     <form id="mSrForm" method="POST">
@@ -222,8 +234,8 @@ function mSrOpenCreate() {
     document.getElementById('mSrFreq').value = '';
     document.getElementById('mSrActive').checked = true;
     document.querySelectorAll('.m-sr-freq').forEach(function(e){ e.style.borderColor = '#2D2D3F'; });
-    document.getElementById('mSrOverlay').style.display = 'block';
-    document.getElementById('mSrSheet').style.display = 'block';
+    document.getElementById('mSrOverlay').classList.add('m-open');
+    document.getElementById('mSrSheet').classList.add('m-open');
 }
 
 function mSrEdit(s) {
@@ -240,13 +252,13 @@ function mSrEdit(s) {
     document.querySelectorAll('.m-sr-freq').forEach(function(e){
         e.style.borderColor = e.getAttribute('data-val') === freq ? '#6B46C1' : '#2D2D3F';
     });
-    document.getElementById('mSrOverlay').style.display = 'block';
-    document.getElementById('mSrSheet').style.display = 'block';
+    document.getElementById('mSrOverlay').classList.add('m-open');
+    document.getElementById('mSrSheet').classList.add('m-open');
 }
 
 function mSrCloseSheet() {
-    document.getElementById('mSrOverlay').style.display = 'none';
-    document.getElementById('mSrSheet').style.display = 'none';
+    document.getElementById('mSrOverlay').classList.remove('m-open');
+    document.getElementById('mSrSheet').classList.remove('m-open');
 }
 
 function mSrToggle(id, activate) {

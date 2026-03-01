@@ -336,7 +336,7 @@ try {
       /* Force all view content to respect mobile bounds */
       .pwa-content > div, .pwa-content > section, .pwa-content > form { max-width: 100% !important; overflow-x: hidden; box-sizing: border-box; }
       /* Prevent absolute/fixed positioned desktop elements from overlapping the tab bar */
-      .pwa-content .floating-btn, .pwa-content .fab, .pwa-content [style*="position: fixed"] { position: absolute !important; bottom: auto !important; }
+      .pwa-content .floating-btn, .pwa-content .fab { position: absolute !important; bottom: auto !important; }
       /* Force inline flex rows to wrap on mobile to prevent collisions */
       .pwa-content [style*="display: flex"], .pwa-content [style*="display:flex"] { flex-wrap: wrap !important; gap: 8px !important; }
       /* Tame inline width declarations that cause horizontal overflow */

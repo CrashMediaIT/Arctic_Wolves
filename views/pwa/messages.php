@@ -45,7 +45,8 @@ if (!function_exists('mMsgTimeAgo')) {
 }
 ?>
 <style>
-.m-messages { padding: 0; font-family: Inter, sans-serif; }
+.m-messages { padding: 0; font-family: Inter, sans-serif; display: flex; flex-direction: column; }
+.m-messages.m-chat-active { flex: 1; min-height: 0; margin: -16px; margin-bottom: -80px; }
 .m-messages-header {
     display: flex; justify-content: space-between; align-items: center;
     padding: 16px 16px 12px;
@@ -223,7 +224,7 @@ if (!function_exists('mMsgTimeAgo')) {
 
 .m-chat-view {
     display: none; flex-direction: column;
-    height: calc(100vh - 64px);
+    flex: 1; min-height: 0;
 }
 .m-chat-header {
     display: flex; align-items: center; gap: 12px;
