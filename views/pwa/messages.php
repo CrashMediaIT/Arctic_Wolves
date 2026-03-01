@@ -46,7 +46,7 @@ if (!function_exists('mMsgTimeAgo')) {
 ?>
 <style>
 .m-messages { padding: 0; font-family: Inter, sans-serif; display: flex; flex-direction: column; }
-.m-messages.m-chat-active { flex: 1; min-height: 0; margin: -16px; margin-bottom: -80px; }
+.m-messages.m-chat-active { flex: 1; min-height: 0; margin: -16px; margin-bottom: -80px; /* negate pwa-content padding so chat fills full viewport */ }
 .m-messages-header {
     display: flex; justify-content: space-between; align-items: center;
     padding: 16px 16px 12px;
