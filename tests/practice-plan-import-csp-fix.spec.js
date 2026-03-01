@@ -3,7 +3,7 @@
  *
  * Verifies fixes for:
  * 1. CSP connect-src includes https://cdn.jsdelivr.net so HLS.js source map fetches are not blocked
- * 2. NGINX CSP fallback also includes cdn.jsdelivr.net in connect-src
+ * 2. NGINX CSP fallback removed (PHP manages CSP exclusively); cdn.jsdelivr.net verified in PHP CSP
  * 3. deployment/schema.sql practice_plans table includes columns needed by import
  */
 
@@ -44,17 +44,25 @@ test.describe('security.php CSP connect-src includes cdn.jsdelivr.net', () => {
 });
 
 // =====================================================
-// 2. NGINX CSP fallback includes cdn.jsdelivr.net
+// 2. NGINX CSP removed — cdn.jsdelivr.net in PHP CSP
 // =====================================================
 
-test.describe('NGINX CSP fallback includes cdn.jsdelivr.net in connect-src', () => {
-  test('should include cdn.jsdelivr.net in connect-src directive', () => {
+test.describe('NGINX CSP removed — cdn.jsdelivr.net verified in PHP CSP only', () => {
+  test('should NOT have a server-level add_header Content-Security-Policy in NGINX', () => {
     const content = readFile('deployment/arctic_wolves.conf');
-    // Extract the full CSP header line (the add_header directive)
-    const cspLine = content.match(/add_header Content-Security-Policy "([^"]+)"/);
-    expect(cspLine).not.toBeNull();
-    // Extract connect-src from within the CSP header value
-    const connectSrcMatch = cspLine[1].match(/connect-src\s+([^;]+);/);
+    // No add_header Content-Security-Policy should exist at server level
+    // (CSP is managed exclusively by PHP to prevent duplicate-header issues)
+    const lines = content.split('\n');
+    const cspAddHeaderLines = lines.filter(l => {
+      const trimmed = l.trim();
+      return trimmed.startsWith('add_header') && trimmed.includes('Content-Security-Policy');
+    });
+    expect(cspAddHeaderLines).toHaveLength(0);
+  });
+
+  test('security.php connect-src should include cdn.jsdelivr.net', () => {
+    const content = readFile('security.php');
+    const connectSrcMatch = content.match(/\$connectSrc\s*=\s*"([^"]+)"/);
     expect(connectSrcMatch).not.toBeNull();
     expect(connectSrcMatch[1]).toContain('https://cdn.jsdelivr.net');
   });

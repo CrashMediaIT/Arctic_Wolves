@@ -3,10 +3,10 @@
  *
  * Verifies:
  * 1. NGINX PHP location blocks include their own security headers (add_header)
- *    so that the server-level static CSP is NOT inherited for PHP responses.
- *    PHP sets CSP dynamically via security.php (with RustFS/S3 endpoint origin),
- *    so having a second static CSP from NGINX would block direct S3 uploads.
- * 2. Server-level static CSP is still present as a fallback for non-PHP assets.
+ *    so that any accidental server-level headers are NOT inherited.
+ * 2. Server-level CSP add_header is NOT present (prevents duplicate CSP headers
+ *    from NGINX and PHP that would block direct S3/RustFS uploads).
+ * 3. PHP's security.php is the single source of truth for CSP.
  */
 
 import { test, expect } from '@playwright/test';
@@ -134,44 +134,46 @@ test.describe('Gameplan NGINX PHP location block prevents CSP inheritance', () =
 });
 
 // =====================================================
-// 3. Server-level static CSP still present as fallback
+// 3. Server-level CSP is NOT present (managed by PHP only)
+//    Prevents duplicate CSP headers that block direct uploads
 // =====================================================
 
-test.describe('Server-level static CSP remains as fallback for non-PHP assets', () => {
-  test('main site should still have server-level Content-Security-Policy', () => {
+test.describe('Server-level CSP removed to prevent duplicate headers', () => {
+  test('main site should NOT have a server-level add_header Content-Security-Policy', () => {
     const serverBlock = getMainSiteServerBlock();
-    // The CSP should exist at server level (outside the PHP location block)
-    expect(serverBlock).toContain('Content-Security-Policy');
+    // The PHP location block mentions CSP in comments, but should not have an add_header CSP
+    // at the server level. Check that no add_header Content-Security-Policy line exists
+    // outside the PHP location block.
+    const phpBlockStart = serverBlock.indexOf('location ~ \\.php$');
+    const serverLevelBlock = serverBlock.substring(0, phpBlockStart > -1 ? phpBlockStart : undefined);
+    // Should not have an active add_header Content-Security-Policy directive
+    const lines = serverLevelBlock.split('\n');
+    const cspAddHeaderLines = lines.filter(l => {
+      const trimmed = l.trim();
+      return trimmed.startsWith('add_header') && trimmed.includes('Content-Security-Policy');
+    });
+    expect(cspAddHeaderLines).toHaveLength(0);
   });
 
-  test('gameplan should still have server-level Content-Security-Policy', () => {
+  test('gameplan should NOT have a server-level add_header Content-Security-Policy', () => {
     const serverBlock = getGameplanServerBlock();
-    expect(serverBlock).toContain('Content-Security-Policy');
+    const phpBlockStart = serverBlock.indexOf('location ~ \\.php$');
+    const serverLevelBlock = serverBlock.substring(0, phpBlockStart > -1 ? phpBlockStart : undefined);
+    const lines = serverLevelBlock.split('\n');
+    const cspAddHeaderLines = lines.filter(l => {
+      const trimmed = l.trim();
+      return trimmed.startsWith('add_header') && trimmed.includes('Content-Security-Policy');
+    });
+    expect(cspAddHeaderLines).toHaveLength(0);
   });
 });
 
 // =====================================================
-// 4. Static CSP connect-src includes *.arcticwolves.ca
+// 4. PHP CSP connect-src includes *.arcticwolves.ca
 //    so S3/RustFS direct uploads are never blocked
 // =====================================================
 
-test.describe('NGINX static CSP connect-src includes wildcard subdomain for S3 uploads', () => {
-  test('main site connect-src should include https://*.arcticwolves.ca', () => {
-    const content = readFile('deployment/arctic_wolves.conf');
-    const mainStart = content.indexOf('server_name arcticwolves.ca www.arcticwolves.ca;');
-    const mainEnd = content.indexOf('server_name gameplan.arcticwolves.ca;');
-    const mainBlock = content.substring(mainStart, mainEnd > -1 ? mainEnd : undefined);
-    expect(mainBlock).toContain('https://*.arcticwolves.ca');
-  });
-
-  test('gameplan connect-src should include https://*.arcticwolves.ca', () => {
-    const content = readFile('deployment/arctic_wolves.conf');
-    const gpStart = content.indexOf('server_name gameplan.arcticwolves.ca;');
-    const gpEnd = content.indexOf('# =====', gpStart);
-    const gpBlock = content.substring(gpStart, gpEnd > -1 ? gpEnd : undefined);
-    expect(gpBlock).toContain('https://*.arcticwolves.ca');
-  });
-
+test.describe('PHP CSP connect-src includes wildcard subdomain for S3 uploads', () => {
   test('security.php base connect-src should include https://*.arcticwolves.ca', () => {
     const content = readFile('security.php');
     expect(content).toContain("'self' wss: https://*.arcticwolves.ca");
