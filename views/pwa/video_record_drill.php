@@ -220,7 +220,13 @@ endif;
                     var xhr = new XMLHttpRequest();
                     xhr.open('PUT', presignedUrl, true);
                     xhr.setRequestHeader('Content-Type', contentType);
+                    // Connection timeout: abort if no progress within 15 s
+                    var uploadStarted = false;
+                    var connTimer = setTimeout(function() {
+                        if (!uploadStarted) { xhr.abort(); reject(new Error('Cloud storage connection timed out')); }
+                    }, 15000);
                     xhr.upload.onprogress = function(ev) {
+                        if (!uploadStarted) { uploadStarted = true; clearTimeout(connTimer); }
                         if (ev.lengthComputable) {
                             var pct = Math.round((ev.loaded / ev.total) * 100);
                             progressBar.style.width = pct + '%';
@@ -228,10 +234,11 @@ endif;
                         }
                     };
                     xhr.onload = function() {
+                        clearTimeout(connTimer);
                         if (xhr.status >= 200 && xhr.status < 300) resolve(uploadNonce);
                         else reject(new Error('Cloud upload failed (HTTP ' + xhr.status + ')'));
                     };
-                    xhr.onerror = function() { reject(new Error('Network error')); };
+                    xhr.onerror = function() { clearTimeout(connTimer); reject(new Error('Network error')); };
                     xhr.send(blob);
                 });
             })

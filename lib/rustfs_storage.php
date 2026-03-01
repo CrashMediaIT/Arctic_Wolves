@@ -812,7 +812,11 @@ function generatePresignedUploadUrl($settings, $object_key, $content_type = 'app
         $url = getRustFSPublicUrl($settings, $object_key);
         $parsed = parse_url($url);
 
-        $path = $parsed['path'] ?? '/';
+        // URI-encode each path segment per S3 Signature V4 spec.
+        // Forward slashes between segments are preserved unencoded.
+        $raw_path = $parsed['path'] ?? '/';
+        $segments = array_filter(explode('/', $raw_path), function ($s) { return $s !== ''; });
+        $path = '/' . implode('/', array_map('rawurlencode', $segments));
 
         // When a public endpoint is provided (browser-facing URL behind HAProxy),
         // use its scheme/host/port so the presigned URL is reachable from the browser.
@@ -837,19 +841,24 @@ function generatePresignedUploadUrl($settings, $object_key, $content_type = 'app
         $credential = $access_key . '/' . $credential_scope;
 
         // Canonical query string parameters (sorted alphabetically)
+        // Only sign 'host' — this matches the AWS SDK behaviour for
+        // presigned PUT URLs and avoids SignatureDoesNotMatch errors
+        // on RustFS / MinIO when the browser's Content-Type header
+        // differs even slightly from the value used at signing time
+        // (see https://github.com/rustfs/rustfs/issues/700).
         $query_params = [
             'X-Amz-Algorithm'     => 'AWS4-HMAC-SHA256',
             'X-Amz-Credential'    => $credential,
             'X-Amz-Date'          => $amz_date,
             'X-Amz-Expires'       => (string)$expires,
-            'X-Amz-SignedHeaders'  => 'content-type;host',
+            'X-Amz-SignedHeaders'  => 'host',
         ];
         ksort($query_params);
         $canonical_querystring = http_build_query($query_params, '', '&', PHP_QUERY_RFC3986);
 
-        // Canonical headers
-        $canonical_headers = 'content-type:' . $content_type . "\n" . 'host:' . $host . "\n";
-        $signed_headers = 'content-type;host';
+        // Canonical headers — only 'host' is signed for presigned URLs
+        $canonical_headers = 'host:' . $host . "\n";
+        $signed_headers = 'host';
 
         // For presigned URLs the payload hash is always UNSIGNED-PAYLOAD
         $payload_hash = 'UNSIGNED-PAYLOAD';
