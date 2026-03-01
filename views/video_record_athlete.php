@@ -861,8 +861,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Video upload — direct-to-RustFS via presigned URL (3-step flow)
-    // Bypasses PHP file-size limits so large videos upload reliably.
+    // Video upload — direct-to-RustFS via presigned URL with streaming proxy fallback.
+    // Flow: (1) get presigned URL + proxy URL from server
+    //       (2a) try PUT directly to RustFS (presigned URL — SDK-generated)
+    //       (2b) if direct fails, PUT via streaming proxy (same-origin, no CORS)
+    //       (3) confirm upload in DB
+    //       (fallback) legacy multipart form upload through PHP
     var uploadForm = document.getElementById('video-upload-form');
     var currentUploadXhr = null; // Track active XHR for cancel support
     if (uploadForm) {
@@ -921,63 +925,96 @@ document.addEventListener('DOMContentLoaded', function() {
             var teamEl = document.getElementById('team_id');
             if (teamEl && teamEl.value) formMeta.append('team_id', teamEl.value);
 
-            // ---------- Step 1: get presigned URL ----------
+            // Shared state across upload steps
+            var uploadNonce = null;
+            var proxyUploadUrl = null;
+            var proxyToken = null;
+            var contentType = null;
+
+            // Helper: PUT file via XHR with progress tracking
+            function xhrPut(url, file, headers, label) {
+                return new Promise(function(resolve, reject) {
+                    var xhr = new XMLHttpRequest();
+                    currentUploadXhr = xhr;
+                    xhr.open('PUT', url, true);
+                    for (var h in headers) {
+                        if (headers.hasOwnProperty(h)) xhr.setRequestHeader(h, headers[h]);
+                    }
+
+                    var uploadStarted = false;
+                    var connTimer = setTimeout(function() {
+                        if (!uploadStarted) {
+                            xhr.abort();
+                            reject(new Error(label + ' connection timed out'));
+                        }
+                    }, 15000);
+
+                    xhr.upload.onprogress = function(ev) {
+                        if (!uploadStarted) { uploadStarted = true; clearTimeout(connTimer); }
+                        if (ev.lengthComputable) {
+                            var pct = Math.round((ev.loaded / ev.total) * 100);
+                            bar.style.width = pct + '%';
+                            percent.textContent = pct + '%';
+                            if (pct < 100) {
+                                status.textContent = label + '... ' + pct + '%';
+                            } else {
+                                status.textContent = 'Finalizing upload...';
+                            }
+                        }
+                    };
+
+                    xhr.onload = function() {
+                        clearTimeout(connTimer);
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            resolve(xhr);
+                        } else {
+                            reject(new Error(label + ' failed (HTTP ' + xhr.status + ')'));
+                        }
+                    };
+                    xhr.onerror = function() { clearTimeout(connTimer); reject(new Error('Network error during ' + label)); };
+                    xhr.send(file);
+                });
+            }
+
+            // ---------- Step 1: get presigned URL + proxy URL ----------
             fetch('process_video.php', { method: 'POST', body: formMeta })
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
                     if (!data.success) throw new Error(data.error || 'Failed to get upload URL');
 
-                    var presignedUrl = data.presigned_url;
-                    var contentType = data.content_type || videoFile.type || 'application/octet-stream';
-                    var uploadNonce = data.upload_nonce;
+                    uploadNonce = data.upload_nonce;
+                    proxyUploadUrl = data.proxy_upload_url || null;
+                    proxyToken = data.proxy_token || null;
+                    contentType = data.content_type || videoFile.type || 'application/octet-stream';
 
                     status.textContent = 'Uploading to cloud storage...';
 
-                    // ---------- Step 2: PUT file directly to RustFS ----------
-                    return new Promise(function(resolve, reject) {
-                        var xhr = new XMLHttpRequest();
-                        currentUploadXhr = xhr;
-                        xhr.open('PUT', presignedUrl, true);
-                        xhr.setRequestHeader('Content-Type', contentType);
-
-                        // Connection timeout: if no upload progress within 15 s,
-                        // the cloud endpoint is likely unreachable — abort and
-                        // let the catch handler fall back to the server upload.
-                        var uploadStarted = false;
-                        var connTimer = setTimeout(function() {
-                            if (!uploadStarted) {
-                                xhr.abort();
-                                reject(new Error('Cloud storage connection timed out'));
-                            }
-                        }, 15000);
-
-                        xhr.upload.onprogress = function(ev) {
-                            if (!uploadStarted) { uploadStarted = true; clearTimeout(connTimer); }
-                            if (ev.lengthComputable) {
-                                var pct = Math.round((ev.loaded / ev.total) * 100);
-                                bar.style.width = pct + '%';
-                                percent.textContent = pct + '%';
-                                if (pct < 100) {
-                                    status.textContent = 'Uploading to cloud storage... ' + pct + '%';
-                                } else {
-                                    status.textContent = 'Finalizing upload...';
-                                }
-                            }
-                        };
-
-                        xhr.onload = function() {
-                            clearTimeout(connTimer);
-                            if (xhr.status >= 200 && xhr.status < 300) {
-                                resolve(uploadNonce);
-                            } else {
-                                reject(new Error('Cloud upload failed (HTTP ' + xhr.status + ')'));
-                            }
-                        };
-                        xhr.onerror = function() { clearTimeout(connTimer); reject(new Error('Network error during upload')); };
-                        xhr.send(videoFile);
-                    });
+                    // ---------- Step 2a: PUT file directly to RustFS ----------
+                    return xhrPut(
+                        data.presigned_url,
+                        videoFile,
+                        { 'Content-Type': contentType },
+                        'Uploading to cloud storage'
+                    );
                 })
-                .then(function(uploadNonce) {
+                .catch(function(directErr) {
+                    // Direct upload failed — try the streaming proxy (Step 2b)
+                    if (!proxyUploadUrl || !proxyToken) {
+                        throw directErr; // No proxy available, propagate to legacy fallback
+                    }
+                    console.warn('Direct S3 upload failed:', directErr.message, '— trying streaming proxy');
+                    status.textContent = 'Retrying via server proxy...';
+                    bar.style.width = '0%';
+                    percent.textContent = '0%';
+
+                    return xhrPut(
+                        proxyUploadUrl,
+                        videoFile,
+                        { 'Content-Type': contentType, 'X-Upload-Token': proxyToken },
+                        'Uploading via server'
+                    );
+                })
+                .then(function() {
                     // ---------- Step 3: confirm upload ----------
                     status.textContent = 'Confirming upload...';
                     var confirmData = new FormData();
@@ -999,8 +1036,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 })
                 .catch(function(err) {
-                    // Fall back to legacy server-side upload if presigned flow fails
-                    console.warn('Direct upload failed, falling back to server upload:', err.message);
+                    // Fall back to legacy server-side upload if both direct and proxy fail
+                    console.warn('Direct + proxy upload failed, falling back to legacy upload:', err.message);
                     status.textContent = 'Retrying via server...';
                     bar.style.width = '0%';
                     percent.textContent = '0%';

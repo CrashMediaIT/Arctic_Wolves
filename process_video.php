@@ -559,19 +559,24 @@ function handleGetAthleteUploadUrl() {
 
     $object_key = 'Images/videos/athlete/' . $athlete_folder . '/' . $unique_filename;
 
-    // Generate presigned URL
+    // Generate presigned URL — try companion SDK first, then local PHP
     $rustfs = getRustFSSettings($pdo);
     if (!isRustFSConfigured($rustfs)) {
         throw new Exception('Cloud storage is not configured. Please contact an administrator.');
     }
 
-    $presigned = generatePresignedUploadUrl($rustfs, $object_key, $file_type, 3600, $rustfs['rustfs_public_endpoint'] ?? null);
+    $presigned = generatePresignedUploadUrlViaSdk($pdo, $rustfs, $object_key, $file_type, 3600, $rustfs['rustfs_public_endpoint'] ?? null);
     if (!$presigned['success']) {
         throw new Exception('Failed to generate upload URL: ' . ($presigned['message'] ?? 'Unknown error'));
     }
 
     // Store pending upload in session for confirmation step
     $upload_nonce = bin2hex(random_bytes(16));
+
+    // Generate a one-time token for the streaming proxy fallback
+    $proxy_token = bin2hex(random_bytes(16));
+    $_SESSION['upload_proxy_token'] = $proxy_token;
+
     $_SESSION['pending_video_upload'] = [
         'nonce'          => $upload_nonce,
         'object_key'     => $object_key,
@@ -594,6 +599,8 @@ function handleGetAthleteUploadUrl() {
         'object_key'    => $object_key,
         'content_type'  => $file_type,
         'upload_nonce'  => $upload_nonce,
+        'proxy_upload_url' => 'api/upload.php?key=' . rawurlencode($object_key),
+        'proxy_token'   => $proxy_token,
     ]);
     exit;
 }
@@ -788,19 +795,24 @@ function handleGetVideoUploadUrl() {
         $object_key = 'Images/videos/athlete/' . $athlete_folder . '/' . $filename;
     }
 
-    // Generate presigned URL
+    // Generate presigned URL — try companion SDK first, then local PHP
     $rustfs = getRustFSSettings($pdo);
     if (!isRustFSConfigured($rustfs)) {
         throw new Exception('Cloud storage is not configured. Please contact an administrator.');
     }
 
-    $presigned = generatePresignedUploadUrl($rustfs, $object_key, $file_type, 3600, $rustfs['rustfs_public_endpoint'] ?? null);
+    $presigned = generatePresignedUploadUrlViaSdk($pdo, $rustfs, $object_key, $file_type, 3600, $rustfs['rustfs_public_endpoint'] ?? null);
     if (!$presigned['success']) {
         throw new Exception('Failed to generate upload URL: ' . ($presigned['message'] ?? 'Unknown error'));
     }
 
     // Store pending upload metadata in session
     $upload_nonce = bin2hex(random_bytes(16));
+
+    // Generate a one-time token for the streaming proxy fallback
+    $proxy_token = bin2hex(random_bytes(16));
+    $_SESSION['upload_proxy_token'] = $proxy_token;
+
     $_SESSION['pending_video_upload_general'] = [
         'nonce'          => $upload_nonce,
         'upload_type'    => $upload_type,
@@ -840,6 +852,8 @@ function handleGetVideoUploadUrl() {
         'object_key'    => $object_key,
         'content_type'  => $file_type,
         'upload_nonce'  => $upload_nonce,
+        'proxy_upload_url' => 'api/upload.php?key=' . rawurlencode($object_key),
+        'proxy_token'   => $proxy_token,
     ]);
     exit;
 }
