@@ -269,9 +269,9 @@ $allowed_pages = [
 
 $view_file = $allowed_pages[$page] ?? 'views/home.php';
 
-// Use mobile-native PWA views only for pages with genuinely mobile-optimised layouts.
+// Use mobile-native PWA views only for pages with genuinely mobile-optimized layouts.
 // All other pages use the full desktop views rendered inside the PWA shell so that
-// coaches, admins and athletes get 100 % feature parity with the desktop experience.
+// coaches, admins and athletes get 100% feature parity with the desktop experience.
 $pwa_only_pages = [
     'home',
     'front_desk_home',
