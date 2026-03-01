@@ -677,6 +677,115 @@ function listRustFSObjects($settings, $prefix = '', $max_keys = 1000) {
 }
 
 /**
+ * Ensure the RustFS bucket has a CORS policy that allows direct browser uploads.
+ *
+ * Without CORS headers the browser blocks cross-origin PUT requests from XHR
+ * (the presigned-URL flow).  This function uses the S3 PutBucketCors API which
+ * all S3-compatible services (MinIO, RustFS, etc.) support.
+ *
+ * The policy allows PUT/POST/GET from any origin — safe because each upload
+ * is authorised by its own presigned URL signature.
+ *
+ * The result is cached in a static flag so it runs at most once per PHP request.
+ *
+ * @param array $settings  RustFS settings
+ * @return array ['success'=>bool, 'message'=>string|null]
+ */
+function ensureRustFSBucketCors($settings) {
+    static $done = false;
+    if ($done) return ['success' => true, 'message' => 'already applied'];
+
+    if (!isRustFSConfigured($settings)) {
+        return ['success' => false, 'message' => 'RustFS is not configured'];
+    }
+
+    try {
+        $endpoint = rtrim($settings['rustfs_endpoint'], '/');
+        $bucket   = $settings['rustfs_bucket'];
+        $region   = $settings['rustfs_region'] ?? 'us-east-1';
+        $access_key = $settings['rustfs_access_key'];
+        $secret_key = $settings['rustfs_secret_key'];
+        $use_ssl    = ($settings['rustfs_use_ssl'] ?? '1') === '1';
+        $path_style = ($settings['rustfs_path_style'] ?? '1') === '1';
+
+        // Ensure scheme
+        if (strpos($endpoint, 'http://') !== 0 && strpos($endpoint, 'https://') !== 0) {
+            $endpoint = ($use_ssl ? 'https://' : 'http://') . $endpoint;
+        }
+
+        // Build the bucket-level URL
+        if ($path_style) {
+            $url = $endpoint . '/' . $bucket . '/?cors';
+        } else {
+            $parsed = parse_url($endpoint);
+            $scheme = $parsed['scheme'] ?? ($use_ssl ? 'https' : 'http');
+            $host   = $parsed['host'] ?? $endpoint;
+            $port   = isset($parsed['port']) ? ':' . $parsed['port'] : '';
+            $url    = $scheme . '://' . $bucket . '.' . $host . $port . '/?cors';
+        }
+
+        // S3 CORS XML payload
+        $cors_xml = '<?xml version="1.0" encoding="UTF-8"?>' .
+            '<CORSConfiguration>' .
+            '<CORSRule>' .
+            '<AllowedOrigin>*</AllowedOrigin>' .
+            '<AllowedMethod>GET</AllowedMethod>' .
+            '<AllowedMethod>PUT</AllowedMethod>' .
+            '<AllowedMethod>POST</AllowedMethod>' .
+            '<AllowedMethod>HEAD</AllowedMethod>' .
+            '<AllowedHeader>*</AllowedHeader>' .
+            '<ExposeHeader>ETag</ExposeHeader>' .
+            '<MaxAgeSeconds>3600</MaxAgeSeconds>' .
+            '</CORSRule>' .
+            '</CORSConfiguration>';
+
+        // Sign and send the PutBucketCors request
+        $headers = [
+            'Content-Type' => 'application/xml',
+        ];
+        $signed = signRustFSRequest('PUT', $url, $headers, $cors_xml,
+                                     $access_key, $secret_key, $region);
+
+        $curl_headers = [
+            'Content-Type: application/xml',
+            'Authorization: ' . $signed['Authorization'],
+            'x-amz-date: ' . $signed['x-amz-date'],
+            'x-amz-content-sha256: ' . $signed['x-amz-content-sha256'],
+        ];
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $cors_xml);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $curl_headers);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+
+        $response  = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curl_error = curl_error($ch);
+        curl_close($ch);
+
+        if (!empty($curl_error)) {
+            error_log("RustFS CORS set error (curl): $curl_error");
+            return ['success' => false, 'message' => "cURL error: $curl_error"];
+        }
+
+        if ($http_code >= 200 && $http_code < 300) {
+            $done = true;
+            return ['success' => true, 'message' => null];
+        }
+
+        error_log("RustFS CORS set error: HTTP $http_code — " . substr($response, 0, 500));
+        return ['success' => false, 'message' => "HTTP $http_code — " . substr($response, 0, 200)];
+    } catch (Exception $e) {
+        error_log("RustFS CORS set exception: " . $e->getMessage());
+        return ['success' => false, 'message' => $e->getMessage()];
+    }
+}
+
+/**
  * Generate a presigned PUT URL for direct browser-to-RustFS uploads.
  * Uses AWS Signature V4 query-string authentication so the client can
  * PUT a file directly to S3-compatible storage without knowing the secret key.
@@ -696,6 +805,9 @@ function generatePresignedUploadUrl($settings, $object_key, $content_type = 'app
     }
 
     try {
+        // Ensure CORS is configured on the bucket so the browser can PUT directly
+        ensureRustFSBucketCors($settings);
+
         $object_key = ltrim($object_key, '/');
         $url = getRustFSPublicUrl($settings, $object_key);
         $parsed = parse_url($url);

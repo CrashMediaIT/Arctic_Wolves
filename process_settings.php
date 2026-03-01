@@ -220,6 +220,12 @@ try {
                 'settings' => ['rustfs_endpoint' => $rustfs_endpoint, 'rustfs_bucket' => $rustfs_bucket, 'rustfs_region' => $rustfs_region]
             ]);
 
+            // Apply CORS policy to the bucket so direct browser uploads work
+            $cors_settings = getRustFSSettings($pdo);
+            if (isRustFSConfigured($cors_settings)) {
+                ensureRustFSBucketCors($cors_settings);
+            }
+
             header('Location: dashboard.php?page=system_tools&tab=rustfs&success=1');
             exit;
 

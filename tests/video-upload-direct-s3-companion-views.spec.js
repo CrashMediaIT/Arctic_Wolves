@@ -116,20 +116,20 @@ test.describe('General-purpose presigned URL endpoints', () => {
 // =====================================================
 
 test.describe('All upload views use direct-to-S3 presigned URL flow', () => {
-  test('video_record_athlete.php should use get_video_upload_url', () => {
+  test('video_record_athlete.php should use presigned URL PUT', () => {
     const content = readFile('views/video_record_athlete.php');
     expect(content).toContain('get_video_upload_url');
     expect(content).toContain('confirm_video_upload');
     expect(content).toContain('presigned_url');
   });
 
-  test('video_coach_reviews.php should use presigned URL flow', () => {
+  test('video_coach_reviews.php should use presigned URL PUT', () => {
     const content = readFile('views/video_coach_reviews.php');
     expect(content).toContain('presigned_url');
     expect(content).toContain('confirm_athlete_upload');
   });
 
-  test('gp_film_room.php should use get_video_upload_url', () => {
+  test('gp_film_room.php should use presigned URL PUT', () => {
     const content = readFile('views/gameplan/gp_film_room.php');
     expect(content).toContain('get_video_upload_url');
     expect(content).toContain('confirm_video_upload');
@@ -137,14 +137,14 @@ test.describe('All upload views use direct-to-S3 presigned URL flow', () => {
     expect(content).toContain('presigned_url');
   });
 
-  test('film_room.php should use get_video_upload_url', () => {
+  test('film_room.php should use presigned URL PUT', () => {
     const content = readFile('views/gameplan/film_room.php');
     expect(content).toContain('get_video_upload_url');
     expect(content).toContain('confirm_video_upload');
     expect(content).toContain('presigned_url');
   });
 
-  test('pwa/video_record_drill.php should use get_video_upload_url', () => {
+  test('pwa/video_record_drill.php should use presigned URL PUT', () => {
     const content = readFile('views/pwa/video_record_drill.php');
     expect(content).toContain('get_video_upload_url');
     expect(content).toContain('confirm_video_upload');

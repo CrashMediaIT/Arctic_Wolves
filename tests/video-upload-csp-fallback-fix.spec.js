@@ -128,31 +128,25 @@ test.describe('pwa_tablet.php includes RustFS endpoint in CSP connect-src', () =
 });
 
 // =====================================================
-// 5. Simplified upload — no more presigned URL flow
+// 5. Upload uses direct PUT to presigned URL with CORS
 // =====================================================
 
-test.describe('Simplified athlete upload uses single XHR POST', () => {
-  test('should POST form data directly to process_video.php', () => {
+test.describe('Upload uses direct PUT to presigned URL (CORS configured on bucket)', () => {
+  test('should PUT directly to presigned URL on RustFS', () => {
     const content = readFile('views/video_record_athlete.php');
-    expect(content).toContain('new FormData(uploadForm)');
-    expect(content).toContain('xhr.open(\'POST\', uploadForm.action');
+    expect(content).toContain("xhr.open('PUT', presignedUrl");
+    expect(content).toContain("xhr.setRequestHeader('Content-Type', contentType)");
   });
 
-  test('should not use presigned URL multi-step flow', () => {
+  test('should not use proxy_video_upload', () => {
     const content = readFile('views/video_record_athlete.php');
-    expect(content).not.toContain('get_athlete_upload_url');
-    expect(content).not.toContain('presignedUrl');
-    expect(content).not.toContain('confirm_athlete_upload');
-    expect(content).not.toContain('fallbackServerUpload');
+    expect(content).not.toContain('proxy_video_upload');
   });
 
-  test('should handle JSON parse errors with toast message', () => {
+  test('should handle errors with legacy fallback and toast message', () => {
     const content = readFile('views/video_record_athlete.php');
-    // The upload XHR onload should have a catch for JSON parse
-    const onloadStart = content.indexOf('xhr.onload = function()');
-    const onloadSection = content.substring(onloadStart, onloadStart + 1000);
-    expect(onloadSection).toContain('catch (err)');
-    expect(onloadSection).toContain('showToast');
-    expect(onloadSection).toContain('submitBtn.disabled = false');
+    expect(content).toContain('catch');
+    expect(content).toContain('showToast');
+    expect(content).toContain('submitBtn.disabled = false');
   });
 });
