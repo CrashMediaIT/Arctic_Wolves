@@ -161,21 +161,55 @@ $csrf_token = generateCsrfToken();
 .m-rpt-user-detail-name { font-size: 15px; font-weight: 700; color: #fff; }
 .m-rpt-user-detail-meta { font-size: 12px; color: #A8A8B8; margin-top: 4px; }
 
-/* Tab bar */
-.m-rpt-user-tabs {
-    display: flex; gap: 6px; overflow-x: auto; -webkit-overflow-scrolling: touch;
-    margin-bottom: 16px; padding-bottom: 4px;
-    position: sticky; top: 0; z-index: 10; background: #0A0A0F;
-    padding-top: 4px;
+/* View selector dropdown */
+.m-view-selector {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #1E1E2E;
+    border: 1px solid #2D2D3F;
+    border-radius: 12px;
+    padding: 8px 12px;
+    margin-bottom: 16px;
 }
-.m-rpt-user-tabs::-webkit-scrollbar { display: none; }
-.m-rpt-user-tab {
-    flex-shrink: 0; padding: 10px 16px; background: #16161F;
-    border: 1px solid #2D2D3F; border-radius: 10px; color: #A8A8B8;
-    font-size: 13px; font-weight: 600; cursor: pointer; min-height: 44px;
-    display: flex; align-items: center; gap: 6px; white-space: nowrap;
+.m-view-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #8B5CF6;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
-.m-rpt-user-tab.active { background: #6B46C1; border-color: #6B46C1; color: #fff; }
+.m-view-select {
+    flex: 1;
+    background: #16161F;
+    border: 1px solid #2D2D3F;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    padding: 10px 12px;
+    min-height: 44px;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%238B5CF6' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+}
+.m-view-select:focus {
+    outline: none;
+    border-color: #6B46C1;
+    box-shadow: 0 0 0 3px rgba(107,70,193,0.2);
+}
+.m-view-select option {
+    background: #16161F;
+    color: #fff;
+    padding: 8px;
+}
 
 /* Cards */
 .m-rpt-user-card {
@@ -301,23 +335,18 @@ $csrf_token = generateCsrfToken();
             </div>
         </div>
 
-        <!-- Tab bar -->
-        <div class="m-rpt-user-tabs">
-            <button class="m-rpt-user-tab <?php echo $report_tab === 'activity' ? 'active' : ''; ?>" onclick="mRptUserTab('activity')">
-                <i class="fas fa-calendar-check"></i> Sessions
-            </button>
-            <button class="m-rpt-user-tab <?php echo $report_tab === 'stats' ? 'active' : ''; ?>" onclick="mRptUserTab('stats')">
-                <i class="fas fa-chart-bar"></i> Stats
-            </button>
-            <button class="m-rpt-user-tab <?php echo $report_tab === 'evaluations' ? 'active' : ''; ?>" onclick="mRptUserTab('evaluations')">
-                <i class="fas fa-clipboard-check"></i> Evals
-            </button>
-            <button class="m-rpt-user-tab <?php echo $report_tab === 'packages' ? 'active' : ''; ?>" onclick="mRptUserTab('packages')">
-                <i class="fas fa-box"></i> Packages
-            </button>
-            <button class="m-rpt-user-tab <?php echo $report_tab === 'goals' ? 'active' : ''; ?>" onclick="mRptUserTab('goals')">
-                <i class="fas fa-bullseye"></i> Goals
-            </button>
+        <!-- View selector dropdown -->
+        <div class="m-view-selector">
+            <label class="m-view-label" for="rptUserViewSelect">
+                <i class="fas fa-layer-group"></i> View
+            </label>
+            <select class="m-view-select" id="rptUserViewSelect" aria-label="Select report view">
+                <option value="activity" <?php echo $report_tab === 'activity' ? 'selected' : ''; ?>>📋 Sessions</option>
+                <option value="stats" <?php echo $report_tab === 'stats' ? 'selected' : ''; ?>>📊 Stats</option>
+                <option value="evaluations" <?php echo $report_tab === 'evaluations' ? 'selected' : ''; ?>>📝 Evaluations</option>
+                <option value="packages" <?php echo $report_tab === 'packages' ? 'selected' : ''; ?>>📦 Packages</option>
+                <option value="goals" <?php echo $report_tab === 'goals' ? 'selected' : ''; ?>>🎯 Goals</option>
+            </select>
         </div>
 
         <!-- Sessions Tab -->
@@ -511,17 +540,11 @@ $csrf_token = generateCsrfToken();
 </div>
 
 <script>
-function mRptUserTab(tabName) {
-    document.querySelectorAll('.m-rpt-user-tab').forEach(function(btn) { btn.classList.remove('active'); });
-    document.querySelectorAll('.m-rpt-user-tab').forEach(function(btn) {
-        if (btn.getAttribute('onclick') && btn.getAttribute('onclick').indexOf("'" + tabName + "'") !== -1) {
-            btn.classList.add('active');
-        }
-    });
-    document.querySelectorAll('.m-rpt-user-tab-content').forEach(function(el) { el.classList.remove('active'); });
-    var tabEl = document.getElementById('mTab-' + tabName);
-    if (tabEl) tabEl.classList.add('active');
+document.getElementById('rptUserViewSelect').addEventListener('change', function() {
+    document.querySelectorAll('.m-rpt-user-tab-content').forEach(function(p) { p.classList.remove('active'); });
+    var target = document.getElementById('mTab-' + this.value);
+    if (target) target.classList.add('active');
     var tabInput = document.querySelector('#mRptUserFilterForm input[name="tab"]');
-    if (tabInput) tabInput.value = tabName;
-}
+    if (tabInput) tabInput.value = this.value;
+});
 </script>

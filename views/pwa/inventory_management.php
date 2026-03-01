@@ -222,24 +222,55 @@ if ($active_tab === 'outgoing') {
 .m-inv-title { font-size: 17px; font-weight: 700; color: #fff; margin: 0; }
 .m-inv-sub { font-size: 12px; color: #A8A8B8; margin: 2px 0 0; }
 
-/* Sticky tab navigation */
-.m-inv-tabs {
-    display: flex; position: sticky; top: 0; z-index: 10;
-    background: #0A0A0F; border-bottom: 1px solid #2D2D3F;
-    overflow-x: auto; -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+/* View selector dropdown */
+.m-view-selector {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #1E1E2E;
+    border: 1px solid #2D2D3F;
+    border-radius: 12px;
+    padding: 8px 12px;
+    margin-bottom: 16px;
 }
-.m-inv-tabs::-webkit-scrollbar { display: none; }
-.m-inv-tab {
-    flex: 0 0 auto; text-align: center; padding: 12px 16px;
-    font-size: 12px; font-weight: 600; color: #6B6B7B;
-    border: none; background: none; cursor: pointer;
-    border-bottom: 2px solid transparent; min-height: 44px;
-    white-space: nowrap; text-decoration: none;
-    display: flex; align-items: center; gap: 6px;
+.m-view-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #8B5CF6;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
-.m-inv-tab.m-active { color: #8B5CF6; border-bottom-color: #8B5CF6; }
-.m-inv-tab i { font-size: 13px; }
+.m-view-select {
+    flex: 1;
+    background: #16161F;
+    border: 1px solid #2D2D3F;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    padding: 10px 12px;
+    min-height: 44px;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%238B5CF6' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+}
+.m-view-select:focus {
+    outline: none;
+    border-color: #6B46C1;
+    box-shadow: 0 0 0 3px rgba(107,70,193,0.2);
+}
+.m-view-select option {
+    background: #16161F;
+    color: #fff;
+    padding: 8px;
+}
 
 /* Stats row */
 .m-inv-stats { display: flex; gap: 8px; padding: 16px; overflow-x: auto; }
@@ -413,20 +444,17 @@ if ($active_tab === 'outgoing') {
         <p class="m-inv-sub">Stock, shipments &amp; orders</p>
     </div>
 
-    <!-- Sticky Tab Navigation -->
-    <div class="m-inv-tabs">
-        <a href="?page=inventory_management&tab=in_store" class="m-inv-tab <?= $active_tab === 'in_store' ? 'm-active' : '' ?>">
-            <i class="fas fa-store"></i> In-Store
-        </a>
-        <a href="?page=inventory_management&tab=warehouse" class="m-inv-tab <?= $active_tab === 'warehouse' ? 'm-active' : '' ?>">
-            <i class="fas fa-boxes"></i> Warehouse
-        </a>
-        <a href="?page=inventory_management&tab=incoming" class="m-inv-tab <?= $active_tab === 'incoming' ? 'm-active' : '' ?>">
-            <i class="fas fa-truck-loading"></i> Incoming
-        </a>
-        <a href="?page=inventory_management&tab=outgoing" class="m-inv-tab <?= $active_tab === 'outgoing' ? 'm-active' : '' ?>">
-            <i class="fas fa-shipping-fast"></i> Outgoing
-        </a>
+    <!-- View Selector Dropdown -->
+    <div class="m-view-selector" style="margin:0 16px 16px;">
+        <label class="m-view-label" for="invViewSelect">
+            <i class="fas fa-layer-group"></i> View
+        </label>
+        <select class="m-view-select" id="invViewSelect" aria-label="Select inventory view">
+            <option value="in_store" <?= $active_tab === 'in_store' ? 'selected' : '' ?>>🏪 In-Store</option>
+            <option value="warehouse" <?= $active_tab === 'warehouse' ? 'selected' : '' ?>>📦 Warehouse</option>
+            <option value="incoming" <?= $active_tab === 'incoming' ? 'selected' : '' ?>>🚚 Incoming</option>
+            <option value="outgoing" <?= $active_tab === 'outgoing' ? 'selected' : '' ?>>📤 Outgoing</option>
+        </select>
     </div>
 
 <?php if ($active_tab === 'in_store'): ?>
@@ -748,6 +776,10 @@ if ($active_tab === 'outgoing') {
 </div>
 
 <script>
+document.getElementById('invViewSelect').addEventListener('change', function() {
+    window.location.href = '?page=inventory_management&tab=' + this.value;
+});
+
 (function() {
     // Close modal helper
     window.mInvCloseModal = function(id) {

@@ -90,19 +90,55 @@ $totalRefunds = count($allRefunds);
 .m-empty-state { text-align: center; padding: 40px 20px; color: #6B6B7B; }
 .m-empty-state i { font-size: 32px; display: block; margin-bottom: 12px; }
 .m-empty-state p { font-size: 14px; margin: 0; }
-/* Tabs */
-.m-refund-tabs {
-    display: flex; position: sticky; top: 0; z-index: 10;
-    background: #0A0A0F; border-bottom: 1px solid #2D2D3F;
-    padding: 0 16px;
+/* View selector dropdown */
+.m-view-selector {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #1E1E2E;
+    border: 1px solid #2D2D3F;
+    border-radius: 12px;
+    padding: 8px 12px;
+    margin-bottom: 16px;
 }
-.m-refund-tab {
-    flex: 1; text-align: center; padding: 14px 0; font-size: 13px; font-weight: 600;
-    color: #6B6B7B; border: none; background: none; cursor: pointer;
-    border-bottom: 2px solid transparent;
-    min-height: 44px; font-family: Inter, sans-serif;
+.m-view-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #8B5CF6;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
-.m-refund-tab.m-tab-active { color: #8B5CF6; border-bottom-color: #8B5CF6; }
+.m-view-select {
+    flex: 1;
+    background: #16161F;
+    border: 1px solid #2D2D3F;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    padding: 10px 12px;
+    min-height: 44px;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%238B5CF6' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+}
+.m-view-select:focus {
+    outline: none;
+    border-color: #6B46C1;
+    box-shadow: 0 0 0 3px rgba(107,70,193,0.2);
+}
+.m-view-select option {
+    background: #16161F;
+    color: #fff;
+    padding: 8px;
+}
 /* FAB */
 .m-refund-fab {
     position: fixed; bottom: 60px; right: 16px; z-index: 50;
@@ -175,12 +211,17 @@ $totalRefunds = count($allRefunds);
         <p class="m-refunds-sub"><?= $totalRefunds ?> refund<?= $totalRefunds !== 1 ? 's' : '' ?></p>
     </div>
 
-    <!-- Status Filter Tabs -->
-    <div class="m-refund-tabs">
-        <button class="m-refund-tab m-tab-active" onclick="mRefundFilter('all', this)" type="button">All</button>
-        <button class="m-refund-tab" onclick="mRefundFilter('pending', this)" type="button">Pending</button>
-        <button class="m-refund-tab" onclick="mRefundFilter('approved', this)" type="button">Approved</button>
-        <button class="m-refund-tab" onclick="mRefundFilter('rejected', this)" type="button">Rejected</button>
+    <!-- Status Filter Dropdown -->
+    <div class="m-view-selector" style="margin:16px 16px 0;">
+        <label class="m-view-label" for="refundViewSelect">
+            <i class="fas fa-layer-group"></i> Filter
+        </label>
+        <select class="m-view-select" id="refundViewSelect" aria-label="Filter refunds by status">
+            <option value="all" selected>📋 All</option>
+            <option value="pending">⏳ Pending</option>
+            <option value="approved">✅ Approved</option>
+            <option value="rejected">❌ Rejected</option>
+        </select>
     </div>
 
     <div class="m-refunds-list">
@@ -285,14 +326,13 @@ $totalRefunds = count($allRefunds);
 </div>
 
 <script>
-/* Status filter tabs */
-function mRefundFilter(status, btn) {
-    document.querySelectorAll('.m-refund-tab').forEach(function(t) { t.classList.remove('m-tab-active'); });
-    if (btn) btn.classList.add('m-tab-active');
+/* Status filter via dropdown */
+document.getElementById('refundViewSelect').addEventListener('change', function() {
+    var filter = this.value;
     var cards = document.querySelectorAll('.m-refund-card[data-status]');
     var visible = 0;
     cards.forEach(function(card) {
-        if (status === 'all' || card.getAttribute('data-status') === status) {
+        if (filter === 'all' || card.getAttribute('data-status') === filter) {
             card.style.display = '';
             visible++;
         } else {
@@ -303,7 +343,7 @@ function mRefundFilter(status, btn) {
     var emptyAll = document.getElementById('m-refund-empty-all');
     if (emptyFiltered) emptyFiltered.style.display = (visible === 0 && cards.length > 0) ? '' : 'none';
     if (emptyAll) emptyAll.style.display = (cards.length === 0) ? '' : 'none';
-}
+});
 
 /* Bottom sheet open/close */
 function mRefundOpenSheet(name) {
