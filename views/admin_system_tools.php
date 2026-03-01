@@ -620,11 +620,11 @@ foreach ($url_keys as $uk) {
                         <div class="setting-item">
                             <div class="setting-info">
                                 <h4>Public Endpoint URL</h4>
-                                <p>Browser-accessible URL for direct uploads via reverse proxy (e.g., https://tnode1.example.com). If empty, the internal endpoint above is used.</p>
+                                <p>Browser-accessible URL for direct uploads via reverse proxy. Include the port if non-standard (e.g., https://s3.example.com:30292). If empty, the internal endpoint above is used.</p>
                             </div>
                             <input type="text" name="rustfs_public_endpoint" class="form-input" 
                                    value="<?php echo htmlspecialchars($settings['rustfs_public_endpoint'] ?? ''); ?>"
-                                   placeholder="https://tnode1.example.com">
+                                   placeholder="https://s3.example.com:30292">
                         </div>
                         <div class="setting-item">
                             <div class="setting-info">
