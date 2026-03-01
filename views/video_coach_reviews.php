@@ -978,16 +978,16 @@ document.addEventListener('DOMContentLoaded', function() {
                         xhr.open('PUT', presignedUrl, true);
                         xhr.setRequestHeader('Content-Type', contentType);
 
-                        // Connection timeout: if no upload progress within 15 s,
+                        // Connection timeout: if no upload progress within 30 s,
                         // the cloud endpoint is likely unreachable — abort and
                         // let the catch handler fall back to the server upload.
                         var uploadStarted = false;
                         var connTimer = setTimeout(function() {
                             if (!uploadStarted) {
                                 xhr.abort();
-                                reject(new Error('Cloud storage connection timed out'));
+                                reject(new Error('Cloud storage connection timed out — check that the S3/RustFS endpoint is reachable from this browser'));
                             }
-                        }, 15000);
+                        }, 30000);
 
                         xhr.upload.onprogress = function(ev) {
                             if (!uploadStarted) { uploadStarted = true; clearTimeout(connTimer); }
@@ -1011,7 +1011,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 reject(new Error('Cloud upload failed (HTTP ' + xhr.status + ')'));
                             }
                         };
-                        xhr.onerror = function() { clearTimeout(connTimer); reject(new Error('Network error during upload')); };
+                        xhr.onerror = function() { clearTimeout(connTimer); reject(new Error('Network error during upload — ensure the S3/RustFS endpoint is accessible')); };
                         xhr.send(file);
                     });
                 })
@@ -1030,8 +1030,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         xhr.setRequestHeader('X-Upload-Token', proxyToken);
                         var uploadStarted = false;
                         var connTimer = setTimeout(function() {
-                            if (!uploadStarted) { xhr.abort(); reject(new Error('Proxy connection timed out')); }
-                        }, 15000);
+                            if (!uploadStarted) { xhr.abort(); reject(new Error('Proxy connection timed out — check that the S3/RustFS endpoint is reachable from this browser')); }
+                        }, 30000);
                         xhr.upload.onprogress = function(ev) {
                             if (!uploadStarted) { uploadStarted = true; clearTimeout(connTimer); }
                             if (ev.lengthComputable) {
@@ -1046,7 +1046,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             if (xhr.status >= 200 && xhr.status < 300) resolve();
                             else reject(new Error('Proxy upload failed (HTTP ' + xhr.status + ')'));
                         };
-                        xhr.onerror = function() { clearTimeout(connTimer); reject(new Error('Network error during proxy upload')); };
+                        xhr.onerror = function() { clearTimeout(connTimer); reject(new Error('Network error during proxy upload — ensure the S3/RustFS endpoint is accessible')); };
                         xhr.send(file);
                     });
                 })

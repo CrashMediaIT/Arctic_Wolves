@@ -150,7 +150,7 @@ test.describe('streamUploadToRustFS function', () => {
 
     expect(funcBody).toContain('CURLOPT_INFILE');
     expect(funcBody).toContain('CURLOPT_INFILESIZE');
-    expect(funcBody).toContain('CURLOPT_PUT');
+    expect(funcBody).toContain('CURLOPT_UPLOAD');
   });
 
   test('should use UNSIGNED-PAYLOAD for streaming', () => {
