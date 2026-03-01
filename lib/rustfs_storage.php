@@ -815,7 +815,7 @@ function generatePresignedUploadUrl($settings, $object_key, $content_type = 'app
         // URI-encode each path segment per S3 Signature V4 spec.
         // Forward slashes between segments are preserved unencoded.
         $raw_path = $parsed['path'] ?? '/';
-        $segments = array_filter(explode('/', $raw_path), function ($s) { return $s !== ''; });
+        $segments = array_filter(explode('/', $raw_path), 'strlen');
         $path = '/' . implode('/', array_map('rawurlencode', $segments));
 
         // When a public endpoint is provided (browser-facing URL behind HAProxy),
