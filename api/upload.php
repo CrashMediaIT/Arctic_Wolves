@@ -78,6 +78,9 @@ if (empty($upload_token) || empty($session_token) || !hash_equals($session_token
     exit;
 }
 
+// Invalidate token after use to prevent replay attacks
+unset($_SESSION['upload_proxy_token']);
+
 // ── Validate Content-Length ─────────────────────────────────────────────
 $content_length = (int)($_SERVER['CONTENT_LENGTH'] ?? 0);
 if ($content_length <= 0) {
