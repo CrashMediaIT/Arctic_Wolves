@@ -2159,9 +2159,14 @@ def presign_upload():
     guaranteed to match what RustFS expects.
 
     POST JSON body:
-        object_key:   S3 object key (required, e.g. 'Images/videos/athlete/file.mp4')
-        content_type: MIME type (optional, default 'application/octet-stream')
-        expires:      URL validity in seconds (optional, default 3600)
+        object_key:       S3 object key (required, e.g. 'Images/videos/athlete/file.mp4')
+        content_type:     MIME type (optional, default 'application/octet-stream')
+        expires:          URL validity in seconds (optional, default 3600)
+        public_endpoint:  Browser-facing S3 base URL (optional). When the companion
+                          talks to RustFS via an internal address (e.g. http://rustfs:9000)
+                          but the browser must reach it via a public URL (e.g.
+                          https://rustfs.example.com), pass the public URL here so the
+                          presigned URL is reachable from the browser.
     """
     auth_err = _require_api_key()
     if auth_err:
@@ -2174,6 +2179,7 @@ def presign_upload():
     data = request.get_json(silent=True) or {}
     object_key = data.get("object_key", "").strip()
     content_type = data.get("content_type", "application/octet-stream")
+    public_endpoint = data.get("public_endpoint", "").strip()
     try:
         expires = int(data.get("expires", 3600))
     except (ValueError, TypeError):
@@ -2186,20 +2192,49 @@ def presign_upload():
         expires = 3600
 
     try:
-        presigned_url = s3.generate_presigned_url(
+        # When a public_endpoint is provided, create a temporary client so the
+        # presigned URL uses the browser-reachable host (and the signature is
+        # computed against that host).
+        client = s3
+        if public_endpoint:
+            ep = public_endpoint
+            if not ep.startswith("http"):
+                scheme = "https" if S3_USE_SSL else "http"
+                ep = f"{scheme}://{ep}"
+            client = boto3.client(
+                "s3",
+                endpoint_url=ep,
+                aws_access_key_id=S3_ACCESS_KEY,
+                aws_secret_access_key=S3_SECRET_KEY,
+                region_name=S3_REGION,
+                config=BotoConfig(
+                    s3={"addressing_style": "path"},
+                    signature_version="s3v4",
+                    retries={"max_attempts": 1},
+                ),
+                verify=S3_VERIFY_SSL,
+            )
+
+        # Do NOT include ContentType in Params — RustFS / MinIO can return
+        # SignatureDoesNotMatch when the browser's Content-Type header differs
+        # even slightly from the value used at signing time.  Only sign the
+        # host header (via Bucket/Key) which matches the PHP fallback behaviour.
+        presigned_url = client.generate_presigned_url(
             ClientMethod="put_object",
             Params={
                 "Bucket": S3_BUCKET,
                 "Key": object_key,
-                "ContentType": content_type,
             },
             ExpiresIn=expires,
         )
-        logger.info("Generated presigned PUT URL for key=%s (expires=%ds)", object_key, expires)
+        logger.info("Generated presigned PUT URL for key=%s (expires=%ds, public_endpoint=%s)",
+                     object_key, expires, public_endpoint or "(default)")
         return jsonify({
             "success": True,
             "url": presigned_url,
             "object_key": object_key,
+            # Echoed back so the browser knows what Content-Type header to send
+            # with the PUT request (not signed, but still useful metadata).
             "content_type": content_type,
         })
     except Exception as exc:
