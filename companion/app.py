@@ -2233,6 +2233,8 @@ def presign_upload():
             "success": True,
             "url": presigned_url,
             "object_key": object_key,
+            # Echoed back so the browser knows what Content-Type header to send
+            # with the PUT request (not signed, but still useful metadata).
             "content_type": content_type,
         })
     except Exception as exc:
