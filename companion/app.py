@@ -2174,7 +2174,10 @@ def presign_upload():
     data = request.get_json(silent=True) or {}
     object_key = data.get("object_key", "").strip()
     content_type = data.get("content_type", "application/octet-stream")
-    expires = int(data.get("expires", 3600))
+    try:
+        expires = int(data.get("expires", 3600))
+    except (ValueError, TypeError):
+        return jsonify({"success": False, "error": "expires must be a numeric value"}), 400
 
     if not object_key:
         return jsonify({"success": False, "error": "object_key is required"}), 400
