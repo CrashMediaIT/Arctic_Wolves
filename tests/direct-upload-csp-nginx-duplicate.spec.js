@@ -149,3 +149,31 @@ test.describe('Server-level static CSP remains as fallback for non-PHP assets', 
     expect(serverBlock).toContain('Content-Security-Policy');
   });
 });
+
+// =====================================================
+// 4. Static CSP connect-src includes *.arcticwolves.ca
+//    so S3/RustFS direct uploads are never blocked
+// =====================================================
+
+test.describe('NGINX static CSP connect-src includes wildcard subdomain for S3 uploads', () => {
+  test('main site connect-src should include https://*.arcticwolves.ca', () => {
+    const content = readFile('deployment/arctic_wolves.conf');
+    const mainStart = content.indexOf('server_name arcticwolves.ca www.arcticwolves.ca;');
+    const mainEnd = content.indexOf('server_name gameplan.arcticwolves.ca;');
+    const mainBlock = content.substring(mainStart, mainEnd > -1 ? mainEnd : undefined);
+    expect(mainBlock).toContain('https://*.arcticwolves.ca');
+  });
+
+  test('gameplan connect-src should include https://*.arcticwolves.ca', () => {
+    const content = readFile('deployment/arctic_wolves.conf');
+    const gpStart = content.indexOf('server_name gameplan.arcticwolves.ca;');
+    const gpEnd = content.indexOf('# =====', gpStart);
+    const gpBlock = content.substring(gpStart, gpEnd > -1 ? gpEnd : undefined);
+    expect(gpBlock).toContain('https://*.arcticwolves.ca');
+  });
+
+  test('security.php base connect-src should include https://*.arcticwolves.ca', () => {
+    const content = readFile('security.php');
+    expect(content).toContain("'self' wss: https://*.arcticwolves.ca");
+  });
+});
