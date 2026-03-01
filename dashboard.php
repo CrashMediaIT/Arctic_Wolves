@@ -34,7 +34,9 @@ try {
             }
         }
     }
-} catch (Exception $e) {}
+} catch (\Throwable $e) {
+    error_log('CSP extraConnectSrc error (dashboard): ' . $e->getMessage());
+}
 
 // Set security headers including CSP (with RustFS origin if configured)
 setSecurityHeaders($extraConnectSrc);

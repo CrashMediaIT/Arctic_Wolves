@@ -38,7 +38,9 @@ try {
             }
         }
     }
-} catch (Exception $e) {}
+} catch (\Throwable $e) {
+    error_log('CSP extraConnectSrc error (pwa): ' . $e->getMessage());
+}
 
 // Set security headers (with RustFS origin if configured)
 setSecurityHeaders($extraConnectSrc);
