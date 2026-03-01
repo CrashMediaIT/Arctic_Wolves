@@ -2149,6 +2149,62 @@ def hls_transcode():
 
 
 # ---------------------------------------------------------------------------
+# Presigned upload URLs
+# ---------------------------------------------------------------------------
+@app.route("/api/presign", methods=["POST"])
+def presign_upload():
+    """Generate a presigned PUT URL for direct browser-to-RustFS uploads.
+
+    Uses boto3's generate_presigned_url (official SDK) so the signature is
+    guaranteed to match what RustFS expects.
+
+    POST JSON body:
+        object_key:   S3 object key (required, e.g. 'Images/videos/athlete/file.mp4')
+        content_type: MIME type (optional, default 'application/octet-stream')
+        expires:      URL validity in seconds (optional, default 3600)
+    """
+    auth_err = _require_api_key()
+    if auth_err:
+        return auth_err
+
+    s3 = _get_s3_client()
+    if not s3:
+        return jsonify({"success": False, "error": "S3/RustFS is not configured on companion server"}), 503
+
+    data = request.get_json(silent=True) or {}
+    object_key = data.get("object_key", "").strip()
+    content_type = data.get("content_type", "application/octet-stream")
+    expires = int(data.get("expires", 3600))
+
+    if not object_key:
+        return jsonify({"success": False, "error": "object_key is required"}), 400
+
+    if expires < 60 or expires > 604800:
+        expires = 3600
+
+    try:
+        presigned_url = s3.generate_presigned_url(
+            ClientMethod="put_object",
+            Params={
+                "Bucket": S3_BUCKET,
+                "Key": object_key,
+                "ContentType": content_type,
+            },
+            ExpiresIn=expires,
+        )
+        logger.info("Generated presigned PUT URL for key=%s (expires=%ds)", object_key, expires)
+        return jsonify({
+            "success": True,
+            "url": presigned_url,
+            "object_key": object_key,
+            "content_type": content_type,
+        })
+    except Exception as exc:
+        logger.error("Presign error for key=%s: %s", object_key, exc)
+        return jsonify({"success": False, "error": str(exc)}), 500
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
