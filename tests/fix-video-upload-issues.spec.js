@@ -92,27 +92,28 @@ test.describe('record_drill_video upload file button works', () => {
     expect(content).toContain('new FormData()');
   });
 
-  test('upload file handler should send to process_video.php', () => {
+  test('upload file handler should send presign request to process_video.php', () => {
     const content = readFile('views/video_record_drill.php');
     // Find the uploadFileBtn click handler section
     const handlerStart = content.indexOf("uploadFileBtn.addEventListener('click'");
     const handlerSection = content.substring(handlerStart, handlerStart + 2000);
-    expect(handlerSection).toContain("'POST', 'process_video.php'");
+    expect(handlerSection).toContain("fetch('process_video.php'");
   });
 
   test('upload file handler should use XHR with progress tracking', () => {
     const content = readFile('views/video_record_drill.php');
     const handlerStart = content.indexOf("uploadFileBtn.addEventListener('click'");
-    const handlerSection = content.substring(handlerStart, handlerStart + 2000);
+    const handlerSection = content.substring(handlerStart, handlerStart + 3000);
     expect(handlerSection).toContain('XMLHttpRequest');
     expect(handlerSection).toContain('xhr.upload.onprogress');
   });
 
-  test('upload file handler should include action=upload_drill_video', () => {
+  test('upload file handler should use presigned URL flow with get_video_upload_url', () => {
     const content = readFile('views/video_record_drill.php');
     const handlerStart = content.indexOf("uploadFileBtn.addEventListener('click'");
     const handlerSection = content.substring(handlerStart, handlerStart + 2000);
-    expect(handlerSection).toContain("'action', 'upload_drill_video'");
+    expect(handlerSection).toContain("'action', 'get_video_upload_url'");
+    expect(handlerSection).toContain("'upload_type', 'drill_video'");
   });
 
   test('upload file handler should validate session, drill, and athlete', () => {

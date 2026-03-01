@@ -937,11 +937,17 @@ function generatePresignedUploadUrlViaSdk($pdo, $settings, $object_key, $content
 
         if (!empty($companion_url)) {
             $companion_url = rtrim($companion_url, '/');
-            $payload = json_encode([
+            $presign_payload = [
                 'object_key'   => ltrim($object_key, '/'),
                 'content_type' => $content_type,
                 'expires'      => $expires,
-            ]);
+            ];
+            // Pass the browser-facing public endpoint so the companion generates
+            // a presigned URL reachable from the browser (not the internal address).
+            if (!empty($public_endpoint)) {
+                $presign_payload['public_endpoint'] = $public_endpoint;
+            }
+            $payload = json_encode($presign_payload);
 
             $ch = curl_init($companion_url . '/api/presign');
             curl_setopt($ch, CURLOPT_POST, true);
