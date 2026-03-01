@@ -903,3 +903,199 @@ function generatePresignedUploadUrl($settings, $object_key, $content_type = 'app
         return ['success' => false, 'url' => null, 'object_key' => $object_key, 'message' => $e->getMessage()];
     }
 }
+
+/**
+ * Generate a presigned PUT URL via the companion server's boto3 SDK.
+ *
+ * The companion uses boto3.generate_presigned_url() which is the official
+ * AWS-SDK approach recommended by the RustFS documentation.  This avoids
+ * subtle signature issues that can occur with hand-rolled Sig V4 code.
+ *
+ * Falls back to the local PHP implementation when the companion is
+ * unavailable or not configured.
+ *
+ * @param PDO         $pdo          Database connection (to read companion settings)
+ * @param array       $settings     RustFS settings
+ * @param string      $object_key   S3 object key
+ * @param string      $content_type MIME type
+ * @param int         $expires      URL validity in seconds
+ * @param string|null $public_endpoint Optional browser-facing base URL
+ * @return array ['success'=>bool, 'url'=>string|null, 'object_key'=>string, 'message'=>string|null]
+ */
+function generatePresignedUploadUrlViaSdk($pdo, $settings, $object_key, $content_type = 'application/octet-stream', $expires = 3600, $public_endpoint = null) {
+    // Try the companion server's SDK-based presign endpoint first
+    try {
+        $stmt = $pdo->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('gameplan_companion_url', 'gameplan_companion_api_key')");
+        $stmt->execute();
+        $companion = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $companion[$row['setting_key']] = $row['setting_value'] ?? '';
+        }
+
+        $companion_url = $companion['gameplan_companion_url'] ?? '';
+        $companion_key = $companion['gameplan_companion_api_key'] ?? '';
+
+        if (!empty($companion_url)) {
+            $companion_url = rtrim($companion_url, '/');
+            $payload = json_encode([
+                'object_key'   => ltrim($object_key, '/'),
+                'content_type' => $content_type,
+                'expires'      => $expires,
+            ]);
+
+            $ch = curl_init($companion_url . '/api/presign');
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Content-Type: application/json',
+                'X-API-Key: ' . $companion_key,
+            ]);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+
+            $response = curl_exec($ch);
+            $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($http_code === 200 && $response) {
+                $data = json_decode($response, true);
+                if (!empty($data['success']) && !empty($data['url'])) {
+                    error_log("Presigned URL generated via companion SDK for key=$object_key");
+                    return [
+                        'success'    => true,
+                        'url'        => $data['url'],
+                        'object_key' => $data['object_key'] ?? $object_key,
+                        'message'    => null,
+                    ];
+                }
+            }
+            // Companion returned an error — log it and fall through to local PHP
+            error_log("Companion presign returned HTTP $http_code — falling back to local PHP presign");
+        }
+    } catch (Exception $e) {
+        error_log("Companion presign call failed: " . $e->getMessage() . " — falling back to local PHP presign");
+    }
+
+    // Fall back to local PHP presigned URL generation
+    return generatePresignedUploadUrl($settings, $object_key, $content_type, $expires, $public_endpoint);
+}
+
+/**
+ * Upload a file to RustFS by streaming from a PHP input stream.
+ *
+ * This is used as a server-side proxy: the browser PUTs the raw file body
+ * to a PHP endpoint, and this function streams it through to RustFS.
+ * This avoids CORS issues and the need for the browser to reach RustFS
+ * directly.
+ *
+ * @param array    $settings     RustFS settings
+ * @param resource $input_stream An open readable stream (e.g. fopen('php://input', 'rb'))
+ * @param int      $content_length  Expected content length in bytes
+ * @param string   $object_key  S3 object key
+ * @param string   $content_type MIME type
+ * @return array ['success'=>bool, 'url'=>string|null, 'object_key'=>string, 'message'=>string|null]
+ */
+function streamUploadToRustFS($settings, $input_stream, $content_length, $object_key, $content_type = 'application/octet-stream') {
+    if (!isRustFSConfigured($settings)) {
+        return ['success' => false, 'url' => null, 'object_key' => $object_key, 'message' => 'RustFS is not configured'];
+    }
+
+    try {
+        $object_key = ltrim($object_key, '/');
+        $url = getRustFSPublicUrl($settings, $object_key);
+        $region = $settings['rustfs_region'] ?? 'us-east-1';
+        $access_key = $settings['rustfs_access_key'];
+        $secret_key = $settings['rustfs_secret_key'];
+
+        // For streaming uploads, use UNSIGNED-PAYLOAD as content hash
+        $payload_hash = 'UNSIGNED-PAYLOAD';
+        $parsed = parse_url($url);
+        $host = $parsed['host'] . (isset($parsed['port']) ? ':' . $parsed['port'] : '');
+
+        $now = new DateTime('UTC');
+        $date_stamp = $now->format('Ymd');
+        $amz_date = $now->format('Ymd\THis\Z');
+
+        $headers_to_sign = [
+            'content-length' => (string)$content_length,
+            'content-type' => $content_type,
+            'host' => $host,
+            'x-amz-content-sha256' => $payload_hash,
+            'x-amz-date' => $amz_date,
+        ];
+        ksort($headers_to_sign);
+
+        $canonical_headers = '';
+        $signed_headers_list = [];
+        foreach ($headers_to_sign as $k => $v) {
+            $canonical_headers .= $k . ':' . $v . "\n";
+            $signed_headers_list[] = $k;
+        }
+        $signed_headers = implode(';', $signed_headers_list);
+
+        $path = $parsed['path'] ?? '/';
+        $canonical_request = implode("\n", [
+            'PUT', $path, '', $canonical_headers, $signed_headers, $payload_hash,
+        ]);
+
+        $credential_scope = $date_stamp . '/' . $region . '/s3/aws4_request';
+        $string_to_sign = implode("\n", [
+            'AWS4-HMAC-SHA256', $amz_date, $credential_scope, hash('sha256', $canonical_request),
+        ]);
+
+        $k_date = hash_hmac('sha256', $date_stamp, 'AWS4' . $secret_key, true);
+        $k_region = hash_hmac('sha256', $region, $k_date, true);
+        $k_service = hash_hmac('sha256', 's3', $k_region, true);
+        $k_signing = hash_hmac('sha256', 'aws4_request', $k_service, true);
+        $signature = hash_hmac('sha256', $string_to_sign, $k_signing);
+
+        $auth_header = sprintf(
+            'AWS4-HMAC-SHA256 Credential=%s/%s, SignedHeaders=%s, Signature=%s',
+            $access_key, $credential_scope, $signed_headers, $signature
+        );
+
+        $curl_headers = [
+            'Content-Type: ' . $content_type,
+            'Content-Length: ' . $content_length,
+            'Authorization: ' . $auth_header,
+            'x-amz-date: ' . $amz_date,
+            'x-amz-content-sha256: ' . $payload_hash,
+            'Expect: ',
+        ];
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_PUT, true);
+        curl_setopt($ch, CURLOPT_INFILE, $input_stream);
+        curl_setopt($ch, CURLOPT_INFILESIZE, $content_length);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $curl_headers);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 600);
+
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curl_error = curl_error($ch);
+        curl_close($ch);
+
+        if (!empty($curl_error)) {
+            throw new Exception("cURL error: $curl_error");
+        }
+
+        if ($http_code !== 200 && $http_code !== 201 && $http_code !== 204) {
+            throw new Exception("RustFS stream upload failed. HTTP $http_code. Response: " . substr($response, 0, 500));
+        }
+
+        return [
+            'success' => true,
+            'url' => $url,
+            'object_key' => $object_key,
+            'message' => null,
+        ];
+    } catch (Exception $e) {
+        error_log("RustFS stream upload error: " . $e->getMessage());
+        return ['success' => false, 'url' => null, 'object_key' => $object_key, 'message' => $e->getMessage()];
+    }
+}
