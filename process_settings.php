@@ -203,7 +203,7 @@ try {
             $rustfs_use_ssl = isset($_POST['rustfs_use_ssl']) ? '1' : '0';
             $rustfs_path_style = isset($_POST['rustfs_path_style']) ? '1' : '0';
 
-            // Normalise endpoint URLs so that bare 'host:port' values (common in
+            // Normalize endpoint URLs so that bare 'host:port' values (common in
             // Docker deployments) get a scheme prefix.  Without a scheme, PHP's
             // parse_url() misinterprets 'host:30292' as scheme 'host' + path '30292',
             // which breaks presigned URL generation and CSP origins.

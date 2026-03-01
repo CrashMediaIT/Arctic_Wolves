@@ -953,7 +953,7 @@ function generatePresignedUploadUrl($settings, $object_key, $content_type = 'app
  * @return array ['success'=>bool, 'url'=>string|null, 'object_key'=>string, 'message'=>string|null]
  */
 function generatePresignedUploadUrlViaSdk($pdo, $settings, $object_key, $content_type = 'application/octet-stream', $expires = 3600, $public_endpoint = null) {
-    // Normalise the public endpoint so that bare 'host:port' values (common in
+    // Normalize the public endpoint so that bare 'host:port' values (common in
     // Docker deployments, e.g. 's3.example.com:30292') are not misinterpreted
     // by parse_url or the companion SDK.
     if (!empty($public_endpoint)) {
