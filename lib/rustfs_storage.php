@@ -1015,7 +1015,7 @@ function generatePresignedUploadUrlViaSdk($pdo, $settings, $object_key, $content
             } elseif ($http_code === 200 && $response) {
                 $data = json_decode($response, true);
                 if (!empty($data['success']) && !empty($data['url'])) {
-                    error_log("Presign: companion SDK generated URL for key=$object_key url_host=" . parse_url($data['url'], PHP_URL_HOST));
+                    error_log("Presigned URL generated via companion SDK for key=$object_key url_host=" . parse_url($data['url'], PHP_URL_HOST));
                     return [
                         'success'    => true,
                         'url'        => $data['url'],
