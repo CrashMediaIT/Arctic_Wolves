@@ -1298,7 +1298,10 @@ function handleVideoDelete() {
         throw new Exception('You can only delete videos you uploaded yourself');
     }
     
-    // Delete file from storage
+    $rustfs = getRustFSSettings($pdo);
+    $rustfs_configured = isRustFSConfigured($rustfs);
+
+    // Delete original video file from storage
     $video_url = $video['video_url'] ?? '';
     if (!empty($video_url)) {
         if (strpos($video_url, 'api/media.php?key=') !== false) {
@@ -1307,11 +1310,8 @@ function handleVideoDelete() {
                 $parsed = [];
                 parse_str(parse_url($video_url, PHP_URL_QUERY) ?? '', $parsed);
                 $object_key = $parsed['key'] ?? '';
-                if ($object_key !== '') {
-                    $rustfs = getRustFSSettings($pdo);
-                    if (isRustFSConfigured($rustfs)) {
-                        deleteFromRustFS($rustfs, $object_key);
-                    }
+                if ($object_key !== '' && $rustfs_configured) {
+                    deleteFromRustFS($rustfs, $object_key);
                 }
             } catch (Exception $e) {
                 error_log("Failed to delete RustFS object for video $video_id: " . $e->getMessage());
@@ -1322,6 +1322,21 @@ function handleVideoDelete() {
             if (file_exists($file_path)) {
                 unlink($file_path);
             }
+        }
+    }
+
+    // Delete HLS transcoded files (segments, playlists) from RustFS
+    $hls_segments_path = $video['hls_segments_path'] ?? '';
+    if (!empty($hls_segments_path) && $rustfs_configured) {
+        try {
+            $result = deleteRustFSPrefix($rustfs, $hls_segments_path);
+            if ($result['success']) {
+                error_log("Deleted {$result['deleted']} HLS files for video $video_id (prefix: $hls_segments_path)");
+            } else {
+                error_log("Failed to delete HLS files for video $video_id: " . ($result['message'] ?? 'Unknown error'));
+            }
+        } catch (Exception $e) {
+            error_log("Failed to delete HLS files for video $video_id: " . $e->getMessage());
         }
     }
     

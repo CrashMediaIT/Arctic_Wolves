@@ -715,6 +715,45 @@ function listRustFSObjects($settings, $prefix = '', $max_keys = 1000) {
 }
 
 /**
+ * Delete all objects under a prefix in RustFS S3.
+ *
+ * Lists all objects matching the prefix and deletes them individually.
+ * Used to clean up HLS segments and playlists when a video is deleted.
+ *
+ * @param array  $settings  RustFS settings
+ * @param string $prefix    S3 key prefix (e.g. 'Images/videos/athlete/file/hls')
+ * @return array ['success'=>bool, 'deleted'=>int, 'message'=>string|null]
+ */
+function deleteRustFSPrefix($settings, $prefix) {
+    if (!isRustFSConfigured($settings)) {
+        return ['success' => false, 'deleted' => 0, 'message' => 'RustFS is not configured'];
+    }
+
+    if (empty($prefix)) {
+        return ['success' => false, 'deleted' => 0, 'message' => 'Prefix is required'];
+    }
+
+    try {
+        $listing = listRustFSObjects($settings, $prefix);
+        if (!$listing['success']) {
+            return ['success' => false, 'deleted' => 0, 'message' => 'Failed to list objects: ' . ($listing['message'] ?? '')];
+        }
+
+        $deleted = 0;
+        foreach ($listing['objects'] as $obj) {
+            if (deleteFromRustFS($settings, $obj['key'])) {
+                $deleted++;
+            }
+        }
+
+        return ['success' => true, 'deleted' => $deleted, 'message' => null];
+    } catch (Exception $e) {
+        error_log("RustFS prefix delete error for prefix=$prefix: " . $e->getMessage());
+        return ['success' => false, 'deleted' => 0, 'message' => $e->getMessage()];
+    }
+}
+
+/**
  * Ensure the RustFS bucket has a CORS policy that allows direct browser uploads.
  *
  * Without CORS headers the browser blocks cross-origin PUT requests from XHR
