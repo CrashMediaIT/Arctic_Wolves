@@ -990,6 +990,8 @@ function generatePresignedUploadUrlViaSdk($pdo, $settings, $object_key, $content
             }
             $payload = json_encode($presign_payload);
 
+            error_log("Presign: calling companion at {$companion_url}/api/presign for key=$object_key content_type=$content_type public_endpoint=" . ($public_endpoint ?? '(none)'));
+
             $ch = curl_init($companion_url . '/api/presign');
             curl_setopt($ch, CURLOPT_POST, true);
             curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
@@ -1004,12 +1006,16 @@ function generatePresignedUploadUrlViaSdk($pdo, $settings, $object_key, $content
 
             $response = curl_exec($ch);
             $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curl_error = curl_error($ch);
+            $curl_errno = curl_errno($ch);
             curl_close($ch);
 
-            if ($http_code === 200 && $response) {
+            if (!empty($curl_error)) {
+                error_log("Presign: companion curl error [$curl_errno] $curl_error for key=$object_key — falling back to local PHP");
+            } elseif ($http_code === 200 && $response) {
                 $data = json_decode($response, true);
                 if (!empty($data['success']) && !empty($data['url'])) {
-                    error_log("Presigned URL generated via companion SDK for key=$object_key");
+                    error_log("Presign: companion SDK generated URL for key=$object_key url_host=" . parse_url($data['url'], PHP_URL_HOST));
                     return [
                         'success'    => true,
                         'url'        => $data['url'],
@@ -1017,15 +1023,20 @@ function generatePresignedUploadUrlViaSdk($pdo, $settings, $object_key, $content
                         'message'    => null,
                     ];
                 }
+                error_log("Presign: companion returned HTTP 200 but no valid URL: " . substr($response, 0, 300));
+            } else {
+                // Companion returned an error — log it and fall through to local PHP
+                error_log("Presign: companion HTTP $http_code response=" . substr($response ?: '', 0, 300) . " — falling back to local PHP");
             }
-            // Companion returned an error — log it and fall through to local PHP
-            error_log("Companion presign returned HTTP $http_code — falling back to local PHP presign");
+        } else {
+            error_log("Presign: no companion URL configured — using local PHP presign for key=$object_key");
         }
     } catch (Exception $e) {
-        error_log("Companion presign call failed: " . $e->getMessage() . " — falling back to local PHP presign");
+        error_log("Presign: companion call exception: " . $e->getMessage() . " — falling back to local PHP presign for key=$object_key");
     }
 
     // Fall back to local PHP presigned URL generation
+    error_log("Presign: generating via local PHP for key=$object_key public_endpoint=" . ($public_endpoint ?? '(none)'));
     return generatePresignedUploadUrl($settings, $object_key, $content_type, $expires, $public_endpoint);
 }
 
@@ -1055,6 +1066,8 @@ function streamUploadToRustFS($settings, $input_stream, $content_length, $object
         $region = $settings['rustfs_region'] ?? 'us-east-1';
         $access_key = $settings['rustfs_access_key'];
         $secret_key = $settings['rustfs_secret_key'];
+
+        error_log("RustFS stream upload: starting single PUT for key=$object_key size=$content_length url=$url");
 
         // For streaming uploads, use UNSIGNED-PAYLOAD as content hash
         $payload_hash = 'UNSIGNED-PAYLOAD';
@@ -1137,15 +1150,22 @@ function streamUploadToRustFS($settings, $input_stream, $content_length, $object
         $response = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $curl_error = curl_error($ch);
+        $curl_errno = curl_errno($ch);
+        $effective_url = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
+        $total_time = curl_getinfo($ch, CURLINFO_TOTAL_TIME);
         curl_close($ch);
 
         if (!empty($curl_error)) {
-            throw new Exception("cURL error: $curl_error");
+            error_log("RustFS stream upload: cURL error [$curl_errno] $curl_error for key=$object_key effective_url=$effective_url total_time={$total_time}s");
+            throw new Exception("cURL error [$curl_errno]: $curl_error");
         }
 
         if ($http_code !== 200 && $http_code !== 201 && $http_code !== 204) {
+            error_log("RustFS stream upload: HTTP $http_code for key=$object_key effective_url=$effective_url response=" . substr($response, 0, 500));
             throw new Exception("RustFS stream upload failed. HTTP $http_code. Response: " . substr($response, 0, 500));
         }
+
+        error_log("RustFS stream upload: SUCCESS key=$object_key http=$http_code total_time={$total_time}s");
 
         return [
             'success' => true,
@@ -1155,6 +1175,271 @@ function streamUploadToRustFS($settings, $input_stream, $content_length, $object
         ];
     } catch (Exception $e) {
         error_log("RustFS stream upload error: " . $e->getMessage());
+        return ['success' => false, 'url' => null, 'object_key' => $object_key, 'message' => $e->getMessage()];
+    }
+}
+
+/**
+ * Upload a file to RustFS using S3 multipart upload.
+ *
+ * Per the RustFS SDK documentation, large files (especially video) should use
+ * multipart upload (CreateMultipartUpload → UploadPart → CompleteMultipartUpload).
+ * This approach is more reliable for large files because:
+ * - Each part is uploaded independently and can be retried on failure
+ * - S3/RustFS is optimized for receiving data in chunks
+ * - Single PUT uploads can timeout or stall for multi-hundred-MB+ files
+ *
+ * @param array    $settings       RustFS settings
+ * @param resource $input_stream   An open readable stream (e.g. fopen('php://input', 'rb'))
+ * @param int      $content_length Expected total content length in bytes
+ * @param string   $object_key     S3 object key
+ * @param string   $content_type   MIME type
+ * @param int      $part_size      Size of each part in bytes (default 16MB, minimum 5MB per S3 spec)
+ * @return array ['success'=>bool, 'url'=>string|null, 'object_key'=>string, 'message'=>string|null]
+ */
+function multipartStreamUploadToRustFS($settings, $input_stream, $content_length, $object_key, $content_type = 'application/octet-stream', $part_size = 16777216) {
+    if (!isRustFSConfigured($settings)) {
+        return ['success' => false, 'url' => null, 'object_key' => $object_key, 'message' => 'RustFS is not configured'];
+    }
+
+    // Enforce minimum 5 MB part size per S3 spec
+    if ($part_size < 5 * 1024 * 1024) {
+        $part_size = 5 * 1024 * 1024;
+    }
+
+    $object_key = ltrim($object_key, '/');
+    $url_base = getRustFSPublicUrl($settings, $object_key);
+    $region = $settings['rustfs_region'] ?? 'us-east-1';
+    $access_key = $settings['rustfs_access_key'];
+    $secret_key = $settings['rustfs_secret_key'];
+    $upload_id = null;
+
+    $parsed = parse_url($url_base);
+    $host = $parsed['host'] . (isset($parsed['port']) ? ':' . $parsed['port'] : '');
+    $scheme = $parsed['scheme'] ?? 'https';
+    $raw_path = $parsed['path'] ?? '/';
+    $segments = array_filter(explode('/', $raw_path), 'strlen');
+    $path = '/' . implode('/', array_map('rawurlencode', $segments));
+    if ($raw_path !== '/' && substr($raw_path, -1) === '/') {
+        $path .= '/';
+    }
+
+    /**
+     * Helper: sign and execute an S3 API request for multipart upload operations.
+     */
+    $signAndExec = function($method, $query_string, $body, $extra_headers = []) use ($host, $path, $scheme, $region, $access_key, $secret_key) {
+        $now = new DateTime('UTC');
+        $date_stamp = $now->format('Ymd');
+        $amz_date = $now->format('Ymd\THis\Z');
+
+        $payload_hash = is_string($body) ? hash('sha256', $body) : 'UNSIGNED-PAYLOAD';
+
+        $headers_to_sign = array_merge([
+            'host' => $host,
+            'x-amz-content-sha256' => $payload_hash,
+            'x-amz-date' => $amz_date,
+        ], $extra_headers);
+        ksort($headers_to_sign);
+
+        $canonical_headers = '';
+        $signed_headers_list = [];
+        foreach ($headers_to_sign as $k => $v) {
+            $canonical_headers .= strtolower($k) . ':' . trim($v) . "\n";
+            $signed_headers_list[] = strtolower($k);
+        }
+        $signed_headers = implode(';', $signed_headers_list);
+
+        $canonical_request = implode("\n", [
+            $method, $path, $query_string, $canonical_headers, $signed_headers, $payload_hash,
+        ]);
+
+        $credential_scope = $date_stamp . '/' . $region . '/s3/aws4_request';
+        $string_to_sign = implode("\n", [
+            'AWS4-HMAC-SHA256', $amz_date, $credential_scope, hash('sha256', $canonical_request),
+        ]);
+
+        $k_date = hash_hmac('sha256', $date_stamp, 'AWS4' . $secret_key, true);
+        $k_region = hash_hmac('sha256', $region, $k_date, true);
+        $k_service = hash_hmac('sha256', 's3', $k_region, true);
+        $k_signing = hash_hmac('sha256', 'aws4_request', $k_service, true);
+        $signature = hash_hmac('sha256', $string_to_sign, $k_signing);
+
+        $auth = sprintf(
+            'AWS4-HMAC-SHA256 Credential=%s/%s, SignedHeaders=%s, Signature=%s',
+            $access_key, $credential_scope, $signed_headers, $signature
+        );
+
+        $url = $scheme . '://' . $host . $path;
+        if (!empty($query_string)) {
+            $url .= '?' . $query_string;
+        }
+
+        $curl_headers = [
+            'Host: ' . $host,
+            'Authorization: ' . $auth,
+            'x-amz-date: ' . $amz_date,
+            'x-amz-content-sha256: ' . $payload_hash,
+        ];
+        foreach ($extra_headers as $k => $v) {
+            if (!in_array(strtolower($k), ['host', 'x-amz-content-sha256', 'x-amz-date'])) {
+                $curl_headers[] = $k . ': ' . $v;
+            }
+        }
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $curl_headers);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 300);
+        // Include response headers so we can extract ETag
+        $resp_headers = [];
+        curl_setopt($ch, CURLOPT_HEADERFUNCTION, function($ch, $header) use (&$resp_headers) {
+            $parts = explode(':', $header, 2);
+            if (count($parts) === 2) {
+                $resp_headers[strtolower(trim($parts[0]))] = trim($parts[1]);
+            }
+            return strlen($header);
+        });
+
+        if (is_string($body) && strlen($body) > 0) {
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+        }
+
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curl_error = curl_error($ch);
+        $curl_errno = curl_errno($ch);
+        curl_close($ch);
+
+        return [
+            'http_code' => $http_code,
+            'body' => $response,
+            'error' => $curl_error,
+            'errno' => $curl_errno,
+            'headers' => $resp_headers,
+        ];
+    };
+
+    try {
+        error_log("RustFS multipart upload: initiating for key=$object_key size=$content_length part_size=$part_size");
+
+        // ── Step 1: CreateMultipartUpload ────────────────────────────────
+        $initResult = $signAndExec('POST', 'uploads=', '', ['content-type' => $content_type]);
+        if ($initResult['http_code'] !== 200) {
+            throw new Exception("CreateMultipartUpload failed: HTTP {$initResult['http_code']} body=" . substr($initResult['body'], 0, 500));
+        }
+
+        // Parse UploadId from XML response
+        if (preg_match('/<UploadId>([^<]+)<\/UploadId>/', $initResult['body'], $m)) {
+            $upload_id = $m[1];
+        } else {
+            throw new Exception("CreateMultipartUpload: could not parse UploadId from response: " . substr($initResult['body'], 0, 500));
+        }
+        error_log("RustFS multipart upload: initiated upload_id=$upload_id for key=$object_key");
+
+        // ── Step 2: UploadPart (stream parts from input) ─────────────────
+        $parts = [];
+        $part_number = 0;
+        $total_uploaded = 0;
+
+        while ($total_uploaded < $content_length) {
+            $part_number++;
+            $remaining = $content_length - $total_uploaded;
+            $this_part_size = min($part_size, $remaining);
+
+            // Read the part data from the input stream
+            $part_data = '';
+            $bytes_to_read = $this_part_size;
+            while ($bytes_to_read > 0 && !feof($input_stream)) {
+                $chunk = fread($input_stream, min($bytes_to_read, 1048576)); // Read in 1MB chunks
+                if ($chunk === false || $chunk === '') {
+                    break;
+                }
+                $part_data .= $chunk;
+                $bytes_to_read -= strlen($chunk);
+            }
+
+            $actual_size = strlen($part_data);
+            if ($actual_size === 0) {
+                break; // No more data from input stream
+            }
+
+            $qs = 'partNumber=' . $part_number . '&uploadId=' . rawurlencode($upload_id);
+            $partResult = $signAndExec('PUT', $qs, $part_data, [
+                'content-length' => (string)$actual_size,
+            ]);
+
+            if ($partResult['http_code'] !== 200 && $partResult['http_code'] !== 204) {
+                throw new Exception("UploadPart #$part_number failed: HTTP {$partResult['http_code']} body=" . substr($partResult['body'], 0, 300));
+            }
+
+            // Extract ETag from response headers
+            $etag = $partResult['headers']['etag'] ?? '';
+            if (empty($etag)) {
+                // Try to find ETag in body (some implementations)
+                if (preg_match('/<ETag>([^<]+)<\/ETag>/', $partResult['body'], $em)) {
+                    $etag = $em[1];
+                }
+            }
+            $etag = trim($etag, '"');
+
+            $parts[] = ['PartNumber' => $part_number, 'ETag' => $etag];
+            $total_uploaded += $actual_size;
+
+            error_log("RustFS multipart upload: part #$part_number uploaded ({$actual_size} bytes, etag=$etag) total={$total_uploaded}/{$content_length}");
+
+            // Free memory
+            unset($part_data);
+        }
+
+        if (empty($parts)) {
+            throw new Exception("No parts were uploaded — input stream may be empty");
+        }
+
+        // ── Step 3: CompleteMultipartUpload ──────────────────────────────
+        $complete_xml = '<CompleteMultipartUpload>';
+        foreach ($parts as $p) {
+            $complete_xml .= '<Part><PartNumber>' . $p['PartNumber'] . '</PartNumber><ETag>"' . htmlspecialchars($p['ETag']) . '"</ETag></Part>';
+        }
+        $complete_xml .= '</CompleteMultipartUpload>';
+
+        $completeResult = $signAndExec('POST', 'uploadId=' . rawurlencode($upload_id), $complete_xml, [
+            'content-type' => 'application/xml',
+            'content-length' => (string)strlen($complete_xml),
+        ]);
+
+        if ($completeResult['http_code'] !== 200) {
+            throw new Exception("CompleteMultipartUpload failed: HTTP {$completeResult['http_code']} body=" . substr($completeResult['body'], 0, 500));
+        }
+
+        // Verify the completion response contains a Location or ETag
+        if (strpos($completeResult['body'], '<Error>') !== false) {
+            throw new Exception("CompleteMultipartUpload returned error: " . substr($completeResult['body'], 0, 500));
+        }
+
+        error_log("RustFS multipart upload: COMPLETE key=$object_key parts=$part_number total_uploaded=$total_uploaded upload_id=$upload_id");
+
+        return [
+            'success' => true,
+            'url' => $url_base,
+            'object_key' => $object_key,
+            'message' => null,
+        ];
+    } catch (Exception $e) {
+        error_log("RustFS multipart upload error: " . $e->getMessage() . " key=$object_key upload_id=" . ($upload_id ?? 'none'));
+
+        // Abort the multipart upload on failure to clean up partial parts
+        if (!empty($upload_id)) {
+            try {
+                $abortResult = $signAndExec('DELETE', 'uploadId=' . rawurlencode($upload_id), '');
+                error_log("RustFS multipart upload: aborted upload_id=$upload_id http={$abortResult['http_code']}");
+            } catch (Exception $abortEx) {
+                error_log("RustFS multipart upload: abort failed for upload_id=$upload_id: " . $abortEx->getMessage());
+            }
+        }
+
         return ['success' => false, 'url' => null, 'object_key' => $object_key, 'message' => $e->getMessage()];
     }
 }

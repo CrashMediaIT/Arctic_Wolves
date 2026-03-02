@@ -562,13 +562,19 @@ function handleGetAthleteUploadUrl() {
     // Generate presigned URL — try companion SDK first, then local PHP
     $rustfs = getRustFSSettings($pdo);
     if (!isRustFSConfigured($rustfs)) {
+        ErrorLogger::error("Video upload URL (legacy): RustFS not configured for user=$user_id");
         throw new Exception('Cloud storage is not configured. Please contact an administrator.');
     }
 
+    ErrorLogger::info("Video upload URL (legacy): generating presigned URL for key=$object_key endpoint=" . ($rustfs['rustfs_endpoint'] ?? '(none)'));
+
     $presigned = generatePresignedUploadUrlViaSdk($pdo, $rustfs, $object_key, $file_type, 3600, $rustfs['rustfs_public_endpoint'] ?? null);
     if (!$presigned['success']) {
+        ErrorLogger::error("Video upload URL (legacy): presign failed for key=$object_key error=" . ($presigned['message'] ?? 'Unknown'));
         throw new Exception('Failed to generate upload URL: ' . ($presigned['message'] ?? 'Unknown error'));
     }
+
+    ErrorLogger::info("Video upload URL (legacy): presigned URL generated for key=$object_key");
 
     // Store pending upload in session for confirmation step
     $upload_nonce = bin2hex(random_bytes(16));
@@ -700,6 +706,11 @@ function handleGetVideoUploadUrl() {
     header('Content-Type: application/json');
 
     $upload_type = $_POST['upload_type'] ?? 'athlete_video';
+    $file_name = $_POST['file_name'] ?? '';
+    $file_size = filter_input(INPUT_POST, 'file_size', FILTER_VALIDATE_INT);
+
+    ErrorLogger::info("Video upload URL request: user=$user_id type=$upload_type file=$file_name size=$file_size role=$user_role");
+
     $allowed_types = ['athlete_video', 'coach_video', 'drill_video', 'video_source'];
     if (!in_array($upload_type, $allowed_types)) {
         throw new Exception('Invalid upload type');
@@ -798,13 +809,20 @@ function handleGetVideoUploadUrl() {
     // Generate presigned URL — try companion SDK first, then local PHP
     $rustfs = getRustFSSettings($pdo);
     if (!isRustFSConfigured($rustfs)) {
+        ErrorLogger::error("Video upload URL: RustFS not configured for user=$user_id type=$upload_type");
         throw new Exception('Cloud storage is not configured. Please contact an administrator.');
     }
 
+    $size_mb = round(($file_size ?: 0) / 1048576, 2);
+    ErrorLogger::info("Video upload URL: generating presigned URL for key=$object_key type=$file_type size={$size_mb}MB endpoint=" . ($rustfs['rustfs_endpoint'] ?? '(none)') . " public_endpoint=" . ($rustfs['rustfs_public_endpoint'] ?? '(none)'));
+
     $presigned = generatePresignedUploadUrlViaSdk($pdo, $rustfs, $object_key, $file_type, 3600, $rustfs['rustfs_public_endpoint'] ?? null);
     if (!$presigned['success']) {
+        ErrorLogger::error("Video upload URL: presign failed for key=$object_key error=" . ($presigned['message'] ?? 'Unknown'));
         throw new Exception('Failed to generate upload URL: ' . ($presigned['message'] ?? 'Unknown error'));
     }
+
+    ErrorLogger::info("Video upload URL: success key=$object_key url_host=" . parse_url($presigned['url'], PHP_URL_HOST));
 
     // Store pending upload metadata in session
     $upload_nonce = bin2hex(random_bytes(16));
