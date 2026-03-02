@@ -119,6 +119,10 @@ function signRustFSRequest($method, $url, $headers, $payload, $access_key, $secr
     $raw_path = $parsed['path'] ?? '/';
     $segments = array_filter(explode('/', $raw_path), 'strlen');
     $path = '/' . implode('/', array_map('rawurlencode', $segments));
+    // Preserve trailing slash — S3 distinguishes /bucket/ from /bucket
+    if ($raw_path !== '/' && substr($raw_path, -1) === '/') {
+        $path .= '/';
+    }
 
     $now = new DateTime('UTC');
     $date_stamp = $now->format('Ymd');
@@ -341,6 +345,9 @@ function uploadLargeFileToRustFS($settings, $local_path, $object_key, $content_t
         $raw_path = $parsed['path'] ?? '/';
         $segments = array_filter(explode('/', $raw_path), 'strlen');
         $path = '/' . implode('/', array_map('rawurlencode', $segments));
+        if ($raw_path !== '/' && substr($raw_path, -1) === '/') {
+            $path .= '/';
+        }
 
         $now = new DateTime('UTC');
         $date_stamp = $now->format('Ymd');
@@ -827,6 +834,9 @@ function generatePresignedUploadUrl($settings, $object_key, $content_type = 'app
         $raw_path = $parsed['path'] ?? '/';
         $segments = array_filter(explode('/', $raw_path), 'strlen');
         $path = '/' . implode('/', array_map('rawurlencode', $segments));
+        if ($raw_path !== '/' && substr($raw_path, -1) === '/') {
+            $path .= '/';
+        }
 
         // When a public endpoint is provided (browser-facing URL behind HAProxy),
         // use its scheme/host/port so the presigned URL is reachable from the browser.
@@ -1034,6 +1044,9 @@ function streamUploadToRustFS($settings, $input_stream, $content_length, $object
         $raw_path = $parsed['path'] ?? '/';
         $segments = array_filter(explode('/', $raw_path), 'strlen');
         $path = '/' . implode('/', array_map('rawurlencode', $segments));
+        if ($raw_path !== '/' && substr($raw_path, -1) === '/') {
+            $path .= '/';
+        }
 
         $now = new DateTime('UTC');
         $date_stamp = $now->format('Ymd');
