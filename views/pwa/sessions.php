@@ -221,6 +221,81 @@ try {
     $bookingCoaches = $stmt->fetchAll(PDO::FETCH_ASSOC);
     $bookingCoaches = decryptUserRows($bookingCoaches);
 } catch (PDOException $e) { $bookingCoaches = []; }
+
+// Available sessions for booking tab (non-private, non-semi-private, upcoming)
+$availableSessions = [];
+$userBookedSessionIds = [];
+$userBookedTemplateDateIds = [];
+if (!$isAnyCoach) {
+    try {
+        $bkStmt = $pdo->prepare("SELECT session_id FROM bookings WHERE user_id = ? AND status IN ('confirmed','waitlisted')");
+        $bkStmt->execute([$user_id]);
+        $userBookedSessionIds = $bkStmt->fetchAll(PDO::FETCH_COLUMN);
+        $tdStmt = $pdo->prepare("SELECT session_date_id FROM session_date_athletes WHERE athlete_id = ?");
+        $tdStmt->execute([$user_id]);
+        $userBookedTemplateDateIds = $tdStmt->fetchAll(PDO::FETCH_COLUMN);
+    } catch (PDOException $e) {}
+}
+try {
+    $avStmt = $pdo->query("
+        SELECT s.id, s.title, s.description, s.session_date, s.session_time, s.duration_minutes,
+               COALESCE(s.price, st.default_price, 0) as price, s.max_participants, s.coach_id,
+               c.first_name as coach_first_name, c.last_name as coach_last_name,
+               l.name as location_name, st.name as session_type_name,
+               COUNT(DISTINCT b.id) as registered_count
+        FROM sessions s
+        LEFT JOIN users c ON s.coach_id = c.id
+        LEFT JOIN session_types st ON s.session_type_id = st.id
+        LEFT JOIN locations l ON s.location_id = l.id
+        LEFT JOIN bookings b ON b.session_id = s.id AND b.status IN ('confirmed','waitlisted') AND b.payment_status = 'paid'
+        WHERE s.session_date >= CURDATE() AND s.status = 'scheduled'
+          AND (s.is_private = 0 OR s.is_private IS NULL)
+          AND (s.is_semi_private = 0 OR s.is_semi_private IS NULL)
+        GROUP BY s.id
+        ORDER BY s.session_date ASC, s.session_time ASC
+        LIMIT 50
+    ");
+    $availableSessions = $avStmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($availableSessions as &$_av) {
+        foreach (['coach_first_name', 'coach_last_name'] as $_f) {
+            if (!empty($_av[$_f])) $_av[$_f] = FieldEncryption::decrypt($_av[$_f]);
+        }
+    }
+    unset($_av);
+} catch (PDOException $e) { $availableSessions = []; }
+try {
+    $avTplStmt = $pdo->query("
+        SELECT td.id, t.name as title, t.description, DATE(td.session_date) as session_date,
+               TIME(td.session_date) as session_time, t.duration_minutes, COALESCE(t.price, 0) as price,
+               COALESCE(td.max_participants, t.max_participants) as max_participants, t.coach_id,
+               c.first_name as coach_first_name, c.last_name as coach_last_name,
+               l.name as location_name, st.name as session_type_name,
+               (SELECT COUNT(*) FROM session_date_athletes sda WHERE sda.session_date_id = td.id) as registered_count,
+               td.id as date_id
+        FROM training_session_templates t
+        INNER JOIN training_session_dates td ON td.template_id = t.id
+        LEFT JOIN users c ON t.coach_id = c.id
+        LEFT JOIN session_types st ON t.session_type_id = st.id
+        LEFT JOIN locations l ON t.location_id = l.id
+        WHERE t.is_active = 1 AND td.is_active = 1
+          AND (DATE(td.session_date) > CURDATE() OR (DATE(td.session_date) = CURDATE() AND TIME(td.session_date) > CURTIME()))
+        ORDER BY td.session_date ASC
+        LIMIT 50
+    ");
+    $tplAvail = $avTplStmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($tplAvail as &$_ta) {
+        foreach (['coach_first_name', 'coach_last_name'] as $_f) {
+            if (!empty($_ta[$_f])) $_ta[$_f] = FieldEncryption::decrypt($_ta[$_f]);
+        }
+    }
+    unset($_ta);
+    $availableSessions = array_merge($availableSessions, $tplAvail);
+    usort($availableSessions, function($a, $b) {
+        return strtotime(($a['session_date'] ?? '') . ' ' . ($a['session_time'] ?? '00:00'))
+             - strtotime(($b['session_date'] ?? '') . ' ' . ($b['session_time'] ?? '00:00'));
+    });
+    $availableSessions = array_slice($availableSessions, 0, 50);
+} catch (PDOException $e) { /* Template tables may not exist */ }
 ?>
 <style>
 .m-sessions { padding: 0; font-family: Inter, sans-serif; }
@@ -449,6 +524,22 @@ try {
     transition: background 0.2s;
 }
 .m-fab:active { background: #8B5CF6; }
+.m-card-action { font-size: 11px; padding: 4px 10px; min-height: 28px; min-width: 36px; margin-top: 4px; }
+.m-avail-section { margin-bottom: 20px; }
+.m-avail-header { color: #fff; font-size: 15px; font-weight: 700; margin: 0 0 4px; }
+.m-avail-sub { font-size: 12px; color: #6B6B7B; margin: 0 0 14px; }
+.m-avail-card {
+    display: flex; align-items: center; gap: 12px;
+    background: #16161F; border: 1px solid #2D2D3F; border-radius: 12px;
+    padding: 14px; margin-bottom: 10px;
+}
+.m-avail-body { flex: 1; min-width: 0; }
+.m-avail-title { font-size: 14px; color: #fff; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m-avail-meta { font-size: 12px; color: #A8A8B8; margin-top: 3px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.m-avail-meta i { font-size: 10px; }
+.m-avail-actions { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; flex-shrink: 0; }
+.m-avail-price { font-size: 14px; font-weight: 700; color: #10B981; }
+.m-avail-spots { font-size: 10px; color: #A8A8B8; }
 </style>
 
 <div class="m-sessions">
@@ -575,12 +666,16 @@ try {
                         <?php endif; ?>
                     <?php elseif ($isBooked): ?>
                         <span class="m-badge m-badge-booked"><i class="fas fa-check"></i> Booked</span>
+                        <button type="button" class="m-book-btn m-book-btn-danger m-card-action" onclick="event.stopPropagation();mCancelBooking(<?= (int)$sess['booking_id'] ?>)"><i class="fas fa-times"></i> Cancel</button>
                     <?php elseif ($isOnWaitlist): ?>
-                        <span class="m-badge m-badge-waitlist"><i class="fas fa-clock"></i> Waitlisted #<?= (int)$sess['waitlist_position'] ?></span>
+                        <span class="m-badge m-badge-waitlist"><i class="fas fa-clock"></i> #<?= (int)$sess['waitlist_position'] ?></span>
+                        <button type="button" class="m-book-btn m-book-btn-danger m-card-action" onclick="event.stopPropagation();mLeaveWaitlist(<?= (int)$sess['id'] ?>)"><i class="fas fa-times"></i> Leave</button>
                     <?php elseif ($isFull): ?>
                         <span class="m-badge m-badge-full"><i class="fas fa-ban"></i> Full</span>
+                        <button type="button" class="m-book-btn m-book-btn-warning m-card-action" onclick="event.stopPropagation();mJoinWaitlist(<?= (int)$sess['id'] ?>)"><i class="fas fa-clock"></i> Waitlist</button>
                     <?php else: ?>
                         <span class="m-badge m-badge-upcoming">Open</span>
+                        <button type="button" class="m-book-btn m-book-btn-primary m-card-action" onclick="event.stopPropagation();mBookSession(<?= (int)$sess['id'] ?>)"><i class="fas fa-plus"></i> Register</button>
                     <?php endif; ?>
                 </div>
             </div>
@@ -591,8 +686,60 @@ try {
 
     <!-- Booking Tab -->
     <div class="m-tab-panel" id="m-panel-booking">
+        <!-- Available Sessions to Register -->
+        <div class="m-avail-section">
+            <h4 class="m-avail-header"><i class="fas fa-calendar-day" style="color:#8B5CF6;"></i> Available Sessions</h4>
+            <p class="m-avail-sub">Browse and register for upcoming group sessions</p>
+            <?php if (empty($availableSessions)): ?>
+                <div class="m-empty-state"><i class="fas fa-calendar-xmark"></i><p>No sessions available for booking</p></div>
+            <?php else: ?>
+                <?php foreach ($availableSessions as $avSess):
+                    $avDate = strtotime($avSess['session_date']);
+                    $avTime = !empty($avSess['session_time']) ? date('g:i A', strtotime($avSess['session_time'])) : '';
+                    $avCoach = trim(($avSess['coach_first_name'] ?? '') . ' ' . ($avSess['coach_last_name'] ?? ''));
+                    $avCount = (int)($avSess['registered_count'] ?? 0);
+                    $avMax = (int)($avSess['max_participants'] ?? 0);
+                    $avSpotsLeft = $avMax > 0 ? $avMax - $avCount : 999;
+                    $avIsFull = ($avMax > 0 && $avCount >= $avMax);
+                    $avIsBooked = !empty($avSess['date_id'])
+                        ? in_array($avSess['date_id'], $userBookedTemplateDateIds)
+                        : in_array($avSess['id'], $userBookedSessionIds);
+                    $avPrice = (float)($avSess['price'] ?? 0);
+                ?>
+                <div class="m-avail-card">
+                    <div class="m-sess-date">
+                        <span class="m-sess-date-month"><?= date('M', $avDate) ?></span>
+                        <span class="m-sess-date-day"><?= date('j', $avDate) ?></span>
+                    </div>
+                    <div class="m-avail-body">
+                        <div class="m-avail-title"><?= htmlspecialchars($avSess['title'] ?? $avSess['session_type_name'] ?? 'Training Session') ?></div>
+                        <div class="m-avail-meta">
+                            <?php if ($avTime): ?><span><i class="fas fa-clock"></i> <?= $avTime ?></span><?php endif; ?>
+                            <?php if (!empty($avSess['duration_minutes'])): ?><span>&middot; <?= (int)$avSess['duration_minutes'] ?>min</span><?php endif; ?>
+                            <?php if ($avCoach): ?><span>&middot; <i class="fas fa-user-tie"></i> <?= htmlspecialchars($avCoach) ?></span><?php endif; ?>
+                        </div>
+                        <?php if (!empty($avSess['location_name'])): ?>
+                        <div style="font-size:11px;color:#6B6B7B;margin-top:2px;"><i class="fas fa-location-dot"></i> <?= htmlspecialchars($avSess['location_name']) ?></div>
+                        <?php endif; ?>
+                    </div>
+                    <div class="m-avail-actions">
+                        <?php if ($avPrice > 0): ?><span class="m-avail-price">$<?= number_format($avPrice, 0) ?></span><?php endif; ?>
+                        <?php if ($avMax > 0): ?><span class="m-avail-spots"><?= $avSpotsLeft > 0 ? $avSpotsLeft . ' spot' . ($avSpotsLeft !== 1 ? 's' : '') : 'Full' ?></span><?php endif; ?>
+                        <?php if ($avIsBooked): ?>
+                            <span class="m-badge m-badge-booked"><i class="fas fa-check"></i> Registered</span>
+                        <?php elseif ($avIsFull): ?>
+                            <button type="button" class="m-book-btn m-book-btn-warning m-card-action" onclick="mJoinWaitlist(<?= (int)$avSess['id'] ?>)"><i class="fas fa-clock"></i> Waitlist</button>
+                        <?php else: ?>
+                            <button type="button" class="m-book-btn m-book-btn-primary m-card-action" onclick="mBookSession(<?= (int)$avSess['id'] ?>)"><i class="fas fa-plus"></i> Register</button>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+
         <!-- Book Private Session Form -->
-        <div style="margin-bottom:20px;">
+        <div style="border-top:1px solid #2D2D3F;padding-top:16px;margin-bottom:20px;">
             <h4 style="color:#fff;font-size:15px;font-weight:700;margin:0 0 4px;"><i class="fas fa-user-plus" style="color:#8B5CF6;"></i> Book Private Session</h4>
             <p style="font-size:12px;color:#6B6B7B;margin:0 0 14px;">Schedule a one-on-one session with a coach</p>
             <form method="POST" action="process_booking.php" id="m-private-form">
@@ -926,8 +1073,17 @@ async function mCancelSession(sessionId) {
 }
 
 function mBookSession(sessionId) {
-    document.getElementById('m-book-session-id').value = sessionId;
-    document.getElementById('m-book-form').submit();
+    var form = new FormData();
+    form.append('action', 'book_session');
+    form.append('session_id', sessionId);
+    form.append('csrf_token', document.querySelector('#m-book-form input[name="csrf_token"]').value);
+    fetch('process_booking.php', { method: 'POST', body: form })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) { persistToast(data.message || 'Session booked!', 'success'); location.reload(); }
+            else { showToast(data.message || 'Failed to book session', 'error'); }
+        })
+        .catch(function() { showToast('Network error. Please try again.', 'error'); });
 }
 
 function mJoinWaitlist(sessionId) {

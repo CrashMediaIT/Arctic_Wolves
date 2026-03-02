@@ -8,16 +8,23 @@ require_once __DIR__ . '/../../lib/image_helper.php';
 if (!isset($_SESSION['shop_cart'])) { $_SESSION['shop_cart'] = []; }
 $shopCartCount = array_sum(array_column($_SESSION['shop_cart'], 'quantity'));
 
+// Fetch categories for filter pills
+$shopCategories = [];
+try {
+    $catStmt = $pdo->prepare("SELECT id, name FROM product_categories ORDER BY name ASC");
+    $catStmt->execute();
+    $shopCategories = $catStmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) { $shopCategories = []; }
+
 $products = [];
 try {
     $stmt = $pdo->prepare("
         SELECT p.id, p.name, p.description, p.price, p.image_url, p.stock_quantity,
-               c.name as category_name
+               p.category_id, c.name as category_name
         FROM products p
         LEFT JOIN product_categories c ON c.id = p.category_id
         WHERE p.is_active = 1
-        ORDER BY p.name ASC
-        LIMIT 30
+        ORDER BY p.id DESC
     ");
     $stmt->execute();
     $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -70,9 +77,66 @@ try {
 }
 .m-product-add-btn:active { opacity: 0.85; }
 .m-product-add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.m-shop-filter-bar { margin-bottom: 14px; }
+.m-shop-search-row { display: flex; gap: 8px; margin-bottom: 10px; }
+.m-shop-search {
+    flex: 1; min-height: 44px; background: #16161F; border: 1px solid #2D2D3F; border-radius: 10px;
+    color: #fff; font-size: 14px; padding: 0 14px; font-family: Inter, sans-serif;
+    outline: none; -webkit-appearance: none;
+}
+.m-shop-search::placeholder { color: #6B6B7B; }
+.m-shop-search:focus { border-color: #6B46C1; }
+.m-shop-sort {
+    min-height: 44px; background: #16161F; border: 1px solid #2D2D3F; border-radius: 10px;
+    color: #fff; font-size: 12px; padding: 0 10px; font-family: Inter, sans-serif;
+    cursor: pointer; outline: none; -webkit-appearance: none; flex-shrink: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236B6B7B'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center; padding-right: 26px;
+}
+.m-shop-sort:focus { border-color: #6B46C1; }
+.m-shop-cats {
+    display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch; scrollbar-width: none;
+}
+.m-shop-cats::-webkit-scrollbar { display: none; }
+.m-shop-cat-pill {
+    flex-shrink: 0; min-height: 36px; padding: 0 14px; border-radius: 18px;
+    background: #16161F; border: 1px solid #2D2D3F; color: #A8A8B8;
+    font-size: 12px; font-weight: 600; font-family: Inter, sans-serif;
+    cursor: pointer; white-space: nowrap; display: flex; align-items: center;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.m-shop-cat-pill.m-active {
+    background: #6B46C1; border-color: #6B46C1; color: #fff;
+}
+.m-shop-cat-pill:active { opacity: 0.85; }
+.m-product-details-link {
+    display: flex; align-items: center; justify-content: center; gap: 4px;
+    color: #8B5CF6; font-size: 12px; font-weight: 600; text-decoration: none;
+    min-height: 36px; margin-top: 4px; border-radius: 8px;
+    background: rgba(107,70,193,0.1);
+}
+.m-product-details-link:active { opacity: 0.85; }
 .m-empty-state { text-align: center; padding: 40px 20px; color: #6B6B7B; }
 .m-empty-state i { font-size: 32px; display: block; margin-bottom: 12px; }
 .m-empty-state p { font-size: 14px; margin: 0; }
+.m-empty-filter { text-align: center; padding: 30px 16px; color: #6B6B7B; display: none; }
+.m-empty-filter i { font-size: 28px; display: block; margin-bottom: 10px; }
+.m-empty-filter p { font-size: 13px; margin: 0; }
+.m-shop-pagination {
+    display: flex; justify-content: center; align-items: center; gap: 6px;
+    margin-top: 16px; padding: 8px 0;
+}
+.m-shop-page-btn {
+    min-width: 40px; min-height: 40px; border-radius: 10px; border: 1px solid #2D2D3F;
+    background: #16161F; color: #A8A8B8; font-size: 13px; font-weight: 600;
+    font-family: Inter, sans-serif; cursor: pointer; display: flex;
+    align-items: center; justify-content: center;
+}
+.m-shop-page-btn.m-active { background: #6B46C1; border-color: #6B46C1; color: #fff; }
+.m-shop-page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.m-shop-page-btn:active:not(:disabled) { opacity: 0.85; }
+.m-shop-page-info { font-size: 12px; color: #6B6B7B; margin: 0 4px; }
 /* Cart bottom sheet */
 .m-shop-overlay {
     display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6);
@@ -126,7 +190,7 @@ try {
     <div class="m-shop-header">
         <div class="m-shop-header-left">
             <h2 class="m-shop-title">Shop</h2>
-            <p class="m-shop-count"><?= count($products) ?> product<?= count($products) !== 1 ? 's' : '' ?></p>
+            <p class="m-shop-count" id="mShopCountWrap"><span id="mShopCount"><?= count($products) ?></span> product<?= count($products) !== 1 ? 's' : '' ?></p>
         </div>
         <button class="m-shop-cart-btn" onclick="mOpenShopCart()" type="button">
             <i class="fas fa-shopping-cart"></i>
@@ -140,8 +204,32 @@ try {
             <p>No products available</p>
         </div>
     <?php else: ?>
-        <div class="m-product-grid">
-            <?php foreach ($products as $p):
+        <!-- Search, Sort & Category Filter -->
+        <div class="m-shop-filter-bar">
+            <div class="m-shop-search-row">
+                <input type="text" class="m-shop-search" id="mShopSearch" placeholder="Search products...">
+                <select class="m-shop-sort" id="mShopSort">
+                    <option value="newest">Newest</option>
+                    <option value="price_low">Price: Low→High</option>
+                    <option value="price_high">Price: High→Low</option>
+                    <option value="name_az">Name: A-Z</option>
+                </select>
+            </div>
+            <div class="m-shop-cats" id="mShopCats">
+                <button type="button" class="m-shop-cat-pill m-active" data-cat="">All</button>
+                <?php foreach ($shopCategories as $sc): ?>
+                <button type="button" class="m-shop-cat-pill" data-cat="<?= (int)$sc['id'] ?>"><?= htmlspecialchars($sc['name']) ?></button>
+                <?php endforeach; ?>
+            </div>
+        </div>
+
+        <div class="m-empty-filter" id="mShopEmptyFilter">
+            <i class="fas fa-search"></i>
+            <p>No products match your filters</p>
+        </div>
+
+        <div class="m-product-grid" id="mProductGrid">
+            <?php foreach ($products as $idx => $p):
                 $stock = (int)($p['stock_quantity'] ?? 0);
                 if ($stock <= 0) {
                     $stockClass = 'out';
@@ -154,7 +242,11 @@ try {
                     $stockLabel = 'In Stock';
                 }
             ?>
-            <div class="m-product-card">
+            <div class="m-product-card"
+                 data-name="<?= htmlspecialchars(strtolower($p['name'])) ?>"
+                 data-price="<?= (float)$p['price'] ?>"
+                 data-cat="<?= (int)($p['category_id'] ?? 0) ?>"
+                 data-idx="<?= $idx ?>">
                 <a href="?page=shop&product_id=<?= (int)$p['id'] ?>" style="text-decoration:none;">
                     <div class="m-product-img">
                         <?php if (!empty($p['image_url'])): ?>
@@ -179,10 +271,15 @@ try {
                             type="button">
                         <i class="fas fa-cart-plus"></i> Add to Cart
                     </button>
+                    <a href="?page=shop&product_id=<?= (int)$p['id'] ?>" class="m-product-details-link">
+                        <i class="fas fa-eye"></i> View Details
+                    </a>
                 </div>
             </div>
             <?php endforeach; ?>
         </div>
+
+        <div class="m-shop-pagination" id="mShopPagination"></div>
     <?php endif; ?>
 </div>
 
@@ -266,4 +363,125 @@ function mShowShopToast(msg) {
     t.classList.add('m-visible');
     setTimeout(function() { t.classList.remove('m-visible'); }, 2500);
 }
+
+/* --- Client-side Search, Category Filter, Sort & Pagination --- */
+(function() {
+    var PER_PAGE = 20;
+    var currentPage = 1;
+    var grid = document.getElementById('mProductGrid');
+    if (!grid) return;
+
+    var allCards = Array.prototype.slice.call(grid.querySelectorAll('.m-product-card'));
+    var searchInput = document.getElementById('mShopSearch');
+    var sortSelect = document.getElementById('mShopSort');
+    var catContainer = document.getElementById('mShopCats');
+    var paginationEl = document.getElementById('mShopPagination');
+    var emptyFilterEl = document.getElementById('mShopEmptyFilter');
+    var countEl = document.getElementById('mShopCount');
+    var activeCat = '';
+
+    function getFiltered() {
+        var query = (searchInput ? searchInput.value.toLowerCase().trim() : '');
+        var filtered = [];
+        for (var i = 0; i < allCards.length; i++) {
+            var card = allCards[i];
+            var name = card.getAttribute('data-name') || '';
+            var cat = card.getAttribute('data-cat') || '';
+            var matchSearch = !query || name.indexOf(query) !== -1;
+            var matchCat = !activeCat || cat === activeCat;
+            if (matchSearch && matchCat) filtered.push(card);
+        }
+        return filtered;
+    }
+
+    function sortCards(cards) {
+        var sortVal = sortSelect ? sortSelect.value : 'newest';
+        var sorted = cards.slice();
+        sorted.sort(function(a, b) {
+            if (sortVal === 'price_low') return parseFloat(a.getAttribute('data-price')) - parseFloat(b.getAttribute('data-price'));
+            if (sortVal === 'price_high') return parseFloat(b.getAttribute('data-price')) - parseFloat(a.getAttribute('data-price'));
+            if (sortVal === 'name_az') return (a.getAttribute('data-name') || '').localeCompare(b.getAttribute('data-name') || '');
+            return parseInt(b.getAttribute('data-idx')) - parseInt(a.getAttribute('data-idx'));
+        });
+        return sorted;
+    }
+
+    function renderPagination(total) {
+        if (!paginationEl) return;
+        var totalPages = Math.ceil(total / PER_PAGE);
+        if (totalPages <= 1) { paginationEl.innerHTML = ''; return; }
+        var html = '';
+        html += '<button class="m-shop-page-btn" onclick="mShopGoPage(' + (currentPage - 1) + ')"' + (currentPage <= 1 ? ' disabled' : '') + '><i class="fas fa-chevron-left"></i></button>';
+        var start = Math.max(1, currentPage - 2);
+        var end = Math.min(totalPages, currentPage + 2);
+        for (var i = start; i <= end; i++) {
+            html += '<button class="m-shop-page-btn' + (i === currentPage ? ' m-active' : '') + '" onclick="mShopGoPage(' + i + ')">' + i + '</button>';
+        }
+        html += '<button class="m-shop-page-btn" onclick="mShopGoPage(' + (currentPage + 1) + ')"' + (currentPage >= totalPages ? ' disabled' : '') + '><i class="fas fa-chevron-right"></i></button>';
+        paginationEl.innerHTML = html;
+    }
+
+    function applyFilters() {
+        var filtered = sortCards(getFiltered());
+        var total = filtered.length;
+        var totalPages = Math.ceil(total / PER_PAGE) || 1;
+        if (currentPage > totalPages) currentPage = totalPages;
+        var startIdx = (currentPage - 1) * PER_PAGE;
+        var endIdx = startIdx + PER_PAGE;
+        var visible = {};
+        for (var i = 0; i < filtered.length; i++) {
+            if (i >= startIdx && i < endIdx) visible[filtered[i].getAttribute('data-idx')] = true;
+        }
+        // Reorder DOM to match sort and show/hide
+        for (var j = 0; j < filtered.length; j++) {
+            grid.appendChild(filtered[j]);
+        }
+        for (var k = 0; k < allCards.length; k++) {
+            var idx = allCards[k].getAttribute('data-idx');
+            allCards[k].style.display = visible[idx] ? '' : 'none';
+        }
+        var countWrap = document.getElementById('mShopCountWrap');
+        if (countWrap) countWrap.innerHTML = '<span id="mShopCount">' + total + '</span> product' + (total !== 1 ? 's' : '');
+        if (emptyFilterEl) emptyFilterEl.style.display = total === 0 ? 'block' : 'none';
+        if (grid) grid.style.display = total === 0 ? 'none' : '';
+        renderPagination(total);
+    }
+
+    window.mShopGoPage = function(p) {
+        var filtered = getFiltered();
+        var totalPages = Math.ceil(filtered.length / PER_PAGE) || 1;
+        if (p < 1 || p > totalPages) return;
+        currentPage = p;
+        applyFilters();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    if (searchInput) {
+        var debounceTimer;
+        searchInput.addEventListener('input', function() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(function() { currentPage = 1; applyFilters(); }, 200);
+        });
+    }
+
+    if (sortSelect) {
+        sortSelect.addEventListener('change', function() { applyFilters(); });
+    }
+
+    if (catContainer) {
+        catContainer.addEventListener('click', function(e) {
+            var pill = e.target.closest('.m-shop-cat-pill');
+            if (!pill) return;
+            var pills = catContainer.querySelectorAll('.m-shop-cat-pill');
+            for (var i = 0; i < pills.length; i++) pills[i].classList.remove('m-active');
+            pill.classList.add('m-active');
+            activeCat = pill.getAttribute('data-cat') || '';
+            currentPage = 1;
+            applyFilters();
+        });
+    }
+
+    // Initial render with pagination
+    applyFilters();
+})();
 </script>

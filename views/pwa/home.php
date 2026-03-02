@@ -265,12 +265,20 @@ try {
 $sysNotifs = [];
 try {
     $stmt = $pdo->prepare("
-        SELECT title, message, notification_type
+        SELECT id, title, message, notification_type, end_date
         FROM system_notifications
         WHERE is_active = 1
           AND (start_date IS NULL OR start_date <= NOW())
           AND (end_date IS NULL OR end_date >= NOW())
-        ORDER BY created_at DESC LIMIT 3
+        ORDER BY
+            CASE notification_type
+                WHEN 'alert' THEN 1
+                WHEN 'maintenance' THEN 2
+                WHEN 'warning' THEN 3
+                ELSE 4
+            END,
+            created_at DESC
+        LIMIT 5
     ");
     $stmt->execute();
     $sysNotifs = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -342,8 +350,15 @@ try {
 .m-alert-info { background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.25); }
 .m-alert-warning { background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.25); }
 .m-alert-alert { background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25); }
-.m-alert-maintenance { background: rgba(168,168,184,0.12); border: 1px solid rgba(168,168,184,0.25); }
+.m-alert-maintenance { background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.25); }
 .m-alert i { margin-top: 2px; }
+.m-alert-body { flex: 1; min-width: 0; }
+.m-alert-dismiss {
+    background: transparent; border: none; color: #64748b; cursor: pointer;
+    padding: 8px; font-size: 14px; flex-shrink: 0; min-height: 44px; min-width: 44px;
+    display: flex; align-items: center; justify-content: center; transition: color 0.2s;
+}
+.m-alert-dismiss:active { color: #fff; }
 .m-empty { text-align: center; padding: 24px; color: #6B6B7B; font-size: 13px; }
 .m-card {
     background: #16161F; border: 1px solid #2D2D3F; border-radius: 12px;
@@ -526,16 +541,22 @@ try {
         $aColor = match($aType) {
             'warning' => '#F59E0B',
             'alert' => '#EF4444',
-            'maintenance' => '#A8A8B8',
+            'maintenance' => '#FBBF24',
             default => '#3B82F6',
         };
     ?>
-    <div class="m-alert m-alert-<?= $aType ?>">
+    <div class="m-alert m-alert-<?= $aType ?>" id="pwa-sys-alert-<?= (int)$sn['id'] ?>">
         <i class="fas <?= $aIcon ?>" style="color:<?= $aColor ?>"></i>
-        <div>
+        <div class="m-alert-body">
             <strong style="font-size:13px;"><?= htmlspecialchars($sn['title']) ?></strong>
             <div style="font-size:12px;color:#A8A8B8;margin-top:2px;"><?= htmlspecialchars($sn['message']) ?></div>
+            <?php if (!empty($sn['end_date'])): ?>
+                <div style="font-size:11px;color:#64748b;margin-top:4px;">Until <?= date('M j, Y g:i A', strtotime($sn['end_date'])) ?></div>
+            <?php endif; ?>
         </div>
+        <button class="m-alert-dismiss" aria-label="Dismiss notification: <?= htmlspecialchars($sn['title']) ?>" data-notif-id="<?= (int)$sn['id'] ?>">
+            <i class="fas fa-times"></i>
+        </button>
     </div>
     <?php endforeach; ?>
 
@@ -871,6 +892,36 @@ try {
         <?php endif; ?>
     <?php endif; ?>
 </div>
+<script>
+(function() {
+    // System notification dismiss handler
+    document.querySelectorAll('.m-alert-dismiss').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var alert = this.closest('.m-alert');
+            var notifId = this.getAttribute('data-notif-id');
+            if (alert) {
+                alert.style.opacity = '0';
+                alert.style.transform = 'translateX(100%)';
+                alert.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                setTimeout(function() { alert.style.display = 'none'; }, 300);
+                if (notifId) {
+                    var dismissed = JSON.parse(sessionStorage.getItem('dismissedNotifications') || '[]');
+                    if (!dismissed.includes(notifId)) {
+                        dismissed.push(notifId);
+                        sessionStorage.setItem('dismissedNotifications', JSON.stringify(dismissed));
+                    }
+                }
+            }
+        });
+    });
+    // Hide already dismissed notifications on page load
+    var dismissed = JSON.parse(sessionStorage.getItem('dismissedNotifications') || '[]');
+    dismissed.forEach(function(id) {
+        var alert = document.getElementById('pwa-sys-alert-' + id);
+        if (alert) alert.style.display = 'none';
+    });
+})();
+</script>
 <script>
 (function() {
     var h = new Date().getHours();

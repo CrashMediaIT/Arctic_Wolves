@@ -21,6 +21,7 @@ endif;
 
 // Filter params
 $filterLocation = $_GET['filter_location'] ?? '';
+$filterCoach = $_GET['filter_coach'] ?? '';
 $filterRange = $_GET['filter_range'] ?? 'all';
 
 // Fetch distinct locations for filter dropdown
@@ -30,12 +31,26 @@ try {
     $filterLocations = $stmt->fetchAll(PDO::FETCH_COLUMN);
 } catch (PDOException $e) {}
 
+// Fetch coaches for filter dropdown
+$filterCoaches = [];
+try {
+    $stmt = $pdo->query("SELECT id, first_name, last_name FROM users WHERE role IN ('coach', 'coach_plus', 'admin', 'team_coach', 'health_coach') AND is_active = 1 ORDER BY last_name, first_name");
+    $filterCoaches = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    if (function_exists('decryptUserRows')) {
+        $filterCoaches = decryptUserRows($filterCoaches);
+    }
+} catch (PDOException $e) {}
+
 // Build query conditions
 $filterWhere = '';
 $filterParams = [$user_id];
 if ($filterLocation !== '') {
     $filterWhere .= ' AND s.arena = ?';
     $filterParams[] = $filterLocation;
+}
+if ($filterCoach !== '') {
+    $filterWhere .= ' AND s.coach_id = ?';
+    $filterParams[] = $filterCoach;
 }
 $dateCondition = 's.session_date >= CURDATE()';
 if ($filterRange === 'week') {
@@ -58,6 +73,45 @@ try {
     $stmt->execute($filterParams);
     $sessions = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { $sessions = []; }
+
+// Fetch template sessions (training_session_dates not yet linked to actual sessions)
+try {
+    $tplQuery = "
+        SELECT tsd.id,
+               tsd.session_date,
+               TIME(tsd.session_date) as session_time,
+               tst.name as title,
+               tst.duration_minutes,
+               tst.coach_id,
+               'scheduled' as status,
+               NULL as arena,
+               NULL as session_type,
+               0 as athlete_count,
+               1 as is_template_session
+        FROM training_session_dates tsd
+        INNER JOIN training_session_templates tst ON tsd.template_id = tst.id
+        WHERE tsd.session_date >= CURDATE()
+          AND tsd.is_active = 1
+          AND tst.is_active = 1
+          AND tsd.session_id IS NULL
+    ";
+    $tplParams = [];
+    if ($filterCoach !== '') {
+        $tplQuery .= " AND tst.coach_id = ?";
+        $tplParams[] = $filterCoach;
+    }
+    $tplQuery .= " ORDER BY tsd.session_date LIMIT 50";
+    $tplStmt = $pdo->prepare($tplQuery);
+    $tplStmt->execute($tplParams);
+    $templateSessions = $tplStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $sessions = array_merge($sessions, $templateSessions);
+    usort($sessions, function ($a, $b) {
+        return strtotime($a['session_date']) - strtotime($b['session_date']);
+    });
+} catch (PDOException $e) {
+    // training_session_templates/dates tables may not exist yet
+}
 
 // Group sessions by date
 $grouped = [];
@@ -144,6 +198,12 @@ foreach ($sessions as $s) {
 .m-cal-act-complete:active:not(:disabled) { background: rgba(16,185,129,0.25); }
 .m-cal-act-cancel { background: rgba(239,68,68,0.15); color: #EF4444; }
 .m-cal-act-cancel:active:not(:disabled) { background: rgba(239,68,68,0.25); }
+.m-cal-act-edit { background: rgba(107,70,193,0.15); color: #8B5CF6; }
+.m-cal-act-edit:active:not(:disabled) { background: rgba(107,70,193,0.25); }
+.m-cal-tpl-badge {
+    font-size: 9px; padding: 2px 6px; border-radius: 4px; font-weight: 700;
+    background: rgba(251,191,36,0.15); color: #FBBF24; margin-left: 4px; vertical-align: middle;
+}
 .m-empty-state { text-align: center; padding: 40px 20px; color: #6B6B7B; }
 .m-empty-state i { font-size: 32px; display: block; margin-bottom: 12px; }
 .m-empty-state p { font-size: 14px; margin: 0; }
@@ -169,6 +229,12 @@ foreach ($sessions as $s) {
     <form method="GET" class="m-cal-filter-bar" id="m-cal-filter-form">
         <input type="hidden" name="page" value="coach_calendar">
         <input type="hidden" name="filter_range" id="m-cal-range-input" value="<?= htmlspecialchars($filterRange) ?>">
+        <select name="filter_coach" class="m-cal-filter-select" onchange="this.form.submit()">
+            <option value="">All Coaches</option>
+            <?php foreach ($filterCoaches as $fc): ?>
+            <option value="<?= (int)$fc['id'] ?>"<?= $filterCoach == $fc['id'] ? ' selected' : '' ?>><?= htmlspecialchars($fc['first_name'] . ' ' . $fc['last_name']) ?></option>
+            <?php endforeach; ?>
+        </select>
         <select name="filter_location" class="m-cal-filter-select" onchange="this.form.submit()">
             <option value="">All Locations</option>
             <?php foreach ($filterLocations as $loc): ?>
@@ -216,7 +282,10 @@ foreach ($sessions as $s) {
                         <span class="m-cal-time-period"><?= $sPeriod ?></span>
                     </div>
                     <div class="m-cal-info">
-                        <div class="m-cal-title"><?= htmlspecialchars($sess['title']) ?></div>
+                        <div class="m-cal-title">
+                            <?= htmlspecialchars($sess['title']) ?>
+                            <?php if (!empty($sess['is_template_session'])): ?><span class="m-cal-tpl-badge">TEMPLATE</span><?php endif; ?>
+                        </div>
                         <div class="m-cal-meta">
                             <span><i class="fas fa-users"></i> <?= (int)$sess['athlete_count'] ?></span>
                             <?php if ($sess['arena']): ?><span><i class="fas fa-location-dot"></i> <?= htmlspecialchars($sess['arena']) ?></span><?php endif; ?>
@@ -225,8 +294,11 @@ foreach ($sessions as $s) {
                     </div>
                     <span class="m-cal-badge m-cal-badge-<?= $badgeClass ?>"><?= htmlspecialchars(ucfirst($status)) ?></span>
                 </a>
-                <?php if ($status === 'scheduled'): ?>
+                <?php if ($status === 'scheduled' && empty($sess['is_template_session'])): ?>
                 <div class="m-cal-actions">
+                    <a href="?page=create_session&edit_id=<?= (int)$sess['id'] ?>" class="m-cal-act-btn m-cal-act-edit" style="text-decoration:none;">
+                        <i class="fas fa-pen"></i> Edit
+                    </a>
                     <button type="button" class="m-cal-act-btn m-cal-act-complete" onclick="mCalComplete(<?= (int)$sess['id'] ?>, this)">
                         <i class="fas fa-check-circle"></i> Complete
                     </button>

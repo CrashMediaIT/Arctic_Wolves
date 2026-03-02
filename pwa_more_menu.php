@@ -62,7 +62,7 @@
     <div class="pwa-section-label">Team</div>
     <ul class="pwa-menu-list">
         <a href="?page=team_roster" class="pwa-menu-item">
-            <i class="fas fa-users"></i> Team Roster
+            <i class="fas fa-users"></i> Roster
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
     </ul>
@@ -90,10 +90,6 @@
             <i class="fas fa-users-gear"></i> Roster
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
-        <a href="?page=coach_session_evaluations" class="pwa-menu-item">
-            <i class="fas fa-clipboard-check"></i> Session Evaluations
-            <i class="fas fa-chevron-right menu-chevron"></i>
-        </a>
         <a href="?page=coach_stopwatch" class="pwa-menu-item">
             <i class="fas fa-stopwatch"></i> Stopwatch
             <i class="fas fa-chevron-right menu-chevron"></i>
@@ -102,16 +98,20 @@
             <i class="fas fa-hockey-puck"></i> Shot Speed
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
-        <a href="?page=coach_video_reviews" class="pwa-menu-item">
-            <i class="fas fa-film"></i> Coach Video Reviews
+        <a href="?page=coach_session_evaluations" class="pwa-menu-item">
+            <i class="fas fa-clipboard-check"></i> Session Evaluations
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
-        <a href="?page=record_drill_video" class="pwa-menu-item">
-            <i class="fas fa-video"></i> Video Recording
+        <a href="?page=coach_video_reviews" class="pwa-menu-item">
+            <i class="fas fa-video"></i> Video Reviews
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
         <a href="?page=travel" class="pwa-menu-item">
             <i class="fas fa-plane"></i> Travel
+            <i class="fas fa-chevron-right menu-chevron"></i>
+        </a>
+        <a href="?page=record_drill_video" class="pwa-menu-item">
+            <i class="fas fa-video"></i> Video Recording
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
         <a href="?page=gameplan" class="pwa-menu-item">
@@ -125,7 +125,7 @@
 <!-- Health Management -->
 <?php if ($canAccessHealthManagement): ?>
 <div class="pwa-menu-group">
-    <div class="pwa-section-label">Health Management</div>
+    <div class="pwa-section-label">Health</div>
     <ul class="pwa-menu-list">
         <a href="?page=library_workouts" class="pwa-menu-item">
             <i class="fas fa-dumbbell"></i> Strength & Conditioning
@@ -153,7 +153,7 @@
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
         <a href="?page=financial_reports" class="pwa-menu-item">
-            <i class="fas fa-chart-bar"></i> Financial Reports
+            <i class="fas fa-chart-pie"></i> Financial Reports Hub
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
         <a href="?page=reports_user" class="pwa-menu-item">
@@ -301,6 +301,12 @@
 <div class="pwa-menu-group">
     <div class="pwa-section-label">Account</div>
     <ul class="pwa-menu-list">
+        <?php if ($isStaff): ?>
+        <a href="?page=sip_settings" class="pwa-menu-item">
+            <i class="fas fa-address-book"></i> Company Directory
+            <i class="fas fa-chevron-right menu-chevron"></i>
+        </a>
+        <?php endif; ?>
         <a href="?page=profile" class="pwa-menu-item">
             <i class="fas fa-user-gear"></i> Profile Settings
             <i class="fas fa-chevron-right menu-chevron"></i>

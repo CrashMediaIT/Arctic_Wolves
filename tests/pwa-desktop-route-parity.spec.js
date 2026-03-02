@@ -126,3 +126,77 @@ test.describe('PWA Navigation Completeness', () => {
   });
 
 });
+
+test.describe('PWA Navigation Label Parity with Desktop', () => {
+
+  /** Extract nav link labels from dashboard.php sidebar */
+  function extractNavLabels(filePath) {
+    const content = readFileSync(filePath, 'utf-8');
+    // Match text after icon class like: <i class="..."></i> Label Text
+    const regex = /<i class="[^"]*"><\/i>\s*([^<\n]+)/g;
+    const labels = new Set();
+    let match;
+    while ((match = regex.exec(content)) !== null) {
+      labels.add(match[1].trim());
+    }
+    return labels;
+  }
+
+  test('pwa_more_menu.php uses "Video Reviews" not "Coach Video Reviews"', () => {
+    const content = readFileSync(join(ROOT, 'pwa_more_menu.php'), 'utf-8');
+    expect(content).toContain('Video Reviews');
+    expect(content).not.toContain('Coach Video Reviews');
+  });
+
+  test('pwa_tablet.php uses "Video Reviews" not "Coach Video Reviews"', () => {
+    const content = readFileSync(join(ROOT, 'pwa_tablet.php'), 'utf-8');
+    expect(content).toContain('Video Reviews');
+    expect(content).not.toContain('Coach Video Reviews');
+  });
+
+  test('pwa_more_menu.php uses "Financial Reports Hub" matching desktop', () => {
+    const content = readFileSync(join(ROOT, 'pwa_more_menu.php'), 'utf-8');
+    expect(content).toContain('Financial Reports Hub');
+  });
+
+  test('pwa_more_menu.php Health section label matches desktop', () => {
+    const content = readFileSync(join(ROOT, 'pwa_more_menu.php'), 'utf-8');
+    // Should say "Health" not "Health Management"
+    expect(content).not.toContain('>Health Management<');
+  });
+
+  test('pwa_more_menu.php Team section uses "Roster" not "Team Roster"', () => {
+    const content = readFileSync(join(ROOT, 'pwa_more_menu.php'), 'utf-8');
+    // The team section link should say "Roster" (matching desktop) not "Team Roster"
+    const teamSectionMatch = content.match(/page=team_roster[^>]*>[\s\S]*?<\/a>/);
+    expect(teamSectionMatch).toBeTruthy();
+    expect(teamSectionMatch[0]).not.toContain('Team Roster');
+  });
+
+  test('pwa_more_menu.php has Company Directory in Account section for staff', () => {
+    const content = readFileSync(join(ROOT, 'pwa_more_menu.php'), 'utf-8');
+    // Company Directory should be in Account section (after isStaff check)
+    expect(content).toContain('$isStaff');
+    expect(content).toContain('Company Directory');
+  });
+
+  test('pwa_more_menu.php Coaches Corner order matches desktop', () => {
+    const content = readFileSync(join(ROOT, 'pwa_more_menu.php'), 'utf-8');
+    // Desktop order: Stopwatch comes before Session Evaluations
+    const stopwatchIdx = content.indexOf('page=coach_stopwatch');
+    const evalIdx = content.indexOf('page=coach_session_evaluations');
+    expect(stopwatchIdx).toBeGreaterThan(-1);
+    expect(evalIdx).toBeGreaterThan(-1);
+    expect(stopwatchIdx).toBeLessThan(evalIdx);
+  });
+
+  test('pwa_tablet.php Video nav active state includes record_video and video_review_detail', () => {
+    const content = readFileSync(join(ROOT, 'pwa_tablet.php'), 'utf-8');
+    // The video link active check should include both record_video and video_review_detail
+    const videoLine = content.match(/page=video".*?in_array\(\$page,\s*\[([^\]]+)\]/);
+    expect(videoLine).toBeTruthy();
+    expect(videoLine[1]).toContain('record_video');
+    expect(videoLine[1]).toContain('video_review_detail');
+  });
+
+});

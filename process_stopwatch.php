@@ -37,6 +37,7 @@ try {
             $session_name = trim($_POST['session_name'] ?? '');
             $skill_id = !empty($_POST['skill_id']) ? (int) $_POST['skill_id'] : null;
             $session_athlete_id = !empty($_POST['athlete_id']) ? (int) $_POST['athlete_id'] : null;
+            $session_notes = trim($_POST['notes'] ?? '');
             $laps_json = $_POST['laps'] ?? '[]';
 
             if (empty($session_name)) {
@@ -70,10 +71,10 @@ try {
 
             // Create session
             $stmt = $pdo->prepare("
-                INSERT INTO stopwatch_sessions (coach_id, skill_id, session_name, created_at)
-                VALUES (?, ?, ?, NOW())
+                INSERT INTO stopwatch_sessions (coach_id, skill_id, session_name, notes, created_at)
+                VALUES (?, ?, ?, ?, NOW())
             ");
-            $stmt->execute([$user_id, $skill_id, $session_name]);
+            $stmt->execute([$user_id, $skill_id, $session_name, $session_notes ?: null]);
             $session_id = (int) $pdo->lastInsertId();
 
             // Insert lap times
