@@ -1330,8 +1330,10 @@ function handleVideoDelete() {
     if (!empty($hls_segments_path) && $rustfs_configured) {
         try {
             $result = deleteRustFSPrefix($rustfs, $hls_segments_path);
-            if ($result['success']) {
+            if ($result['success'] && empty($result['failed'])) {
                 error_log("Deleted {$result['deleted']} HLS files for video $video_id (prefix: $hls_segments_path)");
+            } elseif ($result['success'] && !empty($result['failed'])) {
+                error_log("Partially deleted HLS files for video $video_id: {$result['deleted']} deleted, " . count($result['failed']) . " failed (prefix: $hls_segments_path)");
             } else {
                 error_log("Failed to delete HLS files for video $video_id: " . ($result['message'] ?? 'Unknown error'));
             }

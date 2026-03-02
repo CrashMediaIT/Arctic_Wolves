@@ -726,17 +726,17 @@ function listRustFSObjects($settings, $prefix = '', $max_keys = 1000) {
  */
 function deleteRustFSPrefix($settings, $prefix) {
     if (!isRustFSConfigured($settings)) {
-        return ['success' => false, 'deleted' => 0, 'message' => 'RustFS is not configured'];
+        return ['success' => false, 'deleted' => 0, 'failed' => [], 'message' => 'RustFS is not configured'];
     }
 
     if (empty($prefix)) {
-        return ['success' => false, 'deleted' => 0, 'message' => 'Prefix is required'];
+        return ['success' => false, 'deleted' => 0, 'failed' => [], 'message' => 'Prefix is required'];
     }
 
     try {
         $listing = listRustFSObjects($settings, $prefix);
         if (!$listing['success']) {
-            return ['success' => false, 'deleted' => 0, 'message' => 'Failed to list objects: ' . ($listing['message'] ?? '')];
+            return ['success' => false, 'deleted' => 0, 'failed' => [], 'message' => 'Failed to list objects: ' . ($listing['message'] ?? '')];
         }
 
         $deleted = 0;
@@ -758,7 +758,7 @@ function deleteRustFSPrefix($settings, $prefix) {
         return ['success' => true, 'deleted' => $deleted, 'failed' => $failed, 'message' => $message];
     } catch (Exception $e) {
         error_log("RustFS prefix delete error for prefix=$prefix: " . $e->getMessage());
-        return ['success' => false, 'deleted' => 0, 'message' => $e->getMessage()];
+        return ['success' => false, 'deleted' => 0, 'failed' => [], 'message' => $e->getMessage()];
     }
 }
 
