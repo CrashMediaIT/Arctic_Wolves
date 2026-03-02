@@ -1128,7 +1128,11 @@ function streamUploadToRustFS($settings, $input_stream, $content_length, $object
         curl_setopt($ch, CURLOPT_HTTPHEADER, $curl_headers);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 600);
+        // No hard timeout — large files (multi-GB) can take a very long time.
+        // Use low-speed limits instead to detect stalled transfers.
+        curl_setopt($ch, CURLOPT_TIMEOUT, 0);
+        curl_setopt($ch, CURLOPT_LOW_SPEED_LIMIT, 1);   // minimum 1 byte/sec
+        curl_setopt($ch, CURLOPT_LOW_SPEED_TIME, 120);   // abort after 120 s of stall
 
         $response = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
