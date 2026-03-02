@@ -18,6 +18,36 @@ if (!$isAnyCoach):
 <?php
     return;
 endif;
+
+// Fetch all active users for athlete assignment dropdown
+$athletes = [];
+try {
+    $stmt = $pdo->query("
+        SELECT u.id, u.first_name, u.last_name
+        FROM users u
+        WHERE u.is_active = 1
+        ORDER BY u.last_name, u.first_name
+    ");
+    $athletes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $athletes = decryptUserRows($athletes);
+} catch (Exception $e) {
+    $athletes = [];
+}
+
+// Fetch skills with stopwatch enabled for optional skill linking
+$stopwatch_skills = [];
+try {
+    $stmt = $pdo->query("
+        SELECT es.id, es.name, ec.name as category_name
+        FROM eval_skills es
+        JOIN eval_categories ec ON es.category_id = ec.id
+        WHERE es.has_stopwatch = 1 AND es.is_active = 1
+        ORDER BY ec.name, es.name
+    ");
+    $stopwatch_skills = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    $stopwatch_skills = [];
+}
 ?>
 <style>
 .m-stopwatch { padding: 16px; font-family: Inter, sans-serif; text-align: center; }
@@ -90,6 +120,25 @@ endif;
 .m-lap-diff { font-size: 12px; color: #A8A8B8; font-variant-numeric: tabular-nums; }
 .m-empty-state { text-align: center; padding: 32px 20px; color: #6B6B7B; font-size: 13px; }
 .m-empty-state i { font-size: 28px; display: block; margin-bottom: 10px; }
+.m-sw-selectors { margin-bottom: 20px; text-align: left; }
+.m-sw-selectors label { display: block; font-size: 12px; font-weight: 600; color: #6B6B7B; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+.m-sw-select {
+    width: 100%; min-height: 44px; padding: 12px;
+    background: #0A0A0F; border: 1px solid #2D2D3F; border-radius: 10px;
+    color: #fff; font-size: 14px; font-family: Inter, sans-serif;
+    margin-bottom: 12px; box-sizing: border-box;
+    -webkit-appearance: none; appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236B6B7B' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center;
+}
+.m-sw-select:focus { border-color: #8B5CF6; outline: none; }
+.m-sw-notes {
+    width: 100%; min-height: 66px; padding: 12px;
+    background: #0A0A0F; border: 1px solid #2D2D3F; border-radius: 10px;
+    color: #fff; font-size: 14px; font-family: Inter, sans-serif;
+    margin-bottom: 10px; box-sizing: border-box; resize: vertical;
+}
+.m-sw-notes:focus { border-color: #8B5CF6; outline: none; }
 .m-sw-history-section { text-align: left; margin-top: 24px; }
 .m-sw-hist-item {
     background: #16161F; border: 1px solid #2D2D3F; border-radius: 10px;
@@ -104,6 +153,28 @@ endif;
     <div class="m-stopwatch-header">
         <h2 class="m-stopwatch-title">Stopwatch</h2>
         <p class="m-stopwatch-sub">Tap to start timing</p>
+    </div>
+
+    <div class="m-sw-selectors">
+        <?php if (!empty($athletes)): ?>
+        <label for="mSwAthlete">Assign to Athlete</label>
+        <select class="m-sw-select" id="mSwAthlete">
+            <option value="">— No athlete —</option>
+            <?php foreach ($athletes as $a): ?>
+            <option value="<?= (int)$a['id'] ?>"><?= htmlspecialchars($a['last_name'] . ', ' . $a['first_name']) ?></option>
+            <?php endforeach; ?>
+        </select>
+        <?php endif; ?>
+
+        <?php if (!empty($stopwatch_skills)): ?>
+        <label for="mSwSkill">Link to Skill</label>
+        <select class="m-sw-select" id="mSwSkill">
+            <option value="">— No skill —</option>
+            <?php foreach ($stopwatch_skills as $sk): ?>
+            <option value="<?= (int)$sk['id'] ?>"><?= htmlspecialchars($sk['category_name'] . ' — ' . $sk['name']) ?></option>
+            <?php endforeach; ?>
+        </select>
+        <?php endif; ?>
     </div>
 
     <div class="m-time-display">
@@ -124,6 +195,7 @@ endif;
 
     <div class="m-sw-save-section" id="mSwSaveSection" style="display:none;">
         <input type="text" class="m-sw-save-input" id="mSwSessionName" placeholder="Session name (e.g., Sprint Drill)">
+        <textarea class="m-sw-notes" id="mSwNotes" placeholder="Notes (optional)"></textarea>
         <button class="m-sw-save-btn" id="mSwSaveBtn" type="button" onclick="mSwSave()">
             <i class="fas fa-save"></i> Save Session
         </button>
@@ -274,7 +346,11 @@ endif;
         fd.append('action', 'save_session');
         fd.append('csrf_token', csrfToken);
         fd.append('session_name', name);
-        fd.append('skill_id', '');
+        var athleteEl = document.getElementById('mSwAthlete');
+        fd.append('athlete_id', athleteEl ? athleteEl.value : '');
+        var skillEl = document.getElementById('mSwSkill');
+        fd.append('skill_id', skillEl ? skillEl.value : '');
+        fd.append('notes', (document.getElementById('mSwNotes').value || '').trim());
         fd.append('laps', JSON.stringify(laps));
         fetch('process_stopwatch.php', { method: 'POST', body: fd })
             .then(function(r) { return r.json(); })
@@ -283,6 +359,7 @@ endif;
                     persistToast(data.message || 'Session saved!', 'success');
                     mSwReset();
                     document.getElementById('mSwSessionName').value = '';
+                    document.getElementById('mSwNotes').value = '';
                     window.location.reload();
                 } else { showAlert('error', data.message || 'Failed to save'); }
             })
