@@ -1010,7 +1010,7 @@ function generatePresignedUploadUrlViaSdk($pdo, $settings, $object_key, $content
             $curl_errno = curl_errno($ch);
             curl_close($ch);
 
-            if (!empty($curl_error)) {
+            if ($curl_errno !== 0) {
                 error_log("Presign: companion curl error [$curl_errno] $curl_error for key=$object_key — falling back to local PHP");
             } elseif ($http_code === 200 && $response) {
                 $data = json_decode($response, true);
