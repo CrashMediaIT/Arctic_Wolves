@@ -535,6 +535,10 @@ function deleteFromRustFS($settings, $object_key) {
 /**
  * Check if an object exists in RustFS S3.
  *
+ * Retries up to 3 times with a 1-second delay to handle eventual
+ * consistency and transient network issues that can occur immediately
+ * after an upload completes.
+ *
  * @param array  $settings   RustFS settings
  * @param string $object_key S3 object key
  * @return bool
@@ -544,33 +548,50 @@ function rustfsObjectExists($settings, $object_key) {
         return false;
     }
 
-    try {
-        $object_key = ltrim($object_key, '/');
-        $url = getRustFSPublicUrl($settings, $object_key);
-        $region = $settings['rustfs_region'] ?? 'us-east-1';
+    $object_key = ltrim($object_key, '/');
+    $max_retries = 3;
 
-        $signed = signRustFSRequest('HEAD', $url, [], '', $settings['rustfs_access_key'], $settings['rustfs_secret_key'], $region);
+    for ($attempt = 1; $attempt <= $max_retries; $attempt++) {
+        try {
+            $url = getRustFSPublicUrl($settings, $object_key);
+            $region = $settings['rustfs_region'] ?? 'us-east-1';
 
-        $curl_headers = [
-            'Authorization: ' . $signed['Authorization'],
-            'x-amz-date: ' . $signed['x-amz-date'],
-            'x-amz-content-sha256: ' . $signed['x-amz-content-sha256'],
-        ];
+            $signed = signRustFSRequest('HEAD', $url, [], '', $settings['rustfs_access_key'], $settings['rustfs_secret_key'], $region);
 
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_NOBODY, true);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $curl_headers);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            $curl_headers = [
+                'Authorization: ' . $signed['Authorization'],
+                'x-amz-date: ' . $signed['x-amz-date'],
+                'x-amz-content-sha256: ' . $signed['x-amz-content-sha256'],
+            ];
 
-        curl_exec($ch);
-        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+            $ch = curl_init($url);
+            curl_setopt($ch, CURLOPT_NOBODY, true);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $curl_headers);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 15);
 
-        return ($http_code === 200);
-    } catch (Exception $e) {
-        return false;
+            curl_exec($ch);
+            $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curl_error = curl_error($ch);
+            curl_close($ch);
+
+            if ($http_code === 200) {
+                return true;
+            }
+
+            error_log("rustfsObjectExists: attempt $attempt/$max_retries for '$object_key' returned HTTP $http_code" . (!empty($curl_error) ? " (curl: $curl_error)" : ''));
+        } catch (Exception $e) {
+            error_log("rustfsObjectExists: attempt $attempt/$max_retries for '$object_key' exception: " . $e->getMessage());
+        }
+
+        if ($attempt < $max_retries) {
+            sleep(1);
+        }
     }
+
+    return false;
 }
 
 /**

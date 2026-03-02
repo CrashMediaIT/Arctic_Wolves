@@ -691,6 +691,9 @@ foreach ($url_keys as $uk) {
                         <button type="button" class="btn btn-secondary" onclick="testRustFSConnection()">
                             <i class="fas fa-plug"></i> Test Connection
                         </button>
+                        <button type="button" class="btn btn-secondary" onclick="testUploadApiEndpoint()">
+                            <i class="fas fa-cloud-upload-alt"></i> Test Upload API
+                        </button>
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-save"></i> Save RustFS Settings
                         </button>
@@ -3292,6 +3295,38 @@ function testRustFSConnection() {
         btn.disabled = false;
         btn.innerHTML = originalText;
         showToast('Error testing RustFS connection', 'error');
+        console.error('Error:', error);
+    });
+}
+
+function testUploadApiEndpoint() {
+    const btn = event.target.closest('button');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing Upload API...';
+
+    const formData = new FormData(document.getElementById('rustfs-form'));
+    formData.append('action', 'test_upload_api');
+
+    fetch('process_settings.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+
+        if (data.success) {
+            showToast('Success: Upload API test passed! ' + (data.message || 'All checks passed.'), 'success');
+        } else {
+            showToast('Error: Upload API test failed. ' + (data.message || 'Check server configuration'), 'error');
+        }
+    })
+    .catch(error => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        showToast('Error testing Upload API endpoint', 'error');
         console.error('Error:', error);
     });
 }
