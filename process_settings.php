@@ -19,7 +19,7 @@ $action = $_POST['action'] ?? '';
 $user_id = $_SESSION['user_id'] ?? 0;
 
 // Determine if we should return JSON or redirect
-$json_actions = ['test_smtp', 'test_github', 'check_updates', 'apply_updates', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library', 'test_docuseal', 'test_stallion', 'test_google_maps', 'create_restriction', 'remove_restriction', 'add_blocklist_entry', 'remove_blocklist_entry', 'add_pos_whitelist_entry', 'remove_pos_whitelist_entry', 'toggle_pos_whitelist_entry', 'get_ndi_camera', 'update_ndi_camera', 'delete_ndi_camera', 'toggle_ndi_camera', 'get_cluster_status', 'test_cluster_node', 'add_cluster_node', 'remove_cluster_node', 'save_cluster_settings', 'test_paperless', 'test_rustfs'];
+$json_actions = ['test_smtp', 'test_github', 'check_updates', 'apply_updates', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library', 'test_docuseal', 'test_stallion', 'test_google_maps', 'create_restriction', 'remove_restriction', 'add_blocklist_entry', 'remove_blocklist_entry', 'add_pos_whitelist_entry', 'remove_pos_whitelist_entry', 'toggle_pos_whitelist_entry', 'get_ndi_camera', 'update_ndi_camera', 'delete_ndi_camera', 'toggle_ndi_camera', 'get_cluster_status', 'test_cluster_node', 'add_cluster_node', 'remove_cluster_node', 'save_cluster_settings', 'test_paperless', 'test_rustfs', 'test_upload_api'];
 $is_json = in_array($action, $json_actions);
 
 if ($is_json) {
@@ -257,7 +257,91 @@ try {
             echo json_encode($result);
             exit;
 
-        case 'update_paperless':
+        case 'test_upload_api':
+            require_once __DIR__ . '/lib/rustfs_storage.php';
+            // Test the upload API endpoint (api/upload.php) and RustFS round-trip
+            $results = ['api_reachable' => false, 'rustfs_write' => false, 'rustfs_verify' => false, 'rustfs_cleanup' => false];
+            $messages = [];
+
+            // Step 1: Verify api/upload.php exists and is accessible
+            $upload_api_path = __DIR__ . '/api/upload.php';
+            if (file_exists($upload_api_path)) {
+                $results['api_reachable'] = true;
+                $messages[] = 'Upload API endpoint file exists';
+            } else {
+                $messages[] = 'Upload API endpoint file not found at api/upload.php';
+                echo json_encode(['success' => false, 'message' => implode('; ', $messages), 'results' => $results]);
+                exit;
+            }
+
+            // Step 2: Test RustFS write + verify round-trip with a small test object
+            $rustfs_secret_key = trim($_POST['rustfs_secret_key'] ?? '');
+            if (empty($rustfs_secret_key)) {
+                $stored = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'rustfs_secret_key'");
+                $stored->execute();
+                $encrypted = $stored->fetchColumn();
+                if (!empty($encrypted)) {
+                    $decrypted = decryptPassword($encrypted);
+                    if (!empty($decrypted)) {
+                        $rustfs_secret_key = $decrypted;
+                    }
+                }
+            }
+            $test_settings = [
+                'rustfs_endpoint' => trim($_POST['rustfs_endpoint'] ?? ''),
+                'rustfs_access_key' => trim($_POST['rustfs_access_key'] ?? ''),
+                'rustfs_secret_key' => $rustfs_secret_key,
+                'rustfs_bucket' => trim($_POST['rustfs_bucket'] ?? ''),
+                'rustfs_region' => trim($_POST['rustfs_region'] ?? 'us-east-1'),
+                'rustfs_use_ssl' => isset($_POST['rustfs_use_ssl']) ? '1' : '0',
+                'rustfs_path_style' => isset($_POST['rustfs_path_style']) ? '1' : '0',
+            ];
+
+            if (!isRustFSConfigured($test_settings)) {
+                $messages[] = 'RustFS settings are incomplete';
+                echo json_encode(['success' => false, 'message' => implode('; ', $messages), 'results' => $results]);
+                exit;
+            }
+
+            // Write a small test object
+            $test_key = '.system-test/api-test-' . bin2hex(random_bytes(8)) . '.txt';
+            $test_content = 'Arctic Wolves API endpoint test — ' . date('Y-m-d H:i:s');
+            $upload_result = uploadContentToRustFS($test_settings, $test_content, $test_key, 'text/plain');
+            if ($upload_result['success']) {
+                $results['rustfs_write'] = true;
+                $messages[] = 'RustFS write succeeded';
+            } else {
+                $messages[] = 'RustFS write failed: ' . ($upload_result['message'] ?? 'Unknown error');
+                echo json_encode(['success' => false, 'message' => implode('; ', $messages), 'results' => $results]);
+                exit;
+            }
+
+            // Verify the object exists (uses same check as video upload confirmation)
+            if (rustfsObjectExists($test_settings, $test_key)) {
+                $results['rustfs_verify'] = true;
+                $messages[] = 'RustFS verify (HEAD) succeeded';
+            } else {
+                $messages[] = 'RustFS verify (HEAD) failed — object not found after write';
+            }
+
+            // Clean up the test object
+            $deleted = deleteFromRustFS($test_settings, $test_key);
+            if ($deleted) {
+                $results['rustfs_cleanup'] = true;
+                $messages[] = 'Test object cleaned up';
+            } else {
+                $messages[] = 'Test object cleanup failed (non-critical)';
+            }
+
+            $all_passed = $results['api_reachable'] && $results['rustfs_write'] && $results['rustfs_verify'];
+            echo json_encode([
+                'success' => $all_passed,
+                'message' => $all_passed
+                    ? 'Upload API endpoint and RustFS round-trip test passed'
+                    : implode('; ', $messages),
+                'results' => $results,
+            ]);
+            exit;
             $paperless_url = trim($_POST['paperless_url'] ?? '');
             $paperless_api_token = trim($_POST['paperless_api_token'] ?? '');
             $paperless_ocr_enabled = isset($_POST['paperless_ocr_enabled']) ? '1' : '0';
