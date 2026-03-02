@@ -622,15 +622,45 @@ document.addEventListener('DOMContentLoaded', function() {
                     proxyUploadUrl = data.proxy_upload_url || null;
                     proxyToken = data.proxy_token || null;
 
-                    status.textContent = 'Uploading to cloud storage...';
+                    // Try proxy upload first (same-origin, avoids CORS/network issues with direct S3)
+                    if (proxyUploadUrl && proxyToken) {
+                        status.textContent = 'Uploading video...';
+                        return new Promise(function(resolve, reject) {
+                            var xhr = new XMLHttpRequest();
+                            vrCurrentUploadXhr = xhr;
+                            xhr.open('PUT', proxyUploadUrl, true);
+                            xhr.setRequestHeader('Content-Type', contentType);
+                            xhr.setRequestHeader('X-Upload-Token', proxyToken);
+                            var uploadStarted = false;
+                            var connTimer = setTimeout(function() {
+                                if (!uploadStarted) { xhr.abort(); reject(new Error('Upload connection timed out')); }
+                            }, 30000);
+                            xhr.upload.onprogress = function(ev) {
+                                if (!uploadStarted) { uploadStarted = true; clearTimeout(connTimer); }
+                                if (ev.lengthComputable) {
+                                    var pct = Math.round((ev.loaded / ev.total) * 100);
+                                    bar.style.width = pct + '%';
+                                    percent.textContent = pct + '%';
+                                    status.textContent = pct < 100 ? 'Uploading video... ' + pct + '%' : 'Finalizing upload...';
+                                }
+                            };
+                            xhr.onload = function() {
+                                clearTimeout(connTimer);
+                                if (xhr.status >= 200 && xhr.status < 300) resolve();
+                                else reject(new Error('Upload failed (HTTP ' + xhr.status + ')'));
+                            };
+                            xhr.onerror = function() { clearTimeout(connTimer); reject(new Error('Network error during upload')); };
+                            xhr.send(videoFile);
+                        });
+                    }
 
-                    // Step 2: PUT file directly to RustFS
+                    // Fall back to direct S3 presigned URL if proxy is not available
+                    status.textContent = 'Uploading to cloud storage...';
                     return new Promise(function(resolve, reject) {
                         var xhr = new XMLHttpRequest();
                         vrCurrentUploadXhr = xhr;
                         xhr.open('PUT', presignedUrl, true);
                         xhr.setRequestHeader('Content-Type', contentType);
-                        // Connection timeout: abort if no progress within 30 s
                         var uploadStarted = false;
                         var connTimer = setTimeout(function() {
                             if (!uploadStarted) { xhr.abort(); reject(new Error('Cloud storage connection timed out — check that the S3/RustFS endpoint is reachable from this browser')); }
@@ -653,40 +683,47 @@ document.addEventListener('DOMContentLoaded', function() {
                         xhr.send(videoFile);
                     });
                 })
-                .catch(function(directErr) {
-                    // Direct upload failed — try the streaming proxy
-                    if (!proxyUploadUrl || !proxyToken) throw directErr;
-                    console.warn('Direct S3 upload failed:', directErr.message, '— trying streaming proxy');
-                    status.textContent = 'Retrying via server proxy...';
+                .catch(function(uploadErr) {
+                    // Primary upload failed — try direct S3 presigned URL as fallback
+                    if (!proxyUploadUrl || !proxyToken) throw uploadErr;
+                    console.warn('Proxy upload failed:', uploadErr.message, '— trying direct S3');
+                    status.textContent = 'Retrying via direct cloud upload...';
                     bar.style.width = '0%';
                     percent.textContent = '0%';
 
                     return new Promise(function(resolve, reject) {
                         var xhr = new XMLHttpRequest();
                         vrCurrentUploadXhr = xhr;
-                        xhr.open('PUT', proxyUploadUrl, true);
-                        xhr.setRequestHeader('Content-Type', contentType);
-                        xhr.setRequestHeader('X-Upload-Token', proxyToken);
-                        var uploadStarted = false;
-                        var connTimer = setTimeout(function() {
-                            if (!uploadStarted) { xhr.abort(); reject(new Error('Proxy connection timed out — check that the S3/RustFS endpoint is reachable from this browser')); }
-                        }, 30000);
-                        xhr.upload.onprogress = function(ev) {
-                            if (!uploadStarted) { uploadStarted = true; clearTimeout(connTimer); }
-                            if (ev.lengthComputable) {
-                                var pct = Math.round((ev.loaded / ev.total) * 100);
-                                bar.style.width = pct + '%';
-                                percent.textContent = pct + '%';
-                                status.textContent = pct < 100 ? 'Uploading via server proxy... ' + pct + '%' : 'Finalizing upload...';
-                            }
-                        };
-                        xhr.onload = function() {
-                            clearTimeout(connTimer);
-                            if (xhr.status >= 200 && xhr.status < 300) resolve();
-                            else reject(new Error('Proxy upload failed (HTTP ' + xhr.status + ')'));
-                        };
-                        xhr.onerror = function() { clearTimeout(connTimer); reject(new Error('Network error during proxy upload — ensure the S3/RustFS endpoint is accessible')); };
-                        xhr.send(videoFile);
+                        // Re-fetch a presigned URL since the proxy was primary
+                        fetch('/process_video.php', { method: 'POST', body: formMeta })
+                            .then(function(r) { return r.json(); })
+                            .then(function(data2) {
+                                if (!data2.success || !data2.presigned_url) { reject(uploadErr); return; }
+                                uploadNonce = data2.upload_nonce;
+                                xhr.open('PUT', data2.presigned_url, true);
+                                xhr.setRequestHeader('Content-Type', contentType);
+                                var uploadStarted = false;
+                                var connTimer = setTimeout(function() {
+                                    if (!uploadStarted) { xhr.abort(); reject(new Error('Direct cloud upload timed out')); }
+                                }, 30000);
+                                xhr.upload.onprogress = function(ev) {
+                                    if (!uploadStarted) { uploadStarted = true; clearTimeout(connTimer); }
+                                    if (ev.lengthComputable) {
+                                        var pct = Math.round((ev.loaded / ev.total) * 100);
+                                        bar.style.width = pct + '%';
+                                        percent.textContent = pct + '%';
+                                        status.textContent = pct < 100 ? 'Uploading to cloud... ' + pct + '%' : 'Finalizing upload...';
+                                    }
+                                };
+                                xhr.onload = function() {
+                                    clearTimeout(connTimer);
+                                    if (xhr.status >= 200 && xhr.status < 300) resolve();
+                                    else reject(new Error('Direct upload failed (HTTP ' + xhr.status + ')'));
+                                };
+                                xhr.onerror = function() { clearTimeout(connTimer); reject(new Error('Network error during direct upload')); };
+                                xhr.send(videoFile);
+                            })
+                            .catch(function() { reject(uploadErr); });
                     });
                 })
                 .then(function() {
