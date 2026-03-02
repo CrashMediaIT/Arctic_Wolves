@@ -387,7 +387,7 @@ try {
                 <span id="nav-msg-badge" style="display:none;background:var(--primary);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto;"></span>
             </a>
             <a href="?page=sessions" class="nav-link <?= in_array($page, ['sessions','upcoming_sessions','booking'])?'active':'' ?>"><i class="fa-solid fa-calendar-check"></i> Sessions</a>
-            <a href="?page=video" class="nav-link <?= in_array($page, ['video','drill_review','coaches_reviews'])?'active':'' ?>"><i class="fa-solid fa-video"></i> Video</a>
+            <a href="?page=video" class="nav-link <?= in_array($page, ['video','drill_review','coaches_reviews','record_video','video_review_detail'])?'active':'' ?>"><i class="fa-solid fa-video"></i> Video</a>
             <a href="?page=health" class="nav-link <?= in_array($page, ['health','strength_conditioning','nutrition'])?'active':'' ?>"><i class="fa-solid fa-heart-pulse"></i> Health</a>
             <a href="?page=shop" class="nav-link <?= $page=='shop'?'active':'' ?>"><i class="fa-solid fa-store"></i> Shop</a>
             <a href="?page=payment_history" class="nav-link <?= $page=='payment_history'?'active':'' ?>"><i class="fa-solid fa-receipt"></i> Purchase History</a>
@@ -416,7 +416,7 @@ try {
             <a href="?page=coach_stopwatch" class="nav-link <?= $page=='coach_stopwatch'?'active':'' ?>"><i class="fa-solid fa-stopwatch"></i> Stopwatch</a>
             <a href="?page=coach_shot_speed" class="nav-link <?= $page=='coach_shot_speed'?'active':'' ?>"><i class="fa-solid fa-hockey-puck"></i> Shot Speed</a>
             <a href="?page=coach_session_evaluations" class="nav-link <?= in_array($page, ['coach_session_evaluations','session_evaluation_form'])?'active':'' ?>"><i class="fa-solid fa-clipboard-check"></i> Session Evaluations</a>
-            <a href="?page=coach_video_reviews" class="nav-link <?= in_array($page, ['coach_video_reviews','coach_pending_reviews'])?'active':'' ?>"><i class="fa-solid fa-film"></i> Coach Video Reviews</a>
+            <a href="?page=coach_video_reviews" class="nav-link <?= in_array($page, ['coach_video_reviews','coach_pending_reviews'])?'active':'' ?>"><i class="fa-solid fa-video"></i> Video Reviews</a>
             <a href="?page=travel" class="nav-link <?= in_array($page, ['travel','mileage'])?'active':'' ?>"><i class="fa-solid fa-plane"></i> Travel</a>
             <a href="?page=record_drill_video" class="nav-link <?= $page=='record_drill_video'?'active':'' ?>"><i class="fa-solid fa-video"></i> Video Recording</a>
             <a href="/gameplan.php" class="nav-link"><i class="fa-solid fa-chess-board"></i> Game Plan</a>
