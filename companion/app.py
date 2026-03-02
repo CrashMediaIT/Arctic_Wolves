@@ -1204,6 +1204,98 @@ def health():
     })
 
 
+@app.route("/api/test", methods=["POST"])
+def run_diagnostics():
+    """Run active diagnostics to verify hardware acceleration and RustFS connectivity.
+
+    Unlike /api/health (which only detects capabilities), this endpoint
+    performs real tests:
+      - hw_encode: encodes a short synthetic video clip using the configured
+        hardware encoder to confirm it actually works.
+      - rustfs: uploads, downloads, and deletes a small test file in the
+        configured S3/RustFS bucket to confirm full read/write access.
+
+    Returns JSON with a "tests" dict containing results for each test.
+    """
+    auth_err = _require_api_key()
+    if auth_err:
+        return auth_err
+
+    results = {}
+
+    # ── Hardware acceleration test ────────────────────────────────────────
+    hw_test = {"passed": False, "encoder": None, "error": None}
+    try:
+        hw_info = _detect_hw_accel()
+        encode_flags = _select_encoder(hw_info, "h264")
+        encoder_name = "unknown"
+        for i, flag in enumerate(encode_flags):
+            if flag == "-c:v" and i + 1 < len(encode_flags):
+                encoder_name = encode_flags[i + 1]
+                break
+
+        hw_test["encoder"] = encoder_name
+
+        # Generate a 1-second silent test clip using lavfi sources
+        test_dir = os.path.join(TEMP_DIR, "diag_" + str(uuid.uuid4())[:8])
+        os.makedirs(test_dir, exist_ok=True)
+        test_output = os.path.join(test_dir, "test.mp4")
+        try:
+            decode_flags = _hwaccel_decode_flags()
+            cmd = [FFMPEG_PATH, "-y"] + decode_flags + [
+                "-f", "lavfi", "-i", "color=c=black:s=320x240:d=1:r=25",
+                "-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono",
+                "-t", "1",
+            ] + encode_flags + [
+                "-c:a", "aac", "-b:a", "64k",
+                test_output,
+            ]
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            if proc.returncode == 0 and os.path.isfile(test_output) and os.path.getsize(test_output) > 0:
+                hw_test["passed"] = True
+            else:
+                hw_test["error"] = (proc.stderr or "unknown error")[:500]
+        finally:
+            shutil.rmtree(test_dir, ignore_errors=True)
+    except Exception as exc:
+        hw_test["error"] = str(exc)[:500]
+
+    results["hw_encode"] = hw_test
+
+    # ── RustFS / S3 connectivity test ─────────────────────────────────────
+    s3_test = {"passed": False, "upload": False, "download": False, "delete": False, "error": None}
+    try:
+        s3 = _get_s3_client()
+        if not s3:
+            s3_test["error"] = "S3/RustFS is not configured"
+        else:
+            test_key = "_companion_diag_test_" + str(uuid.uuid4())[:8] + ".txt"
+            test_body = b"companion-diagnostic-ok"
+
+            # Upload
+            s3.put_object(Bucket=S3_BUCKET, Key=test_key, Body=test_body, ContentType="text/plain")
+            s3_test["upload"] = True
+
+            # Download and verify
+            obj = s3.get_object(Bucket=S3_BUCKET, Key=test_key)
+            data = obj["Body"].read()
+            s3_test["download"] = (data == test_body)
+
+            # Delete
+            s3.delete_object(Bucket=S3_BUCKET, Key=test_key)
+            s3_test["delete"] = True
+
+            s3_test["passed"] = s3_test["upload"] and s3_test["download"] and s3_test["delete"]
+    except Exception as exc:
+        s3_test["error"] = str(exc)[:500]
+
+    results["rustfs"] = s3_test
+
+    all_passed = all(t.get("passed") for t in results.values())
+    logger.info("Diagnostic tests completed: %s", "ALL PASSED" if all_passed else "SOME FAILED")
+    return jsonify({"all_passed": all_passed, "tests": results})
+
+
 @app.route("/api/probe", methods=["POST"])
 def probe():
     """Get video file metadata."""

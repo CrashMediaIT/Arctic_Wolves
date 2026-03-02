@@ -3155,7 +3155,15 @@ function triggerHlsTranscode($pdo, $video_id, $object_key) {
 
         $response = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curl_errno = curl_errno($ch);
+        $curl_error = curl_error($ch);
         curl_close($ch);
+
+        // Log connection failures so admins can diagnose companion issues
+        if ($curl_errno !== 0) {
+            ErrorLogger::error("Companion transcode trigger failed for video $video_id: curl error [$curl_errno] $curl_error (URL: $companion_url/api/hls)");
+            return;
+        }
 
         if ($http_code === 202 && $response) {
             $data = json_decode($response, true);
@@ -3164,9 +3172,13 @@ function triggerHlsTranscode($pdo, $video_id, $object_key) {
                 $pdo->prepare("UPDATE videos SET hls_job_id = ?, hls_status = 'processing' WHERE id = ?")
                     ->execute([$data["id"], $video_id]);
             }
+        } else {
+            // Non-202 response — companion rejected the request or is unavailable
+            $body_snippet = $response ? substr($response, 0, 500) : '(empty)';
+            ErrorLogger::error("Companion transcode trigger failed for video $video_id: HTTP $http_code from $companion_url/api/hls — $body_snippet");
         }
     } catch (Exception $e) {
-        error_log("triggerHlsTranscode failed for video $video_id: " . $e->getMessage());
+        ErrorLogger::error("Companion transcode trigger exception for video $video_id: " . $e->getMessage());
         // Non-fatal: the upload still succeeds
     }
 }
