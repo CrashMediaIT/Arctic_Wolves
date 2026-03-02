@@ -213,7 +213,7 @@ test.describe('downloadAndSaveDrillImage uses persistUploadedFile', () => {
   test('downloadAndSaveDrillImage calls persistUploadedFile', () => {
     const fn = content().substring(
       content().indexOf('function downloadAndSaveDrillImage('),
-      content().indexOf('}', content().indexOf("return ['local_path' => $local_cache_rel", content().indexOf('function downloadAndSaveDrillImage(')))
+      content().indexOf('}', content().indexOf("return ['local_path' => $rustfs_url ?? ''", content().indexOf('function downloadAndSaveDrillImage(')))
     );
     expect(fn).toContain('persistUploadedFile(');
   });
@@ -221,7 +221,7 @@ test.describe('downloadAndSaveDrillImage uses persistUploadedFile', () => {
   test('downloadAndSaveDrillImage returns nextcloud_path', () => {
     const fn = content().substring(
       content().indexOf('function downloadAndSaveDrillImage('),
-      content().indexOf('}', content().indexOf("return ['local_path' => $local_cache_rel", content().indexOf('function downloadAndSaveDrillImage(')))
+      content().indexOf('}', content().indexOf("return ['local_path' => $rustfs_url ?? ''", content().indexOf('function downloadAndSaveDrillImage(')))
     );
     expect(fn).toContain("'nextcloud_path'");
   });
@@ -557,7 +557,7 @@ test.describe('Upload functions do not use local uploads/ as primary storage', (
     const content = readFile('process_drills.php');
     const fn = content.substring(
       content.indexOf('function downloadAndSaveImage('),
-      content.indexOf('}', content.indexOf("return ['local_path' => $local_cache_rel"))
+      content.indexOf('}', content.indexOf("return ['local_path' => $rustfs_url ?? ''"))
     );
     // Should write to sys_get_temp_dir, not directly to uploads/
     expect(fn).toContain('sys_get_temp_dir()');

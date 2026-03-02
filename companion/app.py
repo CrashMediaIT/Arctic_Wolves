@@ -799,7 +799,7 @@ You can also push these later from the main app.</p>
 <div class="form-row">
 <div class="form-group">
 <label for="setup-s3-endpoint">S3 Endpoint URL</label>
-<input id="setup-s3-endpoint" type="text" placeholder="https://rustfs.example.com:9000">
+<input id="setup-s3-endpoint" type="text" placeholder="https://rustfs.example.com">
 </div>
 <div class="form-group">
 <label for="setup-s3-bucket">Bucket Name</label>
