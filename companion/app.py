@@ -1294,16 +1294,23 @@ def run_diagnostics():
     # ── Main App connectivity test ────────────────────────────────────────
     main_app_test = {"passed": False, "url": MAIN_APP_URL or None, "error": None}
     if MAIN_APP_URL:
-        try:
-            resp = http_requests.get(MAIN_APP_URL + "/api/v1/companion/ping", timeout=10, verify=False)
-            main_app_test["status_code"] = resp.status_code
-            main_app_test["passed"] = resp.status_code < 500
-        except http_requests.exceptions.ConnectionError:
-            main_app_test["error"] = "Connection refused — main app may be offline or URL is incorrect"
-        except http_requests.exceptions.Timeout:
-            main_app_test["error"] = "Connection timed out after 10 seconds"
-        except Exception as exc:
-            main_app_test["error"] = str(exc)[:500]
+        # Validate URL scheme to prevent SSRF — only allow http/https
+        from urllib.parse import urlparse
+        parsed = urlparse(MAIN_APP_URL)
+        if parsed.scheme not in ("http", "https") or not parsed.hostname:
+            main_app_test["error"] = "Invalid main app URL — must be an http:// or https:// URL"
+        else:
+            try:
+                test_url = parsed.scheme + "://" + parsed.netloc + "/api/v1/companion/ping"
+                resp = http_requests.get(test_url, timeout=10, verify=False)  # noqa: S113
+                main_app_test["status_code"] = resp.status_code
+                main_app_test["passed"] = resp.status_code < 500
+            except http_requests.exceptions.ConnectionError:
+                main_app_test["error"] = "Connection refused — main app may be offline or URL is incorrect"
+            except http_requests.exceptions.Timeout:
+                main_app_test["error"] = "Connection timed out after 10 seconds"
+            except Exception as exc:
+                main_app_test["error"] = str(exc)[:500]
     else:
         main_app_test["error"] = "Main app URL is not configured"
 
