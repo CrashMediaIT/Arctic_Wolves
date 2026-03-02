@@ -694,7 +694,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     return new Promise(function(resolve, reject) {
                         var xhr = new XMLHttpRequest();
                         vrCurrentUploadXhr = xhr;
-                        // Re-fetch a presigned URL since the proxy was primary
+                        // Fetch a fresh presigned URL — the original may have expired during the failed proxy attempt
                         fetch('/process_video.php', { method: 'POST', body: formMeta })
                             .then(function(r) { return r.json(); })
                             .then(function(data2) {
