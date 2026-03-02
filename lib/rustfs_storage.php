@@ -740,13 +740,22 @@ function deleteRustFSPrefix($settings, $prefix) {
         }
 
         $deleted = 0;
+        $failed = [];
         foreach ($listing['objects'] as $obj) {
             if (deleteFromRustFS($settings, $obj['key'])) {
                 $deleted++;
+            } else {
+                $failed[] = $obj['key'];
+                error_log("RustFS prefix delete: failed to delete object " . $obj['key']);
             }
         }
 
-        return ['success' => true, 'deleted' => $deleted, 'message' => null];
+        $message = null;
+        if (!empty($failed)) {
+            $message = count($failed) . ' object(s) failed to delete';
+        }
+
+        return ['success' => true, 'deleted' => $deleted, 'failed' => $failed, 'message' => $message];
     } catch (Exception $e) {
         error_log("RustFS prefix delete error for prefix=$prefix: " . $e->getMessage());
         return ['success' => false, 'deleted' => 0, 'message' => $e->getMessage()];

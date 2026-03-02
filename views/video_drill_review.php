@@ -260,7 +260,7 @@ $is_demo_data = false;
                         <div class="video-actions">
                             <button class="btn-primary btn-full" data-action="play-video" 
                                     data-video-id="<?= htmlspecialchars($video['id']) ?>"
-                                    data-video-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, (($video['hls_status'] ?? '') === 'ready' && !empty($video['hls_url'])) ? $video['hls_url'] : ($video['video_url'] ?? '')) ?? '') ?>"
+                                    data-video-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, getPreferredVideoUrl($video)) ?? '') ?>"
                                     data-video-description="<?= htmlspecialchars($video['description'] ?? '') ?>"
                                     data-video-coach="<?= htmlspecialchars(trim(($video['coach_first_name'] ?? '') . ' ' . ($video['coach_last_name'] ?? ''))) ?>"
                                     data-video-date="<?= htmlspecialchars(date('M d, Y', strtotime($video['upload_date']))) ?>">

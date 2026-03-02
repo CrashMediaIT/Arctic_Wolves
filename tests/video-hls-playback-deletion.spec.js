@@ -24,28 +24,22 @@ function readFile(relativePath) {
 
 test.describe('Views serve HLS when hls_status is ready', () => {
 
-  test('video_coach_reviews.php pending tab should prefer hls_url when hls_status is ready', () => {
+  test('video_coach_reviews.php should use getPreferredVideoUrl for playback URL', () => {
     const content = readFile('views/video_coach_reviews.php');
-    // The view should check hls_status === 'ready' and use hls_url
-    expect(content).toContain("hls_status");
-    expect(content).toContain("hls_url");
-    // Should have conditional logic: if hls_status ready => use hls_url, else use video_url
-    expect(content).toContain("'ready'");
+    expect(content).toContain('getPreferredVideoUrl');
   });
 
-  test('video_coach_reviews.php should use hls_url in both pending and reviewed tabs', () => {
+  test('video_coach_reviews.php should use getPreferredVideoUrl in both pending and reviewed tabs', () => {
     const content = readFile('views/video_coach_reviews.php');
-    // Count how many play buttons reference hls_status logic
-    const hlsChecks = (content.match(/hls_status.*ready/g) || []).length;
+    // Count how many play buttons reference getPreferredVideoUrl
+    const occurrences = (content.match(/getPreferredVideoUrl/g) || []).length;
     // There should be at least 2 occurrences (pending tab + reviewed tab)
-    expect(hlsChecks).toBeGreaterThanOrEqual(2);
+    expect(occurrences).toBeGreaterThanOrEqual(2);
   });
 
-  test('video_drill_review.php should prefer hls_url when hls_status is ready', () => {
+  test('video_drill_review.php should use getPreferredVideoUrl for playback URL', () => {
     const content = readFile('views/video_drill_review.php');
-    expect(content).toContain("hls_status");
-    expect(content).toContain("hls_url");
-    expect(content).toContain("'ready'");
+    expect(content).toContain('getPreferredVideoUrl');
   });
 
   test('video_coach_reviews.php data-video-url should resolve through resolveRustfsUrl', () => {
@@ -59,6 +53,22 @@ test.describe('Views serve HLS when hls_status is ready', () => {
     const content = readFile('views/video_drill_review.php');
     expect(content).toContain('resolveRustfsUrl($pdo');
     expect(content).toContain('data-video-url=');
+  });
+
+  test('getPreferredVideoUrl helper should exist in lib/image_helper.php', () => {
+    const content = readFile('lib/image_helper.php');
+    expect(content).toContain('function getPreferredVideoUrl(');
+  });
+
+  test('getPreferredVideoUrl should check hls_status ready and hls_url', () => {
+    const content = readFile('lib/image_helper.php');
+    const funcStart = content.indexOf('function getPreferredVideoUrl(');
+    const funcEnd = content.indexOf('\n}', funcStart) + 2;
+    const func = content.substring(funcStart, funcEnd);
+    expect(func).toContain("hls_status");
+    expect(func).toContain("'ready'");
+    expect(func).toContain("hls_url");
+    expect(func).toContain("video_url");
   });
 
 });
@@ -173,6 +183,23 @@ test.describe('deleteRustFSPrefix helper function', () => {
     const func = content.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
     expect(func).toContain("'deleted'");
     expect(func).toContain('$deleted');
+  });
+
+  test('deleteRustFSPrefix should log individual deletion failures', () => {
+    const content = readFile('lib/rustfs_storage.php');
+    const funcStart = content.indexOf('function deleteRustFSPrefix(');
+    const funcEnd = content.indexOf('\nfunction ', funcStart + 1);
+    const func = content.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
+    expect(func).toContain('error_log');
+    expect(func).toContain('failed to delete object');
+  });
+
+  test('deleteRustFSPrefix should return list of failed keys', () => {
+    const content = readFile('lib/rustfs_storage.php');
+    const funcStart = content.indexOf('function deleteRustFSPrefix(');
+    const funcEnd = content.indexOf('\nfunction ', funcStart + 1);
+    const func = content.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
+    expect(func).toContain("'failed'");
   });
 
 });

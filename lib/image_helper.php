@@ -109,3 +109,20 @@ function resolveRustfsUrl($pdo, $url) {
     // Not a recognised RustFS URL — return as-is
     return $url;
 }
+
+/**
+ * Get the preferred playback URL for a video.
+ *
+ * When HLS transcoding is complete (hls_status='ready') the original source
+ * file has been deleted by the companion, so we must serve the HLS manifest.
+ * Otherwise fall back to the original video_url.
+ *
+ * @param array $video  Video row from the database (must include video_url, hls_url, hls_status)
+ * @return string  The URL to use for playback (video_url or hls_url)
+ */
+function getPreferredVideoUrl($video) {
+    if (($video['hls_status'] ?? '') === 'ready' && !empty($video['hls_url'])) {
+        return $video['hls_url'];
+    }
+    return $video['video_url'] ?? '';
+}
