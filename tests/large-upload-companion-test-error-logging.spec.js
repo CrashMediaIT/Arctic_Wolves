@@ -18,6 +18,9 @@ function readFile(relativePath) {
   return fs.readFileSync(path.join(ROOT, relativePath), 'utf-8');
 }
 
+// Constant used in tests — the companion references FFMPEG_PATH variable
+const FFMPEG_PATH_PATTERN = 'FFMPEG_PATH';
+
 // =====================================================
 // 1. streamUploadToRustFS uses stall detection for large files
 // =====================================================
@@ -134,9 +137,6 @@ test.describe('Companion /api/test diagnostic endpoint', () => {
   });
 });
 
-// Constant used in tests — the companion references FFMPEG_PATH variable
-const FFMPEG_PATH_PATTERN = 'FFMPEG_PATH';
-
 // =====================================================
 // 3. triggerHlsTranscode error logging via ErrorLogger
 // =====================================================
@@ -198,13 +198,17 @@ test.describe('triggerHlsTranscode companion error logging', () => {
     expect(func).toContain("ErrorLogger::error(\"Companion transcode trigger exception");
   });
 
-  test('should NOT use plain error_log for companion failures', () => {
+  test('should use ErrorLogger instead of error_log in curl and exception handlers', () => {
     const c = content();
     const funcStart = c.indexOf('function triggerHlsTranscode(');
     const funcEnd = c.indexOf('\nfunction ', funcStart + 1);
     const func = c.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
-    // Should not use plain error_log() for companion-related errors
-    expect(func).not.toContain('error_log(');
+    // The curl error handler and catch block should use ErrorLogger
+    const curlErrBlock = func.substring(func.indexOf('curl_errno'));
+    expect(curlErrBlock).toContain('ErrorLogger::error');
+    const catchBlock = func.substring(func.indexOf('} catch'));
+    expect(catchBlock).toContain('ErrorLogger::error');
+    expect(catchBlock).not.toContain('error_log(');
   });
 
   test('should include companion URL in error messages for diagnostics', () => {
