@@ -611,7 +611,7 @@ foreach ($url_keys as $uk) {
                         <div class="setting-item">
                             <div class="setting-info">
                                 <h4>RustFS Endpoint URL</h4>
-                                <p>Your RustFS server address (e.g., https://rustfs.example.com or http://localhost:9000)</p>
+                                <p>Your RustFS server address (e.g., https://rustfs.example.com). SSL on port 443 is recommended with HAProxy.</p>
                             </div>
                             <input type="text" name="rustfs_endpoint" class="form-input" 
                                    value="<?php echo htmlspecialchars($settings['rustfs_endpoint'] ?? ''); ?>"
