@@ -342,6 +342,8 @@ try {
                 'results' => $results,
             ]);
             exit;
+
+        case 'update_paperless':
             $paperless_url = trim($_POST['paperless_url'] ?? '');
             $paperless_api_token = trim($_POST['paperless_api_token'] ?? '');
             $paperless_ocr_enabled = isset($_POST['paperless_ocr_enabled']) ? '1' : '0';
