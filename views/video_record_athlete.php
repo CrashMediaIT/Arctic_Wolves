@@ -992,29 +992,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     status.textContent = 'Uploading to cloud storage...';
 
-                    // ---------- Step 2a: PUT file directly to RustFS ----------
+                    // ---------- Step 2: upload via proxy (preferred) or direct to RustFS ----------
+                    if (proxyUploadUrl && proxyToken) {
+                        return xhrPut(
+                            proxyUploadUrl,
+                            videoFile,
+                            { 'Content-Type': contentType, 'X-Upload-Token': proxyToken },
+                            'Uploading via server'
+                        );
+                    }
                     return xhrPut(
                         data.presigned_url,
                         videoFile,
                         { 'Content-Type': contentType },
                         'Uploading to cloud storage'
-                    );
-                })
-                .catch(function(directErr) {
-                    // Direct upload failed — try the streaming proxy (Step 2b)
-                    if (!proxyUploadUrl || !proxyToken) {
-                        throw directErr; // No proxy available, propagate to legacy fallback
-                    }
-                    console.warn('Direct S3 upload failed:', directErr.message, '— trying streaming proxy');
-                    status.textContent = 'Retrying via server proxy...';
-                    bar.style.width = '0%';
-                    percent.textContent = '0%';
-
-                    return xhrPut(
-                        proxyUploadUrl,
-                        videoFile,
-                        { 'Content-Type': contentType, 'X-Upload-Token': proxyToken },
-                        'Uploading via server'
                     );
                 })
                 .then(function() {
@@ -1039,8 +1030,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 })
                 .catch(function(err) {
-                    // Fall back to legacy server-side upload if both direct and proxy fail
-                    console.warn('Direct + proxy upload failed, falling back to legacy upload:', err.message);
+                    // Fall back to legacy server-side upload if proxy/direct upload failed
+                    console.warn('Upload failed, falling back to legacy upload:', err.message);
                     status.textContent = 'Retrying via server...';
                     bar.style.width = '0%';
                     percent.textContent = '0%';
