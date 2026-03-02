@@ -30,17 +30,14 @@ try {
     require_once __DIR__ . '/cloud_config.php';
     $rustfs = getRustFSSettings($pdo);
     if (isRustFSConfigured($rustfs)) {
-        $use_ssl = ($rustfs['rustfs_use_ssl'] ?? '1') === '1';
-        $normalizedEndpoint = ensureEndpointScheme(rtrim($rustfs['rustfs_endpoint'], '/'), $use_ssl);
-        $parsedEndpoint = parse_url($normalizedEndpoint);
+        $parsedEndpoint = parse_url(rtrim($rustfs['rustfs_endpoint'], '/'));
         if ($parsedEndpoint && !empty($parsedEndpoint['host'])) {
             $origin = ($parsedEndpoint['scheme'] ?? 'https') . '://' . $parsedEndpoint['host'];
             if (!empty($parsedEndpoint['port'])) $origin .= ':' . $parsedEndpoint['port'];
             $extraConnectSrc[] = $origin;
         }
         if (!empty($rustfs['rustfs_public_endpoint'])) {
-            $normalizedPub = ensureEndpointScheme(rtrim($rustfs['rustfs_public_endpoint'], '/'), $use_ssl);
-            $pubParsed = parse_url($normalizedPub);
+            $pubParsed = parse_url(rtrim($rustfs['rustfs_public_endpoint'], '/'));
             if ($pubParsed && !empty($pubParsed['host'])) {
                 $pubOrigin = ($pubParsed['scheme'] ?? 'https') . '://' . $pubParsed['host'];
                 if (!empty($pubParsed['port'])) $pubOrigin .= ':' . $pubParsed['port'];
