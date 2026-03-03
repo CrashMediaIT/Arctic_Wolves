@@ -649,11 +649,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     // Try direct-to-RustFS upload first (faster, avoids server timeout for large files)
                     if (data.presigned_url) {
+                        var presignedUrl = data.presigned_url;
                         status.textContent = 'Uploading to cloud storage...';
                         return new Promise(function(resolve, reject) {
                             var xhr = new XMLHttpRequest();
                             vrCurrentUploadXhr = xhr;
-                            xhr.open('PUT', data.presigned_url, true);
+                            xhr.open('PUT', presignedUrl, true);
                             xhr.setRequestHeader('Content-Type', contentType);
                             var uploadStarted = false;
                             var connTimer = setTimeout(function() {
@@ -786,7 +787,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     return fetch('/process_video.php', { method: 'POST', body: retryMeta })
                         .then(function(r) { return r.json(); })
                         .then(function(data2) {
-                            if (!data2.presigned_url) throw new Error('No presigned URL available for direct S3');
+                            if (!data2.presigned_url) throw new Error('No presigned URL available');
                             uploadNonce = data2.upload_nonce || uploadNonce;
                             return new Promise(function(resolve, reject) {
                                 var xhr = new XMLHttpRequest();
@@ -803,9 +804,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                 };
                                 xhr.onload = function() {
                                     if (xhr.status >= 200 && xhr.status < 300) resolve();
-                                    else reject(new Error('Direct S3 upload failed (HTTP ' + xhr.status + ')'));
+                                    else reject(new Error('Cloud upload failed (HTTP ' + xhr.status + ')'));
                                 };
-                                xhr.onerror = function() { reject(new Error('Network error during direct S3 upload')); };
+                                xhr.onerror = function() { reject(new Error('Network error during cloud upload')); };
                                 xhr.send(videoFile);
                             });
                         })

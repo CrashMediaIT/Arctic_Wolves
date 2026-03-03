@@ -952,10 +952,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     console.log('[Upload] ' + label + ': starting PUT to ' + url + ' size=' + file.size + ' type=' + (headers['Content-Type'] || 'unknown'));
 
-                    xhr.upload.onprogress = function(e) {
+                    xhr.upload.onprogress = function(ev) {
                         if (!uploadStarted) { uploadStarted = true; clearTimeout(connTimer); }
-                        if (e.lengthComputable) {
-                            var pct = Math.round((e.loaded / e.total) * 100);
+                        if (ev.lengthComputable) {
+                            var pct = Math.round((ev.loaded / ev.total) * 100);
                             bar.style.width = pct + '%';
                             percent.textContent = pct + '%';
                             if (pct < 100) {
@@ -1044,14 +1044,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     return fetch('process_video.php', { method: 'POST', body: confirmData })
                         .then(function(r) { return r.json(); });
                 })
-                .then(function(response) {
-                    if (response.success) {
+                .then(function(result) {
+                    if (result.success) {
                         bar.style.width = '100%';
                         percent.textContent = '100%';
                         status.textContent = 'Upload complete! Redirecting...';
-                        window.location.href = response.redirect || 'dashboard.php?page=coaches_reviews&success=video_uploaded';
+                        window.location.href = result.redirect || 'dashboard.php?page=coaches_reviews&success=video_uploaded';
                     } else {
-                        throw new Error(response.error || 'Confirmation failed');
+                        throw new Error(result.error || 'Confirmation failed');
                     }
                 })
                 .catch(function(err) {
@@ -1072,9 +1072,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     return fetch('process_video.php', { method: 'POST', body: retryMeta })
                         .then(function(r) { return r.json(); })
                         .then(function(data2) {
-                            if (!data2.presigned_url) throw new Error('No presigned URL available for direct S3');
+                            if (!data2.presigned_url) throw new Error('No presigned URL available');
                             uploadNonce = data2.upload_nonce || uploadNonce;
-                            return xhrPut(data2.presigned_url, videoFile, { 'Content-Type': contentType }, 'Direct S3 upload');
+                            return xhrPut(data2.presigned_url, videoFile, { 'Content-Type': contentType }, 'Uploading to cloud storage');
                         })
                         .then(function() {
                             status.textContent = 'Confirming upload...';
@@ -1109,8 +1109,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     currentUploadXhr = legacyXhr;
                     legacyXhr.open('POST', uploadForm.getAttribute('action'), true);
                     legacyXhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-                    legacyXhr.upload.onprogress = function(ev) {
-                        if (ev.lengthComputable) {
+                    legacyXhr.upload.onprogress = function(e) {
+                        if (e.lengthComputable) {
                             var pct = Math.round((ev.loaded / ev.total) * 100);
                             bar.style.width = pct + '%';
                             percent.textContent = pct + '%';
@@ -1119,16 +1119,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     };
                     legacyXhr.onload = function() {
                         try {
-                            var resp = JSON.parse(legacyXhr.responseText);
-                            if (resp.success) {
+                            var response = JSON.parse(legacyXhr.responseText);
+                            if (response.success) {
                                 bar.style.width = '100%';
                                 percent.textContent = '100%';
                                 status.textContent = 'Upload complete! Redirecting...';
-                                window.location.href = resp.redirect || 'dashboard.php?page=coaches_reviews&success=video_uploaded';
+                                window.location.href = response.redirect || 'dashboard.php?page=coaches_reviews&success=video_uploaded';
                             } else {
                                 overlay.style.display = 'none';
                                 submitBtn.disabled = false;
-                                showToast('Upload failed: ' + (resp.error || 'Please try again.'), 'error');
+                                showToast('Upload failed: ' + (response.error || 'Please try again.'), 'error');
                             }
                         } catch (parseErr) {
                             overlay.style.display = 'none';
