@@ -278,7 +278,8 @@ def _pcfg(key: str, default: str = "") -> str:
 API_KEY = _pcfg("api_key")
 MAIN_APP_URL = _pcfg("main_app_url")
 HW_ACCEL = _pcfg("hw_accel") or os.getenv("HW_ACCEL", "auto")
-HW_ACCEL_DEVICE = _pcfg("hw_accel_device") or os.getenv("HW_ACCEL_DEVICE", "/dev/dri/renderD128")
+_DEFAULT_HW_ACCEL_DEVICE = "/dev/dri/renderD128"
+HW_ACCEL_DEVICE = _pcfg("hw_accel_device") or os.getenv("HW_ACCEL_DEVICE", _DEFAULT_HW_ACCEL_DEVICE)
 MAX_CONCURRENT_JOBS = int(_pcfg("max_concurrent_jobs", "2"))
 
 # S3 / RustFS connection — entered in the companion Settings UI or pushed
@@ -1788,7 +1789,7 @@ def update_config():
         updated.append("hw_accel")
 
     if "hw_accel_device" in data:
-        HW_ACCEL_DEVICE = str(data["hw_accel_device"]).strip() or "/dev/dri/renderD128"
+        HW_ACCEL_DEVICE = str(data["hw_accel_device"]).strip() or _DEFAULT_HW_ACCEL_DEVICE
         updated.append("hw_accel_device")
 
     if "max_concurrent_jobs" in data:
