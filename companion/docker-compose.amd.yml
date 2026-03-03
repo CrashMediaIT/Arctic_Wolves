@@ -1,0 +1,20 @@
+# Arctic Wolves Video Companion Server - AMD GPU Override
+# Use with: docker compose -f docker-compose.yml -f docker-compose.amd.yml up -d
+#
+# Uses the linuxserver.io AMD mod for hardware-accelerated transcoding
+# via VA-API on AMD GPUs (integrated or discrete).
+#
+# Prerequisites:
+#   - AMD GPU (APU integrated or discrete Radeon)
+#   - /dev/dri device nodes available on the host
+#   - Mesa VA-API drivers on the host (mesa-va-drivers / libva-mesa-driver)
+#
+# Reference: https://github.com/linuxserver/docker-mods/tree/jellyfin-amd
+
+services:
+  companion:
+    environment:
+      - HW_ACCEL=vaapi
+      - DOCKER_MODS=linuxserver/mods:jellyfin-amd
+    devices:
+      - /dev/dri:/dev/dri

@@ -757,7 +757,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     var legacyData = new FormData(uploadForm);
                     var legacyXhr = new XMLHttpRequest();
                     vrCurrentUploadXhr = legacyXhr;
-                    legacyXhr.open('POST', uploadForm.action, true);
+                    legacyXhr.open('POST', uploadForm.getAttribute('action'), true);
                     legacyXhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
                     legacyXhr.upload.onprogress = function(ev) {
                         if (ev.lengthComputable) {

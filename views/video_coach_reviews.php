@@ -1087,7 +1087,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     var legacyData = new FormData(uploadForm);
                     legacyData.set('action', 'athlete_upload_video');
                     var legacyXhr = new XMLHttpRequest();
-                    legacyXhr.open('POST', uploadForm.action, true);
+                    legacyXhr.open('POST', uploadForm.getAttribute('action'), true);
                     legacyXhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
                     legacyXhr.upload.onprogress = function(ev) {
                         if (ev.lengthComputable) {

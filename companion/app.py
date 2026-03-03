@@ -502,8 +502,26 @@ def _safe_path(relative: str) -> str | None:
     return str(target)
 
 
+def _probe_encoder(encoder: str) -> bool:
+    """Verify a hardware encoder actually works by running a minimal encode."""
+    try:
+        cmd = [FFMPEG_PATH, "-y", "-hide_banner", "-loglevel", "error",
+               "-f", "lavfi", "-i", "color=c=black:s=64x64:d=0.1:r=10",
+               "-frames:v", "1", "-c:v", encoder, "-f", "null", "-"]
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+        return proc.returncode == 0
+    except Exception:
+        return False
+
+
 def _detect_hw_accel() -> dict:
-    """Detect available hardware acceleration methods via FFmpeg."""
+    """Detect available hardware acceleration methods via FFmpeg.
+
+    Unlike simply listing compiled-in encoders, this function validates
+    each candidate encoder by running a minimal probe encode.  This
+    prevents reporting CUDA/NVENC as available on systems that only have
+    integrated Intel graphics (or no GPU at all).
+    """
     result = {
         "available": [],
         "selected": HW_ACCEL,
@@ -522,7 +540,9 @@ def _detect_hw_accel() -> dict:
     except Exception:
         pass
 
-    # Check for hardware encoders
+    # Check for hardware encoders — only include those that actually work
+    # on this system (FFmpeg lists compiled-in encoders even when no
+    # matching hardware is present).
     try:
         proc = subprocess.run(
             [FFMPEG_PATH, "-hide_banner", "-encoders"],
@@ -532,7 +552,7 @@ def _detect_hw_accel() -> dict:
             for hw_enc in ["h264_nvenc", "hevc_nvenc", "h264_qsv", "hevc_qsv",
                            "h264_vaapi", "hevc_vaapi", "h264_amf", "hevc_amf",
                            "av1_nvenc", "av1_qsv", "av1_vaapi"]:
-                if hw_enc in line:
+                if hw_enc in line and _probe_encoder(hw_enc):
                     result["encoders"].append(hw_enc)
     except Exception:
         pass
@@ -612,16 +632,34 @@ def _encoder_flags(encoder: str) -> list[str]:
 
 
 def _hwaccel_decode_flags() -> list[str]:
-    """Return FFmpeg input flags for hardware-accelerated decoding."""
+    """Return FFmpeg input flags for hardware-accelerated decoding.
+
+    When HW_ACCEL is ``auto``, the function inspects which encoders were
+    validated as usable by ``_detect_hw_accel()`` and picks the matching
+    decode method instead of unconditionally assuming CUDA.
+    """
     accel = HW_ACCEL.lower()
     if accel == "none":
         return []
-    if accel in ("nvenc", "auto"):
+    if accel == "nvenc":
         return ["-hwaccel", "cuda", "-hwaccel_output_format", "cuda"]
     if accel == "qsv":
         return ["-hwaccel", "qsv"]
-    if accel == "vaapi":
+    if accel in ("vaapi", "amf"):
         return ["-hwaccel", "vaapi", "-hwaccel_device", "/dev/dri/renderD128"]
+    if accel == "auto":
+        # Detect which hardware is actually present and pick the right
+        # decode path — don't blindly assume CUDA is available.
+        hw = _detect_hw_accel()
+        encoders = hw.get("encoders", [])
+        if any("nvenc" in e for e in encoders):
+            return ["-hwaccel", "cuda", "-hwaccel_output_format", "cuda"]
+        if any("qsv" in e for e in encoders):
+            return ["-hwaccel", "qsv"]
+        if any("vaapi" in e for e in encoders):
+            return ["-hwaccel", "vaapi", "-hwaccel_device", "/dev/dri/renderD128"]
+        # No usable hardware — software decode
+        return []
     return []
 
 

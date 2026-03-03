@@ -2,7 +2,7 @@
 /**
  * Athlete Video Recording/Upload Interface
  * Allows athletes to record videos using their device camera or upload existing videos
- * for coach review. Supports direct upload to Nextcloud or offline recording mode.
+ * for coach review. Supports direct upload to RustFS or offline recording mode.
  */
 
 // Get the current user's assigned coach
@@ -1067,7 +1067,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     legacyData.set('action', 'athlete_upload_video');
                     var legacyXhr = new XMLHttpRequest();
                     currentUploadXhr = legacyXhr;
-                    legacyXhr.open('POST', uploadForm.action, true);
+                    legacyXhr.open('POST', uploadForm.getAttribute('action'), true);
                     legacyXhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
                     legacyXhr.upload.onprogress = function(ev) {
                         if (ev.lengthComputable) {
