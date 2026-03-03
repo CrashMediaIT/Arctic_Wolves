@@ -328,7 +328,14 @@ function ensureCors($endpoint, $bucket, $region, $accessKey, $secretKey, $useSsl
         CURLOPT_CONNECTTIMEOUT => 10,
         CURLOPT_TIMEOUT        => 15,
     ]);
-    curl_exec($ch);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr  = curl_error($ch);
     curl_close($ch);
-    // Best-effort — if it fails the browser PUT will simply show a CORS error
+
+    if ($curlErr) {
+        error_log("Video test CORS setup curl error: $curlErr");
+    } elseif ($httpCode < 200 || $httpCode >= 300) {
+        error_log("Video test CORS setup failed: HTTP $httpCode — " . substr($response, 0, 200));
+    }
 }
