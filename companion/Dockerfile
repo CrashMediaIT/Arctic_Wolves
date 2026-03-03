@@ -3,9 +3,32 @@ FROM python:3.12-slim
 LABEL maintainer="Crash Media IT"
 LABEL description="Arctic Wolves Video Companion Server - Hardware-accelerated video processing"
 
+# Optional Intel GPU support — set INSTALL_INTEL_GPU=true at build time to
+# include Intel Media Driver (iHD) and VA-API libraries for QSV / VA-API
+# hardware-accelerated transcoding.
+ARG INSTALL_INTEL_GPU=false
+
+# Optional AMD GPU support — set INSTALL_AMD_GPU=true at build time to
+# include Mesa VA-API driver for AMD GPU hardware-accelerated transcoding.
+ARG INSTALL_AMD_GPU=false
+
 # Install FFmpeg with hardware acceleration support
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
+    && if [ "$INSTALL_INTEL_GPU" = "true" ]; then \
+        apt-get install -y --no-install-recommends \
+            intel-media-va-driver \
+            vainfo \
+            libva-drm2 \
+            libva2 ; \
+    fi \
+    && if [ "$INSTALL_AMD_GPU" = "true" ]; then \
+        apt-get install -y --no-install-recommends \
+            mesa-va-drivers \
+            vainfo \
+            libva-drm2 \
+            libva2 ; \
+    fi \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

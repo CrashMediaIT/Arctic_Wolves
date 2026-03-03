@@ -25,6 +25,7 @@ import base64
 import re
 from pathlib import Path
 
+import urllib3
 import boto3
 import requests as http_requests
 from botocore.config import Config as BotoConfig
@@ -289,6 +290,11 @@ S3_BUCKET = _pcfg("s3_bucket")
 S3_REGION = _pcfg("s3_region", "us-east-1")
 S3_USE_SSL = _pcfg("s3_use_ssl", "true").lower() in ("true", "1", "yes")
 S3_VERIFY_SSL = _pcfg("s3_verify_ssl", "false").lower() in ("true", "1", "yes")
+
+# Suppress noisy InsecureRequestWarning when SSL verification is intentionally
+# disabled (common with self-signed certs on internal RustFS / S3 endpoints).
+if not S3_VERIFY_SSL:
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # Node support — master/slave architecture for distributed transcoding.
 # The master node is what the main application communicates with.  If the
