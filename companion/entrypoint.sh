@@ -76,6 +76,7 @@ if [ -c /dev/dri/card0 ]; then
         groupadd -g "$CARD_GID" "$CARD_GROUP" 2>/dev/null || true
     fi
     usermod -aG "$CARD_GROUP" companion 2>/dev/null || true
+    echo "Added companion user to group $CARD_GROUP (GID $CARD_GID) for /dev/dri/card0"
 fi
 
 # Drop to non-root user and exec the CMD
