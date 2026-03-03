@@ -68,10 +68,13 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
 
     var ALLOWED_EXT = ['mp4','mkv','mov','avi','webm'];
     var MAX_SIZE = 10 * 1024 * 1024 * 1024; // 10 GB
-    var MULTIPART_THRESHOLD = 256 * 1024 * 1024; // 256 MB – files above this use multipart
-    var PART_SIZE = 256 * 1024 * 1024;            // 256 MB per part
+    var MULTIPART_THRESHOLD = 64 * 1024 * 1024; // 64 MB – files above this use multipart
+    var PART_SIZE = 64 * 1024 * 1024;            // 64 MB per part
     var STALL_TIMEOUT_SEC = 30; // seconds with no progress before warning
     var PROGRESS_LOG_INTERVAL = 10; // log progress to output window every N seconds
+    var CONCURRENT_PARTS = 3; // upload this many parts in parallel
+    var MAX_PART_RETRIES = 3; // retry each part up to this many times
+    var STALL_ABORT_SEC = 60; // abort and retry a part after this many seconds with no progress
 
     function log(msg) {
         logEl.style.display = 'block';
@@ -159,7 +162,7 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
         }
     });
 
-    // ── Single PUT upload (small files ≤ 256 MB) ──────────────────────
+    // ── Single PUT upload (small files ≤ 64 MB) ──────────────────────
     function singlePutUpload(file) {
         var uploadStart = Date.now();
         progressText.textContent = 'Requesting presigned URL…';
@@ -270,14 +273,14 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
         });
     }
 
-    // ── Multipart upload (large files > 256 MB) ──────────────────────
+    // ── Multipart upload (large files > 64 MB) ──────────────────────
     function multipartUpload(file) {
         var totalParts = Math.ceil(file.size / PART_SIZE);
         var objectKey = '';
         var uploadId  = '';
         var uploadStart = Date.now();
 
-        log('File exceeds ' + (MULTIPART_THRESHOLD / 1048576) + ' MB — using multipart upload (' + totalParts + ' parts of ' + (PART_SIZE / 1048576) + ' MB)');
+        log('File exceeds ' + (MULTIPART_THRESHOLD / 1048576) + ' MB — using multipart upload (' + totalParts + ' parts of ' + (PART_SIZE / 1048576) + ' MB, ' + CONCURRENT_PARTS + ' concurrent)');
         progressText.textContent = 'Initiating multipart upload…';
 
         postAction({
@@ -327,19 +330,61 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
     }
 
     function uploadAllParts(file, objectKey, uploadId, totalParts) {
-        var parts = [];
+        var results = new Array(totalParts); // indexed by partNumber-1
         var uploadedBytes = 0;
+        var nextIndex = 0; // next part index to dispatch (0-based)
+        var activeCount = 0;
+        var completedCount = 0;
 
-        function nextPart() {
-            var partNumber = parts.length + 1;
-            if (partNumber > totalParts) return Promise.resolve(parts);
+        return new Promise(function(resolve, reject) {
+            var failed = false;
 
-            var start = (partNumber - 1) * PART_SIZE;
-            var end   = Math.min(start + PART_SIZE, file.size);
+            function dispatch() {
+                while (!failed && activeCount < CONCURRENT_PARTS && nextIndex < totalParts) {
+                    (function(idx) {
+                        var partNumber = idx + 1;
+                        activeCount++;
+                        uploadOnePart(file, objectKey, uploadId, partNumber, totalParts, uploadedBytes)
+                            .then(function(result) {
+                                if (failed) return;
+                                uploadedBytes += result.size;
+                                results[idx] = { PartNumber: partNumber, ETag: result.etag };
+                                activeCount--;
+                                completedCount++;
+                                if (completedCount === totalParts) {
+                                    resolve(results);
+                                } else {
+                                    dispatch();
+                                }
+                            })
+                            .catch(function(err) {
+                                if (failed) return;
+                                failed = true;
+                                reject(err);
+                            });
+                    })(nextIndex);
+                    nextIndex++;
+                }
+            }
+
+            dispatch();
+        });
+    }
+
+    function uploadOnePart(file, objectKey, uploadId, partNumber, totalParts, prevUploaded) {
+        var start = (partNumber - 1) * PART_SIZE;
+        var end   = Math.min(start + PART_SIZE, file.size);
+        var chunkSize = end - start;
+        var attempt = 0;
+
+        function tryUpload() {
+            attempt++;
             var chunk = file.slice(start, end);
             var partStart = Date.now();
 
-            progressText.textContent = 'Requesting presigned URL for part ' + partNumber + '/' + totalParts + '…';
+            if (attempt > 1) {
+                logWarn('Retrying part ' + partNumber + '/' + totalParts + ' (attempt ' + attempt + '/' + MAX_PART_RETRIES + ')');
+            }
 
             return postAction({
                 action:      'presign_part',
@@ -349,18 +394,24 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
             })
             .then(function(data) {
                 logDebug('Presign for part ' + partNumber + ' took ' + elapsed(partStart));
-                return uploadPart(data.presigned_url, chunk, partNumber, totalParts, file.size, uploadedBytes);
+                return uploadPart(data.presigned_url, chunk, partNumber, totalParts, file.size, prevUploaded);
             })
             .then(function(etag) {
-                uploadedBytes += (end - start);
-                parts.push({ PartNumber: partNumber, ETag: etag });
                 var etagDisplay = etag ? etag.substring(0, 12) + '…' : 'none';
-                log('Part ' + partNumber + '/' + totalParts + ' uploaded (' + ((end - start) / 1048576).toFixed(1) + ' MB, ETag: ' + etagDisplay + ', ' + elapsed(partStart) + ')');
-                return nextPart();
+                log('Part ' + partNumber + '/' + totalParts + ' uploaded (' + (chunkSize / 1048576).toFixed(1) + ' MB, ETag: ' + etagDisplay + ', ' + elapsed(partStart) + ')');
+                return { etag: etag, size: chunkSize };
+            })
+            .catch(function(err) {
+                if (attempt < MAX_PART_RETRIES) {
+                    var delaySec = Math.pow(2, attempt - 1); // 1s, 2s, 4s backoff
+                    logWarn('Part ' + partNumber + ' failed (attempt ' + attempt + '): ' + err.message + ' — retrying in ' + delaySec + 's');
+                    return new Promise(function(res) { setTimeout(res, delaySec * 1000); }).then(tryUpload);
+                }
+                throw err;
             });
         }
 
-        return nextPart();
+        return tryUpload();
     }
 
     function uploadPart(presignedUrl, chunk, partNumber, totalParts, totalSize, prevUploaded) {
@@ -381,7 +432,10 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
             function checkStall() {
                 var now = Date.now();
                 var secSinceProgress = Math.round((now - lastProgressTime) / 1000);
-                if (secSinceProgress >= STALL_TIMEOUT_SEC) {
+                if (secSinceProgress >= STALL_ABORT_SEC) {
+                    logWarn('Part ' + partNumber + ' stalled for ' + secSinceProgress + 's — aborting to retry');
+                    xhr.abort();
+                } else if (secSinceProgress >= STALL_TIMEOUT_SEC) {
                     var totalUploaded = prevUploaded + lastLoaded;
                     logWarn('Part ' + partNumber + ' stalled – no progress for ' + secSinceProgress + 's at '
                         + (totalUploaded / 1048576).toFixed(1) + ' MB total ('
