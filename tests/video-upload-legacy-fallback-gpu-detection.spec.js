@@ -74,6 +74,29 @@ test.describe('Companion app probe-validates hardware encoders', () => {
     expect(funcBody).toContain('returncode == 0');
   });
 
+  test('_probe_encoder should include VAAPI device init flags for vaapi encoders', () => {
+    const c = content();
+    const funcStart = c.indexOf('def _probe_encoder(');
+    const funcEnd = c.indexOf('\ndef ', funcStart + 1);
+    const funcBody = c.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
+
+    // VAAPI encoders need the device and hwupload filter to probe correctly
+    expect(funcBody).toContain('-vaapi_device');
+    expect(funcBody).toContain('/dev/dri/renderD128');
+    expect(funcBody).toContain('hwupload');
+  });
+
+  test('_probe_encoder should include QSV device init flags for qsv encoders', () => {
+    const c = content();
+    const funcStart = c.indexOf('def _probe_encoder(');
+    const funcEnd = c.indexOf('\ndef ', funcStart + 1);
+    const funcBody = c.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
+
+    // QSV encoders need explicit device initialization
+    expect(funcBody).toContain('-init_hw_device');
+    expect(funcBody).toContain('qsv');
+  });
+
   test('_detect_hw_accel should call _probe_encoder for each candidate', () => {
     const c = content();
     const funcStart = c.indexOf('def _detect_hw_accel(');
@@ -91,6 +114,24 @@ test.describe('Companion app probe-validates hardware encoders', () => {
 
     // The encoder is only appended if _probe_encoder returns True
     expect(funcBody).toContain('if hw_enc in line and _probe_encoder(hw_enc)');
+  });
+});
+
+// =====================================================
+// 2b. HW_ACCEL reads from environment variable
+// =====================================================
+
+test.describe('HW_ACCEL falls back to environment variable', () => {
+  test('HW_ACCEL should read from os.getenv when persisted config is empty', () => {
+    const c = readFile('companion/app.py');
+    // The HW_ACCEL line should use os.getenv as fallback
+    expect(c).toContain("os.getenv(\"HW_ACCEL\"");
+  });
+
+  test('HW_ACCEL should prefer persisted config over env var', () => {
+    const c = readFile('companion/app.py');
+    // _pcfg should be checked first (via `or` short-circuit)
+    expect(c).toMatch(/_pcfg\("hw_accel"\)\s+or\s+os\.getenv\("HW_ACCEL"/);
   });
 });
 
