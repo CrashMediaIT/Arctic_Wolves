@@ -79,8 +79,9 @@ $rustfsConfigured = isRustFSConfigured($rustfs);
         if (!file) return;
 
         // Client-side validation
-        var ext = file.name.split('.').pop().toLowerCase();
-        if (ALLOWED_EXT.indexOf(ext) === -1) {
+        var dotIdx = file.name.lastIndexOf('.');
+        var ext = dotIdx > 0 ? file.name.substring(dotIdx + 1).toLowerCase() : '';
+        if (!ext || ALLOWED_EXT.indexOf(ext) === -1) {
             log('ERROR: Invalid extension ".' + ext + '". Allowed: ' + ALLOWED_EXT.join(', '));
             return;
         }

@@ -3264,8 +3264,8 @@ function handleGetVideoTestUploadUrl() {
         $file_type = $map[$ext] ?? 'application/octet-stream';
     }
 
-    $unique = uniqid('vtest_', true) . '_' . time() . '.' . $ext;
-    $object_key = 'Images/videos/test/' . $unique;
+    $unique_filename = uniqid('vtest_', true) . '_' . time() . '.' . $ext;
+    $object_key = 'Images/videos/test/' . $unique_filename;
 
     $rustfs = getRustFSSettings($pdo);
     if (!isRustFSConfigured($rustfs)) {
