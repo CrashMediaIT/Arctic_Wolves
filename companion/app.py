@@ -536,8 +536,12 @@ def _probe_encoder(encoder: str) -> bool:
               ["-f", "lavfi", "-i", "color=c=black:s=64x64:d=0.1:r=10",
                "-frames:v", "1"] + vf + ["-c:v", encoder, "-f", "null", "-"]
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=10, check=False)
+        if proc.returncode != 0:
+            logger.info("Encoder probe failed for %s (rc=%d): %s",
+                        encoder, proc.returncode, (proc.stderr or "").strip()[:300])
         return proc.returncode == 0
-    except Exception:
+    except Exception as exc:
+        logger.info("Encoder probe exception for %s: %s", encoder, exc)
         return False
 
 
@@ -1411,13 +1415,17 @@ def run_diagnostics():
 
         hw_test["encoder"] = encoder_name
 
-        # Generate a 1-second silent test clip using lavfi sources
+        # Generate a 1-second silent test clip using lavfi sources.
+        # NOTE: decode_flags are intentionally NOT used here.  The input
+        # is synthetic (lavfi), so -hwaccel flags serve no purpose and
+        # opening the GPU device twice (once for hwaccel decode, once for
+        # the encoder's -vaapi_device / -init_hw_device) can cause FFmpeg
+        # to fail on some driver versions even though vainfo works fine.
         test_dir = os.path.join(TEMP_DIR, "diag_" + str(uuid.uuid4())[:8])
         os.makedirs(test_dir, exist_ok=True)
         test_output = os.path.join(test_dir, "test.mp4")
         try:
-            decode_flags = _hwaccel_decode_flags(hw_info)
-            cmd = [FFMPEG_PATH, "-y"] + decode_flags + [
+            cmd = [FFMPEG_PATH, "-y"] + [
                 "-f", "lavfi", "-i", "color=c=black:s=320x240:d=1:r=25",
                 "-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono",
                 "-t", "1",
@@ -1427,7 +1435,6 @@ def run_diagnostics():
             ]
             hw_test["ffmpeg_cmd"] = " ".join(cmd)
             hw_test["hw_info"] = hw_info
-            hw_test["decode_flags"] = decode_flags
             hw_test["encode_flags"] = encode_flags
             logger.info("Diagnostic HW test command: %s", " ".join(cmd))
             proc = subprocess.run(cmd, capture_output=True, text=True, timeout=30)

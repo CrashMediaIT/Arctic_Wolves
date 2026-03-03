@@ -346,12 +346,17 @@ test.describe('Diagnostics endpoint detailed HW logging', () => {
     expect(diagBody).toContain('"hw_info"');
   });
 
-  test('hw_encode test should include decode_flags in result', () => {
+  test('hw_encode test should NOT use decode_flags for lavfi input', () => {
     const c = content();
     const diagStart = c.indexOf('def run_diagnostics(');
     const diagEnd = c.indexOf('\ndef ', diagStart + 1);
     const diagBody = c.substring(diagStart, diagEnd > -1 ? diagEnd : undefined);
-    expect(diagBody).toContain('"decode_flags"');
+
+    // The diagnostic test uses lavfi (synthetic) input, so -hwaccel decode
+    // flags are pointless and can cause double-device-open failures on
+    // some GPU drivers.  The command should NOT include decode_flags variable.
+    expect(diagBody).not.toContain('+ decode_flags');
+    expect(diagBody).not.toContain('"decode_flags"');
   });
 
   test('hw_encode test should include encode_flags in result', () => {
@@ -368,6 +373,15 @@ test.describe('Diagnostics endpoint detailed HW logging', () => {
     const diagEnd = c.indexOf('\ndef ', diagStart + 1);
     const diagBody = c.substring(diagStart, diagEnd > -1 ? diagEnd : undefined);
     expect(diagBody).toContain('logger.warning');
+  });
+
+  test('_probe_encoder should log failures with FFmpeg stderr', () => {
+    const c = content();
+    const probeStart = c.indexOf('def _probe_encoder(');
+    const probeEnd = c.indexOf('\ndef ', probeStart + 1);
+    const probeBody = c.substring(probeStart, probeEnd > -1 ? probeEnd : undefined);
+    expect(probeBody).toContain('logger.info');
+    expect(probeBody).toContain('probe failed');
   });
 });
 
@@ -392,9 +406,13 @@ test.describe('Settings UI detailed HW diagnostics log', () => {
     expect(c).toContain('FFmpeg command');
   });
 
-  test('should display decode and encode flags in log', () => {
+  test('should display encode flags in log', () => {
     const c = content();
-    expect(c).toContain('Decode flags');
     expect(c).toContain('Encode flags');
+  });
+
+  test('should hint when validated encoders list is empty but vainfo works', () => {
+    const c = content();
+    expect(c).toContain('vainfo OK but FFmpeg probe failed');
   });
 });
