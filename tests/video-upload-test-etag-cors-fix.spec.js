@@ -7,6 +7,7 @@
  * 2. ensureCors() CORS XML includes POST and DELETE methods (matching production)
  * 3. uploadPart() in admin_video_test.php handles null ETag gracefully
  *    by failing fast with a clear error instead of collecting null ETags
+ * 4. pfSense HAProxy CORS config exposes ETag header for multipart uploads
  */
 
 import { test, expect } from '@playwright/test';
@@ -118,5 +119,61 @@ test.describe('uploadPart ETag handling in admin_video_test.php', () => {
   test('should call getResponseHeader for ETag', () => {
     const c = content();
     expect(c).toContain("getResponseHeader('ETag')");
+  });
+});
+
+// =====================================================
+// 3. pfSense HAProxy CORS config (deployment/haproxy-cors.cfg)
+// =====================================================
+
+test.describe('pfSense HAProxy CORS config exposes ETag', () => {
+  const content = () => readFile('deployment/haproxy-cors.cfg');
+
+  test('should include ETag in Access-Control-Expose-Headers', () => {
+    const c = content();
+    expect(c).toContain('ETag');
+    // Must be in the Expose-Headers line specifically
+    const exposeLine = c.split('\n').find(l => l.includes('Expose-Headers'));
+    expect(exposeLine).toBeTruthy();
+    expect(exposeLine).toContain('ETag');
+  });
+
+  test('should include Content-Range, Accept-Ranges, Content-Length alongside ETag', () => {
+    const c = content();
+    const exposeLine = c.split('\n').find(l => l.includes('Expose-Headers') && !l.startsWith('#'));
+    expect(exposeLine).toBeTruthy();
+    expect(exposeLine).toContain('Content-Range');
+    expect(exposeLine).toContain('Accept-Ranges');
+    expect(exposeLine).toContain('Content-Length');
+    expect(exposeLine).toContain('ETag');
+  });
+
+  test('should allow all required HTTP methods', () => {
+    const c = content();
+    expect(c).toContain('GET, POST, PUT, DELETE, OPTIONS');
+  });
+
+  test('should allow arcticwolves.ca domain', () => {
+    const c = content();
+    expect(c).toContain('arcticwolves\\.ca');
+  });
+
+  test('should capture and use dynamic Origin for credentialed requests', () => {
+    const c = content();
+    expect(c).toContain('set-var(txn.origin) req.hdr(Origin)');
+    expect(c).toContain('%[var(txn.origin)]');
+    expect(c).toContain('Access-Control-Allow-Credentials');
+  });
+
+  test('should handle OPTIONS preflight with 204 status', () => {
+    const c = content();
+    expect(c).toContain('return status 204');
+    expect(c).toContain('METH_OPTIONS');
+  });
+
+  test('should set Vary: Origin header', () => {
+    const c = content();
+    expect(c).toContain('Vary');
+    expect(c).toContain('"Origin"');
   });
 });
