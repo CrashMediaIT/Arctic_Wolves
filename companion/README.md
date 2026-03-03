@@ -46,12 +46,38 @@ docker compose -f docker-compose.yml -f docker-compose.truenas.yml up -d
 
 ### Intel QSV / VAAPI
 
-Pass through the render device and set `HW_ACCEL` in the companion's Settings UI,
-or add a compose override:
+```bash
+docker compose -f docker-compose.yml -f docker-compose.intel.yml up -d
+```
+
+Or set the environment variable manually (works on TrueNAS and other
+platforms that only support environment variables — no build-args needed):
 
 ```yaml
 services:
   companion:
+    environment:
+      - HW_ACCEL=qsv
+    devices:
+      - /dev/dri:/dev/dri
+```
+
+The entrypoint automatically installs the Intel Media Driver (iHD) and VA-API
+libraries on first start when it sees `HW_ACCEL=qsv`.
+
+### AMD VAAPI
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.amd.yml up -d
+```
+
+Or set the environment variable manually:
+
+```yaml
+services:
+  companion:
+    environment:
+      - HW_ACCEL=vaapi
     devices:
       - /dev/dri:/dev/dri
 ```
