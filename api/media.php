@@ -17,6 +17,16 @@ require_once __DIR__ . '/../db_config.php';
 require_once __DIR__ . '/../security.php';
 require_once __DIR__ . '/../lib/rustfs_storage.php';
 
+// Handle CORS preflight (OPTIONS) requests
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    header('Access-Control-Allow-Origin: *');
+    header('Access-Control-Allow-Methods: GET, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization, X-API-Key, Accept, Range');
+    header('Access-Control-Max-Age: 86400');
+    exit;
+}
+
 // ── Resolve object key ──────────────────────────────────────────────────
 $object_key = '';
 
@@ -199,6 +209,9 @@ if ($range_header) {
     header('Cache-Control: public, max-age=86400');
     header('X-Content-Type-Options: nosniff');
     header('Access-Control-Allow-Origin: *');
+    header('Access-Control-Allow-Methods: GET, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization, X-API-Key, Accept, Range');
+    header('Access-Control-Expose-Headers: Content-Range, Accept-Ranges, Content-Length');
 
     // Stream directly to output
     $ch_range = curl_init($url);
@@ -303,5 +316,8 @@ header('X-Content-Type-Options: nosniff');
 
 // Allow CORS for same-site subdomains
 header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-API-Key, Accept, Range');
+header('Access-Control-Expose-Headers: Content-Range, Accept-Ranges, Content-Length');
 
 echo $body;

@@ -1014,6 +1014,27 @@ document.addEventListener('DOMContentLoaded', function() {
                         'Uploading to cloud storage'
                     );
                 })
+                .catch(function(uploadErr) {
+                    // Proxy upload failed — try direct S3 presigned URL as fallback
+                    if (!proxyUploadUrl || !proxyToken) throw uploadErr;
+                    console.warn('[Upload] Proxy upload failed:', uploadErr.message, '— trying direct S3');
+                    status.textContent = 'Retrying via direct cloud upload...';
+                    bar.style.width = '0%';
+                    percent.textContent = '0%';
+
+                    return fetch('process_video.php', { method: 'POST', body: formMeta })
+                        .then(function(r) { return r.json(); })
+                        .then(function(data2) {
+                            if (!data2.success || !data2.presigned_url) throw uploadErr;
+                            uploadNonce = data2.upload_nonce;
+                            return xhrPut(
+                                data2.presigned_url,
+                                videoFile,
+                                { 'Content-Type': contentType },
+                                'Uploading to cloud storage'
+                            );
+                        });
+                })
                 .then(function() {
                     // ---------- Step 3: confirm upload ----------
                     status.textContent = 'Confirming upload...';
@@ -1036,7 +1057,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 })
                 .catch(function(err) {
-                    // Fall back to legacy server-side upload if proxy/direct upload failed
+                    // Fall back to legacy server-side upload if both proxy and direct upload failed
                     console.error('[Upload] Primary upload failed, falling back to legacy upload. Error:', err.message, 'Stack:', err.stack);
                     status.textContent = 'Retrying via server...';
                     bar.style.width = '0%';

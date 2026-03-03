@@ -1015,6 +1015,47 @@ document.addEventListener('DOMContentLoaded', function() {
                         xhr.send(file);
                     });
                 })
+                .catch(function(uploadErr) {
+                    // Proxy upload failed — try direct S3 presigned URL as fallback
+                    if (!proxyUploadUrl || !proxyToken) throw uploadErr;
+                    console.warn('[Upload] Proxy upload failed:', uploadErr.message, '— trying direct S3');
+                    status.textContent = 'Retrying via direct cloud upload...';
+                    bar.style.width = '0%';
+                    percent.textContent = '0%';
+
+                    return fetch('process_video.php', { method: 'POST', body: formMeta })
+                        .then(function(r) { return r.json(); })
+                        .then(function(data2) {
+                            if (!data2.success || !data2.presigned_url) throw uploadErr;
+                            uploadNonce = data2.upload_nonce;
+                            contentType = data2.content_type || contentType;
+                            return new Promise(function(resolve, reject) {
+                                var xhr = new XMLHttpRequest();
+                                xhr.open('PUT', data2.presigned_url, true);
+                                xhr.setRequestHeader('Content-Type', contentType);
+                                var uploadStarted = false;
+                                var connTimer = setTimeout(function() {
+                                    if (!uploadStarted) { xhr.abort(); reject(new Error('Direct cloud upload timed out')); }
+                                }, 30000);
+                                xhr.upload.onprogress = function(ev) {
+                                    if (!uploadStarted) { uploadStarted = true; clearTimeout(connTimer); }
+                                    if (ev.lengthComputable) {
+                                        var pct = Math.round((ev.loaded / ev.total) * 100);
+                                        bar.style.width = pct + '%';
+                                        percent.textContent = pct + '%';
+                                        status.textContent = pct < 100 ? 'Uploading to cloud... ' + pct + '%' : 'Finalizing upload...';
+                                    }
+                                };
+                                xhr.onload = function() {
+                                    clearTimeout(connTimer);
+                                    if (xhr.status >= 200 && xhr.status < 300) resolve();
+                                    else reject(new Error('Direct upload failed (HTTP ' + xhr.status + ')'));
+                                };
+                                xhr.onerror = function() { clearTimeout(connTimer); reject(new Error('Network error during direct upload')); };
+                                xhr.send(file);
+                            });
+                        });
+                })
                 .then(function() {
                     // ---------- Step 3: confirm upload ----------
                     status.textContent = 'Confirming upload...';
