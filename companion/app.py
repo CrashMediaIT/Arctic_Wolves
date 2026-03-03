@@ -536,8 +536,12 @@ def _probe_encoder(encoder: str) -> bool:
               ["-f", "lavfi", "-i", "color=c=black:s=64x64:d=0.1:r=10",
                "-frames:v", "1"] + vf + ["-c:v", encoder, "-f", "null", "-"]
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=10, check=False)
+        if proc.returncode != 0:
+            logger.info("Encoder probe failed for %s (rc=%d): %s",
+                        encoder, proc.returncode, (proc.stderr or "").strip()[:300])
         return proc.returncode == 0
-    except Exception:
+    except Exception as exc:
+        logger.info("Encoder probe exception for %s: %s", encoder, exc)
         return False
 
 
@@ -666,7 +670,7 @@ def _encoder_flags(encoder: str) -> list[str]:
     return flags
 
 
-def _hwaccel_decode_flags() -> list[str]:
+def _hwaccel_decode_flags(hw_info: dict | None = None) -> list[str]:
     """Return FFmpeg input flags for hardware-accelerated decoding.
 
     When HW_ACCEL is ``auto``, the function inspects which encoders were
@@ -674,8 +678,13 @@ def _hwaccel_decode_flags() -> list[str]:
     decode method instead of unconditionally assuming CUDA.
 
     When ``qsv`` is selected but QSV is unavailable (e.g. FFmpeg compiled
-    without libmfx/libvpl), VAAPI is tried as a fallback because Intel
-    integrated GPUs support both APIs through the same hardware.
+    without libmfx/libvpl, or libmfx-gen1.2 runtime not installed), VAAPI
+    is tried as a fallback because Intel integrated GPUs support both APIs
+    through the same hardware.
+
+    *hw_info* is an optional pre-computed result from ``_detect_hw_accel()``
+    to avoid running the (expensive) encoder probes a second time when the
+    caller already has the result.
     """
     accel = HW_ACCEL.lower()
     if accel == "none":
@@ -683,14 +692,27 @@ def _hwaccel_decode_flags() -> list[str]:
     if accel == "nvenc":
         return ["-hwaccel", "cuda", "-hwaccel_output_format", "cuda"]
     if accel == "qsv":
-        return ["-hwaccel", "qsv", "-hwaccel_device", HW_ACCEL_DEVICE]
+        # Verify QSV is actually usable before requesting it for decode.
+        # On Debian 13+ FFmpeg is built with --enable-libvpl but the QSV
+        # GPU runtime (libmfx-gen1.2) may not be installed.  Without it,
+        # -hwaccel qsv fails and kills the whole FFmpeg command even when
+        # the *encoder* correctly fell back to VAAPI via _select_encoder.
+        info = hw_info or _detect_hw_accel()
+        encoders = info.get("encoders", [])
+        if any("qsv" in e for e in encoders):
+            return ["-hwaccel", "qsv", "-hwaccel_device", HW_ACCEL_DEVICE]
+        # QSV unavailable — fall back to VAAPI (same Intel iGPU hardware)
+        if any("vaapi" in e for e in encoders):
+            return ["-hwaccel", "vaapi", "-hwaccel_device", HW_ACCEL_DEVICE]
+        # Neither QSV nor VAAPI usable — software decode
+        return []
     if accel in ("vaapi", "amf"):
         return ["-hwaccel", "vaapi", "-hwaccel_device", HW_ACCEL_DEVICE]
     if accel == "auto":
         # Detect which hardware is actually present and pick the right
         # decode path — don't blindly assume CUDA is available.
-        hw = _detect_hw_accel()
-        encoders = hw.get("encoders", [])
+        info = hw_info or _detect_hw_accel()
+        encoders = info.get("encoders", [])
         if any("nvenc" in e for e in encoders):
             return ["-hwaccel", "cuda", "-hwaccel_output_format", "cuda"]
         if any("qsv" in e for e in encoders):
@@ -1393,13 +1415,17 @@ def run_diagnostics():
 
         hw_test["encoder"] = encoder_name
 
-        # Generate a 1-second silent test clip using lavfi sources
+        # Generate a 1-second silent test clip using lavfi sources.
+        # NOTE: decode_flags are intentionally NOT used here.  The input
+        # is synthetic (lavfi), so -hwaccel flags serve no purpose and
+        # opening the GPU device twice (once for hwaccel decode, once for
+        # the encoder's -vaapi_device / -init_hw_device) can cause FFmpeg
+        # to fail on some driver versions even though vainfo works fine.
         test_dir = os.path.join(TEMP_DIR, "diag_" + str(uuid.uuid4())[:8])
         os.makedirs(test_dir, exist_ok=True)
         test_output = os.path.join(test_dir, "test.mp4")
         try:
-            decode_flags = _hwaccel_decode_flags()
-            cmd = [FFMPEG_PATH, "-y"] + decode_flags + [
+            cmd = [FFMPEG_PATH, "-y"] + [
                 "-f", "lavfi", "-i", "color=c=black:s=320x240:d=1:r=25",
                 "-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono",
                 "-t", "1",
@@ -1407,15 +1433,21 @@ def run_diagnostics():
                 "-c:a", "aac", "-b:a", "64k",
                 test_output,
             ]
+            hw_test["ffmpeg_cmd"] = " ".join(cmd)
+            hw_test["hw_info"] = hw_info
+            hw_test["encode_flags"] = encode_flags
+            logger.info("Diagnostic HW test command: %s", " ".join(cmd))
             proc = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
             if proc.returncode == 0 and os.path.isfile(test_output) and os.path.getsize(test_output) > 0:
                 hw_test["passed"] = True
             else:
                 hw_test["error"] = (proc.stderr or "unknown error")[:500]
+                logger.warning("Diagnostic HW test failed (rc=%d): %s", proc.returncode, proc.stderr[:1000])
         finally:
             shutil.rmtree(test_dir, ignore_errors=True)
     except Exception as exc:
         hw_test["error"] = str(exc)[:500]
+        logger.warning("Diagnostic HW test exception: %s", exc)
 
     results["hw_encode"] = hw_test
 
@@ -1570,7 +1602,7 @@ def clip():
         ]
     else:
         hw_info = _detect_hw_accel()
-        decode_flags = _hwaccel_decode_flags() if hw_accel else []
+        decode_flags = _hwaccel_decode_flags(hw_info) if hw_accel else []
         encode_flags = _select_encoder(hw_info, codec) if hw_accel else ["-c:v", f"lib{codec.replace('h265', 'x265').replace('h264', 'x264')}"]
 
         cmd = [FFMPEG_PATH, "-y"] + decode_flags + [
@@ -1614,7 +1646,7 @@ def transcode():
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
     hw_info = _detect_hw_accel()
-    decode_flags = _hwaccel_decode_flags() if hw_accel else []
+    decode_flags = _hwaccel_decode_flags(hw_info) if hw_accel else []
     encode_flags = _select_encoder(hw_info, codec) if hw_accel else ["-c:v", f"lib{codec.replace('h265', 'x265').replace('h264', 'x264')}"]
 
     cmd = [FFMPEG_PATH, "-y"] + decode_flags + ["-i", source_path] + encode_flags
@@ -2241,7 +2273,7 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
             os.makedirs(variant_dir, exist_ok=True)
 
             encode_flags = _select_encoder(hw_info, "h264")
-            decode_flags = _hwaccel_decode_flags()
+            decode_flags = _hwaccel_decode_flags(hw_info)
             vf_flags = _hw_vf(encode_flags, scale_height=v["height"])
 
             cmd = [FFMPEG_PATH, "-y"] + decode_flags + [

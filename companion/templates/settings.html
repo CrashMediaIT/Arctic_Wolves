@@ -375,6 +375,9 @@
                             </span>
                         </div>
 
+                        <!-- HW Diagnostics Log (populated by JS after test) -->
+                        <pre id="diag-hw-log" style="display:none;margin:8px 0 0 0;padding:10px 12px;background:var(--bg-card,#1a1a2e);border:1px solid var(--border);border-radius:6px;font-size:11px;line-height:1.6;color:var(--text-dim);white-space:pre-wrap;word-break:break-all;max-height:260px;overflow-y:auto;"></pre>
+
                         <!-- Overall Result -->
                         <div style="margin-top:16px;padding:12px;border-radius:8px;" id="diag-overall">
                         </div>
@@ -741,6 +744,8 @@
             });
             document.getElementById('diag-overall').innerHTML = '';
             document.getElementById('diag-overall').style.background = 'transparent';
+            var hwLog = document.getElementById('diag-hw-log');
+            if (hwLog) { hwLog.style.display = 'none'; hwLog.textContent = ''; }
 
             try {
                 var res = await fetch(API_BASE + '/api/test', { method: 'POST', headers: apiHeaders() });
@@ -784,11 +789,30 @@
                 setDiagBadge('diag-hw-badge', hw.passed);
                 var hwDetail = document.getElementById('diag-hw-detail');
                 if (hw.passed) {
-                    hwDetail.textContent = 'Encoder: ' + (hw.encoder || 'unknown') + ' — test clip encoded successfully';
+                    hwDetail.innerHTML = 'Encoder: <strong>' + (hw.encoder || 'unknown') + '</strong> — test clip encoded successfully';
                     hwDetail.style.color = '#22c55e';
                 } else {
-                    hwDetail.textContent = hw.error || 'Hardware encoding test failed';
+                    var errorHtml = '<span style="color:#ef4444;">' + (hw.error || 'Hardware encoding test failed') + '</span>';
+                    hwDetail.innerHTML = errorHtml;
                     hwDetail.style.color = '#ef4444';
+                }
+
+                // Expanded HW diagnostics log (always shown after test)
+                var hwLogEl = document.getElementById('diag-hw-log');
+                if (hwLogEl) {
+                    var logLines = [];
+                    logLines.push('HW_ACCEL setting: ' + (hw.hw_info && hw.hw_info.selected ? hw.hw_info.selected : 'N/A'));
+                    logLines.push('Selected encoder: ' + (hw.encoder || 'N/A'));
+                    if (hw.encode_flags) logLines.push('Encode flags: ' + JSON.stringify(hw.encode_flags));
+                    if (hw.hw_info) {
+                        logLines.push('Available HW methods: ' + (hw.hw_info.available || []).join(', ') || 'none');
+                        logLines.push('Validated encoders: ' + ((hw.hw_info.encoders || []).join(', ') || 'none — vainfo OK but FFmpeg probe failed?'));
+                        logLines.push('Detected decoders: ' + ((hw.hw_info.decoders || []).join(', ') || 'none'));
+                    }
+                    if (hw.ffmpeg_cmd) logLines.push('FFmpeg command:\n  ' + hw.ffmpeg_cmd);
+                    if (hw.error) logLines.push('Error output:\n  ' + hw.error);
+                    hwLogEl.textContent = logLines.join('\n');
+                    hwLogEl.style.display = 'block';
                 }
 
                 // Overall

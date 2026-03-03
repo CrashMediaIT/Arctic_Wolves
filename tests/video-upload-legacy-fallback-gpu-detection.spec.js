@@ -262,3 +262,157 @@ test.describe('No Nextcloud references in video upload view comments', () => {
     expect(header).toContain('RustFS');
   });
 });
+
+// =====================================================
+// 7. _hwaccel_decode_flags QSV → VAAPI fallback
+// =====================================================
+
+test.describe('_hwaccel_decode_flags QSV falls back to VAAPI decode', () => {
+  const content = () => readFile('companion/app.py');
+
+  test('should accept optional hw_info parameter to avoid redundant detection', () => {
+    const c = content();
+    expect(c).toContain('def _hwaccel_decode_flags(hw_info');
+  });
+
+  test('qsv mode should probe encoder availability before choosing decode method', () => {
+    const c = content();
+    const funcStart = c.indexOf('def _hwaccel_decode_flags(');
+    const funcEnd = c.indexOf('\ndef ', funcStart + 1);
+    const funcBody = c.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
+
+    // The qsv branch must check whether QSV is actually usable
+    // (via encoder probes) instead of blindly returning -hwaccel qsv
+    const qsvIdx = funcBody.indexOf('accel == "qsv"');
+    expect(qsvIdx).toBeGreaterThan(-1);
+    const afterQsv = funcBody.substring(qsvIdx);
+    expect(afterQsv).toContain('.get("encoders"');
+  });
+
+  test('qsv mode should fall back to VAAPI decode when QSV unavailable', () => {
+    const c = content();
+    const funcStart = c.indexOf('def _hwaccel_decode_flags(');
+    const funcEnd = c.indexOf('\ndef ', funcStart + 1);
+    const funcBody = c.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
+
+    // After the qsv check, there should be a VAAPI fallback
+    const qsvIdx = funcBody.indexOf('accel == "qsv"');
+    const autoIdx = funcBody.indexOf('accel == "auto"');
+    const qsvSection = funcBody.substring(qsvIdx, autoIdx > -1 ? autoIdx : undefined);
+    expect(qsvSection).toContain('"vaapi"');
+    expect(qsvSection).toContain('HW_ACCEL_DEVICE');
+  });
+
+  test('qsv mode should return empty flags when neither QSV nor VAAPI available', () => {
+    const c = content();
+    const funcStart = c.indexOf('def _hwaccel_decode_flags(');
+    const funcEnd = c.indexOf('\ndef ', funcStart + 1);
+    const funcBody = c.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
+
+    // The qsv branch should have a return [] for full software fallback
+    const qsvIdx = funcBody.indexOf('accel == "qsv"');
+    const autoIdx = funcBody.indexOf('accel == "auto"');
+    const qsvSection = funcBody.substring(qsvIdx, autoIdx > -1 ? autoIdx : undefined);
+    expect(qsvSection).toContain('return []');
+  });
+
+  test('call sites should pass hw_info to avoid redundant _detect_hw_accel()', () => {
+    const c = content();
+    // All call sites should pass hw_info from the already-computed detection
+    expect(c).toContain('_hwaccel_decode_flags(hw_info)');
+  });
+});
+
+// =====================================================
+// 8. Diagnostics endpoint includes detailed logging
+// =====================================================
+
+test.describe('Diagnostics endpoint detailed HW logging', () => {
+  const content = () => readFile('companion/app.py');
+
+  test('hw_encode test should include ffmpeg_cmd in result', () => {
+    const c = content();
+    const diagStart = c.indexOf('def run_diagnostics(');
+    const diagEnd = c.indexOf('\ndef ', diagStart + 1);
+    const diagBody = c.substring(diagStart, diagEnd > -1 ? diagEnd : undefined);
+    expect(diagBody).toContain('ffmpeg_cmd');
+  });
+
+  test('hw_encode test should include hw_info in result', () => {
+    const c = content();
+    const diagStart = c.indexOf('def run_diagnostics(');
+    const diagEnd = c.indexOf('\ndef ', diagStart + 1);
+    const diagBody = c.substring(diagStart, diagEnd > -1 ? diagEnd : undefined);
+    expect(diagBody).toContain('"hw_info"');
+  });
+
+  test('hw_encode test should NOT use decode_flags for lavfi input', () => {
+    const c = content();
+    const diagStart = c.indexOf('def run_diagnostics(');
+    const diagEnd = c.indexOf('\ndef ', diagStart + 1);
+    const diagBody = c.substring(diagStart, diagEnd > -1 ? diagEnd : undefined);
+
+    // The diagnostic test uses lavfi (synthetic) input, so -hwaccel decode
+    // flags are pointless and can cause double-device-open failures on
+    // some GPU drivers.  The command should NOT include decode_flags variable.
+    expect(diagBody).not.toContain('+ decode_flags');
+    expect(diagBody).not.toContain('"decode_flags"');
+  });
+
+  test('hw_encode test should include encode_flags in result', () => {
+    const c = content();
+    const diagStart = c.indexOf('def run_diagnostics(');
+    const diagEnd = c.indexOf('\ndef ', diagStart + 1);
+    const diagBody = c.substring(diagStart, diagEnd > -1 ? diagEnd : undefined);
+    expect(diagBody).toContain('"encode_flags"');
+  });
+
+  test('hw_encode test should log failure details via logger', () => {
+    const c = content();
+    const diagStart = c.indexOf('def run_diagnostics(');
+    const diagEnd = c.indexOf('\ndef ', diagStart + 1);
+    const diagBody = c.substring(diagStart, diagEnd > -1 ? diagEnd : undefined);
+    expect(diagBody).toContain('logger.warning');
+  });
+
+  test('_probe_encoder should log failures with FFmpeg stderr', () => {
+    const c = content();
+    const probeStart = c.indexOf('def _probe_encoder(');
+    const probeEnd = c.indexOf('\ndef ', probeStart + 1);
+    const probeBody = c.substring(probeStart, probeEnd > -1 ? probeEnd : undefined);
+    expect(probeBody).toContain('logger.info');
+    expect(probeBody).toContain('probe failed');
+  });
+});
+
+// =====================================================
+// 9. Settings UI shows HW diagnostic log
+// =====================================================
+
+test.describe('Settings UI detailed HW diagnostics log', () => {
+  const content = () => readFile('companion/templates/settings.html');
+
+  test('should have diag-hw-log element for expanded diagnostics', () => {
+    expect(content()).toContain('diag-hw-log');
+  });
+
+  test('should display validated encoders in log', () => {
+    const c = content();
+    expect(c).toContain('Validated encoders');
+  });
+
+  test('should display FFmpeg command in log', () => {
+    const c = content();
+    expect(c).toContain('FFmpeg command');
+  });
+
+  test('should display encode flags in log', () => {
+    const c = content();
+    expect(c).toContain('Encode flags');
+  });
+
+  test('should hint when validated encoders list is empty but vainfo works', () => {
+    const c = content();
+    expect(c).toContain('vainfo OK but FFmpeg probe failed');
+  });
+});
