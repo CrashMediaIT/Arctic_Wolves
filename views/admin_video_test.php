@@ -68,8 +68,8 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
 
     var ALLOWED_EXT = ['mp4','mkv','mov','avi','webm'];
     var MAX_SIZE = 10 * 1024 * 1024 * 1024; // 10 GB
-    var MULTIPART_THRESHOLD = 64 * 1024 * 1024; // 64 MB – files above this use multipart
-    var PART_SIZE = 64 * 1024 * 1024;            // 64 MB per part
+    var MULTIPART_THRESHOLD = 10 * 1024 * 1024; // 10 MB – files above this use multipart
+    var PART_SIZE = 10 * 1024 * 1024;            // 10 MB per part
 
     function log(msg) {
         logEl.style.display = 'block';
@@ -122,7 +122,7 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
         }
     });
 
-    // ── Single PUT upload (small files ≤ 64 MB) ──────────────────────
+    // ── Single PUT upload (small files ≤ 10 MB) ──────────────────────
     function singlePutUpload(file) {
         progressText.textContent = 'Requesting presigned URL…';
 
@@ -182,7 +182,7 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
         });
     }
 
-    // ── Multipart upload (large files > 64 MB) ──────────────────────
+    // ── Multipart upload (large files > 10 MB) ──────────────────────
     function multipartUpload(file) {
         var totalParts = Math.ceil(file.size / PART_SIZE);
         var objectKey = '';
