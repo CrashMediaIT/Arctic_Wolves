@@ -209,6 +209,11 @@
                             </select>
                             <div class="form-hint">Configured per-node — slaves may have different GPU hardware than the master.</div>
                         </div>
+                        <div class="form-group">
+                            <label for="cfg-hw-accel-device">GPU Device Path</label>
+                            <input id="cfg-hw-accel-device" name="hw_accel_device" type="text" class="form-input" placeholder="/dev/dri/renderD128" autocomplete="off">
+                            <div class="form-hint">Device path for VAAPI / QSV hardware acceleration (e.g. /dev/dri/renderD128). Leave blank for default.</div>
+                        </div>
                         <div class="form-group master-only-settings">
                             <label for="cfg-max-jobs">Max Concurrent Jobs</label>
                             <input id="cfg-max-jobs" name="max_concurrent_jobs" type="number" class="form-input" min="1" max="16" placeholder="2">
@@ -510,6 +515,7 @@
                 const c = await res.json();
 
                 document.getElementById('cfg-hw-accel').value = c.hw_accel || 'auto';
+                document.getElementById('cfg-hw-accel-device').value = c.hw_accel_device || '';
                 document.getElementById('cfg-main-app-url').value = c.main_app_url || '';
                 document.getElementById('cfg-max-jobs').value = c.max_concurrent_jobs ?? '';
 
@@ -549,6 +555,7 @@
             const val = (id) => document.getElementById(id).value.trim();
 
             payload.hw_accel = val('cfg-hw-accel');
+            payload.hw_accel_device = val('cfg-hw-accel-device');
             payload.main_app_url = val('cfg-main-app-url');
             if (val('cfg-max-jobs')) payload.max_concurrent_jobs = parseInt(val('cfg-max-jobs'), 10);
             payload.s3_endpoint = val('cfg-s3-endpoint');

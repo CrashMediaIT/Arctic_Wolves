@@ -278,6 +278,7 @@ def _pcfg(key: str, default: str = "") -> str:
 API_KEY = _pcfg("api_key")
 MAIN_APP_URL = _pcfg("main_app_url")
 HW_ACCEL = _pcfg("hw_accel") or os.getenv("HW_ACCEL", "auto")
+HW_ACCEL_DEVICE = _pcfg("hw_accel_device") or os.getenv("HW_ACCEL_DEVICE", "/dev/dri/renderD128")
 MAX_CONCURRENT_JOBS = int(_pcfg("max_concurrent_jobs", "2"))
 
 # S3 / RustFS connection — entered in the companion Settings UI or pushed
@@ -523,10 +524,10 @@ def _probe_encoder(encoder: str) -> bool:
         pre_input: list[str] = []
         vf: list[str] = []
         if "vaapi" in encoder:
-            pre_input = ["-vaapi_device", "/dev/dri/renderD128"]
+            pre_input = ["-vaapi_device", HW_ACCEL_DEVICE]
             vf = ["-vf", "format=nv12,hwupload"]
         elif "qsv" in encoder:
-            pre_input = ["-init_hw_device", "qsv=hw,child_device=/dev/dri/renderD128",
+            pre_input = ["-init_hw_device", f"qsv=hw,child_device={HW_ACCEL_DEVICE}",
                          "-filter_hw_device", "hw"]
             vf = ["-vf", "format=nv12,hwupload=extra_hw_frames=64"]
         cmd = [FFMPEG_PATH, "-y", "-hide_banner", "-loglevel", "error"] + \
@@ -650,9 +651,9 @@ def _encoder_flags(encoder: str) -> list[str]:
     if "nvenc" in encoder:
         flags += ["-preset", "p4", "-rc", "vbr"]
     elif "qsv" in encoder:
-        flags = ["-init_hw_device", "qsv=hw,child_device=/dev/dri/renderD128"] + flags + ["-preset", "medium"]
+        flags = ["-init_hw_device", f"qsv=hw,child_device={HW_ACCEL_DEVICE}"] + flags + ["-preset", "medium"]
     elif "vaapi" in encoder:
-        flags = ["-vaapi_device", "/dev/dri/renderD128"] + flags
+        flags = ["-vaapi_device", HW_ACCEL_DEVICE] + flags
     return flags
 
 
@@ -669,9 +670,9 @@ def _hwaccel_decode_flags() -> list[str]:
     if accel == "nvenc":
         return ["-hwaccel", "cuda", "-hwaccel_output_format", "cuda"]
     if accel == "qsv":
-        return ["-hwaccel", "qsv", "-hwaccel_device", "/dev/dri/renderD128"]
+        return ["-hwaccel", "qsv", "-hwaccel_device", HW_ACCEL_DEVICE]
     if accel in ("vaapi", "amf"):
-        return ["-hwaccel", "vaapi", "-hwaccel_device", "/dev/dri/renderD128"]
+        return ["-hwaccel", "vaapi", "-hwaccel_device", HW_ACCEL_DEVICE]
     if accel == "auto":
         # Detect which hardware is actually present and pick the right
         # decode path — don't blindly assume CUDA is available.
@@ -680,9 +681,9 @@ def _hwaccel_decode_flags() -> list[str]:
         if any("nvenc" in e for e in encoders):
             return ["-hwaccel", "cuda", "-hwaccel_output_format", "cuda"]
         if any("qsv" in e for e in encoders):
-            return ["-hwaccel", "qsv", "-hwaccel_device", "/dev/dri/renderD128"]
+            return ["-hwaccel", "qsv", "-hwaccel_device", HW_ACCEL_DEVICE]
         if any("vaapi" in e for e in encoders):
-            return ["-hwaccel", "vaapi", "-hwaccel_device", "/dev/dri/renderD128"]
+            return ["-hwaccel", "vaapi", "-hwaccel_device", HW_ACCEL_DEVICE]
         # No usable hardware — software decode
         return []
     return []
@@ -1729,6 +1730,7 @@ def get_config():
         "api_key_set": bool(API_KEY),
         "main_app_url": MAIN_APP_URL,
         "hw_accel": HW_ACCEL,
+        "hw_accel_device": HW_ACCEL_DEVICE,
         "max_concurrent_jobs": MAX_CONCURRENT_JOBS,
         "s3_endpoint": S3_ENDPOINT,
         "s3_bucket": S3_BUCKET,
@@ -1761,7 +1763,7 @@ def update_config():
     if auth_err:
         return auth_err
 
-    global API_KEY, MAIN_APP_URL, HW_ACCEL, MAX_CONCURRENT_JOBS
+    global API_KEY, MAIN_APP_URL, HW_ACCEL, HW_ACCEL_DEVICE, MAX_CONCURRENT_JOBS
     global S3_ENDPOINT, S3_ACCESS_KEY, S3_SECRET_KEY, S3_BUCKET, S3_REGION
     global S3_USE_SSL, S3_VERIFY_SSL, NODE_ROLE
     global ADMIN_USERNAME, ADMIN_PASSWORD_HASH
@@ -1784,6 +1786,10 @@ def update_config():
             return jsonify({"error": f"hw_accel must be one of {allowed}"}), 400
         HW_ACCEL = val
         updated.append("hw_accel")
+
+    if "hw_accel_device" in data:
+        HW_ACCEL_DEVICE = str(data["hw_accel_device"]).strip() or "/dev/dri/renderD128"
+        updated.append("hw_accel_device")
 
     if "max_concurrent_jobs" in data:
         try:
@@ -1843,6 +1849,7 @@ def update_config():
         "api_key": API_KEY,
         "main_app_url": MAIN_APP_URL,
         "hw_accel": HW_ACCEL,
+        "hw_accel_device": HW_ACCEL_DEVICE,
         "max_concurrent_jobs": str(MAX_CONCURRENT_JOBS),
         "s3_endpoint": S3_ENDPOINT,
         "s3_access_key": S3_ACCESS_KEY,
