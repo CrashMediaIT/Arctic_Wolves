@@ -517,6 +517,48 @@ _KNOWN_HW_ENCODERS = frozenset([
 ])
 
 
+def _qsv_render_device(device: str) -> str:
+    """Return a render-node path suitable for QSV from *device*.
+
+    QSV (via ``-init_hw_device qsv=hw,child_device=…``) requires a DRM
+    render node (``/dev/dri/renderDN``).  Card nodes
+    (``/dev/dri/cardN``) are accepted by VAAPI but **not** by the QSV
+    runtime.  When the user configures ``/dev/dri/card0`` the QSV probe
+    and encode silently fail, leaving only VAAPI (or software) as a
+    fallback — which is the bug described in the issue.
+
+    Resolution strategy:
+    1. If *device* is already a render node → return as-is.
+    2. Look up the matching render node via sysfs
+       (``/sys/class/drm/cardN/device/drm/renderD*``).
+    3. Fall back to the Linux kernel convention ``cardN → renderD(128+N)``.
+    4. If nothing can be resolved, return the original *device* unchanged.
+    """
+    m = re.match(r"^/dev/dri/card(\d+)$", device)
+    if not m:
+        return device  # already a render node or non-standard path
+
+    card_num = m.group(1)
+
+    # --- sysfs lookup (works on real hardware) ---
+    sysfs_dir = f"/sys/class/drm/card{card_num}/device/drm"
+    try:
+        for entry in os.listdir(sysfs_dir):
+            if entry.startswith("renderD"):
+                render_path = f"/dev/dri/{entry}"
+                if os.path.exists(render_path):
+                    return render_path
+    except OSError:
+        pass
+
+    # --- kernel convention fallback ---
+    render_path = f"/dev/dri/renderD{128 + int(card_num)}"
+    if os.path.exists(render_path):
+        return render_path
+
+    return device  # can't resolve; return original
+
+
 def _probe_encoder(encoder: str) -> bool:
     """Verify a hardware encoder actually works by running a minimal encode."""
     if encoder not in _KNOWN_HW_ENCODERS:
@@ -528,7 +570,7 @@ def _probe_encoder(encoder: str) -> bool:
             pre_input = ["-vaapi_device", HW_ACCEL_DEVICE]
             vf = ["-vf", "format=nv12,hwupload"]
         elif "qsv" in encoder:
-            pre_input = ["-init_hw_device", f"qsv=hw,child_device={HW_ACCEL_DEVICE}",
+            pre_input = ["-init_hw_device", f"qsv=hw,child_device={_qsv_render_device(HW_ACCEL_DEVICE)}",
                          "-filter_hw_device", "hw"]
             vf = ["-vf", "format=nv12,hwupload=extra_hw_frames=64"]
         cmd = [FFMPEG_PATH, "-y", "-hide_banner", "-loglevel", "error"] + \
@@ -663,7 +705,7 @@ def _encoder_flags(encoder: str) -> list[str]:
     if "nvenc" in encoder:
         flags += ["-preset", "p4", "-rc", "vbr"]
     elif "qsv" in encoder:
-        flags = ["-init_hw_device", f"qsv=hw,child_device={HW_ACCEL_DEVICE}",
+        flags = ["-init_hw_device", f"qsv=hw,child_device={_qsv_render_device(HW_ACCEL_DEVICE)}",
                  "-filter_hw_device", "hw"] + flags + ["-preset", "medium"]
     elif "vaapi" in encoder:
         flags = ["-vaapi_device", HW_ACCEL_DEVICE] + flags
@@ -700,7 +742,7 @@ def _hwaccel_decode_flags(hw_info: dict | None = None) -> list[str]:
         info = hw_info or _detect_hw_accel()
         encoders = info.get("encoders", [])
         if any("qsv" in e for e in encoders):
-            return ["-hwaccel", "qsv", "-hwaccel_device", HW_ACCEL_DEVICE]
+            return ["-hwaccel", "qsv", "-hwaccel_device", _qsv_render_device(HW_ACCEL_DEVICE)]
         # QSV unavailable — fall back to VAAPI (same Intel iGPU hardware)
         if any("vaapi" in e for e in encoders):
             return ["-hwaccel", "vaapi", "-hwaccel_device", HW_ACCEL_DEVICE]
@@ -716,7 +758,7 @@ def _hwaccel_decode_flags(hw_info: dict | None = None) -> list[str]:
         if any("nvenc" in e for e in encoders):
             return ["-hwaccel", "cuda", "-hwaccel_output_format", "cuda"]
         if any("qsv" in e for e in encoders):
-            return ["-hwaccel", "qsv", "-hwaccel_device", HW_ACCEL_DEVICE]
+            return ["-hwaccel", "qsv", "-hwaccel_device", _qsv_render_device(HW_ACCEL_DEVICE)]
         if any("vaapi" in e for e in encoders):
             return ["-hwaccel", "vaapi", "-hwaccel_device", HW_ACCEL_DEVICE]
         # No usable hardware — software decode

@@ -44,13 +44,13 @@ test.describe('Companion app.py HW_ACCEL_DEVICE configuration', () => {
     expect(probeFunc).not.toContain('"/dev/dri/renderD128"');
   });
 
-  test('_probe_encoder should use HW_ACCEL_DEVICE for qsv', () => {
+  test('_probe_encoder should use _qsv_render_device(HW_ACCEL_DEVICE) for qsv', () => {
     const c = content();
     const probeFunc = c.substring(
       c.indexOf('def _probe_encoder'),
       c.indexOf('def _detect_hw_accel')
     );
-    expect(probeFunc).toContain('child_device={HW_ACCEL_DEVICE}');
+    expect(probeFunc).toContain('child_device={_qsv_render_device(HW_ACCEL_DEVICE)}');
   });
 
   test('_encoder_flags should use HW_ACCEL_DEVICE not hardcoded path', () => {
@@ -136,5 +136,83 @@ test.describe('Companion settings.html hw_accel_device UI', () => {
   test('should have label mentioning GPU Device Path', () => {
     const c = content();
     expect(c).toContain('GPU Device Path');
+  });
+});
+
+// =====================================================
+// 4. QSV render device resolution (card0 → renderD128)
+// =====================================================
+
+test.describe('Companion app.py _qsv_render_device helper', () => {
+  const content = () => readFile('companion/app.py');
+
+  test('should define _qsv_render_device function', () => {
+    const c = content();
+    expect(c).toContain('def _qsv_render_device(device: str) -> str:');
+  });
+
+  test('should return device unchanged when already a render node', () => {
+    const c = content();
+    const func = c.substring(
+      c.indexOf('def _qsv_render_device'),
+      c.indexOf('def _probe_encoder')
+    );
+    // Check the regex matches only cardN paths
+    expect(func).toContain('/dev/dri/card');
+    expect(func).toContain('renderD');
+  });
+
+  test('should resolve card node via sysfs lookup', () => {
+    const c = content();
+    const func = c.substring(
+      c.indexOf('def _qsv_render_device'),
+      c.indexOf('def _probe_encoder')
+    );
+    expect(func).toContain('/sys/class/drm/card');
+    expect(func).toContain('os.listdir(sysfs_dir)');
+  });
+
+  test('should fall back to kernel convention cardN → renderD(128+N)', () => {
+    const c = content();
+    const func = c.substring(
+      c.indexOf('def _qsv_render_device'),
+      c.indexOf('def _probe_encoder')
+    );
+    expect(func).toContain('renderD{128 + int(card_num)}');
+  });
+
+  test('_encoder_flags should use _qsv_render_device for qsv', () => {
+    const c = content();
+    const flagsFunc = c.substring(
+      c.indexOf('def _encoder_flags'),
+      c.indexOf('def _hwaccel_decode_flags')
+    );
+    expect(flagsFunc).toContain('_qsv_render_device(HW_ACCEL_DEVICE)');
+  });
+
+  test('_hwaccel_decode_flags should use _qsv_render_device for qsv paths', () => {
+    const c = content();
+    const decodeFunc = c.substring(
+      c.indexOf('def _hwaccel_decode_flags'),
+      c.indexOf('def _hw_vf')
+    );
+    // QSV paths should use render device resolution
+    const qsvMatches = decodeFunc.match(/_qsv_render_device\(HW_ACCEL_DEVICE\)/g);
+    expect(qsvMatches).not.toBeNull();
+    expect(qsvMatches.length).toBe(2);  // explicit qsv + auto-detected qsv
+  });
+
+  test('_hwaccel_decode_flags should NOT use _qsv_render_device for vaapi paths', () => {
+    const c = content();
+    const decodeFunc = c.substring(
+      c.indexOf('def _hwaccel_decode_flags'),
+      c.indexOf('def _hw_vf')
+    );
+    // VAAPI paths should use HW_ACCEL_DEVICE directly (VAAPI works with card nodes)
+    const lines = decodeFunc.split('\n');
+    const vaapiLines = lines.filter(l => l.includes('"vaapi"') && l.includes('HW_ACCEL_DEVICE'));
+    for (const line of vaapiLines) {
+      expect(line).not.toContain('_qsv_render_device');
+    }
   });
 });
