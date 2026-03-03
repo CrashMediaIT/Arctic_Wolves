@@ -175,10 +175,6 @@ try {
         case 'navigate_pair':
             handleNavigatePair();
             break;
-
-        case 'get_video_test_upload_url':
-            handleGetVideoTestUploadUrl();
-            break;
             
         default:
             throw new Exception('Invalid action');
@@ -3220,75 +3216,4 @@ function triggerHlsTranscode($pdo, $video_id, $object_key) {
         ErrorLogger::error("Companion transcode trigger exception for video $video_id: " . $e->getMessage());
         // Non-fatal: the upload still succeeds
     }
-}
-
-/**
- * Handle presigned URL generation for the Video Test admin page.
- * Returns a presigned PUT URL so the browser can upload directly to RustFS.
- */
-function handleGetVideoTestUploadUrl() {
-    global $pdo, $user_id;
-
-    header('Content-Type: application/json');
-
-    // Admin-only action
-    $roleStmt = $pdo->prepare("SELECT role FROM user_roles WHERE user_id = ?");
-    $roleStmt->execute([$user_id]);
-    $roles = $roleStmt->fetchAll(PDO::FETCH_COLUMN);
-    if (!in_array('admin', $roles)) {
-        throw new Exception('Only administrators can use the video upload test');
-    }
-
-    $file_name = $_POST['file_name'] ?? '';
-    $file_size = filter_input(INPUT_POST, 'file_size', FILTER_VALIDATE_INT);
-    $file_type = $_POST['file_type'] ?? 'application/octet-stream';
-
-    if (empty($file_name) || !$file_size) {
-        throw new Exception('File information is required');
-    }
-
-    if ($file_size > 10 * 1024 * 1024 * 1024) {
-        throw new Exception('File size exceeds the 10 GB limit');
-    }
-
-    $ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
-    $allowed_ext = ['mp4', 'mkv', 'mov', 'avi', 'webm'];
-    if (!in_array($ext, $allowed_ext)) {
-        throw new Exception('Invalid file type. Allowed: ' . implode(', ', $allowed_ext));
-    }
-
-    $allowed_mimes = ['video/mp4', 'video/x-matroska', 'video/quicktime', 'video/x-msvideo', 'video/webm', 'video/avi'];
-    if (!in_array($file_type, $allowed_mimes)) {
-        $map = ['mp4' => 'video/mp4', 'mkv' => 'video/x-matroska', 'mov' => 'video/quicktime',
-                'avi' => 'video/x-msvideo', 'webm' => 'video/webm'];
-        $file_type = $map[$ext] ?? 'application/octet-stream';
-    }
-
-    $unique_filename = uniqid('vtest_', true) . '_' . time() . '.' . $ext;
-    $object_key = 'Images/videos/test/' . $unique_filename;
-
-    $rustfs = getRustFSSettings($pdo);
-    if (!isRustFSConfigured($rustfs)) {
-        throw new Exception('RustFS is not configured');
-    }
-
-    $presigned = generatePresignedUploadUrl(
-        $rustfs,
-        $object_key,
-        $file_type,
-        3600,
-        $rustfs['rustfs_public_endpoint'] ?? null
-    );
-
-    if (!$presigned['success']) {
-        throw new Exception('Failed to generate upload URL: ' . ($presigned['message'] ?? 'Unknown error'));
-    }
-
-    echo json_encode([
-        'success'      => true,
-        'presigned_url' => $presigned['url'],
-        'object_key'   => $object_key,
-        'content_type' => $file_type,
-    ]);
-    exit;
 }

@@ -1,9 +1,14 @@
-<!-- Admin Video Test - Direct RustFS Upload -->
+<!-- Admin Video Test - Direct RustFS Upload (fully standalone) -->
 <?php
-require_once __DIR__ . '/../cloud_config.php';
-
-$rustfs = getRustFSSettings($pdo);
-$rustfsConfigured = isRustFSConfigured($rustfs);
+// Check RustFS config directly from the database — no library imports
+$vtKeys = ['rustfs_endpoint','rustfs_access_key','rustfs_secret_key','rustfs_bucket'];
+$vtPh   = implode(',', array_fill(0, count($vtKeys), '?'));
+$vtStmt = $pdo->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ($vtPh)");
+$vtStmt->execute($vtKeys);
+$vtCfg = [];
+while ($r = $vtStmt->fetch(PDO::FETCH_ASSOC)) { $vtCfg[$r['setting_key']] = $r['setting_value']; }
+$rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_access_key'])
+                 && !empty($vtCfg['rustfs_secret_key']) && !empty($vtCfg['rustfs_bucket']);
 ?>
 
 <div class="card">
@@ -96,15 +101,14 @@ $rustfsConfigured = isRustFSConfigured($rustfs);
         progressText.textContent = 'Requesting presigned URL…';
         log('Selected file: ' + file.name + ' (' + (file.size / 1048576).toFixed(1) + ' MB, ' + file.type + ')');
 
-        // Step 1 – Ask server for a presigned PUT URL
+        // Step 1 – Ask our standalone backend for a presigned PUT URL
         var formData = new FormData();
-        formData.append('action', 'get_video_test_upload_url');
         formData.append('file_name', file.name);
         formData.append('file_size', file.size);
         formData.append('file_type', file.type || 'application/octet-stream');
         formData.append('csrf_token', csrfToken);
 
-        fetch('process_video.php', { method: 'POST', body: formData })
+        fetch('process_video_test.php', { method: 'POST', body: formData })
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (!data.success) throw new Error(data.error || data.message || 'Presign request failed');
@@ -131,9 +135,8 @@ $rustfsConfigured = isRustFSConfigured($rustfs);
         return new Promise(function(resolve, reject) {
             var xhr = new XMLHttpRequest();
             xhr.open('PUT', presignedUrl, true);
-            // Only set content-type if the presigned URL was signed without it
-            // RustFS presigned URLs in this codebase sign only the 'host' header,
-            // so setting Content-Type here is safe and helps the server store metadata.
+            // Set Content-Type so RustFS stores the correct metadata.
+            // The presigned URL only signs the 'host' header, so this is safe.
             xhr.setRequestHeader('Content-Type', contentType);
 
             xhr.upload.addEventListener('progress', function(ev) {
