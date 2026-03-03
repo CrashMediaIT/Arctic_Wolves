@@ -78,6 +78,50 @@ def _handle_unhandled_exception(exc):
 
 # Log every request and its outcome for debugging connectivity issues
 @app.after_request
+def _add_cors_headers(response):
+    """Add CORS headers to every response.
+
+    The companion server is typically called by the main PHP back-end (curl),
+    but it may also receive direct browser requests from arcticwolves.ca
+    subdomains or the other domains served by HAProxy.  The allowed origins
+    mirror the HAProxy ACL so the browser is never blocked.
+    """
+    _CORS_ORIGIN_RE = (
+        r"^https?://([a-z0-9\-\.]+\.)?"
+        r"(arcticwolves\.ca|precisionflooring\.ca|crashmedia\.ca|crashcrafts\.com)$"
+    )
+    import re
+    origin = request.headers.get("Origin", "")
+    if origin and re.match(_CORS_ORIGIN_RE, origin, re.IGNORECASE):
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "x-api-key, Authorization, Content-Type, Accept"
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Max-Age"] = "86400"
+    return response
+
+
+@app.before_request
+def _handle_cors_preflight():
+    """Return 204 for CORS preflight (OPTIONS) requests."""
+    if request.method == "OPTIONS":
+        import re
+        _CORS_ORIGIN_RE = (
+            r"^https?://([a-z0-9\-\.]+\.)?"
+            r"(arcticwolves\.ca|precisionflooring\.ca|crashmedia\.ca|crashcrafts\.com)$"
+        )
+        origin = request.headers.get("Origin", "")
+        if origin and re.match(_CORS_ORIGIN_RE, origin, re.IGNORECASE):
+            resp = app.make_response(("", 204))
+            resp.headers["Access-Control-Allow-Origin"] = origin
+            resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+            resp.headers["Access-Control-Allow-Headers"] = "x-api-key, Authorization, Content-Type, Accept"
+            resp.headers["Access-Control-Allow-Credentials"] = "true"
+            resp.headers["Access-Control-Max-Age"] = "86400"
+            return resp
+
+
+@app.after_request
 def _log_request(response):
     # Skip noisy health-check logging at INFO level
     if request.path == "/api/health" and response.status_code == 200:

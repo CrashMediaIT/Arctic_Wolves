@@ -818,6 +818,7 @@ function ensureRustFSBucketCors($settings) {
             '<AllowedMethod>GET</AllowedMethod>' .
             '<AllowedMethod>PUT</AllowedMethod>' .
             '<AllowedMethod>POST</AllowedMethod>' .
+            '<AllowedMethod>DELETE</AllowedMethod>' .
             '<AllowedMethod>HEAD</AllowedMethod>' .
             '<AllowedHeader>*</AllowedHeader>' .
             '<ExposeHeader>ETag</ExposeHeader>' .

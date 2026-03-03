@@ -18,7 +18,7 @@ ini_set('session.use_cookies', '0');
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization, X-API-Key');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-API-Key, Accept');
 header('Access-Control-Max-Age: 86400');
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
