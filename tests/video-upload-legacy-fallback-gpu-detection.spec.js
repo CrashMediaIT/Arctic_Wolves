@@ -82,7 +82,7 @@ test.describe('Companion app probe-validates hardware encoders', () => {
 
     // VAAPI encoders need the device and hwupload filter to probe correctly
     expect(funcBody).toContain('-vaapi_device');
-    expect(funcBody).toContain('/dev/dri/renderD128');
+    expect(funcBody).toContain('HW_ACCEL_DEVICE');
     expect(funcBody).toContain('hwupload');
   });
 
@@ -205,7 +205,7 @@ test.describe('AMD GPU support in _hwaccel_decode_flags', () => {
     const funcBody = c.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
 
     // AMF uses VAAPI for decoding on Linux
-    expect(funcBody).toContain('/dev/dri/renderD128');
+    expect(funcBody).toContain('HW_ACCEL_DEVICE');
   });
 });
 
@@ -220,8 +220,10 @@ test.describe('Docker Compose Intel OpenCL overlay', () => {
     expect(content()).toContain('HW_ACCEL=qsv');
   });
 
-  test('should install Intel GPU packages via build arg', () => {
-    expect(content()).toContain('INSTALL_INTEL_GPU');
+  test('should use runtime env var for Intel GPU drivers', () => {
+    // GPU drivers are now installed at runtime by entrypoint.sh based
+    // on the HW_ACCEL environment variable (no build-args needed).
+    expect(content()).toContain('HW_ACCEL=qsv');
   });
 
   test('should pass /dev/dri device', () => {
@@ -236,8 +238,10 @@ test.describe('Docker Compose AMD GPU overlay', () => {
     expect(content()).toContain('HW_ACCEL=vaapi');
   });
 
-  test('should install AMD GPU packages via build arg', () => {
-    expect(content()).toContain('INSTALL_AMD_GPU');
+  test('should use runtime env var for AMD GPU drivers', () => {
+    // GPU drivers are now installed at runtime by entrypoint.sh based
+    // on the HW_ACCEL environment variable (no build-args needed).
+    expect(content()).toContain('HW_ACCEL=vaapi');
   });
 
   test('should pass /dev/dri device', () => {

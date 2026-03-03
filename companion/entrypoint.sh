@@ -20,12 +20,31 @@ install_intel_gpu() {
         return
     fi
     echo "HW_ACCEL=qsv detected — installing Intel QSV / VA-API drivers …"
-    apt-get update && apt-get install -y --no-install-recommends \
+
+    # Enable non-free repository components for the Intel oneVPL GPU
+    # runtime (libmfx-gen) which is required for QSV encoding through
+    # the libvpl dispatcher already bundled with FFmpeg.
+    if [ -f /etc/apt/sources.list.d/debian.sources ] && ! grep -q 'non-free' /etc/apt/sources.list.d/debian.sources; then
+        sed -i 's/^Components: main$/Components: main non-free non-free-firmware/' \
+            /etc/apt/sources.list.d/debian.sources
+    fi
+
+    apt-get update
+
+    # Core: Intel iHD VA-API driver + VA-API libraries
+    apt-get install -y --no-install-recommends \
         intel-media-va-driver \
         vainfo \
         libva-drm2 \
-        libva2 \
-    && rm -rf /var/lib/apt/lists/*
+        libva2
+
+    # QSV: oneVPL GPU runtime — enables h264_qsv / hevc_qsv encoders
+    # via the libvpl dispatcher already bundled with FFmpeg.  Installed
+    # separately so a missing package does not block the VA-API install.
+    apt-get install -y --no-install-recommends libmfx-gen1.2 2>/dev/null \
+        || echo "Note: libmfx-gen1.2 not available — QSV will fall back to VAAPI"
+
+    rm -rf /var/lib/apt/lists/*
 }
 
 install_amd_gpu() {

@@ -640,6 +640,13 @@ def _select_encoder(hw_info: dict, codec: str = "h264") -> list[str]:
         for method, enc in codec_prefs:
             if method == accel and enc in encoders:
                 return _encoder_flags(enc)
+        # QSV requested but unavailable (e.g. FFmpeg compiled without
+        # libmfx/libvpl) — fall back to VAAPI which uses the same Intel
+        # GPU hardware through the VA-API interface.
+        if accel == "qsv":
+            for method, enc in codec_prefs:
+                if method == "vaapi" and enc in encoders:
+                    return _encoder_flags(enc)
 
     # Fallback to software
     sw = codec.replace("h265", "x265").replace("h264", "x264")
@@ -652,7 +659,8 @@ def _encoder_flags(encoder: str) -> list[str]:
     if "nvenc" in encoder:
         flags += ["-preset", "p4", "-rc", "vbr"]
     elif "qsv" in encoder:
-        flags = ["-init_hw_device", f"qsv=hw,child_device={HW_ACCEL_DEVICE}"] + flags + ["-preset", "medium"]
+        flags = ["-init_hw_device", f"qsv=hw,child_device={HW_ACCEL_DEVICE}",
+                 "-filter_hw_device", "hw"] + flags + ["-preset", "medium"]
     elif "vaapi" in encoder:
         flags = ["-vaapi_device", HW_ACCEL_DEVICE] + flags
     return flags
@@ -664,6 +672,10 @@ def _hwaccel_decode_flags() -> list[str]:
     When HW_ACCEL is ``auto``, the function inspects which encoders were
     validated as usable by ``_detect_hw_accel()`` and picks the matching
     decode method instead of unconditionally assuming CUDA.
+
+    When ``qsv`` is selected but QSV is unavailable (e.g. FFmpeg compiled
+    without libmfx/libvpl), VAAPI is tried as a fallback because Intel
+    integrated GPUs support both APIs through the same hardware.
     """
     accel = HW_ACCEL.lower()
     if accel == "none":
@@ -687,6 +699,41 @@ def _hwaccel_decode_flags() -> list[str]:
             return ["-hwaccel", "vaapi", "-hwaccel_device", HW_ACCEL_DEVICE]
         # No usable hardware — software decode
         return []
+    return []
+
+
+def _hw_vf(encode_flags: list[str], scale_height: int | None = None,
+           scale_width: int | str = -2) -> list[str]:
+    """Return ``-vf`` flags compatible with the selected hardware encoder.
+
+    Hardware encoders (QSV, VAAPI) require frames to be uploaded to GPU
+    memory via ``hwupload`` before encoding.  When *scale_height* is
+    given, the appropriate hardware scale filter is used so that scaling
+    is performed on the GPU as well.
+    """
+    encoder = ""
+    for i, f in enumerate(encode_flags):
+        if f == "-c:v" and i + 1 < len(encode_flags):
+            encoder = encode_flags[i + 1]
+            break
+
+    if "qsv" in encoder:
+        # extra_hw_frames=64 gives the QSV encoder enough surface pool
+        # headroom to avoid "not enough surfaces" errors during encode.
+        vf = "format=nv12,hwupload=extra_hw_frames=64"
+        if scale_height is not None:
+            vf += f",scale_qsv=w={scale_width}:h={scale_height}"
+        return ["-vf", vf]
+    if "vaapi" in encoder:
+        vf = "format=nv12,hwupload"
+        if scale_height is not None:
+            vf += f",scale_vaapi=w={scale_width}:h={scale_height}"
+        return ["-vf", vf]
+
+    # Software or NVENC — standard scale filter (NVENC accepts system
+    # memory frames; no hwupload required).
+    if scale_height is not None:
+        return ["-vf", f"scale={scale_width}:{scale_height}"]
     return []
 
 
@@ -1356,7 +1403,7 @@ def run_diagnostics():
                 "-f", "lavfi", "-i", "color=c=black:s=320x240:d=1:r=25",
                 "-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono",
                 "-t", "1",
-            ] + encode_flags + [
+            ] + encode_flags + _hw_vf(encode_flags) + [
                 "-c:a", "aac", "-b:a", "64k",
                 test_output,
             ]
@@ -1529,7 +1576,7 @@ def clip():
         cmd = [FFMPEG_PATH, "-y"] + decode_flags + [
             "-ss", str(start_time), "-i", source_path,
             "-t", str(duration),
-        ] + encode_flags + [
+        ] + encode_flags + _hw_vf(encode_flags) + [
             "-c:a", "aac", "-movflags", "+faststart",
             output_path,
         ]
@@ -1577,7 +1624,11 @@ def transcode():
         cmd += ["-crf", str(crf)]
 
     if resolution:
-        cmd += ["-vf", f"scale={resolution.replace('x', ':')}"]
+        parts = resolution.replace("x", ":").split(":")
+        cmd += _hw_vf(encode_flags, scale_height=int(parts[-1]),
+                       scale_width=int(parts[0]) if len(parts) > 1 else -2)
+    else:
+        cmd += _hw_vf(encode_flags)
 
     cmd += ["-c:a", "aac", "-movflags", "+faststart", output_path]
 
@@ -2191,11 +2242,11 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
 
             encode_flags = _select_encoder(hw_info, "h264")
             decode_flags = _hwaccel_decode_flags()
+            vf_flags = _hw_vf(encode_flags, scale_height=v["height"])
 
             cmd = [FFMPEG_PATH, "-y"] + decode_flags + [
                 "-i", local_source,
-            ] + encode_flags + [
-                "-vf", f"scale=-2:{v['height']}",
+            ] + encode_flags + vf_flags + [
                 "-b:v", v["vbitrate"],
                 "-maxrate", v["vbitrate"],
                 "-bufsize", str(int(v["vbitrate"].replace("k", "")) * 2) + "k",
