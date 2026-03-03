@@ -1,0 +1,167 @@
+<!-- Admin Video Test - Direct RustFS Upload -->
+<?php
+require_once __DIR__ . '/../cloud_config.php';
+
+$rustfs = getRustFSSettings($pdo);
+$rustfsConfigured = isRustFSConfigured($rustfs);
+?>
+
+<div class="card">
+    <div class="card-header">
+        <h2><i class="fa-solid fa-video"></i> Video Upload Test</h2>
+        <p style="margin:4px 0 0;color:var(--text-secondary,#6b7280);">
+            Direct browser-to-RustFS upload test. Select a video file and upload it using a presigned URL.
+        </p>
+    </div>
+    <div class="card-body">
+
+        <?php if (!$rustfsConfigured): ?>
+            <div class="alert alert-danger">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                RustFS is not configured. Please configure RustFS settings in System&nbsp;Tools before testing uploads.
+            </div>
+        <?php else: ?>
+
+        <!-- File picker -->
+        <div style="margin-bottom:1rem;">
+            <label for="vt-file" style="display:block;font-weight:600;margin-bottom:.35rem;">Choose video file</label>
+            <input type="file" id="vt-file" accept="video/mp4,video/quicktime,video/x-matroska,video/webm,video/x-msvideo,video/avi,.mp4,.mov,.mkv,.webm,.avi">
+        </div>
+
+        <button id="vt-upload-btn" class="btn btn-primary" disabled>
+            <i class="fa-solid fa-cloud-arrow-up"></i> Upload to RustFS
+        </button>
+
+        <!-- Progress area -->
+        <div id="vt-progress-area" style="display:none;margin-top:1rem;">
+            <div style="background:var(--bg-secondary,#e5e7eb);border-radius:6px;overflow:hidden;height:22px;">
+                <div id="vt-progress-bar"
+                     style="height:100%;width:0%;background:var(--primary,#2563eb);transition:width .2s;border-radius:6px;"></div>
+            </div>
+            <p id="vt-progress-text" style="margin:.5rem 0 0;font-size:.9rem;color:var(--text-secondary,#6b7280);">
+                Preparing…
+            </p>
+        </div>
+
+        <!-- Log / result -->
+        <pre id="vt-log" style="margin-top:1rem;max-height:300px;overflow:auto;background:var(--bg-secondary,#f3f4f6);padding:.75rem;border-radius:6px;font-size:.82rem;white-space:pre-wrap;display:none;"></pre>
+
+        <?php endif; ?>
+    </div>
+</div>
+
+<?php if ($rustfsConfigured): ?>
+<script>
+(function() {
+    var csrfToken = '<?= htmlspecialchars($_SESSION["csrf_token"] ?? "", ENT_QUOTES) ?>';
+    var fileInput = document.getElementById('vt-file');
+    var uploadBtn = document.getElementById('vt-upload-btn');
+    var progressArea = document.getElementById('vt-progress-area');
+    var progressBar  = document.getElementById('vt-progress-bar');
+    var progressText = document.getElementById('vt-progress-text');
+    var logEl = document.getElementById('vt-log');
+
+    var ALLOWED_EXT = ['mp4','mkv','mov','avi','webm'];
+    var MAX_SIZE = 10 * 1024 * 1024 * 1024; // 10 GB
+
+    function log(msg) {
+        logEl.style.display = 'block';
+        logEl.textContent += '[' + new Date().toLocaleTimeString() + '] ' + msg + '\n';
+        logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    fileInput.addEventListener('change', function() {
+        uploadBtn.disabled = !fileInput.files.length;
+    });
+
+    uploadBtn.addEventListener('click', function() {
+        var file = fileInput.files[0];
+        if (!file) return;
+
+        // Client-side validation
+        var ext = file.name.split('.').pop().toLowerCase();
+        if (ALLOWED_EXT.indexOf(ext) === -1) {
+            log('ERROR: Invalid extension ".' + ext + '". Allowed: ' + ALLOWED_EXT.join(', '));
+            return;
+        }
+        if (file.size > MAX_SIZE) {
+            log('ERROR: File exceeds 10 GB limit.');
+            return;
+        }
+
+        uploadBtn.disabled = true;
+        progressArea.style.display = 'block';
+        progressBar.style.width = '0%';
+        progressText.textContent = 'Requesting presigned URL…';
+        log('Selected file: ' + file.name + ' (' + (file.size / 1048576).toFixed(1) + ' MB, ' + file.type + ')');
+
+        // Step 1 – Ask server for a presigned PUT URL
+        var formData = new FormData();
+        formData.append('action', 'get_video_test_upload_url');
+        formData.append('file_name', file.name);
+        formData.append('file_size', file.size);
+        formData.append('file_type', file.type || 'application/octet-stream');
+        formData.append('csrf_token', csrfToken);
+
+        fetch('process_video.php', { method: 'POST', body: formData })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.success) throw new Error(data.error || data.message || 'Presign request failed');
+                log('Presigned URL obtained. Object key: ' + data.object_key);
+                log('Uploading directly to RustFS…');
+
+                // Step 2 – PUT the file directly to RustFS
+                return putToRustFS(data.presigned_url, file, data.content_type, data.object_key);
+            })
+            .then(function(objectKey) {
+                progressBar.style.width = '100%';
+                progressText.textContent = 'Upload complete!';
+                log('SUCCESS – file stored at: ' + objectKey);
+                uploadBtn.disabled = false;
+            })
+            .catch(function(err) {
+                progressText.textContent = 'Upload failed.';
+                log('FAILED: ' + err.message);
+                uploadBtn.disabled = false;
+            });
+    });
+
+    function putToRustFS(presignedUrl, file, contentType, objectKey) {
+        return new Promise(function(resolve, reject) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('PUT', presignedUrl, true);
+            // Only set content-type if the presigned URL was signed without it
+            // RustFS presigned URLs in this codebase sign only the 'host' header,
+            // so setting Content-Type here is safe and helps the server store metadata.
+            xhr.setRequestHeader('Content-Type', contentType);
+
+            xhr.upload.addEventListener('progress', function(ev) {
+                if (ev.lengthComputable) {
+                    var pct = Math.round((ev.loaded / ev.total) * 100);
+                    progressBar.style.width = pct + '%';
+                    progressText.textContent = 'Uploading… ' + pct + '% (' + (ev.loaded / 1048576).toFixed(1) + ' / ' + (ev.total / 1048576).toFixed(1) + ' MB)';
+                }
+            });
+
+            xhr.addEventListener('load', function() {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    resolve(objectKey);
+                } else {
+                    reject(new Error('RustFS responded with HTTP ' + xhr.status + ': ' + xhr.responseText));
+                }
+            });
+
+            xhr.addEventListener('error', function() {
+                reject(new Error('Network error during upload to RustFS'));
+            });
+
+            xhr.addEventListener('abort', function() {
+                reject(new Error('Upload aborted'));
+            });
+
+            xhr.send(file);
+        });
+    }
+})();
+</script>
+<?php endif; ?>
