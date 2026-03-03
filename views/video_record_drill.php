@@ -1004,15 +1004,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 proxyToken = data.proxy_token || null;
                 contentType = data.content_type || blob.type || 'video/webm';
 
-                // Step 2: PUT directly to RustFS
+                // Step 2: upload via proxy (preferred) or direct to RustFS
+                var uploadUrl = (proxyUploadUrl && proxyToken) ? proxyUploadUrl : data.presigned_url;
+                var useProxy = !!(proxyUploadUrl && proxyToken);
                 return new Promise(function(resolve, reject) {
                     var xhr = new XMLHttpRequest();
                     drillUploadXhr = xhr;
-                    xhr.open('PUT', data.presigned_url, true);
+                    xhr.open('PUT', uploadUrl, true);
                     xhr.setRequestHeader('Content-Type', contentType);
+                    if (useProxy) xhr.setRequestHeader('X-Upload-Token', proxyToken);
                     var uploadStarted = false;
                     var connTimer = setTimeout(function() {
-                        if (!uploadStarted) { xhr.abort(); reject(new Error('Cloud storage connection timed out — check that the S3/RustFS endpoint is reachable from this browser')); }
+                        if (!uploadStarted) { xhr.abort(); reject(new Error((useProxy ? 'Proxy' : 'Cloud storage') + ' connection timed out')); }
                     }, 30000);
                     xhr.upload.onprogress = function(ev) {
                         if (!uploadStarted) { uploadStarted = true; clearTimeout(connTimer); }
@@ -1025,42 +1028,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     xhr.onload = function() {
                         clearTimeout(connTimer);
                         if (xhr.status >= 200 && xhr.status < 300) resolve();
-                        else reject(new Error('Cloud upload failed (HTTP ' + xhr.status + ')'));
+                        else reject(new Error((useProxy ? 'Proxy' : 'Cloud') + ' upload failed (HTTP ' + xhr.status + ')'));
                     };
-                    xhr.onerror = function() { clearTimeout(connTimer); reject(new Error('Network error during upload — ensure the S3/RustFS endpoint is accessible')); };
-                    xhr.send(blob);
-                });
-            })
-            .catch(function(directErr) {
-                // Direct upload failed — try the streaming proxy
-                if (!proxyUploadUrl || !proxyToken) throw directErr;
-                console.warn('Direct S3 upload failed:', directErr.message, '— trying streaming proxy');
-                progressFill.style.width = '0%';
-                uploadPercent.textContent = '0%';
-                return new Promise(function(resolve, reject) {
-                    var xhr = new XMLHttpRequest();
-                    drillUploadXhr = xhr;
-                    xhr.open('PUT', proxyUploadUrl, true);
-                    xhr.setRequestHeader('Content-Type', contentType);
-                    xhr.setRequestHeader('X-Upload-Token', proxyToken);
-                    var uploadStarted = false;
-                    var connTimer = setTimeout(function() {
-                        if (!uploadStarted) { xhr.abort(); reject(new Error('Proxy connection timed out — check that the S3/RustFS endpoint is reachable from this browser')); }
-                    }, 30000);
-                    xhr.upload.onprogress = function(ev) {
-                        if (!uploadStarted) { uploadStarted = true; clearTimeout(connTimer); }
-                        if (ev.lengthComputable) {
-                            var pct = Math.round((ev.loaded / ev.total) * 100);
-                            progressFill.style.width = pct + '%';
-                            uploadPercent.textContent = pct + '%';
-                        }
-                    };
-                    xhr.onload = function() {
-                        clearTimeout(connTimer);
-                        if (xhr.status >= 200 && xhr.status < 300) resolve();
-                        else reject(new Error('Proxy upload failed (HTTP ' + xhr.status + ')'));
-                    };
-                    xhr.onerror = function() { clearTimeout(connTimer); reject(new Error('Network error during proxy upload — ensure the S3/RustFS endpoint is accessible')); };
+                    xhr.onerror = function() { clearTimeout(connTimer); reject(new Error('Network error during upload')); };
                     xhr.send(blob);
                 });
             })
@@ -1204,15 +1174,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 proxyToken = data.proxy_token || null;
                 contentType = data.content_type || videoFile.type || 'application/octet-stream';
 
-                // Step 2: PUT directly to RustFS
+                // Step 2: upload via proxy (preferred) or direct to RustFS
+                var uploadUrl = (proxyUploadUrl && proxyToken) ? proxyUploadUrl : data.presigned_url;
+                var useProxy = !!(proxyUploadUrl && proxyToken);
                 return new Promise(function(resolve, reject) {
                     var xhr = new XMLHttpRequest();
                     drillUploadXhr = xhr;
-                    xhr.open('PUT', data.presigned_url, true);
+                    xhr.open('PUT', uploadUrl, true);
                     xhr.setRequestHeader('Content-Type', contentType);
+                    if (useProxy) xhr.setRequestHeader('X-Upload-Token', proxyToken);
                     var uploadStarted = false;
                     var connTimer = setTimeout(function() {
-                        if (!uploadStarted) { xhr.abort(); reject(new Error('Cloud storage connection timed out — check that the S3/RustFS endpoint is reachable from this browser')); }
+                        if (!uploadStarted) { xhr.abort(); reject(new Error((useProxy ? 'Proxy' : 'Cloud storage') + ' connection timed out')); }
                     }, 30000);
                     xhr.upload.onprogress = function(ev) {
                         if (!uploadStarted) { uploadStarted = true; clearTimeout(connTimer); }
@@ -1225,42 +1198,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     xhr.onload = function() {
                         clearTimeout(connTimer);
                         if (xhr.status >= 200 && xhr.status < 300) resolve();
-                        else reject(new Error('Cloud upload failed (HTTP ' + xhr.status + ')'));
+                        else reject(new Error((useProxy ? 'Proxy' : 'Cloud') + ' upload failed (HTTP ' + xhr.status + ')'));
                     };
-                    xhr.onerror = function() { clearTimeout(connTimer); reject(new Error('Network error during upload — ensure the S3/RustFS endpoint is accessible')); };
-                    xhr.send(videoFile);
-                });
-            })
-            .catch(function(directErr) {
-                // Direct upload failed — try the streaming proxy
-                if (!proxyUploadUrl || !proxyToken) throw directErr;
-                console.warn('Direct S3 upload failed:', directErr.message, '— trying streaming proxy');
-                progressFill.style.width = '0%';
-                uploadPercent.textContent = '0%';
-                return new Promise(function(resolve, reject) {
-                    var xhr = new XMLHttpRequest();
-                    drillUploadXhr = xhr;
-                    xhr.open('PUT', proxyUploadUrl, true);
-                    xhr.setRequestHeader('Content-Type', contentType);
-                    xhr.setRequestHeader('X-Upload-Token', proxyToken);
-                    var uploadStarted = false;
-                    var connTimer = setTimeout(function() {
-                        if (!uploadStarted) { xhr.abort(); reject(new Error('Proxy connection timed out — check that the S3/RustFS endpoint is reachable from this browser')); }
-                    }, 30000);
-                    xhr.upload.onprogress = function(ev) {
-                        if (!uploadStarted) { uploadStarted = true; clearTimeout(connTimer); }
-                        if (ev.lengthComputable) {
-                            var pct = Math.round((ev.loaded / ev.total) * 100);
-                            progressFill.style.width = pct + '%';
-                            uploadPercent.textContent = pct + '%';
-                        }
-                    };
-                    xhr.onload = function() {
-                        clearTimeout(connTimer);
-                        if (xhr.status >= 200 && xhr.status < 300) resolve();
-                        else reject(new Error('Proxy upload failed (HTTP ' + xhr.status + ')'));
-                    };
-                    xhr.onerror = function() { clearTimeout(connTimer); reject(new Error('Network error during proxy upload — ensure the S3/RustFS endpoint is accessible')); };
+                    xhr.onerror = function() { clearTimeout(connTimer); reject(new Error('Network error during upload')); };
                     xhr.send(videoFile);
                 });
             })

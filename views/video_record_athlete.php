@@ -931,7 +931,7 @@ document.addEventListener('DOMContentLoaded', function() {
             var proxyToken = null;
             var contentType = null;
 
-            // Helper: PUT file via XHR with progress tracking
+            // Helper: PUT file via XHR with progress tracking and detailed error logging
             function xhrPut(url, file, headers, label) {
                 return new Promise(function(resolve, reject) {
                     var xhr = new XMLHttpRequest();
@@ -945,9 +945,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     var connTimer = setTimeout(function() {
                         if (!uploadStarted) {
                             xhr.abort();
+                            console.error('[Upload] ' + label + ': connection timeout after 30s. URL=' + url + ' file_size=' + file.size);
                             reject(new Error(label + ' connection timed out — check that the S3/RustFS endpoint is reachable from this browser'));
                         }
                     }, 30000);
+
+                    console.log('[Upload] ' + label + ': starting PUT to ' + url + ' size=' + file.size + ' type=' + (headers['Content-Type'] || 'unknown'));
 
                     xhr.upload.onprogress = function(ev) {
                         if (!uploadStarted) { uploadStarted = true; clearTimeout(connTimer); }
@@ -966,13 +969,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     xhr.onload = function() {
                         clearTimeout(connTimer);
                         if (xhr.status >= 200 && xhr.status < 300) {
+                            console.log('[Upload] ' + label + ': completed successfully HTTP ' + xhr.status);
                             resolve(xhr);
                         } else {
-                            reject(new Error(label + ' failed (HTTP ' + xhr.status + ')'));
+                            console.error('[Upload] ' + label + ': HTTP ' + xhr.status + ' response=' + (xhr.responseText || '').substring(0, 500) + ' url=' + url);
+                            reject(new Error(label + ' failed (HTTP ' + xhr.status + '): ' + (xhr.responseText || '').substring(0, 200)));
                         }
                     };
                     xhr.onerror = function() {
                         clearTimeout(connTimer);
+                        console.error('[Upload] ' + label + ': network error. URL=' + url + ' readyState=' + xhr.readyState + ' status=' + xhr.status);
                         reject(new Error('Network error during ' + label + ' — ensure the S3/RustFS endpoint is accessible'));
                     };
                     xhr.send(file);
@@ -992,29 +998,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     status.textContent = 'Uploading to cloud storage...';
 
-                    // ---------- Step 2a: PUT file directly to RustFS ----------
+                    // ---------- Step 2: upload via proxy (preferred) or direct to RustFS ----------
+                    if (proxyUploadUrl && proxyToken) {
+                        return xhrPut(
+                            proxyUploadUrl,
+                            videoFile,
+                            { 'Content-Type': contentType, 'X-Upload-Token': proxyToken },
+                            'Uploading via server'
+                        );
+                    }
                     return xhrPut(
                         data.presigned_url,
                         videoFile,
                         { 'Content-Type': contentType },
                         'Uploading to cloud storage'
-                    );
-                })
-                .catch(function(directErr) {
-                    // Direct upload failed — try the streaming proxy (Step 2b)
-                    if (!proxyUploadUrl || !proxyToken) {
-                        throw directErr; // No proxy available, propagate to legacy fallback
-                    }
-                    console.warn('Direct S3 upload failed:', directErr.message, '— trying streaming proxy');
-                    status.textContent = 'Retrying via server proxy...';
-                    bar.style.width = '0%';
-                    percent.textContent = '0%';
-
-                    return xhrPut(
-                        proxyUploadUrl,
-                        videoFile,
-                        { 'Content-Type': contentType, 'X-Upload-Token': proxyToken },
-                        'Uploading via server'
                     );
                 })
                 .then(function() {
@@ -1039,8 +1036,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 })
                 .catch(function(err) {
-                    // Fall back to legacy server-side upload if both direct and proxy fail
-                    console.warn('Direct + proxy upload failed, falling back to legacy upload:', err.message);
+                    // Fall back to legacy server-side upload if proxy/direct upload failed
+                    console.error('[Upload] Primary upload failed, falling back to legacy upload. Error:', err.message, 'Stack:', err.stack);
                     status.textContent = 'Retrying via server...';
                     bar.style.width = '0%';
                     percent.textContent = '0%';

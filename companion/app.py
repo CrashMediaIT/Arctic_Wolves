@@ -1291,6 +1291,31 @@ def run_diagnostics():
 
     results["rustfs"] = s3_test
 
+    # ── Main App connectivity test ────────────────────────────────────────
+    main_app_test = {"passed": False, "url": MAIN_APP_URL or None, "error": None}
+    if MAIN_APP_URL:
+        # Validate URL scheme to prevent SSRF — only allow http/https
+        from urllib.parse import urlparse
+        parsed = urlparse(MAIN_APP_URL)
+        if parsed.scheme not in ("http", "https") or not parsed.hostname:
+            main_app_test["error"] = "Invalid main app URL — must be an http:// or https:// URL"
+        else:
+            try:
+                test_url = parsed.scheme + "://" + parsed.netloc + "/api/v1/companion/ping"
+                resp = http_requests.get(test_url, timeout=10, verify=False)  # noqa: S113
+                main_app_test["status_code"] = resp.status_code
+                main_app_test["passed"] = resp.status_code < 500
+            except http_requests.exceptions.ConnectionError:
+                main_app_test["error"] = "Connection refused — main app may be offline or URL is incorrect"
+            except http_requests.exceptions.Timeout:
+                main_app_test["error"] = "Connection timed out after 10 seconds"
+            except Exception as exc:
+                main_app_test["error"] = str(exc)[:500]
+    else:
+        main_app_test["error"] = "Main app URL is not configured"
+
+    results["main_app"] = main_app_test
+
     all_passed = all(t.get("passed") for t in results.values())
     logger.info("Diagnostic tests completed: %s", "ALL PASSED" if all_passed else "SOME FAILED")
     return jsonify({"all_passed": all_passed, "tests": results})
@@ -2331,6 +2356,191 @@ def presign_upload():
         })
     except Exception as exc:
         logger.error("Presign error for key=%s: %s", object_key, exc)
+        return jsonify({"success": False, "error": str(exc)}), 500
+
+
+@app.route("/api/multipart/create", methods=["POST"])
+def multipart_create():
+    """Initiate an S3 multipart upload using the boto3 SDK.
+
+    POST JSON body:
+        object_key:   S3 object key (required)
+        content_type: MIME type (optional, default 'application/octet-stream')
+
+    Returns:
+        upload_id: The multipart upload ID to use for subsequent part uploads
+    """
+    auth_err = _require_api_key()
+    if auth_err:
+        return auth_err
+
+    s3 = _get_s3_client()
+    if not s3:
+        return jsonify({"success": False, "error": "S3/RustFS is not configured"}), 503
+
+    data = request.get_json(silent=True) or {}
+    object_key = data.get("object_key", "").strip()
+    content_type = data.get("content_type", "application/octet-stream")
+
+    if not object_key:
+        return jsonify({"success": False, "error": "object_key is required"}), 400
+
+    try:
+        response = s3.create_multipart_upload(
+            Bucket=S3_BUCKET,
+            Key=object_key,
+            ContentType=content_type,
+        )
+        upload_id = response["UploadId"]
+        logger.info("Multipart upload created: key=%s upload_id=%s", object_key, upload_id)
+        return jsonify({
+            "success": True,
+            "upload_id": upload_id,
+            "object_key": object_key,
+        })
+    except Exception as exc:
+        logger.error("Multipart create error for key=%s: %s", object_key, exc)
+        return jsonify({"success": False, "error": str(exc)}), 500
+
+
+@app.route("/api/multipart/presign-part", methods=["POST"])
+def multipart_presign_part():
+    """Generate a presigned URL for uploading a single part of a multipart upload.
+
+    POST JSON body:
+        object_key:  S3 object key (required)
+        upload_id:   Multipart upload ID (required)
+        part_number: Part number (1-10000) (required)
+        expires:     URL validity in seconds (optional, default 3600)
+
+    Returns:
+        url: Presigned URL for uploading this part via PUT
+    """
+    auth_err = _require_api_key()
+    if auth_err:
+        return auth_err
+
+    s3 = _get_s3_client()
+    if not s3:
+        return jsonify({"success": False, "error": "S3/RustFS is not configured"}), 503
+
+    data = request.get_json(silent=True) or {}
+    object_key = data.get("object_key", "").strip()
+    upload_id = data.get("upload_id", "").strip()
+    try:
+        part_number = int(data.get("part_number", 0))
+    except (ValueError, TypeError):
+        return jsonify({"success": False, "error": "part_number must be numeric"}), 400
+    try:
+        expires = int(data.get("expires", 3600))
+    except (ValueError, TypeError):
+        expires = 3600
+
+    if not object_key or not upload_id or part_number < 1:
+        return jsonify({"success": False, "error": "object_key, upload_id, and part_number (>=1) are required"}), 400
+
+    try:
+        url = s3.generate_presigned_url(
+            ClientMethod="upload_part",
+            Params={
+                "Bucket": S3_BUCKET,
+                "Key": object_key,
+                "UploadId": upload_id,
+                "PartNumber": part_number,
+            },
+            ExpiresIn=expires,
+        )
+        return jsonify({
+            "success": True,
+            "url": url,
+            "part_number": part_number,
+        })
+    except Exception as exc:
+        logger.error("Multipart presign-part error for key=%s part=%d: %s", object_key, part_number, exc)
+        return jsonify({"success": False, "error": str(exc)}), 500
+
+
+@app.route("/api/multipart/complete", methods=["POST"])
+def multipart_complete():
+    """Complete a multipart upload by assembling all uploaded parts.
+
+    POST JSON body:
+        object_key: S3 object key (required)
+        upload_id:  Multipart upload ID (required)
+        parts:      List of {PartNumber, ETag} dicts (required)
+
+    Returns:
+        location: URL of the completed object
+    """
+    auth_err = _require_api_key()
+    if auth_err:
+        return auth_err
+
+    s3 = _get_s3_client()
+    if not s3:
+        return jsonify({"success": False, "error": "S3/RustFS is not configured"}), 503
+
+    data = request.get_json(silent=True) or {}
+    object_key = data.get("object_key", "").strip()
+    upload_id = data.get("upload_id", "").strip()
+    parts = data.get("parts", [])
+
+    if not object_key or not upload_id or not parts:
+        return jsonify({"success": False, "error": "object_key, upload_id, and parts are required"}), 400
+
+    try:
+        response = s3.complete_multipart_upload(
+            Bucket=S3_BUCKET,
+            Key=object_key,
+            UploadId=upload_id,
+            MultipartUpload={"Parts": parts},
+        )
+        logger.info("Multipart upload completed: key=%s upload_id=%s parts=%d location=%s",
+                     object_key, upload_id, len(parts), response.get("Location", ""))
+        return jsonify({
+            "success": True,
+            "location": response.get("Location", ""),
+            "etag": response.get("ETag", ""),
+            "object_key": object_key,
+        })
+    except Exception as exc:
+        logger.error("Multipart complete error for key=%s upload_id=%s: %s", object_key, upload_id, exc)
+        return jsonify({"success": False, "error": str(exc)}), 500
+
+
+@app.route("/api/multipart/abort", methods=["POST"])
+def multipart_abort():
+    """Abort a multipart upload, cleaning up any uploaded parts.
+
+    POST JSON body:
+        object_key: S3 object key (required)
+        upload_id:  Multipart upload ID (required)
+    """
+    auth_err = _require_api_key()
+    if auth_err:
+        return auth_err
+
+    s3 = _get_s3_client()
+    if not s3:
+        return jsonify({"success": False, "error": "S3/RustFS is not configured"}), 503
+
+    data = request.get_json(silent=True) or {}
+    object_key = data.get("object_key", "").strip()
+    upload_id = data.get("upload_id", "").strip()
+
+    if not object_key or not upload_id:
+        return jsonify({"success": False, "error": "object_key and upload_id are required"}), 400
+
+    try:
+        s3.abort_multipart_upload(
+            Bucket=S3_BUCKET,
+            Key=object_key,
+            UploadId=upload_id,
+        )
+        logger.info("Multipart upload aborted: key=%s upload_id=%s", object_key, upload_id)
+        return jsonify({"success": True})
+    except Exception as exc:
+        logger.error("Multipart abort error for key=%s upload_id=%s: %s", object_key, upload_id, exc)
         return jsonify({"success": False, "error": str(exc)}), 500
 
 
