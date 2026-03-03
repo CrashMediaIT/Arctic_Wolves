@@ -65,7 +65,7 @@ services:
 The entrypoint automatically installs the Intel Media Driver (iHD) and VA-API
 libraries on first start when it sees `HW_ACCEL=qsv`.
 
-### AMD VAAPI
+### AMD VA-API
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.amd.yml up -d
