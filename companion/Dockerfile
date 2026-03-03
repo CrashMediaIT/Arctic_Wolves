@@ -3,32 +3,13 @@ FROM python:3.12-slim
 LABEL maintainer="Crash Media IT"
 LABEL description="Arctic Wolves Video Companion Server - Hardware-accelerated video processing"
 
-# Optional Intel GPU support — set INSTALL_INTEL_GPU=true at build time to
-# include Intel Media Driver (iHD) and VA-API libraries for QSV / VA-API
-# hardware-accelerated transcoding.
-ARG INSTALL_INTEL_GPU=false
-
-# Optional AMD GPU support — set INSTALL_AMD_GPU=true at build time to
-# include Mesa VA-API driver for AMD GPU hardware-accelerated transcoding.
-ARG INSTALL_AMD_GPU=false
-
-# Install FFmpeg with hardware acceleration support
+# Install FFmpeg and gosu (for dropping root in entrypoint)
+# GPU drivers (Intel QSV / AMD VA-API) are installed at runtime by
+# entrypoint.sh based on the HW_ACCEL environment variable, so platforms
+# like TrueNAS that cannot pass build-args still get GPU support.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
-    && if [ "$INSTALL_INTEL_GPU" = "true" ]; then \
-        apt-get install -y --no-install-recommends \
-            intel-media-va-driver \
-            vainfo \
-            libva-drm2 \
-            libva2 ; \
-    fi \
-    && if [ "$INSTALL_AMD_GPU" = "true" ]; then \
-        apt-get install -y --no-install-recommends \
-            mesa-va-drivers \
-            vainfo \
-            libva-drm2 \
-            libva2 ; \
-    fi \
+    gosu \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -44,10 +25,15 @@ COPY templates/ templates/
 # Create default directories
 RUN mkdir -p /videos /tmp/companion /config
 
-# Non-root user
+# Non-root user (entrypoint.sh drops to this user via gosu after any
+# runtime GPU-driver installs that require root)
 RUN groupadd -r companion && useradd -r -g companion -d /app companion
 RUN chown -R companion:companion /app /tmp/companion /config
-USER companion
+
+# Entrypoint installs GPU drivers at runtime based on HW_ACCEL env var,
+# then drops to the companion user before executing the CMD.
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 EXPOSE 5100
 
@@ -57,4 +43,5 @@ EXPOSE 5100
 # through the web UI setup page on first start and stored on the persistent
 # /config volume.
 
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["gunicorn", "--bind", "0.0.0.0:5100", "--workers", "1", "--threads", "4", "--timeout", "7200", "app:app"]

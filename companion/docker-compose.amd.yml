@@ -1,23 +1,17 @@
 # Arctic Wolves Video Companion Server - AMD GPU Override
 # Use with: docker compose -f docker-compose.yml -f docker-compose.amd.yml up -d
 #
-# Installs Mesa VA-API driver for hardware-accelerated transcoding via
-# VA-API on AMD GPUs (integrated or discrete).
+# Enables AMD VA-API hardware-accelerated transcoding.  The entrypoint
+# installs Mesa VA-API driver at container start based on the HW_ACCEL
+# environment variable, so no build-args are required (works on TrueNAS
+# and other platforms that only support environment variables).
 #
 # Prerequisites:
 #   - AMD GPU (APU integrated or discrete Radeon)
 #   - /dev/dri device nodes available on the host
-#
-# Note: The DOCKER_MODS env var (linuxserver.io) does NOT work with the
-# python:3.12-slim base image.  AMD GPU packages are installed directly
-# via the INSTALL_AMD_GPU build arg instead.
 
 services:
   companion:
-    build:
-      context: .
-      args:
-        INSTALL_AMD_GPU: "true"
     environment:
       - HW_ACCEL=vaapi
     devices:

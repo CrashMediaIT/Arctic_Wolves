@@ -1,23 +1,18 @@
 # Arctic Wolves Video Companion Server - Intel GPU Override
 # Use with: docker compose -f docker-compose.yml -f docker-compose.intel.yml up -d
 #
-# Installs Intel Media Driver (iHD) and VA-API libraries for hardware-
-# accelerated transcoding via Intel Quick Sync Video (QSV) / VA-API.
+# Enables Intel Quick Sync Video (QSV) / VA-API hardware-accelerated
+# transcoding.  The entrypoint installs Intel Media Driver (iHD) and VA-API
+# libraries at container start based on the HW_ACCEL environment variable,
+# so no build-args are required (works on TrueNAS and other platforms that
+# only support environment variables).
 #
 # Prerequisites:
 #   - Intel CPU with integrated graphics (HD/UHD/Iris/Arc)
 #   - /dev/dri device nodes available on the host
-#
-# Note: The DOCKER_MODS env var (linuxserver.io) does NOT work with the
-# python:3.12-slim base image.  Intel GPU packages are installed directly
-# via the INSTALL_INTEL_GPU build arg instead.
 
 services:
   companion:
-    build:
-      context: .
-      args:
-        INSTALL_INTEL_GPU: "true"
     environment:
       - HW_ACCEL=qsv
     devices:
