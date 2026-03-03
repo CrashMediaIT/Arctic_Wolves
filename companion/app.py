@@ -526,7 +526,9 @@ def _probe_encoder(encoder: str) -> bool:
             pre_input = ["-vaapi_device", "/dev/dri/renderD128"]
             vf = ["-vf", "format=nv12,hwupload"]
         elif "qsv" in encoder:
-            pre_input = ["-init_hw_device", "qsv=hw"]
+            pre_input = ["-init_hw_device", "qsv=hw,child_device=/dev/dri/renderD128",
+                         "-filter_hw_device", "hw"]
+            vf = ["-vf", "format=nv12,hwupload=extra_hw_frames=64"]
         cmd = [FFMPEG_PATH, "-y", "-hide_banner", "-loglevel", "error"] + \
               pre_input + \
               ["-f", "lavfi", "-i", "color=c=black:s=64x64:d=0.1:r=10",
@@ -648,7 +650,7 @@ def _encoder_flags(encoder: str) -> list[str]:
     if "nvenc" in encoder:
         flags += ["-preset", "p4", "-rc", "vbr"]
     elif "qsv" in encoder:
-        flags += ["-preset", "medium"]
+        flags = ["-init_hw_device", "qsv=hw,child_device=/dev/dri/renderD128"] + flags + ["-preset", "medium"]
     elif "vaapi" in encoder:
         flags = ["-vaapi_device", "/dev/dri/renderD128"] + flags
     return flags
@@ -667,7 +669,7 @@ def _hwaccel_decode_flags() -> list[str]:
     if accel == "nvenc":
         return ["-hwaccel", "cuda", "-hwaccel_output_format", "cuda"]
     if accel == "qsv":
-        return ["-hwaccel", "qsv"]
+        return ["-hwaccel", "qsv", "-hwaccel_device", "/dev/dri/renderD128"]
     if accel in ("vaapi", "amf"):
         return ["-hwaccel", "vaapi", "-hwaccel_device", "/dev/dri/renderD128"]
     if accel == "auto":
@@ -678,7 +680,7 @@ def _hwaccel_decode_flags() -> list[str]:
         if any("nvenc" in e for e in encoders):
             return ["-hwaccel", "cuda", "-hwaccel_output_format", "cuda"]
         if any("qsv" in e for e in encoders):
-            return ["-hwaccel", "qsv"]
+            return ["-hwaccel", "qsv", "-hwaccel_device", "/dev/dri/renderD128"]
         if any("vaapi" in e for e in encoders):
             return ["-hwaccel", "vaapi", "-hwaccel_device", "/dev/dri/renderD128"]
         # No usable hardware — software decode
