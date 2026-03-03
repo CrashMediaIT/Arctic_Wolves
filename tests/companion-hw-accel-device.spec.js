@@ -260,13 +260,13 @@ test.describe('Companion app.py double device open prevention', () => {
 
   test('_select_encoder should accept and forward hw_decode parameter', () => {
     const c = content();
-    expect(c).toContain('def _select_encoder(hw_info: dict, codec: str = "h264"');
-    expect(c).toContain('hw_decode: bool = False');
+    expect(c).toContain('def _select_encoder(hw_info: dict, codec: str = "h264",');
     // Should forward hw_decode to _encoder_flags
     const selectFunc = c.substring(
       c.indexOf('def _select_encoder'),
       c.indexOf('def _encoder_flags')
     );
+    expect(selectFunc).toContain('hw_decode: bool = False');
     expect(selectFunc).toContain('hw_decode=hw_decode');
   });
 
