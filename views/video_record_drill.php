@@ -1004,9 +1004,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 proxyToken = data.proxy_token || null;
                 contentType = data.content_type || blob.type || 'video/webm';
 
-                // Step 2: upload via proxy (preferred) or direct to RustFS
-                var uploadUrl = (proxyUploadUrl && proxyToken) ? proxyUploadUrl : data.presigned_url;
-                var useProxy = !!(proxyUploadUrl && proxyToken);
+                // Step 2: upload direct to RustFS (preferred) or via proxy
+                var uploadUrl = data.presigned_url ? data.presigned_url : ((proxyUploadUrl && proxyToken) ? proxyUploadUrl : null);
+                var useProxy = !data.presigned_url && !!(proxyUploadUrl && proxyToken);
+                if (!uploadUrl) throw new Error('No upload URL available');
                 return new Promise(function(resolve, reject) {
                     var xhr = new XMLHttpRequest();
                     drillUploadXhr = xhr;
@@ -1174,9 +1175,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 proxyToken = data.proxy_token || null;
                 contentType = data.content_type || videoFile.type || 'application/octet-stream';
 
-                // Step 2: upload via proxy (preferred) or direct to RustFS
-                var uploadUrl = (proxyUploadUrl && proxyToken) ? proxyUploadUrl : data.presigned_url;
-                var useProxy = !!(proxyUploadUrl && proxyToken);
+                // Step 2: upload direct to RustFS (preferred) or via proxy
+                var uploadUrl = data.presigned_url ? data.presigned_url : ((proxyUploadUrl && proxyToken) ? proxyUploadUrl : null);
+                var useProxy = !data.presigned_url && !!(proxyUploadUrl && proxyToken);
+                if (!uploadUrl) throw new Error('No upload URL available');
                 return new Promise(function(resolve, reject) {
                     var xhr = new XMLHttpRequest();
                     drillUploadXhr = xhr;
