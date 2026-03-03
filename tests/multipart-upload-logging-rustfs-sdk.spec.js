@@ -220,25 +220,18 @@ test.describe('streamUploadToRustFS improved logging', () => {
 test.describe('generatePresignedUploadUrlViaSdk improved logging', () => {
   const content = () => readFile('lib/rustfs_storage.php');
 
-  test('should log companion presign request details', () => {
+  test('should delegate directly to local PHP presign (no companion involvement)', () => {
     const c = content();
     const funcStart = c.indexOf('function generatePresignedUploadUrlViaSdk(');
     const funcEnd = c.indexOf('\nfunction ', funcStart + 1);
     const func = c.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
-    expect(func).toContain('calling companion');
-    expect(func).toContain('/api/presign');
+    // Companion should NOT be called for presigned URL generation
+    expect(func).not.toContain('/api/presign');
+    expect(func).not.toContain('curl_init');
+    expect(func).toContain('generatePresignedUploadUrl(');
   });
 
-  test('should log companion curl errors', () => {
-    const c = content();
-    const funcStart = c.indexOf('function generatePresignedUploadUrlViaSdk(');
-    const funcEnd = c.indexOf('\nfunction ', funcStart + 1);
-    const func = c.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
-    expect(func).toContain('curl_error');
-    expect(func).toContain('curl_errno');
-  });
-
-  test('should log when falling back to local PHP presign', () => {
+  test('should log local PHP presign generation', () => {
     const c = content();
     const funcStart = c.indexOf('function generatePresignedUploadUrlViaSdk(');
     const funcEnd = c.indexOf('\nfunction ', funcStart + 1);

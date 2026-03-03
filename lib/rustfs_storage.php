@@ -995,16 +995,13 @@ function generatePresignedUploadUrl($settings, $object_key, $content_type = 'app
 }
 
 /**
- * Generate a presigned PUT URL via the companion server's boto3 SDK.
+ * Generate a presigned PUT URL for direct browser-to-RustFS uploads.
  *
- * The companion uses boto3.generate_presigned_url() which is the official
- * AWS-SDK approach recommended by the RustFS documentation.  This avoids
- * subtle signature issues that can occur with hand-rolled Sig V4 code.
+ * Delegates to the local PHP presigned URL generator. The companion app
+ * is NOT involved in the upload flow — it is only used after the upload
+ * completes (e.g. for HLS transcoding).
  *
- * Falls back to the local PHP implementation when the companion is
- * unavailable or not configured.
- *
- * @param PDO         $pdo          Database connection (to read companion settings)
+ * @param PDO         $pdo          Database connection (unused, kept for backward compatibility)
  * @param array       $settings     RustFS settings
  * @param string      $object_key   S3 object key
  * @param string      $content_type MIME type
@@ -1013,78 +1010,9 @@ function generatePresignedUploadUrl($settings, $object_key, $content_type = 'app
  * @return array ['success'=>bool, 'url'=>string|null, 'object_key'=>string, 'message'=>string|null]
  */
 function generatePresignedUploadUrlViaSdk($pdo, $settings, $object_key, $content_type = 'application/octet-stream', $expires = 3600, $public_endpoint = null) {
-    // Try the companion server's SDK-based presign endpoint first
-    try {
-        $stmt = $pdo->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('gameplan_companion_url', 'gameplan_companion_api_key')");
-        $stmt->execute();
-        $companion = [];
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $companion[$row['setting_key']] = $row['setting_value'] ?? '';
-        }
-
-        $companion_url = $companion['gameplan_companion_url'] ?? '';
-        $companion_key = $companion['gameplan_companion_api_key'] ?? '';
-
-        if (!empty($companion_url)) {
-            $companion_url = rtrim($companion_url, '/');
-            $presign_payload = [
-                'object_key'   => ltrim($object_key, '/'),
-                'content_type' => $content_type,
-                'expires'      => $expires,
-            ];
-            // Pass the browser-facing public endpoint so the companion generates
-            // a presigned URL reachable from the browser (not the internal address).
-            if (!empty($public_endpoint)) {
-                $presign_payload['public_endpoint'] = $public_endpoint;
-            }
-            $payload = json_encode($presign_payload);
-
-            error_log("Presign: calling companion at {$companion_url}/api/presign for key=$object_key content_type=$content_type public_endpoint=" . ($public_endpoint ?? '(none)'));
-
-            $ch = curl_init($companion_url . '/api/presign');
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                'Content-Type: application/json',
-                'X-API-Key: ' . $companion_key,
-            ]);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-
-            $response = curl_exec($ch);
-            $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $curl_error = curl_error($ch);
-            $curl_errno = curl_errno($ch);
-            curl_close($ch);
-
-            if ($curl_errno !== 0) {
-                error_log("Presign: companion curl error [$curl_errno] $curl_error for key=$object_key — falling back to local PHP");
-            } elseif ($http_code === 200 && $response) {
-                $data = json_decode($response, true);
-                if (!empty($data['success']) && !empty($data['url'])) {
-                    error_log("Presigned URL generated via companion SDK for key=$object_key url_host=" . parse_url($data['url'], PHP_URL_HOST));
-                    return [
-                        'success'    => true,
-                        'url'        => $data['url'],
-                        'object_key' => $data['object_key'] ?? $object_key,
-                        'message'    => null,
-                    ];
-                }
-                error_log("Presign: companion returned HTTP 200 but no valid URL: " . substr($response, 0, 300));
-            } else {
-                // Companion returned an error — log it and fall through to local PHP
-                error_log("Presign: companion HTTP $http_code response=" . substr($response ?: '', 0, 300) . " — falling back to local PHP");
-            }
-        } else {
-            error_log("Presign: no companion URL configured — using local PHP presign for key=$object_key");
-        }
-    } catch (Exception $e) {
-        error_log("Presign: companion call exception: " . $e->getMessage() . " — falling back to local PHP presign for key=$object_key");
-    }
-
-    // Fall back to local PHP presigned URL generation
+    // Presigned URLs are generated locally in PHP — the companion is not involved
+    // in the upload flow. Uploads go directly from the browser to RustFS.
+    // The companion is only used after upload completes (e.g. HLS transcoding).
     error_log("Presign: generating via local PHP for key=$object_key public_endpoint=" . ($public_endpoint ?? '(none)'));
     return generatePresignedUploadUrl($settings, $object_key, $content_type, $expires, $public_endpoint);
 }

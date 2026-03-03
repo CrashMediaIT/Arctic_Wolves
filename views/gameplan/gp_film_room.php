@@ -636,7 +636,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 if (!uploadStarted) { xhr.abort(); reject(new Error('Cloud storage connection timed out — check that the S3/RustFS endpoint is reachable from this browser')); }
                             }, 30000);
                             xhr.upload.onprogress = function(ev) {
-                                if (!uploadStarted) { uploadStarted = true; clearTimeout(connTimer); }
+                                if (!uploadStarted && ev.loaded > 0) { uploadStarted = true; clearTimeout(connTimer); }
                                 if (ev.lengthComputable) {
                                     var pct = Math.round((ev.loaded / ev.total) * 100);
                                     bar.style.width = pct + '%';
@@ -668,7 +668,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 if (!uploadStarted) { xhr.abort(); reject(new Error('Upload connection timed out')); }
                             }, 30000);
                             xhr.upload.onprogress = function(ev) {
-                                if (!uploadStarted) { uploadStarted = true; clearTimeout(connTimer); }
+                                if (!uploadStarted && ev.loaded > 0) { uploadStarted = true; clearTimeout(connTimer); }
                                 if (ev.lengthComputable) {
                                     var pct = Math.round((ev.loaded / ev.total) * 100);
                                     bar.style.width = pct + '%';
@@ -707,7 +707,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             if (!uploadStarted) { xhr.abort(); reject(new Error('Proxy connection timed out')); }
                         }, 30000);
                         xhr.upload.onprogress = function(ev) {
-                            if (!uploadStarted) { uploadStarted = true; clearTimeout(connTimer); }
+                            if (!uploadStarted && ev.loaded > 0) { uploadStarted = true; clearTimeout(connTimer); }
                             if (ev.lengthComputable) {
                                 var pct = Math.round((ev.loaded / ev.total) * 100);
                                 bar.style.width = pct + '%';
@@ -722,7 +722,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         };
                         xhr.onerror = function() { clearTimeout(connTimer); reject(new Error('Network error during proxy upload')); };
                         xhr.send(videoFile);
-                    });
                     });
                 })
                 .then(function() {

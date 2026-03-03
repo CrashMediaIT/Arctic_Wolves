@@ -559,7 +559,7 @@ function handleGetAthleteUploadUrl() {
 
     $object_key = 'Images/videos/athlete/' . $athlete_folder . '/' . $unique_filename;
 
-    // Generate presigned URL — try companion SDK first, then local PHP
+    // Generate presigned URL for direct browser-to-RustFS upload
     $rustfs = getRustFSSettings($pdo);
     if (!isRustFSConfigured($rustfs)) {
         ErrorLogger::error("Video upload URL (legacy): RustFS not configured for user=$user_id");
@@ -568,7 +568,7 @@ function handleGetAthleteUploadUrl() {
 
     ErrorLogger::info("Video upload URL (legacy): generating presigned URL for key=$object_key endpoint=" . ($rustfs['rustfs_endpoint'] ?? '(none)'));
 
-    $presigned = generatePresignedUploadUrlViaSdk($pdo, $rustfs, $object_key, $file_type, 3600, $rustfs['rustfs_public_endpoint'] ?? null);
+    $presigned = generatePresignedUploadUrl($rustfs, $object_key, $file_type, 3600, $rustfs['rustfs_public_endpoint'] ?? null);
     if (!$presigned['success']) {
         ErrorLogger::error("Video upload URL (legacy): presign failed for key=$object_key error=" . ($presigned['message'] ?? 'Unknown'));
         throw new Exception('Failed to generate upload URL: ' . ($presigned['message'] ?? 'Unknown error'));
@@ -806,7 +806,7 @@ function handleGetVideoUploadUrl() {
         $object_key = 'Images/videos/athlete/' . $athlete_folder . '/' . $filename;
     }
 
-    // Generate presigned URL — try companion SDK first, then local PHP
+    // Generate presigned URL for direct browser-to-RustFS upload
     $rustfs = getRustFSSettings($pdo);
     if (!isRustFSConfigured($rustfs)) {
         ErrorLogger::error("Video upload URL: RustFS not configured for user=$user_id type=$upload_type");
@@ -816,7 +816,7 @@ function handleGetVideoUploadUrl() {
     $size_mb = round(($file_size ?: 0) / 1048576, 2);
     ErrorLogger::info("Video upload URL: generating presigned URL for key=$object_key type=$file_type size={$size_mb}MB endpoint=" . ($rustfs['rustfs_endpoint'] ?? '(none)') . " public_endpoint=" . ($rustfs['rustfs_public_endpoint'] ?? '(none)'));
 
-    $presigned = generatePresignedUploadUrlViaSdk($pdo, $rustfs, $object_key, $file_type, 3600, $rustfs['rustfs_public_endpoint'] ?? null);
+    $presigned = generatePresignedUploadUrl($rustfs, $object_key, $file_type, 3600, $rustfs['rustfs_public_endpoint'] ?? null);
     if (!$presigned['success']) {
         ErrorLogger::error("Video upload URL: presign failed for key=$object_key error=" . ($presigned['message'] ?? 'Unknown'));
         throw new Exception('Failed to generate upload URL: ' . ($presigned['message'] ?? 'Unknown error'));

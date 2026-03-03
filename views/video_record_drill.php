@@ -1019,7 +1019,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (!uploadStarted) { xhr.abort(); reject(new Error((useProxy ? 'Proxy' : 'Cloud storage') + ' connection timed out')); }
                     }, 30000);
                     xhr.upload.onprogress = function(ev) {
-                        if (!uploadStarted) { uploadStarted = true; clearTimeout(connTimer); }
+                        if (!uploadStarted && ev.loaded > 0) { uploadStarted = true; clearTimeout(connTimer); }
                         if (ev.lengthComputable) {
                             var pct = Math.round((ev.loaded / ev.total) * 100);
                             progressFill.style.width = pct + '%';
@@ -1190,7 +1190,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (!uploadStarted) { xhr.abort(); reject(new Error((useProxy ? 'Proxy' : 'Cloud storage') + ' connection timed out')); }
                     }, 30000);
                     xhr.upload.onprogress = function(ev) {
-                        if (!uploadStarted) { uploadStarted = true; clearTimeout(connTimer); }
+                        if (!uploadStarted && ev.loaded > 0) { uploadStarted = true; clearTimeout(connTimer); }
                         if (ev.lengthComputable) {
                             var pct = Math.round((ev.loaded / ev.total) * 100);
                             progressFill.style.width = pct + '%';

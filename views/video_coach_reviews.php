@@ -991,7 +991,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         }, 30000);
 
                         xhr.upload.onprogress = function(ev) {
-                            if (!uploadStarted) { uploadStarted = true; clearTimeout(connTimer); }
+                            if (!uploadStarted && ev.loaded > 0) { uploadStarted = true; clearTimeout(connTimer); }
                             if (ev.lengthComputable) {
                                 var pct = Math.round((ev.loaded / ev.total) * 100);
                                 bar.style.width = pct + '%';
@@ -1034,7 +1034,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             if (!uploadStarted) { xhr.abort(); reject(new Error('Proxy connection timed out')); }
                         }, 30000);
                         xhr.upload.onprogress = function(ev) {
-                            if (!uploadStarted) { uploadStarted = true; clearTimeout(connTimer); }
+                            if (!uploadStarted && ev.loaded > 0) { uploadStarted = true; clearTimeout(connTimer); }
                             if (ev.lengthComputable) {
                                 var pct = Math.round((ev.loaded / ev.total) * 100);
                                 bar.style.width = pct + '%';
