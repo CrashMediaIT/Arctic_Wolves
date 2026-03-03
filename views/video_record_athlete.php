@@ -953,7 +953,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     console.log('[Upload] ' + label + ': starting PUT to ' + url + ' size=' + file.size + ' type=' + (headers['Content-Type'] || 'unknown'));
 
                     xhr.upload.onprogress = function(ev) {
-                        if (!uploadStarted) { uploadStarted = true; clearTimeout(connTimer); }
+                        if (!uploadStarted && ev.loaded > 0) { uploadStarted = true; clearTimeout(connTimer); }
                         if (ev.lengthComputable) {
                             var pct = Math.round((ev.loaded / ev.total) * 100);
                             bar.style.width = pct + '%';

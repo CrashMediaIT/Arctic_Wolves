@@ -1013,6 +1013,10 @@ function generatePresignedUploadUrl($settings, $object_key, $content_type = 'app
  * @return array ['success'=>bool, 'url'=>string|null, 'object_key'=>string, 'message'=>string|null]
  */
 function generatePresignedUploadUrlViaSdk($pdo, $settings, $object_key, $content_type = 'application/octet-stream', $expires = 3600, $public_endpoint = null) {
+    // Ensure CORS is configured on the bucket so the browser can PUT directly,
+    // regardless of whether the companion or local PHP generates the presigned URL.
+    ensureRustFSBucketCors($settings);
+
     // Try the companion server's SDK-based presign endpoint first
     try {
         $stmt = $pdo->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('gameplan_companion_url', 'gameplan_companion_api_key')");
