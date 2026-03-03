@@ -71,6 +71,7 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
     var MULTIPART_THRESHOLD = 256 * 1024 * 1024; // 256 MB – files above this use multipart
     var PART_SIZE = 256 * 1024 * 1024;            // 256 MB per part
     var STALL_TIMEOUT_SEC = 30; // seconds with no progress before warning
+    var PROGRESS_LOG_INTERVAL = 10; // log progress to output window every N seconds
 
     function log(msg) {
         logEl.style.display = 'block';
@@ -85,6 +86,12 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
     function elapsed(startMs) {
         var s = ((Date.now() - startMs) / 1000).toFixed(1);
         return s + 's';
+    }
+
+    function formatSpeed(bytes, ms) {
+        if (ms <= 0) return '—';
+        var mbps = (bytes / 1048576) / (ms / 1000);
+        return mbps.toFixed(1) + ' MB/s';
     }
 
     function postAction(params) {
@@ -192,6 +199,9 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
             var stallTimer = null;
             var stallWarned = false;
             var putStart = Date.now();
+            var lastLogTime = 0;
+
+            log('Starting upload to RustFS (' + (file.size / 1048576).toFixed(1) + ' MB)…');
 
             function checkStall() {
                 var now = Date.now();
@@ -217,6 +227,15 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
                     var pct = Math.round((ev.loaded / ev.total) * 100);
                     progressBar.style.width = pct + '%';
                     progressText.textContent = 'Uploading… ' + pct + '% (' + (ev.loaded / 1048576).toFixed(1) + ' / ' + (ev.total / 1048576).toFixed(1) + ' MB)';
+
+                    // Periodic progress to log window
+                    var now = Date.now();
+                    if (ev.loaded > 0 && (now - lastLogTime) >= PROGRESS_LOG_INTERVAL * 1000) {
+                        lastLogTime = now;
+                        log('Progress: ' + pct + '% — '
+                            + (ev.loaded / 1048576).toFixed(1) + ' / ' + (ev.total / 1048576).toFixed(1) + ' MB'
+                            + ' (' + formatSpeed(ev.loaded, now - putStart) + ', ' + elapsed(putStart) + ' elapsed)');
+                    }
                 }
             });
 
@@ -354,6 +373,10 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
             var stallTimer = null;
             var stallWarned = false;
             var partPutStart = Date.now();
+            var lastLogTime = 0;
+            var chunkSize = chunk.size;
+
+            log('Uploading part ' + partNumber + '/' + totalParts + ' (' + (chunkSize / 1048576).toFixed(1) + ' MB)…');
 
             function checkStall() {
                 var now = Date.now();
@@ -384,6 +407,16 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
                         + (totalUploaded / 1048576).toFixed(1) + ' / '
                         + (totalSize / 1048576).toFixed(1) + ' MB) — Part '
                         + partNumber + '/' + totalParts;
+
+                    // Periodic progress to log window
+                    var now = Date.now();
+                    if (ev.loaded > 0 && (now - lastLogTime) >= PROGRESS_LOG_INTERVAL * 1000) {
+                        lastLogTime = now;
+                        var partPct = Math.round((ev.loaded / chunkSize) * 100);
+                        log('Part ' + partNumber + ': ' + partPct + '% — '
+                            + (ev.loaded / 1048576).toFixed(1) + ' / ' + (chunkSize / 1048576).toFixed(1) + ' MB'
+                            + ' (overall ' + pct + '%, ' + formatSpeed(ev.loaded, now - partPutStart) + ', ' + elapsed(partPutStart) + ' elapsed)');
+                    }
                 }
             });
 
