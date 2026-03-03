@@ -224,12 +224,12 @@ endif;
                 statusEl.textContent = 'Uploading to cloud storage...';
 
                 // Step 2: upload direct to RustFS (preferred) or via proxy
-                var uploadUrl = presignedUrl ? presignedUrl : ((proxyUploadUrl && proxyToken) ? proxyUploadUrl : null);
+                var url = presignedUrl ? presignedUrl : ((proxyUploadUrl && proxyToken) ? proxyUploadUrl : null);
                 var useProxy = !presignedUrl && !!(proxyUploadUrl && proxyToken);
-                if (!uploadUrl) throw new Error('No upload URL available');
+                if (!url) throw new Error('No upload URL available');
                 return new Promise(function(resolve, reject) {
                     var xhr = new XMLHttpRequest();
-                    xhr.open('PUT', uploadUrl, true);
+                    xhr.open('PUT', url, true);
                     xhr.setRequestHeader('Content-Type', contentType);
                     if (useProxy) xhr.setRequestHeader('X-Upload-Token', proxyToken);
                     var uploadStarted = false;
@@ -306,6 +306,63 @@ endif;
                 } else {
                     throw new Error(result.error || 'Confirmation failed');
                 }
+            })
+            .catch(function(err) {
+                // Proxy upload failed, trying direct S3
+                console.warn('[Upload] Proxy upload failed:', err.message, '— trying direct S3');
+                statusEl.textContent = 'Retrying via direct cloud upload...';
+                progressBar.style.width = '0%';
+
+                var retryMeta = new FormData();
+                retryMeta.append('action', 'get_video_upload_url');
+                retryMeta.append('upload_type', 'drill_video');
+                retryMeta.append('csrf_token', csrfToken);
+                retryMeta.append('file_name', 'drill_video.webm');
+                retryMeta.append('file_size', blob.size);
+                retryMeta.append('file_type', blob.type || 'video/webm');
+
+                return fetch('process_video.php', { method: 'POST', body: retryMeta })
+                    .then(function(r) { return r.json(); })
+                    .then(function(data2) {
+                        if (!data2.presigned_url) throw new Error('No presigned URL available');
+                        uploadNonce = data2.upload_nonce || uploadNonce;
+                        return new Promise(function(resolve, reject) {
+                            var xhr = new XMLHttpRequest();
+                            xhr.open('PUT', data2.presigned_url, true);
+                            xhr.setRequestHeader('Content-Type', contentType);
+                            xhr.upload.onprogress = function(ev) {
+                                if (ev.lengthComputable) {
+                                    var pct = Math.round((ev.loaded / ev.total) * 100);
+                                    progressBar.style.width = pct + '%';
+                                    statusEl.textContent = pct < 100 ? 'Uploading to cloud... ' + pct + '%' : 'Finalizing...';
+                                }
+                            };
+                            xhr.onload = function() {
+                                if (xhr.status >= 200 && xhr.status < 300) resolve();
+                                else reject(new Error('Cloud upload failed (HTTP ' + xhr.status + ')'));
+                            };
+                            xhr.onerror = function() { reject(new Error('Network error during cloud upload')); };
+                            xhr.send(blob);
+                        });
+                    })
+                    .then(function() {
+                        statusEl.textContent = 'Confirming upload...';
+                        var confirmData = new FormData();
+                        confirmData.append('action', 'confirm_video_upload');
+                        confirmData.append('csrf_token', csrfToken);
+                        confirmData.append('upload_nonce', uploadNonce);
+                        return fetch('process_video.php', { method: 'POST', body: confirmData })
+                            .then(function(r) { return r.json(); });
+                    })
+                    .then(function(result) {
+                        if (result.success) {
+                            statusEl.textContent = 'Upload complete!';
+                            progressWrap.remove();
+                            setTimeout(function() { location.reload(); }, 500);
+                        } else {
+                            throw new Error(result.error || 'Confirmation failed');
+                        }
+                    });
             })
             .catch(function(err) {
                 // Fall back to legacy server-side upload if proxy/direct upload failed
