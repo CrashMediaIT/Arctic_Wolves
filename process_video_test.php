@@ -52,6 +52,7 @@ if (!in_array('admin', $roles)) {
 
 // ── Action routing ────────────────────────────────────────────────────
 // Multipart actions: initiate, presign_part, complete, abort
+// Transcode actions: transcode, transcode_status, delete_original
 // Default (no action): single presigned PUT URL for small files
 $action = $_POST['action'] ?? '';
 
@@ -63,6 +64,17 @@ if (in_array($action, ['initiate', 'presign_part', 'complete', 'abort'], true)) 
         case 'presign_part': handleTestMultipartPresignPart($tcfg); break;
         case 'complete':     handleTestMultipartComplete($tcfg); break;
         case 'abort':        handleTestMultipartAbort($tcfg); break;
+    }
+    exit;
+}
+
+if (in_array($action, ['transcode', 'transcode_status', 'delete_original'], true)) {
+    $tcfg = loadTestRustFSConfig($pdo);
+
+    switch ($action) {
+        case 'transcode':        handleTestTranscode($pdo, $tcfg); break;
+        case 'transcode_status': handleTestTranscodeStatus($pdo); break;
+        case 'delete_original':  handleTestDeleteOriginal($tcfg); break;
     }
     exit;
 }
@@ -760,5 +772,228 @@ function handleTestMultipartAbort($cfg) {
 
     error_log("Video test multipart: aborted upload_id=$uploadId key=$objectKey");
     echo json_encode(['success' => true]);
+    exit;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  Transcode helpers (trigger companion, poll status, delete original)
+// ═══════════════════════════════════════════════════════════════════════
+
+/**
+ * Action: Trigger HLS transcode via companion app.
+ */
+function handleTestTranscode($pdo, $cfg) {
+    $objectKey = $_POST['object_key'] ?? '';
+
+    if ($objectKey === '') {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'object_key is required']);
+        exit;
+    }
+    if (strpos($objectKey, 'Images/videos/test/vtest_') !== 0) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Invalid object key']);
+        exit;
+    }
+
+    // Load companion settings
+    $stmt = $pdo->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('gameplan_companion_url', 'gameplan_companion_api_key', 'gameplan_app_url')");
+    $stmt->execute();
+    $settings = [];
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $settings[$row['setting_key']] = $row['setting_value'] ?? '';
+    }
+    $companionUrl = $settings['gameplan_companion_url'] ?? '';
+    $companionKey = $settings['gameplan_companion_api_key'] ?? '';
+    $appUrl       = $settings['gameplan_app_url'] ?? '';
+
+    if (empty($companionUrl)) {
+        http_response_code(503);
+        echo json_encode(['success' => false, 'error' => 'Companion server is not configured. Set companion URL in Gameplan Settings.']);
+        exit;
+    }
+
+    $companionUrl = rtrim($companionUrl, '/');
+
+    // Build output prefix: same directory as source, named after source file, /hls subfolder
+    $hlsPrefix    = pathinfo($objectKey, PATHINFO_FILENAME);
+    $hlsDir       = pathinfo($objectKey, PATHINFO_DIRNAME);
+    $outputPrefix = $hlsDir . '/' . $hlsPrefix . '/hls';
+
+    // Build callback URL
+    $callbackUrl = '';
+    if (!empty($appUrl)) {
+        $callbackUrl = rtrim($appUrl, '/') . '/api/v1/companion/callback';
+    }
+
+    $payload = json_encode([
+        'source_key'      => $objectKey,
+        'output_prefix'   => $outputPrefix,
+        'delete_original' => false, // We handle deletion ourselves after verifying
+        'callback_url'    => $callbackUrl,
+    ]);
+
+    $ch = curl_init($companionUrl . '/api/hls');
+    curl_setopt_array($ch, [
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $payload,
+        CURLOPT_HTTPHEADER     => [
+            'Content-Type: application/json',
+            'X-API-Key: ' . $companionKey,
+        ],
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 15,
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_SSL_VERIFYPEER => false,
+    ]);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr  = curl_error($ch);
+    curl_close($ch);
+
+    if ($curlErr) {
+        error_log("Video test transcode trigger curl error: $curlErr");
+        http_response_code(502);
+        echo json_encode(['success' => false, 'error' => 'Could not reach companion server: ' . $curlErr]);
+        exit;
+    }
+
+    if ($httpCode !== 202) {
+        $body = $response ? substr($response, 0, 500) : '(empty)';
+        error_log("Video test transcode trigger failed: HTTP $httpCode — $body");
+        http_response_code(502);
+        echo json_encode(['success' => false, 'error' => 'Companion returned HTTP ' . $httpCode]);
+        exit;
+    }
+
+    $data = json_decode($response, true) ?: [];
+    $jobId = $data['id'] ?? '';
+
+    // Store job tracking in session so we can poll status
+    $_SESSION['vt_transcode_job'] = [
+        'job_id'        => $jobId,
+        'object_key'    => $objectKey,
+        'output_prefix' => $outputPrefix,
+        'companion_url' => $companionUrl,
+        'companion_key' => $companionKey,
+        'started_at'    => time(),
+    ];
+
+    error_log("Video test transcode: triggered job_id=$jobId key=$objectKey output=$outputPrefix");
+
+    echo json_encode([
+        'success'       => true,
+        'job_id'        => $jobId,
+        'output_prefix' => $outputPrefix,
+    ]);
+    exit;
+}
+
+/**
+ * Action: Poll companion for transcode job status.
+ */
+function handleTestTranscodeStatus($pdo) {
+    $job = $_SESSION['vt_transcode_job'] ?? null;
+    $jobId = $_POST['job_id'] ?? ($job['job_id'] ?? '');
+
+    if (empty($job) && empty($jobId)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'No transcode job in progress']);
+        exit;
+    }
+
+    // Load companion settings if not in session
+    $companionUrl = $job['companion_url'] ?? '';
+    $companionKey = $job['companion_key'] ?? '';
+    $outputPrefix = $job['output_prefix'] ?? '';
+
+    if (empty($companionUrl)) {
+        $stmt = $pdo->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('gameplan_companion_url', 'gameplan_companion_api_key')");
+        $stmt->execute();
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            if ($row['setting_key'] === 'gameplan_companion_url') $companionUrl = rtrim($row['setting_value'] ?? '', '/');
+            if ($row['setting_key'] === 'gameplan_companion_api_key') $companionKey = $row['setting_value'] ?? '';
+        }
+    }
+
+    if (empty($companionUrl) || empty($jobId)) {
+        http_response_code(503);
+        echo json_encode(['success' => false, 'error' => 'Companion not configured or no job ID']);
+        exit;
+    }
+
+    // GET /api/job/<job_id> on the companion
+    $ch = curl_init($companionUrl . '/api/job/' . rawurlencode($jobId));
+    curl_setopt_array($ch, [
+        CURLOPT_HTTPGET        => true,
+        CURLOPT_HTTPHEADER     => [
+            'X-API-Key: ' . $companionKey,
+        ],
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 10,
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_SSL_VERIFYPEER => false,
+    ]);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr  = curl_error($ch);
+    curl_close($ch);
+
+    if ($curlErr) {
+        http_response_code(502);
+        echo json_encode(['success' => false, 'error' => 'Companion unreachable: ' . $curlErr]);
+        exit;
+    }
+
+    $data = json_decode($response, true) ?: [];
+    $status = $data['status'] ?? 'unknown';
+
+    $result = [
+        'success'       => true,
+        'status'        => $status,
+        'output_prefix' => $outputPrefix,
+    ];
+
+    if ($status === 'completed') {
+        $hlsManifest = $data['hls_manifest'] ?? ($outputPrefix . '/master.m3u8');
+        $result['hls_url'] = 'api/media.php?key=' . rawurlencode($hlsManifest);
+        $result['hls_manifest'] = $hlsManifest;
+        // Clean up session tracking
+        unset($_SESSION['vt_transcode_job']);
+    } elseif ($status === 'failed') {
+        $result['error'] = $data['error'] ?? 'Unknown error';
+        unset($_SESSION['vt_transcode_job']);
+    }
+
+    echo json_encode($result);
+    exit;
+}
+
+/**
+ * Action: Delete the original uploaded file from S3 after transcode success.
+ */
+function handleTestDeleteOriginal($cfg) {
+    $objectKey = $_POST['object_key'] ?? '';
+
+    if ($objectKey === '') {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'object_key is required']);
+        exit;
+    }
+    if (strpos($objectKey, 'Images/videos/test/vtest_') !== 0) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Invalid object key']);
+        exit;
+    }
+
+    $result = signAndExecTestS3('DELETE', $cfg, $objectKey, '', '');
+
+    if ($result['http_code'] >= 200 && $result['http_code'] < 300) {
+        error_log("Video test: deleted original file key=$objectKey");
+        echo json_encode(['success' => true]);
+    } else {
+        error_log("Video test: failed to delete original key=$objectKey HTTP={$result['http_code']}");
+        echo json_encode(['success' => false, 'error' => 'Delete failed: HTTP ' . $result['http_code']]);
+    }
     exit;
 }

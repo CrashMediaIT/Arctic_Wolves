@@ -56,6 +56,46 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
 </div>
 
 <?php if ($rustfsConfigured): ?>
+<!-- Video Viewer / Transcode Test -->
+<div class="card" id="vt-viewer-card" style="margin-top:1rem;display:none;">
+    <div class="card-header">
+        <h2><i class="fa-solid fa-play-circle"></i> Video Viewer — Transcode Test</h2>
+        <p style="margin:4px 0 0;color:var(--text-secondary,#6b7280);">
+            After upload, triggers companion app HLS transcode, then plays the transcoded video.
+        </p>
+    </div>
+    <div class="card-body">
+        <!-- Transcode status -->
+        <div id="vt-transcode-area">
+            <div id="vt-transcode-status" style="margin-bottom:1rem;">
+                <span id="vt-transcode-status-text" style="font-weight:600;color:var(--text-secondary,#6b7280);">
+                    Waiting for upload…
+                </span>
+            </div>
+            <div id="vt-transcode-progress" style="display:none;margin-bottom:1rem;">
+                <div style="background:var(--bg-secondary,#e5e7eb);border-radius:6px;overflow:hidden;height:18px;">
+                    <div id="vt-transcode-bar"
+                         style="height:100%;width:0%;background:var(--success,#16a34a);transition:width .3s;border-radius:6px;"></div>
+                </div>
+                <p id="vt-transcode-text" style="margin:.5rem 0 0;font-size:.85rem;color:var(--text-secondary,#6b7280);">
+                    Transcoding…
+                </p>
+            </div>
+        </div>
+
+        <!-- Video player -->
+        <div id="vt-player-area" style="display:none;margin-top:1rem;">
+            <video id="vt-video-player" controls playsinline
+                   style="width:100%;max-height:500px;border-radius:8px;background:#000;">
+                Your browser does not support HTML5 video.
+            </video>
+            <p id="vt-player-info" style="margin:.5rem 0 0;font-size:.85rem;color:var(--text-secondary,#6b7280);"></p>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
+<?php if ($rustfsConfigured): ?>
 <script>
 (function() {
     var csrfToken = '<?= htmlspecialchars($_SESSION["csrf_token"] ?? "", ENT_QUOTES) ?>';
@@ -66,13 +106,23 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
     var progressText = document.getElementById('vt-progress-text');
     var logEl = document.getElementById('vt-log');
 
+    // Viewer / transcode elements
+    var viewerCard       = document.getElementById('vt-viewer-card');
+    var transcodeStatus  = document.getElementById('vt-transcode-status-text');
+    var transcodeProgress = document.getElementById('vt-transcode-progress');
+    var transcodeBar     = document.getElementById('vt-transcode-bar');
+    var transcodeText    = document.getElementById('vt-transcode-text');
+    var playerArea       = document.getElementById('vt-player-area');
+    var videoPlayer      = document.getElementById('vt-video-player');
+    var playerInfo       = document.getElementById('vt-player-info');
+
     var ALLOWED_EXT = ['mp4','mkv','mov','avi','webm'];
     var MAX_SIZE = 10 * 1024 * 1024 * 1024; // 10 GB
     var MULTIPART_THRESHOLD = 64 * 1024 * 1024; // 64 MB – files above this use multipart
     var PART_SIZE = 64 * 1024 * 1024;            // 64 MB per part
     var STALL_TIMEOUT_SEC = 30; // seconds with no progress before warning
     var PROGRESS_LOG_INTERVAL = 10; // log progress to output window every N seconds
-    var CONCURRENT_PARTS = 3; // upload this many parts in parallel
+    var CONCURRENT_PARTS = 5; // upload this many parts in parallel
     var MAX_PART_RETRIES = 3; // retry each part up to this many times
     var STALL_ABORT_SEC = 60; // abort and retry a part after this many seconds with no progress
 
@@ -182,6 +232,7 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
             progressText.textContent = 'Upload complete!';
             log('SUCCESS – file stored at: ' + objectKey + ' (total time: ' + elapsed(uploadStart) + ')');
             uploadBtn.disabled = false;
+            startTranscodeFlow(objectKey);
         })
         .catch(function(err) {
             progressText.textContent = 'Upload failed.';
@@ -313,6 +364,7 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
             progressText.textContent = 'Upload complete!';
             log('SUCCESS – file stored at: ' + objectKey + ' (total time: ' + elapsed(uploadStart) + ')');
             uploadBtn.disabled = false;
+            startTranscodeFlow(objectKey);
         })
         .catch(function(err) {
             progressText.textContent = 'Upload failed.';
@@ -331,7 +383,8 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
 
     function uploadAllParts(file, objectKey, uploadId, totalParts) {
         var results = new Array(totalParts); // indexed by partNumber-1
-        var uploadedBytes = 0;
+        var partBytes = new Array(totalParts); // track bytes uploaded per part
+        for (var i = 0; i < totalParts; i++) partBytes[i] = 0;
         var nextIndex = 0; // next part index to dispatch (0-based)
         var activeCount = 0;
         var completedCount = 0;
@@ -344,10 +397,10 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
                     (function(idx) {
                         var partNumber = idx + 1;
                         activeCount++;
-                        uploadOnePart(file, objectKey, uploadId, partNumber, totalParts, uploadedBytes)
+                        uploadOnePart(file, objectKey, uploadId, partNumber, totalParts, partBytes)
                             .then(function(result) {
                                 if (failed) return;
-                                uploadedBytes += result.size;
+                                partBytes[idx] = result.size; // mark final size
                                 results[idx] = { PartNumber: partNumber, ETag: result.etag };
                                 activeCount--;
                                 completedCount++;
@@ -371,7 +424,7 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
         });
     }
 
-    function uploadOnePart(file, objectKey, uploadId, partNumber, totalParts, prevUploaded) {
+    function uploadOnePart(file, objectKey, uploadId, partNumber, totalParts, partBytes) {
         var start = (partNumber - 1) * PART_SIZE;
         var end   = Math.min(start + PART_SIZE, file.size);
         var chunkSize = end - start;
@@ -394,7 +447,7 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
             })
             .then(function(data) {
                 logDebug('Presign for part ' + partNumber + ' took ' + elapsed(partStart));
-                return uploadPart(data.presigned_url, chunk, partNumber, totalParts, file.size, prevUploaded);
+                return uploadPart(data.presigned_url, chunk, partNumber, totalParts, file.size, partBytes);
             })
             .then(function(etag) {
                 var etagDisplay = etag ? etag.substring(0, 12) + '…' : 'none';
@@ -414,7 +467,7 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
         return tryUpload();
     }
 
-    function uploadPart(presignedUrl, chunk, partNumber, totalParts, totalSize, prevUploaded) {
+    function uploadPart(presignedUrl, chunk, partNumber, totalParts, totalSize, partBytes) {
         return new Promise(function(resolve, reject) {
             var xhr = new XMLHttpRequest();
             xhr.open('PUT', presignedUrl, true);
@@ -426,6 +479,13 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
             var partPutStart = Date.now();
             var lastLogTime = 0;
             var chunkSize = chunk.size;
+            var partIndex = partNumber - 1;
+
+            function sumPartBytes() {
+                var total = 0;
+                for (var i = 0; i < partBytes.length; i++) total += partBytes[i];
+                return total;
+            }
 
             log('Uploading part ' + partNumber + '/' + totalParts + ' (' + (chunkSize / 1048576).toFixed(1) + ' MB)…');
 
@@ -436,7 +496,7 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
                     logWarn('Part ' + partNumber + ' stalled for ' + secSinceProgress + 's — aborting to retry');
                     xhr.abort();
                 } else if (secSinceProgress >= STALL_TIMEOUT_SEC) {
-                    var totalUploaded = prevUploaded + lastLoaded;
+                    var totalUploaded = sumPartBytes();
                     logWarn('Part ' + partNumber + ' stalled – no progress for ' + secSinceProgress + 's at '
                         + (totalUploaded / 1048576).toFixed(1) + ' MB total ('
                         + Math.round((totalUploaded / totalSize) * 100) + '%)');
@@ -454,13 +514,13 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
                         lastLoaded = ev.loaded;
                         lastProgressTime = Date.now();
                     }
-                    var totalUploaded = prevUploaded + ev.loaded;
+                    partBytes[partIndex] = ev.loaded;
+                    var totalUploaded = sumPartBytes();
                     var pct = Math.round((totalUploaded / totalSize) * 100);
                     progressBar.style.width = pct + '%';
                     progressText.textContent = 'Uploading… ' + pct + '% ('
                         + (totalUploaded / 1048576).toFixed(1) + ' / '
-                        + (totalSize / 1048576).toFixed(1) + ' MB) — Part '
-                        + partNumber + '/' + totalParts;
+                        + (totalSize / 1048576).toFixed(1) + ' MB)';
 
                     // Periodic progress to log window
                     var now = Date.now();
@@ -509,6 +569,126 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
             });
 
             xhr.send(chunk);
+        });
+    }
+
+    // ── Transcode flow ──────────────────────────────────────────────
+    var TRANSCODE_POLL_SEC = 5;
+
+    function startTranscodeFlow(objectKey) {
+        viewerCard.style.display = '';
+        transcodeStatus.textContent = 'Triggering companion transcode…';
+        transcodeStatus.style.color = 'var(--primary,#2563eb)';
+        log('Triggering HLS transcode for: ' + objectKey);
+
+        postAction({
+            action:     'transcode',
+            object_key: objectKey
+        })
+        .then(function(data) {
+            log('Transcode triggered – job ID: ' + (data.job_id || '(none)'));
+            log('Output prefix: ' + (data.output_prefix || ''));
+            transcodeStatus.textContent = 'Transcode in progress…';
+            transcodeProgress.style.display = '';
+            transcodeBar.style.width = '10%';
+            transcodeText.textContent = 'Transcoding… (polling every ' + TRANSCODE_POLL_SEC + 's)';
+            pollTranscodeStatus(objectKey, data.job_id, data.output_prefix);
+        })
+        .catch(function(err) {
+            transcodeStatus.textContent = 'Transcode trigger failed';
+            transcodeStatus.style.color = 'var(--danger,#dc2626)';
+            logError('Transcode trigger failed: ' + err.message);
+        });
+    }
+
+    function pollTranscodeStatus(objectKey, jobId, outputPrefix) {
+        var pollStart = Date.now();
+        var pollCount = 0;
+
+        function poll() {
+            pollCount++;
+            postAction({
+                action: 'transcode_status',
+                object_key: objectKey,
+                job_id: jobId || ''
+            })
+            .then(function(data) {
+                var status = data.status || 'unknown';
+                var elapsedSec = Math.round((Date.now() - pollStart) / 1000);
+
+                if (status === 'completed' || status === 'ready') {
+                    transcodeBar.style.width = '100%';
+                    transcodeText.textContent = 'Transcode complete! (' + elapsedSec + 's)';
+                    transcodeStatus.textContent = 'Transcode complete ✓';
+                    transcodeStatus.style.color = 'var(--success,#16a34a)';
+                    log('Transcode completed in ' + elapsedSec + 's');
+
+                    // Delete original file
+                    deleteOriginal(objectKey);
+
+                    // Load the video player
+                    var hlsUrl = data.hls_url || ('api/media.php?key=' + encodeURIComponent((outputPrefix || data.output_prefix) + '/master.m3u8'));
+                    loadVideoPlayer(hlsUrl, outputPrefix || data.output_prefix);
+                } else if (status === 'failed') {
+                    transcodeBar.style.width = '100%';
+                    transcodeBar.style.background = 'var(--danger,#dc2626)';
+                    transcodeText.textContent = 'Transcode failed after ' + elapsedSec + 's';
+                    transcodeStatus.textContent = 'Transcode failed ✗';
+                    transcodeStatus.style.color = 'var(--danger,#dc2626)';
+                    logError('Transcode failed: ' + (data.error || 'unknown error'));
+                } else {
+                    // Still processing
+                    var pct = Math.min(10 + pollCount * 5, 90);
+                    transcodeBar.style.width = pct + '%';
+                    transcodeText.textContent = 'Transcoding… ' + status + ' (' + elapsedSec + 's elapsed)';
+                    if (pollCount % 6 === 0) {
+                        log('Transcode still in progress — ' + status + ' (' + elapsedSec + 's)');
+                    }
+                    setTimeout(poll, TRANSCODE_POLL_SEC * 1000);
+                }
+            })
+            .catch(function(err) {
+                logWarn('Transcode status poll error: ' + err.message + ' — retrying…');
+                setTimeout(poll, TRANSCODE_POLL_SEC * 1000);
+            });
+        }
+
+        setTimeout(poll, TRANSCODE_POLL_SEC * 1000);
+    }
+
+    function deleteOriginal(objectKey) {
+        log('Deleting original file: ' + objectKey);
+        postAction({
+            action:     'delete_original',
+            object_key: objectKey
+        })
+        .then(function() {
+            log('Original file deleted successfully: ' + objectKey);
+        })
+        .catch(function(err) {
+            logWarn('Failed to delete original file: ' + err.message);
+        });
+    }
+
+    function loadVideoPlayer(hlsUrl, outputPrefix) {
+        playerArea.style.display = '';
+        log('Loading video player: ' + hlsUrl);
+        playerInfo.textContent = 'HLS manifest: ' + hlsUrl;
+
+        // Try native HLS (Safari) or fall back to direct URL
+        videoPlayer.src = hlsUrl;
+        videoPlayer.load();
+
+        videoPlayer.addEventListener('error', function onErr() {
+            videoPlayer.removeEventListener('error', onErr);
+            logWarn('Video player error — the transcoded file may not be available yet or format unsupported.');
+            playerInfo.textContent = 'Playback error. HLS URL: ' + hlsUrl;
+        });
+
+        videoPlayer.addEventListener('loadedmetadata', function onMeta() {
+            videoPlayer.removeEventListener('loadedmetadata', onMeta);
+            log('Video loaded — duration: ' + videoPlayer.duration.toFixed(1) + 's, resolution: ' + videoPlayer.videoWidth + '×' + videoPlayer.videoHeight);
+            playerInfo.textContent = 'Duration: ' + videoPlayer.duration.toFixed(1) + 's | Resolution: ' + videoPlayer.videoWidth + '×' + videoPlayer.videoHeight + ' | HLS: ' + hlsUrl;
         });
     }
 })();
