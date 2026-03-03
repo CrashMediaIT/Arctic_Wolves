@@ -627,8 +627,8 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
                     deleteOriginal(objectKey);
 
                     // Load the video player
-                    var hlsUrl = data.hls_url || ('api/media.php?key=' + encodeURIComponent((outputPrefix || data.output_prefix) + '/master.m3u8'));
-                    loadVideoPlayer(hlsUrl, outputPrefix || data.output_prefix);
+                    var hlsUrl = data.hls_url || ('api/media.php?key=' + encodeURIComponent(outputPrefix + '/master.m3u8'));
+                    loadVideoPlayer(hlsUrl, outputPrefix);
                 } else if (status === 'failed') {
                     transcodeBar.style.width = '100%';
                     transcodeBar.style.background = 'var(--danger,#dc2626)';
