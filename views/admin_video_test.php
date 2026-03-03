@@ -334,6 +334,7 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
         var uploadedBytes = 0;
         var nextIndex = 0; // next part index to dispatch (0-based)
         var activeCount = 0;
+        var completedCount = 0;
 
         return new Promise(function(resolve, reject) {
             var failed = false;
@@ -349,8 +350,8 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
                                 uploadedBytes += result.size;
                                 results[idx] = { PartNumber: partNumber, ETag: result.etag };
                                 activeCount--;
-                                var done = results.filter(Boolean).length;
-                                if (done === totalParts) {
+                                completedCount++;
+                                if (completedCount === totalParts) {
                                     resolve(results);
                                 } else {
                                     dispatch();
@@ -402,8 +403,9 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
             })
             .catch(function(err) {
                 if (attempt < MAX_PART_RETRIES) {
-                    logWarn('Part ' + partNumber + ' failed (attempt ' + attempt + '): ' + err.message);
-                    return tryUpload();
+                    var delaySec = Math.pow(2, attempt - 1); // 1s, 2s, 4s backoff
+                    logWarn('Part ' + partNumber + ' failed (attempt ' + attempt + '): ' + err.message + ' — retrying in ' + delaySec + 's');
+                    return new Promise(function(res) { setTimeout(res, delaySec * 1000); }).then(tryUpload);
                 }
                 throw err;
             });
