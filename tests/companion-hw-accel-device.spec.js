@@ -224,3 +224,88 @@ test.describe('Companion app.py _qsv_render_device helper', () => {
     }
   });
 });
+
+// =====================================================
+// 5. Double device open prevention (renderD128 fix)
+// =====================================================
+
+test.describe('Companion app.py double device open prevention', () => {
+  const content = () => readFile('companion/app.py');
+
+  test('_encoder_flags should accept hw_decode parameter', () => {
+    const c = content();
+    expect(c).toContain('def _encoder_flags(encoder: str, hw_decode: bool = False)');
+  });
+
+  test('_encoder_flags should skip vaapi_device when hw_decode is True', () => {
+    const c = content();
+    const flagsFunc = c.substring(
+      c.indexOf('def _encoder_flags'),
+      c.indexOf('def _hwaccel_decode_flags')
+    );
+    expect(flagsFunc).toContain('if not hw_decode');
+    expect(flagsFunc).toContain('-vaapi_device');
+  });
+
+  test('_encoder_flags should skip init_hw_device for qsv when hw_decode is True', () => {
+    const c = content();
+    const flagsFunc = c.substring(
+      c.indexOf('def _encoder_flags'),
+      c.indexOf('def _hwaccel_decode_flags')
+    );
+    expect(flagsFunc).toContain('if hw_decode');
+    // When hw_decode is True, QSV should only add preset, not device init
+    expect(flagsFunc).toContain('-preset');
+  });
+
+  test('_select_encoder should accept and forward hw_decode parameter', () => {
+    const c = content();
+    expect(c).toContain('def _select_encoder(hw_info: dict, codec: str = "h264"');
+    expect(c).toContain('hw_decode: bool = False');
+    // Should forward hw_decode to _encoder_flags
+    const selectFunc = c.substring(
+      c.indexOf('def _select_encoder'),
+      c.indexOf('def _encoder_flags')
+    );
+    expect(selectFunc).toContain('hw_decode=hw_decode');
+  });
+
+  test('_hwaccel_decode_flags VAAPI should use -vaapi_device instead of -hwaccel_device', () => {
+    const c = content();
+    const decodeFunc = c.substring(
+      c.indexOf('def _hwaccel_decode_flags'),
+      c.indexOf('def _hw_vf')
+    );
+    // VAAPI paths should use -vaapi_device for unified device context
+    expect(decodeFunc).toContain('-vaapi_device');
+    expect(decodeFunc).toContain('-hwaccel');
+    expect(decodeFunc).toContain('"vaapi"');
+  });
+
+  test('_hwaccel_decode_flags QSV should use -init_hw_device with named device', () => {
+    const c = content();
+    const decodeFunc = c.substring(
+      c.indexOf('def _hwaccel_decode_flags'),
+      c.indexOf('def _hw_vf')
+    );
+    // QSV decode should create a named device "hw" and reference it
+    expect(decodeFunc).toContain('-init_hw_device');
+    expect(decodeFunc).toContain('-hwaccel_device');
+    expect(decodeFunc).toContain('-filter_hw_device');
+  });
+
+  test('transcode call sites should pass hw_decode when decode_flags present', () => {
+    const c = content();
+    // Call sites that use both decode_flags and encode_flags should pass hw_decode
+    expect(c).toContain('hw_decode=bool(decode_flags)');
+  });
+
+  test('diagnostic test should NOT use hw_decode (standalone encode)', () => {
+    const c = content();
+    const diagStart = c.indexOf('def run_diagnostics(');
+    const diagEnd = c.indexOf('\ndef ', diagStart + 1);
+    const diagBody = c.substring(diagStart, diagEnd > -1 ? diagEnd : undefined);
+    // Diagnostic uses standalone encode — must NOT pass hw_decode=True
+    expect(diagBody).not.toContain('hw_decode');
+  });
+});

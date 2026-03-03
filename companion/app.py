@@ -647,8 +647,16 @@ def _detect_hw_accel() -> dict:
     return result
 
 
-def _select_encoder(hw_info: dict, codec: str = "h264") -> list[str]:
-    """Return FFmpeg encoder flags based on available hardware and config."""
+def _select_encoder(hw_info: dict, codec: str = "h264",
+                    hw_decode: bool = False) -> list[str]:
+    """Return FFmpeg encoder flags based on available hardware and config.
+
+    When *hw_decode* is True the caller is also adding hardware decode
+    flags (from ``_hwaccel_decode_flags``) that already initialise the
+    GPU device.  Passing ``True`` lets ``_encoder_flags`` skip its own
+    device-init so the same device is not opened twice — which causes
+    FFmpeg to fail on many VAAPI and QSV drivers.
+    """
     accel = HW_ACCEL.lower()
     encoders = hw_info.get("encoders", [])
 
@@ -681,34 +689,47 @@ def _select_encoder(hw_info: dict, codec: str = "h264") -> list[str]:
     if accel == "auto":
         for _, enc in codec_prefs:
             if enc in encoders:
-                return _encoder_flags(enc)
+                return _encoder_flags(enc, hw_decode=hw_decode)
     else:
         for method, enc in codec_prefs:
             if method == accel and enc in encoders:
-                return _encoder_flags(enc)
+                return _encoder_flags(enc, hw_decode=hw_decode)
         # QSV requested but unavailable (e.g. FFmpeg compiled without
         # libmfx/libvpl) — fall back to VAAPI which uses the same Intel
         # GPU hardware through the VA-API interface.
         if accel == "qsv":
             for method, enc in codec_prefs:
                 if method == "vaapi" and enc in encoders:
-                    return _encoder_flags(enc)
+                    return _encoder_flags(enc, hw_decode=hw_decode)
 
     # Fallback to software
     sw = codec.replace("h265", "x265").replace("h264", "x264")
     return ["-c:v", f"lib{sw}"]
 
 
-def _encoder_flags(encoder: str) -> list[str]:
-    """Return FFmpeg flags for a specific hardware encoder."""
+def _encoder_flags(encoder: str, hw_decode: bool = False) -> list[str]:
+    """Return FFmpeg flags for a specific hardware encoder.
+
+    When *hw_decode* is ``True`` the caller is providing hardware-decode
+    input flags (from ``_hwaccel_decode_flags``) that already open the
+    GPU device.  In that case the encoder must **not** re-open the same
+    device — doing so causes ``Failed to initialise VAAPI connection``
+    or similar errors on many drivers.
+    """
     flags = ["-c:v", encoder]
     if "nvenc" in encoder:
         flags += ["-preset", "p4", "-rc", "vbr"]
     elif "qsv" in encoder:
-        flags = ["-init_hw_device", f"qsv=hw,child_device={_qsv_render_device(HW_ACCEL_DEVICE)}",
-                 "-filter_hw_device", "hw"] + flags + ["-preset", "medium"]
+        if hw_decode:
+            # Device already initialised by _hwaccel_decode_flags
+            flags += ["-preset", "medium"]
+        else:
+            flags = ["-init_hw_device", f"qsv=hw,child_device={_qsv_render_device(HW_ACCEL_DEVICE)}",
+                     "-filter_hw_device", "hw"] + flags + ["-preset", "medium"]
     elif "vaapi" in encoder:
-        flags = ["-vaapi_device", HW_ACCEL_DEVICE] + flags
+        if not hw_decode:
+            # Standalone encode (diagnostic test, probe) — need our own device
+            flags = ["-vaapi_device", HW_ACCEL_DEVICE] + flags
     return flags
 
 
@@ -727,6 +748,12 @@ def _hwaccel_decode_flags(hw_info: dict | None = None) -> list[str]:
     *hw_info* is an optional pre-computed result from ``_detect_hw_accel()``
     to avoid running the (expensive) encoder probes a second time when the
     caller already has the result.
+
+    The returned flags create a **single** device context that is shared
+    with the encoder via ``_encoder_flags(…, hw_decode=True)``.  Using a
+    separate ``-vaapi_device`` (or ``-init_hw_device qsv``) for encoding
+    on top of ``-hwaccel_device`` for decoding opens the GPU twice and
+    fails on many driver versions.
     """
     accel = HW_ACCEL.lower()
     if accel == "none":
@@ -742,14 +769,17 @@ def _hwaccel_decode_flags(hw_info: dict | None = None) -> list[str]:
         info = hw_info or _detect_hw_accel()
         encoders = info.get("encoders", [])
         if any("qsv" in e for e in encoders):
-            return ["-hwaccel", "qsv", "-hwaccel_device", _qsv_render_device(HW_ACCEL_DEVICE)]
+            dev = _qsv_render_device(HW_ACCEL_DEVICE)
+            return ["-init_hw_device", f"qsv=hw,child_device={dev}",
+                    "-hwaccel", "qsv", "-hwaccel_device", "hw",
+                    "-filter_hw_device", "hw"]
         # QSV unavailable — fall back to VAAPI (same Intel iGPU hardware)
         if any("vaapi" in e for e in encoders):
-            return ["-hwaccel", "vaapi", "-hwaccel_device", HW_ACCEL_DEVICE]
+            return ["-vaapi_device", HW_ACCEL_DEVICE, "-hwaccel", "vaapi"]
         # Neither QSV nor VAAPI usable — software decode
         return []
     if accel in ("vaapi", "amf"):
-        return ["-hwaccel", "vaapi", "-hwaccel_device", HW_ACCEL_DEVICE]
+        return ["-vaapi_device", HW_ACCEL_DEVICE, "-hwaccel", "vaapi"]
     if accel == "auto":
         # Detect which hardware is actually present and pick the right
         # decode path — don't blindly assume CUDA is available.
@@ -758,9 +788,12 @@ def _hwaccel_decode_flags(hw_info: dict | None = None) -> list[str]:
         if any("nvenc" in e for e in encoders):
             return ["-hwaccel", "cuda", "-hwaccel_output_format", "cuda"]
         if any("qsv" in e for e in encoders):
-            return ["-hwaccel", "qsv", "-hwaccel_device", _qsv_render_device(HW_ACCEL_DEVICE)]
+            dev = _qsv_render_device(HW_ACCEL_DEVICE)
+            return ["-init_hw_device", f"qsv=hw,child_device={dev}",
+                    "-hwaccel", "qsv", "-hwaccel_device", "hw",
+                    "-filter_hw_device", "hw"]
         if any("vaapi" in e for e in encoders):
-            return ["-hwaccel", "vaapi", "-hwaccel_device", HW_ACCEL_DEVICE]
+            return ["-vaapi_device", HW_ACCEL_DEVICE, "-hwaccel", "vaapi"]
         # No usable hardware — software decode
         return []
     return []
@@ -1645,7 +1678,7 @@ def clip():
     else:
         hw_info = _detect_hw_accel()
         decode_flags = _hwaccel_decode_flags(hw_info) if hw_accel else []
-        encode_flags = _select_encoder(hw_info, codec) if hw_accel else ["-c:v", f"lib{codec.replace('h265', 'x265').replace('h264', 'x264')}"]
+        encode_flags = _select_encoder(hw_info, codec, hw_decode=bool(decode_flags)) if hw_accel else ["-c:v", f"lib{codec.replace('h265', 'x265').replace('h264', 'x264')}"]
 
         cmd = [FFMPEG_PATH, "-y"] + decode_flags + [
             "-ss", str(start_time), "-i", source_path,
@@ -1689,7 +1722,7 @@ def transcode():
 
     hw_info = _detect_hw_accel()
     decode_flags = _hwaccel_decode_flags(hw_info) if hw_accel else []
-    encode_flags = _select_encoder(hw_info, codec) if hw_accel else ["-c:v", f"lib{codec.replace('h265', 'x265').replace('h264', 'x264')}"]
+    encode_flags = _select_encoder(hw_info, codec, hw_decode=bool(decode_flags)) if hw_accel else ["-c:v", f"lib{codec.replace('h265', 'x265').replace('h264', 'x264')}"]
 
     cmd = [FFMPEG_PATH, "-y"] + decode_flags + ["-i", source_path] + encode_flags
 
@@ -2314,8 +2347,8 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
             variant_dir = os.path.join(hls_output, label)
             os.makedirs(variant_dir, exist_ok=True)
 
-            encode_flags = _select_encoder(hw_info, "h264")
             decode_flags = _hwaccel_decode_flags(hw_info)
+            encode_flags = _select_encoder(hw_info, "h264", hw_decode=bool(decode_flags))
             vf_flags = _hw_vf(encode_flags, scale_height=v["height"])
 
             cmd = [FFMPEG_PATH, "-y"] + decode_flags + [
