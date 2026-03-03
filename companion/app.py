@@ -22,6 +22,7 @@ import logging
 import hashlib
 import secrets
 import base64
+import re
 from pathlib import Path
 
 import boto3
@@ -43,6 +44,16 @@ load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(32)
+
+# ---------------------------------------------------------------------------
+# CORS — allowed origin pattern for browser requests
+# ---------------------------------------------------------------------------
+# Matches the HAProxy ACL domains plus the main arcticwolves.ca domain.
+_CORS_ORIGIN_RE = re.compile(
+    r"^https?://([a-z0-9\-\.]+\.)?"
+    r"(arcticwolves\.ca|precisionflooring\.ca|crashmedia\.ca|crashcrafts\.com)$",
+    re.IGNORECASE,
+)
 
 # ---------------------------------------------------------------------------
 # Logging — stdout + rotating file log in /config/logs/
@@ -86,13 +97,8 @@ def _add_cors_headers(response):
     subdomains or the other domains served by HAProxy.  The allowed origins
     mirror the HAProxy ACL so the browser is never blocked.
     """
-    _CORS_ORIGIN_RE = (
-        r"^https?://([a-z0-9\-\.]+\.)?"
-        r"(arcticwolves\.ca|precisionflooring\.ca|crashmedia\.ca|crashcrafts\.com)$"
-    )
-    import re
     origin = request.headers.get("Origin", "")
-    if origin and re.match(_CORS_ORIGIN_RE, origin, re.IGNORECASE):
+    if origin and _CORS_ORIGIN_RE.match(origin):
         response.headers["Access-Control-Allow-Origin"] = origin
         response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
         response.headers["Access-Control-Allow-Headers"] = "x-api-key, Authorization, Content-Type, Accept"
@@ -105,13 +111,8 @@ def _add_cors_headers(response):
 def _handle_cors_preflight():
     """Return 204 for CORS preflight (OPTIONS) requests."""
     if request.method == "OPTIONS":
-        import re
-        _CORS_ORIGIN_RE = (
-            r"^https?://([a-z0-9\-\.]+\.)?"
-            r"(arcticwolves\.ca|precisionflooring\.ca|crashmedia\.ca|crashcrafts\.com)$"
-        )
         origin = request.headers.get("Origin", "")
-        if origin and re.match(_CORS_ORIGIN_RE, origin, re.IGNORECASE):
+        if origin and _CORS_ORIGIN_RE.match(origin):
             resp = app.make_response(("", 204))
             resp.headers["Access-Control-Allow-Origin"] = origin
             resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"

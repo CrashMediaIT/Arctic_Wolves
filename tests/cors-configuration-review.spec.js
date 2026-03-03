@@ -197,3 +197,58 @@ test.describe('NGINX API CORS configuration', () => {
     expect(c).toContain('return 204');
   });
 });
+
+// =====================================================
+// 6. Upload views have presigned URL fallback
+// =====================================================
+
+test.describe('Upload views: presigned URL fallback on proxy 504', () => {
+  test('video_record_athlete.php should try direct S3 when proxy fails', () => {
+    const c = readFile('views/video_record_athlete.php');
+    // Should have the intermediate .catch() that tries presigned URL
+    expect(c).toContain('Proxy upload failed');
+    expect(c).toContain('trying direct S3');
+    expect(c).toContain('Retrying via direct cloud upload');
+    expect(c).toContain('data2.presigned_url');
+  });
+
+  test('video_coach_reviews.php should try direct S3 when proxy fails', () => {
+    const c = readFile('views/video_coach_reviews.php');
+    expect(c).toContain('Proxy upload failed');
+    expect(c).toContain('trying direct S3');
+    expect(c).toContain('data2.presigned_url');
+  });
+
+  test('pwa/video_record_drill.php should try direct S3 when proxy fails', () => {
+    const c = readFile('views/pwa/video_record_drill.php');
+    expect(c).toContain('Proxy upload failed');
+    expect(c).toContain('trying direct S3');
+    expect(c).toContain('data2.presigned_url');
+  });
+
+  test('gp_film_room.php already has presigned URL fallback', () => {
+    const c = readFile('views/gameplan/gp_film_room.php');
+    expect(c).toContain('trying direct S3');
+    expect(c).toContain('data2.presigned_url');
+  });
+
+  test('film_room.php already has presigned URL fallback', () => {
+    const c = readFile('views/gameplan/film_room.php');
+    expect(c).toContain('trying direct S3');
+    expect(c).toContain('data2.presigned_url');
+  });
+});
+
+// =====================================================
+// 7. HAProxy timeout documentation
+// =====================================================
+
+test.describe('NGINX config documents HAProxy timeout requirements', () => {
+  test('should document recommended HAProxy timeouts for uploads', () => {
+    const c = readFile('deployment/arctic_wolves.conf');
+    expect(c).toContain('timeout client');
+    expect(c).toContain('timeout server');
+    expect(c).toContain('600s');
+    expect(c).toContain('504 Gateway Time-out');
+  });
+});
