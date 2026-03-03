@@ -2291,17 +2291,49 @@ HLS_VARIANTS = [
 ]
 
 
+def _job_log(job_id: str, message: str, level: str = "info"):
+    """Append a timestamped log entry to a job's ``log`` list."""
+    entry = {
+        "ts": time.time(),
+        "level": level,
+        "msg": message,
+    }
+    with job_lock:
+        job = jobs.get(job_id)
+        if job is not None:
+            job.setdefault("log", []).append(entry)
+
+
 def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
                        delete_original: bool = True, callback_url: str = ""):
     """Download source from S3, transcode to HLS, upload output, optionally
-    delete original.  Runs inside _run_job with the job semaphore."""
+    delete original.  Runs inside _run_job with the job semaphore.
+
+    Every significant step is recorded in the job's ``log`` list so the
+    admin UI can display a detailed diagnostic trail regardless of whether
+    the job succeeds or fails.
+    """
+    jlog = lambda msg, level="info": _job_log(job_id, msg, level)
+
+    jlog(f"Job {job_id} started")
+    jlog(f"Source key: {s3_source_key}")
+    jlog(f"Output prefix: {s3_output_prefix}")
+    jlog(f"Delete original: {delete_original}")
+    jlog(f"HW_ACCEL setting: {HW_ACCEL}")
+    jlog(f"HW_ACCEL_DEVICE: {HW_ACCEL_DEVICE}")
+    jlog(f"FFmpeg path: {FFMPEG_PATH}")
+
     s3 = _get_s3_client()
     if not s3:
+        jlog("S3/RustFS client not configured — cannot proceed", "error")
         with job_lock:
             jobs[job_id]["status"] = "failed"
             jobs[job_id]["error"] = "S3 not configured"
             jobs[job_id]["finished_at"] = time.time()
         return
+
+    jlog(f"S3 endpoint: {S3_ENDPOINT}")
+    jlog(f"S3 bucket: {S3_BUCKET}")
 
     # Resolve callback URL once for both success and failure paths
     cb_url = callback_url or (MAIN_APP_URL + "/api/v1/companion/callback" if MAIN_APP_URL else "")
@@ -2312,36 +2344,82 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
     local_source = os.path.join(work_dir, "source" + os.path.splitext(s3_source_key)[1])
 
     try:
+        # ── Download ──────────────────────────────────────────────────
         with job_lock:
             jobs[job_id]["status"] = "downloading"
             jobs[job_id]["started_at"] = time.time()
 
+        jlog(f"Downloading source from S3: {s3_source_key}")
+        dl_start = time.time()
         logger.info("HLS job %s: downloading source %s", job_id, s3_source_key)
         # Download source video
         if not _s3_download(s3, s3_source_key, local_source):
             raise RuntimeError(f"Failed to download {s3_source_key}")
 
-        # Probe the source to determine resolution
+        dl_sec = round(time.time() - dl_start, 1)
+        file_size = os.path.getsize(local_source) if os.path.isfile(local_source) else 0
+        jlog(f"Download complete — {file_size} bytes ({file_size / 1048576:.1f} MB) in {dl_sec}s")
+
+        # ── Probe ─────────────────────────────────────────────────────
+        jlog("Probing source video with ffprobe…")
         probe = _probe_file(local_source)
         video_stream = next(
             (s for s in probe.get("streams", []) if s.get("codec_type") == "video"),
             None,
         )
+        audio_stream = next(
+            (s for s in probe.get("streams", []) if s.get("codec_type") == "audio"),
+            None,
+        )
         source_height = int(video_stream.get("height", 1080)) if video_stream else 1080
+
+        if video_stream:
+            jlog(f"Video stream: codec={video_stream.get('codec_name')}, "
+                 f"{video_stream.get('width')}x{video_stream.get('height')}, "
+                 f"fps={video_stream.get('r_frame_rate')}, "
+                 f"pix_fmt={video_stream.get('pix_fmt')}, "
+                 f"duration={video_stream.get('duration', 'N/A')}s")
+        else:
+            jlog("WARNING: No video stream found in source file", "warn")
+
+        if audio_stream:
+            jlog(f"Audio stream: codec={audio_stream.get('codec_name')}, "
+                 f"sample_rate={audio_stream.get('sample_rate')}, "
+                 f"channels={audio_stream.get('channels')}")
+        else:
+            jlog("No audio stream found in source file", "warn")
+
+        fmt_info = probe.get("format", {})
+        if fmt_info:
+            jlog(f"Container: format={fmt_info.get('format_name')}, "
+                 f"duration={fmt_info.get('duration', 'N/A')}s, "
+                 f"size={fmt_info.get('size', 'N/A')} bytes, "
+                 f"bitrate={fmt_info.get('bit_rate', 'N/A')} bps")
 
         # Filter variants to those at or below source resolution
         variants = [v for v in HLS_VARIANTS if v["height"] <= source_height]
         if not variants:
             variants = [HLS_VARIANTS[0]]  # At minimum, produce 360p
+            jlog(f"Source resolution ({source_height}p) below 360p — producing 360p anyway")
 
+        jlog(f"Target variants: {', '.join(v['label'] for v in variants)} "
+             f"(source={source_height}p)")
+
+        # ── Hardware detection ────────────────────────────────────────
         with job_lock:
             jobs[job_id]["status"] = "transcoding"
 
+        jlog("Detecting hardware acceleration…")
         hw_info = _detect_hw_accel()
+        jlog(f"HW accel available methods: {hw_info.get('available', [])}")
+        jlog(f"HW accel validated encoders: {hw_info.get('encoders', [])}")
+        jlog(f"HW accel detected decoders: {hw_info.get('decoders', [])}")
+        jlog(f"HW accel selected mode: {hw_info.get('selected', 'N/A')}")
+
         hls_output = os.path.join(work_dir, "hls")
         os.makedirs(hls_output, exist_ok=True)
 
-        # Transcode each variant
+        # ── Transcode each variant ────────────────────────────────────
         for v in variants:
             label = v["label"]
             variant_dir = os.path.join(hls_output, label)
@@ -2365,13 +2443,31 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
                 os.path.join(variant_dir, "playlist.m3u8"),
             ]
 
+            jlog(f"Transcoding variant {label}: decode_flags={decode_flags}")
+            jlog(f"  encode_flags={encode_flags}")
+            jlog(f"  vf_flags={vf_flags}")
+            jlog(f"  ffmpeg command: {' '.join(cmd)}")
+
             logger.info("HLS transcode %s → %s: %s", s3_source_key, label, " ".join(cmd))
+            enc_start = time.time()
             proc = subprocess.run(cmd, capture_output=True, text=True, timeout=7200)
+            enc_sec = round(time.time() - enc_start, 1)
+
             if proc.returncode != 0:
+                jlog(f"FFmpeg FAILED for {label} (exit code {proc.returncode}) after {enc_sec}s", "error")
+                jlog(f"  stderr: {proc.stderr[:2000]}", "error")
+                if proc.stdout:
+                    jlog(f"  stdout: {proc.stdout[:500]}", "error")
                 logger.error("FFmpeg failed for %s: %s", label, proc.stderr[:1000])
                 raise RuntimeError(f"Transcode failed for {label}: {proc.stderr[:500]}")
 
-        # Build master playlist
+            jlog(f"Variant {label} completed in {enc_sec}s (exit code 0)")
+            if proc.stderr:
+                # FFmpeg often writes progress/info to stderr even on success
+                jlog(f"  ffmpeg stderr (info): {proc.stderr[-500:]}")
+
+        # ── Build master playlist ─────────────────────────────────────
+        jlog("Building HLS master playlist…")
         master_lines = ["#EXTM3U"]
         for v in variants:
             bandwidth = int(v["vbitrate"].replace("k", "")) * 1000
@@ -2385,11 +2481,16 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
         master_path = os.path.join(hls_output, "master.m3u8")
         with open(master_path, "w") as f:
             f.write("\n".join(master_lines) + "\n")
+        jlog(f"Master playlist written: {len(variants)} variants")
 
+        # ── Upload ────────────────────────────────────────────────────
         with job_lock:
             jobs[job_id]["status"] = "uploading"
 
+        jlog(f"Uploading HLS segments to S3 prefix: {s3_output_prefix}")
         logger.info("HLS job %s: uploading segments to S3 prefix %s", job_id, s3_output_prefix)
+        upload_start = time.time()
+        upload_count = 0
         # Upload all HLS files to S3
         output_prefix = s3_output_prefix.rstrip("/")
         for root, _dirs, files in os.walk(hls_output):
@@ -2399,11 +2500,20 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
                 s3_key = f"{output_prefix}/{relative}"
                 ct = "application/vnd.apple.mpegurl" if filename.endswith(".m3u8") else "video/mp2t"
                 if not _s3_upload(s3, local_file, s3_key, ct):
+                    jlog(f"Failed to upload {s3_key}", "error")
                     raise RuntimeError(f"Failed to upload {s3_key}")
+                upload_count += 1
+
+        upload_sec = round(time.time() - upload_start, 1)
+        jlog(f"Upload complete — {upload_count} files in {upload_sec}s")
 
         # Delete original source from S3 if requested
         if delete_original:
+            jlog(f"Deleting original source: {s3_source_key}")
             _s3_delete(s3, s3_source_key)
+
+        total_sec = round(time.time() - jobs[job_id].get("started_at", time.time()), 1)
+        jlog(f"Job completed successfully — total time {total_sec}s")
 
         with job_lock:
             jobs[job_id]["status"] = "completed"
@@ -2429,6 +2539,9 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
 
     except Exception as exc:
         logger.error("HLS transcode job %s failed: %s", job_id, exc)
+        jlog(f"JOB FAILED: {exc}", "error")
+        import traceback
+        jlog(f"Traceback:\n{traceback.format_exc()}", "error")
         with job_lock:
             jobs[job_id]["status"] = "failed"
             jobs[job_id]["error"] = str(exc)[:2000]
@@ -2526,6 +2639,76 @@ def hls_transcode():
         "started_at": None,
         "finished_at": None,
         "error": None,
+        "log": [],
+    }
+    with job_lock:
+        jobs[job_id] = job
+
+    thread = threading.Thread(
+        target=_run_hls_job,
+        args=(job_id, source_key, output_prefix, delete_original, callback_url),
+        daemon=True,
+    )
+    thread.start()
+    return jsonify(job), 202
+
+
+@app.route("/api/hls/retry", methods=["POST"])
+def hls_retry():
+    """Retry a failed HLS transcode job.
+
+    Re-uses the source_key and output_prefix from the original job to
+    create a brand-new job.  The caller must provide either:
+      - ``job_id``: the ID of the failed job to retry, OR
+      - ``source_key`` + ``output_prefix``: explicit parameters.
+
+    Returns HTTP 202 with the new job object, just like POST /api/hls.
+    """
+    auth_err = _require_api_key()
+    if auth_err:
+        return auth_err
+
+    data = request.get_json(silent=True) or {}
+    old_job_id = data.get("job_id", "")
+    source_key = data.get("source_key", "")
+    output_prefix = data.get("output_prefix", "")
+    delete_original = data.get("delete_original", False)
+    callback_url = data.get("callback_url", "")
+    video_id = data.get("video_id")
+
+    # Resolve from the old job if job_id given
+    if old_job_id and (not source_key or not output_prefix):
+        with job_lock:
+            old_job = jobs.get(old_job_id)
+        if old_job:
+            source_key = source_key or old_job.get("source_key", "")
+            output_prefix = output_prefix or old_job.get("output_prefix", "")
+            video_id = video_id or old_job.get("video_id")
+        else:
+            return jsonify({"error": "Original job not found"}), 404
+
+    if not source_key:
+        return jsonify({"error": "source_key is required (directly or via job_id)"}), 400
+    if not output_prefix:
+        base = os.path.splitext(source_key)[0]
+        output_prefix = base + "/hls"
+
+    job_id = str(uuid.uuid4())
+    job = {
+        "id": job_id,
+        "status": "queued",
+        "description": f"HLS transcode (retry): {os.path.basename(source_key)}",
+        "source_key": source_key,
+        "output_prefix": output_prefix,
+        "hls_manifest": None,
+        "variants": [],
+        "video_id": video_id,
+        "created_at": time.time(),
+        "started_at": None,
+        "finished_at": None,
+        "error": None,
+        "log": [],
+        "retry_of": old_job_id or None,
     }
     with job_lock:
         jobs[job_id] = job
