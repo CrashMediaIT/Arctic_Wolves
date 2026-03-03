@@ -294,6 +294,11 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
                     // CompleteMultipartUpload can add them back in the XML.
                     var etag = xhr.getResponseHeader('ETag');
                     if (etag) etag = etag.replace(/"/g, '');
+                    if (!etag) {
+                        log('WARNING: No ETag returned for part ' + partNumber + '. CORS may not expose the ETag header.');
+                        reject(new Error('Part ' + partNumber + ': server did not return an ETag header (possible CORS configuration issue). Please retry the upload.'));
+                        return;
+                    }
                     resolve(etag);
                 } else {
                     reject(new Error('Part ' + partNumber + ' failed: HTTP ' + xhr.status + ' ' + xhr.responseText));

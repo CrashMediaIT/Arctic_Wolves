@@ -274,12 +274,17 @@ function ensureCors($endpoint, $bucket, $region, $accessKey, $secretKey, $useSsl
         . '<AllowedOrigin>*</AllowedOrigin>'
         . '<AllowedMethod>GET</AllowedMethod>'
         . '<AllowedMethod>PUT</AllowedMethod>'
+        . '<AllowedMethod>POST</AllowedMethod>'
+        . '<AllowedMethod>DELETE</AllowedMethod>'
         . '<AllowedMethod>HEAD</AllowedMethod>'
         . '<AllowedHeader>*</AllowedHeader>'
         . '<ExposeHeader>ETag</ExposeHeader>'
         . '<MaxAgeSeconds>3600</MaxAgeSeconds>'
         . '</CORSRule>'
         . '</CORSConfiguration>';
+
+    // Content-MD5 is required by S3 spec for PutBucketCors
+    $contentMd5 = base64_encode(md5($corsXml, true));
 
     // Sign the PutBucketCors request (AWS Signature V4, full-body signing)
     $parsed = parse_url($url);
@@ -298,6 +303,7 @@ function ensureCors($endpoint, $bucket, $region, $accessKey, $secretKey, $useSsl
     $bodyHash  = hash('sha256', $corsXml);
 
     $headers = [
+        'content-md5'           => $contentMd5,
         'content-type'          => 'application/xml',
         'host'                  => $host,
         'x-amz-content-sha256' => $bodyHash,
@@ -346,6 +352,7 @@ function ensureCors($endpoint, $bucket, $region, $accessKey, $secretKey, $useSsl
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_HTTPHEADER     => [
             'Content-Type: application/xml',
+            'Content-MD5: ' . $contentMd5,
             'Authorization: ' . $authHeader,
             'x-amz-date: ' . $amzDate,
             'x-amz-content-sha256: ' . $bodyHash,
