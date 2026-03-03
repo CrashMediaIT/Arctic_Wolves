@@ -30,11 +30,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrfToken();
 }
 
-// Admin-only
+// Admin-only – include the primary session role (same approach as dashboard.php)
 $userId = $_SESSION['user_id'];
-$roleStmt = $pdo->prepare("SELECT role FROM user_roles WHERE user_id = ?");
-$roleStmt->execute([$userId]);
-$roles = $roleStmt->fetchAll(PDO::FETCH_COLUMN);
+$userRole = $_SESSION['user_role'] ?? '';
+$roles = [$userRole];
+try {
+    $roleStmt = $pdo->prepare("SELECT role FROM user_roles WHERE user_id = ?");
+    $roleStmt->execute([$userId]);
+    $extraRoles = $roleStmt->fetchAll(PDO::FETCH_COLUMN);
+    if ($extraRoles) {
+        $roles = array_unique(array_merge($roles, $extraRoles));
+    }
+} catch (PDOException $e) {
+    // user_roles table may not exist yet
+}
 if (!in_array('admin', $roles)) {
     http_response_code(403);
     echo json_encode(['success' => false, 'error' => 'Admin access required']);
