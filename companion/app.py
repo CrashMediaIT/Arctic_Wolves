@@ -502,13 +502,22 @@ def _safe_path(relative: str) -> str | None:
     return str(target)
 
 
+_KNOWN_HW_ENCODERS = frozenset([
+    "h264_nvenc", "hevc_nvenc", "h264_qsv", "hevc_qsv",
+    "h264_vaapi", "hevc_vaapi", "h264_amf", "hevc_amf",
+    "av1_nvenc", "av1_qsv", "av1_vaapi",
+])
+
+
 def _probe_encoder(encoder: str) -> bool:
     """Verify a hardware encoder actually works by running a minimal encode."""
+    if encoder not in _KNOWN_HW_ENCODERS:
+        return False
     try:
         cmd = [FFMPEG_PATH, "-y", "-hide_banner", "-loglevel", "error",
                "-f", "lavfi", "-i", "color=c=black:s=64x64:d=0.1:r=10",
                "-frames:v", "1", "-c:v", encoder, "-f", "null", "-"]
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=10, check=False)
         return proc.returncode == 0
     except Exception:
         return False
