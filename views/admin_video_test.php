@@ -122,9 +122,9 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
     var PART_SIZE = 64 * 1024 * 1024;            // 64 MB per part
     var STALL_TIMEOUT_SEC = 30; // seconds with no progress before warning
     var PROGRESS_LOG_INTERVAL = 10; // log progress to output window every N seconds
-    var CONCURRENT_PARTS = 5; // upload this many parts in parallel
-    var MAX_PART_RETRIES = 3; // retry each part up to this many times
-    var STALL_ABORT_SEC = 60; // abort and retry a part after this many seconds with no progress
+    var CONCURRENT_PARTS = 3; // upload this many parts in parallel (reduced from 5 to avoid gateway timeouts)
+    var MAX_PART_RETRIES = 5; // retry each part up to this many times
+    var STALL_ABORT_SEC = 90; // abort and retry a part after this many seconds with no progress
 
     function log(msg) {
         logEl.style.display = 'block';
@@ -456,8 +456,8 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
             })
             .catch(function(err) {
                 if (attempt < MAX_PART_RETRIES) {
-                    var delaySec = Math.pow(2, attempt - 1); // 1s, 2s, 4s backoff
-                    logWarn('Part ' + partNumber + ' failed (attempt ' + attempt + '): ' + err.message + ' — retrying in ' + delaySec + 's');
+                    var delaySec = Math.min(Math.pow(2, attempt), 30); // 2s, 4s, 8s, 16s, 30s backoff
+                    logWarn('Part ' + partNumber + ' failed (attempt ' + attempt + '/' + MAX_PART_RETRIES + '): ' + err.message + ' — retrying in ' + delaySec + 's');
                     return new Promise(function(res) { setTimeout(res, delaySec * 1000); }).then(tryUpload);
                 }
                 throw err;
@@ -548,15 +548,24 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
                     resolve(etag);
                 } else {
                     var detail = xhr.responseText ? xhr.responseText.substring(0, 300) : '(empty body)';
-                    reject(new Error('Part ' + partNumber + ' failed: HTTP ' + xhr.status + ' ' + detail));
+                    var hint = '';
+                    if (xhr.status === 524 || xhr.status === 408) {
+                        hint = ' (gateway/request timeout — the upload part took too long; will retry)';
+                    } else if (xhr.status === 0) {
+                        hint = ' (request blocked — likely CORS or network error)';
+                    }
+                    reject(new Error('Part ' + partNumber + ' failed: HTTP ' + xhr.status + hint + ' ' + detail));
                 }
             });
 
             xhr.addEventListener('error', function() {
                 clearInterval(stallTimer);
-                logError('Network error uploading part ' + partNumber + ' after ' + elapsed(partPutStart)
-                    + ' – possible causes: CORS blocked, connection reset, request too large, or server unreachable');
-                reject(new Error('Network error uploading part ' + partNumber));
+                var elapsedSec = Math.round((Date.now() - partPutStart) / 1000);
+                var hint = (elapsedSec > STALL_TIMEOUT_SEC)
+                    ? 'likely a gateway timeout (upload took ' + elapsedSec + 's) — will retry'
+                    : 'possible causes: CORS blocked, connection reset, or server unreachable';
+                logError('Network error uploading part ' + partNumber + ' after ' + elapsed(partPutStart) + ' – ' + hint);
+                reject(new Error('Network error uploading part ' + partNumber + ' (' + hint + ')'));
             });
             xhr.addEventListener('abort', function() {
                 clearInterval(stallTimer);

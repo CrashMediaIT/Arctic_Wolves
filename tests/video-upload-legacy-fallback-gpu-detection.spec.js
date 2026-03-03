@@ -179,8 +179,8 @@ test.describe('Docker Compose Intel OpenCL overlay', () => {
     expect(content()).toContain('HW_ACCEL=qsv');
   });
 
-  test('should reference linuxserver/mods:jellyfin-opencl-intel', () => {
-    expect(content()).toContain('linuxserver/mods:jellyfin-opencl-intel');
+  test('should install Intel GPU packages via build arg', () => {
+    expect(content()).toContain('INSTALL_INTEL_GPU');
   });
 
   test('should pass /dev/dri device', () => {
@@ -195,8 +195,8 @@ test.describe('Docker Compose AMD GPU overlay', () => {
     expect(content()).toContain('HW_ACCEL=vaapi');
   });
 
-  test('should reference linuxserver/mods:jellyfin-amd', () => {
-    expect(content()).toContain('linuxserver/mods:jellyfin-amd');
+  test('should install AMD GPU packages via build arg', () => {
+    expect(content()).toContain('INSTALL_AMD_GPU');
   });
 
   test('should pass /dev/dri device', () => {
