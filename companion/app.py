@@ -718,6 +718,8 @@ def _hw_vf(encode_flags: list[str], scale_height: int | None = None,
             break
 
     if "qsv" in encoder:
+        # extra_hw_frames=64 gives the QSV encoder enough surface pool
+        # headroom to avoid "not enough surfaces" errors during encode.
         vf = "format=nv12,hwupload=extra_hw_frames=64"
         if scale_height is not None:
             vf += f",scale_qsv=w={scale_width}:h={scale_height}"
