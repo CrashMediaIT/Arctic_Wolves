@@ -559,7 +559,7 @@ function handleGetAthleteUploadUrl() {
 
     $object_key = 'Images/videos/athlete/' . $athlete_folder . '/' . $unique_filename;
 
-    // Generate presigned URL — try companion SDK first, then local PHP
+    // Generate presigned URL for direct browser-to-RustFS upload
     $rustfs = getRustFSSettings($pdo);
     if (!isRustFSConfigured($rustfs)) {
         ErrorLogger::error("Video upload URL (legacy): RustFS not configured for user=$user_id");
@@ -806,7 +806,7 @@ function handleGetVideoUploadUrl() {
         $object_key = 'Images/videos/athlete/' . $athlete_folder . '/' . $filename;
     }
 
-    // Generate presigned URL — try companion SDK first, then local PHP
+    // Generate presigned URL for direct browser-to-RustFS upload
     $rustfs = getRustFSSettings($pdo);
     if (!isRustFSConfigured($rustfs)) {
         ErrorLogger::error("Video upload URL: RustFS not configured for user=$user_id type=$upload_type");

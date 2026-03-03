@@ -96,34 +96,26 @@ test.describe('generatePresignedUploadUrlViaSdk function', () => {
     expect(content).toMatch(/function generatePresignedUploadUrlViaSdk\(\$pdo/);
   });
 
-  test('should call companion /api/presign endpoint', () => {
-    const content = readFile('lib/rustfs_storage.php');
-    const funcStart = content.indexOf('function generatePresignedUploadUrlViaSdk(');
-    const funcEnd = content.indexOf('\nfunction ', funcStart + 1);
-    const funcBody = content.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
-
-    expect(funcBody).toContain('/api/presign');
-    expect(funcBody).toContain('gameplan_companion_url');
-    expect(funcBody).toContain('X-API-Key');
-  });
-
-  test('should fall back to local PHP presign on companion failure', () => {
+  test('should delegate to local PHP generatePresignedUploadUrl (no companion involvement)', () => {
     const content = readFile('lib/rustfs_storage.php');
     const funcStart = content.indexOf('function generatePresignedUploadUrlViaSdk(');
     const funcEnd = content.indexOf('\nfunction ', funcStart + 1);
     const funcBody = content.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
 
     expect(funcBody).toContain('generatePresignedUploadUrl(');
-    expect(funcBody).toContain('falling back to local PHP presign');
+    // Companion should NOT be called for presigned URL generation
+    expect(funcBody).not.toContain('/api/presign');
+    expect(funcBody).not.toContain('gameplan_companion_url');
+    expect(funcBody).not.toContain('curl_init');
   });
 
-  test('should log companion presign success', () => {
+  test('should log local PHP presign generation', () => {
     const content = readFile('lib/rustfs_storage.php');
     const funcStart = content.indexOf('function generatePresignedUploadUrlViaSdk(');
     const funcEnd = content.indexOf('\nfunction ', funcStart + 1);
     const funcBody = content.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
 
-    expect(funcBody).toContain('via companion SDK');
+    expect(funcBody).toContain('generating via local PHP');
   });
 });
 
