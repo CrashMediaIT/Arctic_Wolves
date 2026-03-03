@@ -122,12 +122,12 @@ test.describe('process_settings.php applies CORS when RustFS settings are saved'
 // 4. All upload views use proxy-first PUT upload strategy
 // =====================================================
 
-test.describe('video_record_athlete.php uses proxy-first PUT', () => {
-  test('should PUT to upload URL (proxy-first, direct S3 fallback)', () => {
+test.describe('video_record_athlete.php uses direct-first PUT', () => {
+  test('should PUT to presigned URL first (direct S3, proxy fallback)', () => {
     const content = readFile('views/video_record_athlete.php');
-    // The proxy URL is tried first when available; presigned_url still in response
+    // Direct presigned URL is tried first; proxy is fallback
+    expect(content).toContain('data.presigned_url');
     expect(content).toContain('proxyUploadUrl && proxyToken');
-    expect(content).toContain('presigned_url');
   });
 
   test('should NOT use proxy_video_upload', () => {
@@ -147,12 +147,23 @@ test.describe('video_record_athlete.php uses proxy-first PUT', () => {
     expect(content).toContain('athlete_upload_video');
     expect(content).toContain('Retrying via server');
   });
+
+  test('direct upload should be tried before proxy', () => {
+    const content = readFile('views/video_record_athlete.php');
+    // In the code, 'Uploading to cloud storage' (direct) appears before 'Uploading via server' (proxy)
+    const directPos = content.indexOf("'Uploading to cloud storage'");
+    const proxyPos = content.indexOf("'Uploading via server'");
+    expect(directPos).toBeGreaterThan(-1);
+    expect(proxyPos).toBeGreaterThan(-1);
+    expect(directPos).toBeLessThan(proxyPos);
+  });
 });
 
-test.describe('video_coach_reviews.php uses proxy-first PUT', () => {
-  test('should PUT to upload URL (proxy-first, direct S3 fallback)', () => {
+test.describe('video_coach_reviews.php uses direct-first PUT', () => {
+  test('should PUT to presigned URL first (direct S3, proxy fallback)', () => {
     const content = readFile('views/video_coach_reviews.php');
-    expect(content).toContain('proxyUploadUrl && proxyToken');
+    // Direct presigned URL is preferred over proxy
+    expect(content).toContain('presignedUrl ? presignedUrl');
     expect(content).toContain("xhr.open('PUT', uploadUrl");
   });
 
@@ -162,11 +173,11 @@ test.describe('video_coach_reviews.php uses proxy-first PUT', () => {
   });
 });
 
-test.describe('gp_film_room.php uses proxy-first PUT', () => {
-  test('should PUT to proxy URL first when available', () => {
+test.describe('gp_film_room.php uses direct-first PUT', () => {
+  test('should PUT to presigned URL first when available', () => {
     const content = readFile('views/gameplan/gp_film_room.php');
-    expect(content).toContain('proxyUploadUrl && proxyToken');
-    expect(content).toContain("xhr.open('PUT', proxyUploadUrl");
+    expect(content).toContain('data.presigned_url');
+    expect(content).toContain("xhr.open('PUT', data.presigned_url");
   });
 
   test('should NOT use proxy_video_upload', () => {
@@ -175,11 +186,11 @@ test.describe('gp_film_room.php uses proxy-first PUT', () => {
   });
 });
 
-test.describe('film_room.php uses proxy-first PUT', () => {
-  test('should PUT to proxy URL first when available', () => {
+test.describe('film_room.php uses direct-first PUT', () => {
+  test('should PUT to presigned URL first when available', () => {
     const content = readFile('views/gameplan/film_room.php');
-    expect(content).toContain('proxyUploadUrl && proxyToken');
-    expect(content).toContain("xhr.open('PUT', proxyUploadUrl");
+    expect(content).toContain('data.presigned_url');
+    expect(content).toContain("xhr.open('PUT', data.presigned_url");
   });
 
   test('should NOT use proxy_video_upload', () => {
@@ -188,10 +199,10 @@ test.describe('film_room.php uses proxy-first PUT', () => {
   });
 });
 
-test.describe('pwa/video_record_drill.php uses proxy-first PUT', () => {
-  test('should PUT to upload URL (proxy-first, direct S3 fallback)', () => {
+test.describe('pwa/video_record_drill.php uses direct-first PUT', () => {
+  test('should PUT to presigned URL first (direct S3, proxy fallback)', () => {
     const content = readFile('views/pwa/video_record_drill.php');
-    expect(content).toContain('proxyUploadUrl && proxyToken');
+    expect(content).toContain('presignedUrl ? presignedUrl');
     expect(content).toContain("xhr.open('PUT', uploadUrl");
   });
 
