@@ -561,7 +561,7 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
             xhr.addEventListener('error', function() {
                 clearInterval(stallTimer);
                 var elapsedSec = Math.round((Date.now() - partPutStart) / 1000);
-                var hint = (elapsedSec > 30)
+                var hint = (elapsedSec > STALL_TIMEOUT_SEC)
                     ? 'likely a gateway timeout (upload took ' + elapsedSec + 's) — will retry'
                     : 'possible causes: CORS blocked, connection reset, or server unreachable';
                 logError('Network error uploading part ' + partNumber + ' after ' + elapsed(partPutStart) + ' – ' + hint);
