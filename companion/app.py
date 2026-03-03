@@ -277,7 +277,7 @@ def _pcfg(key: str, default: str = "") -> str:
 # ---------------------------------------------------------------------------
 API_KEY = _pcfg("api_key")
 MAIN_APP_URL = _pcfg("main_app_url")
-HW_ACCEL = _pcfg("hw_accel", "auto")
+HW_ACCEL = _pcfg("hw_accel") or os.getenv("HW_ACCEL", "auto")
 MAX_CONCURRENT_JOBS = int(_pcfg("max_concurrent_jobs", "2"))
 
 # S3 / RustFS connection — entered in the companion Settings UI or pushed
@@ -520,9 +520,17 @@ def _probe_encoder(encoder: str) -> bool:
     if encoder not in _KNOWN_HW_ENCODERS:
         return False
     try:
-        cmd = [FFMPEG_PATH, "-y", "-hide_banner", "-loglevel", "error",
-               "-f", "lavfi", "-i", "color=c=black:s=64x64:d=0.1:r=10",
-               "-frames:v", "1", "-c:v", encoder, "-f", "null", "-"]
+        pre_input: list[str] = []
+        vf: list[str] = []
+        if "vaapi" in encoder:
+            pre_input = ["-vaapi_device", "/dev/dri/renderD128"]
+            vf = ["-vf", "format=nv12,hwupload"]
+        elif "qsv" in encoder:
+            pre_input = ["-init_hw_device", "qsv=hw"]
+        cmd = [FFMPEG_PATH, "-y", "-hide_banner", "-loglevel", "error"] + \
+              pre_input + \
+              ["-f", "lavfi", "-i", "color=c=black:s=64x64:d=0.1:r=10",
+               "-frames:v", "1"] + vf + ["-c:v", encoder, "-f", "null", "-"]
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=10, check=False)
         return proc.returncode == 0
     except Exception:
