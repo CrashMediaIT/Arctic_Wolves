@@ -308,6 +308,63 @@ endif;
                 }
             })
             .catch(function(err) {
+                // Proxy upload failed, trying direct S3
+                console.warn('[Upload] Proxy upload failed:', err.message, '— trying direct S3');
+                statusEl.textContent = 'Retrying via direct cloud upload...';
+                progressBar.style.width = '0%';
+
+                var retryMeta = new FormData();
+                retryMeta.append('action', 'get_video_upload_url');
+                retryMeta.append('upload_type', 'drill_video');
+                retryMeta.append('csrf_token', csrfToken);
+                retryMeta.append('file_name', 'drill_video.webm');
+                retryMeta.append('file_size', blob.size);
+                retryMeta.append('file_type', blob.type || 'video/webm');
+
+                return fetch('process_video.php', { method: 'POST', body: retryMeta })
+                    .then(function(r) { return r.json(); })
+                    .then(function(data2) {
+                        if (!data2.presigned_url) throw new Error('No presigned URL available for direct S3');
+                        uploadNonce = data2.upload_nonce || uploadNonce;
+                        return new Promise(function(resolve, reject) {
+                            var xhr = new XMLHttpRequest();
+                            xhr.open('PUT', data2.presigned_url, true);
+                            xhr.setRequestHeader('Content-Type', contentType);
+                            xhr.upload.onprogress = function(ev) {
+                                if (ev.lengthComputable) {
+                                    var pct = Math.round((ev.loaded / ev.total) * 100);
+                                    progressBar.style.width = pct + '%';
+                                    statusEl.textContent = pct < 100 ? 'Uploading to cloud... ' + pct + '%' : 'Finalizing...';
+                                }
+                            };
+                            xhr.onload = function() {
+                                if (xhr.status >= 200 && xhr.status < 300) resolve();
+                                else reject(new Error('Direct S3 upload failed (HTTP ' + xhr.status + ')'));
+                            };
+                            xhr.onerror = function() { reject(new Error('Network error during direct S3 upload')); };
+                            xhr.send(blob);
+                        });
+                    })
+                    .then(function() {
+                        statusEl.textContent = 'Confirming upload...';
+                        var confirmData = new FormData();
+                        confirmData.append('action', 'confirm_video_upload');
+                        confirmData.append('csrf_token', csrfToken);
+                        confirmData.append('upload_nonce', uploadNonce);
+                        return fetch('process_video.php', { method: 'POST', body: confirmData })
+                            .then(function(r) { return r.json(); });
+                    })
+                    .then(function(result) {
+                        if (result.success) {
+                            statusEl.textContent = 'Upload complete!';
+                            progressWrap.remove();
+                            setTimeout(function() { location.reload(); }, 500);
+                        } else {
+                            throw new Error(result.error || 'Confirmation failed');
+                        }
+                    });
+            })
+            .catch(function(err) {
                 // Fall back to legacy server-side upload if proxy/direct upload failed
                 console.warn('Upload failed, falling back to legacy upload:', err.message);
                 statusEl.textContent = 'Retrying via server...';

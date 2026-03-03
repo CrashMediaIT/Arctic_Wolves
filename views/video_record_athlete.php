@@ -952,10 +952,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     console.log('[Upload] ' + label + ': starting PUT to ' + url + ' size=' + file.size + ' type=' + (headers['Content-Type'] || 'unknown'));
 
-                    xhr.upload.onprogress = function(ev) {
+                    xhr.upload.onprogress = function(e) {
                         if (!uploadStarted) { uploadStarted = true; clearTimeout(connTimer); }
-                        if (ev.lengthComputable) {
-                            var pct = Math.round((ev.loaded / ev.total) * 100);
+                        if (e.lengthComputable) {
+                            var pct = Math.round((e.loaded / e.total) * 100);
                             bar.style.width = pct + '%';
                             percent.textContent = pct + '%';
                             if (pct < 100) {
@@ -1044,15 +1044,57 @@ document.addEventListener('DOMContentLoaded', function() {
                     return fetch('process_video.php', { method: 'POST', body: confirmData })
                         .then(function(r) { return r.json(); });
                 })
-                .then(function(result) {
-                    if (result.success) {
+                .then(function(response) {
+                    if (response.success) {
                         bar.style.width = '100%';
                         percent.textContent = '100%';
                         status.textContent = 'Upload complete! Redirecting...';
-                        window.location.href = result.redirect || 'dashboard.php?page=coaches_reviews&success=video_uploaded';
+                        window.location.href = response.redirect || 'dashboard.php?page=coaches_reviews&success=video_uploaded';
                     } else {
-                        throw new Error(result.error || 'Confirmation failed');
+                        throw new Error(response.error || 'Confirmation failed');
                     }
+                })
+                .catch(function(err) {
+                    // Proxy upload failed, trying direct S3
+                    console.warn('[Upload] Proxy upload failed:', err.message, '— trying direct S3');
+                    status.textContent = 'Retrying via direct cloud upload...';
+                    bar.style.width = '0%';
+                    percent.textContent = '0%';
+
+                    var retryMeta = new FormData();
+                    retryMeta.append('action', 'get_video_upload_url');
+                    retryMeta.append('upload_type', 'athlete_video');
+                    retryMeta.append('csrf_token', csrfToken);
+                    retryMeta.append('file_name', videoFile.name);
+                    retryMeta.append('file_size', videoFile.size);
+                    retryMeta.append('file_type', videoFile.type || 'video/mp4');
+
+                    return fetch('process_video.php', { method: 'POST', body: retryMeta })
+                        .then(function(r) { return r.json(); })
+                        .then(function(data2) {
+                            if (!data2.presigned_url) throw new Error('No presigned URL available for direct S3');
+                            uploadNonce = data2.upload_nonce || uploadNonce;
+                            return xhrPut(data2.presigned_url, videoFile, { 'Content-Type': contentType }, 'Direct S3 upload');
+                        })
+                        .then(function() {
+                            status.textContent = 'Confirming upload...';
+                            var confirmData = new FormData();
+                            confirmData.append('action', 'confirm_video_upload');
+                            confirmData.append('csrf_token', csrfToken);
+                            confirmData.append('upload_nonce', uploadNonce);
+                            return fetch('process_video.php', { method: 'POST', body: confirmData })
+                                .then(function(r) { return r.json(); });
+                        })
+                        .then(function(response) {
+                            if (response.success) {
+                                bar.style.width = '100%';
+                                percent.textContent = '100%';
+                                status.textContent = 'Upload complete! Redirecting...';
+                                window.location.href = response.redirect || 'dashboard.php?page=coaches_reviews&success=video_uploaded';
+                            } else {
+                                throw new Error(response.error || 'Confirmation failed');
+                            }
+                        });
                 })
                 .catch(function(err) {
                     // Fall back to legacy server-side upload if both proxy and direct upload failed
