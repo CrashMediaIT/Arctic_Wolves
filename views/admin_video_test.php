@@ -262,7 +262,8 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
             .then(function(etag) {
                 uploadedBytes += (end - start);
                 parts.push({ PartNumber: partNumber, ETag: etag });
-                log('Part ' + partNumber + '/' + totalParts + ' uploaded (' + ((end - start) / 1048576).toFixed(1) + ' MB, ETag: ' + (etag || 'none').substring(0, 12) + '…)');
+                var etagDisplay = etag ? etag.substring(0, 12) + '…' : 'none';
+                log('Part ' + partNumber + '/' + totalParts + ' uploaded (' + ((end - start) / 1048576).toFixed(1) + ' MB, ETag: ' + etagDisplay + ')');
                 return nextPart();
             });
         }
@@ -289,6 +290,8 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
 
             xhr.addEventListener('load', function() {
                 if (xhr.status >= 200 && xhr.status < 300) {
+                    // S3 returns ETag with surrounding quotes; strip them so
+                    // CompleteMultipartUpload can add them back in the XML.
                     var etag = xhr.getResponseHeader('ETag');
                     if (etag) etag = etag.replace(/"/g, '');
                     resolve(etag);
