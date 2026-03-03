@@ -309,7 +309,7 @@ test.describe('PHP handlers return proxy upload URL', () => {
     expect(funcBody).toContain('upload_proxy_token');
   });
 
-  test('both handlers should use SDK-based presign generation', () => {
+  test('both handlers should use local PHP presign generation (not companion)', () => {
     const content = readFile('process_video.php');
     const func1Start = content.indexOf('function handleGetAthleteUploadUrl()');
     const func1End = content.indexOf('\nfunction ', func1Start + 1);
@@ -319,7 +319,10 @@ test.describe('PHP handlers return proxy upload URL', () => {
     const func2End = content.indexOf('\nfunction ', func2Start + 1);
     const func2Body = content.substring(func2Start, func2End > -1 ? func2End : undefined);
 
-    expect(func1Body).toContain('generatePresignedUploadUrlViaSdk');
-    expect(func2Body).toContain('generatePresignedUploadUrlViaSdk');
+    // Presigned URLs are generated locally by PHP — the companion is only for transcoding
+    expect(func1Body).toContain('generatePresignedUploadUrl(');
+    expect(func1Body).not.toContain('generatePresignedUploadUrlViaSdk');
+    expect(func2Body).toContain('generatePresignedUploadUrl(');
+    expect(func2Body).not.toContain('generatePresignedUploadUrlViaSdk');
   });
 });
