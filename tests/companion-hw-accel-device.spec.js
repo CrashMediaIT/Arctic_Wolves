@@ -196,10 +196,18 @@ test.describe('Companion app.py _qsv_render_device helper', () => {
       c.indexOf('def _hwaccel_decode_flags'),
       c.indexOf('def _hw_vf')
     );
-    // QSV paths should use render device resolution
-    const qsvMatches = decodeFunc.match(/_qsv_render_device\(HW_ACCEL_DEVICE\)/g);
-    expect(qsvMatches).not.toBeNull();
-    expect(qsvMatches.length).toBe(2);  // explicit qsv + auto-detected qsv
+    // Explicit QSV path (accel == "qsv") should use render device resolution
+    const explicitQsv = decodeFunc.substring(
+      decodeFunc.indexOf('if accel == "qsv"'),
+      decodeFunc.indexOf('if accel in ("vaapi"')
+    );
+    expect(explicitQsv).toContain('_qsv_render_device(HW_ACCEL_DEVICE)');
+
+    // Auto-detected QSV path (accel == "auto") should also use render device resolution
+    const autoBlock = decodeFunc.substring(
+      decodeFunc.indexOf('if accel == "auto"')
+    );
+    expect(autoBlock).toContain('_qsv_render_device(HW_ACCEL_DEVICE)');
   });
 
   test('_hwaccel_decode_flags should NOT use _qsv_render_device for vaapi paths', () => {
