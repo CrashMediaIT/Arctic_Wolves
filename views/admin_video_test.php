@@ -68,13 +68,23 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
 
     var ALLOWED_EXT = ['mp4','mkv','mov','avi','webm'];
     var MAX_SIZE = 10 * 1024 * 1024 * 1024; // 10 GB
-    var MULTIPART_THRESHOLD = 512 * 1024 * 1024; // 512 MB – files above this use multipart
-    var PART_SIZE = 512 * 1024 * 1024;            // 512 MB per part
+    var MULTIPART_THRESHOLD = 256 * 1024 * 1024; // 256 MB – files above this use multipart
+    var PART_SIZE = 256 * 1024 * 1024;            // 256 MB per part
+    var STALL_TIMEOUT_SEC = 30; // seconds with no progress before warning
 
     function log(msg) {
         logEl.style.display = 'block';
         logEl.textContent += '[' + new Date().toLocaleTimeString() + '] ' + msg + '\n';
         logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function logError(msg) { log('ERROR: ' + msg); }
+    function logWarn(msg)  { log('WARNING: ' + msg); }
+    function logDebug(msg) { log('DEBUG: ' + msg); }
+
+    function elapsed(startMs) {
+        var s = ((Date.now() - startMs) / 1000).toFixed(1);
+        return s + 's';
     }
 
     function postAction(params) {
@@ -83,11 +93,31 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
         for (var k in params) {
             if (params.hasOwnProperty(k)) fd.append(k, params[k]);
         }
+        var actionLabel = params.action || 'presign';
+        var startMs = Date.now();
+        logDebug('POST ' + actionLabel + ' request started…');
         return fetch('process_video_test.php', { method: 'POST', body: fd })
-            .then(function(r) { return r.json(); })
+            .then(function(r) {
+                logDebug('POST ' + actionLabel + ' response: HTTP ' + r.status + ' (' + elapsed(startMs) + ')');
+                if (!r.ok) {
+                    return r.text().then(function(body) {
+                        var errMsg = 'Server returned HTTP ' + r.status;
+                        try { var j = JSON.parse(body); if (j.error) errMsg += ': ' + j.error; }
+                        catch(e) { if (body) errMsg += ': ' + body.substring(0, 200); }
+                        throw new Error(errMsg);
+                    });
+                }
+                return r.json();
+            })
             .then(function(data) {
-                if (!data.success) throw new Error(data.error || 'Request failed');
+                if (!data.success) throw new Error(data.error || 'Request failed (success=false)');
                 return data;
+            })
+            .catch(function(err) {
+                if (err.message && err.message.indexOf('Failed to fetch') !== -1) {
+                    throw new Error(actionLabel + ': Network error – could not reach server (check connectivity)');
+                }
+                throw err;
             });
     }
 
@@ -122,8 +152,9 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
         }
     });
 
-    // ── Single PUT upload (small files ≤ 512 MB) ──────────────────────
+    // ── Single PUT upload (small files ≤ 256 MB) ──────────────────────
     function singlePutUpload(file) {
+        var uploadStart = Date.now();
         progressText.textContent = 'Requesting presigned URL…';
 
         postAction({
@@ -132,19 +163,20 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
             file_type: file.type || 'application/octet-stream'
         })
         .then(function(data) {
-            log('Presigned URL obtained. Object key: ' + data.object_key);
+            log('Presigned URL obtained (' + elapsed(uploadStart) + '). Object key: ' + data.object_key);
             log('Uploading directly to RustFS…');
             return putToRustFS(data.presigned_url, file, data.content_type, data.object_key);
         })
         .then(function(objectKey) {
             progressBar.style.width = '100%';
             progressText.textContent = 'Upload complete!';
-            log('SUCCESS – file stored at: ' + objectKey);
+            log('SUCCESS – file stored at: ' + objectKey + ' (total time: ' + elapsed(uploadStart) + ')');
             uploadBtn.disabled = false;
         })
         .catch(function(err) {
             progressText.textContent = 'Upload failed.';
-            log('FAILED: ' + err.message);
+            logError(err.message);
+            log('Upload failed after ' + elapsed(uploadStart));
             uploadBtn.disabled = false;
         });
     }
@@ -155,8 +187,33 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
             xhr.open('PUT', presignedUrl, true);
             xhr.setRequestHeader('Content-Type', contentType);
 
+            var lastLoaded = 0;
+            var lastProgressTime = Date.now();
+            var stallTimer = null;
+            var stallWarned = false;
+            var putStart = Date.now();
+
+            function checkStall() {
+                var now = Date.now();
+                var secSinceProgress = Math.round((now - lastProgressTime) / 1000);
+                if (secSinceProgress >= STALL_TIMEOUT_SEC) {
+                    logWarn('Upload stalled – no progress for ' + secSinceProgress + 's at '
+                        + (lastLoaded / 1048576).toFixed(1) + ' MB ('
+                        + Math.round((lastLoaded / file.size) * 100) + '%)');
+                    stallWarned = true;
+                } else if (stallWarned) {
+                    log('Upload resumed after stall');
+                    stallWarned = false;
+                }
+            }
+            stallTimer = setInterval(checkStall, STALL_TIMEOUT_SEC * 1000);
+
             xhr.upload.addEventListener('progress', function(ev) {
                 if (ev.lengthComputable) {
+                    if (ev.loaded > lastLoaded) {
+                        lastLoaded = ev.loaded;
+                        lastProgressTime = Date.now();
+                    }
                     var pct = Math.round((ev.loaded / ev.total) * 100);
                     progressBar.style.width = pct + '%';
                     progressText.textContent = 'Uploading… ' + pct + '% (' + (ev.loaded / 1048576).toFixed(1) + ' / ' + (ev.total / 1048576).toFixed(1) + ' MB)';
@@ -164,29 +221,42 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
             });
 
             xhr.addEventListener('load', function() {
+                clearInterval(stallTimer);
+                logDebug('PUT response: HTTP ' + xhr.status + ' (' + elapsed(putStart) + ')');
                 if (xhr.status >= 200 && xhr.status < 300) {
                     resolve(objectKey);
                 } else {
-                    reject(new Error('RustFS responded with HTTP ' + xhr.status + ': ' + xhr.responseText));
+                    var detail = xhr.responseText ? xhr.responseText.substring(0, 300) : '(empty body)';
+                    reject(new Error('RustFS responded with HTTP ' + xhr.status + ': ' + detail));
                 }
             });
 
             xhr.addEventListener('error', function() {
+                clearInterval(stallTimer);
+                logError('Network error during PUT to RustFS after ' + elapsed(putStart)
+                    + ' – possible causes: CORS blocked, connection reset, or server unreachable');
                 reject(new Error('Network error during upload to RustFS'));
             });
             xhr.addEventListener('abort', function() {
-                reject(new Error('Upload aborted'));
+                clearInterval(stallTimer);
+                reject(new Error('Upload aborted after ' + elapsed(putStart)));
+            });
+            xhr.addEventListener('timeout', function() {
+                clearInterval(stallTimer);
+                logError('Upload timed out after ' + elapsed(putStart));
+                reject(new Error('Upload timed out'));
             });
 
             xhr.send(file);
         });
     }
 
-    // ── Multipart upload (large files > 512 MB) ──────────────────────
+    // ── Multipart upload (large files > 256 MB) ──────────────────────
     function multipartUpload(file) {
         var totalParts = Math.ceil(file.size / PART_SIZE);
         var objectKey = '';
         var uploadId  = '';
+        var uploadStart = Date.now();
 
         log('File exceeds ' + (MULTIPART_THRESHOLD / 1048576) + ' MB — using multipart upload (' + totalParts + ' parts of ' + (PART_SIZE / 1048576) + ' MB)');
         progressText.textContent = 'Initiating multipart upload…';
@@ -200,13 +270,13 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
         .then(function(data) {
             objectKey = data.object_key;
             uploadId  = data.upload_id;
-            log('Multipart upload initiated. Object key: ' + objectKey);
-            log('Upload ID: ' + uploadId.substring(0, 20) + '…');
+            log('Multipart upload initiated (' + elapsed(uploadStart) + '). Object key: ' + objectKey);
+            logDebug('Upload ID: ' + uploadId.substring(0, 20) + '…');
 
             return uploadAllParts(file, objectKey, uploadId, totalParts);
         })
         .then(function(parts) {
-            log('All ' + parts.length + ' parts uploaded. Completing multipart upload…');
+            log('All ' + parts.length + ' parts uploaded (' + elapsed(uploadStart) + '). Completing multipart upload…');
             progressText.textContent = 'Completing multipart upload…';
 
             return postAction({
@@ -219,19 +289,20 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
         .then(function() {
             progressBar.style.width = '100%';
             progressText.textContent = 'Upload complete!';
-            log('SUCCESS – file stored at: ' + objectKey);
+            log('SUCCESS – file stored at: ' + objectKey + ' (total time: ' + elapsed(uploadStart) + ')');
             uploadBtn.disabled = false;
         })
         .catch(function(err) {
             progressText.textContent = 'Upload failed.';
-            log('FAILED: ' + err.message);
+            logError(err.message);
+            log('Upload failed after ' + elapsed(uploadStart));
             uploadBtn.disabled = false;
 
             if (uploadId) {
                 log('Aborting multipart upload…');
                 postAction({ action: 'abort', object_key: objectKey, upload_id: uploadId })
                     .then(function() { log('Multipart upload aborted (cleanup done).'); })
-                    .catch(function() { log('Warning: abort request also failed.'); });
+                    .catch(function(e) { logWarn('Abort request also failed: ' + e.message); });
             }
         });
     }
@@ -247,6 +318,7 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
             var start = (partNumber - 1) * PART_SIZE;
             var end   = Math.min(start + PART_SIZE, file.size);
             var chunk = file.slice(start, end);
+            var partStart = Date.now();
 
             progressText.textContent = 'Requesting presigned URL for part ' + partNumber + '/' + totalParts + '…';
 
@@ -257,13 +329,14 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
                 part_number: partNumber
             })
             .then(function(data) {
+                logDebug('Presign for part ' + partNumber + ' took ' + elapsed(partStart));
                 return uploadPart(data.presigned_url, chunk, partNumber, totalParts, file.size, uploadedBytes);
             })
             .then(function(etag) {
                 uploadedBytes += (end - start);
                 parts.push({ PartNumber: partNumber, ETag: etag });
                 var etagDisplay = etag ? etag.substring(0, 12) + '…' : 'none';
-                log('Part ' + partNumber + '/' + totalParts + ' uploaded (' + ((end - start) / 1048576).toFixed(1) + ' MB, ETag: ' + etagDisplay + ')');
+                log('Part ' + partNumber + '/' + totalParts + ' uploaded (' + ((end - start) / 1048576).toFixed(1) + ' MB, ETag: ' + etagDisplay + ', ' + elapsed(partStart) + ')');
                 return nextPart();
             });
         }
@@ -276,8 +349,34 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
             var xhr = new XMLHttpRequest();
             xhr.open('PUT', presignedUrl, true);
 
+            var lastLoaded = 0;
+            var lastProgressTime = Date.now();
+            var stallTimer = null;
+            var stallWarned = false;
+            var partPutStart = Date.now();
+
+            function checkStall() {
+                var now = Date.now();
+                var secSinceProgress = Math.round((now - lastProgressTime) / 1000);
+                if (secSinceProgress >= STALL_TIMEOUT_SEC) {
+                    var totalUploaded = prevUploaded + lastLoaded;
+                    logWarn('Part ' + partNumber + ' stalled – no progress for ' + secSinceProgress + 's at '
+                        + (totalUploaded / 1048576).toFixed(1) + ' MB total ('
+                        + Math.round((totalUploaded / totalSize) * 100) + '%)');
+                    stallWarned = true;
+                } else if (stallWarned) {
+                    log('Part ' + partNumber + ' upload resumed after stall');
+                    stallWarned = false;
+                }
+            }
+            stallTimer = setInterval(checkStall, STALL_TIMEOUT_SEC * 1000);
+
             xhr.upload.addEventListener('progress', function(ev) {
                 if (ev.lengthComputable) {
+                    if (ev.loaded > lastLoaded) {
+                        lastLoaded = ev.loaded;
+                        lastProgressTime = Date.now();
+                    }
                     var totalUploaded = prevUploaded + ev.loaded;
                     var pct = Math.round((totalUploaded / totalSize) * 100);
                     progressBar.style.width = pct + '%';
@@ -289,27 +388,37 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
             });
 
             xhr.addEventListener('load', function() {
+                clearInterval(stallTimer);
+                logDebug('Part ' + partNumber + ' PUT response: HTTP ' + xhr.status + ' (' + elapsed(partPutStart) + ')');
                 if (xhr.status >= 200 && xhr.status < 300) {
-                    // S3 returns ETag with surrounding quotes; strip them so
-                    // CompleteMultipartUpload can add them back in the XML.
                     var etag = xhr.getResponseHeader('ETag');
                     if (etag) etag = etag.replace(/"/g, '');
                     if (!etag) {
-                        log('WARNING: No ETag returned for part ' + partNumber + '. CORS may not expose the ETag header.');
+                        logError('No ETag returned for part ' + partNumber + '. CORS may not expose the ETag header.');
                         reject(new Error('Part ' + partNumber + ': server did not return an ETag header (possible CORS configuration issue). Please retry the upload.'));
                         return;
                     }
                     resolve(etag);
                 } else {
-                    reject(new Error('Part ' + partNumber + ' failed: HTTP ' + xhr.status + ' ' + xhr.responseText));
+                    var detail = xhr.responseText ? xhr.responseText.substring(0, 300) : '(empty body)';
+                    reject(new Error('Part ' + partNumber + ' failed: HTTP ' + xhr.status + ' ' + detail));
                 }
             });
 
             xhr.addEventListener('error', function() {
+                clearInterval(stallTimer);
+                logError('Network error uploading part ' + partNumber + ' after ' + elapsed(partPutStart)
+                    + ' – possible causes: CORS blocked, connection reset, request too large, or server unreachable');
                 reject(new Error('Network error uploading part ' + partNumber));
             });
             xhr.addEventListener('abort', function() {
-                reject(new Error('Part ' + partNumber + ' upload aborted'));
+                clearInterval(stallTimer);
+                reject(new Error('Part ' + partNumber + ' upload aborted after ' + elapsed(partPutStart)));
+            });
+            xhr.addEventListener('timeout', function() {
+                clearInterval(stallTimer);
+                logError('Part ' + partNumber + ' upload timed out after ' + elapsed(partPutStart));
+                reject(new Error('Part ' + partNumber + ' upload timed out'));
             });
 
             xhr.send(chunk);
