@@ -1111,7 +1111,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     legacyXhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
                     legacyXhr.upload.onprogress = function(e) {
                         if (e.lengthComputable) {
-                            var pct = Math.round((ev.loaded / ev.total) * 100);
+                            var pct = Math.round((e.loaded / e.total) * 100);
                             bar.style.width = pct + '%';
                             percent.textContent = pct + '%';
                             status.textContent = pct < 100 ? 'Uploading video...' : 'Processing...';
