@@ -1468,6 +1468,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (tzl) tzl.remove();
                 var tzr = container.querySelector('.aw-touch-zone-right');
                 if (tzr) tzr.remove();
+                var tzc = container.querySelector('.aw-touch-zone-center');
+                if (tzc) tzc.remove();
             }
             videoPlayer.pause();
             videoPlayer.removeAttribute('src');

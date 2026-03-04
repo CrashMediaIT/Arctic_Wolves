@@ -213,6 +213,20 @@ test.describe('Controls behavior and interactivity', () => {
     expect(c).toContain('function _formatTime');
     expect(c).toContain('Math.floor(secs / 3600)');
   });
+
+  test('should create center touch zone for play/pause', () => {
+    const c = content();
+    expect(c).toContain("touchCenter.className = 'aw-touch-zone aw-touch-zone-center'");
+    expect(c).toContain("container.appendChild(touchCenter)");
+  });
+
+  test('center touch zone click should toggle play/pause', () => {
+    const c = content();
+    const centerHandler = c.substring(c.indexOf("touchCenter.addEventListener('click'"));
+    expect(centerHandler).toContain('video.paused');
+    expect(centerHandler).toContain('video.play()');
+    expect(centerHandler).toContain('video.pause()');
+  });
 });
 
 // =====================================================
@@ -291,6 +305,15 @@ test.describe('CSS theme integration for video player controls', () => {
     // Gradient uses a semi-transparent dark overlay matching --bg-main (#0A0A0F)
     expect(c).toMatch(/\.aw-controls-gradient[\s\S]*?linear-gradient/);
   });
+
+  test('center touch zone should have CSS positioning between left and right', () => {
+    const c = content();
+    expect(c).toContain('.aw-touch-zone-center');
+    const centerIdx = c.indexOf('.aw-touch-zone-center');
+    const centerRule = c.substring(centerIdx, c.indexOf('}', centerIdx) + 1);
+    expect(centerRule).toContain('left: 30%');
+    expect(centerRule).toContain('right: 30%');
+  });
 });
 
 // =====================================================
@@ -331,5 +354,21 @@ test.describe('Controls cleanup and resource management', () => {
   test('should clear hide timeout on cleanup', () => {
     const c = content();
     expect(c).toContain('clearTimeout(hideTimeout)');
+  });
+
+  test('cleanup should remove center touch zone', () => {
+    const c = content();
+    const cleanupStart = c.indexOf('controls._cleanup = function()');
+    const cleanupEnd = c.indexOf('};', cleanupStart);
+    const cleanupFunc = c.substring(cleanupStart, cleanupEnd);
+    expect(cleanupFunc).toContain('touchCenter.parentElement');
+    expect(cleanupFunc).toContain('touchCenter.remove()');
+  });
+
+  test('view cleanup functions should remove center touch zone', () => {
+    const drillView = readFile('views/video_drill_review.php');
+    const coachView = readFile('views/video_coach_reviews.php');
+    expect(drillView).toContain(".querySelector('.aw-touch-zone-center')");
+    expect(coachView).toContain(".querySelector('.aw-touch-zone-center')");
   });
 });
