@@ -326,34 +326,50 @@ test.describe('Companion dashboard capability guide removed', () => {
 });
 
 // =====================================================
-// 6. hls-player.js wrapper._closeHandler fix
+// 6. hls-player.js custom controls and cleanup
 // =====================================================
 
-test.describe('hls-player.js quality menu wrapper._closeHandler fix', () => {
+test.describe('hls-player.js custom controls and cleanup', () => {
   const content = () => readFile('js/hls-player.js');
 
-  test('wrapper should be created before _closeHandler is assigned to it', () => {
+  test('controls element should be created with aw-player-controls class', () => {
     const c = content();
-    const wrapperCreation = c.indexOf("var wrapper = document.createElement('div')");
-    const closeHandlerAssignment = c.indexOf('wrapper._closeHandler = _closeHandler');
-    expect(wrapperCreation).toBeGreaterThan(-1);
-    expect(closeHandlerAssignment).toBeGreaterThan(-1);
-    // wrapper must be created BEFORE _closeHandler is assigned
-    expect(wrapperCreation).toBeLessThan(closeHandlerAssignment);
+    expect(c).toContain("controls.className = 'aw-player-controls'");
   });
 
-  test('wrapper should have aw-quality-wrapper class', () => {
+  test('existing controls removal should check for _cleanup', () => {
     const c = content();
-    expect(c).toContain("wrapper.className = 'aw-quality-wrapper'");
+    expect(c).toContain('existing._cleanup');
   });
 
-  test('existing wrapper removal should check for _closeHandler', () => {
-    const c = content();
-    expect(c).toContain('existing._closeHandler');
-  });
-
-  test('_closeHandler should close the quality menu on outside click', () => {
+  test('_closeHandler should close the settings panel on outside click', () => {
     const c = content();
     expect(c).toContain("document.addEventListener('click', _closeHandler)");
+  });
+
+  test('should build custom controls with play, volume, progress, fullscreen', () => {
+    const c = content();
+    expect(c).toContain('aw-play-btn');
+    expect(c).toContain('aw-volume-btn');
+    expect(c).toContain('aw-progress-bar');
+    expect(c).toContain('aw-fullscreen-btn');
+  });
+
+  test('should have quality/resolution picker with Auto option', () => {
+    const c = content();
+    expect(c).toContain('aw-settings-panel');
+    expect(c).toContain('aw-quality-item');
+    expect(c).toContain("'Auto'");
+  });
+
+  test('should have auto bandwidth detection via LEVEL_SWITCHED', () => {
+    const c = content();
+    expect(c).toContain('Hls.Events.LEVEL_SWITCHED');
+    expect(c).toContain('aw-qi-auto-res');
+  });
+
+  test('should hide native video controls', () => {
+    const c = content();
+    expect(c).toContain("video.removeAttribute('controls')");
   });
 });
