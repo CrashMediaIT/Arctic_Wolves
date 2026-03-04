@@ -835,14 +835,16 @@ document.addEventListener('DOMContentLoaded', function() {
         return ((Date.now() - startMs) / 1000).toFixed(1) + 's';
     }
 
-    function drillPostAction(params) {
+    function drillPostAction(params, options) {
         var fd = new FormData();
         var csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
         fd.append('csrf_token', csrfToken);
         for (var k in params) {
             if (params.hasOwnProperty(k)) fd.append(k, params[k]);
         }
-        return fetch('process_video.php', { method: 'POST', body: fd })
+        var fetchOpts = { method: 'POST', body: fd };
+        if (options && options.keepalive) fetchOpts.keepalive = true;
+        return fetch('process_video.php', fetchOpts)
             .then(function(r) {
                 if (!r.ok) {
                     return r.text().then(function(body) {
@@ -1127,7 +1129,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 confirmData.append('action', 'confirm_video_upload');
                 confirmData.append('csrf_token', csrfToken);
                 confirmData.append('upload_nonce', uploadNonce);
-                return fetch('process_video.php', { method: 'POST', body: confirmData })
+                return fetch('process_video.php', { method: 'POST', body: confirmData, keepalive: true })
                     .then(function(r) { return r.json(); });
             })
             .then(function(result) {
@@ -1284,7 +1286,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return drillPostAction({
                     action: 'confirm_video_upload',
                     upload_nonce: uploadNonce
-                });
+                }, { keepalive: true });
             })
             .then(function(result) {
                 if (result.success) {
@@ -1374,7 +1376,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     confirmData.append('action', 'confirm_video_upload');
                     confirmData.append('csrf_token', csrfToken);
                     confirmData.append('upload_nonce', uploadNonce);
-                    return fetch('process_video.php', { method: 'POST', body: confirmData })
+                    return fetch('process_video.php', { method: 'POST', body: confirmData, keepalive: true })
                         .then(function(r) { return r.json(); });
                 })
                 .then(function(result) {

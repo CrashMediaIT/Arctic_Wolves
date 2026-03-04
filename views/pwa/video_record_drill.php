@@ -293,7 +293,7 @@ endif;
                 confirmData.append('action', 'confirm_video_upload');
                 confirmData.append('csrf_token', csrfToken);
                 confirmData.append('upload_nonce', uploadNonce);
-                return fetch('process_video.php', { method: 'POST', body: confirmData })
+                return fetch('process_video.php', { method: 'POST', body: confirmData, keepalive: true })
                     .then(function(r) { return r.json(); });
             })
             .then(function(result) {
@@ -351,7 +351,7 @@ endif;
                         confirmData.append('action', 'confirm_video_upload');
                         confirmData.append('csrf_token', csrfToken);
                         confirmData.append('upload_nonce', uploadNonce);
-                        return fetch('process_video.php', { method: 'POST', body: confirmData })
+                        return fetch('process_video.php', { method: 'POST', body: confirmData, keepalive: true })
                             .then(function(r) { return r.json(); });
                     })
                     .then(function(result) {

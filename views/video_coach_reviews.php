@@ -930,11 +930,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function crElapsed(startMs) { return ((Date.now() - startMs) / 1000).toFixed(1) + 's'; }
 
-    function crPostAction(params, csrfToken) {
+    function crPostAction(params, csrfToken, options) {
         var fd = new FormData();
         fd.append('csrf_token', csrfToken);
         for (var k in params) { if (params.hasOwnProperty(k)) fd.append(k, params[k]); }
-        return fetch('process_video.php', { method: 'POST', body: fd })
+        var fetchOpts = { method: 'POST', body: fd };
+        if (options && options.keepalive) fetchOpts.keepalive = true;
+        return fetch('process_video.php', fetchOpts)
             .then(function(r) {
                 if (!r.ok) return r.text().then(function(b) { var m = 'HTTP ' + r.status; try { var j = JSON.parse(b); if (j.error) m += ': ' + j.error; } catch(e) {} throw new Error(m); });
                 return r.json();
@@ -1102,7 +1104,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 confirmData.append('action', 'confirm_video_upload');
                 confirmData.append('csrf_token', csrfToken);
                 confirmData.append('upload_nonce', uploadNonce);
-                return fetch('process_video.php', { method: 'POST', body: confirmData }).then(function(r) { return r.json(); });
+                return fetch('process_video.php', { method: 'POST', body: confirmData, keepalive: true }).then(function(r) { return r.json(); });
             })
             .then(function(result) {
                 if (result.success) {
@@ -1152,7 +1154,7 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(function() {
             crLog('Confirming upload…');
             status.textContent = 'Confirming upload...';
-            return crPostAction({ action: 'confirm_video_upload', upload_nonce: uploadNonce }, csrfToken);
+            return crPostAction({ action: 'confirm_video_upload', upload_nonce: uploadNonce }, csrfToken, { keepalive: true });
         })
         .then(function(result) {
             if (result.success) { crLog('Upload confirmed! Transcoding in background.'); crShowComplete(bar, percent, status, overlay, submitBtn, result.redirect); }
