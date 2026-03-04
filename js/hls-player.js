@@ -376,6 +376,8 @@
             e.stopPropagation();
             if (video.paused) video.play().catch(function() {});
             else video.pause();
+            showControls();
+            scheduleHide();
         });
 
         // --- Event Wiring ---
