@@ -788,9 +788,14 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
         log('Loading video player: ' + hlsUrl);
         playerInfo.textContent = 'HLS manifest: ' + hlsUrl;
 
-        // Try native HLS (Safari) or fall back to direct URL
-        videoPlayer.src = hlsUrl;
-        videoPlayer.load();
+        // Use the shared HLS.js player (loaded by dashboard.php) for .m3u8 URLs
+        if (typeof window.awInitHlsPlayer === 'function') {
+            window.awInitHlsPlayer(videoPlayer, hlsUrl);
+        } else {
+            // Fallback: native HLS (Safari) or direct URL
+            videoPlayer.src = hlsUrl;
+            videoPlayer.load();
+        }
 
         videoPlayer.addEventListener('error', function onErr() {
             videoPlayer.removeEventListener('error', onErr);
