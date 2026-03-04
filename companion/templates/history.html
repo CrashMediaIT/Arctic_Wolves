@@ -94,6 +94,15 @@
         .btn-secondary:hover { border-color: var(--accent); transform: translateY(-2px); }
         .btn-sm { padding: 6px 14px; font-size: 11px; }
 
+        .btn-retry {
+            color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.4); padding: 5px 12px;
+            font-weight: 800; border-radius: 4px; display: inline-flex; align-items: center; gap: 5px;
+            transition: 0.2s ease; background: rgba(245, 158, 11, 0.08);
+            cursor: pointer; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .btn-retry:hover { border-color: #f59e0b; background: rgba(245, 158, 11, 0.15); transform: translateY(-1px); }
+        .btn-retry:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
         .filter-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 20px; }
         .filter-btn {
             padding: 6px 16px; border-radius: 4px; border: 1px solid var(--border);
@@ -289,6 +298,9 @@
             html += '<span><b>Job:</b> ' + escapeHtml(job.id || '—') + '</span>';
             html += '<span><b>Status:</b> ' + escapeHtml(job.status || '—') + '</span>';
             if (job.error) html += '<span><b>Error:</b> ' + escapeHtml(job.error) + '</span>';
+            if (job.status === 'failed') {
+                html += '<span><button class="btn-retry" data-job-id="' + escapeHtml(job.id || '') + '" onclick="retryJob(this.dataset.jobId); event.stopPropagation();">↻ Retry Transcode</button></span>';
+            }
             html += '</div>';
             var log = job.log || [];
             if (!log.length) {
@@ -325,6 +337,29 @@
             var div = document.createElement('div');
             div.appendChild(document.createTextNode(str));
             return div.innerHTML;
+        }
+
+        async function retryJob(jobId) {
+            if (!jobId) return;
+            var btn = document.querySelector('.btn-retry[data-job-id="' + jobId + '"]');
+            if (btn) { btn.disabled = true; btn.textContent = 'Retrying…'; }
+            try {
+                var res = await fetch(API_BASE + '/api/hls/retry', {
+                    method: 'POST',
+                    headers: apiHeaders(),
+                    body: JSON.stringify({ job_id: jobId })
+                });
+                if (!res.ok) {
+                    var errData = await res.json().catch(function() { return {}; });
+                    alert('Retry failed: ' + (errData.error || 'HTTP ' + res.status));
+                    if (btn) { btn.disabled = false; btn.textContent = '↻ Retry Transcode'; }
+                    return;
+                }
+                refreshJobs();
+            } catch (e) {
+                alert('Retry failed: ' + e.message);
+                if (btn) { btn.disabled = false; btn.textContent = '↻ Retry Transcode'; }
+            }
         }
 
         async function refreshHealth() {

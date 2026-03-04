@@ -271,12 +271,19 @@ try {
 <!-- Upload Progress -->
 <div class="upload-progress" id="uploadProgress" style="display: none;">
     <div class="progress-header">
-        <span>Uploading video...</span>
+        <span id="drillUploadTitle">Uploading video...</span>
         <span id="uploadPercent">0%</span>
     </div>
     <div class="progress-bar">
         <div class="progress-fill" id="progressFill"></div>
     </div>
+    <!-- Upload Log Dropdown -->
+    <details id="drillUploadLogDetails" style="width:100%;margin-top:8px;text-align:left;">
+        <summary style="cursor:pointer;font-weight:600;font-size:12px;color:var(--text-dim,#6b7280);user-select:none;">
+            <i class="fas fa-terminal"></i> Upload Log
+        </summary>
+        <pre id="drillUploadLogPre" style="margin-top:6px;max-height:180px;overflow:auto;background:var(--bg-main,#0a0a0f);color:#cdd6f4;padding:8px;border-radius:6px;font-size:11px;white-space:pre-wrap;line-height:1.4;"></pre>
+    </details>
     <button type="button" class="btn btn-danger" id="cancelDrillUploadBtn" style="margin-top: 10px; font-size: 13px;">
         <i class="fas fa-times"></i> Cancel Upload
     </button>
@@ -799,6 +806,70 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Track active XHR for cancel support
     var drillUploadXhr = null;
+
+    // Upload log helper
+    var drillLogPre = document.getElementById('drillUploadLogPre');
+    function drillLog(msg) {
+        if (drillLogPre) {
+            drillLogPre.textContent += '[' + new Date().toLocaleTimeString() + '] ' + msg + '\n';
+            drillLogPre.scrollTop = drillLogPre.scrollHeight;
+        }
+        console.log('[DrillUpload] ' + msg);
+    }
+    function drillLogError(msg) { drillLog('ERROR: ' + msg); }
+    function drillLogWarn(msg) { drillLog('WARNING: ' + msg); }
+
+    var MULTIPART_THRESHOLD = 64 * 1024 * 1024;
+    var PART_SIZE = 64 * 1024 * 1024;
+    var CONCURRENT_PARTS = 3;
+    var MAX_PART_RETRIES = 5;
+    var STALL_TIMEOUT_SEC = 30;
+    var STALL_ABORT_SEC = 90;
+    var PROGRESS_LOG_INTERVAL = 10;
+
+    function drillFormatSpeed(bytes, ms) {
+        if (ms <= 0) return '—';
+        return ((bytes / 1048576) / (ms / 1000)).toFixed(1) + ' MB/s';
+    }
+    function drillElapsed(startMs) {
+        return ((Date.now() - startMs) / 1000).toFixed(1) + 's';
+    }
+
+    function drillPostAction(params) {
+        var fd = new FormData();
+        var csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
+        fd.append('csrf_token', csrfToken);
+        for (var k in params) {
+            if (params.hasOwnProperty(k)) fd.append(k, params[k]);
+        }
+        return fetch('process_video.php', { method: 'POST', body: fd })
+            .then(function(r) {
+                if (!r.ok) {
+                    return r.text().then(function(body) {
+                        var errMsg = 'HTTP ' + r.status;
+                        try { var j = JSON.parse(body); if (j.error) errMsg += ': ' + j.error; } catch(e) {}
+                        throw new Error(errMsg);
+                    });
+                }
+                return r.json();
+            })
+            .then(function(data) {
+                if (!data.success) throw new Error(data.error || 'Request failed');
+                return data;
+            });
+    }
+
+    function drillShowComplete(progressFill, uploadPercent) {
+        progressFill.style.width = '100%';
+        uploadPercent.textContent = '100%';
+        var titleEl = document.getElementById('drillUploadTitle');
+        if (titleEl) titleEl.textContent = 'Upload complete! Transcoding in background…';
+        var logDetails = document.getElementById('drillUploadLogDetails');
+        if (logDetails) logDetails.open = true;
+        var cancelBtnEl = document.getElementById('cancelDrillUploadBtn');
+        if (cancelBtnEl) cancelBtnEl.style.display = 'none';
+    }
+
     var cancelDrillBtn = document.getElementById('cancelDrillUploadBtn');
     if (cancelDrillBtn) {
         cancelDrillBtn.addEventListener('click', function() {
@@ -960,7 +1031,7 @@ document.addEventListener('DOMContentLoaded', function() {
         repInput.value = parseInt(repInput.value) + 1;
     });
     
-    // Upload to Cloud — direct-to-RustFS via presigned URL (3-step flow)
+    // Upload to Cloud — direct-to-RustFS via presigned URL (3-step flow) with logging
     uploadBtn.addEventListener('click', function() {
         if (recordedChunks.length === 0) return;
 
@@ -973,9 +1044,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Show progress
         document.getElementById('uploadProgress').style.display = 'block';
+        if (drillLogPre) drillLogPre.textContent = '';
         var progressFill = document.getElementById('progressFill');
         var uploadPercent = document.getElementById('uploadPercent');
         uploadBtn.disabled = true;
+
+        drillLog('Recording: ' + (blob.size / 1048576).toFixed(1) + ' MB');
 
         // Step 1: get presigned URL
         var formMeta = new FormData();
@@ -994,6 +1068,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var proxyUploadUrl = null;
         var proxyToken = null;
         var contentType = null;
+        var uploadStart = Date.now();
 
         fetch('process_video.php', { method: 'POST', body: formMeta })
             .then(function(r) { return r.json(); })
@@ -1003,6 +1078,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 proxyUploadUrl = data.proxy_upload_url || null;
                 proxyToken = data.proxy_token || null;
                 contentType = data.content_type || blob.type || 'video/webm';
+
+                drillLog('Presigned URL obtained. Uploading…');
 
                 // Step 2: upload direct to RustFS (preferred) or via proxy
                 var uploadUrl = data.presigned_url ? data.presigned_url : ((proxyUploadUrl && proxyToken) ? proxyUploadUrl : null);
@@ -1015,8 +1092,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     xhr.setRequestHeader('Content-Type', contentType);
                     if (useProxy) xhr.setRequestHeader('X-Upload-Token', proxyToken);
                     var uploadStarted = false;
+                    var lastLogTime = 0;
                     var connTimer = setTimeout(function() {
-                        if (!uploadStarted) { xhr.abort(); reject(new Error((useProxy ? 'Proxy' : 'Cloud storage') + ' connection timed out')); }
+                        if (!uploadStarted) { xhr.abort(); reject(new Error('Connection timed out')); }
                     }, 30000);
                     xhr.upload.onprogress = function(ev) {
                         if (!uploadStarted && ev.loaded > 0) { uploadStarted = true; clearTimeout(connTimer); }
@@ -1024,19 +1102,27 @@ document.addEventListener('DOMContentLoaded', function() {
                             var pct = Math.round((ev.loaded / ev.total) * 100);
                             progressFill.style.width = pct + '%';
                             uploadPercent.textContent = pct + '%';
+                            var now = Date.now();
+                            if (ev.loaded > 0 && (now - lastLogTime) >= PROGRESS_LOG_INTERVAL * 1000) {
+                                lastLogTime = now;
+                                drillLog('Progress: ' + pct + '% — ' + (ev.loaded / 1048576).toFixed(1) + ' MB');
+                            }
                         }
                     };
                     xhr.onload = function() {
                         clearTimeout(connTimer);
-                        if (xhr.status >= 200 && xhr.status < 300) resolve();
-                        else reject(new Error((useProxy ? 'Proxy' : 'Cloud') + ' upload failed (HTTP ' + xhr.status + ')'));
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            drillLog('Upload completed in ' + drillElapsed(uploadStart));
+                            resolve();
+                        } else reject(new Error('Upload failed (HTTP ' + xhr.status + ')'));
                     };
-                    xhr.onerror = function() { clearTimeout(connTimer); reject(new Error('Network error during upload')); };
+                    xhr.onerror = function() { clearTimeout(connTimer); reject(new Error('Network error')); };
                     xhr.send(blob);
                 });
             })
             .then(function() {
                 // Step 3: confirm upload
+                drillLog('Confirming upload…');
                 var confirmData = new FormData();
                 confirmData.append('action', 'confirm_video_upload');
                 confirmData.append('csrf_token', csrfToken);
@@ -1046,17 +1132,18 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(function(result) {
                 if (result.success) {
-                    persistToast('Video uploaded successfully!', 'success');
-                    setTimeout(function() { location.reload(); }, 500);
+                    drillLog('Upload confirmed! Transcoding in background.');
+                    drillShowComplete(progressFill, uploadPercent);
+                    persistToast('Video uploaded successfully! Transcoding in background.', 'success');
+                    setTimeout(function() { location.reload(); }, 3000);
                 } else {
                     throw new Error(result.error || 'Confirmation failed');
                 }
             })
             .catch(function(err) {
+                drillLogError(err.message);
                 showToast('Upload failed: ' + err.message, 'error');
                 uploadBtn.disabled = false;
-            })
-            .finally(function() {
                 document.getElementById('uploadProgress').style.display = 'none';
             });
     });
@@ -1126,7 +1213,7 @@ document.addEventListener('DOMContentLoaded', function() {
         uploadFileBtn.disabled = true;
     });
 
-    // Upload file button click handler — direct-to-RustFS via presigned URL (3-step flow)
+    // Upload file button click handler — with multipart support for large files
     uploadFileBtn.addEventListener('click', function() {
         if (!videoFileInput.files.length) return;
 
@@ -1144,92 +1231,280 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Show progress
         document.getElementById('uploadProgress').style.display = 'block';
+        if (drillLogPre) drillLogPre.textContent = '';
         var progressFill = document.getElementById('progressFill');
         var uploadPercent = document.getElementById('uploadPercent');
         uploadFileBtn.disabled = true;
 
-        // Step 1: get presigned URL
-        var formMeta = new FormData();
-        formMeta.append('action', 'get_video_upload_url');
-        formMeta.append('upload_type', 'drill_video');
-        formMeta.append('csrf_token', csrfToken);
-        formMeta.append('session_id', session);
-        formMeta.append('drill_id', drill);
-        formMeta.append('athlete_id', athlete);
-        formMeta.append('rep_number', document.getElementById('repNumber').value);
-        formMeta.append('file_name', videoFile.name);
-        formMeta.append('file_size', videoFile.size);
-        formMeta.append('file_type', videoFile.type || 'video/mp4');
+        drillLog('Selected file: ' + videoFile.name + ' (' + (videoFile.size / 1048576).toFixed(1) + ' MB)');
 
-        var uploadNonce = null;
-        var proxyUploadUrl = null;
-        var proxyToken = null;
-        var contentType = null;
+        var repNumber = document.getElementById('repNumber').value;
 
-        fetch('process_video.php', { method: 'POST', body: formMeta })
-            .then(function(r) { return r.json(); })
+        if (videoFile.size > MULTIPART_THRESHOLD) {
+            // Large file — use multipart upload
+            drillLog('File exceeds ' + (MULTIPART_THRESHOLD / 1048576) + ' MB — using multipart upload');
+            var totalParts = Math.ceil(videoFile.size / PART_SIZE);
+            var objectKey = '';
+            var uploadId = '';
+            var uploadNonce = '';
+            var uploadStart = Date.now();
+
+            drillLog('Multipart: ' + totalParts + ' parts of ' + (PART_SIZE / 1048576) + ' MB');
+
+            drillPostAction({
+                action: 'initiate_multipart',
+                upload_type: 'drill_video',
+                file_name: videoFile.name,
+                file_size: videoFile.size,
+                file_type: videoFile.type || 'video/mp4',
+                session_id: session,
+                drill_id: drill,
+                athlete_id: athlete,
+                rep_number: repNumber
+            })
             .then(function(data) {
-                if (!data.success) throw new Error(data.error || 'Failed to get upload URL');
+                objectKey = data.object_key;
+                uploadId = data.upload_id;
                 uploadNonce = data.upload_nonce;
-                proxyUploadUrl = data.proxy_upload_url || null;
-                proxyToken = data.proxy_token || null;
-                contentType = data.content_type || videoFile.type || 'application/octet-stream';
+                drillLog('Multipart initiated. Key: ' + objectKey);
 
-                // Step 2: upload direct to RustFS (preferred) or via proxy
-                var uploadUrl = data.presigned_url ? data.presigned_url : ((proxyUploadUrl && proxyToken) ? proxyUploadUrl : null);
-                var useProxy = !data.presigned_url && !!(proxyUploadUrl && proxyToken);
-                if (!uploadUrl) throw new Error('No upload URL available');
-                return new Promise(function(resolve, reject) {
-                    var xhr = new XMLHttpRequest();
-                    drillUploadXhr = xhr;
-                    xhr.open('PUT', uploadUrl, true);
-                    xhr.setRequestHeader('Content-Type', contentType);
-                    if (useProxy) xhr.setRequestHeader('X-Upload-Token', proxyToken);
-                    var uploadStarted = false;
-                    var connTimer = setTimeout(function() {
-                        if (!uploadStarted) { xhr.abort(); reject(new Error((useProxy ? 'Proxy' : 'Cloud storage') + ' connection timed out')); }
-                    }, 30000);
-                    xhr.upload.onprogress = function(ev) {
-                        if (!uploadStarted && ev.loaded > 0) { uploadStarted = true; clearTimeout(connTimer); }
-                        if (ev.lengthComputable) {
-                            var pct = Math.round((ev.loaded / ev.total) * 100);
-                            progressFill.style.width = pct + '%';
-                            uploadPercent.textContent = pct + '%';
-                        }
-                    };
-                    xhr.onload = function() {
-                        clearTimeout(connTimer);
-                        if (xhr.status >= 200 && xhr.status < 300) resolve();
-                        else reject(new Error((useProxy ? 'Proxy' : 'Cloud') + ' upload failed (HTTP ' + xhr.status + ')'));
-                    };
-                    xhr.onerror = function() { clearTimeout(connTimer); reject(new Error('Network error during upload')); };
-                    xhr.send(videoFile);
+                return drillUploadAllParts(videoFile, objectKey, uploadId, totalParts, progressFill, uploadPercent);
+            })
+            .then(function(parts) {
+                drillLog('All parts uploaded (' + drillElapsed(uploadStart) + '). Completing…');
+                return drillPostAction({
+                    action: 'complete_multipart',
+                    object_key: objectKey,
+                    upload_id: uploadId,
+                    parts: JSON.stringify(parts)
                 });
             })
             .then(function() {
-                // Step 3: confirm upload
-                var confirmData = new FormData();
-                confirmData.append('action', 'confirm_video_upload');
-                confirmData.append('csrf_token', csrfToken);
-                confirmData.append('upload_nonce', uploadNonce);
-                return fetch('process_video.php', { method: 'POST', body: confirmData })
-                    .then(function(r) { return r.json(); });
+                drillLog('Confirming upload…');
+                return drillPostAction({
+                    action: 'confirm_video_upload',
+                    upload_nonce: uploadNonce
+                });
             })
             .then(function(result) {
                 if (result.success) {
-                    persistToast('Video uploaded successfully!', 'success');
-                    setTimeout(function() { location.reload(); }, 500);
+                    drillLog('Upload confirmed! Transcoding in background.');
+                    drillShowComplete(progressFill, uploadPercent);
+                    persistToast('Video uploaded! Transcoding in background.', 'success');
+                    setTimeout(function() { location.reload(); }, 3000);
                 } else {
                     throw new Error(result.error || 'Confirmation failed');
                 }
             })
             .catch(function(err) {
-                showToast('Upload failed: ' + (err.message || 'Unknown error'), 'error');
+                drillLogError(err.message);
+                showToast('Upload failed: ' + err.message, 'error');
                 uploadFileBtn.disabled = false;
-            })
-            .finally(function() {
                 document.getElementById('uploadProgress').style.display = 'none';
+                if (uploadId) {
+                    drillPostAction({ action: 'abort_multipart', object_key: objectKey, upload_id: uploadId })
+                        .catch(function() {});
+                }
             });
+        } else {
+            // Small file — single presigned PUT with logging
+            var uploadStart = Date.now();
+            var formMeta = new FormData();
+            formMeta.append('action', 'get_video_upload_url');
+            formMeta.append('upload_type', 'drill_video');
+            formMeta.append('csrf_token', csrfToken);
+            formMeta.append('session_id', session);
+            formMeta.append('drill_id', drill);
+            formMeta.append('athlete_id', athlete);
+            formMeta.append('rep_number', repNumber);
+            formMeta.append('file_name', videoFile.name);
+            formMeta.append('file_size', videoFile.size);
+            formMeta.append('file_type', videoFile.type || 'video/mp4');
+
+            var uploadNonce = null;
+            var contentType = null;
+
+            fetch('process_video.php', { method: 'POST', body: formMeta })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (!data.success) throw new Error(data.error || 'Failed to get upload URL');
+                    uploadNonce = data.upload_nonce;
+                    contentType = data.content_type || videoFile.type || 'application/octet-stream';
+                    drillLog('Presigned URL obtained. Uploading…');
+
+                    var uploadUrl = data.presigned_url;
+                    if (!uploadUrl) throw new Error('No upload URL available');
+                    return new Promise(function(resolve, reject) {
+                        var xhr = new XMLHttpRequest();
+                        drillUploadXhr = xhr;
+                        xhr.open('PUT', uploadUrl, true);
+                        xhr.setRequestHeader('Content-Type', contentType);
+                        var uploadStarted = false;
+                        var lastLogTime = 0;
+                        var connTimer = setTimeout(function() {
+                            if (!uploadStarted) { xhr.abort(); reject(new Error('Connection timed out')); }
+                        }, 30000);
+                        xhr.upload.onprogress = function(ev) {
+                            if (!uploadStarted && ev.loaded > 0) { uploadStarted = true; clearTimeout(connTimer); }
+                            if (ev.lengthComputable) {
+                                var pct = Math.round((ev.loaded / ev.total) * 100);
+                                progressFill.style.width = pct + '%';
+                                uploadPercent.textContent = pct + '%';
+                                var now = Date.now();
+                                if (ev.loaded > 0 && (now - lastLogTime) >= PROGRESS_LOG_INTERVAL * 1000) {
+                                    lastLogTime = now;
+                                    drillLog('Progress: ' + pct + '% — ' + (ev.loaded / 1048576).toFixed(1) + ' MB');
+                                }
+                            }
+                        };
+                        xhr.onload = function() {
+                            clearTimeout(connTimer);
+                            if (xhr.status >= 200 && xhr.status < 300) {
+                                drillLog('Upload completed in ' + drillElapsed(uploadStart));
+                                resolve();
+                            } else reject(new Error('Upload failed (HTTP ' + xhr.status + ')'));
+                        };
+                        xhr.onerror = function() { clearTimeout(connTimer); reject(new Error('Network error')); };
+                        xhr.send(videoFile);
+                    });
+                })
+                .then(function() {
+                    drillLog('Confirming upload…');
+                    var confirmData = new FormData();
+                    confirmData.append('action', 'confirm_video_upload');
+                    confirmData.append('csrf_token', csrfToken);
+                    confirmData.append('upload_nonce', uploadNonce);
+                    return fetch('process_video.php', { method: 'POST', body: confirmData })
+                        .then(function(r) { return r.json(); });
+                })
+                .then(function(result) {
+                    if (result.success) {
+                        drillLog('Upload confirmed! Transcoding in background.');
+                        drillShowComplete(progressFill, uploadPercent);
+                        persistToast('Video uploaded! Transcoding in background.', 'success');
+                        setTimeout(function() { location.reload(); }, 3000);
+                    } else {
+                        throw new Error(result.error || 'Confirmation failed');
+                    }
+                })
+                .catch(function(err) {
+                    drillLogError(err.message);
+                    showToast('Upload failed: ' + (err.message || 'Unknown error'), 'error');
+                    uploadFileBtn.disabled = false;
+                    document.getElementById('uploadProgress').style.display = 'none';
+                });
+        }
     });
+
+    // Multipart helpers for drill file uploads
+    function drillUploadAllParts(file, objectKey, uploadId, totalParts, progressFill, uploadPercent) {
+        var results = new Array(totalParts);
+        var partBytes = new Array(totalParts);
+        for (var i = 0; i < totalParts; i++) partBytes[i] = 0;
+        var nextIndex = 0;
+        var activeCount = 0;
+        var completedCount = 0;
+
+        return new Promise(function(resolve, reject) {
+            var failed = false;
+            function dispatch() {
+                while (!failed && activeCount < CONCURRENT_PARTS && nextIndex < totalParts) {
+                    (function(idx) {
+                        var partNumber = idx + 1;
+                        activeCount++;
+                        drillUploadOnePart(file, objectKey, uploadId, partNumber, totalParts, partBytes, progressFill, uploadPercent)
+                            .then(function(result) {
+                                if (failed) return;
+                                partBytes[idx] = result.size;
+                                results[idx] = { PartNumber: partNumber, ETag: result.etag };
+                                activeCount--;
+                                completedCount++;
+                                if (completedCount === totalParts) resolve(results);
+                                else dispatch();
+                            })
+                            .catch(function(err) {
+                                if (failed) return;
+                                failed = true;
+                                reject(err);
+                            });
+                    })(nextIndex);
+                    nextIndex++;
+                }
+            }
+            dispatch();
+        });
+    }
+
+    function drillUploadOnePart(file, objectKey, uploadId, partNumber, totalParts, partBytes, progressFill, uploadPercent) {
+        var start = (partNumber - 1) * PART_SIZE;
+        var end = Math.min(start + PART_SIZE, file.size);
+        var chunkSize = end - start;
+        var attempt = 0;
+
+        function tryUpload() {
+            attempt++;
+            var chunk = file.slice(start, end);
+            var partStart = Date.now();
+
+            if (attempt > 1) drillLogWarn('Retrying part ' + partNumber + '/' + totalParts + ' (attempt ' + attempt + ')');
+
+            return drillPostAction({
+                action: 'presign_part',
+                object_key: objectKey,
+                upload_id: uploadId,
+                part_number: partNumber
+            })
+            .then(function(data) {
+                return new Promise(function(resolve, reject) {
+                    var xhr = new XMLHttpRequest();
+                    xhr.open('PUT', data.presigned_url, true);
+                    var partIndex = partNumber - 1;
+                    var lastProgressTime = Date.now();
+
+                    var stallTimer = setInterval(function() {
+                        var sec = Math.round((Date.now() - lastProgressTime) / 1000);
+                        if (sec >= STALL_ABORT_SEC) { xhr.abort(); }
+                    }, STALL_TIMEOUT_SEC * 1000);
+
+                    drillLog('Uploading part ' + partNumber + '/' + totalParts + ' (' + (chunkSize / 1048576).toFixed(1) + ' MB)…');
+
+                    xhr.upload.onprogress = function(ev) {
+                        if (ev.lengthComputable) {
+                            if (ev.loaded > partBytes[partIndex]) lastProgressTime = Date.now();
+                            partBytes[partIndex] = ev.loaded;
+                            var totalUploaded = 0;
+                            for (var i = 0; i < partBytes.length; i++) totalUploaded += partBytes[i];
+                            var pct = Math.round((totalUploaded / file.size) * 100);
+                            progressFill.style.width = pct + '%';
+                            uploadPercent.textContent = pct + '%';
+                        }
+                    };
+                    xhr.onload = function() {
+                        clearInterval(stallTimer);
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            var etag = xhr.getResponseHeader('ETag');
+                            if (etag) etag = etag.replace(/"/g, '');
+                            if (!etag) { reject(new Error('No ETag for part ' + partNumber)); return; }
+                            drillLog('Part ' + partNumber + '/' + totalParts + ' done (' + drillElapsed(partStart) + ')');
+                            resolve(etag);
+                        } else { reject(new Error('Part ' + partNumber + ' failed: HTTP ' + xhr.status)); }
+                    };
+                    xhr.onerror = function() { clearInterval(stallTimer); reject(new Error('Network error part ' + partNumber)); };
+                    xhr.onabort = function() { clearInterval(stallTimer); reject(new Error('Part ' + partNumber + ' aborted')); };
+                    xhr.send(chunk);
+                });
+            })
+            .then(function(etag) { return { etag: etag, size: chunkSize }; })
+            .catch(function(err) {
+                if (attempt < MAX_PART_RETRIES) {
+                    var d = Math.min(Math.pow(2, attempt), 30);
+                    drillLogWarn('Part ' + partNumber + ' failed: ' + err.message + ' — retrying in ' + d + 's');
+                    return new Promise(function(res) { setTimeout(res, d * 1000); }).then(tryUpload);
+                }
+                throw err;
+            });
+        }
+        return tryUpload();
+    }
 });
 </script>

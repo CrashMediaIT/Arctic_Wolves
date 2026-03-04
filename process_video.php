@@ -78,6 +78,22 @@ try {
         case 'confirm_video_upload':
             handleConfirmVideoUpload();
             break;
+
+        case 'initiate_multipart':
+            handleMultipartInitiate();
+            break;
+
+        case 'presign_part':
+            handleMultipartPresignPart();
+            break;
+
+        case 'complete_multipart':
+            handleMultipartComplete();
+            break;
+
+        case 'abort_multipart':
+            handleMultipartAbort();
+            break;
         
         case 'upload_drill_video':
             handleDrillVideoUpload();
@@ -1056,12 +1072,508 @@ function handleConfirmVideoUpload() {
     exit;
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+//  Multipart upload helpers (for large files > 64 MB)
+// ═══════════════════════════════════════════════════════════════════════
+
 /**
- * Handle drill video upload from coach recording interface
- * Uploads to Nextcloud with folder structure: Year/Month/Day
- * Naming: SessionName-DrillName-AthleteName-Rep#
+ * Load RustFS config into a normalised array for multipart operations.
  */
-function handleDrillVideoUpload() {
+function loadMultipartRustFSConfig() {
+    global $pdo;
+    require_once __DIR__ . '/cloud_config.php';
+    require_once __DIR__ . '/lib/rustfs_storage.php';
+
+    $settingKeys = [
+        'rustfs_endpoint', 'rustfs_public_endpoint', 'rustfs_access_key',
+        'rustfs_secret_key', 'rustfs_bucket', 'rustfs_region',
+        'rustfs_use_ssl', 'rustfs_path_style',
+    ];
+    $ph = implode(',', array_fill(0, count($settingKeys), '?'));
+    $stmt = $pdo->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ($ph)");
+    $stmt->execute($settingKeys);
+    $raw = [];
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $raw[$row['setting_key']] = $row['setting_value'];
+    }
+    if (!empty($raw['rustfs_secret_key']) && function_exists('decryptPassword')) {
+        $dec = decryptPassword($raw['rustfs_secret_key']);
+        if (!empty($dec)) $raw['rustfs_secret_key'] = $dec;
+    }
+    if (empty($raw['rustfs_endpoint']) || empty($raw['rustfs_access_key'])
+        || empty($raw['rustfs_secret_key']) || empty($raw['rustfs_bucket'])) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'error' => 'RustFS is not configured']);
+        exit;
+    }
+    return [
+        'endpoint'        => rtrim($raw['rustfs_endpoint'], '/'),
+        'public_endpoint' => $raw['rustfs_public_endpoint'] ?? '',
+        'bucket'          => $raw['rustfs_bucket'],
+        'region'          => $raw['rustfs_region'] ?? 'us-east-1',
+        'access_key'      => $raw['rustfs_access_key'],
+        'secret_key'      => $raw['rustfs_secret_key'],
+        'use_ssl'         => ($raw['rustfs_use_ssl']    ?? '1') === '1',
+        'path_style'      => ($raw['rustfs_path_style'] ?? '1') === '1',
+    ];
+}
+
+/**
+ * Resolve internal and browser-facing object URL components for S3 signing.
+ */
+function resolveMultipartObjectUrl($cfg, $objectKey) {
+    $endpoint = $cfg['endpoint'];
+    if (strpos($endpoint, 'http://') !== 0 && strpos($endpoint, 'https://') !== 0) {
+        $endpoint = ($cfg['use_ssl'] ? 'https://' : 'http://') . $endpoint;
+    }
+    if ($cfg['path_style']) {
+        $objectUrl = $endpoint . '/' . $cfg['bucket'] . '/' . ltrim($objectKey, '/');
+    } else {
+        $p      = parse_url($endpoint);
+        $scheme = $p['scheme'] ?? ($cfg['use_ssl'] ? 'https' : 'http');
+        $host   = $p['host']   ?? $endpoint;
+        $port   = isset($p['port']) ? ':' . $p['port'] : '';
+        $objectUrl = $scheme . '://' . $cfg['bucket'] . '.' . $host . $port . '/' . ltrim($objectKey, '/');
+    }
+    $parsed      = parse_url($objectUrl);
+    $signingHost = $parsed['host'] . (isset($parsed['port']) ? ':' . $parsed['port'] : '');
+    $rawPath     = $parsed['path'] ?? '/';
+    $segments    = array_filter(explode('/', $rawPath), 'strlen');
+    $path        = '/' . implode('/', array_map('rawurlencode', $segments));
+    if ($rawPath !== '/' && substr($rawPath, -1) === '/') { $path .= '/'; }
+    if (!empty($cfg['public_endpoint'])) {
+        $pub       = parse_url(rtrim($cfg['public_endpoint'], '/'));
+        $urlScheme = $pub['scheme'] ?? 'https';
+        $urlHost   = $pub['host'] . (isset($pub['port']) ? ':' . $pub['port'] : '');
+    } else {
+        $urlScheme = $parsed['scheme'] ?? 'https';
+        $urlHost   = $signingHost;
+    }
+    return [$signingHost, $path, $urlScheme, $urlHost];
+}
+
+/**
+ * Sign and execute an S3 API request (for initiate, complete, abort).
+ */
+function signAndExecMultipartS3($method, $cfg, $objectKey, $queryString, $body, $extraHeaders = []) {
+    list($host, $path, $scheme, ) = resolveMultipartObjectUrl($cfg, $objectKey);
+    $now       = new DateTime('UTC');
+    $dateStamp = $now->format('Ymd');
+    $amzDate   = $now->format('Ymd\THis\Z');
+    $payloadHash = is_string($body) ? hash('sha256', $body) : 'UNSIGNED-PAYLOAD';
+
+    $headersToSign = array_merge([
+        'host'                 => $host,
+        'x-amz-content-sha256' => $payloadHash,
+        'x-amz-date'          => $amzDate,
+    ], $extraHeaders);
+    ksort($headersToSign);
+
+    $canonicalHeaders = '';
+    $signedList       = [];
+    foreach ($headersToSign as $k => $v) {
+        $canonicalHeaders .= strtolower($k) . ':' . trim($v) . "\n";
+        $signedList[]      = strtolower($k);
+    }
+    $signedHeaders = implode(';', $signedList);
+
+    $canonicalRequest = implode("\n", [
+        $method, $path, $queryString, $canonicalHeaders, $signedHeaders, $payloadHash,
+    ]);
+
+    $credentialScope = $dateStamp . '/' . $cfg['region'] . '/s3/aws4_request';
+    $stringToSign    = implode("\n", [
+        'AWS4-HMAC-SHA256', $amzDate, $credentialScope, hash('sha256', $canonicalRequest),
+    ]);
+
+    $kDate    = hash_hmac('sha256', $dateStamp,      'AWS4' . $cfg['secret_key'], true);
+    $kRegion  = hash_hmac('sha256', $cfg['region'],   $kDate,                      true);
+    $kService = hash_hmac('sha256', 's3',             $kRegion,                    true);
+    $kSigning = hash_hmac('sha256', 'aws4_request',   $kService,                   true);
+    $signature = hash_hmac('sha256', $stringToSign,   $kSigning);
+
+    $auth = sprintf(
+        'AWS4-HMAC-SHA256 Credential=%s/%s, SignedHeaders=%s, Signature=%s',
+        $cfg['access_key'], $credentialScope, $signedHeaders, $signature
+    );
+
+    $url = $scheme . '://' . $host . $path;
+    if (!empty($queryString)) $url .= '?' . $queryString;
+
+    $curlHeaders = [
+        'Host: '                 . $host,
+        'Authorization: '        . $auth,
+        'x-amz-date: '          . $amzDate,
+        'x-amz-content-sha256: ' . $payloadHash,
+    ];
+    foreach ($extraHeaders as $k => $v) {
+        if (!in_array(strtolower($k), ['host', 'x-amz-content-sha256', 'x-amz-date'])) {
+            $curlHeaders[] = $k . ': ' . $v;
+        }
+    }
+
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST,  $method);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER,     $curlHeaders);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
+    curl_setopt($ch, CURLOPT_TIMEOUT,        300);
+    $respHeaders = [];
+    curl_setopt($ch, CURLOPT_HEADERFUNCTION, function($ch, $header) use (&$respHeaders) {
+        $parts = explode(':', $header, 2);
+        if (count($parts) === 2) {
+            $respHeaders[strtolower(trim($parts[0]))] = trim($parts[1]);
+        }
+        return strlen($header);
+    });
+    if (is_string($body) && strlen($body) > 0) {
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+    }
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr  = curl_error($ch);
+    curl_close($ch);
+
+    return ['http_code' => $httpCode, 'body' => $response, 'error' => $curlErr, 'headers' => $respHeaders];
+}
+
+/**
+ * Initiate a multipart upload. Returns upload_id and object_key.
+ * Uses the same object_key logic as handleGetVideoUploadUrl to build paths.
+ */
+function handleMultipartInitiate() {
+    global $pdo, $user_id, $user_role;
+    header('Content-Type: application/json');
+
+    $cfg = loadMultipartRustFSConfig();
+
+    $upload_type = $_POST['upload_type'] ?? 'athlete_video';
+    $file_name = $_POST['file_name'] ?? '';
+    $file_size = filter_input(INPUT_POST, 'file_size', FILTER_VALIDATE_INT);
+    $file_type = $_POST['file_type'] ?? '';
+
+    if ($file_name === '' || !$file_size) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'file_name and file_size are required']);
+        exit;
+    }
+    if ($file_size > 10 * 1024 * 1024 * 1024) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'File exceeds 10 GB limit']);
+        exit;
+    }
+
+    $ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
+    $allowedExt = ['mp4', 'mkv', 'mov', 'avi', 'webm'];
+    if (!in_array($ext, $allowedExt, true)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Invalid file type. Allowed: ' . implode(', ', $allowedExt)]);
+        exit;
+    }
+    $mimeMap = [
+        'mp4'  => 'video/mp4',  'mkv' => 'video/x-matroska',
+        'mov'  => 'video/quicktime', 'avi' => 'video/x-msvideo', 'webm' => 'video/webm',
+    ];
+    $allowedMimes = array_merge(array_values($mimeMap), ['video/avi', 'video/matroska']);
+    if (!in_array($file_type, $allowedMimes, true)) {
+        $file_type = $mimeMap[$ext] ?? 'application/octet-stream';
+    }
+
+    // Role checks
+    $allowed_types = ['athlete_video', 'coach_video', 'drill_video', 'video_source'];
+    if (!in_array($upload_type, $allowed_types)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Invalid upload type']);
+        exit;
+    }
+    $coach_roles = ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'];
+    if (in_array($upload_type, ['coach_video', 'drill_video', 'video_source'])) {
+        if (!in_array($user_role, $coach_roles)) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'error' => 'You do not have permission for this upload type']);
+            exit;
+        }
+    }
+
+    // Build the same object key as handleGetVideoUploadUrl
+    $unique_suffix = uniqid('', true) . '_' . time() . '.' . $ext;
+    if ($upload_type === 'drill_video') {
+        $session_id = filter_input(INPUT_POST, 'session_id', FILTER_VALIDATE_INT);
+        $drill_id   = filter_input(INPUT_POST, 'drill_id', FILTER_VALIDATE_INT);
+        $athlete_id = filter_input(INPUT_POST, 'athlete_id', FILTER_VALIDATE_INT);
+        $rep_number = filter_input(INPUT_POST, 'rep_number', FILTER_VALIDATE_INT) ?: 1;
+        if (!$session_id || !$drill_id || !$athlete_id) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Missing required fields']);
+            exit;
+        }
+        $stmt = $pdo->prepare("SELECT title FROM sessions WHERE id = ?");
+        $stmt->execute([$session_id]);
+        $session_row = $stmt->fetch();
+        $stmt = $pdo->prepare("SELECT title FROM drills WHERE id = ?");
+        $stmt->execute([$drill_id]);
+        $drill_row = $stmt->fetch();
+        $stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
+        $stmt->execute([$athlete_id]);
+        $athlete_row = decryptUserRow($stmt->fetch());
+        $safe_session = str_replace(' ', '_', preg_replace('/[^a-zA-Z0-9\-_\s]/', '', $session_row['title'] ?? 'Session'));
+        $safe_drill   = str_replace(' ', '_', preg_replace('/[^a-zA-Z0-9\-_\s]/', '', $drill_row['title'] ?? 'Drill'));
+        $safe_athlete = str_replace(' ', '_', preg_replace('/[^a-zA-Z0-9\-_\s]/', '', ($athlete_row['first_name'] ?? '') . ' ' . ($athlete_row['last_name'] ?? '')));
+        $filename   = sprintf('%s-%s-%s-Rep%d.%s', $safe_session, $safe_drill, $safe_athlete, $rep_number, $ext);
+        $object_key = 'Images/DrillVideos/' . $filename;
+    } elseif ($upload_type === 'video_source') {
+        $object_key = 'Images/videos/gameplan/gp_source_' . $unique_suffix;
+    } elseif ($upload_type === 'coach_video') {
+        $object_key = 'Images/videos/coach/video_' . $unique_suffix;
+    } else {
+        $presign_athlete_id = filter_input(INPUT_POST, 'athlete_id', FILTER_VALIDATE_INT) ?: $user_id;
+        $athlete_folder = 'athlete_' . $presign_athlete_id;
+        $stmt_name = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
+        $stmt_name->execute([$presign_athlete_id]);
+        $arow = $stmt_name->fetch();
+        if ($arow) {
+            $arow = decryptUserRow($arow);
+            $safe_name = preg_replace('/[^a-zA-Z0-9_-]/', '_', trim(($arow['first_name'] ?? '') . '_' . ($arow['last_name'] ?? '')));
+            if (!empty($safe_name) && $safe_name !== '_') { $athlete_folder = $safe_name; }
+        }
+        $object_key = 'Images/videos/athlete/' . $athlete_folder . '/athlete_video_' . $unique_suffix;
+    }
+
+    $result = signAndExecMultipartS3('POST', $cfg, $object_key, 'uploads=', '', [
+        'content-type' => $file_type,
+    ]);
+
+    if ($result['http_code'] !== 200) {
+        error_log("Multipart initiate failed: HTTP {$result['http_code']} body=" . substr($result['body'], 0, 500));
+        http_response_code(502);
+        echo json_encode(['success' => false, 'error' => 'Failed to initiate multipart upload: HTTP ' . $result['http_code']]);
+        exit;
+    }
+    if (!preg_match('/<UploadId>([^<]+)<\/UploadId>/', $result['body'], $m)) {
+        http_response_code(502);
+        echo json_encode(['success' => false, 'error' => 'Could not parse UploadId from storage response']);
+        exit;
+    }
+
+    // Store upload metadata in session for confirm step
+    $upload_nonce = bin2hex(random_bytes(16));
+    $_SESSION['pending_video_upload_general'] = [
+        'nonce'          => $upload_nonce,
+        'upload_type'    => $upload_type,
+        'object_key'     => $object_key,
+        'original_name'  => $file_name,
+        'content_type'   => $file_type,
+        'file_size'      => $file_size,
+        'created_at'     => time(),
+        'coach_id'       => filter_input(INPUT_POST, 'coach_id', FILTER_VALIDATE_INT),
+        'athlete_id'     => filter_input(INPUT_POST, 'athlete_id', FILTER_VALIDATE_INT) ?: $user_id,
+        'title'          => trim($_POST['title'] ?? ''),
+        'description'    => $_POST['description'] ?? '',
+        'video_category' => $_POST['video_category'] ?? 'drill',
+        'session_id'     => filter_input(INPUT_POST, 'session_id', FILTER_VALIDATE_INT),
+        'drill_id'       => filter_input(INPUT_POST, 'drill_id', FILTER_VALIDATE_INT),
+        'rep_number'     => filter_input(INPUT_POST, 'rep_number', FILTER_VALIDATE_INT) ?: 1,
+        'game_date'      => $_POST['game_date'] ?? null,
+        'team_played_on' => trim($_POST['team_played_on'] ?? ''),
+        'opponent_team'  => trim($_POST['opponent_team'] ?? ''),
+        'camera_angle'   => $_POST['camera_angle'] ?? '',
+        'game_id'        => filter_input(INPUT_POST, 'game_id', FILTER_VALIDATE_INT),
+        'team_id'        => filter_input(INPUT_POST, 'team_id', FILTER_VALIDATE_INT),
+        'session_date'   => $_POST['session_date'] ?? null,
+        'drill_type'     => $_POST['drill_type'] ?? null,
+        'drill_name'     => $_POST['drill_name'] ?? null,
+        'rating'         => filter_input(INPUT_POST, 'rating', FILTER_VALIDATE_INT),
+    ];
+
+    echo json_encode([
+        'success'      => true,
+        'upload_id'    => $m[1],
+        'object_key'   => $object_key,
+        'content_type' => $file_type,
+        'upload_nonce' => $upload_nonce,
+    ]);
+    exit;
+}
+
+/**
+ * Generate a presigned URL for one part of a multipart upload.
+ */
+function handleMultipartPresignPart() {
+    header('Content-Type: application/json');
+    $cfg = loadMultipartRustFSConfig();
+
+    $objectKey  = $_POST['object_key']  ?? '';
+    $uploadId   = $_POST['upload_id']   ?? '';
+    $partNumber = filter_input(INPUT_POST, 'part_number', FILTER_VALIDATE_INT);
+
+    if ($objectKey === '' || $uploadId === '' || !$partNumber || $partNumber < 1) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'object_key, upload_id, and part_number are required']);
+        exit;
+    }
+
+    // Validate object key belongs to known upload paths
+    $validPrefixes = ['Images/videos/', 'Images/DrillVideos/'];
+    $keyValid = false;
+    foreach ($validPrefixes as $prefix) {
+        if (strpos($objectKey, $prefix) === 0) { $keyValid = true; break; }
+    }
+    if (!$keyValid) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Invalid object key']);
+        exit;
+    }
+
+    list($signingHost, $path, $urlScheme, $urlHost) = resolveMultipartObjectUrl($cfg, $objectKey);
+
+    $expires   = 3600;
+    $now       = new DateTime('UTC');
+    $dateStamp = $now->format('Ymd');
+    $amzDate   = $now->format('Ymd\THis\Z');
+
+    $credentialScope = $dateStamp . '/' . $cfg['region'] . '/s3/aws4_request';
+    $credential      = $cfg['access_key'] . '/' . $credentialScope;
+
+    $qsParams = [
+        'X-Amz-Algorithm'     => 'AWS4-HMAC-SHA256',
+        'X-Amz-Credential'    => $credential,
+        'X-Amz-Date'          => $amzDate,
+        'X-Amz-Expires'       => (string)$expires,
+        'X-Amz-SignedHeaders'  => 'host',
+        'partNumber'           => (string)$partNumber,
+        'uploadId'             => $uploadId,
+    ];
+    ksort($qsParams);
+    $canonicalQS = http_build_query($qsParams, '', '&', PHP_QUERY_RFC3986);
+
+    $canonicalHeaders = 'host:' . $urlHost . "\n";
+    $signedHeaders    = 'host';
+    $payloadHash      = 'UNSIGNED-PAYLOAD';
+
+    $canonicalRequest = implode("\n", [
+        'PUT', $path, $canonicalQS, $canonicalHeaders, $signedHeaders, $payloadHash,
+    ]);
+    $stringToSign = implode("\n", [
+        'AWS4-HMAC-SHA256', $amzDate, $credentialScope, hash('sha256', $canonicalRequest),
+    ]);
+
+    $kDate    = hash_hmac('sha256', $dateStamp,      'AWS4' . $cfg['secret_key'], true);
+    $kRegion  = hash_hmac('sha256', $cfg['region'],   $kDate,                      true);
+    $kService = hash_hmac('sha256', 's3',             $kRegion,                    true);
+    $kSigning = hash_hmac('sha256', 'aws4_request',   $kService,                   true);
+    $signature = hash_hmac('sha256', $stringToSign,   $kSigning);
+
+    $presignedUrl = $urlScheme . '://' . $urlHost . $path
+        . '?' . $canonicalQS
+        . '&X-Amz-Signature=' . $signature;
+
+    echo json_encode([
+        'success'       => true,
+        'presigned_url' => $presignedUrl,
+        'part_number'   => $partNumber,
+    ]);
+    exit;
+}
+
+/**
+ * Complete a multipart upload.
+ */
+function handleMultipartComplete() {
+    header('Content-Type: application/json');
+    $cfg = loadMultipartRustFSConfig();
+
+    $objectKey = $_POST['object_key'] ?? '';
+    $uploadId  = $_POST['upload_id']  ?? '';
+    $partsJson = $_POST['parts']      ?? '';
+
+    if ($objectKey === '' || $uploadId === '' || $partsJson === '') {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'object_key, upload_id, and parts are required']);
+        exit;
+    }
+
+    $validPrefixes = ['Images/videos/', 'Images/DrillVideos/'];
+    $keyValid = false;
+    foreach ($validPrefixes as $prefix) {
+        if (strpos($objectKey, $prefix) === 0) { $keyValid = true; break; }
+    }
+    if (!$keyValid) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Invalid object key']);
+        exit;
+    }
+
+    $parts = json_decode($partsJson, true);
+    if (!is_array($parts) || empty($parts)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Invalid parts data']);
+        exit;
+    }
+
+    $xml = '<CompleteMultipartUpload>';
+    foreach ($parts as $p) {
+        $partNum = (int)($p['PartNumber'] ?? 0);
+        $etag    = $p['ETag'] ?? '';
+        if ($partNum < 1 || $etag === '') {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Each part must have PartNumber and ETag']);
+            exit;
+        }
+        $xml .= '<Part><PartNumber>' . $partNum . '</PartNumber><ETag>"'
+              . htmlspecialchars($etag, ENT_XML1, 'UTF-8') . '"</ETag></Part>';
+    }
+    $xml .= '</CompleteMultipartUpload>';
+
+    $qs     = 'uploadId=' . rawurlencode($uploadId);
+    $result = signAndExecMultipartS3('POST', $cfg, $objectKey, $qs, $xml, [
+        'content-type' => 'application/xml',
+    ]);
+
+    if ($result['http_code'] !== 200 || strpos($result['body'], '<Error>') !== false) {
+        error_log("Multipart complete failed: HTTP {$result['http_code']} body=" . substr($result['body'], 0, 500));
+        http_response_code(502);
+        echo json_encode(['success' => false, 'error' => 'CompleteMultipartUpload failed: HTTP ' . $result['http_code']]);
+        exit;
+    }
+
+    echo json_encode(['success' => true, 'object_key' => $objectKey]);
+    exit;
+}
+
+/**
+ * Abort a multipart upload (cleanup).
+ */
+function handleMultipartAbort() {
+    header('Content-Type: application/json');
+    $cfg = loadMultipartRustFSConfig();
+
+    $objectKey = $_POST['object_key'] ?? '';
+    $uploadId  = $_POST['upload_id']  ?? '';
+
+    if ($objectKey === '' || $uploadId === '') {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'object_key and upload_id are required']);
+        exit;
+    }
+
+    $validPrefixes = ['Images/videos/', 'Images/DrillVideos/'];
+    $keyValid = false;
+    foreach ($validPrefixes as $prefix) {
+        if (strpos($objectKey, $prefix) === 0) { $keyValid = true; break; }
+    }
+    if (!$keyValid) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Invalid object key']);
+        exit;
+    }
+
+    $qs = 'uploadId=' . rawurlencode($uploadId);
+    signAndExecMultipartS3('DELETE', $cfg, $objectKey, $qs, '');
+
+    echo json_encode(['success' => true]);
+    exit;
+}
     global $pdo, $user_id, $user_role;
     
     // Only coaches can upload drill videos
