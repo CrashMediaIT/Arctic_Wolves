@@ -182,6 +182,9 @@ $reviewed_videos = array_filter($videos, function($v) {
             <button class="tab-btn" data-action="switch-tab" data-tab="upload">
                 <i class="fas fa-upload"></i> <span>Upload</span>
             </button>
+            <button class="tab-btn" data-action="switch-tab" data-tab="ingest">
+                <i class="fas fa-hard-drive"></i> <span>Ingest Device</span>
+            </button>
         </div>
         
         <form method="GET" action="" class="filter-group tabs-filters">
@@ -474,6 +477,72 @@ $reviewed_videos = array_filter($videos, function($v) {
             </form>
         </div>
     </div>
+
+    <!-- Ingest Device Tab -->
+    <div class="tab-content" id="ingest-tab">
+        <div class="upload-card">
+            <h3><i class="fas fa-hard-drive"></i> Ingest Videos from Device</h3>
+            <p class="ingest-description">Import videos recorded offline from an SD card, USB drive, or other external storage device. Videos are automatically assigned to the correct area based on the recording metadata.</p>
+
+            <div id="ingestFsaNotSupported" style="display:none;">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <span>Your browser does not support the File System Access API. Please use Chrome, Edge, or Opera to ingest videos from external devices. You can also use the standard Upload tab to add video files manually.</span>
+                </div>
+            </div>
+
+            <div id="ingestFsaSupported">
+                <div class="ingest-step" id="ingestStep1">
+                    <div class="ingest-step-number">1</div>
+                    <div class="ingest-step-content">
+                        <h4>Select Device / Folder</h4>
+                        <p>Connect your SD card or external drive, then select the folder containing the recordings.</p>
+                        <button type="button" class="btn btn-primary" id="ingestSelectDirBtn">
+                            <i class="fas fa-folder-open"></i> Select Recording Folder
+                        </button>
+                    </div>
+                </div>
+
+                <div class="ingest-step" id="ingestStep2" style="display:none;">
+                    <div class="ingest-step-number">2</div>
+                    <div class="ingest-step-content">
+                        <h4>Review Discovered Videos</h4>
+                        <p id="ingestScanStatus">Scanning for videos…</p>
+                        <div class="ingest-video-list" id="ingestVideoList"></div>
+                        <div class="ingest-actions" id="ingestActions" style="display:none;">
+                            <label class="ingest-checkbox-label">
+                                <input type="checkbox" id="ingestDeleteAfter" checked>
+                                <span>Remove files from device after import</span>
+                            </label>
+                            <div class="ingest-action-buttons">
+                                <button type="button" class="btn btn-secondary" id="ingestCancelBtn">
+                                    <i class="fas fa-times"></i> Cancel
+                                </button>
+                                <button type="button" class="btn btn-primary" id="ingestStartBtn">
+                                    <i class="fas fa-download"></i> Import &amp; Upload All
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ingest-step" id="ingestStep3" style="display:none;">
+                    <div class="ingest-step-number">3</div>
+                    <div class="ingest-step-content">
+                        <h4>Import &amp; Upload Progress</h4>
+                        <div class="ingest-progress-header">
+                            <span id="ingestProgressTitle">Importing…</span>
+                            <span id="ingestProgressCount">0 / 0</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="ingestProgressFill"></div>
+                        </div>
+                        <p id="ingestProgressStatus" class="ingest-progress-status"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <?php if ($isAnyCoach): ?>
@@ -742,8 +811,34 @@ $reviewed_videos = array_filter($videos, function($v) {
     color: var(--text-dim, #64748b);
     font-size: 12px;
 }
+
+/* Ingest Device Tab Styles */
+.ingest-description { color: var(--text-dim); font-size: 14px; margin-bottom: 24px; line-height: 1.6; }
+.ingest-step { display: flex; gap: 16px; margin-bottom: 24px; padding: 20px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; }
+.ingest-step-number { width: 32px; height: 32px; background: linear-gradient(135deg, var(--primary), var(--accent, #8B5CF6)); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; color: white; flex-shrink: 0; }
+.ingest-step-content { flex: 1; }
+.ingest-step-content h4 { font-size: 15px; font-weight: 700; color: var(--text-white); margin-bottom: 6px; }
+.ingest-step-content > p { color: var(--text-dim); font-size: 13px; margin-bottom: 12px; }
+.ingest-video-list { max-height: 300px; overflow-y: auto; margin: 12px 0; }
+.ingest-video-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 6px; background: var(--bg-card); }
+.ingest-video-item i { color: var(--primary); font-size: 18px; }
+.ingest-video-item .ingest-video-info { flex: 1; }
+.ingest-video-item .ingest-video-info strong { display: block; color: var(--text-white); font-size: 13px; }
+.ingest-video-item .ingest-video-info small { color: var(--text-dim); font-size: 11px; }
+.ingest-checkbox-label { display: flex; align-items: center; gap: 8px; color: var(--text-dim); font-size: 13px; margin-bottom: 12px; cursor: pointer; }
+.ingest-action-buttons { display: flex; gap: 8px; justify-content: flex-end; }
+.ingest-progress-header { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; color: var(--text-white); }
+.ingest-progress-status { color: var(--text-dim); font-size: 12px; margin-top: 8px; }
+.offline-upload-banner { background: linear-gradient(135deg, rgba(107, 70, 193, 0.12), rgba(59, 130, 246, 0.08)); border: 1px solid rgba(107, 70, 193, 0.3); border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; }
+.offline-upload-banner-content { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.offline-upload-banner-icon { font-size: 24px; color: var(--primary); }
+.offline-upload-banner-text { flex: 1; }
+.offline-upload-banner-text strong { display: block; color: var(--text-white); font-size: 14px; }
+.offline-upload-banner-text span { color: var(--text-dim); font-size: 13px; }
+.offline-upload-banner-actions { display: flex; gap: 8px; }
 </style>
 
+<script src="js/offline-upload-queue.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Video player modal
@@ -1255,4 +1350,115 @@ document.addEventListener('DOMContentLoaded', function() {
         return tryUpload();
     }
 });
+
+    // ── Ingest Device Tab ──────────────────────────────────
+    (function() {
+        var selectBtn = document.getElementById('ingestSelectDirBtn');
+        var step1 = document.getElementById('ingestStep1');
+        var step2 = document.getElementById('ingestStep2');
+        var step3 = document.getElementById('ingestStep3');
+        var scanStatus = document.getElementById('ingestScanStatus');
+        var videoList = document.getElementById('ingestVideoList');
+        var actionsDiv = document.getElementById('ingestActions');
+        var startBtn = document.getElementById('ingestStartBtn');
+        var cancelBtn = document.getElementById('ingestCancelBtn');
+        var deleteCheckbox = document.getElementById('ingestDeleteAfter');
+        var progressTitle = document.getElementById('ingestProgressTitle');
+        var progressCount = document.getElementById('ingestProgressCount');
+        var progressFill = document.getElementById('ingestProgressFill');
+        var progressStatus = document.getElementById('ingestProgressStatus');
+        var fsaNotSupported = document.getElementById('ingestFsaNotSupported');
+        var fsaSupported = document.getElementById('ingestFsaSupported');
+
+        if (typeof window.showDirectoryPicker !== 'function') {
+            if (fsaNotSupported) fsaNotSupported.style.display = '';
+            if (fsaSupported) fsaSupported.style.display = 'none';
+            return;
+        }
+
+        var _discovered = [];
+        var _dirHandle = null;
+
+        if (selectBtn) selectBtn.addEventListener('click', async function() {
+            try {
+                _dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+                step1.style.display = 'none';
+                step2.style.display = '';
+                scanStatus.textContent = 'Scanning for videos…';
+                videoList.innerHTML = '';
+                actionsDiv.style.display = 'none';
+
+                if (typeof AwOfflineQueue !== 'undefined' && AwOfflineQueue.scanForIngest) {
+                    _discovered = await AwOfflineQueue.scanForIngest(_dirHandle);
+                } else {
+                    _discovered = [];
+                }
+
+                if (_discovered.length === 0) {
+                    scanStatus.textContent = 'No video files with matching sidecar metadata found in this folder.';
+                    return;
+                }
+
+                scanStatus.textContent = 'Found ' + _discovered.length + ' video(s) ready to import:';
+                _discovered.forEach(function(item) {
+                    var div = document.createElement('div');
+                    div.className = 'ingest-video-item';
+                    var sizeStr = item.meta && item.meta.file_size ? (item.meta.file_size / (1024*1024)).toFixed(1) + ' MB' : 'unknown size';
+                    div.innerHTML = '<i class="fas fa-film"></i><div class="ingest-video-info"><strong>' +
+                        (item.meta && item.meta.title ? item.meta.title : item.videoFile.name) +
+                        '</strong><small>' + item.videoFile.name + ' — ' + sizeStr + '</small></div>';
+                    videoList.appendChild(div);
+                });
+                actionsDiv.style.display = '';
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    scanStatus.textContent = 'Error: ' + err.message;
+                }
+            }
+        });
+
+        if (cancelBtn) cancelBtn.addEventListener('click', function() {
+            step2.style.display = 'none';
+            step1.style.display = '';
+            _discovered = [];
+            _dirHandle = null;
+        });
+
+        if (startBtn) startBtn.addEventListener('click', async function() {
+            try {
+                if (_discovered.length === 0) return;
+                step2.style.display = 'none';
+                step3.style.display = '';
+                progressTitle.textContent = 'Importing videos to queue…';
+                progressCount.textContent = '0 / ' + _discovered.length;
+                progressFill.style.width = '0%';
+                progressStatus.textContent = '';
+
+                var imported = 0;
+                var shouldDelete = deleteCheckbox && deleteCheckbox.checked;
+                for (var i = 0; i < _discovered.length; i++) {
+                    var item = _discovered[i];
+                    progressStatus.textContent = 'Reading ' + item.videoFile.name + '…';
+                    try {
+                        if (typeof AwOfflineQueue !== 'undefined' && AwOfflineQueue.ingestFromDevice) {
+                            await AwOfflineQueue.ingestFromDevice(item, { deleteAfterImport: shouldDelete, dirHandle: _dirHandle });
+                        }
+                        imported++;
+                        progressCount.textContent = imported + ' / ' + _discovered.length;
+                        progressFill.style.width = Math.round((imported / _discovered.length) * 100) + '%';
+                    } catch (err) {
+                        progressStatus.textContent = 'Failed: ' + item.videoFile.name + ' — ' + err.message;
+                    }
+                }
+                progressTitle.textContent = 'Import complete!';
+                progressStatus.textContent = imported + ' video(s) added to upload queue. They will upload automatically.';
+                // Auto-start upload queue for imported videos
+                if (typeof AwOfflineQueue !== 'undefined' && AwOfflineQueue.processQueue) {
+                    AwOfflineQueue.processQueue();
+                }
+            } catch (err) {
+                progressStatus.textContent = 'Import error: ' + err.message;
+            }
+        });
+    })();
 </script>

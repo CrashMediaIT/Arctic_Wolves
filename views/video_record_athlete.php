@@ -205,6 +205,32 @@ try {
                 <button type="submit" class="btn btn-primary" id="submit-upload-btn">
                     <i class="fas fa-upload"></i> Upload for Review
                 </button>
+                <button type="button" class="btn btn-secondary" id="athlete-save-to-device-btn" title="Save video offline for later upload">
+                    <i class="fas fa-hard-drive"></i> Save to Device
+                </button>
+            </div>
+
+            <!-- Storage Selection (shown when saving to device) -->
+            <div id="athleteStoragePanel" style="display:none;" class="storage-selection-panel">
+                <h4><i class="fas fa-hdd"></i> Select Storage Location</h4>
+                <div class="storage-options">
+                    <button type="button" class="storage-option-btn active" data-storage="internal" id="athleteStorageInternalBtn">
+                        <i class="fas fa-mobile-alt"></i>
+                        <span>Internal Storage</span>
+                        <small>Save to browser (IndexedDB)</small>
+                    </button>
+                    <button type="button" class="storage-option-btn" data-storage="external" id="athleteStorageExternalBtn">
+                        <i class="fas fa-sd-card"></i>
+                        <span>External Drive / SD Card</span>
+                        <small>Save to removable storage</small>
+                    </button>
+                </div>
+                <div class="storage-confirm-actions">
+                    <button type="button" class="btn btn-secondary" id="athleteStorageCancelBtn">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="athleteStorageConfirmBtn">
+                        <i class="fas fa-save"></i> Save Recording
+                    </button>
+                </div>
             </div>
 
             <!-- Upload Progress Overlay -->
@@ -663,8 +689,36 @@ try {
     color: var(--text-dim, #64748b);
     font-size: 12px;
 }
+
+/* Storage Selection Panel */
+.storage-selection-panel { margin-top: 16px; padding: 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; }
+.storage-selection-panel h4 { font-size: 15px; font-weight: 700; color: var(--text-white); display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.storage-selection-panel h4 i { color: var(--primary); }
+.storage-options { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+.storage-option-btn { flex: 1; min-width: 160px; padding: 16px; background: var(--bg-main); border: 2px solid var(--border); border-radius: 12px; color: var(--text-white); cursor: pointer; text-align: center; transition: all 0.2s ease; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.storage-option-btn i { font-size: 24px; color: var(--text-dim); }
+.storage-option-btn span { font-size: 13px; font-weight: 600; }
+.storage-option-btn small { font-size: 11px; color: var(--text-dim); }
+.storage-option-btn:hover { border-color: var(--primary); }
+.storage-option-btn.active { border-color: var(--primary); background: rgba(107, 70, 193, 0.1); }
+.storage-option-btn.active i { color: var(--primary); }
+.storage-confirm-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* Offline upload banner */
+.offline-upload-banner { background: linear-gradient(135deg, rgba(107, 70, 193, 0.12), rgba(59, 130, 246, 0.08)); border: 1px solid rgba(107, 70, 193, 0.3); border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; }
+.offline-upload-banner-content { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.offline-upload-banner-icon { font-size: 24px; color: var(--primary); }
+.offline-upload-banner-text { flex: 1; }
+.offline-upload-banner-text strong { display: block; color: var(--text-white); font-size: 14px; }
+.offline-upload-banner-text span { color: var(--text-dim); font-size: 13px; }
+.offline-upload-banner-actions { display: flex; gap: 8px; }
+.offline-upload-progress-section { margin-top: 12px; }
+.offline-upload-progress-header { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; color: var(--text-white); }
+.offline-upload-progress-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+.offline-upload-progress-footer span { font-size: 12px; color: var(--text-dim); }
 </style>
 
+<script src="js/offline-upload-queue.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const startCameraBtn = document.getElementById('start-camera-btn');
@@ -1417,4 +1471,85 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 3000);
     }
 });
+
+    // ── Save to Device (Offline) ────────────────────────────────────
+    (function() {
+        var saveBtn = document.getElementById('athlete-save-to-device-btn');
+        var panel = document.getElementById('athleteStoragePanel');
+        var cancelBtn = document.getElementById('athleteStorageCancelBtn');
+        var confirmBtn = document.getElementById('athleteStorageConfirmBtn');
+        var extBtn = document.getElementById('athleteStorageExternalBtn');
+        var _selectedStorage = 'internal';
+        var _externalDirHandle = null;
+
+        if (!saveBtn) return;
+
+        // Hide external option if not supported
+        if (extBtn && typeof window.showDirectoryPicker !== 'function') {
+            extBtn.style.display = 'none';
+        }
+
+        panel.querySelectorAll('.storage-option-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                panel.querySelectorAll('.storage-option-btn').forEach(function(b) { b.classList.remove('active'); });
+                this.classList.add('active');
+                _selectedStorage = this.dataset.storage;
+            });
+        });
+
+        saveBtn.addEventListener('click', function() {
+            panel.style.display = panel.style.display === 'none' ? '' : 'none';
+        });
+        cancelBtn.addEventListener('click', function() { panel.style.display = 'none'; });
+
+        confirmBtn.addEventListener('click', async function() {
+            var fileInput = document.querySelector('input[name="video_file"]');
+            var blob = fileInput && fileInput.files[0];
+            if (!blob) {
+                showToast('Please select or record a video first.', 'error');
+                return;
+            }
+
+            confirmBtn.disabled = true;
+            confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
+
+            try {
+                var title = (document.getElementById('video_title') || {}).value || blob.name;
+                var category = (document.querySelector('select[name="video_category"]') || {}).value || 'drill';
+                var metadata = {
+                    upload_type: 'athlete_video',
+                    title: title,
+                    description: (document.getElementById('video_description') || {}).value || '',
+                    video_category: category,
+                    coach_id: <?= json_encode($coach_id ?? null) ?>,
+                    athlete_id: <?= json_encode($athlete_id ?? null) ?>,
+                    game_date: (document.getElementById('game_date') || {}).value || null,
+                    team_played_on: (document.getElementById('team_played_on') || {}).value || '',
+                    opponent_team: (document.getElementById('opponent_team') || {}).value || ''
+                };
+
+                if (_selectedStorage === 'external') {
+                    if (!_externalDirHandle) {
+                        _externalDirHandle = await AwOfflineQueue.pickStorageDirectory();
+                    }
+                    await AwOfflineQueue.saveToExternalStorage(_externalDirHandle, blob, metadata);
+                    showToast('Video saved to external device!', 'success');
+                } else {
+                    await AwOfflineQueue.enqueueVideo(blob, metadata);
+                    showToast('Video saved offline! It will upload automatically when connected.', 'success');
+                }
+                panel.style.display = 'none';
+            } catch (err) {
+                showToast('Save failed: ' + err.message, 'error');
+            } finally {
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = '<i class="fas fa-save"></i> Save Recording';
+            }
+        });
+    })();
+
+    // Init connectivity monitor for auto-upload
+    if (typeof AwOfflineQueue !== 'undefined') {
+        AwOfflineQueue.initConnectivityMonitor();
+    }
 </script>

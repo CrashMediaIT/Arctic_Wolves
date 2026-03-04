@@ -164,6 +164,9 @@ $is_demo_data = false;
         <a href="?page=drill_review&view=sessions" class="view-toggle-btn <?= $active_view === 'sessions' ? 'active' : '' ?>">
             <i class="fas fa-calendar-alt"></i> My Sessions
         </a>
+        <a href="?page=drill_review&view=ingest" class="view-toggle-btn <?= $active_view === 'ingest' ? 'active' : '' ?>">
+            <i class="fas fa-hard-drive"></i> Ingest Device
+        </a>
     </div>
 </div>
 
@@ -293,7 +296,7 @@ $is_demo_data = false;
     </div>
 </div>
 
-<?php else: ?>
+<?php elseif ($active_view === 'sessions'): ?>
 <!-- ========================================
      VIEW 2: SESSION VIDEOS
      ======================================== -->
@@ -433,6 +436,76 @@ $is_demo_data = false;
     </div>
     <?php endif; ?>
 </div>
+
+<?php elseif ($active_view === 'ingest'): ?>
+<!-- ========================================
+     VIEW 3: INGEST FROM DEVICE
+     ======================================== -->
+<div class="video-content">
+    <div class="ingest-card">
+        <h3><i class="fas fa-hard-drive"></i> Ingest Videos from Device</h3>
+        <p class="ingest-description">Import videos recorded offline from an SD card, USB drive, or other external storage device. Videos are automatically assigned to the correct area based on the recording metadata.</p>
+
+        <div id="athleteIngestFsaNotSupported" style="display:none;">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                <span>Your browser does not support the File System Access API. Please use Chrome, Edge, or Opera to ingest videos from external devices.</span>
+            </div>
+        </div>
+
+        <div id="athleteIngestFsaSupported">
+            <div class="ingest-step" id="athleteIngestStep1">
+                <div class="ingest-step-number">1</div>
+                <div class="ingest-step-content">
+                    <h4>Select Device / Folder</h4>
+                    <p>Connect your SD card or external drive, then select the folder containing the recordings.</p>
+                    <button type="button" class="btn btn-primary" id="athleteIngestSelectDirBtn">
+                        <i class="fas fa-folder-open"></i> Select Recording Folder
+                    </button>
+                </div>
+            </div>
+
+            <div class="ingest-step" id="athleteIngestStep2" style="display:none;">
+                <div class="ingest-step-number">2</div>
+                <div class="ingest-step-content">
+                    <h4>Review Discovered Videos</h4>
+                    <p id="athleteIngestScanStatus">Scanning for videos…</p>
+                    <div class="ingest-video-list" id="athleteIngestVideoList"></div>
+                    <div class="ingest-actions" id="athleteIngestActions" style="display:none;">
+                        <label class="ingest-checkbox-label">
+                            <input type="checkbox" id="athleteIngestDeleteAfter" checked>
+                            <span>Remove files from device after import</span>
+                        </label>
+                        <div class="ingest-action-buttons">
+                            <button type="button" class="btn btn-secondary" id="athleteIngestCancelBtn">
+                                <i class="fas fa-times"></i> Cancel
+                            </button>
+                            <button type="button" class="btn btn-primary" id="athleteIngestStartBtn">
+                                <i class="fas fa-download"></i> Import &amp; Upload All
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ingest-step" id="athleteIngestStep3" style="display:none;">
+                <div class="ingest-step-number">3</div>
+                <div class="ingest-step-content">
+                    <h4>Import &amp; Upload Progress</h4>
+                    <div class="ingest-progress-header">
+                        <span id="athleteIngestProgressTitle">Importing…</span>
+                        <span id="athleteIngestProgressCount">0 / 0</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="athleteIngestProgressFill"></div>
+                    </div>
+                    <p id="athleteIngestProgressStatus" class="ingest-progress-status"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <?php endif; ?>
 
 <!-- Video Player Modal -->
@@ -1342,8 +1415,28 @@ $is_demo_data = false;
     background: rgba(239, 68, 68, 0.15);
     border-color: #ef4444;
 }
+
+/* Ingest Device Styles */
+.ingest-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; }
+.ingest-description { color: var(--text-dim); font-size: 14px; margin-bottom: 24px; line-height: 1.6; }
+.ingest-step { display: flex; gap: 16px; margin-bottom: 24px; padding: 20px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; }
+.ingest-step-number { width: 32px; height: 32px; background: linear-gradient(135deg, var(--primary), var(--accent, #8B5CF6)); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; color: white; flex-shrink: 0; }
+.ingest-step-content { flex: 1; }
+.ingest-step-content h4 { font-size: 15px; font-weight: 700; color: var(--text-white); margin-bottom: 6px; }
+.ingest-step-content > p { color: var(--text-dim); font-size: 13px; margin-bottom: 12px; }
+.ingest-video-list { max-height: 300px; overflow-y: auto; margin: 12px 0; }
+.ingest-video-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 6px; background: var(--bg-card); }
+.ingest-video-item i { color: var(--primary); font-size: 18px; }
+.ingest-video-item .ingest-video-info { flex: 1; }
+.ingest-video-item .ingest-video-info strong { display: block; color: var(--text-white); font-size: 13px; }
+.ingest-video-item .ingest-video-info small { color: var(--text-dim); font-size: 11px; }
+.ingest-checkbox-label { display: flex; align-items: center; gap: 8px; color: var(--text-dim); font-size: 13px; margin-bottom: 12px; cursor: pointer; }
+.ingest-action-buttons { display: flex; gap: 8px; justify-content: flex-end; }
+.ingest-progress-header { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; color: var(--text-white); }
+.ingest-progress-status { color: var(--text-dim); font-size: 12px; margin-top: 8px; }
 </style>
 
+<script src="js/offline-upload-queue.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Video player modal handling
@@ -1489,4 +1582,112 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+
+// ── Athlete Ingest from Device ──────────────────────────────
+(function() {
+    var selectBtn = document.getElementById('athleteIngestSelectDirBtn');
+    var step1 = document.getElementById('athleteIngestStep1');
+    var step2 = document.getElementById('athleteIngestStep2');
+    var step3 = document.getElementById('athleteIngestStep3');
+    var scanStatus = document.getElementById('athleteIngestScanStatus');
+    var videoList = document.getElementById('athleteIngestVideoList');
+    var actionsDiv = document.getElementById('athleteIngestActions');
+    var startBtn = document.getElementById('athleteIngestStartBtn');
+    var cancelBtn = document.getElementById('athleteIngestCancelBtn');
+    var deleteCheckbox = document.getElementById('athleteIngestDeleteAfter');
+    var progressTitle = document.getElementById('athleteIngestProgressTitle');
+    var progressCount = document.getElementById('athleteIngestProgressCount');
+    var progressFill = document.getElementById('athleteIngestProgressFill');
+    var progressStatus = document.getElementById('athleteIngestProgressStatus');
+    var fsaNotSupported = document.getElementById('athleteIngestFsaNotSupported');
+    var fsaSupported = document.getElementById('athleteIngestFsaSupported');
+
+    if (!selectBtn) return;
+
+    if (typeof window.showDirectoryPicker !== 'function') {
+        if (fsaNotSupported) fsaNotSupported.style.display = '';
+        if (fsaSupported) fsaSupported.style.display = 'none';
+        return;
+    }
+
+    var _discovered = [];
+    var _dirHandle = null;
+
+    selectBtn.addEventListener('click', async function() {
+        try {
+            _dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+            step1.style.display = 'none';
+            step2.style.display = '';
+            scanStatus.textContent = 'Scanning for videos…';
+            videoList.innerHTML = '';
+            actionsDiv.style.display = 'none';
+
+            if (typeof AwOfflineQueue !== 'undefined' && AwOfflineQueue.scanForIngest) {
+                _discovered = await AwOfflineQueue.scanForIngest(_dirHandle);
+            } else {
+                _discovered = [];
+            }
+
+            if (_discovered.length === 0) {
+                scanStatus.textContent = 'No video files with matching sidecar metadata found.';
+                return;
+            }
+
+            scanStatus.textContent = 'Found ' + _discovered.length + ' video(s) ready to import:';
+            _discovered.forEach(function(item) {
+                var div = document.createElement('div');
+                div.className = 'ingest-video-item';
+                var sizeStr = item.meta && item.meta.file_size ? (item.meta.file_size / (1024*1024)).toFixed(1) + ' MB' : 'unknown size';
+                div.innerHTML = '<i class="fas fa-film"></i><div class="ingest-video-info"><strong>' +
+                    (item.meta && item.meta.title ? item.meta.title : item.videoFile.name) +
+                    '</strong><small>' + item.videoFile.name + ' — ' + sizeStr + '</small></div>';
+                videoList.appendChild(div);
+            });
+            actionsDiv.style.display = '';
+        } catch (err) {
+            if (err.name !== 'AbortError') scanStatus.textContent = 'Error: ' + err.message;
+        }
+    });
+
+    if (cancelBtn) cancelBtn.addEventListener('click', function() {
+        step2.style.display = 'none';
+        step1.style.display = '';
+        _discovered = [];
+        _dirHandle = null;
+    });
+
+    if (startBtn) startBtn.addEventListener('click', async function() {
+        if (_discovered.length === 0) return;
+        step2.style.display = 'none';
+        step3.style.display = '';
+        progressTitle.textContent = 'Importing videos to queue…';
+        progressCount.textContent = '0 / ' + _discovered.length;
+        progressFill.style.width = '0%';
+        progressStatus.textContent = '';
+
+        var imported = 0;
+        var shouldDelete = deleteCheckbox && deleteCheckbox.checked;
+        for (var i = 0; i < _discovered.length; i++) {
+            var item = _discovered[i];
+            progressStatus.textContent = 'Reading ' + item.videoFile.name + '…';
+            try {
+                if (typeof AwOfflineQueue !== 'undefined' && AwOfflineQueue.ingestFromDevice) {
+                    await AwOfflineQueue.ingestFromDevice(item, { deleteAfterImport: shouldDelete, dirHandle: _dirHandle });
+                }
+                imported++;
+                progressCount.textContent = imported + ' / ' + _discovered.length;
+                progressFill.style.width = Math.round((imported / _discovered.length) * 100) + '%';
+            } catch (err) {
+                progressStatus.textContent = 'Failed: ' + item.videoFile.name + ' — ' + err.message;
+            }
+        }
+        progressTitle.textContent = 'Import complete!';
+        progressStatus.textContent = imported + ' video(s) added to upload queue.';
+
+        // Auto-start upload queue for imported videos
+        if (typeof AwOfflineQueue !== 'undefined' && AwOfflineQueue.processQueue) {
+            AwOfflineQueue.processQueue();
+        }
+    });
+})();
 </script>

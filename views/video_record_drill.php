@@ -238,6 +238,31 @@ try {
             <button type="button" class="btn btn-primary" id="uploadBtn">
                 <i class="fas fa-cloud-upload-alt"></i> Upload to Cloud
             </button>
+            <button type="button" class="btn btn-secondary" id="saveToDeviceBtn" title="Save video offline for later upload">
+                <i class="fas fa-hard-drive"></i> Save to Device
+            </button>
+        </div>
+        <!-- Storage Selection (shown when saving to device) -->
+        <div id="storageSelectionPanel" style="display:none;" class="storage-selection-panel">
+            <h4><i class="fas fa-hdd"></i> Select Storage Location</h4>
+            <div class="storage-options">
+                <button type="button" class="storage-option-btn active" data-storage="internal" id="storageInternalBtn">
+                    <i class="fas fa-mobile-alt"></i>
+                    <span>Internal Storage</span>
+                    <small>Save to browser (IndexedDB)</small>
+                </button>
+                <button type="button" class="storage-option-btn" data-storage="external" id="storageExternalBtn">
+                    <i class="fas fa-sd-card"></i>
+                    <span>External Drive / SD Card</span>
+                    <small>Save to removable storage</small>
+                </button>
+            </div>
+            <div class="storage-confirm-actions">
+                <button type="button" class="btn btn-secondary" id="storageCancelBtn">Cancel</button>
+                <button type="button" class="btn btn-primary" id="storageConfirmBtn">
+                    <i class="fas fa-save"></i> Save Recording
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -789,8 +814,36 @@ try {
         flex-direction: column;
     }
 }
+
+/* Storage Selection Panel */
+.storage-selection-panel { margin-top: 16px; padding: 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; }
+.storage-selection-panel h4 { font-size: 15px; font-weight: 700; color: var(--text-white); display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.storage-selection-panel h4 i { color: var(--primary); }
+.storage-options { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+.storage-option-btn { flex: 1; min-width: 160px; padding: 16px; background: var(--bg-main); border: 2px solid var(--border); border-radius: 12px; color: var(--text-white); cursor: pointer; text-align: center; transition: all 0.2s ease; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.storage-option-btn i { font-size: 24px; color: var(--text-dim); }
+.storage-option-btn span { font-size: 13px; font-weight: 600; }
+.storage-option-btn small { font-size: 11px; color: var(--text-dim); }
+.storage-option-btn:hover { border-color: var(--primary); }
+.storage-option-btn.active { border-color: var(--primary); background: rgba(107, 70, 193, 0.1); }
+.storage-option-btn.active i { color: var(--primary); }
+.storage-confirm-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* Offline upload banner */
+.offline-upload-banner { background: linear-gradient(135deg, rgba(107, 70, 193, 0.12), rgba(59, 130, 246, 0.08)); border: 1px solid rgba(107, 70, 193, 0.3); border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; }
+.offline-upload-banner-content { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.offline-upload-banner-icon { font-size: 24px; color: var(--primary); }
+.offline-upload-banner-text { flex: 1; }
+.offline-upload-banner-text strong { display: block; color: var(--text-white); font-size: 14px; }
+.offline-upload-banner-text span { color: var(--text-dim); font-size: 13px; }
+.offline-upload-banner-actions { display: flex; gap: 8px; }
+.offline-upload-progress-section { margin-top: 12px; }
+.offline-upload-progress-header { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; color: var(--text-white); }
+.offline-upload-progress-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+.offline-upload-progress-footer span { font-size: 12px; color: var(--text-dim); }
 </style>
 
+<script src="js/offline-upload-queue.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     let mediaRecorder = null;
@@ -1521,4 +1574,87 @@ document.addEventListener('DOMContentLoaded', function() {
         return tryUpload();
     }
 });
+
+    // ── Save to Device (Offline) ────────────────────────────────────
+    var saveToDeviceBtn = document.getElementById('saveToDeviceBtn');
+    var storagePanel = document.getElementById('storageSelectionPanel');
+    var storageCancelBtn = document.getElementById('storageCancelBtn');
+    var storageConfirmBtn = document.getElementById('storageConfirmBtn');
+    var storageExternalBtn = document.getElementById('storageExternalBtn');
+    var _selectedStorage = 'internal';
+    var _externalDirHandle = null;
+
+    if (saveToDeviceBtn) {
+        // Hide external option if File System Access API not supported
+        if (storageExternalBtn && typeof window.showDirectoryPicker !== 'function') {
+            storageExternalBtn.style.display = 'none';
+        }
+
+        storagePanel.querySelectorAll('.storage-option-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                storagePanel.querySelectorAll('.storage-option-btn').forEach(function(b) { b.classList.remove('active'); });
+                this.classList.add('active');
+                _selectedStorage = this.dataset.storage;
+            });
+        });
+
+        saveToDeviceBtn.addEventListener('click', function() {
+            storagePanel.style.display = storagePanel.style.display === 'none' ? '' : 'none';
+        });
+        storageCancelBtn.addEventListener('click', function() { storagePanel.style.display = 'none'; });
+
+        storageConfirmBtn.addEventListener('click', async function() {
+            var blob = window._recordedBlob || null;
+            if (!blob) {
+                showToast('Please record a video first.', 'error');
+                return;
+            }
+
+            storageConfirmBtn.disabled = true;
+            storageConfirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
+
+            try {
+                var sessionId = <?= json_encode($session_id ?? null) ?>;
+                var drillId = <?= json_encode($drill_id ?? null) ?>;
+                var athleteId = <?= json_encode($athlete_id ?? null) ?>;
+                var repInput = document.getElementById('rep_number') || { value: '1' };
+                var metadata = {
+                    upload_type: 'drill_video',
+                    title: 'Drill Recording',
+                    session_id: sessionId,
+                    drill_id: drillId,
+                    athlete_id: athleteId,
+                    rep_number: parseInt(repInput.value || 1),
+                    session_date: <?= json_encode($session_date ?? null) ?>,
+                    drill_name: <?= json_encode($drill_name ?? null) ?>,
+                    drill_type: <?= json_encode($drill_type ?? null) ?>
+                };
+
+                if (_selectedStorage === 'external') {
+                    if (!_externalDirHandle) {
+                        _externalDirHandle = await AwOfflineQueue.pickStorageDirectory();
+                    }
+                    await AwOfflineQueue.saveToExternalStorage(_externalDirHandle, blob, metadata);
+                    showToast('Video saved to external device!', 'success');
+                } else {
+                    await AwOfflineQueue.enqueueVideo(blob, metadata);
+                    showToast('Video saved offline! It will upload automatically.', 'success');
+                }
+
+                // Auto-increment rep number after save
+                repInput.value = parseInt(repInput.value || 1) + 1;
+                storagePanel.style.display = 'none';
+            } catch (err) {
+                showToast('Save failed: ' + err.message, 'error');
+            } finally {
+                storageConfirmBtn.disabled = false;
+                storageConfirmBtn.innerHTML = '<i class="fas fa-save"></i> Save Recording';
+            }
+        });
+    }
+
+    // Init connectivity monitor for auto-upload
+    if (typeof AwOfflineQueue !== 'undefined') {
+        AwOfflineQueue.initConnectivityMonitor();
+    }
 </script>
