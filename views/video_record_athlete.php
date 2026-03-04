@@ -138,6 +138,45 @@ try {
                 <i class="fas fa-times"></i> Cancel
             </button>
         </div>
+
+        <!-- Recorded Video Playback (shown after recording) -->
+        <div class="recorded-video-container" id="athleteRecordedVideoContainer" style="display: none;">
+            <h3><i class="fas fa-play-circle"></i> Recorded Video</h3>
+            <video id="athleteRecordedVideo" controls class="recorded-video"></video>
+            <div class="recorded-video-actions">
+                <button type="button" class="btn btn-secondary" id="athleteDiscardBtn">
+                    <i class="fas fa-trash"></i> Discard
+                </button>
+                <button type="button" class="btn btn-primary" id="athleteUploadToCloudBtn">
+                    <i class="fas fa-cloud-upload-alt"></i> Upload to Cloud
+                </button>
+                <button type="button" class="btn btn-secondary" id="athlete-save-to-device-btn" title="Save video offline for later upload">
+                    <i class="fas fa-hard-drive"></i> Save to Device
+                </button>
+            </div>
+            <!-- Storage Selection (shown when saving to device) -->
+            <div id="athleteStoragePanel" style="display:none;" class="storage-selection-panel">
+                <h4><i class="fas fa-hdd"></i> Select Storage Location</h4>
+                <div class="storage-options">
+                    <button type="button" class="storage-option-btn active" data-storage="internal" id="athleteStorageInternalBtn">
+                        <i class="fas fa-mobile-alt"></i>
+                        <span>Internal Storage</span>
+                        <small>Save to browser (IndexedDB)</small>
+                    </button>
+                    <button type="button" class="storage-option-btn" data-storage="external" id="athleteStorageExternalBtn">
+                        <i class="fas fa-sd-card"></i>
+                        <span>External Drive / SD Card</span>
+                        <small>Save to removable storage</small>
+                    </button>
+                </div>
+                <div class="storage-confirm-actions">
+                    <button type="button" class="btn btn-secondary" id="athleteStorageCancelBtn">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="athleteStorageConfirmBtn">
+                        <i class="fas fa-save"></i> Save Recording
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Upload Form -->
@@ -205,32 +244,6 @@ try {
                 <button type="submit" class="btn btn-primary" id="submit-upload-btn">
                     <i class="fas fa-upload"></i> Upload for Review
                 </button>
-                <button type="button" class="btn btn-secondary" id="athlete-save-to-device-btn" title="Save video offline for later upload">
-                    <i class="fas fa-hard-drive"></i> Save to Device
-                </button>
-            </div>
-
-            <!-- Storage Selection (shown when saving to device) -->
-            <div id="athleteStoragePanel" style="display:none;" class="storage-selection-panel">
-                <h4><i class="fas fa-hdd"></i> Select Storage Location</h4>
-                <div class="storage-options">
-                    <button type="button" class="storage-option-btn active" data-storage="internal" id="athleteStorageInternalBtn">
-                        <i class="fas fa-mobile-alt"></i>
-                        <span>Internal Storage</span>
-                        <small>Save to browser (IndexedDB)</small>
-                    </button>
-                    <button type="button" class="storage-option-btn" data-storage="external" id="athleteStorageExternalBtn">
-                        <i class="fas fa-sd-card"></i>
-                        <span>External Drive / SD Card</span>
-                        <small>Save to removable storage</small>
-                    </button>
-                </div>
-                <div class="storage-confirm-actions">
-                    <button type="button" class="btn btn-secondary" id="athleteStorageCancelBtn">Cancel</button>
-                    <button type="button" class="btn btn-primary" id="athleteStorageConfirmBtn">
-                        <i class="fas fa-save"></i> Save Recording
-                    </button>
-                </div>
             </div>
 
             <!-- Upload Progress Overlay -->
@@ -690,6 +703,13 @@ try {
     font-size: 12px;
 }
 
+/* Recorded Video */
+.recorded-video-container { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border); }
+.recorded-video-container h3 { font-size: 16px; font-weight: 600; color: var(--text-white); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.recorded-video-container h3 i { color: var(--primary); }
+.recorded-video { width: 100%; max-width: 600px; border-radius: 12px; margin: 0 auto 16px; display: block; }
+.recorded-video-actions { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+
 /* Storage Selection Panel */
 .storage-selection-panel { margin-top: 16px; padding: 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; }
 .storage-selection-panel h4 { font-size: 15px; font-weight: 700; color: var(--text-white); display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
@@ -881,15 +901,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 mediaRecorder.onstop = function() {
                     const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                    // Store the recorded blob for save-to-device
+                    window._athleteRecordedBlob = blob;
                     // Generate a descriptive filename with timestamp
                     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
                     const filename = 'athlete-recording-' + timestamp + '.webm';
-                    const file = new File([blob], filename, { type: 'video/webm' });
-                    
-                    // Create a DataTransfer to set the file input
-                    const dataTransfer = new DataTransfer();
-                    dataTransfer.items.add(file);
-                    videoFileInput.files = dataTransfer.files;
+                    window._athleteRecordedFile = new File([blob], filename, { type: 'video/webm' });
                     
                     // Stop camera
                     if (mediaStream) {
@@ -897,10 +914,13 @@ document.addEventListener('DOMContentLoaded', function() {
                         mediaStream = null;
                     }
                     
-                    // Switch to upload interface
-                    cameraInterface.style.display = 'none';
-                    uploadInterface.style.display = 'block';
-                    showSelectedFile(file);
+                    // Show recorded video preview with recording-only actions
+                    var recVideo = document.getElementById('athleteRecordedVideo');
+                    var recContainer = document.getElementById('athleteRecordedVideoContainer');
+                    if (recVideo) recVideo.src = URL.createObjectURL(blob);
+                    if (recContainer) recContainer.style.display = 'block';
+                    document.querySelector('.camera-preview-container').style.display = 'none';
+                    document.querySelector('.camera-controls').style.display = 'none';
                 };
                 
                 mediaRecorder.start();
@@ -918,6 +938,44 @@ document.addEventListener('DOMContentLoaded', function() {
                 recordBtn.classList.add('btn-danger');
                 recordingIndicator.style.display = 'none';
             }
+        });
+    }
+
+    // Recorded video actions — Discard and Upload to Cloud
+    var athleteDiscardBtn = document.getElementById('athleteDiscardBtn');
+    var athleteUploadToCloudBtn = document.getElementById('athleteUploadToCloudBtn');
+
+    if (athleteDiscardBtn) {
+        athleteDiscardBtn.addEventListener('click', function() {
+            var recVideo = document.getElementById('athleteRecordedVideo');
+            var recContainer = document.getElementById('athleteRecordedVideoContainer');
+            if (recVideo) recVideo.src = '';
+            if (recContainer) recContainer.style.display = 'none';
+            window._athleteRecordedBlob = null;
+            window._athleteRecordedFile = null;
+            recordedChunks = [];
+            document.querySelector('.camera-preview-container').style.display = '';
+            document.querySelector('.camera-controls').style.display = '';
+            cameraInterface.style.display = 'none';
+            recordOptions.style.display = 'grid';
+        });
+    }
+
+    if (athleteUploadToCloudBtn) {
+        athleteUploadToCloudBtn.addEventListener('click', function() {
+            if (!window._athleteRecordedFile) return;
+            // Set the file input with the recorded file and switch to upload interface
+            var dataTransfer = new DataTransfer();
+            dataTransfer.items.add(window._athleteRecordedFile);
+            videoFileInput.files = dataTransfer.files;
+
+            var recContainer = document.getElementById('athleteRecordedVideoContainer');
+            if (recContainer) recContainer.style.display = 'none';
+            document.querySelector('.camera-preview-container').style.display = '';
+            document.querySelector('.camera-controls').style.display = '';
+            cameraInterface.style.display = 'none';
+            uploadInterface.style.display = 'block';
+            showSelectedFile(window._athleteRecordedFile);
         });
     }
 
@@ -1503,10 +1561,9 @@ document.addEventListener('DOMContentLoaded', function() {
         cancelBtn.addEventListener('click', function() { panel.style.display = 'none'; });
 
         confirmBtn.addEventListener('click', async function() {
-            var fileInput = document.querySelector('input[name="video_file"]');
-            var blob = fileInput && fileInput.files[0];
+            var blob = window._athleteRecordedBlob || null;
             if (!blob) {
-                showToast('Please select or record a video first.', 'error');
+                showToast('Please record a video first.', 'error');
                 return;
             }
 
@@ -1514,18 +1571,18 @@ document.addEventListener('DOMContentLoaded', function() {
             confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
 
             try {
-                var title = (document.getElementById('video_title') || {}).value || blob.name;
-                var category = (document.querySelector('select[name="video_category"]') || {}).value || 'drill';
+                var title = (document.getElementById('camera_recording_name') || {}).value || 'athlete-recording';
+                var category = 'drill';
                 var metadata = {
                     upload_type: 'athlete_video',
                     title: title,
-                    description: (document.getElementById('video_description') || {}).value || '',
+                    description: '',
                     video_category: category,
                     coach_id: <?= json_encode($coach_id ?? null) ?>,
                     athlete_id: <?= json_encode($athlete_id ?? null) ?>,
-                    game_date: (document.getElementById('game_date') || {}).value || null,
-                    team_played_on: (document.getElementById('team_played_on') || {}).value || '',
-                    opponent_team: (document.getElementById('opponent_team') || {}).value || ''
+                    game_date: null,
+                    team_played_on: '',
+                    opponent_team: ''
                 };
 
                 if (_selectedStorage === 'external') {

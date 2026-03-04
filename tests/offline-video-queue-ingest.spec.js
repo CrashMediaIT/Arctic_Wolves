@@ -480,6 +480,31 @@ test.describe('views/video_record_athlete.php save to device', () => {
   test('should init connectivity monitor', () => {
     expect(content()).toContain('AwOfflineQueue.initConnectivityMonitor()');
   });
+
+  test('save-to-device button should be in camera recording section, not upload form', () => {
+    const c = content();
+    // The save-to-device button should be inside the camera-interface (recording section)
+    const cameraSection = c.substring(c.indexOf('id="camera-interface"'), c.indexOf('<!-- Upload Form -->'));
+    expect(cameraSection).toContain('id="athlete-save-to-device-btn"');
+    expect(cameraSection).toContain('id="athleteStoragePanel"');
+    // The upload form should NOT contain the save-to-device button
+    const uploadSection = c.substring(c.indexOf('id="upload-interface"'));
+    expect(uploadSection).not.toContain('id="athlete-save-to-device-btn"');
+    expect(uploadSection).not.toContain('id="athleteStoragePanel"');
+  });
+
+  test('should have recorded video container with recording actions', () => {
+    const c = content();
+    expect(c).toContain('id="athleteRecordedVideoContainer"');
+    expect(c).toContain('id="athleteRecordedVideo"');
+    expect(c).toContain('id="athleteDiscardBtn"');
+    expect(c).toContain('id="athleteUploadToCloudBtn"');
+  });
+
+  test('should use recorded blob for save-to-device, not file input', () => {
+    const c = content();
+    expect(c).toContain('window._athleteRecordedBlob');
+  });
 });
 
 // =====================================================
