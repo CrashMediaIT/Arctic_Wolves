@@ -917,10 +917,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Show recorded video preview with recording-only actions
                     var recVideo = document.getElementById('athleteRecordedVideo');
                     var recContainer = document.getElementById('athleteRecordedVideoContainer');
+                    var camPreview = document.querySelector('.camera-preview-container');
+                    var camControls = document.querySelector('.camera-controls');
                     if (recVideo) recVideo.src = URL.createObjectURL(blob);
                     if (recContainer) recContainer.style.display = 'block';
-                    document.querySelector('.camera-preview-container').style.display = 'none';
-                    document.querySelector('.camera-controls').style.display = 'none';
+                    if (camPreview) camPreview.style.display = 'none';
+                    if (camControls) camControls.style.display = 'none';
                 };
                 
                 mediaRecorder.start();
@@ -949,13 +951,15 @@ document.addEventListener('DOMContentLoaded', function() {
         athleteDiscardBtn.addEventListener('click', function() {
             var recVideo = document.getElementById('athleteRecordedVideo');
             var recContainer = document.getElementById('athleteRecordedVideoContainer');
+            var camPreview = document.querySelector('.camera-preview-container');
+            var camControls = document.querySelector('.camera-controls');
             if (recVideo) recVideo.src = '';
             if (recContainer) recContainer.style.display = 'none';
             window._athleteRecordedBlob = null;
             window._athleteRecordedFile = null;
             recordedChunks = [];
-            document.querySelector('.camera-preview-container').style.display = '';
-            document.querySelector('.camera-controls').style.display = '';
+            if (camPreview) camPreview.style.display = '';
+            if (camControls) camControls.style.display = '';
             cameraInterface.style.display = 'none';
             recordOptions.style.display = 'grid';
         });
@@ -970,9 +974,11 @@ document.addEventListener('DOMContentLoaded', function() {
             videoFileInput.files = dataTransfer.files;
 
             var recContainer = document.getElementById('athleteRecordedVideoContainer');
+            var camPreview = document.querySelector('.camera-preview-container');
+            var camControls = document.querySelector('.camera-controls');
             if (recContainer) recContainer.style.display = 'none';
-            document.querySelector('.camera-preview-container').style.display = '';
-            document.querySelector('.camera-controls').style.display = '';
+            if (camPreview) camPreview.style.display = '';
+            if (camControls) camControls.style.display = '';
             cameraInterface.style.display = 'none';
             uploadInterface.style.display = 'block';
             showSelectedFile(window._athleteRecordedFile);
