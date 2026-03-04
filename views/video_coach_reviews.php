@@ -829,8 +829,16 @@ $reviewed_videos = array_filter($videos, function($v) {
 .ingest-action-buttons { display: flex; gap: 8px; justify-content: flex-end; }
 .ingest-progress-header { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; color: var(--text-white); }
 .ingest-progress-status { color: var(--text-dim); font-size: 12px; margin-top: 8px; }
+.offline-upload-banner { background: linear-gradient(135deg, rgba(107, 70, 193, 0.12), rgba(59, 130, 246, 0.08)); border: 1px solid rgba(107, 70, 193, 0.3); border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; }
+.offline-upload-banner-content { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.offline-upload-banner-icon { font-size: 24px; color: var(--primary); }
+.offline-upload-banner-text { flex: 1; }
+.offline-upload-banner-text strong { display: block; color: var(--text-white); font-size: 14px; }
+.offline-upload-banner-text span { color: var(--text-dim); font-size: 13px; }
+.offline-upload-banner-actions { display: flex; gap: 8px; }
 </style>
 
+<script src="js/offline-upload-queue.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Video player modal
@@ -1444,6 +1452,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 progressTitle.textContent = 'Import complete!';
                 progressStatus.textContent = imported + ' video(s) added to upload queue. They will upload automatically.';
+                // Auto-start upload queue for imported videos
+                if (typeof AwOfflineQueue !== 'undefined' && AwOfflineQueue.processQueue) {
+                    AwOfflineQueue.processQueue();
+                }
             } catch (err) {
                 progressStatus.textContent = 'Import error: ' + err.message;
             }
