@@ -148,6 +148,8 @@ def _log_request(response):
 CONFIG_DIR = os.getenv("CONFIG_DIR", "/config")
 CONFIG_FILE = os.path.join(CONFIG_DIR, "companion_config.enc")
 KEY_FILE = os.path.join(CONFIG_DIR, "encryption.key")
+JOBS_FILE = os.path.join(CONFIG_DIR, "companion_jobs.json")
+_MAX_PERSISTED_JOBS = 500
 
 
 def _read_key_file() -> str:
@@ -264,6 +266,51 @@ def _save_persistent_config(cfg: dict) -> bool:
         return False
 
 
+def _load_jobs() -> dict:
+    """Load persisted job history from the JSON file on disk.
+
+    Jobs that were still running when the process last exited are marked
+    as failed since the daemon threads are gone.
+    """
+    if not os.path.isfile(JOBS_FILE):
+        return {}
+    try:
+        with open(JOBS_FILE, "r") as f:
+            job_list = json.load(f)
+        loaded = {}
+        for j in job_list:
+            if not isinstance(j, dict) or "id" not in j:
+                continue
+            if j.get("status") in ("running", "queued", "downloading",
+                                    "transcoding", "uploading"):
+                j["status"] = "failed"
+                j["error"] = j.get("error") or "Interrupted by restart"
+                j.setdefault("finished_at", time.time())
+            loaded[j["id"]] = j
+        return loaded
+    except Exception as exc:
+        logger.warning("Could not load job history: %s", exc)
+        return {}
+
+
+def _save_jobs():
+    """Persist current job history to disk (most recent jobs only).
+
+    Must be called while *not* holding ``job_lock`` — or from within a
+    block that already holds it (the function acquires the lock itself).
+    """
+    try:
+        Path(CONFIG_DIR).mkdir(parents=True, exist_ok=True)
+        with job_lock:
+            all_jobs = sorted(jobs.values(),
+                              key=lambda j: j.get("created_at", 0),
+                              reverse=True)[:_MAX_PERSISTED_JOBS]
+        with open(JOBS_FILE, "w") as f:
+            json.dump(all_jobs, f, default=str)
+    except Exception as exc:
+        logger.warning("Failed to save job history: %s", exc)
+
+
 # Load all settings from the encrypted persistent config file.
 # The encryption key comes from the ENCRYPTION_KEY env var (preferred)
 # or /config/encryption.key (fallback).  Everything else is entered
@@ -331,8 +378,8 @@ VERSION = "1.3.0"
 
 Path(TEMP_DIR).mkdir(parents=True, exist_ok=True)
 
-# In-memory job store (job_id -> dict)
-jobs: dict = {}
+# In-memory job store (job_id -> dict), seeded from persistent file
+jobs: dict = _load_jobs()
 job_lock = threading.Lock()
 job_semaphore = threading.Semaphore(MAX_CONCURRENT_JOBS)
 
@@ -947,6 +994,7 @@ def _run_job(job_id: str, cmd: list[str]):
                 jobs[job_id]["error"] = str(exc)[:2000]
                 jobs[job_id]["finished_at"] = time.time()
             logger.error("Job %s exception: %s", job_id, exc)
+        _save_jobs()
 
 
 def _create_job(cmd: list[str], description: str, output_path: str) -> dict:
@@ -964,6 +1012,7 @@ def _create_job(cmd: list[str], description: str, output_path: str) -> dict:
     }
     with job_lock:
         jobs[job_id] = job
+    _save_jobs()
 
     thread = threading.Thread(target=_run_job, args=(job_id, cmd), daemon=True)
     thread.start()
@@ -2396,6 +2445,7 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
             jobs[job_id]["status"] = "failed"
             jobs[job_id]["error"] = "S3 not configured"
             jobs[job_id]["finished_at"] = time.time()
+        _save_jobs()
         return
 
     jlog(f"S3 endpoint: {S3_ENDPOINT}")
@@ -2588,6 +2638,7 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
             jobs[job_id]["hls_manifest"] = f"{output_prefix}/master.m3u8"
             jobs[job_id]["finished_at"] = time.time()
             jobs[job_id]["variants"] = [v["label"] for v in variants]
+        _save_jobs()
 
         logger.info("HLS job %s completed: %d variants, manifest=%s", job_id, len(variants), f"{output_prefix}/master.m3u8")
 
@@ -2614,8 +2665,7 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
             jobs[job_id]["status"] = "failed"
             jobs[job_id]["error"] = str(exc)[:2000]
             jobs[job_id]["finished_at"] = time.time()
-
-        # Notify the main application about failure too
+        _save_jobs()
         with job_lock:
             vid_id = jobs[job_id].get("video_id")
         _send_callback(cb_url, {
@@ -2711,6 +2761,7 @@ def hls_transcode():
     }
     with job_lock:
         jobs[job_id] = job
+    _save_jobs()
 
     thread = threading.Thread(
         target=_run_hls_job,
@@ -2780,6 +2831,7 @@ def hls_retry():
     }
     with job_lock:
         jobs[job_id] = job
+    _save_jobs()
 
     thread = threading.Thread(
         target=_run_hls_job,
