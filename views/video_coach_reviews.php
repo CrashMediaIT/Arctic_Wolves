@@ -1113,7 +1113,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (result.video_id) tp.video_id = result.video_id;
                     if (result.source_id) tp.source_id = result.source_id;
                     crPostAction(tp, csrfToken, { keepalive: true })
-                        .then(function(t) { crLog('Transcode triggered (job: ' + (t.hls_job_id || 'pending') + ')'); })
+                        .then(function(t) { crLog('Transcode triggered (job: ' + (t.hls_job_id || 'N/A') + ')'); })
                         .catch(function(e) { crLogWarn('Transcode trigger: ' + e.message); });
                     crShowComplete(bar, percent, status, overlay, submitBtn, result.redirect);
                 } else throw new Error(result.error || 'Confirmation failed');
@@ -1169,7 +1169,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (result.video_id) tp.video_id = result.video_id;
                 if (result.source_id) tp.source_id = result.source_id;
                 crPostAction(tp, csrfToken, { keepalive: true })
-                    .then(function(t) { crLog('Transcode triggered (job: ' + (t.hls_job_id || 'pending') + ')'); })
+                    .then(function(t) { crLog('Transcode triggered (job: ' + (t.hls_job_id || 'N/A') + ')'); })
                     .catch(function(e) { crLogWarn('Transcode trigger: ' + e.message); });
                 crShowComplete(bar, percent, status, overlay, submitBtn, result.redirect);
             }

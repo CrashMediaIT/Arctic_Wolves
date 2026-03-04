@@ -1147,7 +1147,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (result.video_id) transcodeParams.video_id = result.video_id;
                     if (result.source_id) transcodeParams.source_id = result.source_id;
                     postAction(transcodeParams, { keepalive: true })
-                        .then(function(t) { uploadLog('Transcode triggered (job: ' + (t.hls_job_id || 'pending') + ')'); })
+                        .then(function(t) { uploadLog('Transcode triggered (job: ' + (t.hls_job_id || 'N/A') + ')'); })
                         .catch(function(e) { uploadLogWarn('Transcode trigger: ' + e.message); });
                     showUploadComplete(bar, percent, status, overlay, submitBtn, result.redirect);
                 } else {
@@ -1223,7 +1223,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (result.video_id) transcodeParams.video_id = result.video_id;
                 if (result.source_id) transcodeParams.source_id = result.source_id;
                 postAction(transcodeParams, { keepalive: true })
-                    .then(function(t) { uploadLog('Transcode triggered (job: ' + (t.hls_job_id || 'pending') + ')'); })
+                    .then(function(t) { uploadLog('Transcode triggered (job: ' + (t.hls_job_id || 'N/A') + ')'); })
                     .catch(function(e) { uploadLogWarn('Transcode trigger: ' + e.message); });
                 showUploadComplete(bar, percent, status, overlay, submitBtn, result.redirect);
             } else {
