@@ -179,6 +179,12 @@ test.describe('History page clickable job rows with log viewer', () => {
     expect(c).toContain('onclick');
   });
 
+  test('job rows should use data attribute for job ID instead of inline string', () => {
+    const c = content();
+    expect(c).toContain('data-job-id');
+    expect(c).toContain('this.dataset.jobId');
+  });
+
   test('should render hidden detail row for each job', () => {
     const c = content();
     expect(c).toContain('job-detail-row');
