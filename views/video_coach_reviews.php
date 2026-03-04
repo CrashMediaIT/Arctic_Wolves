@@ -1389,7 +1389,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         scanStatus.textContent = 'No Arctic Wolves recordings found. Make sure the folder contains an "ArcticWolves_Recordings" subfolder.';
                         return;
                     }
-                    scanStatus.textContent = 'Found ' + pairs.length + ' video' + (pairs.length !== 1 ? 's' : '') + ':';
                     var typeLabels = { drill_video: 'Drill', coach_video: 'Coach Review', athlete_video: 'Athlete', video_source: 'Game Plan' };
                     var totalSize = 0;
                     pairs.forEach(function(pair) {
