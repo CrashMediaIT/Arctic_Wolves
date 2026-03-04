@@ -4668,6 +4668,14 @@ ADD COLUMN IF NOT EXISTS `nextcloud_logo_path` VARCHAR(500) DEFAULT NULL COMMENT
 ALTER TABLE `vr_video_sources`
 ADD COLUMN IF NOT EXISTS `nextcloud_path` VARCHAR(500) DEFAULT NULL COMMENT 'Cloud storage path for gameplan video (RustFS URL)';
 
+-- Add HLS transcoding columns to vr_video_sources for adaptive streaming
+ALTER TABLE `vr_video_sources`
+ADD COLUMN IF NOT EXISTS `hls_url` VARCHAR(500) DEFAULT NULL COMMENT 'HLS master playlist URL (api/media.php proxy path)',
+ADD COLUMN IF NOT EXISTS `hls_status` ENUM('pending', 'processing', 'ready', 'failed') DEFAULT NULL COMMENT 'HLS transcoding status',
+ADD COLUMN IF NOT EXISTS `hls_job_id` VARCHAR(36) DEFAULT NULL COMMENT 'Companion server HLS transcode job ID',
+ADD COLUMN IF NOT EXISTS `hls_master_url` VARCHAR(500) DEFAULT NULL COMMENT 'S3 key to master.m3u8 manifest',
+ADD COLUMN IF NOT EXISTS `hls_segments_path` VARCHAR(500) DEFAULT NULL COMMENT 'S3 prefix containing HLS segments';
+
 -- Default RustFS S3 storage settings
 INSERT IGNORE INTO `system_settings` (`setting_key`, `setting_value`, `setting_type`, `description`) VALUES
 ('rustfs_endpoint',   NULL, 'text',     'RustFS S3-compatible endpoint URL (e.g., https://rustfs.example.com)'),
