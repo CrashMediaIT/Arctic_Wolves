@@ -586,15 +586,24 @@ function handleTriggerTranscode() {
         triggerHlsTranscodeSource($pdo, $source_id, $object_key);
 
         // Check whether the companion accepted the job
-        $stmt = $pdo->prepare("SELECT hls_status, hls_job_id FROM vr_video_sources WHERE id = ?");
-        $stmt->execute([$source_id]);
-        $row = $stmt->fetch();
+        $hls_status = null;
+        $hls_job_id = null;
+        try {
+            $stmt = $pdo->prepare("SELECT hls_status, hls_job_id FROM vr_video_sources WHERE id = ?");
+            $stmt->execute([$source_id]);
+            $row = $stmt->fetch();
+            $hls_status = $row['hls_status'] ?? null;
+            $hls_job_id = $row['hls_job_id'] ?? null;
+        } catch (PDOException $e) {
+            // HLS columns may not exist yet — non-fatal
+            ErrorLogger::error("trigger_transcode: could not read HLS status for source $source_id: " . $e->getMessage());
+        }
 
         echo json_encode([
             'success'    => true,
             'source_id'  => $source_id,
-            'hls_status' => $row['hls_status'] ?? null,
-            'hls_job_id' => $row['hls_job_id'] ?? null,
+            'hls_status' => $hls_status,
+            'hls_job_id' => $hls_job_id,
         ]);
     } elseif ($video_id) {
         // Verify the user owns this video (as athlete or coach)
@@ -606,15 +615,24 @@ function handleTriggerTranscode() {
         triggerHlsTranscode($pdo, $video_id, $object_key);
 
         // Check whether the companion accepted the job
-        $stmt = $pdo->prepare("SELECT hls_status, hls_job_id FROM videos WHERE id = ?");
-        $stmt->execute([$video_id]);
-        $row = $stmt->fetch();
+        $hls_status = null;
+        $hls_job_id = null;
+        try {
+            $stmt = $pdo->prepare("SELECT hls_status, hls_job_id FROM videos WHERE id = ?");
+            $stmt->execute([$video_id]);
+            $row = $stmt->fetch();
+            $hls_status = $row['hls_status'] ?? null;
+            $hls_job_id = $row['hls_job_id'] ?? null;
+        } catch (PDOException $e) {
+            // HLS columns may not exist yet — non-fatal
+            ErrorLogger::error("trigger_transcode: could not read HLS status for video $video_id: " . $e->getMessage());
+        }
 
         echo json_encode([
             'success'    => true,
             'video_id'   => $video_id,
-            'hls_status' => $row['hls_status'] ?? null,
-            'hls_job_id' => $row['hls_job_id'] ?? null,
+            'hls_status' => $hls_status,
+            'hls_job_id' => $hls_job_id,
         ]);
     } else {
         throw new Exception('video_id or source_id is required');
