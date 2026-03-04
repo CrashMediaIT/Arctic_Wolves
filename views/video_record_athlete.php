@@ -718,6 +718,7 @@ try {
 .offline-upload-progress-footer span { font-size: 12px; color: var(--text-dim); }
 </style>
 
+<script src="js/offline-upload-queue.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const startCameraBtn = document.getElementById('start-camera-btn');
@@ -1479,6 +1480,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var confirmBtn = document.getElementById('athleteStorageConfirmBtn');
         var extBtn = document.getElementById('athleteStorageExternalBtn');
         var _selectedStorage = 'internal';
+        var _externalDirHandle = null;
 
         if (!saveBtn) return;
 
@@ -1502,8 +1504,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         confirmBtn.addEventListener('click', async function() {
             var fileInput = document.querySelector('input[name="video_file"]');
-            var file = fileInput && fileInput.files[0];
-            if (!file) {
+            var blob = fileInput && fileInput.files[0];
+            if (!blob) {
                 showToast('Please select or record a video first.', 'error');
                 return;
             }
@@ -1512,11 +1514,13 @@ document.addEventListener('DOMContentLoaded', function() {
             confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
 
             try {
-                var meta = {
+                var title = (document.getElementById('video_title') || {}).value || blob.name;
+                var category = (document.querySelector('select[name="video_category"]') || {}).value || 'drill';
+                var metadata = {
                     upload_type: 'athlete_video',
-                    title: (document.getElementById('video_title') || {}).value || file.name,
+                    title: title,
                     description: (document.getElementById('video_description') || {}).value || '',
-                    video_category: (document.querySelector('select[name="video_category"]') || {}).value || 'drill',
+                    video_category: category,
                     coach_id: <?= json_encode($coach_id ?? null) ?>,
                     athlete_id: <?= json_encode($athlete_id ?? null) ?>,
                     game_date: (document.getElementById('game_date') || {}).value || null,
@@ -1524,16 +1528,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     opponent_team: (document.getElementById('opponent_team') || {}).value || ''
                 };
 
-                if (typeof AwOfflineQueue === 'undefined') {
-                    showToast('Offline queue not available.', 'error');
-                    return;
-                }
-
                 if (_selectedStorage === 'external') {
-                    await AwOfflineQueue.saveToExternal(file, meta);
-                    showToast('Video saved to external device! You can import it later from the Ingest tab.', 'success');
+                    if (!_externalDirHandle) {
+                        _externalDirHandle = await AwOfflineQueue.pickStorageDirectory();
+                    }
+                    await AwOfflineQueue.saveToExternalStorage(_externalDirHandle, blob, metadata);
+                    showToast('Video saved to external device!', 'success');
                 } else {
-                    await AwOfflineQueue.addItem(file, meta);
+                    await AwOfflineQueue.enqueueVideo(blob, metadata);
                     showToast('Video saved offline! It will upload automatically when connected.', 'success');
                 }
                 panel.style.display = 'none';
@@ -1545,4 +1547,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     })();
+
+    // Init connectivity monitor for auto-upload
+    if (typeof AwOfflineQueue !== 'undefined') {
+        AwOfflineQueue.initConnectivityMonitor();
+    }
 </script>
