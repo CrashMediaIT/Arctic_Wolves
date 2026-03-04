@@ -246,3 +246,188 @@ test.describe('triggerHlsTranscode functions still intact', () => {
     expect(func).toContain('output_prefix');
   });
 });
+
+// =====================================================
+// 6. handleTriggerTranscode — HLS status query resilience
+// =====================================================
+
+test.describe('handleTriggerTranscode HLS status query resilience', () => {
+  const content = () => readFile('process_video.php');
+
+  function getHandleTriggerTranscodeBody() {
+    const c = content();
+    const funcStart = c.indexOf('function handleTriggerTranscode()');
+    const funcEnd = c.indexOf('\nfunction ', funcStart + 1);
+    return c.substring(funcStart, funcEnd > funcStart ? funcEnd : undefined);
+  }
+
+  test('video branch HLS status SELECT should be wrapped in try-catch', () => {
+    const func = getHandleTriggerTranscodeBody();
+    // After triggerHlsTranscode call, the SELECT hls_status should be inside a try block
+    const videoSelectIdx = func.indexOf("SELECT hls_status, hls_job_id FROM videos");
+    expect(videoSelectIdx).toBeGreaterThan(-1);
+    // Look backwards from the SELECT for a try { block
+    const beforeSelect = func.substring(0, videoSelectIdx);
+    const lastTry = beforeSelect.lastIndexOf('try {');
+    const lastCatch = beforeSelect.lastIndexOf('catch');
+    // The try should appear after the triggerHlsTranscode call, not before it
+    expect(lastTry).toBeGreaterThan(-1);
+    expect(lastTry).toBeGreaterThan(lastCatch);
+  });
+
+  test('source branch HLS status SELECT should be wrapped in try-catch', () => {
+    const func = getHandleTriggerTranscodeBody();
+    const sourceSelectIdx = func.indexOf("SELECT hls_status, hls_job_id FROM vr_video_sources");
+    expect(sourceSelectIdx).toBeGreaterThan(-1);
+    const beforeSelect = func.substring(0, sourceSelectIdx);
+    const lastTry = beforeSelect.lastIndexOf('try {');
+    const lastCatch = beforeSelect.lastIndexOf('catch');
+    expect(lastTry).toBeGreaterThan(-1);
+    expect(lastTry).toBeGreaterThan(lastCatch);
+  });
+
+  test('should catch PDOException for missing HLS columns', () => {
+    const func = getHandleTriggerTranscodeBody();
+    // Both branches should catch PDOException specifically
+    const catches = func.match(/catch\s*\(\s*PDOException\b/g);
+    expect(catches).not.toBeNull();
+    expect(catches.length).toBeGreaterThanOrEqual(2);
+  });
+
+  test('should default hls_status and hls_job_id to null before try blocks', () => {
+    const func = getHandleTriggerTranscodeBody();
+    // Both branches should initialize to null so the json response always has these keys
+    const nullDefaults = func.match(/\$hls_status\s*=\s*null/g);
+    expect(nullDefaults).not.toBeNull();
+    expect(nullDefaults.length).toBeGreaterThanOrEqual(2);
+    const jobDefaults = func.match(/\$hls_job_id\s*=\s*null/g);
+    expect(jobDefaults).not.toBeNull();
+    expect(jobDefaults.length).toBeGreaterThanOrEqual(2);
+  });
+
+  test('should still return success:true even if HLS columns are missing', () => {
+    const func = getHandleTriggerTranscodeBody();
+    // Both json_encode blocks should include success => true
+    const successBlocks = func.match(/json_encode\(\[\s*\n?\s*'success'\s*=>\s*true/g);
+    expect(successBlocks).not.toBeNull();
+    expect(successBlocks.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+// =====================================================
+// 7. database_schema.sql — HLS columns in CREATE TABLE
+// =====================================================
+
+test.describe('database_schema.sql HLS columns in CREATE TABLE', () => {
+  const content = () => readFile('database_schema.sql');
+
+  test('videos CREATE TABLE should include hls_status column', () => {
+    const c = content();
+    const createStart = c.indexOf('CREATE TABLE IF NOT EXISTS `videos`');
+    const createEnd = c.indexOf('ENGINE=InnoDB', createStart);
+    const createBlock = c.substring(createStart, createEnd);
+    expect(createBlock).toContain('`hls_status`');
+  });
+
+  test('videos CREATE TABLE should include hls_url column', () => {
+    const c = content();
+    const createStart = c.indexOf('CREATE TABLE IF NOT EXISTS `videos`');
+    const createEnd = c.indexOf('ENGINE=InnoDB', createStart);
+    const createBlock = c.substring(createStart, createEnd);
+    expect(createBlock).toContain('`hls_url`');
+  });
+
+  test('videos CREATE TABLE should include hls_job_id column', () => {
+    const c = content();
+    const createStart = c.indexOf('CREATE TABLE IF NOT EXISTS `videos`');
+    const createEnd = c.indexOf('ENGINE=InnoDB', createStart);
+    const createBlock = c.substring(createStart, createEnd);
+    expect(createBlock).toContain('`hls_job_id`');
+  });
+
+  test('videos CREATE TABLE should include hls_master_url and hls_segments_path columns', () => {
+    const c = content();
+    const createStart = c.indexOf('CREATE TABLE IF NOT EXISTS `videos`');
+    const createEnd = c.indexOf('ENGINE=InnoDB', createStart);
+    const createBlock = c.substring(createStart, createEnd);
+    expect(createBlock).toContain('`hls_master_url`');
+    expect(createBlock).toContain('`hls_segments_path`');
+  });
+
+  test('vr_video_sources CREATE TABLE should include hls_status column', () => {
+    const c = content();
+    const createStart = c.indexOf('CREATE TABLE IF NOT EXISTS `vr_video_sources`');
+    const createEnd = c.indexOf('ENGINE=InnoDB', createStart);
+    const createBlock = c.substring(createStart, createEnd);
+    expect(createBlock).toContain('`hls_status`');
+  });
+
+  test('vr_video_sources CREATE TABLE should include hls_url column', () => {
+    const c = content();
+    const createStart = c.indexOf('CREATE TABLE IF NOT EXISTS `vr_video_sources`');
+    const createEnd = c.indexOf('ENGINE=InnoDB', createStart);
+    const createBlock = c.substring(createStart, createEnd);
+    expect(createBlock).toContain('`hls_url`');
+  });
+
+  test('vr_video_sources CREATE TABLE should include hls_job_id column', () => {
+    const c = content();
+    const createStart = c.indexOf('CREATE TABLE IF NOT EXISTS `vr_video_sources`');
+    const createEnd = c.indexOf('ENGINE=InnoDB', createStart);
+    const createBlock = c.substring(createStart, createEnd);
+    expect(createBlock).toContain('`hls_job_id`');
+  });
+
+  test('vr_video_sources CREATE TABLE should include hls_master_url and hls_segments_path', () => {
+    const c = content();
+    const createStart = c.indexOf('CREATE TABLE IF NOT EXISTS `vr_video_sources`');
+    const createEnd = c.indexOf('ENGINE=InnoDB', createStart);
+    const createBlock = c.substring(createStart, createEnd);
+    expect(createBlock).toContain('`hls_master_url`');
+    expect(createBlock).toContain('`hls_segments_path`');
+  });
+});
+
+// =====================================================
+// 8. setup.php — HLS column inline migrations
+// =====================================================
+
+test.describe('setup.php HLS column inline migrations', () => {
+  const content = () => readFile('setup.php');
+
+  test('should have inline migration for videos.hls_status', () => {
+    const c = content();
+    expect(c).toContain("ALTER TABLE videos ADD COLUMN hls_status");
+  });
+
+  test('should have inline migration for videos.hls_url', () => {
+    const c = content();
+    expect(c).toContain("ALTER TABLE videos ADD COLUMN hls_url");
+  });
+
+  test('should have inline migration for videos.hls_job_id', () => {
+    const c = content();
+    expect(c).toContain("ALTER TABLE videos ADD COLUMN hls_job_id");
+  });
+
+  test('should have inline migration for videos.hls_master_url and hls_segments_path', () => {
+    const c = content();
+    expect(c).toContain("ALTER TABLE videos ADD COLUMN hls_master_url");
+    expect(c).toContain("ALTER TABLE videos ADD COLUMN hls_segments_path");
+  });
+
+  test('should have inline migration for vr_video_sources.hls_status', () => {
+    const c = content();
+    expect(c).toContain("ALTER TABLE vr_video_sources ADD COLUMN hls_status");
+  });
+
+  test('should have inline migration for vr_video_sources.hls_url', () => {
+    const c = content();
+    expect(c).toContain("ALTER TABLE vr_video_sources ADD COLUMN hls_url");
+  });
+
+  test('should have inline migration for vr_video_sources.hls_job_id', () => {
+    const c = content();
+    expect(c).toContain("ALTER TABLE vr_video_sources ADD COLUMN hls_job_id");
+  });
+});
