@@ -268,7 +268,7 @@ if ($m3u8_ext !== 'm3u8') {
     curl_setopt($ch, CURLOPT_HTTPHEADER, $curl_headers);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 300);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 300); // generous for large .ts segments on slow links
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, false);
 

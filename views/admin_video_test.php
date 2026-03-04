@@ -808,8 +808,10 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
                 if (data.fatal) {
                     logWarn('HLS fatal error: type=' + data.type + ' details=' + data.details);
                     if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+                        // HLS.js retries internally via startLoad() in hls-player.js
                         log('Retrying HLS load after network error…');
                     } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+                        // HLS.js recovers internally via recoverMediaError() in hls-player.js
                         log('Recovering from media error…');
                     } else {
                         playerInfo.textContent = 'Playback error (' + data.details + '). HLS URL: ' + hlsUrl;
