@@ -82,7 +82,7 @@ test.describe('Companion app probe-validates hardware encoders', () => {
 
     // VAAPI encoders need the device and hwupload filter to probe correctly
     expect(funcBody).toContain('-vaapi_device');
-    expect(funcBody).toContain('HW_ACCEL_DEVICE');
+    expect(funcBody).toContain('_effective_vaapi_device()');
     expect(funcBody).toContain('hwupload');
   });
 
@@ -205,7 +205,7 @@ test.describe('AMD GPU support in _hwaccel_decode_flags', () => {
     const funcBody = c.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
 
     // AMF uses VAAPI for decoding on Linux
-    expect(funcBody).toContain('HW_ACCEL_DEVICE');
+    expect(funcBody).toContain('_effective_vaapi_device()');
   });
 });
 
@@ -300,7 +300,7 @@ test.describe('_hwaccel_decode_flags QSV falls back to VAAPI decode', () => {
     const autoIdx = funcBody.indexOf('accel == "auto"');
     const qsvSection = funcBody.substring(qsvIdx, autoIdx > -1 ? autoIdx : undefined);
     expect(qsvSection).toContain('"vaapi"');
-    expect(qsvSection).toContain('HW_ACCEL_DEVICE');
+    expect(qsvSection).toContain('vaapi_dev');
   });
 
   test('qsv mode should return empty flags when neither QSV nor VAAPI available', () => {

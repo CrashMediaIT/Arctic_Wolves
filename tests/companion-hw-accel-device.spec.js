@@ -34,23 +34,23 @@ test.describe('Companion app.py HW_ACCEL_DEVICE configuration', () => {
     expect(c).toContain('HW_ACCEL_DEVICE');
   });
 
-  test('_probe_encoder should use HW_ACCEL_DEVICE for vaapi', () => {
+  test('_probe_encoder should use _effective_vaapi_device for vaapi', () => {
     const c = content();
     const probeFunc = c.substring(
       c.indexOf('def _probe_encoder'),
       c.indexOf('def _detect_hw_accel')
     );
-    expect(probeFunc).toContain('HW_ACCEL_DEVICE');
+    expect(probeFunc).toContain('_effective_vaapi_device()');
     expect(probeFunc).not.toContain('"/dev/dri/renderD128"');
   });
 
-  test('_probe_encoder should use _qsv_render_device(HW_ACCEL_DEVICE) for qsv', () => {
+  test('_probe_encoder should use _qsv_render_device(_effective_vaapi_device()) for qsv', () => {
     const c = content();
     const probeFunc = c.substring(
       c.indexOf('def _probe_encoder'),
       c.indexOf('def _detect_hw_accel')
     );
-    expect(probeFunc).toContain('child_device={_qsv_render_device(HW_ACCEL_DEVICE)}');
+    expect(probeFunc).toContain('_qsv_render_device(vaapi_dev)');
   });
 
   test('_probe_encoder should skip vaapi/qsv probes when device file does not exist', () => {
@@ -59,29 +59,29 @@ test.describe('Companion app.py HW_ACCEL_DEVICE configuration', () => {
       c.indexOf('def _probe_encoder'),
       c.indexOf('def _detect_hw_accel')
     );
-    // Must check os.path.exists(HW_ACCEL_DEVICE) before running FFmpeg
-    expect(probeFunc).toContain('os.path.exists(HW_ACCEL_DEVICE)');
+    // Must check os.path.exists on the effective device before running FFmpeg
+    expect(probeFunc).toContain('os.path.exists(vaapi_dev)');
     // Should log a skip message instead of running FFmpeg
     expect(probeFunc).toContain('probe skipped');
   });
 
-  test('_encoder_flags should use HW_ACCEL_DEVICE not hardcoded path', () => {
+  test('_encoder_flags should use _effective_vaapi_device not hardcoded path', () => {
     const c = content();
     const flagsFunc = c.substring(
       c.indexOf('def _encoder_flags'),
       c.indexOf('def _hwaccel_decode_flags')
     );
-    expect(flagsFunc).toContain('HW_ACCEL_DEVICE');
+    expect(flagsFunc).toContain('_effective_vaapi_device()');
     expect(flagsFunc).not.toContain('"/dev/dri/renderD128"');
   });
 
-  test('_hwaccel_decode_flags should use HW_ACCEL_DEVICE not hardcoded path', () => {
+  test('_hwaccel_decode_flags should use _effective_vaapi_device not hardcoded path', () => {
     const c = content();
     const decodeFunc = c.substring(
       c.indexOf('def _hwaccel_decode_flags'),
       c.indexOf('def _probe_file')
     );
-    expect(decodeFunc).toContain('HW_ACCEL_DEVICE');
+    expect(decodeFunc).toContain('_effective_vaapi_device()');
     expect(decodeFunc).not.toContain('"/dev/dri/renderD128"');
   });
 });
@@ -199,7 +199,7 @@ test.describe('Companion app.py _qsv_render_device helper', () => {
       c.indexOf('def _encoder_flags'),
       c.indexOf('def _hwaccel_decode_flags')
     );
-    expect(flagsFunc).toContain('_qsv_render_device(HW_ACCEL_DEVICE)');
+    expect(flagsFunc).toContain('_qsv_render_device(vaapi_dev)');
   });
 
   test('_hwaccel_decode_flags should use _qsv_render_device for qsv paths', () => {
@@ -213,13 +213,13 @@ test.describe('Companion app.py _qsv_render_device helper', () => {
       decodeFunc.indexOf('if accel == "qsv"'),
       decodeFunc.indexOf('if accel in ("vaapi"')
     );
-    expect(explicitQsv).toContain('_qsv_render_device(HW_ACCEL_DEVICE)');
+    expect(explicitQsv).toContain('_qsv_render_device(vaapi_dev)');
 
     // Auto-detected QSV path (accel == "auto") should also use render device resolution
     const autoBlock = decodeFunc.substring(
       decodeFunc.indexOf('if accel == "auto"')
     );
-    expect(autoBlock).toContain('_qsv_render_device(HW_ACCEL_DEVICE)');
+    expect(autoBlock).toContain('_qsv_render_device(vaapi_dev)');
   });
 
   test('_hwaccel_decode_flags should NOT use _qsv_render_device for vaapi paths', () => {
@@ -228,9 +228,9 @@ test.describe('Companion app.py _qsv_render_device helper', () => {
       c.indexOf('def _hwaccel_decode_flags'),
       c.indexOf('def _hw_vf')
     );
-    // VAAPI paths should use HW_ACCEL_DEVICE directly (VAAPI works with card nodes)
+    // VAAPI paths should use _effective_vaapi_device() directly (VAAPI works with card nodes)
     const lines = decodeFunc.split('\n');
-    const vaapiLines = lines.filter(l => l.includes('"vaapi"') && l.includes('HW_ACCEL_DEVICE'));
+    const vaapiLines = lines.filter(l => l.includes('-vaapi_device') && l.includes('vaapi_dev'));
     for (const line of vaapiLines) {
       expect(line).not.toContain('_qsv_render_device');
     }
@@ -319,5 +319,119 @@ test.describe('Companion app.py double device open prevention', () => {
     const diagBody = c.substring(diagStart, diagEnd > -1 ? diagEnd : undefined);
     // Diagnostic uses standalone encode — must NOT pass hw_decode=True
     expect(diagBody).not.toContain('hw_decode');
+  });
+});
+
+
+// =====================================================
+// 7. Multi-GPU auto-detection and LIBVA_DRIVER_NAME
+// =====================================================
+
+test.describe('Companion app.py multi-GPU device auto-detection', () => {
+  const content = () => readFile('companion/app.py');
+
+  test('should define _VAAPI_DRM_DRIVERS set with Intel and AMD drivers', () => {
+    const c = content();
+    expect(c).toContain('_VAAPI_DRM_DRIVERS');
+    expect(c).toContain('"i915"');
+    expect(c).toContain('"xe"');
+    expect(c).toContain('"amdgpu"');
+  });
+
+  test('should define _DRM_TO_VAAPI_DRIVER mapping for LIBVA_DRIVER_NAME', () => {
+    const c = content();
+    expect(c).toContain('_DRM_TO_VAAPI_DRIVER');
+    expect(c).toContain('"iHD"');
+    expect(c).toContain('"radeonsi"');
+  });
+
+  test('should define _drm_driver function using sysfs', () => {
+    const c = content();
+    expect(c).toContain('def _drm_driver(');
+    expect(c).toContain('/sys/class/drm/');
+    expect(c).toContain('os.readlink');
+  });
+
+  test('should define _vaapi_env function setting LIBVA_DRIVER_NAME', () => {
+    const c = content();
+    expect(c).toContain('def _vaapi_env(');
+    expect(c).toContain('LIBVA_DRIVER_NAME');
+    expect(c).toContain('_DRM_TO_VAAPI_DRIVER');
+  });
+
+  test('should define _effective_vaapi_device function', () => {
+    const c = content();
+    expect(c).toContain('def _effective_vaapi_device()');
+  });
+
+  test('_effective_vaapi_device should check configured device driver first', () => {
+    const c = content();
+    const func = c.substring(
+      c.indexOf('def _effective_vaapi_device'),
+      c.indexOf('\ndef ', c.indexOf('def _effective_vaapi_device') + 1)
+    );
+    expect(func).toContain('_drm_driver(HW_ACCEL_DEVICE)');
+    expect(func).toContain('_VAAPI_DRM_DRIVERS');
+  });
+
+  test('_effective_vaapi_device should scan /dev/dri for alternatives', () => {
+    const c = content();
+    const func = c.substring(
+      c.indexOf('def _effective_vaapi_device'),
+      c.indexOf('\ndef ', c.indexOf('def _effective_vaapi_device') + 1)
+    );
+    expect(func).toContain('os.listdir("/dev/dri")');
+    expect(func).toContain('renderD');
+  });
+
+  test('_effective_vaapi_device should cache its result', () => {
+    const c = content();
+    expect(c).toContain('_cached_vaapi_device');
+    const func = c.substring(
+      c.indexOf('def _effective_vaapi_device'),
+      c.indexOf('\ndef ', c.indexOf('def _effective_vaapi_device') + 1)
+    );
+    expect(func).toContain('global _cached_vaapi_device');
+  });
+
+  test('_probe_encoder should pass LIBVA_DRIVER_NAME env to FFmpeg subprocess', () => {
+    const c = content();
+    const func = c.substring(
+      c.indexOf('def _probe_encoder'),
+      c.indexOf('def _detect_hw_accel')
+    );
+    expect(func).toContain('_vaapi_env(');
+    expect(func).toContain('env=env');
+  });
+});
+
+test.describe('Entrypoint multi-GPU permissions', () => {
+  const content = () => readFile('companion/entrypoint.sh');
+
+  test('should export LIBVA_DRIVER_NAME=iHD for QSV mode', () => {
+    const c = content();
+    expect(c).toContain('export LIBVA_DRIVER_NAME=iHD');
+  });
+
+  test('should use collision-safe group names for render devices', () => {
+    const c = content();
+    // Must NOT use hard-coded "render" or "video" as group name
+    expect(c).toContain('gpu_${DEV_GID}');
+    expect(c).not.toContain('RENDER_GROUP="render"');
+    expect(c).not.toContain('CARD_GROUP="video"');
+  });
+
+  test('should grant access to ALL render and card devices', () => {
+    const c = content();
+    expect(c).toContain('/dev/dri/renderD*');
+    expect(c).toContain('/dev/dri/card*');
+  });
+
+  test('should detect device GID and create matching group', () => {
+    const c = content();
+    expect(c).toContain("stat -c '%g'");
+    expect(c).toContain('getent group');
+    expect(c).toContain('groupadd');
+    expect(c).toContain('usermod -aG');
   });
 });
