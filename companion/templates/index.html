@@ -568,7 +568,7 @@
         async function cancelJob(jobId) {
             if (!await showConfirmModal('Cancel this job?')) return;
             try {
-                const res = await fetch(API_BASE + '/api/job/' + jobId, { method: 'DELETE', headers: apiHeaders() });
+                const res = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId), { method: 'DELETE', headers: apiHeaders() });
                 if (!res.ok) { showToast('Failed to cancel job', 'error'); }
             } catch { showToast('Failed to cancel job', 'error'); }
             refreshJobs();
