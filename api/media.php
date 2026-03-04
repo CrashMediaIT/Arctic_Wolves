@@ -233,16 +233,131 @@ if ($range_header) {
 }
 
 // ---------- Full request (non-range) ----------
+
+// Helper: common CORS + cache headers
+function _media_cors_headers() {
+    header('Access-Control-Allow-Origin: *');
+    header('Access-Control-Allow-Methods: GET, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization, X-API-Key, Accept, Range');
+    header('Access-Control-Expose-Headers: Content-Range, Accept-Ranges, Content-Length');
+}
+
+// Common MIME map shared by both streaming and buffered paths
+$mime_map = [
+    'jpg'  => 'image/jpeg',  'jpeg' => 'image/jpeg',  'png'  => 'image/png',
+    'gif'  => 'image/gif',   'webp' => 'image/webp',  'svg'  => 'image/svg+xml',
+    'mp4'  => 'video/mp4',   'webm' => 'video/webm',  'mov'  => 'video/quicktime',
+    'avi'  => 'video/x-msvideo', 'pdf' => 'application/pdf',
+    'json' => 'application/json', 'txt' => 'text/plain',
+    'm3u8' => 'application/vnd.apple.mpegurl', 'ts' => 'video/mp2t',
+];
+
+$m3u8_ext = strtolower(pathinfo($object_key_clean, PATHINFO_EXTENSION));
+
+// ── Streaming path for non-m3u8 files (e.g. .ts segments, images) ───────
+// Pipes S3 response directly to the client without buffering the entire body
+// in PHP memory. Reduces latency and memory usage for large HLS segments.
+if ($m3u8_ext !== 'm3u8') {
+    $guessed_ct = $mime_map[$m3u8_ext] ?? 'application/octet-stream';
+
+    $stream_resp_headers = [];
+    $stream_headers_sent = false;
+    $stream_error        = false;
+
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $curl_headers);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 300);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, false);
+
+    // Capture S3 response headers
+    curl_setopt($ch, CURLOPT_HEADERFUNCTION,
+        function ($ch, $header) use (&$stream_resp_headers) {
+            $len = strlen($header);
+            $parts = explode(':', $header, 2);
+            if (count($parts) === 2) {
+                $stream_resp_headers[strtolower(trim($parts[0]))] = trim($parts[1]);
+            }
+            return $len;
+        }
+    );
+
+    // Stream body chunks directly to the client
+    curl_setopt($ch, CURLOPT_WRITEFUNCTION,
+        function ($ch, $data) use (
+            &$stream_resp_headers, &$stream_headers_sent, &$stream_error,
+            $guessed_ct, $object_key_clean
+        ) {
+            if (!$stream_headers_sent) {
+                $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                if ($code === 404) {
+                    http_response_code(404);
+                    header('Content-Type: application/json');
+                    _media_cors_headers();
+                    echo json_encode(['error' => 'File not found']);
+                    $stream_error = true;
+                    return -1;
+                }
+                if ($code !== 200 && $code !== 0) {
+                    error_log("media.php stream proxy: RustFS returned HTTP $code for key=$object_key_clean");
+                    http_response_code(502);
+                    header('Content-Type: application/json');
+                    _media_cors_headers();
+                    echo json_encode(['error' => 'Storage error']);
+                    $stream_error = true;
+                    return -1;
+                }
+
+                // Determine content type from S3 or guess from extension
+                $ct = $stream_resp_headers['content-type'] ?? null;
+                if (empty($ct) || $ct === 'application/octet-stream') {
+                    $ct = $guessed_ct;
+                }
+
+                header('Content-Type: ' . $ct);
+                if (isset($stream_resp_headers['content-length'])) {
+                    header('Content-Length: ' . $stream_resp_headers['content-length']);
+                }
+                header('Accept-Ranges: bytes');
+                header('Cache-Control: public, max-age=86400');
+                header('X-Content-Type-Options: nosniff');
+                _media_cors_headers();
+
+                $stream_headers_sent = true;
+            }
+
+            echo $data;
+            if (ob_get_level()) ob_flush();
+            flush();
+            return strlen($data);
+        }
+    );
+
+    curl_exec($ch);
+    $curl_error = curl_error($ch);
+    curl_close($ch);
+
+    if (!$stream_headers_sent && !$stream_error) {
+        error_log("media.php stream proxy error for key=$object_key_clean: $curl_error");
+        http_response_code(502);
+        header('Content-Type: application/json');
+        _media_cors_headers();
+        echo json_encode(['error' => 'Storage connection error']);
+    }
+    exit;
+}
+
+// ── Buffered path for m3u8 playlists (needs URL rewriting) ──────────────
 $ch = curl_init($url);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, $curl_headers);
-// Matches existing RustFS storage pattern (self-signed certs in internal networks)
 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
 curl_setopt($ch, CURLOPT_TIMEOUT, 120);
 curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
 
-// Capture response headers for content-type
 $response_headers = [];
 curl_setopt($ch, CURLOPT_HEADERFUNCTION, function ($ch, $header) use (&$response_headers) {
     $len = strlen($header);
@@ -262,6 +377,7 @@ if (!empty($curl_error)) {
     error_log("media.php proxy error for key=$object_key_clean: $curl_error");
     http_response_code(502);
     header('Content-Type: application/json');
+    _media_cors_headers();
     echo json_encode(['error' => 'Storage connection error']);
     exit;
 }
@@ -269,6 +385,7 @@ if (!empty($curl_error)) {
 if ($http_code === 404) {
     http_response_code(404);
     header('Content-Type: application/json');
+    _media_cors_headers();
     echo json_encode(['error' => 'File not found']);
     exit;
 }
@@ -277,34 +394,9 @@ if ($http_code !== 200) {
     error_log("media.php proxy: RustFS returned HTTP $http_code for key=$object_key_clean");
     http_response_code(502);
     header('Content-Type: application/json');
+    _media_cors_headers();
     echo json_encode(['error' => 'Storage error']);
     exit;
-}
-
-// ── Determine content type ──────────────────────────────────────────────
-$content_type = $response_headers['content-type'] ?? null;
-
-if (empty($content_type) || $content_type === 'application/octet-stream') {
-    // Guess from extension
-    $ext = strtolower(pathinfo($object_key_clean, PATHINFO_EXTENSION));
-    $mime_map = [
-        'jpg'  => 'image/jpeg',
-        'jpeg' => 'image/jpeg',
-        'png'  => 'image/png',
-        'gif'  => 'image/gif',
-        'webp' => 'image/webp',
-        'svg'  => 'image/svg+xml',
-        'mp4'  => 'video/mp4',
-        'webm' => 'video/webm',
-        'mov'  => 'video/quicktime',
-        'avi'  => 'video/x-msvideo',
-        'pdf'  => 'application/pdf',
-        'json' => 'application/json',
-        'txt'  => 'text/plain',
-        'm3u8' => 'application/vnd.apple.mpegurl',
-        'ts'   => 'video/mp2t',
-    ];
-    $content_type = $mime_map[$ext] ?? 'application/octet-stream';
 }
 
 // ── Rewrite relative URLs in HLS playlists ──────────────────────────────
@@ -313,40 +405,31 @@ if (empty($content_type) || $content_type === 'application/octet-stream') {
 // browser/HLS.js would resolve those relatives against /api/ rather than the
 // S3 directory the manifest lives in.  Fix by rewriting every relative
 // reference to go back through this proxy.
-$m3u8_ext = strtolower(pathinfo($object_key_clean, PATHINFO_EXTENSION));
-if ($m3u8_ext === 'm3u8') {
-    $base_dir = dirname($object_key_clean);
-    $lines = explode("\n", $body);
-    $rewritten = [];
-    foreach ($lines as $line) {
-        $trimmed = trim($line);
-        if ($trimmed === '' || (isset($trimmed[0]) && $trimmed[0] === '#')) {
-            $rewritten[] = $line;
-            continue;
-        }
-        if (preg_match('#^https?://#', $trimmed)) {
-            $rewritten[] = $line;
-            continue;
-        }
-        // Relative reference — resolve against the playlist's S3 directory
-        // and wrap in a proxy URL relative to the current api/ directory.
-        $resolved_key = $base_dir . '/' . $trimmed;
-        $rewritten[] = 'media.php?key=' . rawurlencode($resolved_key);
+$base_dir = dirname($object_key_clean);
+$lines = explode("\n", $body);
+$rewritten = [];
+foreach ($lines as $line) {
+    $trimmed = trim($line);
+    if ($trimmed === '' || (isset($trimmed[0]) && $trimmed[0] === '#')) {
+        $rewritten[] = $line;
+        continue;
     }
-    $body = implode("\n", $rewritten);
+    if (preg_match('#^https?://#', $trimmed)) {
+        $rewritten[] = $line;
+        continue;
+    }
+    $resolved_key = $base_dir . '/' . $trimmed;
+    $rewritten[] = 'media.php?key=' . rawurlencode($resolved_key);
 }
+$body = implode("\n", $rewritten);
 
 // ── Send response ───────────────────────────────────────────────────────
+$content_type = 'application/vnd.apple.mpegurl';
 header('Content-Type: ' . $content_type);
 header('Content-Length: ' . strlen($body));
 header('Accept-Ranges: bytes');
-header('Cache-Control: public, max-age=86400'); // Cache for 24 hours
+header('Cache-Control: public, max-age=86400');
 header('X-Content-Type-Options: nosniff');
-
-// Allow CORS for same-site subdomains
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization, X-API-Key, Accept, Range');
-header('Access-Control-Expose-Headers: Content-Range, Accept-Ranges, Content-Length');
+_media_cors_headers();
 
 echo $body;

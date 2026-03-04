@@ -788,20 +788,42 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
         log('Loading video player: ' + hlsUrl);
         playerInfo.textContent = 'HLS manifest: ' + hlsUrl;
 
+        var hlsInstance = null;
+
         // Use the shared HLS.js player (loaded by dashboard.php) for .m3u8 URLs
         if (typeof window.awInitHlsPlayer === 'function') {
-            window.awInitHlsPlayer(videoPlayer, hlsUrl);
+            hlsInstance = window.awInitHlsPlayer(videoPlayer, hlsUrl);
         } else {
             // Fallback: native HLS (Safari) or direct URL
             videoPlayer.src = hlsUrl;
             videoPlayer.load();
         }
 
-        videoPlayer.addEventListener('error', function onErr() {
-            videoPlayer.removeEventListener('error', onErr);
-            logWarn('Video player error — the transcoded file may not be available yet or format unsupported.');
-            playerInfo.textContent = 'Playback error. HLS URL: ' + hlsUrl;
-        });
+        if (hlsInstance && typeof Hls !== 'undefined') {
+            // When HLS.js is active, use its error events instead of the native
+            // video error event.  The native event fires when HLS.js falls back
+            // to setting video.src = m3u8 which non-Safari browsers can't play,
+            // creating a misleading "Playback error" for transient issues.
+            hlsInstance.on(Hls.Events.ERROR, function(_event, data) {
+                if (data.fatal) {
+                    logWarn('HLS fatal error: type=' + data.type + ' details=' + data.details);
+                    if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+                        log('Retrying HLS load after network error…');
+                    } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+                        log('Recovering from media error…');
+                    } else {
+                        playerInfo.textContent = 'Playback error (' + data.details + '). HLS URL: ' + hlsUrl;
+                    }
+                }
+            });
+        } else {
+            // No HLS.js — use native video error
+            videoPlayer.addEventListener('error', function onErr() {
+                videoPlayer.removeEventListener('error', onErr);
+                logWarn('Video player error — the transcoded file may not be available yet or format unsupported.');
+                playerInfo.textContent = 'Playback error. HLS URL: ' + hlsUrl;
+            });
+        }
 
         videoPlayer.addEventListener('loadedmetadata', function onMeta() {
             videoPlayer.removeEventListener('loadedmetadata', onMeta);
