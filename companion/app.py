@@ -1646,7 +1646,7 @@ def health():
 
     hw = _detect_hw_accel()
 
-    active_jobs = sum(1 for j in jobs.values() if j["status"] in ("queued", "running"))
+    active_jobs = sum(1 for j in jobs.values() if j["status"] in ("queued", "running", "downloading", "transcoding", "uploading"))
 
     # Check S3/RustFS connectivity
     s3_configured = bool(S3_ENDPOINT and S3_ACCESS_KEY and S3_SECRET_KEY)

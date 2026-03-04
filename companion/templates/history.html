@@ -216,6 +216,8 @@
             refreshJobs();
         }
 
+        var expandedJobs = {};
+
         async function refreshJobs() {
             try {
                 const res = await fetch(API_BASE + '/api/jobs', { headers: apiHeaders() });
@@ -230,6 +232,12 @@
                     jobsList = jobsList.filter(function(j) { return ['queued', 'running', 'downloading', 'transcoding', 'uploading'].indexOf(j.status) !== -1; });
                 }
 
+                // Remember which detail rows are currently expanded
+                var wasExpanded = {};
+                Object.keys(expandedJobs).forEach(function(id) {
+                    if (expandedJobs[id]) wasExpanded[id] = true;
+                });
+
                 const tbody = document.getElementById('jobs-body');
                 if (!jobsList.length) {
                     tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No jobs found</td></tr>';
@@ -241,19 +249,61 @@
                     var shortId = (j.id || '').substring(0, 8);
                     var safeId = (j.id || '').replace(/[^a-zA-Z0-9\-]/g, '');
                     var eid = 'job-detail-' + safeId;
+                    var isOpen = !!wasExpanded[safeId];
                     return '<tr class="job-row" data-job-id="' + safeId + '" onclick="toggleJobLog(this.dataset.jobId)">' +
                         '<td style="font-family:monospace;font-size:11px;">' + shortId + '…</td>' +
-                        '<td>' + (j.description || '—') + '</td>' +
+                        '<td>' + escapeHtml(j.description || '—') + '</td>' +
                         '<td><span class="job-status ' + j.status + '">' + j.status + '</span></td>' +
                         '<td>' + created + '</td>' +
                         '<td>' + duration + '</td>' +
                         '</tr>' +
-                        '<tr class="job-detail-row" id="' + eid + '" style="display:none;">' +
-                        '<td colspan="5"><div class="job-log-panel">Loading…</div></td></tr>';
+                        '<tr class="job-detail-row" id="' + eid + '" style="display:' + (isOpen ? '' : 'none') + ';">' +
+                        '<td colspan="5"><div class="job-log-panel">' + (isOpen ? 'Loading…' : '') + '</div></td></tr>';
                 }).join('');
+
+                // Re-fetch logs for any previously expanded rows
+                Object.keys(wasExpanded).forEach(function(id) {
+                    _fetchJobLog(id);
+                });
             } catch (e) {
                 document.getElementById('jobs-body').innerHTML = '<tr><td colspan="5" class="empty-state">Failed to load jobs</td></tr>';
             }
+        }
+
+        async function _fetchJobLog(jobId) {
+            var detailRow = document.getElementById('job-detail-' + jobId);
+            if (!detailRow) return;
+            var panel = detailRow.querySelector('.job-log-panel');
+            try {
+                var res = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId), { headers: apiHeaders() });
+                if (!res.ok) { panel.innerHTML = '<span class="log-empty">Failed to load job details</span>'; return; }
+                var job = await res.json();
+                panel.innerHTML = _renderJobLog(job);
+            } catch (e) {
+                panel.innerHTML = '<span class="log-empty">Failed to load job details</span>';
+            }
+        }
+
+        function _renderJobLog(job) {
+            var html = '<div class="log-meta">';
+            html += '<span><b>Job:</b> ' + escapeHtml(job.id || '—') + '</span>';
+            html += '<span><b>Status:</b> ' + escapeHtml(job.status || '—') + '</span>';
+            if (job.error) html += '<span><b>Error:</b> ' + escapeHtml(job.error) + '</span>';
+            html += '</div>';
+            var log = job.log || [];
+            if (!log.length) {
+                html += '<span class="log-empty">No log entries</span>';
+            } else {
+                html += log.map(function(entry) {
+                    var ts = entry.ts ? new Date(entry.ts * 1000).toLocaleTimeString() : '';
+                    var lvl = entry.level || 'info';
+                    return '<div class="log-entry ' + lvl + '">' +
+                        '<span style="color:var(--text-dim);margin-right:8px;">' + ts + '</span>' +
+                        '<span style="margin-right:8px;">[' + lvl.toUpperCase() + ']</span>' +
+                        escapeHtml(entry.msg || '') + '</div>';
+                }).join('');
+            }
+            return html;
         }
 
         async function toggleJobLog(jobId) {
@@ -261,37 +311,14 @@
             if (!detailRow) return;
             if (detailRow.style.display !== 'none') {
                 detailRow.style.display = 'none';
+                expandedJobs[jobId] = false;
                 return;
             }
             detailRow.style.display = '';
+            expandedJobs[jobId] = true;
             var panel = detailRow.querySelector('.job-log-panel');
             panel.innerHTML = 'Loading…';
-            try {
-                var res = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId), { headers: apiHeaders() });
-                if (!res.ok) { panel.innerHTML = '<span class="log-empty">Failed to load job details</span>'; return; }
-                var job = await res.json();
-                var html = '<div class="log-meta">';
-                html += '<span><b>Job:</b> ' + (job.id || '—') + '</span>';
-                html += '<span><b>Status:</b> ' + (job.status || '—') + '</span>';
-                if (job.error) html += '<span><b>Error:</b> ' + escapeHtml(job.error) + '</span>';
-                html += '</div>';
-                var log = job.log || [];
-                if (!log.length) {
-                    html += '<span class="log-empty">No log entries</span>';
-                } else {
-                    html += log.map(function(entry) {
-                        var ts = entry.ts ? new Date(entry.ts * 1000).toLocaleTimeString() : '';
-                        var lvl = entry.level || 'info';
-                        return '<div class="log-entry ' + lvl + '">' +
-                            '<span style="color:var(--text-dim);margin-right:8px;">' + ts + '</span>' +
-                            '<span style="margin-right:8px;">[' + lvl.toUpperCase() + ']</span>' +
-                            escapeHtml(entry.msg || '') + '</div>';
-                    }).join('');
-                }
-                panel.innerHTML = html;
-            } catch (e) {
-                panel.innerHTML = '<span class="log-empty">Failed to load job details</span>';
-            }
+            _fetchJobLog(jobId);
         }
 
         function escapeHtml(str) {
