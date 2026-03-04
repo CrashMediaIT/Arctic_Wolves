@@ -145,11 +145,11 @@ test.describe('Video player big play button', () => {
     expect(bgRule).toContain('stroke');
   });
 
-  test('should use --primary theme color for big play background', () => {
+  test('should use primary theme color for big play background', () => {
     const css = cssContent();
     const bgRule = css.substring(css.indexOf('.aw-big-play-bg'), css.indexOf('.aw-big-play-bg') + 200);
-    // The background should use the brand primary color for visibility
-    expect(bgRule).toContain('var(--primary');
+    // The background should use the brand primary purple color (107, 70, 193) for visibility
+    expect(bgRule).toContain('107, 70, 193');
   });
 });
 
