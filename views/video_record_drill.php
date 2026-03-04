@@ -238,6 +238,31 @@ try {
             <button type="button" class="btn btn-primary" id="uploadBtn">
                 <i class="fas fa-cloud-upload-alt"></i> Upload to Cloud
             </button>
+            <button type="button" class="btn btn-secondary" id="saveToDeviceBtn" title="Save video offline for later upload">
+                <i class="fas fa-hard-drive"></i> Save to Device
+            </button>
+        </div>
+        <!-- Storage Selection (shown when saving to device) -->
+        <div id="storageSelectionPanel" style="display:none;" class="storage-selection-panel">
+            <h4><i class="fas fa-hdd"></i> Select Storage Location</h4>
+            <div class="storage-options">
+                <button type="button" class="storage-option-btn active" data-storage="internal" id="storageInternalBtn">
+                    <i class="fas fa-mobile-alt"></i>
+                    <span>Internal Storage</span>
+                    <small>Save to browser (IndexedDB)</small>
+                </button>
+                <button type="button" class="storage-option-btn" data-storage="external" id="storageExternalBtn">
+                    <i class="fas fa-sd-card"></i>
+                    <span>External Drive / SD Card</span>
+                    <small>Save to removable storage</small>
+                </button>
+            </div>
+            <div class="storage-confirm-actions">
+                <button type="button" class="btn btn-secondary" id="storageCancelBtn">Cancel</button>
+                <button type="button" class="btn btn-primary" id="storageConfirmBtn">
+                    <i class="fas fa-save"></i> Save Recording
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -789,6 +814,33 @@ try {
         flex-direction: column;
     }
 }
+
+/* Storage Selection Panel */
+.storage-selection-panel { margin-top: 16px; padding: 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; }
+.storage-selection-panel h4 { font-size: 15px; font-weight: 700; color: var(--text-white); display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.storage-selection-panel h4 i { color: var(--primary); }
+.storage-options { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+.storage-option-btn { flex: 1; min-width: 160px; padding: 16px; background: var(--bg-main); border: 2px solid var(--border); border-radius: 12px; color: var(--text-white); cursor: pointer; text-align: center; transition: all 0.2s ease; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.storage-option-btn i { font-size: 24px; color: var(--text-dim); }
+.storage-option-btn span { font-size: 13px; font-weight: 600; }
+.storage-option-btn small { font-size: 11px; color: var(--text-dim); }
+.storage-option-btn:hover { border-color: var(--primary); }
+.storage-option-btn.active { border-color: var(--primary); background: rgba(107, 70, 193, 0.1); }
+.storage-option-btn.active i { color: var(--primary); }
+.storage-confirm-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* Offline upload banner */
+.offline-upload-banner { background: linear-gradient(135deg, rgba(107, 70, 193, 0.12), rgba(59, 130, 246, 0.08)); border: 1px solid rgba(107, 70, 193, 0.3); border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; }
+.offline-upload-banner-content { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.offline-upload-banner-icon { font-size: 24px; color: var(--primary); }
+.offline-upload-banner-text { flex: 1; }
+.offline-upload-banner-text strong { display: block; color: var(--text-white); font-size: 14px; }
+.offline-upload-banner-text span { color: var(--text-dim); font-size: 13px; }
+.offline-upload-banner-actions { display: flex; gap: 8px; }
+.offline-upload-progress-section { margin-top: 12px; }
+.offline-upload-progress-header { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; color: var(--text-white); }
+.offline-upload-progress-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+.offline-upload-progress-footer span { font-size: 12px; color: var(--text-dim); }
 </style>
 
 <script>
@@ -1508,5 +1560,105 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         return tryUpload();
     }
+
+    // ── Save to Device (Offline) ────────────────────────────────────
+    var saveToDeviceBtn = document.getElementById('saveToDeviceBtn');
+    var storagePanel = document.getElementById('storageSelectionPanel');
+    var storageCancelBtn = document.getElementById('storageCancelBtn');
+    var storageConfirmBtn = document.getElementById('storageConfirmBtn');
+    var storageInternalBtn = document.getElementById('storageInternalBtn');
+    var storageExternalBtn = document.getElementById('storageExternalBtn');
+    var _selectedStorage = 'internal';
+    var _externalDirHandle = null;
+
+    // Hide external option if File System Access API not available
+    if (storageExternalBtn && typeof window.showDirectoryPicker !== 'function') {
+        storageExternalBtn.style.display = 'none';
+    }
+
+    document.querySelectorAll('.storage-option-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.storage-option-btn').forEach(function(b) { b.classList.remove('active'); });
+            this.classList.add('active');
+            _selectedStorage = this.dataset.storage;
+        });
+    });
+
+    if (saveToDeviceBtn) saveToDeviceBtn.addEventListener('click', function() {
+        if (recordedChunks.length === 0) return;
+        storagePanel.style.display = 'block';
+    });
+
+    if (storageCancelBtn) storageCancelBtn.addEventListener('click', function() {
+        storagePanel.style.display = 'none';
+    });
+
+    if (storageConfirmBtn) storageConfirmBtn.addEventListener('click', function() {
+        if (recordedChunks.length === 0) return;
+        var blob = new Blob(recordedChunks, { type: 'video/webm' });
+        var sessionId = document.getElementById('sessionSelect').value;
+        var drillId = document.getElementById('drillSelect').value;
+        var athleteId = document.getElementById('athleteSelect').value;
+        var repNumber = document.getElementById('repNumber').value;
+        var drillTitle = document.getElementById('drillSelect').selectedOptions[0]?.dataset.title || '';
+        var athleteName = document.getElementById('athleteSelect').selectedOptions[0]?.dataset.name || '';
+
+        var metadata = {
+            upload_type: 'drill_video',
+            user_id: <?= json_encode($user_id) ?>,
+            user_role: <?= json_encode($user_role) ?>,
+            title: drillTitle + ' - ' + athleteName + ' (Rep ' + repNumber + ')',
+            description: 'Drill video recorded offline',
+            video_category: 'drill',
+            session_id: sessionId || null,
+            drill_id: drillId || null,
+            athlete_id: athleteId || null,
+            coach_id: <?= json_encode($user_id) ?>,
+            rep_number: parseInt(repNumber) || 1,
+            original_filename: 'drill_recording.webm'
+        };
+
+        storageConfirmBtn.disabled = true;
+        storageConfirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
+
+        var savePromise;
+        if (_selectedStorage === 'external' && typeof AwOfflineQueue !== 'undefined') {
+            savePromise = AwOfflineQueue.pickStorageDirectory().then(function(dirHandle) {
+                return AwOfflineQueue.saveToExternalStorage(dirHandle, blob, metadata);
+            });
+        } else if (typeof AwOfflineQueue !== 'undefined') {
+            savePromise = AwOfflineQueue.enqueueVideo(blob, metadata);
+        } else {
+            savePromise = Promise.reject(new Error('Offline queue not available'));
+        }
+
+        savePromise.then(function() {
+            storagePanel.style.display = 'none';
+            storageConfirmBtn.disabled = false;
+            storageConfirmBtn.innerHTML = '<i class="fas fa-save"></i> Save Recording';
+            if (typeof showToast === 'function') {
+                showToast('Video saved to ' + (_selectedStorage === 'external' ? 'external device' : 'device storage') + '. It will upload when you\'re back online.', 'success');
+            }
+            // Auto-increment rep number
+            var repInput = document.getElementById('repNumber');
+            if (repInput) repInput.value = parseInt(repInput.value || 1) + 1;
+            // Reset for next recording
+            recordedChunks = [];
+            document.getElementById('recordedVideoContainer').style.display = 'none';
+            saveVideoBtn.style.display = 'none';
+        }).catch(function(err) {
+            storageConfirmBtn.disabled = false;
+            storageConfirmBtn.innerHTML = '<i class="fas fa-save"></i> Save Recording';
+            if (err.name !== 'AbortError' && typeof showToast === 'function') {
+                showToast('Failed to save: ' + err.message, 'error');
+            }
+        });
+    });
+
+    // Initialize offline queue connectivity monitor
+    if (typeof AwOfflineQueue !== 'undefined') {
+        AwOfflineQueue.initConnectivityMonitor();
+    }
 });
 </script>
+<script src="js/offline-upload-queue.js"></script>

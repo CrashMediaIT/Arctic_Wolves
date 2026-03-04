@@ -78,7 +78,19 @@ try {
         case 'abort_multipart':
             handleMultipartAbort();
             break;
-            
+
+        case 'get_offline_queue':
+            handleGetOfflineQueue();
+            break;
+
+        case 'register_offline_queue':
+            handleRegisterOfflineQueue();
+            break;
+
+        case 'update_offline_queue_status':
+            handleUpdateOfflineQueueStatus();
+            break;
+
         case 'update_video':
             handleVideoUpdate();
             break;
@@ -1057,6 +1069,182 @@ function handleMultipartAbort() {
     signAndExecMultipartS3('DELETE', $cfg, $objectKey, $qs, '');
 
     echo json_encode(['success' => true]);
+    exit;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  Offline video queue handlers
+// ═══════════════════════════════════════════════════════════════════════
+
+/**
+ * Get the current user's offline video queue items.
+ */
+function handleGetOfflineQueue() {
+    global $pdo, $user_id;
+    header('Content-Type: application/json');
+
+    $status = $_GET['status'] ?? null;
+    $sql = "SELECT id, upload_type, title, description, video_category, original_filename,
+                   file_size, athlete_id, coach_id, session_id, drill_id, rep_number,
+                   session_date, drill_type, drill_name, rating, game_date, team_played_on,
+                   opponent_team, camera_angle, game_id, team_id, status, upload_progress,
+                   error_message, video_id, source_id, client_queue_id, recorded_at, queued_at, uploaded_at
+            FROM offline_video_queue WHERE user_id = ?";
+    $params = [$user_id];
+    if ($status) {
+        $sql .= " AND status = ?";
+        $params[] = $status;
+    }
+    $sql .= " ORDER BY recorded_at ASC";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    echo json_encode(['success' => true, 'items' => $items]);
+    exit;
+}
+
+/**
+ * Register an offline-recorded video in the server queue (called when device
+ * comes online and wants to sync its queue before uploading).
+ */
+function handleRegisterOfflineQueue() {
+    global $pdo, $user_id, $user_role;
+    header('Content-Type: application/json');
+
+    $client_queue_id = trim($_POST['client_queue_id'] ?? '');
+    $upload_type     = $_POST['upload_type'] ?? 'athlete_video';
+
+    if (empty($client_queue_id)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'client_queue_id is required']);
+        exit;
+    }
+
+    $allowed_types = ['athlete_video', 'coach_video', 'drill_video', 'video_source'];
+    if (!in_array($upload_type, $allowed_types)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Invalid upload type']);
+        exit;
+    }
+
+    // Check for duplicate
+    $dup = $pdo->prepare("SELECT id FROM offline_video_queue WHERE client_queue_id = ?");
+    $dup->execute([$client_queue_id]);
+    if ($dup->fetch()) {
+        echo json_encode(['success' => true, 'duplicate' => true]);
+        exit;
+    }
+
+    $stmt = $pdo->prepare("
+        INSERT INTO offline_video_queue (
+            user_id, user_role, upload_type, title, description, video_category,
+            original_filename, file_size, content_type,
+            athlete_id, coach_id, session_id, drill_id, rep_number,
+            session_date, drill_type, drill_name, rating,
+            game_date, team_played_on, opponent_team,
+            camera_angle, game_id, team_id,
+            client_queue_id, recorded_at, status
+        ) VALUES (
+            ?, ?, ?, ?, ?, ?,
+            ?, ?, ?,
+            ?, ?, ?, ?, ?,
+            ?, ?, ?, ?,
+            ?, ?, ?,
+            ?, ?, ?,
+            ?, ?, 'pending'
+        )
+    ");
+    $stmt->execute([
+        $user_id,
+        $user_role,
+        $upload_type,
+        trim($_POST['title'] ?? ''),
+        $_POST['description'] ?? '',
+        $_POST['video_category'] ?? 'drill',
+        $_POST['original_filename'] ?? '',
+        filter_input(INPUT_POST, 'file_size', FILTER_VALIDATE_INT) ?: 0,
+        $_POST['content_type'] ?? 'video/mp4',
+        filter_input(INPUT_POST, 'athlete_id', FILTER_VALIDATE_INT),
+        filter_input(INPUT_POST, 'coach_id', FILTER_VALIDATE_INT),
+        filter_input(INPUT_POST, 'session_id', FILTER_VALIDATE_INT),
+        filter_input(INPUT_POST, 'drill_id', FILTER_VALIDATE_INT),
+        filter_input(INPUT_POST, 'rep_number', FILTER_VALIDATE_INT) ?: 1,
+        $_POST['session_date'] ?? null,
+        $_POST['drill_type'] ?? null,
+        $_POST['drill_name'] ?? null,
+        filter_input(INPUT_POST, 'rating', FILTER_VALIDATE_INT),
+        $_POST['game_date'] ?? null,
+        trim($_POST['team_played_on'] ?? ''),
+        trim($_POST['opponent_team'] ?? ''),
+        $_POST['camera_angle'] ?? null,
+        filter_input(INPUT_POST, 'game_id', FILTER_VALIDATE_INT),
+        filter_input(INPUT_POST, 'team_id', FILTER_VALIDATE_INT),
+        $client_queue_id,
+        $_POST['recorded_at'] ?? date('Y-m-d H:i:s'),
+    ]);
+
+    $queue_id = $pdo->lastInsertId();
+    Auditor::log($pdo, $user_id, 'create', 'offline_video_queue', $queue_id, ['action' => 'Offline video registered']);
+
+    echo json_encode(['success' => true, 'queue_id' => $queue_id]);
+    exit;
+}
+
+/**
+ * Update the status of an offline queue item (called during/after upload).
+ */
+function handleUpdateOfflineQueueStatus() {
+    global $pdo, $user_id;
+    header('Content-Type: application/json');
+
+    $client_queue_id = trim($_POST['client_queue_id'] ?? '');
+    $new_status      = $_POST['status'] ?? '';
+    $allowed_statuses = ['pending', 'uploading', 'uploaded', 'failed'];
+
+    if (empty($client_queue_id) || !in_array($new_status, $allowed_statuses)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'client_queue_id and valid status required']);
+        exit;
+    }
+
+    $updates = ['status' => $new_status];
+    $setClauses = ['status = ?'];
+    $params = [$new_status];
+
+    if (isset($_POST['upload_progress'])) {
+        $setClauses[] = 'upload_progress = ?';
+        $params[] = filter_input(INPUT_POST, 'upload_progress', FILTER_VALIDATE_INT) ?: 0;
+    }
+    if (isset($_POST['error_message'])) {
+        $setClauses[] = 'error_message = ?';
+        $params[] = substr($_POST['error_message'], 0, 1000);
+    }
+    if (isset($_POST['video_id'])) {
+        $setClauses[] = 'video_id = ?';
+        $params[] = filter_input(INPUT_POST, 'video_id', FILTER_VALIDATE_INT);
+    }
+    if (isset($_POST['source_id'])) {
+        $setClauses[] = 'source_id = ?';
+        $params[] = filter_input(INPUT_POST, 'source_id', FILTER_VALIDATE_INT);
+    }
+    if (isset($_POST['object_key'])) {
+        $setClauses[] = 'object_key = ?';
+        $params[] = substr($_POST['object_key'], 0, 500);
+    }
+    if ($new_status === 'uploaded') {
+        $setClauses[] = 'uploaded_at = NOW()';
+    }
+
+    $params[] = $client_queue_id;
+    $params[] = $user_id;
+
+    $sql = "UPDATE offline_video_queue SET " . implode(', ', $setClauses)
+         . " WHERE client_queue_id = ? AND user_id = ?";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+
+    echo json_encode(['success' => true, 'updated' => $stmt->rowCount()]);
     exit;
 }
 

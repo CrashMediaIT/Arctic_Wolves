@@ -795,6 +795,254 @@
         });
     }
 
+    // ─── External Storage (File System Access API) ────────────────
+
+    /**
+     * Metadata version for sidecar JSON files.  When the sidecar format
+     * changes, bump this so the ingest reader can handle older files.
+     */
+    var SIDECAR_VERSION = 1;
+
+    /**
+     * Check whether the File System Access API is available.
+     * Required for saving to / reading from external storage.
+     */
+    function isFileSystemAccessSupported() {
+        return typeof window.showDirectoryPicker === 'function';
+    }
+
+    /**
+     * Prompt the user to select a directory on any mounted drive
+     * (internal storage, SD card, USB drive).
+     * @returns {Promise<FileSystemDirectoryHandle>}
+     */
+    function pickStorageDirectory() {
+        if (!isFileSystemAccessSupported()) {
+            return Promise.reject(new Error('File System Access API not supported in this browser'));
+        }
+        return window.showDirectoryPicker({
+            mode: 'readwrite',
+            startIn: 'documents'
+        });
+    }
+
+    /**
+     * Save a video + metadata sidecar to an external directory.
+     * Creates an "ArcticWolves_Recordings" sub-folder so ingest knows
+     * what to scan.  Each video is saved with a unique filename and a
+     * matching .json sidecar that carries all the routing metadata.
+     *
+     * @param {FileSystemDirectoryHandle} dirHandle  Root of the chosen drive
+     * @param {Blob}   blob      The video blob
+     * @param {Object} metadata  Same metadata object used for enqueueVideo()
+     * @returns {Promise<{videoName: string, metaName: string}>}
+     */
+    function saveToExternalStorage(dirHandle, blob, metadata) {
+        var folderName = 'ArcticWolves_Recordings';
+        var id = _generateId();
+        var ext = _extFromMime(blob.type);
+        var videoName = (metadata.title || 'recording').replace(/[^a-zA-Z0-9_\-\s]/g, '').replace(/\s+/g, '_') + '_' + id + '.' + ext;
+        var metaName  = videoName + '.meta.json';
+
+        var sidecar = {
+            version: SIDECAR_VERSION,
+            id: id,
+            recorded_at: new Date().toISOString(),
+            file_size: blob.size,
+            content_type: blob.type || 'video/webm',
+            original_filename: videoName,
+            upload_type: metadata.upload_type || 'athlete_video',
+            user_id: metadata.user_id,
+            user_role: metadata.user_role,
+            title: metadata.title || '',
+            description: metadata.description || '',
+            video_category: metadata.video_category || 'drill',
+            athlete_id: metadata.athlete_id || null,
+            coach_id: metadata.coach_id || null,
+            session_id: metadata.session_id || null,
+            drill_id: metadata.drill_id || null,
+            rep_number: metadata.rep_number || 1,
+            session_date: metadata.session_date || null,
+            drill_type: metadata.drill_type || null,
+            drill_name: metadata.drill_name || null,
+            rating: metadata.rating || null,
+            game_date: metadata.game_date || null,
+            team_played_on: metadata.team_played_on || null,
+            opponent_team: metadata.opponent_team || null,
+            camera_angle: metadata.camera_angle || null,
+            game_id: metadata.game_id || null,
+            team_id: metadata.team_id || null
+        };
+
+        var subDir;
+        return dirHandle.getDirectoryHandle(folderName, { create: true })
+            .then(function(dir) {
+                subDir = dir;
+                return subDir.getFileHandle(videoName, { create: true });
+            })
+            .then(function(fileHandle) {
+                return fileHandle.createWritable();
+            })
+            .then(function(writable) {
+                return writable.write(blob).then(function() { return writable.close(); });
+            })
+            .then(function() {
+                return subDir.getFileHandle(metaName, { create: true });
+            })
+            .then(function(metaHandle) {
+                return metaHandle.createWritable();
+            })
+            .then(function(writable) {
+                var json = JSON.stringify(sidecar, null, 2);
+                return writable.write(json).then(function() { return writable.close(); });
+            })
+            .then(function() {
+                return { videoName: videoName, metaName: metaName };
+            });
+    }
+
+    function _extFromMime(mime) {
+        var map = {
+            'video/mp4': 'mp4', 'video/webm': 'webm', 'video/quicktime': 'mov',
+            'video/x-matroska': 'mkv', 'video/x-msvideo': 'avi'
+        };
+        return map[mime] || 'mp4';
+    }
+
+    // ─── Ingest: scan external drive for videos + sidecars ─────────
+
+    /**
+     * Scan a directory (from File System Access picker) for
+     * ArcticWolves_Recordings and return an array of ingestable items.
+     * Each item has { metadata, videoFileHandle }.
+     *
+     * @param {FileSystemDirectoryHandle} dirHandle
+     * @returns {Promise<Array<{metadata: Object, videoFileHandle: FileSystemFileHandle}>>}
+     */
+    function scanForIngest(dirHandle) {
+        return dirHandle.getDirectoryHandle('ArcticWolves_Recordings', { create: false })
+            .then(function(subDir) {
+                return _readAllEntries(subDir);
+            })
+            .then(function(entries) {
+                // Build a map of .meta.json files and their companion video files
+                var metaFiles = {};
+                var videoFiles = {};
+
+                entries.forEach(function(entry) {
+                    if (entry.name.endsWith('.meta.json')) {
+                        // Key is the video filename (strip .meta.json)
+                        var videoKey = entry.name.replace('.meta.json', '');
+                        metaFiles[videoKey] = entry;
+                    } else if (_isVideoFile(entry.name)) {
+                        videoFiles[entry.name] = entry;
+                    }
+                });
+
+                // Match pairs
+                var pairs = [];
+                var pairPromises = [];
+
+                Object.keys(metaFiles).forEach(function(videoKey) {
+                    if (videoFiles[videoKey]) {
+                        pairPromises.push(
+                            metaFiles[videoKey].getFile()
+                                .then(function(file) { return file.text(); })
+                                .then(function(json) {
+                                    var metadata = JSON.parse(json);
+                                    pairs.push({
+                                        metadata: metadata,
+                                        videoFileHandle: videoFiles[videoKey],
+                                        metaFileHandle: metaFiles[videoKey]
+                                    });
+                                })
+                                .catch(function() { /* skip corrupt sidecar */ })
+                        );
+                    }
+                });
+
+                return Promise.all(pairPromises).then(function() {
+                    pairs.sort(function(a, b) {
+                        return new Date(a.metadata.recorded_at || 0) - new Date(b.metadata.recorded_at || 0);
+                    });
+                    return pairs;
+                });
+            })
+            .catch(function(err) {
+                if (err.name === 'NotFoundError') return [];
+                throw err;
+            });
+    }
+
+    function _readAllEntries(dirHandle) {
+        var entries = [];
+        var iter = dirHandle.values();
+
+        function readNext() {
+            return iter.next().then(function(result) {
+                if (result.done) return entries;
+                if (result.value.kind === 'file') {
+                    entries.push(result.value);
+                }
+                return readNext();
+            });
+        }
+        return readNext();
+    }
+
+    function _isVideoFile(name) {
+        return /\.(mp4|mkv|mov|avi|webm)$/i.test(name);
+    }
+
+    /**
+     * Ingest videos from scanned pairs — enqueue each into IndexedDB
+     * for upload via the standard queue, then optionally delete from device.
+     *
+     * @param {Array}  pairs            From scanForIngest()
+     * @param {Object} opts
+     * @param {boolean} opts.deleteAfterIngest  Remove files from external drive after enqueue
+     * @param {FileSystemDirectoryHandle} opts.dirHandle  Root directory handle
+     * @param {Function} [opts.onProgress]  (index, total, item)
+     * @returns {Promise<{ingested: number, failed: number}>}
+     */
+    function ingestFromDevice(pairs, opts) {
+        var stats = { ingested: 0, failed: 0 };
+        var index = 0;
+
+        function processNext() {
+            if (index >= pairs.length) return Promise.resolve(stats);
+            var pair = pairs[index];
+            if (opts.onProgress) opts.onProgress(index, pairs.length, pair.metadata);
+
+            return pair.videoFileHandle.getFile()
+                .then(function(videoFile) {
+                    return enqueueVideo(videoFile, pair.metadata);
+                })
+                .then(function() {
+                    stats.ingested++;
+                    // If requested, delete files from external drive
+                    if (opts.deleteAfterIngest && opts.dirHandle) {
+                        return opts.dirHandle.getDirectoryHandle('ArcticWolves_Recordings', { create: false })
+                            .then(function(subDir) {
+                                return subDir.removeEntry(pair.videoFileHandle.name)
+                                    .then(function() { return subDir.removeEntry(pair.metaFileHandle.name); })
+                                    .catch(function() { /* ignore delete errors */ });
+                            })
+                            .catch(function() {});
+                    }
+                })
+                .catch(function() {
+                    stats.failed++;
+                })
+                .then(function() {
+                    index++;
+                    return processNext();
+                });
+        }
+
+        return processNext();
+    }
+
     // ─── Expose public API ──────────────────────────────────────────
 
     window.AwOfflineQueue = {
@@ -806,7 +1054,14 @@
         processQueue: processQueue,
         cancelQueue: cancelQueue,
         isUploading: isUploading,
-        initConnectivityMonitor: initConnectivityMonitor
+        initConnectivityMonitor: initConnectivityMonitor,
+        // External storage
+        isFileSystemAccessSupported: isFileSystemAccessSupported,
+        pickStorageDirectory: pickStorageDirectory,
+        saveToExternalStorage: saveToExternalStorage,
+        // Ingest from external device
+        scanForIngest: scanForIngest,
+        ingestFromDevice: ingestFromDevice
     };
 
 })(window);
