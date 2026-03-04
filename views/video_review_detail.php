@@ -53,7 +53,8 @@ foreach (['athlete_first_name', 'athlete_last_name', 'coach_first_name', 'coach_
     if (!empty($video[$f])) $video[$f] = FieldEncryption::decrypt($video[$f]);
 }
 
-$video_url = resolveRustfsUrl($pdo, $video['video_url'] ?? '') ?? '';
+$video_url = resolveRustfsUrl($pdo, getPreferredVideoUrl($video)) ?? '';
+$thumbnail_url = resolveRustfsUrl($pdo, $video['thumbnail_url'] ?? '') ?? '';
 $csrf_token = $_SESSION['csrf_token'] ?? '';
 $is_coach = $isAnyCoach;
 $is_owner = (int)$video['athlete_id'] === (int)$user_id;
@@ -69,8 +70,8 @@ $coach_name   = trim(($video['coach_first_name'] ?? '') . ' ' . ($video['coach_l
 
 <div style="max-width: 1000px; margin: 0 auto; padding: 0 16px;">
     <!-- Video Player -->
-    <div style="background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 24px; border: 1px solid var(--border);">
-        <video id="detailVideoPlayer" controls style="width: 100%; max-height: 500px; display: block;">
+    <div style="position: relative; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 24px; border: 1px solid var(--border); aspect-ratio: 16 / 9;">
+        <video id="detailVideoPlayer" controls<?= $thumbnail_url ? ' poster="' . htmlspecialchars($thumbnail_url) . '"' : '' ?> style="width: 100%; height: 100%; display: block; object-fit: contain;">
             <source src="<?= htmlspecialchars($video_url) ?>" type="video/mp4">
             Your browser does not support the video tag.
         </video>

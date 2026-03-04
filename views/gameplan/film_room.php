@@ -343,7 +343,7 @@ if (!function_exists('vr_format_duration')) {
             <i class="fas fa-play-circle"></i>
             <p><?= htmlspecialchars($vr_edit_source['filename'] ?? 'Source Video') ?></p>
             <?php if (!empty($vr_edit_source['file_path'])): ?>
-            <video id="vrVideoPlayer" controls preload="metadata" style="width:100%;max-height:400px;border-radius:8px;display:none">
+            <video id="vrVideoPlayer" controls preload="metadata" style="width:100%;aspect-ratio:16/9;border-radius:8px;display:none;object-fit:contain;background:#000">
                 <source src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $vr_edit_source['file_path'])) ?>">
             </video>
             <?php endif; ?>

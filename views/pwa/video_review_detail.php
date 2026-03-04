@@ -55,7 +55,8 @@ foreach (['athlete_first_name', 'athlete_last_name', 'coach_first_name', 'coach_
     if (!empty($video[$f])) $video[$f] = FieldEncryption::decrypt($video[$f]);
 }
 
-$video_url = resolveRustfsUrl($pdo, $video['video_url'] ?? '') ?? '';
+$video_url = resolveRustfsUrl($pdo, getPreferredVideoUrl($video)) ?? '';
+$thumbnail_url = resolveRustfsUrl($pdo, $video['thumbnail_url'] ?? '') ?? '';
 $csrf_token = $_SESSION['csrf_token'] ?? '';
 $is_coach = $isAnyCoach;
 $is_owner = (int)$video['athlete_id'] === (int)$user_id;
@@ -71,10 +72,10 @@ $coach_name   = trim(($video['coach_first_name'] ?? '') . ' ' . ($video['coach_l
     padding: 12px 16px; min-height: 44px;
 }
 .m-vrd-player {
-    background: #000; overflow: hidden; margin-bottom: 0;
-    border-bottom: 1px solid #2D2D3F;
+    position: relative; background: #000; overflow: hidden; margin-bottom: 0;
+    border-bottom: 1px solid #2D2D3F; aspect-ratio: 16 / 9;
 }
-.m-vrd-player video { width: 100%; max-height: 280px; display: block; }
+.m-vrd-player video { width: 100%; height: 100%; display: block; object-fit: contain; }
 .m-vrd-content { padding: 16px; }
 .m-vrd-card {
     background: #16161F; border: 1px solid #2D2D3F; border-radius: 12px;
@@ -185,7 +186,7 @@ $coach_name   = trim(($video['coach_first_name'] ?? '') . ' ' . ($video['coach_l
 
     <!-- Video Player – full width -->
     <div class="m-vrd-player">
-        <video id="detailVideoPlayer" controls playsinline>
+        <video id="detailVideoPlayer" controls playsinline<?= $thumbnail_url ? ' poster="' . htmlspecialchars($thumbnail_url) . '"' : '' ?>>
             <source src="<?= htmlspecialchars($video_url) ?>" type="video/mp4">
             Your browser does not support the video tag.
         </video>

@@ -64,9 +64,10 @@
                             break;
                         default:
                             hls.destroy();
-                            // Fallback to direct play
+                            // Fallback to direct play and rebuild controls
                             video.src = url;
                             video.load();
+                            _buildCustomControls(video, null, null);
                             break;
                     }
                 }
@@ -123,6 +124,11 @@
         // Ensure container is positioned
         var pos = getComputedStyle(container).position;
         if (pos === 'static') container.style.position = 'relative';
+
+        // Ensure container maintains 16:9 ratio for proper controls display
+        if (!getComputedStyle(container).aspectRatio || getComputedStyle(container).aspectRatio === 'auto') {
+            container.style.aspectRatio = '16 / 9';
+        }
 
         // Hide native controls
         video.removeAttribute('controls');

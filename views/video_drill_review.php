@@ -264,6 +264,7 @@ $is_demo_data = false;
                             <button class="btn-primary btn-full" data-action="play-video" 
                                     data-video-id="<?= htmlspecialchars($video['id']) ?>"
                                     data-video-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, getPreferredVideoUrl($video)) ?? '') ?>"
+                                    data-thumbnail-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['thumbnail_url'] ?? '') ?? '') ?>"
                                     data-video-description="<?= htmlspecialchars($video['description'] ?? '') ?>"
                                     data-video-coach="<?= htmlspecialchars(trim(($video['coach_first_name'] ?? '') . ' ' . ($video['coach_last_name'] ?? ''))) ?>"
                                     data-video-date="<?= htmlspecialchars(date('M d, Y', strtotime($video['upload_date']))) ?>">
@@ -1100,12 +1101,14 @@ $is_demo_data = false;
     background: #000;
     border-radius: 8px;
     overflow: hidden;
+    aspect-ratio: 16 / 9;
 }
 
 .video-player {
     width: 100%;
-    max-height: 500px;
+    height: 100%;
     display: block;
+    object-fit: contain;
 }
 
 .video-player-placeholder {
@@ -1448,11 +1451,37 @@ document.addEventListener('DOMContentLoaded', function() {
     const videoDetailTitle = document.getElementById('videoDetailTitle');
     const videoDetailMeta = document.getElementById('videoDetailMeta');
     var activeHls = null;
+
+    function cleanupVideoPlayer() {
+        if (activeHls) { activeHls.destroy(); activeHls = null; }
+        if (videoPlayer) {
+            // Clean up custom controls injected by hls-player.js
+            var container = videoPlayer.parentElement;
+            if (container) {
+                var ctrl = container.querySelector('.aw-player-controls');
+                if (ctrl) { if (ctrl._cleanup) ctrl._cleanup(); ctrl.remove(); }
+                var grad = container.querySelector('.aw-controls-gradient');
+                if (grad) grad.remove();
+                var bp = container.querySelector('.aw-big-play');
+                if (bp) bp.remove();
+                var tzl = container.querySelector('.aw-touch-zone-left');
+                if (tzl) tzl.remove();
+                var tzr = container.querySelector('.aw-touch-zone-right');
+                if (tzr) tzr.remove();
+            }
+            videoPlayer.pause();
+            videoPlayer.removeAttribute('src');
+            videoPlayer.removeAttribute('poster');
+            videoPlayer.setAttribute('controls', '');
+            videoPlayer.currentTime = 0;
+        }
+    }
     
     // Play video buttons
     document.querySelectorAll('[data-action="play-video"]').forEach(btn => {
         btn.addEventListener('click', function() {
             const videoUrl = this.dataset.videoUrl;
+            const thumbnailUrl = this.dataset.thumbnailUrl || '';
             const title = this.closest('.video-card').querySelector('.video-title')?.textContent || 'Video';
             const description = this.dataset.videoDescription || '';
             const coach = this.dataset.videoCoach || '';
@@ -1491,8 +1520,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (videoDetails) videoDetails.style.display = (description || coach || date) ? 'block' : 'none';
                 
                 if (videoUrl) {
-                    // Destroy any previous HLS instance
-                    if (activeHls) { activeHls.destroy(); activeHls = null; }
+                    // Destroy any previous HLS instance and clean up controls
+                    cleanupVideoPlayer();
+
+                    // Set poster/thumbnail for preview before video loads
+                    if (thumbnailUrl) videoPlayer.poster = thumbnailUrl;
 
                     if (typeof window.awInitHlsPlayer === 'function') {
                         activeHls = window.awInitHlsPlayer(videoPlayer, videoUrl);
@@ -1518,12 +1550,7 @@ document.addEventListener('DOMContentLoaded', function() {
         el.addEventListener('click', function() {
             if (modal) {
                 modal.style.display = 'none';
-                if (activeHls) { activeHls.destroy(); activeHls = null; }
-                if (videoPlayer) {
-                    videoPlayer.pause();
-                    videoPlayer.removeAttribute('src');
-                    videoPlayer.currentTime = 0;
-                }
+                cleanupVideoPlayer();
             }
         });
     });
@@ -1532,11 +1559,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape' && modal && modal.style.display !== 'none') {
             modal.style.display = 'none';
-            if (activeHls) { activeHls.destroy(); activeHls = null; }
-            if (videoPlayer) {
-                videoPlayer.pause();
-                videoPlayer.removeAttribute('src');
-            }
+            cleanupVideoPlayer();
         }
     });
     

@@ -261,7 +261,7 @@ $reviewed_videos = array_filter($videos, function($v) {
                         <span class="badge-warning"><i class="fas fa-clock"></i> Pending</span>
                     </div>
                     <div class="video-actions-inline">
-                        <button class="btn-icon" title="Watch Video" data-action="view-video" data-video-id="<?= $video['id'] ?>" data-video-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, getPreferredVideoUrl($video)) ?? '') ?>"><i class="fas fa-play"></i></button>
+                        <button class="btn-icon" title="Watch Video" data-action="view-video" data-video-id="<?= $video['id'] ?>" data-video-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, getPreferredVideoUrl($video)) ?? '') ?>" data-thumbnail-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['thumbnail_url'] ?? '') ?? '') ?>"><i class="fas fa-play"></i></button>
                         <?php if ($isAnyCoach): ?>
                         <button class="btn-icon btn-review" title="Review" data-action="review-video" data-video-id="<?= $video['id'] ?>"><i class="fas fa-check"></i></button>
                         <?php endif; ?>
@@ -327,7 +327,7 @@ $reviewed_videos = array_filter($videos, function($v) {
                         <span class="badge-success"><i class="fas fa-check-circle"></i> Reviewed</span>
                     </div>
                     <div class="video-actions-inline">
-                        <button class="btn-icon" title="Watch Video" data-action="view-video" data-video-id="<?= $video['id'] ?>" data-video-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, getPreferredVideoUrl($video)) ?? '') ?>"><i class="fas fa-play"></i></button>
+                        <button class="btn-icon" title="Watch Video" data-action="view-video" data-video-id="<?= $video['id'] ?>" data-video-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, getPreferredVideoUrl($video)) ?? '') ?>" data-thumbnail-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['thumbnail_url'] ?? '') ?? '') ?>"><i class="fas fa-play"></i></button>
                         <a href="?page=video_review_detail&video_id=<?= $video['id'] ?>" class="btn-icon" title="View Details"><i class="fas fa-comments"></i></a>
                     </div>
                 </div>
@@ -584,8 +584,8 @@ $reviewed_videos = array_filter($videos, function($v) {
             <button class="modal-close" aria-label="Close" data-action="close-video-modal"><i class="fas fa-times"></i></button>
         </div>
         <div class="modal-body">
-            <div style="position: relative; background: #000; border-radius: 8px; overflow: hidden;">
-                <video id="coachVideoPlayer" controls style="width: 100%; max-height: 500px; display: block;">
+            <div style="position: relative; background: #000; border-radius: 8px; overflow: hidden; aspect-ratio: 16 / 9;">
+                <video id="coachVideoPlayer" controls style="width: 100%; height: 100%; display: block; object-fit: contain;">
                     <source src="" type="video/mp4">
                     Your browser does not support the video tag.
                 </video>
@@ -847,15 +847,40 @@ document.addEventListener('DOMContentLoaded', function() {
     var vpTitle = document.getElementById('coachVideoModalTitle');
     var vpHls = null;
 
+    function cleanupCoachVideoPlayer() {
+        if (vpHls) { vpHls.destroy(); vpHls = null; }
+        if (vpVideo) {
+            var container = vpVideo.parentElement;
+            if (container) {
+                var ctrl = container.querySelector('.aw-player-controls');
+                if (ctrl) { if (ctrl._cleanup) ctrl._cleanup(); ctrl.remove(); }
+                var grad = container.querySelector('.aw-controls-gradient');
+                if (grad) grad.remove();
+                var bp = container.querySelector('.aw-big-play');
+                if (bp) bp.remove();
+                var tzl = container.querySelector('.aw-touch-zone-left');
+                if (tzl) tzl.remove();
+                var tzr = container.querySelector('.aw-touch-zone-right');
+                if (tzr) tzr.remove();
+            }
+            vpVideo.pause();
+            vpVideo.removeAttribute('src');
+            vpVideo.removeAttribute('poster');
+            vpVideo.setAttribute('controls', '');
+        }
+    }
+
     document.querySelectorAll('[data-action="view-video"]').forEach(function(btn) {
         btn.addEventListener('click', function() {
             var url = this.dataset.videoUrl;
+            var thumbnailUrl = this.dataset.thumbnailUrl || '';
             var item = this.closest('.video-list-item');
             var title = item ? (item.querySelector('.video-details h4')?.textContent || 'Video') : 'Video';
             if (!vpModal) return;
             vpModal.style.display = 'flex';
             vpTitle.innerHTML = '<i class="fas fa-play-circle"></i> ' + title;
-            if (vpHls) { vpHls.destroy(); vpHls = null; }
+            cleanupCoachVideoPlayer();
+            if (thumbnailUrl) vpVideo.poster = thumbnailUrl;
             if (url && typeof window.awInitHlsPlayer === 'function') {
                 vpHls = window.awInitHlsPlayer(vpVideo, url);
             } else if (url) {
@@ -868,8 +893,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('[data-action="close-video-modal"]').forEach(function(el) {
         el.addEventListener('click', function() {
             if (vpModal) vpModal.style.display = 'none';
-            if (vpHls) { vpHls.destroy(); vpHls = null; }
-            if (vpVideo) { vpVideo.pause(); vpVideo.removeAttribute('src'); }
+            cleanupCoachVideoPlayer();
         });
     });
 
@@ -1003,8 +1027,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
-            if (vpHls) { vpHls.destroy(); vpHls = null; }
-            if (vpVideo) { vpVideo.pause(); vpVideo.removeAttribute('src'); }
+            cleanupCoachVideoPlayer();
         }
     });
 
