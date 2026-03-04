@@ -379,6 +379,10 @@ function handleGetVideoUploadUrl() {
 function handleConfirmVideoUpload() {
     global $pdo, $user_id;
 
+    // Ensure PHP completes the companion transcode trigger even if the user
+    // closes the browser or navigates away before the response is sent.
+    ignore_user_abort(true);
+
     header('Content-Type: application/json');
 
     $upload_nonce = $_POST['upload_nonce'] ?? '';
@@ -425,6 +429,7 @@ function handleConfirmVideoUpload() {
         $source_id = $pdo->lastInsertId();
         Auditor::log($pdo, $user_id, 'create', 'vr_video_sources', $source_id, ['action' => 'Video source uploaded (direct)']);
         $pdo->prepare("UPDATE vr_video_sources SET nextcloud_path = ? WHERE id = ?")->execute([$proxy_url, $source_id]);
+        if (!empty($object_key)) { triggerHlsTranscodeSource($pdo, $source_id, $object_key); }
         try { logSecurityEvent('video_source_uploaded', "Video source uploaded (direct): " . $pending['original_name'], $user_id); } catch (Exception $e) { error_log("logSecurityEvent failed: " . $e->getMessage()); }
         $redirect = '/gameplan.php?page=film_room&tab=upload&success=source_uploaded';
 
@@ -3071,6 +3076,89 @@ function triggerHlsTranscode($pdo, $video_id, $object_key) {
         }
     } catch (Exception $e) {
         ErrorLogger::error("Companion transcode trigger exception for video $video_id: " . $e->getMessage());
+        // Non-fatal: the upload still succeeds
+    }
+}
+
+/**
+ * Trigger HLS transcode for a vr_video_sources record via the companion app.
+ * Mirrors triggerHlsTranscode() but updates the vr_video_sources table instead of videos.
+ */
+function triggerHlsTranscodeSource($pdo, $source_id, $object_key) {
+    try {
+        $stmt = $pdo->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('gameplan_companion_url', 'gameplan_companion_api_key', 'gameplan_app_url')");
+        $stmt->execute();
+        $settings = [];
+        while ($row = $stmt->fetch()) {
+            $settings[$row['setting_key']] = $row['setting_value'] ?? '';
+        }
+        $companion_url = $settings['gameplan_companion_url'] ?? '';
+        $companion_key = $settings['gameplan_companion_api_key'] ?? '';
+        $app_url       = $settings['gameplan_app_url'] ?? '';
+
+        if (empty($companion_url)) {
+            return; // Companion not configured – skip
+        }
+
+        $companion_url = rtrim($companion_url, "/");
+        $hls_prefix = pathinfo($object_key, PATHINFO_FILENAME);
+        $hls_dir    = pathinfo($object_key, PATHINFO_DIRNAME);
+        $output_prefix = $hls_dir . "/" . $hls_prefix . "/hls";
+
+        $callback_url = '';
+        if (!empty($app_url)) {
+            $callback_url = rtrim($app_url, '/') . '/api/v1/companion/callback';
+        }
+
+        $hls_manifest_url = "api/media.php?key=" . rawurlencode($output_prefix . "/master.m3u8");
+
+        $payload = json_encode([
+            "source_key"      => $object_key,
+            "output_prefix"   => $output_prefix,
+            "delete_original" => true,
+            "source_id"       => $source_id,
+            "callback_url"    => $callback_url,
+        ]);
+
+        // Mark video source as pending HLS transcode
+        $pdo->prepare("UPDATE vr_video_sources SET hls_status = 'pending', hls_url = ?, hls_master_url = ?, hls_segments_path = ? WHERE id = ?")
+            ->execute([$hls_manifest_url, $output_prefix . "/master.m3u8", $output_prefix, $source_id]);
+
+        $ch = curl_init($companion_url . "/api/hls");
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            "Content-Type: application/json",
+            "X-API-Key: " . $companion_key,
+        ]);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curl_errno = curl_errno($ch);
+        $curl_error = curl_error($ch);
+        curl_close($ch);
+
+        if ($curl_errno !== 0) {
+            ErrorLogger::error("Companion transcode trigger failed for source $source_id: curl error [$curl_errno] $curl_error (URL: $companion_url/api/hls)");
+            return;
+        }
+
+        if ($http_code === 202 && $response) {
+            $data = json_decode($response, true);
+            if (!empty($data["id"])) {
+                $pdo->prepare("UPDATE vr_video_sources SET hls_job_id = ?, hls_status = 'processing' WHERE id = ?")
+                    ->execute([$data["id"], $source_id]);
+            }
+        } else {
+            $body_snippet = $response ? substr($response, 0, 500) : '(empty)';
+            ErrorLogger::error("Companion transcode trigger failed for source $source_id: HTTP $http_code from $companion_url/api/hls — $body_snippet");
+        }
+    } catch (Exception $e) {
+        ErrorLogger::error("Companion transcode trigger exception for source $source_id: " . $e->getMessage());
         // Non-fatal: the upload still succeeds
     }
 }

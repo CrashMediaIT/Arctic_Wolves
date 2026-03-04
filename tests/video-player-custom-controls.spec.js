@@ -268,7 +268,9 @@ test.describe('CSS theme integration for video player controls', () => {
 
   test('big play button should use theme colors via CSS classes', () => {
     const c = content();
-    expect(c).toMatch(/\.aw-big-play-bg[\s\S]*?var\(--primary/);
+    // Background is a semi-transparent dark circle with white stroke
+    expect(c).toMatch(/\.aw-big-play-bg[\s\S]*?fill/);
+    expect(c).toMatch(/\.aw-big-play-bg[\s\S]*?stroke/);
     expect(c).toMatch(/\.aw-big-play-icon[\s\S]*?var\(--text-primary/);
   });
 

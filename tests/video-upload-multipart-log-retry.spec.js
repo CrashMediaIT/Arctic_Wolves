@@ -375,7 +375,7 @@ test.describe('video_record_drill.php upload log dropdown', () => {
 
   test('should have drillPostAction helper for multipart operations', () => {
     const c = content();
-    expect(c).toContain('function drillPostAction(params)');
+    expect(c).toContain('function drillPostAction(params');
     expect(c).toContain('process_video.php');
   });
 });

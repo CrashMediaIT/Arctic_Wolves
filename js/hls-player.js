@@ -316,11 +316,51 @@
         container.appendChild(gradient);
         container.appendChild(controls);
 
-        // --- Big play button overlay ---
+        // --- Big play button overlay (circle + triangle, no YouTube shape) ---
         var bigPlay = document.createElement('div');
         bigPlay.className = 'aw-big-play';
-        bigPlay.innerHTML = '<svg viewBox="0 0 68 48" width="68" height="48"><path class="aw-big-play-bg" d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55C3.97 2.33 2.27 4.81 1.48 7.74.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z"/><path class="aw-big-play-icon" d="M45 24L27 14v20z"/></svg>';
+        bigPlay.innerHTML = '<svg viewBox="0 0 64 64" width="64" height="64"><circle class="aw-big-play-bg" cx="32" cy="32" r="30"/><path class="aw-big-play-icon" d="M26 18v28l22-14z"/></svg>';
         container.appendChild(bigPlay);
+
+        // --- Touch zones for tap-to-skip and tap-to-play/pause ---
+        var SKIP_SECONDS = 10;
+
+        var touchLeft = document.createElement('div');
+        touchLeft.className = 'aw-touch-zone aw-touch-zone-left';
+        touchLeft.innerHTML = '<span class="aw-skip-indicator"><svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12.5 3C7.81 3 4.01 6.54 3.68 11H1l3.89 3.89.07.14L9 11H6.73C7.06 7.66 9.49 5 12.5 5c3.31 0 6 2.69 6 6s-2.69 6-6 6c-1.66 0-3.16-.67-4.24-1.76l-1.42 1.42A7.987 7.987 0 0 0 12.5 19c4.42 0 8-3.58 8-8s-3.58-8-8-8z"/></svg> ' + SKIP_SECONDS + 's</span>';
+        container.appendChild(touchLeft);
+
+        var touchRight = document.createElement('div');
+        touchRight.className = 'aw-touch-zone aw-touch-zone-right';
+        touchRight.innerHTML = '<span class="aw-skip-indicator">' + SKIP_SECONDS + 's <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M11.5 3c4.69 0 8.49 3.54 8.82 8H23l-3.89 3.89-.07.14L15 11h2.27C16.94 7.66 14.51 5 11.5 5c-3.31 0-6 2.69-6 6s2.69 6 6 6c1.66 0 3.16-.67 4.24-1.76l1.42 1.42A7.987 7.987 0 0 1 11.5 19c-4.42 0-8-3.58-8-8s3.58-8 8-8z"/></svg></span>';
+        container.appendChild(touchRight);
+
+        var skipLeftIndicator = touchLeft.querySelector('.aw-skip-indicator');
+        var skipRightIndicator = touchRight.querySelector('.aw-skip-indicator');
+        var skipLeftTimer = null;
+        var skipRightTimer = null;
+
+        function flashSkip(indicator, timerRef) {
+            indicator.classList.add('aw-skip-show');
+            clearTimeout(timerRef);
+            return setTimeout(function() { indicator.classList.remove('aw-skip-show'); }, 600);
+        }
+
+        touchLeft.addEventListener('click', function(e) {
+            e.stopPropagation();
+            video.currentTime = Math.max(0, video.currentTime - SKIP_SECONDS);
+            skipLeftTimer = flashSkip(skipLeftIndicator, skipLeftTimer);
+            showControls();
+            scheduleHide();
+        });
+
+        touchRight.addEventListener('click', function(e) {
+            e.stopPropagation();
+            video.currentTime = Math.min(video.duration || 0, video.currentTime + SKIP_SECONDS);
+            skipRightTimer = flashSkip(skipRightIndicator, skipRightTimer);
+            showControls();
+            scheduleHide();
+        });
 
         // --- Event Wiring ---
         var hideTimeout = null;
@@ -357,7 +397,9 @@
                 hideTimeout = setTimeout(hideControls, 800);
             }
         });
-        container.addEventListener('touchstart', function() {
+        container.addEventListener('touchstart', function(e) {
+            // Let touch zones handle their own events
+            if (e.target.closest('.aw-touch-zone') || e.target.closest('.aw-player-controls') || e.target.closest('.aw-big-play')) return;
             if (controls.classList.contains('aw-controls-visible')) {
                 hideControls();
             } else {
@@ -581,8 +623,12 @@
             document.removeEventListener('fullscreenchange', updateFullscreenIcon);
             document.removeEventListener('keydown', onKeyDown);
             clearTimeout(hideTimeout);
+            clearTimeout(skipLeftTimer);
+            clearTimeout(skipRightTimer);
             if (gradient.parentElement) gradient.remove();
             if (bigPlay.parentElement) bigPlay.remove();
+            if (touchLeft.parentElement) touchLeft.remove();
+            if (touchRight.parentElement) touchRight.remove();
         };
     }
 

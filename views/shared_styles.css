@@ -2029,8 +2029,10 @@ button:disabled,
     gap: 4px;
 }
 
-/* Shared button style */
-.aw-ctrl-btn {
+/* Shared button style — use button.aw-ctrl-btn to beat
+   the global button:not(.modal-close) rule in components.css
+   which has specificity (0,1,1) and would override padding/height */
+button.aw-ctrl-btn {
     background: none;
     border: none;
     color: var(--text-primary, #fff);
@@ -2044,12 +2046,16 @@ button:disabled,
     padding: 0;
     transition: background 0.2s;
     flex-shrink: 0;
+    min-height: 0;
+    gap: 0;
+    line-height: 1;
 }
-.aw-ctrl-btn:hover {
+button.aw-ctrl-btn:hover {
     background: rgba(107, 70, 193, 0.2);
 }
-.aw-ctrl-btn svg {
+button.aw-ctrl-btn svg {
     display: block;
+    fill: currentColor;
 }
 
 /* Volume group */
@@ -2192,15 +2198,44 @@ button:disabled,
 }
 .aw-big-play svg {
     display: block;
-    border-radius: 14px;
 }
 .aw-big-play-bg {
-    fill: var(--primary, #6B46C1);
-    opacity: 0.85;
+    fill: rgba(0, 0, 0, 0.65);
+    stroke: rgba(255, 255, 255, 0.9);
+    stroke-width: 2.5;
 }
 .aw-big-play-icon {
     fill: var(--text-primary, #fff);
 }
+
+/* Touch skip zones (left / right) */
+.aw-touch-zone {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 7;
+    pointer-events: auto;
+}
+.aw-touch-zone-left { left: 0; width: 30%; }
+.aw-touch-zone-right { right: 0; width: 30%; }
+.aw-skip-indicator {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(255,255,255,0.85);
+    font-size: 14px;
+    font-weight: 600;
+    opacity: 0;
+    transition: opacity 0.25s;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-family: inherit;
+}
+.aw-touch-zone-left .aw-skip-indicator { left: 16px; }
+.aw-touch-zone-right .aw-skip-indicator { right: 16px; }
+.aw-skip-indicator.aw-skip-show { opacity: 1; }
 
 /* Fullscreen adjustments */
 :-webkit-full-screen .aw-player-controls { padding: 0 24px 14px; }
@@ -2211,8 +2246,8 @@ button:disabled,
 /* Mobile adjustments */
 @media (max-width: 480px) {
     .aw-time-display { font-size: 11px; }
-    .aw-ctrl-btn { width: 32px; height: 32px; }
-    .aw-ctrl-btn svg { width: 20px; height: 20px; }
+    button.aw-ctrl-btn { width: 32px; height: 32px; }
+    button.aw-ctrl-btn svg { width: 20px; height: 20px; }
     .aw-settings-panel { right: 8px; min-width: 160px; }
     .aw-volume-group:hover .aw-volume-slider { width: 40px; }
 }
