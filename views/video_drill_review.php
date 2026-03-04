@@ -1436,6 +1436,7 @@ $is_demo_data = false;
 .ingest-progress-status { color: var(--text-dim); font-size: 12px; margin-top: 8px; }
 </style>
 
+<script src="js/offline-upload-queue.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Video player modal handling
@@ -1682,6 +1683,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         progressTitle.textContent = 'Import complete!';
         progressStatus.textContent = imported + ' video(s) added to upload queue.';
+
+        // Auto-start upload queue for imported videos
+        if (typeof AwOfflineQueue !== 'undefined' && AwOfflineQueue.processQueue) {
+            AwOfflineQueue.processQueue();
+        }
     });
 })();
 </script>
