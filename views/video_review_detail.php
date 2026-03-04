@@ -55,6 +55,20 @@ foreach (['athlete_first_name', 'athlete_last_name', 'coach_first_name', 'coach_
 
 $video_url = resolveRustfsUrl($pdo, getPreferredVideoUrl($video)) ?? '';
 $thumbnail_url = resolveRustfsUrl($pdo, $video['thumbnail_url'] ?? '') ?? '';
+$video_type = preg_match('/\.m3u8(\?|&|$)/i', $video_url) ? 'application/vnd.apple.mpegurl' : 'video/mp4';
+
+// Compute HLS fallback URL for JS error recovery.
+// When the companion deletes the original MP4 after transcoding but the
+// callback fails to update hls_status, the preferred URL still points at the
+// (now-deleted) MP4.  Passing the HLS URL as a data attribute lets JS retry.
+$hls_fallback_url = '';
+if (!empty($video['hls_url'])) {
+    $resolved_hls = resolveRustfsUrl($pdo, $video['hls_url']);
+    if ($resolved_hls && $resolved_hls !== $video_url) {
+        $hls_fallback_url = $resolved_hls;
+    }
+}
+
 $csrf_token = $_SESSION['csrf_token'] ?? '';
 $is_coach = $isAnyCoach;
 $is_owner = (int)$video['athlete_id'] === (int)$user_id;
@@ -71,8 +85,8 @@ $coach_name   = trim(($video['coach_first_name'] ?? '') . ' ' . ($video['coach_l
 <div style="max-width: 1000px; margin: 0 auto; padding: 0 16px;">
     <!-- Video Player -->
     <div style="position: relative; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 24px; border: 1px solid var(--border); aspect-ratio: 16 / 9;">
-        <video id="detailVideoPlayer" controls<?= $thumbnail_url ? ' poster="' . htmlspecialchars($thumbnail_url) . '"' : '' ?> style="width: 100%; height: 100%; display: block; object-fit: contain;">
-            <source src="<?= htmlspecialchars($video_url) ?>" type="video/mp4">
+        <video id="detailVideoPlayer" controls<?= $thumbnail_url ? ' poster="' . htmlspecialchars($thumbnail_url) . '"' : '' ?><?= $hls_fallback_url ? ' data-hls-url="' . htmlspecialchars($hls_fallback_url) . '"' : '' ?> style="width: 100%; height: 100%; display: block; object-fit: contain;">
+            <source src="<?= htmlspecialchars($video_url) ?>" type="<?= $video_type ?>">
             Your browser does not support the video tag.
         </video>
     </div>
@@ -273,6 +287,22 @@ document.addEventListener('DOMContentLoaded', function() {
         if (src && src.src) {
             window.awInitHlsPlayer(detailPlayer, src.src);
         }
+    }
+
+    // Fallback: if the primary video source fails (e.g. 502 because the
+    // companion deleted the original MP4 after HLS transcode but the
+    // callback didn't update hls_status), retry with the HLS URL.
+    if (detailPlayer) {
+        var _hlsFallbackTried = false;
+        detailPlayer.addEventListener('error', function() {
+            var hlsUrl = detailPlayer.dataset.hlsUrl;
+            if (hlsUrl && !_hlsFallbackTried) {
+                _hlsFallbackTried = true;
+                if (typeof window.awInitHlsPlayer === 'function') {
+                    window.awInitHlsPlayer(detailPlayer, hlsUrl);
+                }
+            }
+        }, true);
     }
 
     var saveBtn = document.getElementById('saveDetailBtn');
