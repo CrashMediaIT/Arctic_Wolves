@@ -2029,9 +2029,9 @@ button:disabled,
     gap: 4px;
 }
 
-/* Shared button style — use button.aw-ctrl-btn to beat
-   the global button:not(.modal-close) rule in components.css
-   which has specificity (0,1,1) and would override padding/height */
+/* Shared button style — video player control buttons.
+   style-guide.css excludes .aw-ctrl-btn via :not(.aw-ctrl-btn)
+   so these rules apply without specificity conflicts. */
 button.aw-ctrl-btn {
     background: none;
     border: none;
@@ -2200,9 +2200,9 @@ button.aw-ctrl-btn svg {
     display: block;
 }
 .aw-big-play-bg {
-    fill: rgba(0, 0, 0, 0.65);
-    stroke: rgba(255, 255, 255, 0.9);
-    stroke-width: 2.5;
+    fill: rgba(107, 70, 193, 0.85);
+    stroke: rgba(255, 255, 255, 0.25);
+    stroke-width: 2;
 }
 .aw-big-play-icon {
     fill: var(--text-primary, #fff);

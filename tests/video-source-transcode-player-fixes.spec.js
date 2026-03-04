@@ -145,11 +145,11 @@ test.describe('Video player big play button', () => {
     expect(bgRule).toContain('stroke');
   });
 
-  test('should not use --primary color for big play background', () => {
+  test('should use primary theme color for big play background', () => {
     const css = cssContent();
     const bgRule = css.substring(css.indexOf('.aw-big-play-bg'), css.indexOf('.aw-big-play-bg') + 200);
-    // The background should NOT be the purple brand color
-    expect(bgRule).not.toContain('var(--primary');
+    // The background should use the brand primary purple color (107, 70, 193) for visibility
+    expect(bgRule).toContain('107, 70, 193');
   });
 });
 
@@ -184,6 +184,11 @@ test.describe('CSS specificity fix for player controls', () => {
   test('button.aw-ctrl-btn svg should have fill: currentColor', () => {
     const c = css();
     expect(c).toMatch(/button\.aw-ctrl-btn svg[\s\S]*?fill:\s*currentColor/);
+  });
+
+  test('style-guide.css base button rule excludes .aw-ctrl-btn via :not()', () => {
+    const sg = readFile('css/style-guide.css');
+    expect(sg).toContain(':not(.aw-ctrl-btn)');
   });
 });
 
