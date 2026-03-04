@@ -1212,7 +1212,13 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(function(result) {
                 if (result.success) {
-                    crLog('Upload confirmed! Transcoding will happen in the background.');
+                    crLog('Upload confirmed! Triggering background transcode…');
+                    var tp = { action: 'trigger_transcode', object_key: result.object_key };
+                    if (result.video_id) tp.video_id = result.video_id;
+                    if (result.source_id) tp.source_id = result.source_id;
+                    crPostAction(tp, csrfToken, { keepalive: true })
+                        .then(function(t) { crLog('Transcode triggered (job: ' + (t.hls_job_id || 'N/A') + ')'); })
+                        .catch(function(e) { crLogWarn('Transcode trigger: ' + e.message); });
                     crShowComplete(bar, percent, status, overlay, submitBtn, result.redirect);
                 } else throw new Error(result.error || 'Confirmation failed');
             })
@@ -1261,7 +1267,16 @@ document.addEventListener('DOMContentLoaded', function() {
             return crPostAction({ action: 'confirm_video_upload', upload_nonce: uploadNonce }, csrfToken, { keepalive: true });
         })
         .then(function(result) {
-            if (result.success) { crLog('Upload confirmed! Transcoding in background.'); crShowComplete(bar, percent, status, overlay, submitBtn, result.redirect); }
+            if (result.success) {
+                crLog('Upload confirmed! Triggering background transcode…');
+                var tp = { action: 'trigger_transcode', object_key: result.object_key };
+                if (result.video_id) tp.video_id = result.video_id;
+                if (result.source_id) tp.source_id = result.source_id;
+                crPostAction(tp, csrfToken, { keepalive: true })
+                    .then(function(t) { crLog('Transcode triggered (job: ' + (t.hls_job_id || 'N/A') + ')'); })
+                    .catch(function(e) { crLogWarn('Transcode trigger: ' + e.message); });
+                crShowComplete(bar, percent, status, overlay, submitBtn, result.redirect);
+            }
             else throw new Error(result.error || 'Confirmation failed');
         })
         .catch(function(err) {

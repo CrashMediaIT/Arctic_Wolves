@@ -21,14 +21,24 @@ const readFile = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
 test.describe('video_source uploads trigger HLS transcoding', () => {
   const content = () => readFile('process_video.php');
 
-  test('video_source branch should call triggerHlsTranscodeSource', () => {
+  test('video_source branch should NOT embed triggerHlsTranscodeSource (now separate action)', () => {
     const c = content();
     // Find the handleConfirmVideoUpload function first
     const funcStart = c.indexOf('function handleConfirmVideoUpload()');
     expect(funcStart).toBeGreaterThan(-1);
-    const funcBody = c.substring(funcStart, funcStart + 5000);
-    // Inside that function, the video_source branch should call triggerHlsTranscodeSource
-    expect(funcBody).toContain('triggerHlsTranscodeSource');
+    const funcEnd = c.indexOf('\nfunction ', funcStart + 1);
+    const funcBody = c.substring(funcStart, funcEnd > funcStart ? funcEnd : funcStart + 5000);
+    // Transcode is now triggered via separate trigger_transcode action, not embedded here
+    expect(funcBody).not.toContain('triggerHlsTranscodeSource');
+  });
+
+  test('handleTriggerTranscode should call triggerHlsTranscodeSource for sources', () => {
+    const c = content();
+    const funcStart = c.indexOf('function handleTriggerTranscode()');
+    expect(funcStart).toBeGreaterThan(-1);
+    const funcEnd = c.indexOf('\nfunction ', funcStart + 1);
+    const func = c.substring(funcStart, funcEnd > funcStart ? funcEnd : funcStart + 3000);
+    expect(func).toContain('triggerHlsTranscodeSource');
   });
 
   test('triggerHlsTranscodeSource function should exist', () => {

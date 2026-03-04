@@ -543,7 +543,7 @@
         return tryUpload();
     }
 
-    // ── Confirm upload + register in server queue ───────────────────
+    // ── Confirm upload + trigger transcode ─────────────────────────
 
     function _confirmUpload(uploadNonce, csrfToken, item) {
         return _postAction({
@@ -552,6 +552,16 @@
             offline_queue_id: item.id
         }, csrfToken, { keepalive: true }).then(function(result) {
             if (!result.success) throw new Error(result.error || 'Confirmation failed');
+
+            // Trigger transcode as a separate explicit action (matches PR #533 pattern).
+            // Fire-and-forget — don't block the queue on transcode trigger.
+            var tp = { action: 'trigger_transcode', object_key: result.object_key || '' };
+            if (result.video_id) tp.video_id = result.video_id;
+            if (result.source_id) tp.source_id = result.source_id;
+            if (tp.object_key) {
+                _postAction(tp, csrfToken, { keepalive: true }).catch(function() {});
+            }
+
             return result;
         });
     }
