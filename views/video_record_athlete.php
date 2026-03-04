@@ -1340,7 +1340,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             if (etag) etag = etag.replace(/"/g, '');
                             if (!etag) {
                                 uploadLogError('No ETag for part ' + partNumber);
-                                reject(new Error('Part ' + partNumber + ': no ETag (CORS issue)'));
+                                reject(new Error('Part ' + partNumber + ': missing ETag header'));
                                 return;
                             }
                             uploadLog('Part ' + partNumber + '/' + totalParts + ' done (' + elapsed(partStart) + ')');
