@@ -843,6 +843,7 @@ try {
 .offline-upload-progress-footer span { font-size: 12px; color: var(--text-dim); }
 </style>
 
+<script src="js/offline-upload-queue.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     let mediaRecorder = null;
@@ -1579,7 +1580,6 @@ document.addEventListener('DOMContentLoaded', function() {
     var storagePanel = document.getElementById('storageSelectionPanel');
     var storageCancelBtn = document.getElementById('storageCancelBtn');
     var storageConfirmBtn = document.getElementById('storageConfirmBtn');
-    var storageInternalBtn = document.getElementById('storageInternalBtn');
     var storageExternalBtn = document.getElementById('storageExternalBtn');
     var _selectedStorage = 'internal';
     var _externalDirHandle = null;
@@ -1614,30 +1614,35 @@ document.addEventListener('DOMContentLoaded', function() {
             storageConfirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
 
             try {
-                var meta = {
+                var sessionId = <?= json_encode($session_id ?? null) ?>;
+                var drillId = <?= json_encode($drill_id ?? null) ?>;
+                var athleteId = <?= json_encode($athlete_id ?? null) ?>;
+                var repInput = document.getElementById('rep_number') || { value: '1' };
+                var metadata = {
                     upload_type: 'drill_video',
                     title: 'Drill Recording',
-                    session_id: <?= json_encode($session_id ?? null) ?>,
-                    drill_id: <?= json_encode($drill_id ?? null) ?>,
-                    athlete_id: <?= json_encode($athlete_id ?? null) ?>,
-                    rep_number: <?= json_encode($rep_number ?? 1) ?>,
+                    session_id: sessionId,
+                    drill_id: drillId,
+                    athlete_id: athleteId,
+                    rep_number: parseInt(repInput.value || 1),
                     session_date: <?= json_encode($session_date ?? null) ?>,
                     drill_name: <?= json_encode($drill_name ?? null) ?>,
                     drill_type: <?= json_encode($drill_type ?? null) ?>
                 };
 
-                if (typeof AwOfflineQueue === 'undefined') {
-                    showToast('Offline queue not available.', 'error');
-                    return;
-                }
-
                 if (_selectedStorage === 'external') {
-                    await AwOfflineQueue.saveToExternal(blob, meta);
-                    showToast('Video saved to external device! Import later from Ingest tab.', 'success');
+                    if (!_externalDirHandle) {
+                        _externalDirHandle = await AwOfflineQueue.pickStorageDirectory();
+                    }
+                    await AwOfflineQueue.saveToExternalStorage(_externalDirHandle, blob, metadata);
+                    showToast('Video saved to external device!', 'success');
                 } else {
-                    await AwOfflineQueue.addItem(blob, meta);
+                    await AwOfflineQueue.enqueueVideo(blob, metadata);
                     showToast('Video saved offline! It will upload automatically.', 'success');
                 }
+
+                // Auto-increment rep number after save
+                repInput.value = parseInt(repInput.value || 1) + 1;
                 storagePanel.style.display = 'none';
             } catch (err) {
                 showToast('Save failed: ' + err.message, 'error');
@@ -1646,5 +1651,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 storageConfirmBtn.innerHTML = '<i class="fas fa-save"></i> Save Recording';
             }
         });
+    }
+
+    // Init connectivity monitor for auto-upload
+    if (typeof AwOfflineQueue !== 'undefined') {
+        AwOfflineQueue.initConnectivityMonitor();
     }
 </script>
