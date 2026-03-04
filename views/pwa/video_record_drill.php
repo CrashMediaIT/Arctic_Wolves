@@ -365,48 +365,10 @@ endif;
                     });
             })
             .catch(function(err) {
-                // Fall back to legacy server-side upload if proxy/direct upload failed
-                console.warn('Upload failed, falling back to legacy upload:', err.message);
-                statusEl.textContent = 'Retrying via server...';
-                progressBar.style.width = '0%';
-
-                var legacyData = new FormData();
-                legacyData.append('action', 'athlete_upload_video');
-                legacyData.append('video_file', blob, 'drill_video.webm');
-                legacyData.append('title', document.getElementById('mVideoTitle').value);
-                legacyData.append('video_category', 'drill');
-                if (csrfInput) legacyData.append('csrf_token', csrfInput.value);
-                var legacyXhr = new XMLHttpRequest();
-                legacyXhr.open('POST', 'process_video.php', true);
-                legacyXhr.upload.onprogress = function(ev) {
-                    if (ev.lengthComputable) {
-                        var pct = Math.round((ev.loaded / ev.total) * 100);
-                        progressBar.style.width = pct + '%';
-                        statusEl.textContent = pct < 100 ? 'Uploading... ' + pct + '%' : 'Processing...';
-                    }
-                };
-                legacyXhr.onload = function() {
-                    try {
-                        var data = JSON.parse(legacyXhr.responseText);
-                        if (data.success) {
-                            statusEl.textContent = 'Upload complete!';
-                            progressWrap.remove();
-                            setTimeout(function() { location.reload(); }, 500);
-                            return;
-                        }
-                        statusEl.textContent = data.message || 'Upload failed';
-                    } catch(parseErr) { statusEl.textContent = 'Upload failed.'; }
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-cloud-arrow-up"></i> Upload Video';
-                    progressWrap.remove();
-                };
-                legacyXhr.onerror = function() {
-                    statusEl.textContent = 'Upload failed. Please try again.';
-                    btn.innerHTML = '<i class="fas fa-cloud-arrow-up"></i> Upload Video';
-                    btn.disabled = false;
-                    progressWrap.remove();
-                };
-                legacyXhr.send(legacyData);
+                statusEl.textContent = 'Upload failed: ' + err.message;
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-cloud-arrow-up"></i> Upload Video';
+                progressWrap.remove();
             });
     });
 })();

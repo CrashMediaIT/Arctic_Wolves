@@ -55,22 +55,6 @@ $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
 try {
     switch ($action) {
-        case 'upload_video':
-            handleVideoUpload();
-            break;
-        
-        case 'athlete_upload_video':
-            handleAthleteVideoUpload();
-            break;
-
-        case 'get_athlete_upload_url':
-            handleGetAthleteUploadUrl();
-            break;
-
-        case 'confirm_athlete_upload':
-            handleConfirmAthleteUpload();
-            break;
-
         case 'get_video_upload_url':
             handleGetVideoUploadUrl();
             break;
@@ -78,9 +62,21 @@ try {
         case 'confirm_video_upload':
             handleConfirmVideoUpload();
             break;
-        
-        case 'upload_drill_video':
-            handleDrillVideoUpload();
+
+        case 'initiate_multipart':
+            handleMultipartInitiate();
+            break;
+
+        case 'presign_part':
+            handleMultipartPresignPart();
+            break;
+
+        case 'complete_multipart':
+            handleMultipartComplete();
+            break;
+
+        case 'abort_multipart':
+            handleMultipartAbort();
             break;
             
         case 'update_video':
@@ -194,506 +190,6 @@ try {
     exit;
 }
 
-/**
- * Handle video file upload (by coach)
- */
-function handleVideoUpload() {
-    global $pdo, $user_id, $user_role;
-    
-    // Only coaches, health coaches, team coaches, coach_plus and admins can upload review videos
-    $allowed_roles = ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'];
-    if (!in_array($user_role, $allowed_roles)) {
-        throw new Exception('You do not have permission to upload review videos');
-    }
-    
-    // Validate required fields
-    $athlete_id = filter_input(INPUT_POST, 'athlete_id', FILTER_VALIDATE_INT);
-    $session_date = $_POST['session_date'] ?? null;
-    $drill_type = $_POST['drill_type'] ?? null;
-    $drill_name = $_POST['drill_name'] ?? null;
-    $comments = $_POST['comments'] ?? '';
-    $rating = filter_input(INPUT_POST, 'rating', FILTER_VALIDATE_INT);
-    
-    if (!$athlete_id || !$session_date || !$drill_type || !$drill_name) {
-        throw new Exception('Missing required fields: athlete, session date, drill type, and drill name are required');
-    }
-    
-    // Validate file upload
-    if (!isset($_FILES['video_file']) || $_FILES['video_file']['error'] !== UPLOAD_ERR_OK) {
-        throw new Exception('Video file upload failed');
-    }
-    
-    $file = $_FILES['video_file'];
-    
-    // Use FileUploadValidator for security validation
-    $validator = new FileUploadValidator();
-    $validation = $validator->validateVideo($file);
-    
-    if (!$validation['valid']) {
-        throw new Exception($validation['error']);
-    }
-    
-    // Generate unique filename
-    $file_extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-    $unique_filename = uniqid('video_', true) . '_' . time() . '.' . $file_extension;
-    
-    // Upload to RustFS
-    $persist = persistUploadedFile($pdo, $file['tmp_name'], 'videos/coach', $unique_filename, '', true);
-    if (!$persist['success']) {
-        throw new Exception('Video upload to storage failed. Please try again.');
-    }
-    $db_video_url = $persist['rustfs_url'] ?? null;
-    
-    // Insert video record into database
-    $stmt = $pdo->prepare("
-        INSERT INTO videos (
-            athlete_id, coach_id, title, description, video_url,
-            video_type, video_category, status, coach_notes, upload_date
-        ) VALUES (
-            ?, ?, ?, ?, ?,
-            'coach_review', 'drill', 'pending_review', ?, NOW()
-        )
-    ");
-    
-    $title = $drill_name . ' - ' . $drill_type;
-    $description = 'Session Date: ' . $session_date . ' | Drill Type: ' . $drill_type;
-    
-    $stmt->execute([
-        $athlete_id,
-        $user_id,
-        $title,
-        $description,
-        $db_video_url,
-        $comments
-    ]);
-    
-    $video_id = $pdo->lastInsertId();
-    Auditor::log($pdo, $user_id, 'create', 'videos', $video_id, ['action' => 'Coach video uploaded']);
-    
-    // Store Nextcloud path for persistent recovery
-    if (!empty($persist['nextcloud_path'])) {
-        $pdo->prepare("UPDATE videos SET nextcloud_path = ? WHERE id = ?")->execute([$persist['nextcloud_path'], $video_id]);
-    }
-    
-    // Trigger HLS transcoding via companion server (fire-and-forget)
-    if (!empty($persist['object_key'])) {
-        triggerHlsTranscode($pdo, $video_id, $persist['object_key']);
-    }
-    
-    // Log and notify — wrapped in try-catch so failures don't break the upload response
-    try {
-        logSecurityEvent('video_upload', "Video uploaded for athlete ID: $athlete_id", $user_id);
-    } catch (Exception $e) { error_log("logSecurityEvent failed: " . $e->getMessage()); }
-    
-    try {
-        sendVideoNotification($pdo, $athlete_id, $user_id, $video_id, 'new_video');
-    } catch (Exception $e) { error_log("sendVideoNotification failed: " . $e->getMessage()); }
-    
-    // Return JSON for XHR requests, redirect for standard form submissions
-    if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
-        header('Content-Type: application/json');
-        echo json_encode(['success' => true, 'video_id' => $video_id, 'redirect' => 'dashboard.php?page=coaches_reviews&success=video_uploaded']);
-        exit;
-    }
-
-    // Redirect back to coach reviews page
-    header('Location: dashboard.php?page=coaches_reviews&success=video_uploaded');
-    exit;
-}
-
-/**
- * Handle athlete video upload for coach review
- */
-function handleAthleteVideoUpload() {
-    global $pdo, $user_id, $user_role;
-    
-    // Get user's assigned coach from POST or look it up from the database.
-    // All users (regardless of role) can have an assigned coach and upload
-    // videos for review as an athlete.
-    $coach_id = filter_input(INPUT_POST, 'coach_id', FILTER_VALIDATE_INT);
-    
-    // Get athlete_id from POST (auto-assigned to current user on the frontend)
-    $athlete_id = filter_input(INPUT_POST, 'athlete_id', FILTER_VALIDATE_INT);
-    
-    // Default to current user if no athlete_id provided
-    if (!$athlete_id) {
-        $athlete_id = $user_id;
-    }
-    
-    // Look up assigned coach if not provided via POST
-    if (!$coach_id) {
-        $stmt = $pdo->prepare("SELECT assigned_coach_id FROM users WHERE id = ?");
-        $stmt->execute([$user_id]);
-        $user = $stmt->fetch();
-        $coach_id = $user['assigned_coach_id'] ?? null;
-    }
-    // Allow upload even without an assigned coach — coach_id will be NULL
-    
-    // Validate required fields
-    $title = trim($_POST['title'] ?? '');
-    $video_category = $_POST['video_category'] ?? 'drill';
-    $description = $_POST['description'] ?? '';
-    
-    if (empty($title)) {
-        throw new Exception('Video title is required');
-    }
-    
-    if (!in_array($video_category, ['drill', 'game'])) {
-        throw new Exception('Invalid video type');
-    }
-    
-    // Game-specific fields
-    $game_date = null;
-    $team_played_on = null;
-    $opponent_team = null;
-    
-    if ($video_category === 'game') {
-        $game_date = $_POST['game_date'] ?? null;
-        $team_played_on = trim($_POST['team_played_on'] ?? '');
-        $opponent_team = trim($_POST['opponent_team'] ?? '');
-        
-        if (empty($game_date) || empty($team_played_on) || empty($opponent_team)) {
-            throw new Exception('Game date, team played on, and opponent team are required for game videos');
-        }
-    }
-    
-    // Drill-specific fields
-    $drill_type = $_POST['drill_type'] ?? null;
-    $session_date = $_POST['session_date'] ?? date('Y-m-d');
-    
-    // Validate file upload
-    if (!isset($_FILES['video_file']) || $_FILES['video_file']['error'] !== UPLOAD_ERR_OK) {
-        $error_messages = [
-            UPLOAD_ERR_INI_SIZE => 'File exceeds server maximum upload size',
-            UPLOAD_ERR_FORM_SIZE => 'File exceeds form maximum upload size',
-            UPLOAD_ERR_PARTIAL => 'File was only partially uploaded',
-            UPLOAD_ERR_NO_FILE => 'No file was uploaded',
-            UPLOAD_ERR_NO_TMP_DIR => 'Missing temporary folder',
-            UPLOAD_ERR_CANT_WRITE => 'Failed to write file to disk',
-            UPLOAD_ERR_EXTENSION => 'File upload stopped by extension',
-        ];
-        $error_code = $_FILES['video_file']['error'] ?? UPLOAD_ERR_NO_FILE;
-        throw new Exception($error_messages[$error_code] ?? 'Video file upload failed');
-    }
-    
-    $file = $_FILES['video_file'];
-    
-    // Use FileUploadValidator for security validation
-    $validator = new FileUploadValidator();
-    $validation = $validator->validateVideo($file);
-    
-    if (!$validation['valid']) {
-        throw new Exception($validation['error']);
-    }
-    
-    // Generate unique filename
-    $file_extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-    $unique_filename = uniqid('athlete_video_', true) . '_' . time() . '.' . $file_extension;
-    
-    // Look up athlete name for folder structure
-    $athlete_folder = 'athlete_' . $athlete_id;
-    $stmt_name = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
-    $stmt_name->execute([$athlete_id]);
-    $athlete_row = $stmt_name->fetch();
-    if ($athlete_row) {
-        $athlete_row = decryptUserRow($athlete_row);
-        $safe_name = preg_replace('/[^a-zA-Z0-9_-]/', '_', trim(($athlete_row['first_name'] ?? '') . '_' . ($athlete_row['last_name'] ?? '')));
-        if (!empty($safe_name) && $safe_name !== '_') {
-            $athlete_folder = $safe_name;
-        }
-    }
-    
-    // Upload to RustFS — folder: videos/athlete/{AthleteName}/
-    $persist = persistUploadedFile($pdo, $file['tmp_name'], 'videos/athlete/' . $athlete_folder, $unique_filename, '', true);
-    if (!$persist['success']) {
-        throw new Exception('Video upload to storage failed. Please try again.');
-    }
-    $db_video_url = $persist['rustfs_url'] ?? null;
-    
-    // Insert video record into database
-    $stmt = $pdo->prepare("
-        INSERT INTO videos (
-            athlete_id, coach_id, title, description, video_url,
-            video_type, video_category, game_date, team_played_on, opponent_team,
-            status, upload_date
-        ) VALUES (
-            ?, ?, ?, ?, ?,
-            'uploaded_by_athlete', ?, ?, ?, ?,
-            'pending_review', NOW()
-        )
-    ");
-    
-    $stmt->execute([
-        $athlete_id,
-        $coach_id,
-        $title,
-        $description,
-        $db_video_url,
-        $video_category,
-        $game_date,
-        $team_played_on,
-        $opponent_team
-    ]);
-    
-    $video_id = $pdo->lastInsertId();
-    Auditor::log($pdo, $user_id, 'create', 'videos', $video_id, ['action' => 'Athlete video uploaded']);
-    
-    // Store Nextcloud path for persistent recovery
-    if (!empty($persist['nextcloud_path'])) {
-        $pdo->prepare("UPDATE videos SET nextcloud_path = ? WHERE id = ?")->execute([$persist['nextcloud_path'], $video_id]);
-    }
-    
-    // Trigger HLS transcoding via companion server (fire-and-forget)
-    if (!empty($persist['object_key'])) {
-        triggerHlsTranscode($pdo, $video_id, $persist['object_key']);
-    }
-    
-    // Log and notify — wrapped in try-catch so failures don't break the upload response
-    try {
-        logSecurityEvent('athlete_video_upload', "Athlete video uploaded for review, ID: $video_id", $athlete_id);
-    } catch (Exception $e) { error_log("logSecurityEvent failed: " . $e->getMessage()); }
-    
-    if ($coach_id) {
-        try {
-            sendVideoUploadNotificationToCoach($pdo, $coach_id, $athlete_id, $video_id, $title);
-        } catch (Exception $e) { error_log("sendVideoUploadNotificationToCoach failed: " . $e->getMessage()); }
-    }
-    
-    // Always return JSON — matches the working drill video upload pattern
-    header('Content-Type: application/json');
-    echo json_encode([
-        'success' => true,
-        'message' => 'Video uploaded successfully',
-        'video_id' => $video_id,
-        'redirect' => 'dashboard.php?page=coaches_reviews&success=video_uploaded'
-    ]);
-    exit;
-}
-
-/**
- * Generate a presigned RustFS URL so the browser can upload a video directly
- * to object storage, bypassing the PHP server for the file transfer.
- * Returns the presigned PUT URL along with the object key and a session nonce.
- */
-function handleGetAthleteUploadUrl() {
-    global $pdo, $user_id, $user_role;
-
-    header('Content-Type: application/json');
-
-    // Validate coach assignment (same logic as handleAthleteVideoUpload)
-    $coach_id = filter_input(INPUT_POST, 'coach_id', FILTER_VALIDATE_INT);
-    $allowed_roles = ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'];
-    $is_coach = in_array($user_role, $allowed_roles);
-
-    if ($is_coach) {
-        $coach_id = $user_id;
-    } else {
-        if (!$coach_id) {
-            $stmt = $pdo->prepare("SELECT assigned_coach_id FROM users WHERE id = ?");
-            $stmt->execute([$user_id]);
-            $user = $stmt->fetch();
-            $coach_id = $user['assigned_coach_id'] ?? null;
-        }
-        // Allow upload even without an assigned coach — coach_id will be NULL
-    }
-
-    // Validate required fields
-    $title = trim($_POST['title'] ?? '');
-    if (empty($title)) {
-        throw new Exception('Video title is required');
-    }
-
-    $video_category = $_POST['video_category'] ?? 'drill';
-    if (!in_array($video_category, ['drill', 'game'])) {
-        throw new Exception('Invalid video type');
-    }
-
-    // Validate file metadata sent from the client
-    $file_name = $_POST['file_name'] ?? '';
-    $file_size = filter_input(INPUT_POST, 'file_size', FILTER_VALIDATE_INT);
-    $file_type = $_POST['file_type'] ?? 'video/mp4';
-
-    if (empty($file_name) || !$file_size) {
-        throw new Exception('File information is required');
-    }
-
-    // 10 GB limit
-    if ($file_size > 10 * 1024 * 1024 * 1024) {
-        throw new Exception('File size exceeds the maximum limit of 10GB');
-    }
-
-    // Validate extension
-    $file_extension = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
-    $allowed_extensions = ['mp4', 'mkv', 'mov', 'avi', 'webm'];
-    if (!in_array($file_extension, $allowed_extensions)) {
-        throw new Exception('Invalid video file type. Allowed: ' . implode(', ', $allowed_extensions));
-    }
-
-    // Validate MIME type
-    $allowed_mimes = ['video/mp4', 'video/x-matroska', 'video/quicktime', 'video/x-msvideo', 'video/webm', 'video/avi'];
-    if (!in_array($file_type, $allowed_mimes)) {
-        // Fall back to a safe default based on extension
-        $ext_to_mime = [
-            'mp4' => 'video/mp4', 'mkv' => 'video/x-matroska', 'mov' => 'video/quicktime',
-            'avi' => 'video/x-msvideo', 'webm' => 'video/webm',
-        ];
-        $file_type = $ext_to_mime[$file_extension] ?? 'application/octet-stream';
-    }
-
-    // Generate unique filename and object key with athlete name subfolder
-    $unique_filename = uniqid('athlete_video_', true) . '_' . time() . '.' . $file_extension;
-
-    // Look up athlete name for folder structure
-    $presign_athlete_id = filter_input(INPUT_POST, 'athlete_id', FILTER_VALIDATE_INT) ?: $user_id;
-    $athlete_folder = 'athlete_' . $presign_athlete_id;
-    $stmt_name = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
-    $stmt_name->execute([$presign_athlete_id]);
-    $athlete_row = $stmt_name->fetch();
-    if ($athlete_row) {
-        $athlete_row = decryptUserRow($athlete_row);
-        $safe_name = preg_replace('/[^a-zA-Z0-9_-]/', '_', trim(($athlete_row['first_name'] ?? '') . '_' . ($athlete_row['last_name'] ?? '')));
-        if (!empty($safe_name) && $safe_name !== '_') {
-            $athlete_folder = $safe_name;
-        }
-    }
-
-    $object_key = 'Images/videos/athlete/' . $athlete_folder . '/' . $unique_filename;
-
-    // Generate presigned URL for direct browser-to-RustFS upload
-    $rustfs = getRustFSSettings($pdo);
-    if (!isRustFSConfigured($rustfs)) {
-        ErrorLogger::error("Video upload URL (legacy): RustFS not configured for user=$user_id");
-        throw new Exception('Cloud storage is not configured. Please contact an administrator.');
-    }
-
-    ErrorLogger::info("Video upload URL (legacy): generating presigned URL for key=$object_key endpoint=" . ($rustfs['rustfs_endpoint'] ?? '(none)'));
-
-    $presigned = generatePresignedUploadUrl($rustfs, $object_key, $file_type, 3600, $rustfs['rustfs_public_endpoint'] ?? null);
-    if (!$presigned['success']) {
-        ErrorLogger::error("Video upload URL (legacy): presign failed for key=$object_key error=" . ($presigned['message'] ?? 'Unknown'));
-        throw new Exception('Failed to generate upload URL: ' . ($presigned['message'] ?? 'Unknown error'));
-    }
-
-    ErrorLogger::info("Video upload URL (legacy): presigned URL generated for key=$object_key");
-
-    // Store pending upload in session for confirmation step
-    $upload_nonce = bin2hex(random_bytes(16));
-
-    // Generate a one-time token for the streaming proxy fallback
-    $proxy_token = bin2hex(random_bytes(16));
-    $_SESSION['upload_proxy_token'] = $proxy_token;
-
-    $_SESSION['pending_video_upload'] = [
-        'nonce'          => $upload_nonce,
-        'object_key'     => $object_key,
-        'filename'       => $unique_filename,
-        'content_type'   => $file_type,
-        'coach_id'       => $coach_id,
-        'athlete_id'     => filter_input(INPUT_POST, 'athlete_id', FILTER_VALIDATE_INT) ?: $user_id,
-        'title'          => $title,
-        'description'    => $_POST['description'] ?? '',
-        'video_category' => $video_category,
-        'game_date'      => $_POST['game_date'] ?? null,
-        'team_played_on' => trim($_POST['team_played_on'] ?? ''),
-        'opponent_team'  => trim($_POST['opponent_team'] ?? ''),
-        'created_at'     => time(),
-    ];
-
-    echo json_encode([
-        'success'       => true,
-        'presigned_url' => $presigned['url'],
-        'object_key'    => $object_key,
-        'content_type'  => $file_type,
-        'upload_nonce'  => $upload_nonce,
-        'proxy_upload_url' => 'api/upload.php?key=' . rawurlencode($object_key),
-        'proxy_token'   => $proxy_token,
-    ]);
-    exit;
-}
-
-/**
- * Confirm that a direct-to-RustFS upload completed and create the video
- * database record.  The client calls this after the presigned PUT succeeds.
- */
-function handleConfirmAthleteUpload() {
-    global $pdo, $user_id;
-
-    header('Content-Type: application/json');
-
-    $upload_nonce = $_POST['upload_nonce'] ?? '';
-    $pending = $_SESSION['pending_video_upload'] ?? null;
-
-    if (!$pending || !hash_equals($pending['nonce'], $upload_nonce)) {
-        throw new Exception('Invalid or expired upload session. Please try again.');
-    }
-
-    // Expire sessions older than 2 hours
-    if ((time() - $pending['created_at']) > 7200) {
-        unset($_SESSION['pending_video_upload']);
-        throw new Exception('Upload session expired. Please try again.');
-    }
-
-    $object_key     = $pending['object_key'];
-    $coach_id       = $pending['coach_id'];
-    $athlete_id     = $pending['athlete_id'];
-    $title          = $pending['title'];
-    $description    = $pending['description'];
-    $video_category = $pending['video_category'];
-    $game_date      = $pending['game_date'] ?: null;
-    $team_played_on = $pending['team_played_on'] ?: null;
-    $opponent_team  = $pending['opponent_team'] ?: null;
-
-    // Verify the object actually exists in RustFS
-    $rustfs = getRustFSSettings($pdo);
-    if (!rustfsObjectExists($rustfs, $object_key)) {
-        throw new Exception('Video file was not found in storage. The upload may have failed — please try again.');
-    }
-
-    // Build the proxy URL
-    $proxy_url = 'api/media.php?key=' . rawurlencode($object_key);
-
-    // Insert the video record
-    $stmt = $pdo->prepare("
-        INSERT INTO videos (
-            athlete_id, coach_id, title, description, video_url,
-            video_type, video_category, game_date, team_played_on, opponent_team,
-            status, upload_date
-        ) VALUES (
-            ?, ?, ?, ?, ?,
-            'uploaded_by_athlete', ?, ?, ?, ?,
-            'pending_review', NOW()
-        )
-    ");
-    $stmt->execute([
-        $athlete_id, $coach_id, $title, $description, $proxy_url,
-        $video_category, $game_date, $team_played_on, $opponent_team,
-    ]);
-
-    $video_id = $pdo->lastInsertId();
-    Auditor::log($pdo, $user_id, 'create', 'videos', $video_id, ['action' => 'Athlete video uploaded (direct)']);
-
-    // Store the nextcloud_path (proxy URL) for persistent recovery
-    $pdo->prepare("UPDATE videos SET nextcloud_path = ? WHERE id = ?")->execute([$proxy_url, $video_id]);
-
-    // Trigger HLS transcoding via companion server (fire-and-forget)
-    if (!empty($object_key)) {
-        triggerHlsTranscode($pdo, $video_id, $object_key);
-    }
-
-    // Clean up the session
-    unset($_SESSION['pending_video_upload']);
-
-    // Log and notify
-    try { logSecurityEvent('athlete_video_upload', "Athlete video uploaded (direct) for review, ID: $video_id", $athlete_id); } catch (Exception $e) { error_log("logSecurityEvent failed: " . $e->getMessage()); }
-    try { sendVideoUploadNotificationToCoach($pdo, $coach_id, $athlete_id, $video_id, $title); } catch (Exception $e) { error_log("sendVideoUploadNotificationToCoach failed: " . $e->getMessage()); }
-
-    echo json_encode([
-        'success'  => true,
-        'video_id' => $video_id,
-        'redirect' => 'dashboard.php?page=coaches_reviews&success=video_uploaded',
-    ]);
-    exit;
-}
 
 /**
  * General-purpose presigned URL generator for all video upload types.
@@ -1056,148 +552,509 @@ function handleConfirmVideoUpload() {
     exit;
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+//  Multipart upload helpers (for large files > 64 MB)
+// ═══════════════════════════════════════════════════════════════════════
+
 /**
- * Handle drill video upload from coach recording interface
- * Uploads to Nextcloud with folder structure: Year/Month/Day
- * Naming: SessionName-DrillName-AthleteName-Rep#
+ * Load RustFS config into a normalized array for multipart operations.
  */
-function handleDrillVideoUpload() {
-    global $pdo, $user_id, $user_role;
-    
-    // Only coaches can upload drill videos
-    $allowed_roles = ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'];
-    if (!in_array($user_role, $allowed_roles)) {
-        throw new Exception('You do not have permission to upload drill videos');
+function loadMultipartRustFSConfig() {
+    global $pdo;
+    require_once __DIR__ . '/cloud_config.php';
+    require_once __DIR__ . '/lib/rustfs_storage.php';
+
+    $settingKeys = [
+        'rustfs_endpoint', 'rustfs_public_endpoint', 'rustfs_access_key',
+        'rustfs_secret_key', 'rustfs_bucket', 'rustfs_region',
+        'rustfs_use_ssl', 'rustfs_path_style',
+    ];
+    $ph = implode(',', array_fill(0, count($settingKeys), '?'));
+    $stmt = $pdo->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ($ph)");
+    $stmt->execute($settingKeys);
+    $raw = [];
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $raw[$row['setting_key']] = $row['setting_value'];
     }
-    
-    // Validate required fields
-    $session_id = filter_input(INPUT_POST, 'session_id', FILTER_VALIDATE_INT);
-    $drill_id = filter_input(INPUT_POST, 'drill_id', FILTER_VALIDATE_INT);
-    $athlete_id = filter_input(INPUT_POST, 'athlete_id', FILTER_VALIDATE_INT);
-    $rep_number = filter_input(INPUT_POST, 'rep_number', FILTER_VALIDATE_INT) ?: 1;
-    
-    if (!$session_id || !$drill_id || !$athlete_id) {
-        throw new Exception('Missing required fields: session, drill, and athlete are required');
+    if (!empty($raw['rustfs_secret_key']) && function_exists('decryptPassword')) {
+        $dec = decryptPassword($raw['rustfs_secret_key']);
+        if (!empty($dec)) $raw['rustfs_secret_key'] = $dec;
     }
-    
-    // Get session, drill, and athlete names for file naming
-    $stmt = $pdo->prepare("SELECT title, session_date FROM sessions WHERE id = ?");
-    $stmt->execute([$session_id]);
-    $session = $stmt->fetch();
-    if (!$session) {
-        throw new Exception('Session not found');
+    if (empty($raw['rustfs_endpoint']) || empty($raw['rustfs_access_key'])
+        || empty($raw['rustfs_secret_key']) || empty($raw['rustfs_bucket'])) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'error' => 'RustFS is not configured']);
+        exit;
     }
-    $session_name = $session['title'] ?? 'Session';
-    $session_date = $session['session_date'] ?? date('Y-m-d');
-    
-    $stmt = $pdo->prepare("SELECT title FROM drills WHERE id = ?");
-    $stmt->execute([$drill_id]);
-    $drill = $stmt->fetch();
-    if (!$drill) {
-        throw new Exception('Drill not found');
-    }
-    $drill_name = $drill['title'];
-    
-    $stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
-    $stmt->execute([$athlete_id]);
-    $athlete = $stmt->fetch();
-    $athlete = decryptUserRow($athlete);
-    if (!$athlete) {
-        throw new Exception('Athlete not found');
-    }
-    $athlete_name = $athlete['first_name'] . ' ' . $athlete['last_name'];
-    
-    // Validate file upload
-    if (!isset($_FILES['video_file']) || $_FILES['video_file']['error'] !== UPLOAD_ERR_OK) {
-        throw new Exception('Video file upload failed');
-    }
-    
-    $file = $_FILES['video_file'];
-    
-    // Use FileUploadValidator for security validation
-    $validator = new FileUploadValidator();
-    $validation = $validator->validateVideo($file);
-    
-    if (!$validation['valid']) {
-        throw new Exception($validation['error']);
-    }
-    
-    // Generate filename based on naming convention
-    $safe_session = str_replace(' ', '_', preg_replace('/[^a-zA-Z0-9\-_\s]/', '', $session_name));
-    $safe_drill = str_replace(' ', '_', preg_replace('/[^a-zA-Z0-9\-_\s]/', '', $drill_name));
-    $safe_athlete = str_replace(' ', '_', preg_replace('/[^a-zA-Z0-9\-_\s]/', '', $athlete_name));
-    $file_extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-    
-    $filename = sprintf('%s-%s-%s-Rep%d.%s', $safe_session, $safe_drill, $safe_athlete, $rep_number, $file_extension);
-    $nextcloud_path = null;
-    $is_uploaded_to_cloud = 0;
-    
-    // Upload to RustFS
-    $persist = persistUploadedFile($pdo, $file['tmp_name'], 'DrillVideos', $filename, '', true);
-    if (!$persist['success']) {
-        throw new Exception('Video upload to storage failed. Please try again.');
-    }
-    if (!empty($persist['nextcloud_path'])) {
-        $nextcloud_path = $persist['nextcloud_path'];
-        $is_uploaded_to_cloud = 1;
-    }
-    $db_local_path = $persist['rustfs_url'] ?? null;
-    
-    // Insert video record into database
-    $title = sprintf('%s - %s - %s (Rep %d)', $session_name, $drill_name, $athlete_name, $rep_number);
-    
-    $stmt = $pdo->prepare("
-        INSERT INTO videos (
-            athlete_id, coach_id, title, description, video_url,
-            video_type, video_category, drill_id, session_id, rep_number,
-            nextcloud_path, local_path, is_uploaded_to_cloud,
-            status, upload_date
-        ) VALUES (
-            ?, ?, ?, ?, ?,
-            'drill_review', 'drill', ?, ?, ?,
-            ?, ?, ?,
-            'reviewed', NOW()
-        )
-    ");
-    
-    $description = sprintf('Drill video recorded during session on %s', date('M d, Y', strtotime($session_date)));
-    
-    $stmt->execute([
-        $athlete_id,
-        $user_id,
-        $title,
-        $description,
-        $db_local_path,
-        $drill_id,
-        $session_id,
-        $rep_number,
-        $nextcloud_path,
-        $db_local_path,
-        $is_uploaded_to_cloud
-    ]);
-    
-    $video_id = $pdo->lastInsertId();
-    Auditor::log($pdo, $user_id, 'create', 'videos', $video_id, ['action' => 'Drill video uploaded']);
-    
-    // Trigger HLS transcoding via companion server (fire-and-forget)
-    if (!empty($persist['object_key'])) {
-        triggerHlsTranscode($pdo, $video_id, $persist['object_key']);
-    }
-    
-    // Log the action - wrapped to not break upload response
-    try {
-        logSecurityEvent('drill_video_upload', "Drill video uploaded: $title (ID: $video_id)", $user_id);
-    } catch (Exception $e) { error_log("logSecurityEvent failed: " . $e->getMessage()); }
-    
-    header('Content-Type: application/json');
-    echo json_encode([
-        'success' => true, 
-        'message' => 'Video uploaded successfully',
-        'video_id' => $video_id,
-        'uploaded_to_cloud' => $is_uploaded_to_cloud,
-        'nextcloud_path' => $nextcloud_path
-    ]);
+    return [
+        'endpoint'        => rtrim($raw['rustfs_endpoint'], '/'),
+        'public_endpoint' => $raw['rustfs_public_endpoint'] ?? '',
+        'bucket'          => $raw['rustfs_bucket'],
+        'region'          => $raw['rustfs_region'] ?? 'us-east-1',
+        'access_key'      => $raw['rustfs_access_key'],
+        'secret_key'      => $raw['rustfs_secret_key'],
+        'use_ssl'         => ($raw['rustfs_use_ssl']    ?? '1') === '1',
+        'path_style'      => ($raw['rustfs_path_style'] ?? '1') === '1',
+    ];
 }
+
+/**
+ * Resolve internal and browser-facing object URL components for S3 signing.
+ */
+function resolveMultipartObjectUrl($cfg, $objectKey) {
+    $endpoint = $cfg['endpoint'];
+    if (strpos($endpoint, 'http://') !== 0 && strpos($endpoint, 'https://') !== 0) {
+        $endpoint = ($cfg['use_ssl'] ? 'https://' : 'http://') . $endpoint;
+    }
+    if ($cfg['path_style']) {
+        $objectUrl = $endpoint . '/' . $cfg['bucket'] . '/' . ltrim($objectKey, '/');
+    } else {
+        $p      = parse_url($endpoint);
+        $scheme = $p['scheme'] ?? ($cfg['use_ssl'] ? 'https' : 'http');
+        $host   = $p['host']   ?? $endpoint;
+        $port   = isset($p['port']) ? ':' . $p['port'] : '';
+        $objectUrl = $scheme . '://' . $cfg['bucket'] . '.' . $host . $port . '/' . ltrim($objectKey, '/');
+    }
+    $parsed      = parse_url($objectUrl);
+    $signingHost = $parsed['host'] . (isset($parsed['port']) ? ':' . $parsed['port'] : '');
+    $rawPath     = $parsed['path'] ?? '/';
+    $segments    = array_filter(explode('/', $rawPath), 'strlen');
+    $path        = '/' . implode('/', array_map('rawurlencode', $segments));
+    if ($rawPath !== '/' && substr($rawPath, -1) === '/') { $path .= '/'; }
+    if (!empty($cfg['public_endpoint'])) {
+        $pub       = parse_url(rtrim($cfg['public_endpoint'], '/'));
+        $urlScheme = $pub['scheme'] ?? 'https';
+        $urlHost   = $pub['host'] . (isset($pub['port']) ? ':' . $pub['port'] : '');
+    } else {
+        $urlScheme = $parsed['scheme'] ?? 'https';
+        $urlHost   = $signingHost;
+    }
+    return [$signingHost, $path, $urlScheme, $urlHost];
+}
+
+/**
+ * Sign and execute an S3 API request (for initiate, complete, abort).
+ */
+function signAndExecMultipartS3($method, $cfg, $objectKey, $queryString, $body, $extraHeaders = []) {
+    list($host, $path, $scheme, ) = resolveMultipartObjectUrl($cfg, $objectKey);
+    $now       = new DateTime('UTC');
+    $dateStamp = $now->format('Ymd');
+    $amzDate   = $now->format('Ymd\THis\Z');
+    $payloadHash = is_string($body) ? hash('sha256', $body) : 'UNSIGNED-PAYLOAD';
+
+    $headersToSign = array_merge([
+        'host'                 => $host,
+        'x-amz-content-sha256' => $payloadHash,
+        'x-amz-date'          => $amzDate,
+    ], $extraHeaders);
+    ksort($headersToSign);
+
+    $canonicalHeaders = '';
+    $signedList       = [];
+    foreach ($headersToSign as $k => $v) {
+        $canonicalHeaders .= strtolower($k) . ':' . trim($v) . "\n";
+        $signedList[]      = strtolower($k);
+    }
+    $signedHeaders = implode(';', $signedList);
+
+    $canonicalRequest = implode("\n", [
+        $method, $path, $queryString, $canonicalHeaders, $signedHeaders, $payloadHash,
+    ]);
+
+    $credentialScope = $dateStamp . '/' . $cfg['region'] . '/s3/aws4_request';
+    $stringToSign    = implode("\n", [
+        'AWS4-HMAC-SHA256', $amzDate, $credentialScope, hash('sha256', $canonicalRequest),
+    ]);
+
+    $kDate    = hash_hmac('sha256', $dateStamp,      'AWS4' . $cfg['secret_key'], true);
+    $kRegion  = hash_hmac('sha256', $cfg['region'],   $kDate,                      true);
+    $kService = hash_hmac('sha256', 's3',             $kRegion,                    true);
+    $kSigning = hash_hmac('sha256', 'aws4_request',   $kService,                   true);
+    $signature = hash_hmac('sha256', $stringToSign,   $kSigning);
+
+    $auth = sprintf(
+        'AWS4-HMAC-SHA256 Credential=%s/%s, SignedHeaders=%s, Signature=%s',
+        $cfg['access_key'], $credentialScope, $signedHeaders, $signature
+    );
+
+    $url = $scheme . '://' . $host . $path;
+    if (!empty($queryString)) $url .= '?' . $queryString;
+
+    $curlHeaders = [
+        'Host: '                 . $host,
+        'Authorization: '        . $auth,
+        'x-amz-date: '          . $amzDate,
+        'x-amz-content-sha256: ' . $payloadHash,
+    ];
+    foreach ($extraHeaders as $k => $v) {
+        if (!in_array(strtolower($k), ['host', 'x-amz-content-sha256', 'x-amz-date'])) {
+            $curlHeaders[] = $k . ': ' . $v;
+        }
+    }
+
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST,  $method);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER,     $curlHeaders);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
+    curl_setopt($ch, CURLOPT_TIMEOUT,        300);
+    $respHeaders = [];
+    curl_setopt($ch, CURLOPT_HEADERFUNCTION, function($ch, $header) use (&$respHeaders) {
+        $parts = explode(':', $header, 2);
+        if (count($parts) === 2) {
+            $respHeaders[strtolower(trim($parts[0]))] = trim($parts[1]);
+        }
+        return strlen($header);
+    });
+    if (is_string($body) && strlen($body) > 0) {
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+    }
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr  = curl_error($ch);
+    curl_close($ch);
+
+    return ['http_code' => $httpCode, 'body' => $response, 'error' => $curlErr, 'headers' => $respHeaders];
+}
+
+/**
+ * Initiate a multipart upload. Returns upload_id and object_key.
+ * Uses the same object_key logic as handleGetVideoUploadUrl to build paths.
+ */
+function handleMultipartInitiate() {
+    global $pdo, $user_id, $user_role;
+    header('Content-Type: application/json');
+
+    $cfg = loadMultipartRustFSConfig();
+
+    $upload_type = $_POST['upload_type'] ?? 'athlete_video';
+    $file_name = $_POST['file_name'] ?? '';
+    $file_size = filter_input(INPUT_POST, 'file_size', FILTER_VALIDATE_INT);
+    $file_type = $_POST['file_type'] ?? '';
+
+    if ($file_name === '' || !$file_size) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'file_name and file_size are required']);
+        exit;
+    }
+    if ($file_size > 10 * 1024 * 1024 * 1024) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'File exceeds 10 GB limit']);
+        exit;
+    }
+
+    $ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
+    $allowedExt = ['mp4', 'mkv', 'mov', 'avi', 'webm'];
+    if (!in_array($ext, $allowedExt, true)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Invalid file type. Allowed: ' . implode(', ', $allowedExt)]);
+        exit;
+    }
+    $mimeMap = [
+        'mp4'  => 'video/mp4',  'mkv' => 'video/x-matroska',
+        'mov'  => 'video/quicktime', 'avi' => 'video/x-msvideo', 'webm' => 'video/webm',
+    ];
+    $allowedMimes = array_merge(array_values($mimeMap), ['video/avi', 'video/matroska']);
+    if (!in_array($file_type, $allowedMimes, true)) {
+        $file_type = $mimeMap[$ext] ?? 'application/octet-stream';
+    }
+
+    // Role checks
+    $allowed_types = ['athlete_video', 'coach_video', 'drill_video', 'video_source'];
+    if (!in_array($upload_type, $allowed_types)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Invalid upload type']);
+        exit;
+    }
+    $coach_roles = ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'];
+    if (in_array($upload_type, ['coach_video', 'drill_video', 'video_source'])) {
+        if (!in_array($user_role, $coach_roles)) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'error' => 'You do not have permission for this upload type']);
+            exit;
+        }
+    }
+
+    // Build the same object key as handleGetVideoUploadUrl
+    $unique_suffix = uniqid('', true) . '_' . time() . '.' . $ext;
+    if ($upload_type === 'drill_video') {
+        $session_id = filter_input(INPUT_POST, 'session_id', FILTER_VALIDATE_INT);
+        $drill_id   = filter_input(INPUT_POST, 'drill_id', FILTER_VALIDATE_INT);
+        $athlete_id = filter_input(INPUT_POST, 'athlete_id', FILTER_VALIDATE_INT);
+        $rep_number = filter_input(INPUT_POST, 'rep_number', FILTER_VALIDATE_INT) ?: 1;
+        if (!$session_id || !$drill_id || !$athlete_id) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Missing required fields']);
+            exit;
+        }
+        $stmt = $pdo->prepare("SELECT title FROM sessions WHERE id = ?");
+        $stmt->execute([$session_id]);
+        $session_row = $stmt->fetch();
+        $stmt = $pdo->prepare("SELECT title FROM drills WHERE id = ?");
+        $stmt->execute([$drill_id]);
+        $drill_row = $stmt->fetch();
+        $stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
+        $stmt->execute([$athlete_id]);
+        $athlete_row = decryptUserRow($stmt->fetch());
+        $safe_session = str_replace(' ', '_', preg_replace('/[^a-zA-Z0-9\-_\s]/', '', $session_row['title'] ?? 'Session'));
+        $safe_drill   = str_replace(' ', '_', preg_replace('/[^a-zA-Z0-9\-_\s]/', '', $drill_row['title'] ?? 'Drill'));
+        $safe_athlete = str_replace(' ', '_', preg_replace('/[^a-zA-Z0-9\-_\s]/', '', ($athlete_row['first_name'] ?? '') . ' ' . ($athlete_row['last_name'] ?? '')));
+        $filename   = sprintf('%s-%s-%s-Rep%d.%s', $safe_session, $safe_drill, $safe_athlete, $rep_number, $ext);
+        $object_key = 'Images/DrillVideos/' . $filename;
+    } elseif ($upload_type === 'video_source') {
+        $object_key = 'Images/videos/gameplan/gp_source_' . $unique_suffix;
+    } elseif ($upload_type === 'coach_video') {
+        $object_key = 'Images/videos/coach/video_' . $unique_suffix;
+    } else {
+        $presign_athlete_id = filter_input(INPUT_POST, 'athlete_id', FILTER_VALIDATE_INT) ?: $user_id;
+        $athlete_folder = 'athlete_' . $presign_athlete_id;
+        $stmt_name = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
+        $stmt_name->execute([$presign_athlete_id]);
+        $arow = $stmt_name->fetch();
+        if ($arow) {
+            $arow = decryptUserRow($arow);
+            $safe_name = preg_replace('/[^a-zA-Z0-9_-]/', '_', trim(($arow['first_name'] ?? '') . '_' . ($arow['last_name'] ?? '')));
+            if (!empty($safe_name) && $safe_name !== '_') { $athlete_folder = $safe_name; }
+        }
+        $object_key = 'Images/videos/athlete/' . $athlete_folder . '/athlete_video_' . $unique_suffix;
+    }
+
+    $result = signAndExecMultipartS3('POST', $cfg, $object_key, 'uploads=', '', [
+        'content-type' => $file_type,
+    ]);
+
+    if ($result['http_code'] !== 200) {
+        error_log("Multipart initiate failed: HTTP {$result['http_code']} body=" . substr($result['body'], 0, 500));
+        http_response_code(502);
+        echo json_encode(['success' => false, 'error' => 'Failed to initiate multipart upload: HTTP ' . $result['http_code']]);
+        exit;
+    }
+    if (!preg_match('/<UploadId>([^<]+)<\/UploadId>/', $result['body'], $m)) {
+        http_response_code(502);
+        echo json_encode(['success' => false, 'error' => 'Could not parse UploadId from storage response']);
+        exit;
+    }
+
+    // Store upload metadata in session for confirm step
+    $upload_nonce = bin2hex(random_bytes(16));
+    $_SESSION['pending_video_upload_general'] = [
+        'nonce'          => $upload_nonce,
+        'upload_type'    => $upload_type,
+        'object_key'     => $object_key,
+        'original_name'  => $file_name,
+        'content_type'   => $file_type,
+        'file_size'      => $file_size,
+        'created_at'     => time(),
+        'coach_id'       => filter_input(INPUT_POST, 'coach_id', FILTER_VALIDATE_INT),
+        'athlete_id'     => filter_input(INPUT_POST, 'athlete_id', FILTER_VALIDATE_INT) ?: $user_id,
+        'title'          => trim($_POST['title'] ?? ''),
+        'description'    => $_POST['description'] ?? '',
+        'video_category' => $_POST['video_category'] ?? 'drill',
+        'session_id'     => filter_input(INPUT_POST, 'session_id', FILTER_VALIDATE_INT),
+        'drill_id'       => filter_input(INPUT_POST, 'drill_id', FILTER_VALIDATE_INT),
+        'rep_number'     => filter_input(INPUT_POST, 'rep_number', FILTER_VALIDATE_INT) ?: 1,
+        'game_date'      => $_POST['game_date'] ?? null,
+        'team_played_on' => trim($_POST['team_played_on'] ?? ''),
+        'opponent_team'  => trim($_POST['opponent_team'] ?? ''),
+        'camera_angle'   => $_POST['camera_angle'] ?? '',
+        'game_id'        => filter_input(INPUT_POST, 'game_id', FILTER_VALIDATE_INT),
+        'team_id'        => filter_input(INPUT_POST, 'team_id', FILTER_VALIDATE_INT),
+        'session_date'   => $_POST['session_date'] ?? null,
+        'drill_type'     => $_POST['drill_type'] ?? null,
+        'drill_name'     => $_POST['drill_name'] ?? null,
+        'rating'         => filter_input(INPUT_POST, 'rating', FILTER_VALIDATE_INT),
+    ];
+
+    echo json_encode([
+        'success'      => true,
+        'upload_id'    => $m[1],
+        'object_key'   => $object_key,
+        'content_type' => $file_type,
+        'upload_nonce' => $upload_nonce,
+    ]);
+    exit;
+}
+
+/**
+ * Generate a presigned URL for one part of a multipart upload.
+ */
+function handleMultipartPresignPart() {
+    header('Content-Type: application/json');
+    $cfg = loadMultipartRustFSConfig();
+
+    $objectKey  = $_POST['object_key']  ?? '';
+    $uploadId   = $_POST['upload_id']   ?? '';
+    $partNumber = filter_input(INPUT_POST, 'part_number', FILTER_VALIDATE_INT);
+
+    if ($objectKey === '' || $uploadId === '' || !$partNumber || $partNumber < 1) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'object_key, upload_id, and part_number are required']);
+        exit;
+    }
+
+    // Validate object key belongs to known upload paths
+    $validPrefixes = ['Images/videos/', 'Images/DrillVideos/'];
+    $keyValid = false;
+    foreach ($validPrefixes as $prefix) {
+        if (strpos($objectKey, $prefix) === 0) { $keyValid = true; break; }
+    }
+    if (!$keyValid) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Invalid object key']);
+        exit;
+    }
+
+    list($signingHost, $path, $urlScheme, $urlHost) = resolveMultipartObjectUrl($cfg, $objectKey);
+
+    $expires   = 3600;
+    $now       = new DateTime('UTC');
+    $dateStamp = $now->format('Ymd');
+    $amzDate   = $now->format('Ymd\THis\Z');
+
+    $credentialScope = $dateStamp . '/' . $cfg['region'] . '/s3/aws4_request';
+    $credential      = $cfg['access_key'] . '/' . $credentialScope;
+
+    $qsParams = [
+        'X-Amz-Algorithm'     => 'AWS4-HMAC-SHA256',
+        'X-Amz-Credential'    => $credential,
+        'X-Amz-Date'          => $amzDate,
+        'X-Amz-Expires'       => (string)$expires,
+        'X-Amz-SignedHeaders'  => 'host',
+        'partNumber'           => (string)$partNumber,
+        'uploadId'             => $uploadId,
+    ];
+    ksort($qsParams);
+    $canonicalQS = http_build_query($qsParams, '', '&', PHP_QUERY_RFC3986);
+
+    $canonicalHeaders = 'host:' . $urlHost . "\n";
+    $signedHeaders    = 'host';
+    $payloadHash      = 'UNSIGNED-PAYLOAD';
+
+    $canonicalRequest = implode("\n", [
+        'PUT', $path, $canonicalQS, $canonicalHeaders, $signedHeaders, $payloadHash,
+    ]);
+    $stringToSign = implode("\n", [
+        'AWS4-HMAC-SHA256', $amzDate, $credentialScope, hash('sha256', $canonicalRequest),
+    ]);
+
+    $kDate    = hash_hmac('sha256', $dateStamp,      'AWS4' . $cfg['secret_key'], true);
+    $kRegion  = hash_hmac('sha256', $cfg['region'],   $kDate,                      true);
+    $kService = hash_hmac('sha256', 's3',             $kRegion,                    true);
+    $kSigning = hash_hmac('sha256', 'aws4_request',   $kService,                   true);
+    $signature = hash_hmac('sha256', $stringToSign,   $kSigning);
+
+    $presignedUrl = $urlScheme . '://' . $urlHost . $path
+        . '?' . $canonicalQS
+        . '&X-Amz-Signature=' . $signature;
+
+    echo json_encode([
+        'success'       => true,
+        'presigned_url' => $presignedUrl,
+        'part_number'   => $partNumber,
+    ]);
+    exit;
+}
+
+/**
+ * Complete a multipart upload.
+ */
+function handleMultipartComplete() {
+    header('Content-Type: application/json');
+    $cfg = loadMultipartRustFSConfig();
+
+    $objectKey = $_POST['object_key'] ?? '';
+    $uploadId  = $_POST['upload_id']  ?? '';
+    $partsJson = $_POST['parts']      ?? '';
+
+    if ($objectKey === '' || $uploadId === '' || $partsJson === '') {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'object_key, upload_id, and parts are required']);
+        exit;
+    }
+
+    $validPrefixes = ['Images/videos/', 'Images/DrillVideos/'];
+    $keyValid = false;
+    foreach ($validPrefixes as $prefix) {
+        if (strpos($objectKey, $prefix) === 0) { $keyValid = true; break; }
+    }
+    if (!$keyValid) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Invalid object key']);
+        exit;
+    }
+
+    $parts = json_decode($partsJson, true);
+    if (!is_array($parts) || empty($parts)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Invalid parts data']);
+        exit;
+    }
+
+    $xml = '<CompleteMultipartUpload>';
+    foreach ($parts as $p) {
+        $partNum = (int)($p['PartNumber'] ?? 0);
+        $etag    = $p['ETag'] ?? '';
+        if ($partNum < 1 || $etag === '') {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Each part must have PartNumber and ETag']);
+            exit;
+        }
+        $xml .= '<Part><PartNumber>' . $partNum . '</PartNumber><ETag>"'
+              . htmlspecialchars($etag, ENT_XML1, 'UTF-8') . '"</ETag></Part>';
+    }
+    $xml .= '</CompleteMultipartUpload>';
+
+    $qs     = 'uploadId=' . rawurlencode($uploadId);
+    $result = signAndExecMultipartS3('POST', $cfg, $objectKey, $qs, $xml, [
+        'content-type' => 'application/xml',
+    ]);
+
+    if ($result['http_code'] !== 200 || strpos($result['body'], '<Error>') !== false) {
+        error_log("Multipart complete failed: HTTP {$result['http_code']} body=" . substr($result['body'], 0, 500));
+        http_response_code(502);
+        echo json_encode(['success' => false, 'error' => 'CompleteMultipartUpload failed: HTTP ' . $result['http_code']]);
+        exit;
+    }
+
+    echo json_encode(['success' => true, 'object_key' => $objectKey]);
+    exit;
+}
+
+/**
+ * Abort a multipart upload (cleanup).
+ */
+function handleMultipartAbort() {
+    header('Content-Type: application/json');
+    $cfg = loadMultipartRustFSConfig();
+
+    $objectKey = $_POST['object_key'] ?? '';
+    $uploadId  = $_POST['upload_id']  ?? '';
+
+    if ($objectKey === '' || $uploadId === '') {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'object_key and upload_id are required']);
+        exit;
+    }
+
+    $validPrefixes = ['Images/videos/', 'Images/DrillVideos/'];
+    $keyValid = false;
+    foreach ($validPrefixes as $prefix) {
+        if (strpos($objectKey, $prefix) === 0) { $keyValid = true; break; }
+    }
+    if (!$keyValid) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Invalid object key']);
+        exit;
+    }
+
+    $qs = 'uploadId=' . rawurlencode($uploadId);
+    signAndExecMultipartS3('DELETE', $cfg, $objectKey, $qs, '');
+
+    echo json_encode(['success' => true]);
+    exit;
+}
+
 
 /**
  * Handle video update (notes, rating)
