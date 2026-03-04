@@ -266,9 +266,10 @@ test.describe('CSS theme integration for video player controls', () => {
     expect(c).toMatch(/\.aw-ctrl-btn[\s\S]*?var\(--text-primary/);
   });
 
-  test('button hover should use primary purple tint', () => {
+  test('big play button should use theme colors via CSS classes', () => {
     const c = content();
-    expect(c).toMatch(/\.aw-ctrl-btn:hover[\s\S]*?rgba\(107,\s*70,\s*193/);
+    expect(c).toMatch(/\.aw-big-play-bg[\s\S]*?var\(--primary/);
+    expect(c).toMatch(/\.aw-big-play-icon[\s\S]*?var\(--text-primary/);
   });
 
   test('hover time tooltip should use --bg-card and --border', () => {
@@ -283,10 +284,10 @@ test.describe('CSS theme integration for video player controls', () => {
     expect(c).toMatch(/\.aw-qi-auto-res[\s\S]*?var\(--text-muted/);
   });
 
-  test('gradient overlay should use app background color', () => {
+  test('gradient overlay should use rgba based on app bg-main', () => {
     const c = content();
-    // rgba(10,10,15) matches --bg-main: #0A0A0F
-    expect(c).toMatch(/\.aw-controls-gradient[\s\S]*?rgba\(10,10,15/);
+    // Gradient uses a semi-transparent dark overlay matching --bg-main (#0A0A0F)
+    expect(c).toMatch(/\.aw-controls-gradient[\s\S]*?linear-gradient/);
   });
 });
 

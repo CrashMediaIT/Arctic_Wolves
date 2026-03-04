@@ -2194,6 +2194,13 @@ button:disabled,
     display: block;
     border-radius: 14px;
 }
+.aw-big-play-bg {
+    fill: var(--primary, #6B46C1);
+    opacity: 0.85;
+}
+.aw-big-play-icon {
+    fill: var(--text-primary, #fff);
+}
 
 /* Fullscreen adjustments */
 :-webkit-full-screen .aw-player-controls { padding: 0 24px 14px; }
