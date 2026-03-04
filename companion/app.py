@@ -29,6 +29,8 @@ import urllib3
 import boto3
 import requests as http_requests
 from botocore.config import Config as BotoConfig
+from boto3.s3.transfer import TransferConfig as S3TransferConfig
+from botocore.exceptions import ClientError as BotoClientError
 from flask import Flask, request, jsonify, render_template, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
@@ -357,33 +359,91 @@ def _get_s3_client():
         config=BotoConfig(
             s3={"addressing_style": "path"},
             signature_version="s3v4",
-            retries={"max_attempts": 3},
+            retries={"max_attempts": 3, "mode": "adaptive"},
         ),
         verify=S3_VERIFY_SSL,  # Configurable; often disabled for self-signed certs
     )
 
 
+# Transfer config matching the test video upload system:
+# 64 MB multipart threshold, 64 MB chunk size, 3 concurrent transfers
+_S3_TRANSFER_CONFIG = S3TransferConfig(
+    multipart_threshold=64 * 1024 * 1024,   # 64 MB
+    multipart_chunksize=64 * 1024 * 1024,   # 64 MB per part
+    max_concurrency=3,                       # 3 concurrent part uploads
+    use_threads=True,
+)
+
+_S3_MAX_RETRIES = 5
+_S3_RETRY_BACKOFF = [2, 4, 8, 16, 30]  # seconds, matching test system
+
+
 def _s3_download(s3, object_key: str, local_path: str) -> bool:
-    """Download an object from S3/RustFS to a local file."""
-    try:
-        s3.download_file(S3_BUCKET, object_key, local_path)
-        return True
-    except Exception as exc:
-        logger.error("S3 download failed for %s: %s", object_key, exc)
-        return False
+    """Download an object from S3/RustFS to a local file with retries."""
+    for attempt in range(1, _S3_MAX_RETRIES + 1):
+        try:
+            # Verify the object exists first (HEAD request)
+            head = s3.head_object(Bucket=S3_BUCKET, Key=object_key)
+            size = head.get("ContentLength", 0)
+            logger.info("S3 download: %s exists (%d bytes), downloading (attempt %d)...",
+                        object_key, size, attempt)
+            s3.download_file(S3_BUCKET, object_key, local_path,
+                             Config=_S3_TRANSFER_CONFIG)
+            actual = os.path.getsize(local_path) if os.path.isfile(local_path) else 0
+            logger.info("S3 download: %s complete — %d bytes written", object_key, actual)
+            return True
+        except BotoClientError as exc:
+            code = exc.response.get("Error", {}).get("Code", "Unknown")
+            msg = exc.response.get("Error", {}).get("Message", str(exc))
+            http_status = exc.response.get("ResponseMetadata", {}).get("HTTPStatusCode", "?")
+            logger.error("S3 download failed for %s (attempt %d/%d): [%s] HTTP %s — %s",
+                         object_key, attempt, _S3_MAX_RETRIES, code, http_status, msg)
+            if code in ("NoSuchKey", "404", "AccessDenied", "403"):
+                # Non-retryable errors
+                logger.error("S3 download: %s — non-retryable error, giving up", code)
+                return False
+        except Exception as exc:
+            logger.error("S3 download failed for %s (attempt %d/%d): %s",
+                         object_key, attempt, _S3_MAX_RETRIES, exc)
+        if attempt < _S3_MAX_RETRIES:
+            delay = _S3_RETRY_BACKOFF[min(attempt - 1, len(_S3_RETRY_BACKOFF) - 1)]
+            logger.info("S3 download: retrying in %ds...", delay)
+            time.sleep(delay)
+    return False
 
 
 def _s3_upload(s3, local_path: str, object_key: str, content_type: str = "") -> bool:
-    """Upload a local file to S3/RustFS."""
-    try:
-        extra = {}
-        if content_type:
-            extra["ContentType"] = content_type
-        s3.upload_file(local_path, S3_BUCKET, object_key, ExtraArgs=extra if extra else None)
-        return True
-    except Exception as exc:
-        logger.error("S3 upload failed for %s: %s", object_key, exc)
-        return False
+    """Upload a local file to S3/RustFS with multipart support and retries."""
+    file_size = os.path.getsize(local_path) if os.path.isfile(local_path) else 0
+    for attempt in range(1, _S3_MAX_RETRIES + 1):
+        try:
+            extra = {}
+            if content_type:
+                extra["ContentType"] = content_type
+            logger.info("S3 upload: %s (%d bytes) -> %s (attempt %d)",
+                        os.path.basename(local_path), file_size, object_key, attempt)
+            s3.upload_file(local_path, S3_BUCKET, object_key,
+                           ExtraArgs=extra if extra else None,
+                           Config=_S3_TRANSFER_CONFIG)
+            logger.info("S3 upload: %s complete", object_key)
+            return True
+        except BotoClientError as exc:
+            code = exc.response.get("Error", {}).get("Code", "Unknown")
+            msg = exc.response.get("Error", {}).get("Message", str(exc))
+            http_status = exc.response.get("ResponseMetadata", {}).get("HTTPStatusCode", "?")
+            logger.error("S3 upload failed for %s (attempt %d/%d): [%s] HTTP %s — %s",
+                         object_key, attempt, _S3_MAX_RETRIES, code, http_status, msg)
+            if code in ("AccessDenied", "403"):
+                logger.error("S3 upload: %s — non-retryable error, giving up", code)
+                return False
+        except Exception as exc:
+            logger.error("S3 upload failed for %s (attempt %d/%d): %s",
+                         object_key, attempt, _S3_MAX_RETRIES, exc)
+        if attempt < _S3_MAX_RETRIES:
+            delay = _S3_RETRY_BACKOFF[min(attempt - 1, len(_S3_RETRY_BACKOFF) - 1)]
+            logger.info("S3 upload: retrying in %ds...", delay)
+            time.sleep(delay)
+    return False
 
 
 def _s3_delete(s3, object_key: str) -> bool:
@@ -2350,11 +2410,12 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
             jobs[job_id]["started_at"] = time.time()
 
         jlog(f"Downloading source from S3: {s3_source_key}")
+        jlog(f"S3 transfer config: 64 MB multipart threshold, 3 concurrent, {_S3_MAX_RETRIES} retries")
         dl_start = time.time()
         logger.info("HLS job %s: downloading source %s", job_id, s3_source_key)
-        # Download source video
+        # Download source video (with retries and multipart for large files)
         if not _s3_download(s3, s3_source_key, local_source):
-            raise RuntimeError(f"Failed to download {s3_source_key}")
+            raise RuntimeError(f"Failed to download {s3_source_key} after {_S3_MAX_RETRIES} attempts — check companion logs for S3 error details")
 
         dl_sec = round(time.time() - dl_start, 1)
         file_size = os.path.getsize(local_source) if os.path.isfile(local_source) else 0
@@ -2488,10 +2549,11 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
             jobs[job_id]["status"] = "uploading"
 
         jlog(f"Uploading HLS segments to S3 prefix: {s3_output_prefix}")
+        jlog(f"S3 upload: multipart for files > 64 MB, {_S3_MAX_RETRIES} retries per file")
         logger.info("HLS job %s: uploading segments to S3 prefix %s", job_id, s3_output_prefix)
         upload_start = time.time()
         upload_count = 0
-        # Upload all HLS files to S3
+        # Upload all HLS files to S3 (with multipart and retries for large segments)
         output_prefix = s3_output_prefix.rstrip("/")
         for root, _dirs, files in os.walk(hls_output):
             for filename in files:
@@ -2500,8 +2562,8 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
                 s3_key = f"{output_prefix}/{relative}"
                 ct = "application/vnd.apple.mpegurl" if filename.endswith(".m3u8") else "video/mp2t"
                 if not _s3_upload(s3, local_file, s3_key, ct):
-                    jlog(f"Failed to upload {s3_key}", "error")
-                    raise RuntimeError(f"Failed to upload {s3_key}")
+                    jlog(f"Failed to upload {s3_key} after {_S3_MAX_RETRIES} attempts", "error")
+                    raise RuntimeError(f"Failed to upload {s3_key} after {_S3_MAX_RETRIES} attempts")
                 upload_count += 1
 
         upload_sec = round(time.time() - upload_start, 1)
