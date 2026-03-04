@@ -1417,32 +1417,36 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         if (startBtn) startBtn.addEventListener('click', async function() {
-            if (_discovered.length === 0) return;
-            step2.style.display = 'none';
-            step3.style.display = '';
-            progressTitle.textContent = 'Importing videos to queue…';
-            progressCount.textContent = '0 / ' + _discovered.length;
-            progressFill.style.width = '0%';
-            progressStatus.textContent = '';
+            try {
+                if (_discovered.length === 0) return;
+                step2.style.display = 'none';
+                step3.style.display = '';
+                progressTitle.textContent = 'Importing videos to queue…';
+                progressCount.textContent = '0 / ' + _discovered.length;
+                progressFill.style.width = '0%';
+                progressStatus.textContent = '';
 
-            var imported = 0;
-            var shouldDelete = deleteCheckbox && deleteCheckbox.checked;
-            for (var i = 0; i < _discovered.length; i++) {
-                var item = _discovered[i];
-                progressStatus.textContent = 'Reading ' + item.videoFile.name + '…';
-                try {
-                    if (typeof AwOfflineQueue !== 'undefined' && AwOfflineQueue.ingestFromDevice) {
-                        await AwOfflineQueue.ingestFromDevice(item, { deleteAfterImport: shouldDelete, dirHandle: _dirHandle });
+                var imported = 0;
+                var shouldDelete = deleteCheckbox && deleteCheckbox.checked;
+                for (var i = 0; i < _discovered.length; i++) {
+                    var item = _discovered[i];
+                    progressStatus.textContent = 'Reading ' + item.videoFile.name + '…';
+                    try {
+                        if (typeof AwOfflineQueue !== 'undefined' && AwOfflineQueue.ingestFromDevice) {
+                            await AwOfflineQueue.ingestFromDevice(item, { deleteAfterImport: shouldDelete, dirHandle: _dirHandle });
+                        }
+                        imported++;
+                        progressCount.textContent = imported + ' / ' + _discovered.length;
+                        progressFill.style.width = Math.round((imported / _discovered.length) * 100) + '%';
+                    } catch (err) {
+                        progressStatus.textContent = 'Failed: ' + item.videoFile.name + ' — ' + err.message;
                     }
-                    imported++;
-                    progressCount.textContent = imported + ' / ' + _discovered.length;
-                    progressFill.style.width = Math.round((imported / _discovered.length) * 100) + '%';
-                } catch (err) {
-                    progressStatus.textContent = 'Failed: ' + item.videoFile.name + ' — ' + err.message;
                 }
+                progressTitle.textContent = 'Import complete!';
+                progressStatus.textContent = imported + ' video(s) added to upload queue. They will upload automatically.';
+            } catch (err) {
+                progressStatus.textContent = 'Import error: ' + err.message;
             }
-            progressTitle.textContent = 'Import complete!';
-            progressStatus.textContent = imported + ' video(s) added to upload queue. They will upload automatically.';
         });
     })();
 </script>

@@ -1327,7 +1327,13 @@ function handleUpdateOfflineQueueStatus() {
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
 
-    echo json_encode(['success' => true, 'updated' => $stmt->rowCount()]);
+    if ($stmt->rowCount() === 0) {
+        http_response_code(404);
+        echo json_encode(['success' => false, 'error' => 'Queue item not found']);
+        exit;
+    }
+
+    echo json_encode(['success' => true]);
     exit;
 }
 
