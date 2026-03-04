@@ -763,6 +763,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         bar.style.width = '100%';
                         percent.textContent = '100%';
                         status.textContent = 'Upload complete! Redirecting...';
+                        // Trigger transcode as a separate explicit action
+                        var tp = new FormData();
+                        tp.append('action', 'trigger_transcode');
+                        tp.append('csrf_token', csrfToken);
+                        tp.append('object_key', result.object_key || '');
+                        if (result.video_id) tp.append('video_id', result.video_id);
+                        if (result.source_id) tp.append('source_id', result.source_id);
+                        fetch('/process_video.php', { method: 'POST', body: tp, keepalive: true }).catch(function() {});
                         window.location.href = result.redirect || '/gameplan.php?page=film_room&tab=upload&success=source_uploaded';
                     } else {
                         throw new Error(result.error || 'Confirmation failed');
@@ -823,6 +831,14 @@ document.addEventListener('DOMContentLoaded', function() {
                                 bar.style.width = '100%';
                                 percent.textContent = '100%';
                                 status.textContent = 'Upload complete! Redirecting...';
+                                // Trigger transcode as a separate explicit action
+                                var tp = new FormData();
+                                tp.append('action', 'trigger_transcode');
+                                tp.append('csrf_token', csrfToken);
+                                tp.append('object_key', result.object_key || '');
+                                if (result.video_id) tp.append('video_id', result.video_id);
+                                if (result.source_id) tp.append('source_id', result.source_id);
+                                fetch('/process_video.php', { method: 'POST', body: tp, keepalive: true }).catch(function() {});
                                 window.location.href = result.redirect || '/gameplan.php?page=film_room&tab=upload&success=source_uploaded';
                             } else {
                                 throw new Error(result.error || 'Confirmation failed');

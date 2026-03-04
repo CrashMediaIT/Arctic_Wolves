@@ -1290,7 +1290,13 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(function(result) {
                 if (result.success) {
-                    drillLog('Upload confirmed! Transcoding in background.');
+                    drillLog('Upload confirmed! Triggering background transcode…');
+                    var tp = { action: 'trigger_transcode', object_key: result.object_key };
+                    if (result.video_id) tp.video_id = result.video_id;
+                    if (result.source_id) tp.source_id = result.source_id;
+                    drillPostAction(tp, { keepalive: true })
+                        .then(function(t) { drillLog('Transcode triggered (job: ' + (t.hls_job_id || 'N/A') + ')'); })
+                        .catch(function(e) { drillLogWarn('Transcode trigger: ' + e.message); });
                     drillShowComplete(progressFill, uploadPercent);
                     persistToast('Video uploaded! Transcoding in background.', 'success');
                     setTimeout(function() { location.reload(); }, 3000);
@@ -1381,7 +1387,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
                 .then(function(result) {
                     if (result.success) {
-                        drillLog('Upload confirmed! Transcoding in background.');
+                        drillLog('Upload confirmed! Triggering background transcode…');
+                        var tp = { action: 'trigger_transcode', object_key: result.object_key };
+                        if (result.video_id) tp.video_id = result.video_id;
+                        if (result.source_id) tp.source_id = result.source_id;
+                        drillPostAction(tp, { keepalive: true })
+                            .then(function(t) { drillLog('Transcode triggered (job: ' + (t.hls_job_id || 'N/A') + ')'); })
+                            .catch(function(e) { drillLogWarn('Transcode trigger: ' + e.message); });
                         drillShowComplete(progressFill, uploadPercent);
                         persistToast('Video uploaded! Transcoding in background.', 'success');
                         setTimeout(function() { location.reload(); }, 3000);
