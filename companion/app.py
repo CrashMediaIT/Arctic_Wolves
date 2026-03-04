@@ -148,6 +148,8 @@ def _log_request(response):
 CONFIG_DIR = os.getenv("CONFIG_DIR", "/config")
 CONFIG_FILE = os.path.join(CONFIG_DIR, "companion_config.enc")
 KEY_FILE = os.path.join(CONFIG_DIR, "encryption.key")
+JOBS_FILE = os.path.join(CONFIG_DIR, "companion_jobs.json")
+_MAX_PERSISTED_JOBS = 500
 
 
 def _read_key_file() -> str:
@@ -264,6 +266,51 @@ def _save_persistent_config(cfg: dict) -> bool:
         return False
 
 
+def _load_jobs() -> dict:
+    """Load persisted job history from the JSON file on disk.
+
+    Jobs that were still running when the process last exited are marked
+    as failed since the daemon threads are gone.
+    """
+    if not os.path.isfile(JOBS_FILE):
+        return {}
+    try:
+        with open(JOBS_FILE, "r") as f:
+            job_list = json.load(f)
+        loaded = {}
+        for j in job_list:
+            if not isinstance(j, dict) or "id" not in j:
+                continue
+            if j.get("status") in ("running", "queued", "downloading",
+                                    "transcoding", "uploading"):
+                j["status"] = "failed"
+                j["error"] = j.get("error") or "Interrupted by restart"
+                j.setdefault("finished_at", time.time())
+            loaded[j["id"]] = j
+        return loaded
+    except Exception as exc:
+        logger.warning("Could not load job history: %s", exc)
+        return {}
+
+
+def _save_jobs():
+    """Persist current job history to disk (most recent jobs only).
+
+    Must be called while *not* holding ``job_lock`` — or from within a
+    block that already holds it (the function acquires the lock itself).
+    """
+    try:
+        Path(CONFIG_DIR).mkdir(parents=True, exist_ok=True)
+        with job_lock:
+            all_jobs = sorted(jobs.values(),
+                              key=lambda j: j.get("created_at", 0),
+                              reverse=True)[:_MAX_PERSISTED_JOBS]
+        with open(JOBS_FILE, "w") as f:
+            json.dump(all_jobs, f, default=str)
+    except Exception as exc:
+        logger.warning("Failed to save job history: %s", exc)
+
+
 # Load all settings from the encrypted persistent config file.
 # The encryption key comes from the ENCRYPTION_KEY env var (preferred)
 # or /config/encryption.key (fallback).  Everything else is entered
@@ -331,8 +378,8 @@ VERSION = "1.3.0"
 
 Path(TEMP_DIR).mkdir(parents=True, exist_ok=True)
 
-# In-memory job store (job_id -> dict)
-jobs: dict = {}
+# In-memory job store (job_id -> dict), seeded from persistent file
+jobs: dict = _load_jobs()
 job_lock = threading.Lock()
 job_semaphore = threading.Semaphore(MAX_CONCURRENT_JOBS)
 
@@ -619,25 +666,131 @@ def _qsv_render_device(device: str) -> str:
     return device  # can't resolve; return original
 
 
+# DRM drivers that expose VA-API displays (Intel / AMD GPUs).
+# NVIDIA's proprietary driver does NOT support VA-API; its render node
+# must be skipped when selecting a device for VAAPI or QSV encoding.
+_VAAPI_DRM_DRIVERS = frozenset({"i915", "xe", "amdgpu", "radeon"})
+
+# Map DRM kernel driver → VA-API user-space driver name.  Setting
+# LIBVA_DRIVER_NAME explicitly avoids libva auto-detection failures
+# that occur inside some container environments.
+_DRM_TO_VAAPI_DRIVER = {
+    "i915": "iHD",
+    "xe": "iHD",
+    "amdgpu": "radeonsi",
+    "radeon": "r600",
+}
+
+
+def _drm_driver(device: str) -> str:
+    """Return the DRM kernel driver name for a ``/dev/dri/*`` node, or ``""``."""
+    entry = os.path.basename(device)
+    try:
+        return os.path.basename(os.readlink(f"/sys/class/drm/{entry}/device/driver"))
+    except OSError:
+        return ""
+
+
+def _vaapi_env(device: str) -> dict:
+    """Return an environment dict with ``LIBVA_DRIVER_NAME`` set for *device*.
+
+    In container environments libva's automatic driver detection can fail
+    even when the correct driver package is installed.  Explicitly setting
+    ``LIBVA_DRIVER_NAME`` resolves "No VA display found" errors.
+    """
+    env = os.environ.copy()
+    drm = _drm_driver(device)
+    va_driver = _DRM_TO_VAAPI_DRIVER.get(drm, "")
+    if va_driver:
+        env.setdefault("LIBVA_DRIVER_NAME", va_driver)
+    return env
+
+
+# Cached result of _effective_vaapi_device() — computed once, reused everywhere.
+_cached_vaapi_device: str | None = None
+
+
+def _effective_vaapi_device() -> str:
+    """Return the best render-node for VA-API / QSV encoding.
+
+    On multi-GPU systems the default ``/dev/dri/renderD128`` may belong to
+    an NVIDIA discrete GPU, which does **not** expose a VA-API display.
+    The Intel iGPU (needed for QSV and VAAPI) sits on a different render
+    node.  This function detects the DRM kernel driver for the configured
+    ``HW_ACCEL_DEVICE`` and, when it is not VA-API compatible, scans the
+    remaining render nodes for one that is.
+
+    Falls back to ``HW_ACCEL_DEVICE`` when sysfs is unavailable or no
+    compatible device is found (preserving existing behaviour).
+    """
+    global _cached_vaapi_device
+    if _cached_vaapi_device is not None:
+        return _cached_vaapi_device
+
+    configured_driver = _drm_driver(HW_ACCEL_DEVICE)
+
+    # Fast path — configured device already has a VA-API driver.
+    if configured_driver in _VAAPI_DRM_DRIVERS:
+        _cached_vaapi_device = HW_ACCEL_DEVICE
+        return _cached_vaapi_device
+
+    # Driver unknown (no sysfs) — trust the configured device.
+    if configured_driver == "":
+        _cached_vaapi_device = HW_ACCEL_DEVICE
+        return _cached_vaapi_device
+
+    # Configured device has a known non-VA-API driver (e.g. nvidia).
+    # Scan remaining render nodes for a VA-API compatible one.
+    try:
+        for entry in sorted(os.listdir("/dev/dri")):
+            if not entry.startswith("renderD"):
+                continue
+            dev = f"/dev/dri/{entry}"
+            if dev == HW_ACCEL_DEVICE:
+                continue
+            if _drm_driver(dev) in _VAAPI_DRM_DRIVERS:
+                logger.info("Auto-detected VA-API device %s (configured %s uses %s driver)",
+                            dev, HW_ACCEL_DEVICE, configured_driver)
+                _cached_vaapi_device = dev
+                return _cached_vaapi_device
+    except OSError:
+        pass
+
+    # Nothing better found — use configured device as-is.
+    _cached_vaapi_device = HW_ACCEL_DEVICE
+    return _cached_vaapi_device
+
+
 def _probe_encoder(encoder: str) -> bool:
     """Verify a hardware encoder actually works by running a minimal encode."""
     if encoder not in _KNOWN_HW_ENCODERS:
+        return False
+    # Skip VAAPI/QSV probes when no suitable GPU device exists — avoids noisy
+    # FFmpeg "Error parsing global options" stderr from missing /dev/dri nodes.
+    vaapi_dev = _effective_vaapi_device()
+    if ("vaapi" in encoder or "qsv" in encoder) and not os.path.exists(vaapi_dev):
+        logger.info("Encoder probe skipped for %s: device %s not found",
+                     encoder, vaapi_dev)
         return False
     try:
         pre_input: list[str] = []
         vf: list[str] = []
         if "vaapi" in encoder:
-            pre_input = ["-vaapi_device", HW_ACCEL_DEVICE]
+            pre_input = ["-vaapi_device", vaapi_dev]
             vf = ["-vf", "format=nv12,hwupload"]
         elif "qsv" in encoder:
-            pre_input = ["-init_hw_device", f"qsv=hw,child_device={_qsv_render_device(HW_ACCEL_DEVICE)}",
+            pre_input = ["-init_hw_device", f"qsv=hw,child_device={_qsv_render_device(vaapi_dev)}",
                          "-filter_hw_device", "hw"]
             vf = ["-vf", "format=nv12,hwupload=extra_hw_frames=64"]
         cmd = [FFMPEG_PATH, "-y", "-hide_banner", "-loglevel", "error"] + \
               pre_input + \
               ["-f", "lavfi", "-i", "color=c=black:s=64x64:d=0.1:r=10",
                "-frames:v", "1"] + vf + ["-c:v", encoder, "-f", "null", "-"]
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=10, check=False)
+        # Pass LIBVA_DRIVER_NAME so libva finds the correct VA-API driver
+        # in container environments where auto-detection may fail.
+        env = _vaapi_env(vaapi_dev)
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=10,
+                              check=False, env=env)
         if proc.returncode != 0:
             logger.info("Encoder probe failed for %s (rc=%d): %s",
                         encoder, proc.returncode, (proc.stderr or "").strip()[:300])
@@ -784,12 +937,13 @@ def _encoder_flags(encoder: str, hw_decode: bool = False) -> list[str]:
             # Device already initialised by _hwaccel_decode_flags
             flags += ["-preset", "medium"]
         else:
-            flags = ["-init_hw_device", f"qsv=hw,child_device={_qsv_render_device(HW_ACCEL_DEVICE)}",
+            vaapi_dev = _effective_vaapi_device()
+            flags = ["-init_hw_device", f"qsv=hw,child_device={_qsv_render_device(vaapi_dev)}",
                      "-filter_hw_device", "hw"] + flags + ["-preset", "medium"]
     elif "vaapi" in encoder:
         if not hw_decode:
             # Standalone encode (diagnostic test, probe) — need our own device
-            flags = ["-vaapi_device", HW_ACCEL_DEVICE] + flags
+            flags = ["-vaapi_device", _effective_vaapi_device()] + flags
     return flags
 
 
@@ -828,18 +982,19 @@ def _hwaccel_decode_flags(hw_info: dict | None = None) -> list[str]:
         # the *encoder* correctly fell back to VAAPI via _select_encoder.
         info = hw_info or _detect_hw_accel()
         encoders = info.get("encoders", [])
+        vaapi_dev = _effective_vaapi_device()
         if any("qsv" in e for e in encoders):
-            dev = _qsv_render_device(HW_ACCEL_DEVICE)
+            dev = _qsv_render_device(vaapi_dev)
             return ["-init_hw_device", f"qsv=hw,child_device={dev}",
                     "-hwaccel", "qsv", "-hwaccel_device", "hw",
                     "-filter_hw_device", "hw"]
         # QSV unavailable — fall back to VAAPI (same Intel iGPU hardware)
         if any("vaapi" in e for e in encoders):
-            return ["-vaapi_device", HW_ACCEL_DEVICE, "-hwaccel", "vaapi"]
+            return ["-vaapi_device", vaapi_dev, "-hwaccel", "vaapi"]
         # Neither QSV nor VAAPI usable — software decode
         return []
     if accel in ("vaapi", "amf"):
-        return ["-vaapi_device", HW_ACCEL_DEVICE, "-hwaccel", "vaapi"]
+        return ["-vaapi_device", _effective_vaapi_device(), "-hwaccel", "vaapi"]
     if accel == "auto":
         # Detect which hardware is actually present and pick the right
         # decode path — don't blindly assume CUDA is available.
@@ -847,13 +1002,14 @@ def _hwaccel_decode_flags(hw_info: dict | None = None) -> list[str]:
         encoders = info.get("encoders", [])
         if any("nvenc" in e for e in encoders):
             return ["-hwaccel", "cuda", "-hwaccel_output_format", "cuda"]
+        vaapi_dev = _effective_vaapi_device()
         if any("qsv" in e for e in encoders):
-            dev = _qsv_render_device(HW_ACCEL_DEVICE)
+            dev = _qsv_render_device(vaapi_dev)
             return ["-init_hw_device", f"qsv=hw,child_device={dev}",
                     "-hwaccel", "qsv", "-hwaccel_device", "hw",
                     "-filter_hw_device", "hw"]
         if any("vaapi" in e for e in encoders):
-            return ["-vaapi_device", HW_ACCEL_DEVICE, "-hwaccel", "vaapi"]
+            return ["-vaapi_device", vaapi_dev, "-hwaccel", "vaapi"]
         # No usable hardware — software decode
         return []
     return []
@@ -941,6 +1097,7 @@ def _run_job(job_id: str, cmd: list[str]):
                 jobs[job_id]["error"] = str(exc)[:2000]
                 jobs[job_id]["finished_at"] = time.time()
             logger.error("Job %s exception: %s", job_id, exc)
+        _save_jobs()
 
 
 def _create_job(cmd: list[str], description: str, output_path: str) -> dict:
@@ -958,6 +1115,7 @@ def _create_job(cmd: list[str], description: str, output_path: str) -> dict:
     }
     with job_lock:
         jobs[job_id] = job
+    _save_jobs()
 
     thread = threading.Thread(target=_run_job, args=(job_id, cmd), daemon=True)
     thread.start()
@@ -2390,6 +2548,7 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
             jobs[job_id]["status"] = "failed"
             jobs[job_id]["error"] = "S3 not configured"
             jobs[job_id]["finished_at"] = time.time()
+        _save_jobs()
         return
 
     jlog(f"S3 endpoint: {S3_ENDPOINT}")
@@ -2582,6 +2741,7 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
             jobs[job_id]["hls_manifest"] = f"{output_prefix}/master.m3u8"
             jobs[job_id]["finished_at"] = time.time()
             jobs[job_id]["variants"] = [v["label"] for v in variants]
+        _save_jobs()
 
         logger.info("HLS job %s completed: %d variants, manifest=%s", job_id, len(variants), f"{output_prefix}/master.m3u8")
 
@@ -2608,8 +2768,7 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
             jobs[job_id]["status"] = "failed"
             jobs[job_id]["error"] = str(exc)[:2000]
             jobs[job_id]["finished_at"] = time.time()
-
-        # Notify the main application about failure too
+        _save_jobs()
         with job_lock:
             vid_id = jobs[job_id].get("video_id")
         _send_callback(cb_url, {
@@ -2705,6 +2864,7 @@ def hls_transcode():
     }
     with job_lock:
         jobs[job_id] = job
+    _save_jobs()
 
     thread = threading.Thread(
         target=_run_hls_job,
@@ -2774,6 +2934,7 @@ def hls_retry():
     }
     with job_lock:
         jobs[job_id] = job
+    _save_jobs()
 
     thread = threading.Thread(
         target=_run_hls_job,

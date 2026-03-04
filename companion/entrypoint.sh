@@ -62,41 +62,46 @@ install_amd_gpu() {
 }
 
 case "${HW_ACCEL}" in
-    qsv)   install_intel_gpu ;;
-    vaapi) install_amd_gpu   ;;
+    qsv)
+        install_intel_gpu
+        # Explicitly tell libva which driver to load.  In container
+        # environments the auto-detection can fail even when the driver
+        # package is installed, causing "No VA display found" errors.
+        export LIBVA_DRIVER_NAME=iHD
+        ;;
+    vaapi) install_amd_gpu ;;
 esac
 
 # ---------------------------------------------------------------------------
-# Grant the companion user access to the GPU render device.
-# The host GID that owns /dev/dri/renderD128 (or the configured device) is
-# unlikely to match any group inside the container.  We detect it, create
-# a matching group if needed, and add the companion user to it.
+# Grant the companion user access to ALL GPU render and card devices.
+# The host GID that owns /dev/dri/* nodes is unlikely to match any group
+# inside the container.  We detect each unique GID, create a matching
+# group if needed, and add the companion user to it.
+#
+# BUG FIX: Previously used hard-coded names ("render", "video") which can
+# collide with existing Debian groups at a *different* GID — silently
+# adding the companion user to the wrong group.  Now uses unique names
+# like "gpu_107" to avoid collisions.
 # ---------------------------------------------------------------------------
-RENDER_DEVICE="${HW_ACCEL_DEVICE:-/dev/dri/renderD128}"
-
-if [ -c "$RENDER_DEVICE" ]; then
-    RENDER_GID=$(stat -c '%g' "$RENDER_DEVICE")
-    # Find or create a group with that GID
-    RENDER_GROUP=$(getent group "$RENDER_GID" | cut -d: -f1)
-    if [ -z "$RENDER_GROUP" ]; then
-        RENDER_GROUP="render"
-        groupadd -g "$RENDER_GID" "$RENDER_GROUP" 2>/dev/null || true
+_grant_dri_access() {
+    local DEV="$1"
+    local DEV_GID
+    DEV_GID=$(stat -c '%g' "$DEV")
+    # See if a group already exists with this GID
+    local GRP
+    GRP=$(getent group "$DEV_GID" | cut -d: -f1)
+    if [ -z "$GRP" ]; then
+        # No group with this GID — create one with a collision-safe name
+        GRP="gpu_${DEV_GID}"
+        groupadd -g "$DEV_GID" "$GRP" 2>/dev/null || true
     fi
-    usermod -aG "$RENDER_GROUP" companion 2>/dev/null || true
-    echo "Added companion user to group $RENDER_GROUP (GID $RENDER_GID) for $RENDER_DEVICE"
-fi
+    usermod -aG "$GRP" companion 2>/dev/null || true
+    echo "Granted companion access to $DEV via group $GRP (GID $DEV_GID)"
+}
 
-# Also grant access to /dev/dri/card0 if present (owned by the video group)
-if [ -c /dev/dri/card0 ]; then
-    CARD_GID=$(stat -c '%g' /dev/dri/card0)
-    CARD_GROUP=$(getent group "$CARD_GID" | cut -d: -f1)
-    if [ -z "$CARD_GROUP" ]; then
-        CARD_GROUP="video"
-        groupadd -g "$CARD_GID" "$CARD_GROUP" 2>/dev/null || true
-    fi
-    usermod -aG "$CARD_GROUP" companion 2>/dev/null || true
-    echo "Added companion user to group $CARD_GROUP (GID $CARD_GID) for /dev/dri/card0"
-fi
+for DRI_NODE in /dev/dri/renderD* /dev/dri/card*; do
+    [ -c "$DRI_NODE" ] && _grant_dri_access "$DRI_NODE"
+done
 
 # Drop to non-root user and exec the CMD
 exec gosu companion "$@"
