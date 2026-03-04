@@ -2217,6 +2217,7 @@ button.aw-ctrl-btn svg {
     pointer-events: auto;
 }
 .aw-touch-zone-left { left: 0; width: 30%; }
+.aw-touch-zone-center { left: 30%; right: 30%; }
 .aw-touch-zone-right { right: 0; width: 30%; }
 .aw-skip-indicator {
     position: absolute;

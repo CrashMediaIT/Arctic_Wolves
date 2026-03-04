@@ -336,6 +336,10 @@
         touchLeft.innerHTML = '<span class="aw-skip-indicator"><svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12.5 3C7.81 3 4.01 6.54 3.68 11H1l3.89 3.89.07.14L9 11H6.73C7.06 7.66 9.49 5 12.5 5c3.31 0 6 2.69 6 6s-2.69 6-6 6c-1.66 0-3.16-.67-4.24-1.76l-1.42 1.42A7.987 7.987 0 0 0 12.5 19c4.42 0 8-3.58 8-8s-3.58-8-8-8z"/></svg> ' + SKIP_SECONDS + 's</span>';
         container.appendChild(touchLeft);
 
+        var touchCenter = document.createElement('div');
+        touchCenter.className = 'aw-touch-zone aw-touch-zone-center';
+        container.appendChild(touchCenter);
+
         var touchRight = document.createElement('div');
         touchRight.className = 'aw-touch-zone aw-touch-zone-right';
         touchRight.innerHTML = '<span class="aw-skip-indicator">' + SKIP_SECONDS + 's <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M11.5 3c4.69 0 8.49 3.54 8.82 8H23l-3.89 3.89-.07.14L15 11h2.27C16.94 7.66 14.51 5 11.5 5c-3.31 0-6 2.69-6 6s2.69 6 6 6c1.66 0 3.16-.67 4.24-1.76l1.42 1.42A7.987 7.987 0 0 1 11.5 19c-4.42 0-8-3.58-8-8s3.58-8 8-8z"/></svg></span>';
@@ -364,6 +368,14 @@
             e.stopPropagation();
             video.currentTime = Math.min(video.duration || 0, video.currentTime + SKIP_SECONDS);
             skipRightTimer = flashSkip(skipRightIndicator, skipRightTimer);
+            showControls();
+            scheduleHide();
+        });
+
+        touchCenter.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (video.paused) video.play().catch(function() {});
+            else video.pause();
             showControls();
             scheduleHide();
         });
@@ -634,6 +646,7 @@
             if (gradient.parentElement) gradient.remove();
             if (bigPlay.parentElement) bigPlay.remove();
             if (touchLeft.parentElement) touchLeft.remove();
+            if (touchCenter.parentElement) touchCenter.remove();
             if (touchRight.parentElement) touchRight.remove();
         };
     }
