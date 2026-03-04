@@ -398,7 +398,7 @@ def _s3_download(s3, object_key: str, local_path: str) -> bool:
             http_status = exc.response.get("ResponseMetadata", {}).get("HTTPStatusCode", "?")
             logger.error("S3 download failed for %s (attempt %d/%d): [%s] HTTP %s — %s",
                          object_key, attempt, _S3_MAX_RETRIES, code, http_status, msg)
-            if code in ("NoSuchKey", "404", "AccessDenied", "403"):
+            if code in ("NoSuchKey", "AccessDenied"):
                 # Non-retryable errors
                 logger.error("S3 download: %s — non-retryable error, giving up", code)
                 return False
@@ -433,7 +433,7 @@ def _s3_upload(s3, local_path: str, object_key: str, content_type: str = "") -> 
             http_status = exc.response.get("ResponseMetadata", {}).get("HTTPStatusCode", "?")
             logger.error("S3 upload failed for %s (attempt %d/%d): [%s] HTTP %s — %s",
                          object_key, attempt, _S3_MAX_RETRIES, code, http_status, msg)
-            if code in ("AccessDenied", "403"):
+            if code in ("AccessDenied",):
                 logger.error("S3 upload: %s — non-retryable error, giving up", code)
                 return False
         except Exception as exc:

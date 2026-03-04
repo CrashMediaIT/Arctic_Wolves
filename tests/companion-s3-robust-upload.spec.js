@@ -213,7 +213,9 @@ test.describe('HLS transcode S3 operations reference transfer config', () => {
     // The transcode upload failure should reference the retry count
     const hlsStart = appSrc.indexOf('def _hls_transcode_s3');
     expect(hlsStart).toBeGreaterThan(-1);
-    const hlsFn = appSrc.substring(hlsStart, hlsStart + 15000);
+    // Find the next top-level function after _hls_transcode_s3
+    const afterHls = appSrc.indexOf('\ndef ', hlsStart + 1);
+    const hlsFn = appSrc.substring(hlsStart, afterHls > hlsStart ? afterHls : appSrc.length);
     expect(hlsFn).toMatch(/Failed to upload.*attempts/);
   });
 });
