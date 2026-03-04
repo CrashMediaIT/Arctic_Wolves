@@ -1077,7 +1077,7 @@ function handleConfirmVideoUpload() {
 // ═══════════════════════════════════════════════════════════════════════
 
 /**
- * Load RustFS config into a normalised array for multipart operations.
+ * Load RustFS config into a normalized array for multipart operations.
  */
 function loadMultipartRustFSConfig() {
     global $pdo;
@@ -1574,6 +1574,13 @@ function handleMultipartAbort() {
     echo json_encode(['success' => true]);
     exit;
 }
+
+/**
+ * Handle drill video upload from coach recording interface
+ * Uploads to Nextcloud with folder structure: Year/Month/Day
+ * Naming: SessionName-DrillName-AthleteName-Rep#
+ */
+function handleDrillVideoUpload() {
     global $pdo, $user_id, $user_role;
     
     // Only coaches can upload drill videos
