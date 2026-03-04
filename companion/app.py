@@ -678,6 +678,7 @@ _DRM_TO_VAAPI_DRIVER = {
     "i915": "iHD",
     "xe": "iHD",
     "amdgpu": "radeonsi",
+    "radeon": "r600",
 }
 
 
