@@ -78,6 +78,10 @@ try {
         case 'abort_multipart':
             handleMultipartAbort();
             break;
+
+        case 'trigger_transcode':
+            handleTriggerTranscode();
+            break;
             
         case 'update_video':
             handleVideoUpdate();
@@ -429,7 +433,6 @@ function handleConfirmVideoUpload() {
         $source_id = $pdo->lastInsertId();
         Auditor::log($pdo, $user_id, 'create', 'vr_video_sources', $source_id, ['action' => 'Video source uploaded (direct)']);
         $pdo->prepare("UPDATE vr_video_sources SET nextcloud_path = ? WHERE id = ?")->execute([$proxy_url, $source_id]);
-        if (!empty($object_key)) { triggerHlsTranscodeSource($pdo, $source_id, $object_key); }
         try { logSecurityEvent('video_source_uploaded', "Video source uploaded (direct): " . $pending['original_name'], $user_id); } catch (Exception $e) { error_log("logSecurityEvent failed: " . $e->getMessage()); }
         $redirect = '/gameplan.php?page=film_room&tab=upload&success=source_uploaded';
 
@@ -480,7 +483,6 @@ function handleConfirmVideoUpload() {
         ]);
         $video_id = $pdo->lastInsertId();
         Auditor::log($pdo, $user_id, 'create', 'videos', $video_id, ['action' => 'Drill video uploaded (direct)']);
-        if (!empty($object_key)) { triggerHlsTranscode($pdo, $video_id, $object_key); }
         try { logSecurityEvent('drill_video_upload', "Drill video uploaded (direct): $title (ID: $video_id)", $user_id); } catch (Exception $e) { error_log("logSecurityEvent failed: " . $e->getMessage()); }
         $redirect = '';
 
@@ -508,7 +510,6 @@ function handleConfirmVideoUpload() {
         $video_id = $pdo->lastInsertId();
         Auditor::log($pdo, $user_id, 'create', 'videos', $video_id, ['action' => 'Coach video uploaded (direct)']);
         $pdo->prepare("UPDATE videos SET nextcloud_path = ? WHERE id = ?")->execute([$proxy_url, $video_id]);
-        if (!empty($object_key)) { triggerHlsTranscode($pdo, $video_id, $object_key); }
         try { logSecurityEvent('video_upload', "Video uploaded (direct) for athlete ID: $athlete_id", $user_id); } catch (Exception $e) { error_log("logSecurityEvent failed: " . $e->getMessage()); }
         try { sendVideoNotification($pdo, $athlete_id, $user_id, $video_id, 'new_video'); } catch (Exception $e) { error_log("sendVideoNotification failed: " . $e->getMessage()); }
         $redirect = 'dashboard.php?page=coaches_reviews&success=video_uploaded';
@@ -542,7 +543,6 @@ function handleConfirmVideoUpload() {
         $video_id = $pdo->lastInsertId();
         Auditor::log($pdo, $user_id, 'create', 'videos', $video_id, ['action' => 'Athlete video uploaded (direct)']);
         $pdo->prepare("UPDATE videos SET nextcloud_path = ? WHERE id = ?")->execute([$proxy_url, $video_id]);
-        if (!empty($object_key)) { triggerHlsTranscode($pdo, $video_id, $object_key); }
         try { logSecurityEvent('athlete_video_upload', "Athlete video uploaded (direct) for review, ID: $video_id", $athlete_id); } catch (Exception $e) { error_log("logSecurityEvent failed: " . $e->getMessage()); }
         try { sendVideoUploadNotificationToCoach($pdo, $coach_id, $athlete_id, $video_id, $title); } catch (Exception $e) { error_log("sendVideoUploadNotificationToCoach failed: " . $e->getMessage()); }
         $redirect = 'dashboard.php?page=coaches_reviews&success=video_uploaded';
@@ -550,10 +550,75 @@ function handleConfirmVideoUpload() {
 
     unset($_SESSION['pending_video_upload_general']);
 
-    $response = ['success' => true, 'redirect' => $redirect];
+    $response = ['success' => true, 'redirect' => $redirect, 'object_key' => $object_key];
     if ($video_id) $response['video_id'] = $video_id;
     if ($source_id) $response['source_id'] = $source_id;
     echo json_encode($response);
+    exit;
+}
+
+/**
+ * Trigger HLS transcode as a separate explicit action.
+ * Called by the client after confirm_video_upload succeeds — mirrors the
+ * admin video test view's standalone transcode trigger for reliability.
+ */
+function handleTriggerTranscode() {
+    global $pdo, $user_id;
+
+    ignore_user_abort(true);
+    header('Content-Type: application/json');
+
+    $video_id   = filter_input(INPUT_POST, 'video_id', FILTER_VALIDATE_INT);
+    $source_id  = filter_input(INPUT_POST, 'source_id', FILTER_VALIDATE_INT);
+    $object_key = $_POST['object_key'] ?? '';
+
+    if (empty($object_key)) {
+        throw new Exception('object_key is required');
+    }
+
+    if ($source_id) {
+        // Verify the user uploaded this source
+        $stmt = $pdo->prepare("SELECT id FROM vr_video_sources WHERE id = ? AND uploaded_by = ?");
+        $stmt->execute([$source_id, $user_id]);
+        if (!$stmt->fetch()) {
+            throw new Exception('Video source not found or access denied');
+        }
+        triggerHlsTranscodeSource($pdo, $source_id, $object_key);
+
+        // Check whether the companion accepted the job
+        $stmt = $pdo->prepare("SELECT hls_status, hls_job_id FROM vr_video_sources WHERE id = ?");
+        $stmt->execute([$source_id]);
+        $row = $stmt->fetch();
+
+        echo json_encode([
+            'success'    => true,
+            'source_id'  => $source_id,
+            'hls_status' => $row['hls_status'] ?? null,
+            'hls_job_id' => $row['hls_job_id'] ?? null,
+        ]);
+    } elseif ($video_id) {
+        // Verify the user owns this video (as athlete or coach)
+        $stmt = $pdo->prepare("SELECT id FROM videos WHERE id = ? AND (athlete_id = ? OR coach_id = ?)");
+        $stmt->execute([$video_id, $user_id, $user_id]);
+        if (!$stmt->fetch()) {
+            throw new Exception('Video not found or access denied');
+        }
+        triggerHlsTranscode($pdo, $video_id, $object_key);
+
+        // Check whether the companion accepted the job
+        $stmt = $pdo->prepare("SELECT hls_status, hls_job_id FROM videos WHERE id = ?");
+        $stmt->execute([$video_id]);
+        $row = $stmt->fetch();
+
+        echo json_encode([
+            'success'    => true,
+            'video_id'   => $video_id,
+            'hls_status' => $row['hls_status'] ?? null,
+            'hls_job_id' => $row['hls_job_id'] ?? null,
+        ]);
+    } else {
+        throw new Exception('video_id or source_id is required');
+    }
     exit;
 }
 

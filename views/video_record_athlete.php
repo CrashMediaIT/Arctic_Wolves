@@ -1140,7 +1140,15 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(function(result) {
                 if (result.success) {
-                    uploadLog('Upload confirmed! Transcoding will happen in the background.');
+                    uploadLog('Upload confirmed! Triggering background transcode…');
+                    // Step 4: trigger transcode as a separate explicit action
+                    // (matches the admin video test view pattern for reliability)
+                    var transcodeParams = { action: 'trigger_transcode', object_key: result.object_key };
+                    if (result.video_id) transcodeParams.video_id = result.video_id;
+                    if (result.source_id) transcodeParams.source_id = result.source_id;
+                    postAction(transcodeParams, { keepalive: true })
+                        .then(function(t) { uploadLog('Transcode triggered (job: ' + (t.hls_job_id || 'pending') + ')'); })
+                        .catch(function(e) { uploadLogWarn('Transcode trigger: ' + e.message); });
                     showUploadComplete(bar, percent, status, overlay, submitBtn, result.redirect);
                 } else {
                     throw new Error(result.error || 'Confirmation failed');
@@ -1209,7 +1217,14 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(function(result) {
             if (result.success) {
-                uploadLog('Upload confirmed! Transcoding will happen in the background.');
+                uploadLog('Upload confirmed! Triggering background transcode…');
+                // Trigger transcode as a separate explicit action
+                var transcodeParams = { action: 'trigger_transcode', object_key: result.object_key };
+                if (result.video_id) transcodeParams.video_id = result.video_id;
+                if (result.source_id) transcodeParams.source_id = result.source_id;
+                postAction(transcodeParams, { keepalive: true })
+                    .then(function(t) { uploadLog('Transcode triggered (job: ' + (t.hls_job_id || 'pending') + ')'); })
+                    .catch(function(e) { uploadLogWarn('Transcode trigger: ' + e.message); });
                 showUploadComplete(bar, percent, status, overlay, submitBtn, result.redirect);
             } else {
                 throw new Error(result.error || 'Confirmation failed');

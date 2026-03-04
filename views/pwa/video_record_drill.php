@@ -299,6 +299,14 @@ endif;
             .then(function(result) {
                 if (result.success) {
                     statusEl.textContent = 'Upload complete!';
+                    // Trigger transcode as a separate explicit action
+                    var tp = new FormData();
+                    tp.append('action', 'trigger_transcode');
+                    tp.append('csrf_token', csrfToken);
+                    tp.append('object_key', result.object_key || '');
+                    if (result.video_id) tp.append('video_id', result.video_id);
+                    if (result.source_id) tp.append('source_id', result.source_id);
+                    fetch('process_video.php', { method: 'POST', body: tp, keepalive: true }).catch(function() {});
                     btn.disabled = true;
                     btn.innerHTML = '<i class="fas fa-cloud-arrow-up"></i> Upload Video';
                     progressWrap.remove();
@@ -357,6 +365,14 @@ endif;
                     .then(function(result) {
                         if (result.success) {
                             statusEl.textContent = 'Upload complete!';
+                            // Trigger transcode as a separate explicit action
+                            var tp = new FormData();
+                            tp.append('action', 'trigger_transcode');
+                            tp.append('csrf_token', csrfToken);
+                            tp.append('object_key', result.object_key || '');
+                            if (result.video_id) tp.append('video_id', result.video_id);
+                            if (result.source_id) tp.append('source_id', result.source_id);
+                            fetch('process_video.php', { method: 'POST', body: tp, keepalive: true }).catch(function() {});
                             progressWrap.remove();
                             setTimeout(function() { location.reload(); }, 500);
                         } else {
