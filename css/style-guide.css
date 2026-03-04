@@ -204,7 +204,7 @@ html, body {
 
 /* Base Button */
 .btn, 
-button:not(.modal-close):not(.view-btn):not(.calendar-nav-btn):not(.btn-icon), 
+button:not(.modal-close):not(.view-btn):not(.calendar-nav-btn):not(.btn-icon):not(.aw-ctrl-btn), 
 input[type="submit"], 
 input[type="button"] {
     display: inline-flex;
