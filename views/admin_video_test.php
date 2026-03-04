@@ -71,6 +71,10 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
                 <span id="vt-transcode-status-text" style="font-weight:600;color:var(--text-secondary,#6b7280);">
                     Waiting for upload…
                 </span>
+                <button id="vt-retry-btn" class="btn btn-warning" style="display:none;margin-left:1rem;font-size:.85rem;padding:.25rem .75rem;"
+                        title="Retry the failed transcode">
+                    <i class="fa-solid fa-rotate-right"></i> Retry Transcode
+                </button>
             </div>
             <div id="vt-transcode-progress" style="display:none;margin-bottom:1rem;">
                 <div style="background:var(--bg-secondary,#e5e7eb);border-radius:6px;overflow:hidden;height:18px;">
@@ -82,6 +86,15 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
                 </p>
             </div>
         </div>
+
+        <!-- Transcode job log (expandable) -->
+        <details id="vt-transcode-log-details" style="display:none;margin-bottom:1rem;">
+            <summary style="cursor:pointer;font-weight:600;font-size:.9rem;color:var(--text-secondary,#6b7280);user-select:none;">
+                <i class="fa-solid fa-terminal"></i> Transcode Job Log
+            </summary>
+            <pre id="vt-transcode-log"
+                 style="margin-top:.5rem;max-height:400px;overflow:auto;background:#1e1e2e;color:#cdd6f4;padding:.75rem;border-radius:6px;font-size:.78rem;white-space:pre-wrap;line-height:1.5;"></pre>
+        </details>
 
         <!-- Video player -->
         <div id="vt-player-area" style="display:none;margin-top:1rem;">
@@ -115,6 +128,12 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
     var playerArea       = document.getElementById('vt-player-area');
     var videoPlayer      = document.getElementById('vt-video-player');
     var playerInfo       = document.getElementById('vt-player-info');
+    var retryBtn         = document.getElementById('vt-retry-btn');
+    var transcodeLogDetails = document.getElementById('vt-transcode-log-details');
+    var transcodeLogEl   = document.getElementById('vt-transcode-log');
+
+    // Track current job state for retry
+    var currentTranscodeJob = { objectKey: '', jobId: '', outputPrefix: '' };
 
     var ALLOWED_EXT = ['mp4','mkv','mov','avi','webm'];
     var MAX_SIZE = 10 * 1024 * 1024 * 1024; // 10 GB
@@ -584,8 +603,44 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
     // ── Transcode flow ──────────────────────────────────────────────
     var TRANSCODE_POLL_SEC = 5;
 
+    function renderJobLog(logEntries) {
+        if (!logEntries || !logEntries.length) return;
+        transcodeLogDetails.style.display = '';
+        var html = '';
+        logEntries.forEach(function(entry) {
+            var ts = new Date((entry.ts || 0) * 1000).toLocaleTimeString();
+            var lvl = (entry.level || 'info').toUpperCase();
+            var color = '#cdd6f4'; // default
+            if (lvl === 'ERROR') color = '#f38ba8';
+            else if (lvl === 'WARN') color = '#fab387';
+            else if (lvl === 'INFO') color = '#a6e3a1';
+            html += '<span style="color:#6c7086;">[' + ts + ']</span> '
+                  + '<span style="color:' + color + ';font-weight:600;">' + lvl + '</span> '
+                  + escapeHtml(entry.msg || '') + '\n';
+        });
+        transcodeLogEl.innerHTML = html;
+        transcodeLogEl.scrollTop = transcodeLogEl.scrollHeight;
+    }
+
+    function escapeHtml(str) {
+        var d = document.createElement('div');
+        d.appendChild(document.createTextNode(str));
+        return d.innerHTML;
+    }
+
+    function resetTranscodeUI() {
+        retryBtn.style.display = 'none';
+        transcodeLogDetails.style.display = 'none';
+        transcodeLogEl.innerHTML = '';
+        transcodeBar.style.width = '0%';
+        transcodeBar.style.background = 'var(--success,#16a34a)';
+        transcodeProgress.style.display = '';
+        playerArea.style.display = 'none';
+    }
+
     function startTranscodeFlow(objectKey) {
         viewerCard.style.display = '';
+        resetTranscodeUI();
         transcodeStatus.textContent = 'Triggering companion transcode…';
         transcodeStatus.style.color = 'var(--primary,#2563eb)';
         log('Triggering HLS transcode for: ' + objectKey);
@@ -597,8 +652,8 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
         .then(function(data) {
             log('Transcode triggered – job ID: ' + (data.job_id || '(none)'));
             log('Output prefix: ' + (data.output_prefix || ''));
+            currentTranscodeJob = { objectKey: objectKey, jobId: data.job_id || '', outputPrefix: data.output_prefix || '' };
             transcodeStatus.textContent = 'Transcode in progress…';
-            transcodeProgress.style.display = '';
             transcodeBar.style.width = '10%';
             transcodeText.textContent = 'Transcoding… (polling every ' + TRANSCODE_POLL_SEC + 's)';
             pollTranscodeStatus(objectKey, data.job_id, data.output_prefix);
@@ -625,12 +680,20 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
                 var status = data.status || 'unknown';
                 var elapsedSec = Math.round((Date.now() - pollStart) / 1000);
 
+                // Always render log if available
+                if (data.log && data.log.length) {
+                    renderJobLog(data.log);
+                }
+
                 if (status === 'completed' || status === 'ready') {
                     transcodeBar.style.width = '100%';
                     transcodeText.textContent = 'Transcode complete! (' + elapsedSec + 's)';
                     transcodeStatus.textContent = 'Transcode complete ✓';
                     transcodeStatus.style.color = 'var(--success,#16a34a)';
                     log('Transcode completed in ' + elapsedSec + 's');
+
+                    // Auto-expand the log on completion
+                    transcodeLogDetails.open = true;
 
                     // Delete original file
                     deleteOriginal(objectKey);
@@ -645,6 +708,12 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
                     transcodeStatus.textContent = 'Transcode failed ✗';
                     transcodeStatus.style.color = 'var(--danger,#dc2626)';
                     logError('Transcode failed: ' + (data.error || 'unknown error'));
+
+                    // Show retry button
+                    retryBtn.style.display = '';
+
+                    // Auto-expand the log on failure
+                    transcodeLogDetails.open = true;
                 } else {
                     // Still processing
                     var pct = Math.min(10 + pollCount * 5, 90);
@@ -664,6 +733,41 @@ $rustfsConfigured = !empty($vtCfg['rustfs_endpoint']) && !empty($vtCfg['rustfs_a
 
         setTimeout(poll, TRANSCODE_POLL_SEC * 1000);
     }
+
+    // ── Retry handler ────────────────────────────────────────────────
+    retryBtn.addEventListener('click', function() {
+        if (!currentTranscodeJob.objectKey && !currentTranscodeJob.jobId) {
+            logError('No job info available for retry');
+            return;
+        }
+        log('Retrying transcode…');
+        retryBtn.style.display = 'none';
+        resetTranscodeUI();
+        transcodeStatus.textContent = 'Retrying companion transcode…';
+        transcodeStatus.style.color = 'var(--primary,#2563eb)';
+
+        postAction({
+            action:        'retry_transcode',
+            object_key:    currentTranscodeJob.objectKey,
+            job_id:        currentTranscodeJob.jobId,
+            output_prefix: currentTranscodeJob.outputPrefix
+        })
+        .then(function(data) {
+            log('Retry triggered – new job ID: ' + (data.job_id || '(none)'));
+            currentTranscodeJob.jobId = data.job_id || '';
+            currentTranscodeJob.outputPrefix = data.output_prefix || currentTranscodeJob.outputPrefix;
+            transcodeStatus.textContent = 'Transcode in progress… (retry)';
+            transcodeBar.style.width = '10%';
+            transcodeText.textContent = 'Transcoding… (polling every ' + TRANSCODE_POLL_SEC + 's)';
+            pollTranscodeStatus(currentTranscodeJob.objectKey, data.job_id, currentTranscodeJob.outputPrefix);
+        })
+        .catch(function(err) {
+            transcodeStatus.textContent = 'Retry failed';
+            transcodeStatus.style.color = 'var(--danger,#dc2626)';
+            logError('Retry trigger failed: ' + err.message);
+            retryBtn.style.display = '';
+        });
+    });
 
     function deleteOriginal(objectKey) {
         log('Deleting original file: ' + objectKey);

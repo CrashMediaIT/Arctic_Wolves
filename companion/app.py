@@ -29,6 +29,8 @@ import urllib3
 import boto3
 import requests as http_requests
 from botocore.config import Config as BotoConfig
+from boto3.s3.transfer import TransferConfig as S3TransferConfig
+from botocore.exceptions import ClientError as BotoClientError
 from flask import Flask, request, jsonify, render_template, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
@@ -357,33 +359,91 @@ def _get_s3_client():
         config=BotoConfig(
             s3={"addressing_style": "path"},
             signature_version="s3v4",
-            retries={"max_attempts": 3},
+            retries={"max_attempts": 3, "mode": "adaptive"},
         ),
         verify=S3_VERIFY_SSL,  # Configurable; often disabled for self-signed certs
     )
 
 
+# Transfer config matching the test video upload system:
+# 64 MB multipart threshold, 64 MB chunk size, 3 concurrent transfers
+_S3_TRANSFER_CONFIG = S3TransferConfig(
+    multipart_threshold=64 * 1024 * 1024,   # 64 MB
+    multipart_chunksize=64 * 1024 * 1024,   # 64 MB per part
+    max_concurrency=3,                       # 3 concurrent part uploads
+    use_threads=True,
+)
+
+_S3_MAX_RETRIES = 5
+_S3_RETRY_BACKOFF = [2, 4, 8, 16, 30]  # seconds, matching test system
+
+
 def _s3_download(s3, object_key: str, local_path: str) -> bool:
-    """Download an object from S3/RustFS to a local file."""
-    try:
-        s3.download_file(S3_BUCKET, object_key, local_path)
-        return True
-    except Exception as exc:
-        logger.error("S3 download failed for %s: %s", object_key, exc)
-        return False
+    """Download an object from S3/RustFS to a local file with retries."""
+    for attempt in range(1, _S3_MAX_RETRIES + 1):
+        try:
+            # Verify the object exists first (HEAD request)
+            head = s3.head_object(Bucket=S3_BUCKET, Key=object_key)
+            size = head.get("ContentLength", 0)
+            logger.info("S3 download: %s exists (%d bytes), downloading (attempt %d)...",
+                        object_key, size, attempt)
+            s3.download_file(S3_BUCKET, object_key, local_path,
+                             Config=_S3_TRANSFER_CONFIG)
+            actual = os.path.getsize(local_path) if os.path.isfile(local_path) else 0
+            logger.info("S3 download: %s complete — %d bytes written", object_key, actual)
+            return True
+        except BotoClientError as exc:
+            code = exc.response.get("Error", {}).get("Code", "Unknown")
+            msg = exc.response.get("Error", {}).get("Message", str(exc))
+            http_status = exc.response.get("ResponseMetadata", {}).get("HTTPStatusCode", "?")
+            logger.error("S3 download failed for %s (attempt %d/%d): [%s] HTTP %s — %s",
+                         object_key, attempt, _S3_MAX_RETRIES, code, http_status, msg)
+            if code in ("NoSuchKey", "AccessDenied"):
+                # Non-retryable errors
+                logger.error("S3 download: %s — non-retryable error, giving up", code)
+                return False
+        except Exception as exc:
+            logger.error("S3 download failed for %s (attempt %d/%d): %s",
+                         object_key, attempt, _S3_MAX_RETRIES, exc)
+        if attempt < _S3_MAX_RETRIES:
+            delay = _S3_RETRY_BACKOFF[min(attempt - 1, len(_S3_RETRY_BACKOFF) - 1)]
+            logger.info("S3 download: retrying in %ds...", delay)
+            time.sleep(delay)
+    return False
 
 
 def _s3_upload(s3, local_path: str, object_key: str, content_type: str = "") -> bool:
-    """Upload a local file to S3/RustFS."""
-    try:
-        extra = {}
-        if content_type:
-            extra["ContentType"] = content_type
-        s3.upload_file(local_path, S3_BUCKET, object_key, ExtraArgs=extra if extra else None)
-        return True
-    except Exception as exc:
-        logger.error("S3 upload failed for %s: %s", object_key, exc)
-        return False
+    """Upload a local file to S3/RustFS with multipart support and retries."""
+    file_size = os.path.getsize(local_path) if os.path.isfile(local_path) else 0
+    for attempt in range(1, _S3_MAX_RETRIES + 1):
+        try:
+            extra = {}
+            if content_type:
+                extra["ContentType"] = content_type
+            logger.info("S3 upload: %s (%d bytes) -> %s (attempt %d)",
+                        os.path.basename(local_path), file_size, object_key, attempt)
+            s3.upload_file(local_path, S3_BUCKET, object_key,
+                           ExtraArgs=extra if extra else None,
+                           Config=_S3_TRANSFER_CONFIG)
+            logger.info("S3 upload: %s complete", object_key)
+            return True
+        except BotoClientError as exc:
+            code = exc.response.get("Error", {}).get("Code", "Unknown")
+            msg = exc.response.get("Error", {}).get("Message", str(exc))
+            http_status = exc.response.get("ResponseMetadata", {}).get("HTTPStatusCode", "?")
+            logger.error("S3 upload failed for %s (attempt %d/%d): [%s] HTTP %s — %s",
+                         object_key, attempt, _S3_MAX_RETRIES, code, http_status, msg)
+            if code in ("AccessDenied",):
+                logger.error("S3 upload: %s — non-retryable error, giving up", code)
+                return False
+        except Exception as exc:
+            logger.error("S3 upload failed for %s (attempt %d/%d): %s",
+                         object_key, attempt, _S3_MAX_RETRIES, exc)
+        if attempt < _S3_MAX_RETRIES:
+            delay = _S3_RETRY_BACKOFF[min(attempt - 1, len(_S3_RETRY_BACKOFF) - 1)]
+            logger.info("S3 upload: retrying in %ds...", delay)
+            time.sleep(delay)
+    return False
 
 
 def _s3_delete(s3, object_key: str) -> bool:
@@ -517,6 +577,48 @@ _KNOWN_HW_ENCODERS = frozenset([
 ])
 
 
+def _qsv_render_device(device: str) -> str:
+    """Return a render-node path suitable for QSV from *device*.
+
+    QSV (via ``-init_hw_device qsv=hw,child_device=…``) requires a DRM
+    render node (``/dev/dri/renderDN``).  Card nodes
+    (``/dev/dri/cardN``) are accepted by VAAPI but **not** by the QSV
+    runtime.  When the user configures ``/dev/dri/card0`` the QSV probe
+    and encode silently fail, leaving only VAAPI (or software) as a
+    fallback — which is the bug described in the issue.
+
+    Resolution strategy:
+    1. If *device* is already a render node → return as-is.
+    2. Look up the matching render node via sysfs
+       (``/sys/class/drm/cardN/device/drm/renderD*``).
+    3. Fall back to the Linux kernel convention ``cardN → renderD(128+N)``.
+    4. If nothing can be resolved, return the original *device* unchanged.
+    """
+    m = re.match(r"^/dev/dri/card(\d+)$", device)
+    if not m:
+        return device  # already a render node or non-standard path
+
+    card_num = m.group(1)
+
+    # --- sysfs lookup (works on real hardware) ---
+    sysfs_dir = f"/sys/class/drm/card{card_num}/device/drm"
+    try:
+        for entry in os.listdir(sysfs_dir):
+            if entry.startswith("renderD"):
+                render_path = f"/dev/dri/{entry}"
+                if os.path.exists(render_path):
+                    return render_path
+    except OSError:
+        pass
+
+    # --- kernel convention fallback ---
+    render_path = f"/dev/dri/renderD{128 + int(card_num)}"
+    if os.path.exists(render_path):
+        return render_path
+
+    return device  # can't resolve; return original
+
+
 def _probe_encoder(encoder: str) -> bool:
     """Verify a hardware encoder actually works by running a minimal encode."""
     if encoder not in _KNOWN_HW_ENCODERS:
@@ -528,7 +630,7 @@ def _probe_encoder(encoder: str) -> bool:
             pre_input = ["-vaapi_device", HW_ACCEL_DEVICE]
             vf = ["-vf", "format=nv12,hwupload"]
         elif "qsv" in encoder:
-            pre_input = ["-init_hw_device", f"qsv=hw,child_device={HW_ACCEL_DEVICE}",
+            pre_input = ["-init_hw_device", f"qsv=hw,child_device={_qsv_render_device(HW_ACCEL_DEVICE)}",
                          "-filter_hw_device", "hw"]
             vf = ["-vf", "format=nv12,hwupload=extra_hw_frames=64"]
         cmd = [FFMPEG_PATH, "-y", "-hide_banner", "-loglevel", "error"] + \
@@ -605,8 +707,16 @@ def _detect_hw_accel() -> dict:
     return result
 
 
-def _select_encoder(hw_info: dict, codec: str = "h264") -> list[str]:
-    """Return FFmpeg encoder flags based on available hardware and config."""
+def _select_encoder(hw_info: dict, codec: str = "h264",
+                    hw_decode: bool = False) -> list[str]:
+    """Return FFmpeg encoder flags based on available hardware and config.
+
+    When *hw_decode* is True the caller is also adding hardware decode
+    flags (from ``_hwaccel_decode_flags``) that already initialise the
+    GPU device.  Passing ``True`` lets ``_encoder_flags`` skip its own
+    device-init so the same device is not opened twice — which causes
+    FFmpeg to fail on many VAAPI and QSV drivers.
+    """
     accel = HW_ACCEL.lower()
     encoders = hw_info.get("encoders", [])
 
@@ -639,34 +749,47 @@ def _select_encoder(hw_info: dict, codec: str = "h264") -> list[str]:
     if accel == "auto":
         for _, enc in codec_prefs:
             if enc in encoders:
-                return _encoder_flags(enc)
+                return _encoder_flags(enc, hw_decode=hw_decode)
     else:
         for method, enc in codec_prefs:
             if method == accel and enc in encoders:
-                return _encoder_flags(enc)
+                return _encoder_flags(enc, hw_decode=hw_decode)
         # QSV requested but unavailable (e.g. FFmpeg compiled without
         # libmfx/libvpl) — fall back to VAAPI which uses the same Intel
         # GPU hardware through the VA-API interface.
         if accel == "qsv":
             for method, enc in codec_prefs:
                 if method == "vaapi" and enc in encoders:
-                    return _encoder_flags(enc)
+                    return _encoder_flags(enc, hw_decode=hw_decode)
 
     # Fallback to software
     sw = codec.replace("h265", "x265").replace("h264", "x264")
     return ["-c:v", f"lib{sw}"]
 
 
-def _encoder_flags(encoder: str) -> list[str]:
-    """Return FFmpeg flags for a specific hardware encoder."""
+def _encoder_flags(encoder: str, hw_decode: bool = False) -> list[str]:
+    """Return FFmpeg flags for a specific hardware encoder.
+
+    When *hw_decode* is ``True`` the caller is providing hardware-decode
+    input flags (from ``_hwaccel_decode_flags``) that already open the
+    GPU device.  In that case the encoder must **not** re-open the same
+    device — doing so causes ``Failed to initialise VAAPI connection``
+    or similar errors on many drivers.
+    """
     flags = ["-c:v", encoder]
     if "nvenc" in encoder:
         flags += ["-preset", "p4", "-rc", "vbr"]
     elif "qsv" in encoder:
-        flags = ["-init_hw_device", f"qsv=hw,child_device={HW_ACCEL_DEVICE}",
-                 "-filter_hw_device", "hw"] + flags + ["-preset", "medium"]
+        if hw_decode:
+            # Device already initialised by _hwaccel_decode_flags
+            flags += ["-preset", "medium"]
+        else:
+            flags = ["-init_hw_device", f"qsv=hw,child_device={_qsv_render_device(HW_ACCEL_DEVICE)}",
+                     "-filter_hw_device", "hw"] + flags + ["-preset", "medium"]
     elif "vaapi" in encoder:
-        flags = ["-vaapi_device", HW_ACCEL_DEVICE] + flags
+        if not hw_decode:
+            # Standalone encode (diagnostic test, probe) — need our own device
+            flags = ["-vaapi_device", HW_ACCEL_DEVICE] + flags
     return flags
 
 
@@ -685,6 +808,12 @@ def _hwaccel_decode_flags(hw_info: dict | None = None) -> list[str]:
     *hw_info* is an optional pre-computed result from ``_detect_hw_accel()``
     to avoid running the (expensive) encoder probes a second time when the
     caller already has the result.
+
+    The returned flags create a **single** device context that is shared
+    with the encoder via ``_encoder_flags(…, hw_decode=True)``.  Using a
+    separate ``-vaapi_device`` (or ``-init_hw_device qsv``) for encoding
+    on top of ``-hwaccel_device`` for decoding opens the GPU twice and
+    fails on many driver versions.
     """
     accel = HW_ACCEL.lower()
     if accel == "none":
@@ -700,14 +829,17 @@ def _hwaccel_decode_flags(hw_info: dict | None = None) -> list[str]:
         info = hw_info or _detect_hw_accel()
         encoders = info.get("encoders", [])
         if any("qsv" in e for e in encoders):
-            return ["-hwaccel", "qsv", "-hwaccel_device", HW_ACCEL_DEVICE]
+            dev = _qsv_render_device(HW_ACCEL_DEVICE)
+            return ["-init_hw_device", f"qsv=hw,child_device={dev}",
+                    "-hwaccel", "qsv", "-hwaccel_device", "hw",
+                    "-filter_hw_device", "hw"]
         # QSV unavailable — fall back to VAAPI (same Intel iGPU hardware)
         if any("vaapi" in e for e in encoders):
-            return ["-hwaccel", "vaapi", "-hwaccel_device", HW_ACCEL_DEVICE]
+            return ["-vaapi_device", HW_ACCEL_DEVICE, "-hwaccel", "vaapi"]
         # Neither QSV nor VAAPI usable — software decode
         return []
     if accel in ("vaapi", "amf"):
-        return ["-hwaccel", "vaapi", "-hwaccel_device", HW_ACCEL_DEVICE]
+        return ["-vaapi_device", HW_ACCEL_DEVICE, "-hwaccel", "vaapi"]
     if accel == "auto":
         # Detect which hardware is actually present and pick the right
         # decode path — don't blindly assume CUDA is available.
@@ -716,9 +848,12 @@ def _hwaccel_decode_flags(hw_info: dict | None = None) -> list[str]:
         if any("nvenc" in e for e in encoders):
             return ["-hwaccel", "cuda", "-hwaccel_output_format", "cuda"]
         if any("qsv" in e for e in encoders):
-            return ["-hwaccel", "qsv", "-hwaccel_device", HW_ACCEL_DEVICE]
+            dev = _qsv_render_device(HW_ACCEL_DEVICE)
+            return ["-init_hw_device", f"qsv=hw,child_device={dev}",
+                    "-hwaccel", "qsv", "-hwaccel_device", "hw",
+                    "-filter_hw_device", "hw"]
         if any("vaapi" in e for e in encoders):
-            return ["-hwaccel", "vaapi", "-hwaccel_device", HW_ACCEL_DEVICE]
+            return ["-vaapi_device", HW_ACCEL_DEVICE, "-hwaccel", "vaapi"]
         # No usable hardware — software decode
         return []
     return []
@@ -1603,7 +1738,7 @@ def clip():
     else:
         hw_info = _detect_hw_accel()
         decode_flags = _hwaccel_decode_flags(hw_info) if hw_accel else []
-        encode_flags = _select_encoder(hw_info, codec) if hw_accel else ["-c:v", f"lib{codec.replace('h265', 'x265').replace('h264', 'x264')}"]
+        encode_flags = _select_encoder(hw_info, codec, hw_decode=bool(decode_flags)) if hw_accel else ["-c:v", f"lib{codec.replace('h265', 'x265').replace('h264', 'x264')}"]
 
         cmd = [FFMPEG_PATH, "-y"] + decode_flags + [
             "-ss", str(start_time), "-i", source_path,
@@ -1647,7 +1782,7 @@ def transcode():
 
     hw_info = _detect_hw_accel()
     decode_flags = _hwaccel_decode_flags(hw_info) if hw_accel else []
-    encode_flags = _select_encoder(hw_info, codec) if hw_accel else ["-c:v", f"lib{codec.replace('h265', 'x265').replace('h264', 'x264')}"]
+    encode_flags = _select_encoder(hw_info, codec, hw_decode=bool(decode_flags)) if hw_accel else ["-c:v", f"lib{codec.replace('h265', 'x265').replace('h264', 'x264')}"]
 
     cmd = [FFMPEG_PATH, "-y"] + decode_flags + ["-i", source_path] + encode_flags
 
@@ -2216,17 +2351,49 @@ HLS_VARIANTS = [
 ]
 
 
+def _job_log(job_id: str, message: str, level: str = "info"):
+    """Append a timestamped log entry to a job's ``log`` list."""
+    entry = {
+        "ts": time.time(),
+        "level": level,
+        "msg": message,
+    }
+    with job_lock:
+        job = jobs.get(job_id)
+        if job is not None:
+            job.setdefault("log", []).append(entry)
+
+
 def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
                        delete_original: bool = True, callback_url: str = ""):
     """Download source from S3, transcode to HLS, upload output, optionally
-    delete original.  Runs inside _run_job with the job semaphore."""
+    delete original.  Runs inside _run_job with the job semaphore.
+
+    Every significant step is recorded in the job's ``log`` list so the
+    admin UI can display a detailed diagnostic trail regardless of whether
+    the job succeeds or fails.
+    """
+    jlog = lambda msg, level="info": _job_log(job_id, msg, level)
+
+    jlog(f"Job {job_id} started")
+    jlog(f"Source key: {s3_source_key}")
+    jlog(f"Output prefix: {s3_output_prefix}")
+    jlog(f"Delete original: {delete_original}")
+    jlog(f"HW_ACCEL setting: {HW_ACCEL}")
+    jlog(f"HW_ACCEL_DEVICE: {HW_ACCEL_DEVICE}")
+    jlog(f"FFmpeg path: {FFMPEG_PATH}")
+
     s3 = _get_s3_client()
     if not s3:
+        jlog("S3/RustFS client not configured — cannot proceed", "error")
         with job_lock:
             jobs[job_id]["status"] = "failed"
             jobs[job_id]["error"] = "S3 not configured"
             jobs[job_id]["finished_at"] = time.time()
         return
+
+    jlog(f"S3 endpoint: {S3_ENDPOINT}")
+    jlog(f"S3 bucket: {S3_BUCKET}")
 
     # Resolve callback URL once for both success and failure paths
     cb_url = callback_url or (MAIN_APP_URL + "/api/v1/companion/callback" if MAIN_APP_URL else "")
@@ -2237,43 +2404,90 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
     local_source = os.path.join(work_dir, "source" + os.path.splitext(s3_source_key)[1])
 
     try:
+        # ── Download ──────────────────────────────────────────────────
         with job_lock:
             jobs[job_id]["status"] = "downloading"
             jobs[job_id]["started_at"] = time.time()
 
+        jlog(f"Downloading source from S3: {s3_source_key}")
+        jlog(f"S3 transfer config: 64 MB multipart threshold, 3 concurrent, {_S3_MAX_RETRIES} retries")
+        dl_start = time.time()
         logger.info("HLS job %s: downloading source %s", job_id, s3_source_key)
-        # Download source video
+        # Download source video (with retries and multipart for large files)
         if not _s3_download(s3, s3_source_key, local_source):
-            raise RuntimeError(f"Failed to download {s3_source_key}")
+            raise RuntimeError(f"Failed to download {s3_source_key} after {_S3_MAX_RETRIES} attempts — check companion logs for S3 error details")
 
-        # Probe the source to determine resolution
+        dl_sec = round(time.time() - dl_start, 1)
+        file_size = os.path.getsize(local_source) if os.path.isfile(local_source) else 0
+        jlog(f"Download complete — {file_size} bytes ({file_size / 1048576:.1f} MB) in {dl_sec}s")
+
+        # ── Probe ─────────────────────────────────────────────────────
+        jlog("Probing source video with ffprobe…")
         probe = _probe_file(local_source)
         video_stream = next(
             (s for s in probe.get("streams", []) if s.get("codec_type") == "video"),
             None,
         )
+        audio_stream = next(
+            (s for s in probe.get("streams", []) if s.get("codec_type") == "audio"),
+            None,
+        )
         source_height = int(video_stream.get("height", 1080)) if video_stream else 1080
+
+        if video_stream:
+            jlog(f"Video stream: codec={video_stream.get('codec_name')}, "
+                 f"{video_stream.get('width')}x{video_stream.get('height')}, "
+                 f"fps={video_stream.get('r_frame_rate')}, "
+                 f"pix_fmt={video_stream.get('pix_fmt')}, "
+                 f"duration={video_stream.get('duration', 'N/A')}s")
+        else:
+            jlog("WARNING: No video stream found in source file", "warn")
+
+        if audio_stream:
+            jlog(f"Audio stream: codec={audio_stream.get('codec_name')}, "
+                 f"sample_rate={audio_stream.get('sample_rate')}, "
+                 f"channels={audio_stream.get('channels')}")
+        else:
+            jlog("No audio stream found in source file", "warn")
+
+        fmt_info = probe.get("format", {})
+        if fmt_info:
+            jlog(f"Container: format={fmt_info.get('format_name')}, "
+                 f"duration={fmt_info.get('duration', 'N/A')}s, "
+                 f"size={fmt_info.get('size', 'N/A')} bytes, "
+                 f"bitrate={fmt_info.get('bit_rate', 'N/A')} bps")
 
         # Filter variants to those at or below source resolution
         variants = [v for v in HLS_VARIANTS if v["height"] <= source_height]
         if not variants:
             variants = [HLS_VARIANTS[0]]  # At minimum, produce 360p
+            jlog(f"Source resolution ({source_height}p) below 360p — producing 360p anyway")
 
+        jlog(f"Target variants: {', '.join(v['label'] for v in variants)} "
+             f"(source={source_height}p)")
+
+        # ── Hardware detection ────────────────────────────────────────
         with job_lock:
             jobs[job_id]["status"] = "transcoding"
 
+        jlog("Detecting hardware acceleration…")
         hw_info = _detect_hw_accel()
+        jlog(f"HW accel available methods: {hw_info.get('available', [])}")
+        jlog(f"HW accel validated encoders: {hw_info.get('encoders', [])}")
+        jlog(f"HW accel detected decoders: {hw_info.get('decoders', [])}")
+        jlog(f"HW accel selected mode: {hw_info.get('selected', 'N/A')}")
+
         hls_output = os.path.join(work_dir, "hls")
         os.makedirs(hls_output, exist_ok=True)
 
-        # Transcode each variant
+        # ── Transcode each variant ────────────────────────────────────
         for v in variants:
             label = v["label"]
             variant_dir = os.path.join(hls_output, label)
             os.makedirs(variant_dir, exist_ok=True)
 
-            encode_flags = _select_encoder(hw_info, "h264")
             decode_flags = _hwaccel_decode_flags(hw_info)
+            encode_flags = _select_encoder(hw_info, "h264", hw_decode=bool(decode_flags))
             vf_flags = _hw_vf(encode_flags, scale_height=v["height"])
 
             cmd = [FFMPEG_PATH, "-y"] + decode_flags + [
@@ -2290,13 +2504,31 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
                 os.path.join(variant_dir, "playlist.m3u8"),
             ]
 
+            jlog(f"Transcoding variant {label}: decode_flags={decode_flags}")
+            jlog(f"  encode_flags={encode_flags}")
+            jlog(f"  vf_flags={vf_flags}")
+            jlog(f"  ffmpeg command: {' '.join(cmd)}")
+
             logger.info("HLS transcode %s → %s: %s", s3_source_key, label, " ".join(cmd))
+            enc_start = time.time()
             proc = subprocess.run(cmd, capture_output=True, text=True, timeout=7200)
+            enc_sec = round(time.time() - enc_start, 1)
+
             if proc.returncode != 0:
+                jlog(f"FFmpeg FAILED for {label} (exit code {proc.returncode}) after {enc_sec}s", "error")
+                jlog(f"  stderr: {proc.stderr[:2000]}", "error")
+                if proc.stdout:
+                    jlog(f"  stdout: {proc.stdout[:500]}", "error")
                 logger.error("FFmpeg failed for %s: %s", label, proc.stderr[:1000])
                 raise RuntimeError(f"Transcode failed for {label}: {proc.stderr[:500]}")
 
-        # Build master playlist
+            jlog(f"Variant {label} completed in {enc_sec}s (exit code 0)")
+            if proc.stderr:
+                # FFmpeg often writes progress/info to stderr even on success
+                jlog(f"  ffmpeg stderr (info): {proc.stderr[-500:]}")
+
+        # ── Build master playlist ─────────────────────────────────────
+        jlog("Building HLS master playlist…")
         master_lines = ["#EXTM3U"]
         for v in variants:
             bandwidth = int(v["vbitrate"].replace("k", "")) * 1000
@@ -2310,12 +2542,18 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
         master_path = os.path.join(hls_output, "master.m3u8")
         with open(master_path, "w") as f:
             f.write("\n".join(master_lines) + "\n")
+        jlog(f"Master playlist written: {len(variants)} variants")
 
+        # ── Upload ────────────────────────────────────────────────────
         with job_lock:
             jobs[job_id]["status"] = "uploading"
 
+        jlog(f"Uploading HLS segments to S3 prefix: {s3_output_prefix}")
+        jlog(f"S3 upload: multipart for files > 64 MB, {_S3_MAX_RETRIES} retries per file")
         logger.info("HLS job %s: uploading segments to S3 prefix %s", job_id, s3_output_prefix)
-        # Upload all HLS files to S3
+        upload_start = time.time()
+        upload_count = 0
+        # Upload all HLS files to S3 (with multipart and retries for large segments)
         output_prefix = s3_output_prefix.rstrip("/")
         for root, _dirs, files in os.walk(hls_output):
             for filename in files:
@@ -2324,11 +2562,20 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
                 s3_key = f"{output_prefix}/{relative}"
                 ct = "application/vnd.apple.mpegurl" if filename.endswith(".m3u8") else "video/mp2t"
                 if not _s3_upload(s3, local_file, s3_key, ct):
-                    raise RuntimeError(f"Failed to upload {s3_key}")
+                    jlog(f"Failed to upload {s3_key} after {_S3_MAX_RETRIES} attempts", "error")
+                    raise RuntimeError(f"Failed to upload {s3_key} after {_S3_MAX_RETRIES} attempts")
+                upload_count += 1
+
+        upload_sec = round(time.time() - upload_start, 1)
+        jlog(f"Upload complete — {upload_count} files in {upload_sec}s")
 
         # Delete original source from S3 if requested
         if delete_original:
+            jlog(f"Deleting original source: {s3_source_key}")
             _s3_delete(s3, s3_source_key)
+
+        total_sec = round(time.time() - jobs[job_id].get("started_at", time.time()), 1)
+        jlog(f"Job completed successfully — total time {total_sec}s")
 
         with job_lock:
             jobs[job_id]["status"] = "completed"
@@ -2354,6 +2601,9 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
 
     except Exception as exc:
         logger.error("HLS transcode job %s failed: %s", job_id, exc)
+        jlog(f"JOB FAILED: {exc}", "error")
+        import traceback
+        jlog(f"Traceback:\n{traceback.format_exc()}", "error")
         with job_lock:
             jobs[job_id]["status"] = "failed"
             jobs[job_id]["error"] = str(exc)[:2000]
@@ -2451,6 +2701,76 @@ def hls_transcode():
         "started_at": None,
         "finished_at": None,
         "error": None,
+        "log": [],
+    }
+    with job_lock:
+        jobs[job_id] = job
+
+    thread = threading.Thread(
+        target=_run_hls_job,
+        args=(job_id, source_key, output_prefix, delete_original, callback_url),
+        daemon=True,
+    )
+    thread.start()
+    return jsonify(job), 202
+
+
+@app.route("/api/hls/retry", methods=["POST"])
+def hls_retry():
+    """Retry a failed HLS transcode job.
+
+    Re-uses the source_key and output_prefix from the original job to
+    create a brand-new job.  The caller must provide either:
+      - ``job_id``: the ID of the failed job to retry, OR
+      - ``source_key`` + ``output_prefix``: explicit parameters.
+
+    Returns HTTP 202 with the new job object, just like POST /api/hls.
+    """
+    auth_err = _require_api_key()
+    if auth_err:
+        return auth_err
+
+    data = request.get_json(silent=True) or {}
+    old_job_id = data.get("job_id", "")
+    source_key = data.get("source_key", "")
+    output_prefix = data.get("output_prefix", "")
+    delete_original = data.get("delete_original", False)
+    callback_url = data.get("callback_url", "")
+    video_id = data.get("video_id")
+
+    # Resolve from the old job if job_id given
+    if old_job_id and (not source_key or not output_prefix):
+        with job_lock:
+            old_job = jobs.get(old_job_id)
+        if old_job:
+            source_key = source_key or old_job.get("source_key", "")
+            output_prefix = output_prefix or old_job.get("output_prefix", "")
+            video_id = video_id or old_job.get("video_id")
+        else:
+            return jsonify({"error": "Original job not found"}), 404
+
+    if not source_key:
+        return jsonify({"error": "source_key is required (directly or via job_id)"}), 400
+    if not output_prefix:
+        base = os.path.splitext(source_key)[0]
+        output_prefix = base + "/hls"
+
+    job_id = str(uuid.uuid4())
+    job = {
+        "id": job_id,
+        "status": "queued",
+        "description": f"HLS transcode (retry): {os.path.basename(source_key)}",
+        "source_key": source_key,
+        "output_prefix": output_prefix,
+        "hls_manifest": None,
+        "variants": [],
+        "video_id": video_id,
+        "created_at": time.time(),
+        "started_at": None,
+        "finished_at": None,
+        "error": None,
+        "log": [],
+        "retry_of": old_job_id or None,
     }
     with job_lock:
         jobs[job_id] = job

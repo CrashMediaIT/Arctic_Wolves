@@ -68,13 +68,14 @@ if (in_array($action, ['initiate', 'presign_part', 'complete', 'abort'], true)) 
     exit;
 }
 
-if (in_array($action, ['transcode', 'transcode_status', 'delete_original'], true)) {
+if (in_array($action, ['transcode', 'transcode_status', 'delete_original', 'retry_transcode'], true)) {
     $tcfg = loadTestRustFSConfig($pdo);
 
     switch ($action) {
         case 'transcode':        handleTestTranscode($pdo, $tcfg); break;
         case 'transcode_status': handleTestTranscodeStatus($pdo); break;
         case 'delete_original':  handleTestDeleteOriginal($tcfg); break;
+        case 'retry_transcode':  handleTestRetryTranscode($pdo, $tcfg); break;
     }
     exit;
 }
@@ -954,6 +955,11 @@ function handleTestTranscodeStatus($pdo) {
         'output_prefix' => $outputPrefix,
     ];
 
+    // Always forward the job log if present (for both success and failure)
+    if (isset($data['log']) && is_array($data['log'])) {
+        $result['log'] = $data['log'];
+    }
+
     if ($status === 'completed') {
         $hlsManifest = $data['hls_manifest'] ?? ($outputPrefix . '/master.m3u8');
         $result['hls_url'] = 'api/media.php?key=' . rawurlencode($hlsManifest);
@@ -995,5 +1001,112 @@ function handleTestDeleteOriginal($cfg) {
         error_log("Video test: failed to delete original key=$objectKey HTTP={$result['http_code']}");
         echo json_encode(['success' => false, 'error' => 'Delete failed: HTTP ' . $result['http_code']]);
     }
+    exit;
+}
+
+/**
+ * Action: Retry a failed HLS transcode job.
+ */
+function handleTestRetryTranscode($pdo, $cfg) {
+    $objectKey    = $_POST['object_key'] ?? '';
+    $oldJobId     = $_POST['job_id'] ?? '';
+    $outputPrefix = $_POST['output_prefix'] ?? '';
+
+    if (empty($objectKey) && empty($oldJobId)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'object_key or job_id is required']);
+        exit;
+    }
+
+    // Load companion settings
+    $stmt = $pdo->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('gameplan_companion_url', 'gameplan_companion_api_key', 'gameplan_app_url')");
+    $stmt->execute();
+    $settings = [];
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $settings[$row['setting_key']] = $row['setting_value'] ?? '';
+    }
+    $companionUrl = rtrim($settings['gameplan_companion_url'] ?? '', '/');
+    $companionKey = $settings['gameplan_companion_api_key'] ?? '';
+    $appUrl       = $settings['gameplan_app_url'] ?? '';
+
+    if (empty($companionUrl)) {
+        http_response_code(503);
+        echo json_encode(['success' => false, 'error' => 'Companion server is not configured.']);
+        exit;
+    }
+
+    // Build output prefix if not supplied
+    if (empty($outputPrefix) && !empty($objectKey)) {
+        $hlsPrefix    = pathinfo($objectKey, PATHINFO_FILENAME);
+        $hlsDir       = pathinfo($objectKey, PATHINFO_DIRNAME);
+        $outputPrefix = $hlsDir . '/' . $hlsPrefix . '/hls';
+    }
+
+    $callbackUrl = '';
+    if (!empty($appUrl)) {
+        $callbackUrl = rtrim($appUrl, '/') . '/api/v1/companion/callback';
+    }
+
+    $payload = json_encode([
+        'job_id'          => $oldJobId,
+        'source_key'      => $objectKey,
+        'output_prefix'   => $outputPrefix,
+        'delete_original' => false,
+        'callback_url'    => $callbackUrl,
+    ]);
+
+    $ch = curl_init($companionUrl . '/api/hls/retry');
+    curl_setopt_array($ch, [
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $payload,
+        CURLOPT_HTTPHEADER     => [
+            'Content-Type: application/json',
+            'X-API-Key: ' . $companionKey,
+        ],
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 15,
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_SSL_VERIFYPEER => false,
+    ]);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr  = curl_error($ch);
+    curl_close($ch);
+
+    if ($curlErr) {
+        error_log("Video test retry transcode curl error: $curlErr");
+        http_response_code(502);
+        echo json_encode(['success' => false, 'error' => 'Could not reach companion server: ' . $curlErr]);
+        exit;
+    }
+
+    if ($httpCode !== 202) {
+        $body = $response ? substr($response, 0, 500) : '(empty)';
+        error_log("Video test retry transcode failed: HTTP $httpCode — $body");
+        http_response_code(502);
+        echo json_encode(['success' => false, 'error' => 'Companion returned HTTP ' . $httpCode]);
+        exit;
+    }
+
+    $data = json_decode($response, true) ?: [];
+    $jobId = $data['id'] ?? '';
+
+    // Store job tracking in session so we can poll status
+    $_SESSION['vt_transcode_job'] = [
+        'job_id'        => $jobId,
+        'object_key'    => $objectKey,
+        'output_prefix' => $outputPrefix,
+        'companion_url' => $companionUrl,
+        'companion_key' => $companionKey,
+        'started_at'    => time(),
+    ];
+
+    error_log("Video test retry transcode: triggered job_id=$jobId key=$objectKey output=$outputPrefix");
+
+    echo json_encode([
+        'success'       => true,
+        'job_id'        => $jobId,
+        'output_prefix' => $outputPrefix,
+    ]);
     exit;
 }
