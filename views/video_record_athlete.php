@@ -144,7 +144,6 @@ try {
     <div class="upload-interface" id="upload-interface" style="display: none;">
         <form class="upload-form" method="POST" action="process_video.php" enctype="multipart/form-data" id="video-upload-form">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>">
-            <input type="hidden" name="action" value="athlete_upload_video">
             <input type="hidden" name="coach_id" value="<?= (int)$assigned_coach_id ?>">
             
             <div class="form-row">

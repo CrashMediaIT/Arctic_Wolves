@@ -465,3 +465,177 @@ test.describe('companion/templates/history.html retry button', () => {
     expect(func).toContain('apiHeaders()');
   });
 });
+
+// =====================================================
+// 5. Old upload code removed from process_video.php
+// =====================================================
+
+test.describe('process_video.php old upload handlers removed', () => {
+  const content = () => readFile('process_video.php');
+
+  test('should NOT contain handleVideoUpload function', () => {
+    const c = content();
+    expect(c).not.toContain('function handleVideoUpload()');
+  });
+
+  test('should NOT contain handleAthleteVideoUpload function', () => {
+    const c = content();
+    expect(c).not.toContain('function handleAthleteVideoUpload()');
+  });
+
+  test('should NOT contain handleGetAthleteUploadUrl function', () => {
+    const c = content();
+    expect(c).not.toContain('function handleGetAthleteUploadUrl()');
+  });
+
+  test('should NOT contain handleConfirmAthleteUpload function', () => {
+    const c = content();
+    expect(c).not.toContain('function handleConfirmAthleteUpload()');
+  });
+
+  test('should NOT contain handleDrillVideoUpload function', () => {
+    const c = content();
+    expect(c).not.toContain('function handleDrillVideoUpload()');
+  });
+
+  test('should NOT contain upload_video case in switch', () => {
+    const c = content();
+    expect(c).not.toContain("case 'upload_video':");
+  });
+
+  test('should NOT contain athlete_upload_video case in switch', () => {
+    const c = content();
+    expect(c).not.toContain("case 'athlete_upload_video':");
+  });
+
+  test('should NOT contain get_athlete_upload_url case in switch', () => {
+    const c = content();
+    expect(c).not.toContain("case 'get_athlete_upload_url':");
+  });
+
+  test('should NOT contain confirm_athlete_upload case in switch', () => {
+    const c = content();
+    expect(c).not.toContain("case 'confirm_athlete_upload':");
+  });
+
+  test('should NOT contain upload_drill_video case in switch', () => {
+    const c = content();
+    expect(c).not.toContain("case 'upload_drill_video':");
+  });
+
+  test('should still contain new upload handlers', () => {
+    const c = content();
+    expect(c).toContain('function handleGetVideoUploadUrl()');
+    expect(c).toContain('function handleConfirmVideoUpload()');
+    expect(c).toContain('function handleMultipartInitiate()');
+    expect(c).toContain('function handleMultipartPresignPart()');
+    expect(c).toContain('function handleMultipartComplete()');
+    expect(c).toContain('function handleMultipartAbort()');
+  });
+});
+
+// =====================================================
+// 6. video_coach_reviews.php uses new upload flow
+// =====================================================
+
+test.describe('video_coach_reviews.php new upload flow', () => {
+  const content = () => readFile('views/video_coach_reviews.php');
+
+  test('should NOT have legacy athlete_upload_video hidden input', () => {
+    const c = content();
+    expect(c).not.toContain('value="athlete_upload_video"');
+  });
+
+  test('should NOT reference get_athlete_upload_url action', () => {
+    const c = content();
+    expect(c).not.toContain("'get_athlete_upload_url'");
+  });
+
+  test('should NOT reference confirm_athlete_upload action', () => {
+    const c = content();
+    expect(c).not.toContain("'confirm_athlete_upload'");
+  });
+
+  test('should use get_video_upload_url for single uploads', () => {
+    const c = content();
+    expect(c).toContain("'get_video_upload_url'");
+  });
+
+  test('should use confirm_video_upload for confirmation', () => {
+    const c = content();
+    expect(c).toContain("'confirm_video_upload'");
+  });
+
+  test('should use initiate_multipart for large files', () => {
+    const c = content();
+    expect(c).toContain("'initiate_multipart'");
+  });
+
+  test('should have upload log dropdown', () => {
+    const c = content();
+    expect(c).toContain('crUploadLogDetails');
+    expect(c).toContain('crUploadLogPre');
+    expect(c).toContain('Upload Log');
+  });
+
+  test('should have crLog function', () => {
+    const c = content();
+    expect(c).toContain('function crLog(msg)');
+  });
+
+  test('should show transcoding in background message', () => {
+    const c = content();
+    expect(c).toContain('Transcoding in background');
+    expect(c).toContain('function crShowComplete(');
+  });
+
+  test('should have cancel upload button', () => {
+    const c = content();
+    expect(c).toContain('crCancelUploadBtn');
+  });
+
+  test('should have multipart support with concurrent parts', () => {
+    const c = content();
+    expect(c).toContain('MULTIPART_THRESHOLD');
+    expect(c).toContain('CONCURRENT_PARTS');
+    expect(c).toContain('function crMultipartUpload(');
+    expect(c).toContain('function crUploadAllParts(');
+    expect(c).toContain('function crUploadOnePart(');
+  });
+});
+
+// =====================================================
+// 7. PWA drill view legacy code removed
+// =====================================================
+
+test.describe('pwa/video_record_drill.php legacy fallback removed', () => {
+  const content = () => readFile('views/pwa/video_record_drill.php');
+
+  test('should NOT contain athlete_upload_video action', () => {
+    const c = content();
+    expect(c).not.toContain("'athlete_upload_video'");
+  });
+
+  test('should still use confirm_video_upload for confirmation', () => {
+    const c = content();
+    expect(c).toContain("'confirm_video_upload'");
+  });
+});
+
+// =====================================================
+// 8. video_record_athlete.php legacy hidden input removed
+// =====================================================
+
+test.describe('video_record_athlete.php legacy hidden input removed', () => {
+  const content = () => readFile('views/video_record_athlete.php');
+
+  test('should NOT have legacy athlete_upload_video hidden input', () => {
+    const c = content();
+    expect(c).not.toContain('value="athlete_upload_video"');
+  });
+
+  test('should still use get_video_upload_url for single uploads', () => {
+    const c = content();
+    expect(c).toContain("'get_video_upload_url'");
+  });
+});
