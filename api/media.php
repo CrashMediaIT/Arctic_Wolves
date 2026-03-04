@@ -307,6 +307,35 @@ if (empty($content_type) || $content_type === 'application/octet-stream') {
     $content_type = $mime_map[$ext] ?? 'application/octet-stream';
 }
 
+// ── Rewrite relative URLs in HLS playlists ──────────────────────────────
+// HLS .m3u8 files contain relative paths to variant playlists and segments.
+// Because we serve them through a query-string proxy (media.php?key=…) the
+// browser/HLS.js would resolve those relatives against /api/ rather than the
+// S3 directory the manifest lives in.  Fix by rewriting every relative
+// reference to go back through this proxy.
+$m3u8_ext = strtolower(pathinfo($object_key_clean, PATHINFO_EXTENSION));
+if ($m3u8_ext === 'm3u8') {
+    $base_dir = dirname($object_key_clean);
+    $lines = explode("\n", $body);
+    $rewritten = [];
+    foreach ($lines as $line) {
+        $trimmed = trim($line);
+        if ($trimmed === '' || (isset($trimmed[0]) && $trimmed[0] === '#')) {
+            $rewritten[] = $line;
+            continue;
+        }
+        if (preg_match('#^https?://#', $trimmed)) {
+            $rewritten[] = $line;
+            continue;
+        }
+        // Relative reference — resolve against the playlist's S3 directory
+        // and wrap in a proxy URL relative to the current api/ directory.
+        $resolved_key = $base_dir . '/' . $trimmed;
+        $rewritten[] = 'media.php?key=' . rawurlencode($resolved_key);
+    }
+    $body = implode("\n", $rewritten);
+}
+
 // ── Send response ───────────────────────────────────────────────────────
 header('Content-Type: ' . $content_type);
 header('Content-Length: ' . strlen($body));

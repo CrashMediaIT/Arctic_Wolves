@@ -160,11 +160,12 @@
         var _closeHandler = function() { menu.style.display = 'none'; };
         document.addEventListener('click', _closeHandler);
 
+        var wrapper = document.createElement('div');
+        wrapper.className = 'aw-quality-wrapper';
+
         // Store cleanup reference on the wrapper so it can be removed
         wrapper._closeHandler = _closeHandler;
 
-        var wrapper = document.createElement('div');
-        wrapper.className = 'aw-quality-wrapper';
         wrapper.appendChild(btn);
         wrapper.appendChild(menu);
         container.appendChild(wrapper);
