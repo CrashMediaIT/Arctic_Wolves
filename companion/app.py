@@ -623,6 +623,12 @@ def _probe_encoder(encoder: str) -> bool:
     """Verify a hardware encoder actually works by running a minimal encode."""
     if encoder not in _KNOWN_HW_ENCODERS:
         return False
+    # Skip VAAPI/QSV probes when the GPU device doesn't exist — avoids noisy
+    # FFmpeg "Error parsing global options" stderr from missing /dev/dri nodes.
+    if ("vaapi" in encoder or "qsv" in encoder) and not os.path.exists(HW_ACCEL_DEVICE):
+        logger.info("Encoder probe skipped for %s: device %s not found",
+                     encoder, HW_ACCEL_DEVICE)
+        return False
     try:
         pre_input: list[str] = []
         vf: list[str] = []

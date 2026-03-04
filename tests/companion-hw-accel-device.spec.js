@@ -53,6 +53,18 @@ test.describe('Companion app.py HW_ACCEL_DEVICE configuration', () => {
     expect(probeFunc).toContain('child_device={_qsv_render_device(HW_ACCEL_DEVICE)}');
   });
 
+  test('_probe_encoder should skip vaapi/qsv probes when device file does not exist', () => {
+    const c = content();
+    const probeFunc = c.substring(
+      c.indexOf('def _probe_encoder'),
+      c.indexOf('def _detect_hw_accel')
+    );
+    // Must check os.path.exists(HW_ACCEL_DEVICE) before running FFmpeg
+    expect(probeFunc).toContain('os.path.exists(HW_ACCEL_DEVICE)');
+    // Should log a skip message instead of running FFmpeg
+    expect(probeFunc).toContain('probe skipped');
+  });
+
   test('_encoder_flags should use HW_ACCEL_DEVICE not hardcoded path', () => {
     const c = content();
     const flagsFunc = c.substring(
