@@ -295,4 +295,3 @@ if (!function_exists('formatPhone')) {
 }
 
 // Configuration loaded successfully
-?>
