@@ -2513,7 +2513,7 @@ def _send_callback(callback_url: str, payload: dict):
         logger.info("No callback URL configured — skipping result notification for job %s", payload.get("job_id", "?"))
         return result
     # Validate URL scheme to prevent SSRF to non-HTTP destinations
-    from urllib.parse import urlparse
+    from urllib.parse import urlparse, urljoin
     parsed = urlparse(callback_url)
     if parsed.scheme not in ("http", "https"):
         logger.warning("Callback URL rejected (invalid scheme): %s", callback_url)
@@ -2525,10 +2525,33 @@ def _send_callback(callback_url: str, payload: dict):
             headers = {"Content-Type": "application/json"}
             if API_KEY:
                 headers["X-API-Key"] = API_KEY
-            resp = http_requests.post(callback_url, json=payload, headers=headers, timeout=30, verify=False)  # noqa: S501
+            # Disable automatic redirects to prevent silent POST→GET
+            # conversion on 301/302.  Behind nginx/HAProxy a
+            # http→https or slash redirect silently turns the POST
+            # into a GET, which the PHP handler rejects or nginx
+            # serves as an empty 200 page.
+            resp = http_requests.post(callback_url, json=payload, headers=headers, timeout=30, verify=False, allow_redirects=False)  # noqa: S501
+
+            # Follow up to 5 redirects while preserving the POST method
+            target_url = callback_url
+            for _redir in range(5):
+                if resp.is_redirect or resp.status_code in (301, 302, 303, 307, 308):
+                    location = resp.headers.get("Location", "")
+                    if not location:
+                        break
+                    target_url = urljoin(target_url, location)
+                    # Validate redirect target scheme to prevent SSRF
+                    if urlparse(target_url).scheme not in ("http", "https"):
+                        logger.warning("Callback redirect target rejected (invalid scheme): %s", target_url)
+                        break
+                    logger.info("Callback redirect %d (%d) to %s — re-sending as POST (retry %d)", _redir + 1, resp.status_code, target_url, attempt)
+                    resp = http_requests.post(target_url, json=payload, headers=headers, timeout=30, verify=False, allow_redirects=False)  # noqa: S501
+                else:
+                    break
+
             resp.raise_for_status()
             result["ok"] = True
-            logger.info("Callback sent to %s for job %s (attempt %d, HTTP %d)", callback_url, payload.get("job_id"), attempt, resp.status_code)
+            logger.info("Callback sent to %s for job %s (attempt %d, HTTP %d)", target_url, payload.get("job_id"), attempt, resp.status_code)
             resp_preview = resp.text[:500] if resp.text else "(empty)"
             # Parse the response to check for explicit DB confirmation
             try:

@@ -77,6 +77,7 @@ function handleCompanionCallback(): void {
 
     if (!authenticateCompanion()) {
         apiResponse(401, ['success' => false, 'error' => 'Unauthorized']);
+        return; // defense-in-depth: apiResponse calls exit, but be explicit
     }
 
     $body = getJsonBody();
@@ -93,6 +94,7 @@ function handleCompanionCallback(): void {
 
     if (empty($status)) {
         apiResponse(400, ['success' => false, 'error' => 'status is required']);
+        return;
     }
 
     // Determine which table to update: vr_video_sources (if source_id) or videos
@@ -152,6 +154,7 @@ function handleCompanionCallback(): void {
         $safe_src = $source_id !== null ? (int) $source_id : 'null';
         ErrorLogger::warning("Companion callback: no matching record for job_id=$safe_job video_id=$safe_vid source_id=$safe_src");
         apiResponse(404, ['success' => false, 'error' => 'Video record not found']);
+        return;
     }
 
     try {
@@ -233,6 +236,6 @@ function handleCompanionCallback(): void {
         }
     } catch (\Throwable $e) {
         ErrorLogger::error("Companion callback error for job $job_id: " . $e->getMessage());
-        apiResponse(500, ['success' => false, 'error' => 'Internal server error']);
+        apiResponse(500, ['success' => false, 'confirmed' => false, 'error' => 'Internal server error', 'rows_affected' => 0]);
     }
 }
