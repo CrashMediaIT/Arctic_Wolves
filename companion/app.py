@@ -148,9 +148,10 @@ def _log_request(response):
 CONFIG_DIR = os.getenv("CONFIG_DIR", "/config")
 CONFIG_FILE = os.path.join(CONFIG_DIR, "companion_config.enc")
 KEY_FILE = os.path.join(CONFIG_DIR, "encryption.key")
+JOBS_DB_FILE = os.path.join(CONFIG_DIR, "companion_jobs.db")
+# Legacy JSON path — used only for one-time migration to SQLite
 JOBS_FILE = os.path.join(CONFIG_DIR, "companion_jobs.json")
 _MAX_PERSISTED_JOBS = 500
-_LOG_SAVE_INTERVAL = 50   # persist job history every N log entries
 
 
 def _read_key_file() -> str:
@@ -267,49 +268,59 @@ def _save_persistent_config(cfg: dict) -> bool:
         return False
 
 
-def _load_jobs() -> dict:
-    """Load persisted job history from the JSON file on disk.
+# ---------------------------------------------------------------------------
+# SQLite Job Store  (replaces legacy JSON persistence)
+# ---------------------------------------------------------------------------
+try:
+    from companion.job_store import JobStore
+except ImportError:
+    from job_store import JobStore
 
-    Jobs that were still running when the process last exited are marked
-    as failed since the daemon threads are gone.
+Path(CONFIG_DIR).mkdir(parents=True, exist_ok=True)
+job_store = JobStore(JOBS_DB_FILE, max_jobs=_MAX_PERSISTED_JOBS)
+# Migrate legacy JSON data on first start (renames file when done)
+job_store.migrate_from_json(JOBS_FILE)
+# Mark any in-progress jobs as failed (process was restarted)
+job_store.mark_interrupted()
+
+
+def _load_jobs() -> dict:
+    """Load persisted job history from the SQLite database.
+
+    Returns a ``{job_id: dict}`` mapping for the in-memory cache.
+    In-progress jobs are already marked failed by ``mark_interrupted()``.
     """
-    if not os.path.isfile(JOBS_FILE):
-        return {}
     try:
-        with open(JOBS_FILE, "r") as f:
-            job_list = json.load(f)
-        loaded = {}
-        for j in job_list:
-            if not isinstance(j, dict) or "id" not in j:
-                continue
-            if j.get("status") in ("running", "queued", "downloading",
-                                    "transcoding", "uploading"):
-                j["status"] = "failed"
-                j["error"] = j.get("error") or "Interrupted by restart"
-                j.setdefault("finished_at", time.time())
-            loaded[j["id"]] = j
-        return loaded
+        return job_store.load_all_to_dict()
     except Exception as exc:
-        logger.warning("Could not load job history: %s", exc)
+        logger.warning("Could not load job history from SQLite: %s", exc)
         return {}
+
+
+def _save_job(job_id: str):
+    """Persist a single job (by id) from the in-memory cache to SQLite."""
+    try:
+        with job_lock:
+            job = jobs.get(job_id)
+        if job is not None:
+            job_store.upsert_job(job)
+    except Exception as exc:
+        logger.warning("Failed to save job %s to SQLite: %s", job_id, exc)
 
 
 def _save_jobs():
-    """Persist current job history to disk (most recent jobs only).
+    """Persist ALL in-memory jobs to SQLite and prune old entries.
 
-    Must be called while *not* holding ``job_lock`` — or from within a
-    block that already holds it (the function acquires the lock itself).
+    Kept for backward compatibility with call sites that flush everything.
     """
     try:
-        Path(CONFIG_DIR).mkdir(parents=True, exist_ok=True)
         with job_lock:
-            all_jobs = sorted(jobs.values(),
-                              key=lambda j: j.get("created_at", 0),
-                              reverse=True)[:_MAX_PERSISTED_JOBS]
-        with open(JOBS_FILE, "w") as f:
-            json.dump(all_jobs, f, default=str)
+            snapshot = list(jobs.values())
+        for j in snapshot:
+            job_store.upsert_job(j)
+        job_store.prune()
     except Exception as exc:
-        logger.warning("Failed to save job history: %s", exc)
+        logger.warning("Failed to save jobs to SQLite: %s", exc)
 
 
 # Load all settings from the encrypted persistent config file.
@@ -375,7 +386,7 @@ TEMP_DIR = "/tmp/companion"
 VIDEO_BASE_PATH = "/videos"
 COMPANION_HOST = "0.0.0.0"
 COMPANION_PORT = int(os.getenv("COMPANION_PORT", "5100"))
-VERSION = "20260305.1"
+VERSION = "20260305.2"
 
 Path(TEMP_DIR).mkdir(parents=True, exist_ok=True)
 
@@ -1098,7 +1109,7 @@ def _run_job(job_id: str, cmd: list[str]):
                 jobs[job_id]["error"] = str(exc)[:2000]
                 jobs[job_id]["finished_at"] = time.time()
             logger.error("Job %s exception: %s", job_id, exc)
-        _save_jobs()
+        _save_job(job_id)
 
 
 def _create_job(cmd: list[str], description: str, output_path: str) -> dict:
@@ -1116,7 +1127,7 @@ def _create_job(cmd: list[str], description: str, output_path: str) -> dict:
     }
     with job_lock:
         jobs[job_id] = job
-    _save_jobs()
+    _save_job(job_id)
 
     thread = threading.Thread(target=_run_job, args=(job_id, cmd), daemon=True)
     thread.start()
@@ -2009,13 +2020,16 @@ def thumbnail():
 
 @app.route("/api/job/<job_id>", methods=["GET"])
 def get_job(job_id):
-    """Check job status."""
+    """Check job status.  Checks in-memory cache first, then SQLite."""
     auth_err = _require_api_key()
     if auth_err:
         return auth_err
 
     with job_lock:
         job = jobs.get(job_id)
+    if not job:
+        # Fall back to SQLite for completed/historical jobs
+        job = job_store.get_job(job_id)
     if not job:
         return jsonify({"error": "Job not found"}), 404
     return jsonify(job)
@@ -2032,18 +2046,23 @@ def cancel_job(job_id):
         job = jobs.pop(job_id, None)
     if not job:
         return jsonify({"error": "Job not found"}), 404
+    job_store.delete_job(job_id)
     return jsonify({"status": "cancelled", "id": job_id})
 
 
 @app.route("/api/jobs", methods=["GET"])
 def list_jobs():
-    """List all jobs, newest first."""
+    """List all jobs, newest first.  Merges in-memory + SQLite data."""
     auth_err = _require_api_key()
     if auth_err:
         return auth_err
 
+    # Merge: in-memory jobs (fresh state) override SQLite rows
+    db_jobs = {j["id"]: j for j in job_store.get_all_jobs_summary()}
     with job_lock:
-        all_jobs = sorted(jobs.values(), key=lambda j: j.get("created_at", 0), reverse=True)
+        for jid, jdata in jobs.items():
+            db_jobs[jid] = jdata
+    all_jobs = sorted(db_jobs.values(), key=lambda j: j.get("created_at", 0), reverse=True)
     return jsonify(all_jobs)
 
 
@@ -2547,27 +2566,26 @@ HLS_VARIANTS = [
 def _job_log(job_id: str, message: str, level: str = "info"):
     """Append a timestamped log entry to a job's ``log`` list.
 
-    Periodically persists the job history so that log entries survive a
-    crash during long-running operations (e.g. upload of hundreds of HLS
-    segments).  A save is triggered every ``_LOG_SAVE_INTERVAL`` entries
-    or immediately for ``warn`` / ``error`` level messages.
+    Each entry is written to the SQLite ``job_logs`` table immediately so
+    log data survives crashes.  The in-memory ``log`` list is also updated
+    so that API responses include the latest entries without an extra DB
+    round-trip.
     """
+    ts = time.time()
     entry = {
-        "ts": time.time(),
+        "ts": ts,
         "level": level,
         "msg": message,
     }
-    should_save = False
     with job_lock:
         job = jobs.get(job_id)
         if job is not None:
-            log_list = job.setdefault("log", [])
-            log_list.append(entry)
-            # Save on warnings/errors or every _LOG_SAVE_INTERVAL entries
-            if level in ("warn", "error") or len(log_list) % _LOG_SAVE_INTERVAL == 0:
-                should_save = True
-    if should_save:
-        _save_jobs()
+            job.setdefault("log", []).append(entry)
+    # Write to SQLite (outside the lock to avoid holding it during I/O)
+    try:
+        job_store.append_log(job_id, ts, level, message)
+    except Exception:
+        pass  # best-effort; in-memory copy still has the entry
 
 
 def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
@@ -2596,7 +2614,7 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
             jobs[job_id]["status"] = "failed"
             jobs[job_id]["error"] = "S3 not configured"
             jobs[job_id]["finished_at"] = time.time()
-        _save_jobs()
+        _save_job(job_id)
         return
 
     jlog(f"S3 endpoint: {S3_ENDPOINT}")
@@ -2793,7 +2811,7 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
             jobs[job_id]["hls_manifest"] = f"{output_prefix}/master.m3u8"
             jobs[job_id]["finished_at"] = time.time()
             jobs[job_id]["variants"] = [v["label"] for v in variants]
-        _save_jobs()
+        _save_job(job_id)
 
         logger.info("HLS job %s completed: %d variants, manifest=%s", job_id, len(variants), f"{output_prefix}/master.m3u8")
 
@@ -2818,7 +2836,7 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
         with job_lock:
             jobs[job_id]["callback_ok"] = cb_result["ok"]
             jobs[job_id]["callback_confirmed"] = cb_result["confirmed"]
-        _save_jobs()
+        _save_job(job_id)
 
         # Delete original source from S3 only AFTER the main app has
         # confirmed the DB update (confirmed=true and rows_affected>0).
@@ -2832,12 +2850,12 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
                     jlog(f"Original source deleted successfully: {s3_source_key}")
                     with job_lock:
                         jobs[job_id]["original_deleted"] = True
-                    _save_jobs()
+                    _save_job(job_id)
                 else:
                     jlog(f"Failed to delete original source: {s3_source_key} — file may still exist in S3", "warn")
                     with job_lock:
                         jobs[job_id]["original_deleted"] = False
-                    _save_jobs()
+                    _save_job(job_id)
             elif cb_result["ok"]:
                 jlog("Skipping original deletion — callback succeeded but main app did NOT confirm DB update; keeping source for safety", "warn")
             else:
@@ -2852,7 +2870,7 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
             jobs[job_id]["status"] = "failed"
             jobs[job_id]["error"] = str(exc)[:2000]
             jobs[job_id]["finished_at"] = time.time()
-        _save_jobs()
+        _save_job(job_id)
         with job_lock:
             vid_id = jobs[job_id].get("video_id")
             src_id = jobs[job_id].get("source_id")
@@ -2954,7 +2972,7 @@ def hls_transcode():
     }
     with job_lock:
         jobs[job_id] = job
-    _save_jobs()
+    _save_job(job_id)
 
     thread = threading.Thread(
         target=_run_hls_job,
@@ -3030,7 +3048,7 @@ def hls_retry():
     }
     with job_lock:
         jobs[job_id] = job
-    _save_jobs()
+    _save_job(job_id)
 
     thread = threading.Thread(
         target=_run_hls_job,
@@ -3108,7 +3126,7 @@ def hls_retry_callback():
     with job_lock:
         jobs[job_id]["callback_ok"] = cb_result["ok"]
         jobs[job_id]["callback_confirmed"] = cb_result["confirmed"]
-    _save_jobs()
+    _save_job(job_id)
 
     if cb_result["confirmed"]:
         jlog("Retry-callback confirmed by main app ✓")
@@ -3137,7 +3155,7 @@ def hls_retry_callback():
                 jlog(f"Original source deleted successfully: {s3_source_key}")
             else:
                 jlog(f"Failed to delete original source: {s3_source_key}", "warn")
-            _save_jobs()
+            _save_job(job_id)
 
     return jsonify({
         "job_id": job_id,
