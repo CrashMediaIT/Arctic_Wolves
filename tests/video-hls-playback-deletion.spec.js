@@ -66,7 +66,7 @@ test.describe('Views serve HLS when hls_status is ready', () => {
     const funcEnd = content.indexOf('\n}', funcStart) + 2;
     const func = content.substring(funcStart, funcEnd);
     expect(func).toContain("hls_status");
-    expect(func).toContain("'failed'");
+    expect(func).toContain("'ready'");
     expect(func).toContain("hls_url");
     expect(func).toContain("video_url");
   });

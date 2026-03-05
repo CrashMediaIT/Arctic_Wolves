@@ -89,9 +89,9 @@ test.describe('getPreferredVideoUrl returns HLS URL when ready', () => {
 
   test('returns hls_url when hls_status is ready', () => {
     const c = readFile('lib/image_helper.php');
-    // The function should check hls_status and return hls_url when not 'failed'
+    // The function should check hls_status and return hls_url only when 'ready'
     expect(c).toMatch(/function getPreferredVideoUrl/);
-    expect(c).toContain("'failed'");
+    expect(c).toContain("'ready'");
     expect(c).toContain('hls_url');
     expect(c).toContain('video_url');
   });

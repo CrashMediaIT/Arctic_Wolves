@@ -261,13 +261,14 @@ test.describe('Gameplan views include image_helper.php', () => {
 /* ------------------------------------------------------------------ */
 test.describe('Companion deletes original only after callback succeeds', () => {
 
-  test('_send_callback should return a boolean', () => {
+  test('_send_callback should return a dict with ok and confirmed keys', () => {
     const content = readFile('companion/app.py');
     const funcStart = content.indexOf('def _send_callback(');
     const funcEnd = content.indexOf('\ndef ', funcStart + 1);
     const func = content.substring(funcStart, funcEnd);
-    expect(func).toContain('return True');
-    expect(func).toContain('return False');
+    expect(func).toContain('"ok"');
+    expect(func).toContain('"confirmed"');
+    expect(func).toContain('return result');
   });
 
   test('_send_callback should raise_for_status to detect HTTP errors', () => {
@@ -278,19 +279,35 @@ test.describe('Companion deletes original only after callback succeeds', () => {
     expect(func).toContain('raise_for_status');
   });
 
-  test('_hls_transcode_s3 should store callback result', () => {
+  test('_send_callback should parse response for confirmed and rows_affected', () => {
     const content = readFile('companion/app.py');
-    expect(content).toContain('cb_ok = _send_callback(');
+    const funcStart = content.indexOf('def _send_callback(');
+    const funcEnd = content.indexOf('\ndef ', funcStart + 1);
+    const func = content.substring(funcStart, funcEnd);
+    expect(func).toContain('resp.json()');
+    expect(func).toContain('"confirmed"');
+    expect(func).toContain('"rows_affected"');
   });
 
-  test('_hls_transcode_s3 should only delete original when callback succeeded', () => {
+  test('_hls_transcode_s3 should store callback result', () => {
+    const content = readFile('companion/app.py');
+    expect(content).toContain('cb_result = _send_callback(');
+  });
+
+  test('_hls_transcode_s3 should store callback_confirmed in job data', () => {
+    const content = readFile('companion/app.py');
+    expect(content).toContain('callback_confirmed');
+    expect(content).toContain('callback_ok');
+  });
+
+  test('_hls_transcode_s3 should only delete original when callback confirmed', () => {
     const content = readFile('companion/app.py');
     // Find the section where delete_original is checked after callback
-    const cbOkIdx = content.indexOf('cb_ok = _send_callback(');
-    expect(cbOkIdx).toBeGreaterThan(-1);
-    const afterCb = content.substring(cbOkIdx, cbOkIdx + 1000);
-    // Should gate deletion on cb_ok
-    expect(afterCb).toContain('if cb_ok');
+    const cbIdx = content.indexOf('cb_result = _send_callback(');
+    expect(cbIdx).toBeGreaterThan(-1);
+    const afterCb = content.substring(cbIdx, cbIdx + 1500);
+    // Should gate deletion on confirmed (not just ok)
+    expect(afterCb).toContain('cb_result["confirmed"]');
     expect(afterCb).toContain('_s3_delete');
   });
 
@@ -299,13 +316,24 @@ test.describe('Companion deletes original only after callback succeeds', () => {
     expect(content).toContain('Skipping original deletion');
   });
 
+  test('_hls_transcode_s3 should track original_deleted status', () => {
+    const content = readFile('companion/app.py');
+    expect(content).toContain('"original_deleted"');
+  });
+
   test('callback should happen before deletion in code order', () => {
     const content = readFile('companion/app.py');
-    const callbackIdx = content.indexOf('cb_ok = _send_callback(');
-    const deleteIdx = content.indexOf('Deleting original source:');
+    const callbackIdx = content.indexOf('cb_result = _send_callback(');
+    const deleteIdx = content.indexOf('deleting original source:');
     expect(callbackIdx).toBeGreaterThan(-1);
     expect(deleteIdx).toBeGreaterThan(-1);
     // Callback must come before deletion
     expect(callbackIdx).toBeLessThan(deleteIdx);
+  });
+
+  test('main app callback should return confirmed field', () => {
+    const content = readFile('api/v1/companion.php');
+    expect(content).toContain("'confirmed'");
+    expect(content).toContain('rows_affected');
   });
 });
