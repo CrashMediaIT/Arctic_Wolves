@@ -2529,6 +2529,7 @@ def _send_callback(callback_url: str, payload: dict):
             resp.raise_for_status()
             result["ok"] = True
             logger.info("Callback sent to %s for job %s (attempt %d, HTTP %d)", callback_url, payload.get("job_id"), attempt, resp.status_code)
+            resp_preview = resp.text[:500] if resp.text else "(empty)"
             # Parse the response to check for explicit DB confirmation
             try:
                 body = resp.json()
@@ -2541,18 +2542,16 @@ def _send_callback(callback_url: str, payload: dict):
                 else:
                     # Log the full response body so admins can diagnose
                     # why the main app did not confirm the update.
-                    resp_text = resp.text[:500] if resp.text else "(empty)"
-                    result["response_detail"] = f"HTTP {resp.status_code} confirmed={confirmed} rows={rows} body={resp_text}"
+                    result["response_detail"] = f"HTTP {resp.status_code} confirmed={confirmed} rows={rows} body={resp_preview}"
                     logger.warning(
                         "Main app did NOT confirm DB update for job %s "
                         "(confirmed=%s, rows_affected=%s, http=%d, body=%s)",
-                        payload.get("job_id"), confirmed, rows, resp.status_code, resp_text,
+                        payload.get("job_id"), confirmed, rows, resp.status_code, resp_preview,
                     )
             except Exception:
                 # Non-JSON or missing fields — treat as unconfirmed but HTTP OK
-                resp_text = resp.text[:500] if resp.text else "(empty)"
-                result["response_detail"] = f"HTTP {resp.status_code} non-JSON body={resp_text}"
-                logger.warning("Could not parse confirmation from callback response for job %s (http=%d, body=%s)", payload.get("job_id"), resp.status_code, resp_text)
+                result["response_detail"] = f"HTTP {resp.status_code} non-JSON body={resp_preview}"
+                logger.warning("Could not parse confirmation from callback response for job %s (http=%d, body=%s)", payload.get("job_id"), resp.status_code, resp_preview)
             return result
         except Exception as exc:
             logger.warning("Callback to %s failed (attempt %d/%d): %s", callback_url, attempt, max_retries, exc)

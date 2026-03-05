@@ -79,7 +79,7 @@ function handleCompanionCallback(): void {
     $status    = $body['status'] ?? '';
 
     // Log the incoming callback for diagnostics (visible in admin Error Logs)
-    $safe_job = preg_replace('/[^a-zA-Z0-9-]/', '', substr($job_id, 0, 64));
+    $safe_job = preg_replace('/[^a-zA-Z0-9-]/', '', substr($job_id, 0, 64)) ?: '(empty)';
     $safe_vid = $video_id !== null ? (int) $video_id : 'null';
     $safe_src = $source_id !== null ? (int) $source_id : 'null';
     ErrorLogger::info("Companion callback received: job_id=$safe_job video_id=$safe_vid source_id=$safe_src status=$status");
@@ -215,10 +215,11 @@ function handleCompanionCallback(): void {
 
             $stmt = $pdo->prepare("UPDATE $table SET hls_status = 'failed' WHERE id = ?");
             $stmt->execute([$db_record_id]);
+            $fail_rows = $stmt->rowCount();
 
             $label = $table === 'vr_video_sources' ? 'source' : 'video';
             ErrorLogger::error("HLS transcode failed for $label $db_record_id (job $job_id): $error");
-            apiResponse(200, ['success' => true, 'confirmed' => true, 'message' => 'Video marked as failed', 'rows_affected' => 1]);
+            apiResponse(200, ['success' => true, 'confirmed' => $fail_rows > 0, 'message' => 'Video marked as failed', 'rows_affected' => $fail_rows]);
 
         } else {
             apiResponse(400, ['success' => false, 'error' => 'Invalid status. Must be completed or failed.']);
