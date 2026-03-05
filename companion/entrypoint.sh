@@ -108,7 +108,8 @@ done
 # by root — the build-time chown does not carry over.  Fix ownership here
 # (while we are still root) so that SQLite, the config file, and the log
 # directory can all be written after we drop privileges.
-chown -R companion:companion /config 2>/dev/null || true
+chown -R companion:companion /config 2>/dev/null \
+    || echo "Warning: could not chown /config — companion user may lack write access"
 
 # Drop to non-root user and exec the CMD
 exec gosu companion "$@"

@@ -81,7 +81,15 @@ class JobStore:
         self._local = threading.local()
         # Ensure the parent directory exists so sqlite3.connect() can
         # create the database file on first run.
-        os.makedirs(os.path.dirname(db_path) or ".", exist_ok=True)
+        db_dir = os.path.dirname(db_path) or "."
+        os.makedirs(db_dir, exist_ok=True)
+        if not os.access(db_dir, os.W_OK):
+            msg = (
+                f"Database directory {db_dir} is not writable (uid={os.getuid()}). "
+                "Check volume mount permissions."
+            )
+            logger.error(msg)
+            raise PermissionError(msg)
         # Initialise the schema (uses a temporary connection)
         self._init_schema()
 
