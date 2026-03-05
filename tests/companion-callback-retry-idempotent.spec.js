@@ -212,28 +212,30 @@ test.describe('History page retry callback button', () => {
 });
 
 // =====================================================
-// 5. _job_log periodic persistence
+// 5. _job_log SQLite persistence
 // =====================================================
 
-test.describe('Companion app.py _job_log periodic persistence', () => {
+test.describe('Companion app.py _job_log SQLite persistence', () => {
   const content = () => readFile('companion/app.py');
 
-  test('should define _LOG_SAVE_INTERVAL constant', () => {
-    const c = content();
-    expect(c).toContain('_LOG_SAVE_INTERVAL');
-  });
-
-  test('_job_log should call _save_jobs periodically', () => {
+  test('_job_log should write to SQLite via job_store.append_log', () => {
     const c = content();
     const func = c.substring(c.indexOf('def _job_log('), c.indexOf('\ndef ', c.indexOf('def _job_log(') + 1));
-    expect(func).toContain('_save_jobs()');
-    expect(func).toContain('_LOG_SAVE_INTERVAL');
+    expect(func).toContain('job_store.append_log');
   });
 
-  test('_job_log should save immediately on warn or error level', () => {
+  test('_job_log should update in-memory log list', () => {
     const c = content();
     const func = c.substring(c.indexOf('def _job_log('), c.indexOf('\ndef ', c.indexOf('def _job_log(') + 1));
-    expect(func).toContain('"warn"');
-    expect(func).toContain('"error"');
+    expect(func).toContain('.setdefault("log", [])');
+    expect(func).toContain('.append(entry)');
+  });
+
+  test('_job_log entry should contain ts, level, msg', () => {
+    const c = content();
+    const func = c.substring(c.indexOf('def _job_log('), c.indexOf('\ndef ', c.indexOf('def _job_log(') + 1));
+    expect(func).toContain('"ts"');
+    expect(func).toContain('"level"');
+    expect(func).toContain('"msg"');
   });
 });

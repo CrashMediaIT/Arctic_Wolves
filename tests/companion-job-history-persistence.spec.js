@@ -24,22 +24,102 @@ function readFile(relativePath) {
 // 1. Job history file configuration
 // =====================================================
 
-test.describe('Companion app.py persistent job history file', () => {
+test.describe('Companion app.py persistent job history — SQLite', () => {
   const content = () => readFile('companion/app.py');
 
-  test('should define JOBS_FILE in CONFIG_DIR', () => {
+  test('should define JOBS_DB_FILE in CONFIG_DIR', () => {
     const c = content();
-    expect(c).toContain('JOBS_FILE = os.path.join(CONFIG_DIR, "companion_jobs.json")');
+    expect(c).toContain('JOBS_DB_FILE = os.path.join(CONFIG_DIR, "companion_jobs.db")');
   });
 
   test('should define _MAX_PERSISTED_JOBS limit', () => {
     const c = content();
     expect(c).toContain('_MAX_PERSISTED_JOBS');
   });
+
+  test('should keep legacy JOBS_FILE constant for migration', () => {
+    const c = content();
+    expect(c).toContain('JOBS_FILE = os.path.join(CONFIG_DIR, "companion_jobs.json")');
+  });
 });
 
 // =====================================================
-// 2. _load_jobs function
+// 2. SQLite JobStore module
+// =====================================================
+
+test.describe('Companion job_store.py SQLite module', () => {
+  const content = () => readFile('companion/job_store.py');
+
+  test('should define JobStore class', () => {
+    expect(content()).toContain('class JobStore');
+  });
+
+  test('should create jobs table with correct columns', () => {
+    const c = content();
+    expect(c).toContain('CREATE TABLE IF NOT EXISTS jobs');
+    expect(c).toContain('id               TEXT PRIMARY KEY');
+    expect(c).toContain('status           TEXT NOT NULL');
+  });
+
+  test('should create job_logs table with FK to jobs', () => {
+    const c = content();
+    expect(c).toContain('CREATE TABLE IF NOT EXISTS job_logs');
+    expect(c).toContain('FOREIGN KEY (job_id) REFERENCES jobs(id)');
+  });
+
+  test('should use WAL journal mode for concurrent access', () => {
+    const c = content();
+    expect(c).toContain('PRAGMA journal_mode=WAL');
+  });
+
+  test('should provide upsert_job method', () => {
+    expect(content()).toContain('def upsert_job(self, job: dict)');
+  });
+
+  test('should provide append_log method', () => {
+    expect(content()).toContain('def append_log(self, job_id: str, ts: float, level: str, msg: str)');
+  });
+
+  test('should provide get_job method that includes logs', () => {
+    const c = content();
+    const func = c.substring(c.indexOf('def get_job('), c.indexOf('\n    def ', c.indexOf('def get_job(') + 1));
+    expect(func).toContain('_get_logs');
+    expect(func).toContain('job["log"]');
+  });
+
+  test('should provide get_all_jobs_summary without logs', () => {
+    const c = content();
+    expect(c).toContain('def get_all_jobs_summary');
+  });
+
+  test('should provide prune method', () => {
+    const c = content();
+    expect(c).toContain('def prune(self)');
+  });
+
+  test('should provide mark_interrupted method', () => {
+    const c = content();
+    const func = c.substring(c.indexOf('def mark_interrupted'), c.indexOf('\n    def ', c.indexOf('def mark_interrupted') + 1));
+    expect(func).toContain("'failed'");
+    expect(func).toContain('Interrupted by restart');
+  });
+
+  test('should provide migrate_from_json method', () => {
+    const c = content();
+    const func = c.substring(c.indexOf('def migrate_from_json'), c.indexOf('\n    def ', c.indexOf('def migrate_from_json') + 1));
+    expect(func).toContain('.migrated');
+    expect(func).toContain('upsert_job');
+    expect(func).toContain('append_log');
+  });
+
+  test('should use per-thread connections for thread safety', () => {
+    const c = content();
+    expect(c).toContain('threading.local');
+  });
+});
+
+// =====================================================
+// 3. app.py loads jobs from SQLite
 // =====================================================
 
 test.describe('Companion app.py _load_jobs function', () => {
@@ -49,27 +129,25 @@ test.describe('Companion app.py _load_jobs function', () => {
     expect(content()).toContain('def _load_jobs()');
   });
 
-  test('should return empty dict when file does not exist', () => {
+  test('should load jobs from SQLite via job_store', () => {
     const c = content();
-    const func = c.substring(c.indexOf('def _load_jobs'), c.indexOf('def _save_jobs'));
-    expect(func).toContain('os.path.isfile(JOBS_FILE)');
-    expect(func).toContain('return {}');
+    const func = c.substring(c.indexOf('def _load_jobs'), c.indexOf('\ndef _save_job'));
+    expect(func).toContain('job_store.load_all_to_dict');
   });
 
-  test('should load jobs from JSON file', () => {
+  test('should create job_store from JobStore class', () => {
     const c = content();
-    const func = c.substring(c.indexOf('def _load_jobs'), c.indexOf('def _save_jobs'));
-    expect(func).toContain('json.load(');
-    expect(func).toContain('JOBS_FILE');
+    expect(c).toContain('job_store = JobStore(JOBS_DB_FILE');
   });
 
-  test('should mark in-progress jobs as failed on load', () => {
+  test('should migrate legacy JSON on startup', () => {
     const c = content();
-    const func = c.substring(c.indexOf('def _load_jobs'), c.indexOf('def _save_jobs'));
-    expect(func).toContain('"running"');
-    expect(func).toContain('"queued"');
-    expect(func).toContain('"failed"');
-    expect(func).toContain('Interrupted by restart');
+    expect(c).toContain('job_store.migrate_from_json(JOBS_FILE)');
+  });
+
+  test('should mark interrupted jobs on startup', () => {
+    const c = content();
+    expect(c).toContain('job_store.mark_interrupted()');
   });
 
   test('jobs dict should be seeded from _load_jobs on startup', () => {
@@ -79,83 +157,59 @@ test.describe('Companion app.py _load_jobs function', () => {
 });
 
 // =====================================================
-// 3. _save_jobs function
+// 4. _save_job called at key points
 // =====================================================
 
-test.describe('Companion app.py _save_jobs function', () => {
+test.describe('Companion app.py _save_job call sites', () => {
   const content = () => readFile('companion/app.py');
 
-  test('should define _save_jobs function', () => {
-    expect(content()).toContain('def _save_jobs()');
+  test('should define _save_job function', () => {
+    expect(content()).toContain('def _save_job(job_id');
   });
 
-  test('should write to JOBS_FILE as JSON', () => {
+  test('_save_job should persist via job_store.upsert_job', () => {
     const c = content();
-    const func = c.substring(c.indexOf('def _save_jobs'), c.indexOf('\ndef ', c.indexOf('def _save_jobs') + 1));
-    expect(func).toContain('json.dump(');
-    expect(func).toContain('JOBS_FILE');
+    const func = c.substring(c.indexOf('def _save_job('), c.indexOf('\ndef ', c.indexOf('def _save_job(') + 1));
+    expect(func).toContain('job_store.upsert_job');
   });
 
-  test('should limit persisted jobs to _MAX_PERSISTED_JOBS', () => {
-    const c = content();
-    const func = c.substring(c.indexOf('def _save_jobs'), c.indexOf('\ndef ', c.indexOf('def _save_jobs') + 1));
-    expect(func).toContain('_MAX_PERSISTED_JOBS');
-  });
-
-  test('should sort jobs by created_at descending', () => {
-    const c = content();
-    const func = c.substring(c.indexOf('def _save_jobs'), c.indexOf('\ndef ', c.indexOf('def _save_jobs') + 1));
-    expect(func).toContain('created_at');
-    expect(func).toContain('reverse=True');
-  });
-});
-
-// =====================================================
-// 4. _save_jobs called at key points
-// =====================================================
-
-test.describe('Companion app.py _save_jobs call sites', () => {
-  const content = () => readFile('companion/app.py');
-
-  test('_save_jobs should be called after _create_job stores the job', () => {
+  test('_save_job should be called after _create_job stores the job', () => {
     const c = content();
     const func = c.substring(c.indexOf('def _create_job'), c.indexOf('\ndef ', c.indexOf('def _create_job') + 1));
-    expect(func).toContain('_save_jobs()');
+    expect(func).toContain('_save_job(job_id)');
   });
 
-  test('_save_jobs should be called after _run_job finishes', () => {
+  test('_save_job should be called after _run_job finishes', () => {
     const c = content();
     const func = c.substring(c.indexOf('def _run_job'), c.indexOf('\ndef ', c.indexOf('def _run_job') + 1));
-    expect(func).toContain('_save_jobs()');
+    expect(func).toContain('_save_job(job_id)');
   });
 
-  test('_save_jobs should be called when HLS job is created', () => {
+  test('_save_job should be called when HLS job is created', () => {
     const c = content();
     const hlsFunc = c.substring(c.indexOf('def hls_transcode('), c.indexOf('def hls_retry('));
-    expect(hlsFunc).toContain('_save_jobs()');
+    expect(hlsFunc).toContain('_save_job(job_id)');
   });
 
-  test('_save_jobs should be called when HLS retry job is created', () => {
+  test('_save_job should be called when HLS retry job is created', () => {
     const c = content();
-    const retryFunc = c.substring(c.indexOf('def hls_retry('), c.indexOf('\ndef ', c.indexOf('def hls_retry(') + 1));
-    expect(retryFunc).toContain('_save_jobs()');
+    const retryFunc = c.substring(c.indexOf('def hls_retry('), c.indexOf('def hls_retry_callback('));
+    expect(retryFunc).toContain('_save_job(job_id)');
   });
 
-  test('_save_jobs should be called when HLS transcode completes', () => {
+  test('_save_job should be called when HLS transcode completes', () => {
     const c = content();
     const func = c.substring(c.indexOf('def _hls_transcode_s3'), c.indexOf('\ndef ', c.indexOf('def _hls_transcode_s3') + 1));
-    // Should appear after status = "completed" and after status = "failed"
     const completedIdx = func.indexOf('"completed"');
-    const saveAfterCompleted = func.indexOf('_save_jobs()', completedIdx);
+    const saveAfterCompleted = func.indexOf('_save_job(job_id)', completedIdx);
     expect(saveAfterCompleted).toBeGreaterThan(completedIdx);
   });
 
-  test('_save_jobs should be called when HLS transcode fails', () => {
+  test('_save_job should be called when HLS transcode fails', () => {
     const c = content();
     const func = c.substring(c.indexOf('def _hls_transcode_s3'), c.indexOf('\ndef ', c.indexOf('def _hls_transcode_s3') + 1));
-    // _save_jobs should appear after the except block that sets status = "failed"
     const statusFailedIdx = func.indexOf('["status"] = "failed"');
-    const saveAfterFailed = func.indexOf('_save_jobs()', statusFailedIdx);
+    const saveAfterFailed = func.indexOf('_save_job(job_id)', statusFailedIdx);
     expect(saveAfterFailed).toBeGreaterThan(statusFailedIdx);
   });
 });
