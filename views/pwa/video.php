@@ -336,7 +336,10 @@ async function mVidDelete(videoId) {
     body.append('video_id', videoId);
     body.append('csrf_token', mCsrfToken);
     fetch('process_video.php', { method: 'POST', body: body })
-        .then(function(r) { return r.json(); })
+        .then(function(r) {
+            if (!r.ok) return r.text().then(function(b) { var m = 'HTTP ' + r.status; try { var j = JSON.parse(b); if (j.error) m = j.error; } catch(e) {} throw new Error(m); });
+            return r.json();
+        })
         .then(function(d) {
             if (d.success) {
                 persistToast('Video deleted', 'success');
@@ -345,7 +348,7 @@ async function mVidDelete(videoId) {
                 mVidShowToast(d.error || 'Delete failed', 'error');
             }
         })
-        .catch(function() { mVidShowToast('Network error', 'error'); });
+        .catch(function(err) { mVidShowToast(err.message || 'Network error', 'error'); });
 }
 
 function mVidOpenReview(videoId, title, athlete) {

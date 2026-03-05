@@ -1010,7 +1010,10 @@ document.addEventListener('DOMContentLoaded', function() {
             formData.append('csrf_token', csrfToken);
 
             fetch('process_video.php', { method: 'POST', body: formData })
-                .then(function(r) { return r.json(); })
+                .then(function(r) {
+                    if (!r.ok) return r.text().then(function(b) { var m = 'HTTP ' + r.status; try { var j = JSON.parse(b); if (j.error) m = j.error; } catch(e) {} throw new Error(m); });
+                    return r.json();
+                })
                 .then(function(data) {
                     if (data.success) {
                         document.getElementById('deleteModal').style.display = 'none';
