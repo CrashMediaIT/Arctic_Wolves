@@ -285,7 +285,7 @@ $allowed_pages = [
     'admin_feature_import'    => 'views/admin_feature_import.php',
     'admin_theme_settings'    => 'views/admin_theme_settings.php',
     'admin_security'          => 'views/admin_security.php',
-    'admin_video_test'        => 'views/admin_video_test.php',
+    'admin_wishlist'          => 'views/admin_wishlist.php',
     'business_partners'       => 'views/admin_business_partners.php',
     'ihs_import'              => 'views/ihs_import.php',
     'session_templates'       => 'views/library_sessions.php',
@@ -990,8 +990,8 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="?page=marketing" class="nav-link <?= $page=='marketing'?'active':'' ?>">
                 <i class="fa-solid fa-bullhorn icon"></i> Marketing
             </a>
-            <a href="?page=admin_video_test" class="nav-link <?= $page=='admin_video_test'?'active':'' ?>">
-                <i class="fa-solid fa-video icon"></i> Video Test
+            <a href="?page=admin_wishlist" class="nav-link <?= $page=='admin_wishlist'?'active':'' ?>">
+                <i class="fa-solid fa-clipboard-list icon"></i> Wishlist
             </a>
         </nav>
     </div>

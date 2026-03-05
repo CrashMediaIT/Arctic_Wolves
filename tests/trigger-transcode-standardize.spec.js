@@ -2,7 +2,7 @@
  * Tests for standardized video upload transcode trigger.
  *
  * Verifies that all upload views trigger transcoding via the dedicated
- * trigger_transcode action (matching the admin video test view pattern)
+ * trigger_transcode action (standalone explicit action)
  * instead of embedding the trigger inside handleConfirmVideoUpload.
  */
 

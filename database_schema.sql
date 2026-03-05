@@ -4768,3 +4768,17 @@ CREATE TABLE IF NOT EXISTS `offline_video_queue` (
     INDEX `idx_user_status` (`user_id`, `status`),
     INDEX `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Admin Business Wishlist
+CREATE TABLE IF NOT EXISTS `admin_wishlist` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) NOT NULL,
+    `description` TEXT DEFAULT NULL,
+    `price` DECIMAL(10,2) DEFAULT NULL,
+    `link` VARCHAR(2048) DEFAULT NULL COMMENT 'Purchase URL or distributor info',
+    `display_order` INT DEFAULT 0,
+    `purchased` TINYINT(1) DEFAULT 0,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX `idx_display_order` (`display_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

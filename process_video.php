@@ -572,7 +572,7 @@ function handleConfirmVideoUpload() {
 /**
  * Trigger HLS transcode as a separate explicit action.
  * Called by the client after confirm_video_upload succeeds — mirrors the
- * admin video test view's standalone transcode trigger for reliability.
+ * standalone transcode trigger for reliability.
  */
 function handleTriggerTranscode() {
     global $pdo, $user_id;
