@@ -24,12 +24,14 @@ setSecurityHeaders();
 
 if (!isset($_SESSION['user_id'])) {
     http_response_code(403);
+    header('Content-Type: application/json');
     die(json_encode(['success' => false, 'message' => 'Not authenticated']));
 }
 
 $user_role = $_SESSION['user_role'] ?? 'athlete';
 if ($user_role !== 'admin') {
     http_response_code(403);
+    header('Content-Type: application/json');
     die(json_encode(['success' => false, 'message' => 'Admin access required']));
 }
 
@@ -59,7 +61,9 @@ try {
         INDEX `idx_display_order` (`display_order`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 } catch (PDOException $e) {
-    // Table likely already exists
+    if (strpos($e->getMessage(), 'already exists') === false) {
+        error_log('Wishlist table creation error: ' . $e->getMessage());
+    }
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

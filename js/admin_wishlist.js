@@ -14,17 +14,41 @@
 
     function init() {
         var list = document.getElementById('wishlist-sortable');
-        if (!list || typeof Sortable === 'undefined') return;
 
-        new Sortable(list, {
-            animation: 150,
-            handle: '.wishlist-handle',
-            ghostClass: 'sortable-ghost',
-            dragClass: 'sortable-drag',
-            onEnd: function() {
-                saveOrder(list);
-            }
-        });
+        if (list && typeof Sortable !== 'undefined') {
+            new Sortable(list, {
+                animation: 150,
+                handle: '.wishlist-handle',
+                ghostClass: 'sortable-ghost',
+                dragClass: 'sortable-drag',
+                onEnd: function() {
+                    saveOrder(list);
+                }
+            });
+        }
+
+        // Event delegation for action buttons inside the list
+        if (list) {
+            list.addEventListener('click', function(e) {
+                var btn = e.target.closest('.btn-toggle-purchased, .btn-edit, .btn-delete');
+                if (!btn) return;
+                var item = btn.closest('.wishlist-item');
+                if (!item) return;
+                var id = parseInt(item.dataset.id, 10);
+
+                if (btn.classList.contains('btn-toggle-purchased')) {
+                    togglePurchased(id, item);
+                } else if (btn.classList.contains('btn-edit')) {
+                    openWishlistModal(id, item.dataset.name, item.dataset.description, item.dataset.price, item.dataset.link);
+                } else if (btn.classList.contains('btn-delete')) {
+                    deleteWishlistItem(id, item.dataset.name);
+                }
+            });
+        }
+
+        // Expose modal helpers for the Add button (outside the sortable list)
+        window.openWishlistModal = openWishlistModal;
+        window.closeWishlistModal = closeWishlistModal;
     }
 
     function saveOrder(list) {
@@ -78,8 +102,7 @@
         }, 3000);
     }
 
-    // Expose helpers globally for inline onclick handlers
-    window.openWishlistModal = function(id, name, description, price, link) {
+    function openWishlistModal(id, name, description, price, link) {
         var modal = document.getElementById('wishlist-modal');
         var title = document.getElementById('wishlist-modal-title');
         var actionField = document.getElementById('wl-action');
@@ -104,14 +127,14 @@
         }
 
         modal.style.display = 'flex';
-    };
+    }
 
-    window.closeWishlistModal = function() {
+    function closeWishlistModal() {
         document.getElementById('wishlist-modal').style.display = 'none';
         document.getElementById('wishlist-form').reset();
-    };
+    }
 
-    window.deleteWishlistItem = function(id, name) {
+    function deleteWishlistItem(id, name) {
         if (!confirm('Delete "' + name + '" from the wishlist?')) return;
 
         fetch('process_wishlist.php', {
@@ -136,9 +159,9 @@
         .catch(function() {
             showToast('Delete failed', 'error');
         });
-    };
+    }
 
-    window.togglePurchased = function(id) {
+    function togglePurchased(id, itemEl) {
         fetch('process_wishlist.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
@@ -151,10 +174,9 @@
         .then(function(r) { return r.json(); })
         .then(function(data) {
             if (data.success) {
-                var el = document.querySelector('.wishlist-item[data-id="' + id + '"]');
-                if (el) {
-                    el.classList.toggle('wishlist-purchased');
-                    var icon = el.querySelector('.btn-toggle-purchased i');
+                if (itemEl) {
+                    itemEl.classList.toggle('wishlist-purchased');
+                    var icon = itemEl.querySelector('.btn-toggle-purchased i');
                     if (icon) {
                         icon.classList.toggle('fa-check-circle');
                         icon.classList.toggle('fa-circle');
@@ -168,6 +190,6 @@
         .catch(function() {
             showToast('Update failed', 'error');
         });
-    };
+    }
 
 })();

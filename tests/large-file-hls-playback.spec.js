@@ -5,8 +5,6 @@
  * 1. api/media.php streams non-m3u8 files (e.g. .ts segments) directly without
  *    buffering the entire response in PHP memory
  * 2. api/media.php includes CORS headers on error responses
- * 3. views/admin_video_test.php loadVideoPlayer uses HLS.js error events when
- *    HLS.js is active, avoiding misleading native video errors
  */
 
 import { test, expect } from '@playwright/test';

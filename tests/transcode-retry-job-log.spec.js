@@ -5,9 +5,6 @@
  * 1. Companion app.py: _job_log helper and "log" field in HLS jobs
  * 2. Companion app.py: POST /api/hls/retry endpoint
  * 3. Companion app.py: _hls_transcode_s3 logs detailed steps
- * 4. process_video_test.php: retry_transcode action
- * 5. process_video_test.php: transcode_status forwards log
- * 6. admin_video_test.php: Retry button and log panel UI
  */
 
 import { test, expect } from '@playwright/test';

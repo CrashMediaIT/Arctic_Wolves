@@ -15,7 +15,10 @@ try {
         INDEX `idx_display_order` (`display_order`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 } catch (PDOException $e) {
-    // Table likely already exists
+    // Table creation may fail if it already exists — expected on first load
+    if (strpos($e->getMessage(), 'already exists') === false) {
+        error_log('Wishlist table creation error: ' . $e->getMessage());
+    }
 }
 
 // Fetch wishlist items
@@ -75,7 +78,11 @@ try {
             <div class="wishlist-items" id="wishlist-sortable">
                 <?php foreach ($wishlistItems as $item): ?>
                 <div class="wishlist-item <?= $item['purchased'] ? 'wishlist-purchased' : '' ?>"
-                     data-id="<?= (int)$item['id'] ?>">
+                     data-id="<?= (int)$item['id'] ?>"
+                     data-name="<?= htmlspecialchars($item['name'] ?? '', ENT_QUOTES) ?>"
+                     data-description="<?= htmlspecialchars($item['description'] ?? '', ENT_QUOTES) ?>"
+                     data-price="<?= htmlspecialchars($item['price'] ?? '', ENT_QUOTES) ?>"
+                     data-link="<?= htmlspecialchars($item['link'] ?? '', ENT_QUOTES) ?>">
                     <div class="wishlist-handle"><i class="fas fa-grip-vertical"></i></div>
                     <div class="wishlist-item-body">
                         <div class="wishlist-item-header">
@@ -94,16 +101,13 @@ try {
                         <?php endif; ?>
                     </div>
                     <div class="wishlist-item-actions">
-                        <button type="button" class="btn-icon btn-toggle-purchased" title="<?= $item['purchased'] ? 'Mark as not purchased' : 'Mark as purchased' ?>"
-                                onclick="togglePurchased(<?= (int)$item['id'] ?>)">
+                        <button type="button" class="btn-icon btn-toggle-purchased" title="<?= $item['purchased'] ? 'Mark as not purchased' : 'Mark as purchased' ?>">
                             <i class="fas <?= $item['purchased'] ? 'fa-check-circle' : 'fa-circle' ?>"></i>
                         </button>
-                        <button type="button" class="btn-icon btn-edit" title="Edit"
-                                onclick="openWishlistModal(<?= (int)$item['id'] ?>, <?= htmlspecialchars(json_encode($item['name']), ENT_QUOTES) ?>, <?= htmlspecialchars(json_encode($item['description'] ?? ''), ENT_QUOTES) ?>, <?= htmlspecialchars(json_encode($item['price'] ?? ''), ENT_QUOTES) ?>, <?= htmlspecialchars(json_encode($item['link'] ?? ''), ENT_QUOTES) ?>)">
+                        <button type="button" class="btn-icon btn-edit" title="Edit">
                             <i class="fas fa-pen"></i>
                         </button>
-                        <button type="button" class="btn-icon btn-delete" title="Delete"
-                                onclick="deleteWishlistItem(<?= (int)$item['id'] ?>, <?= htmlspecialchars(json_encode($item['name']), ENT_QUOTES) ?>)">
+                        <button type="button" class="btn-icon btn-delete" title="Delete">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
