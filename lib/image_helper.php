@@ -115,14 +115,15 @@ function resolveRustfsUrl($pdo, $url) {
  *
  * When HLS transcoding is complete (hls_status='ready') the original source
  * file has been deleted by the companion, so we must serve the HLS manifest.
- * Otherwise fall back to the original video_url.
+ * Otherwise fall back to the original video_url (or file_path for
+ * vr_video_sources rows which use that column name instead).
  *
- * @param array $video  Video row from the database (must include video_url, hls_url, hls_status)
- * @return string  The URL to use for playback (video_url or hls_url)
+ * @param array $video  Video row from the database (must include video_url or file_path, hls_url, hls_status)
+ * @return string  The URL to use for playback (video_url/file_path or hls_url)
  */
 function getPreferredVideoUrl($video) {
     if (($video['hls_status'] ?? '') === 'ready' && !empty($video['hls_url'])) {
         return $video['hls_url'];
     }
-    return $video['video_url'] ?? '';
+    return $video['video_url'] ?? $video['file_path'] ?? '';
 }

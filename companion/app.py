@@ -2471,7 +2471,11 @@ def pull_settings():
 # ---------------------------------------------------------------------------
 
 def _send_callback(callback_url: str, payload: dict):
-    """POST job results back to the main application (fire-and-forget).
+    """POST job results back to the main application.
+
+    Returns ``True`` if the callback was successfully delivered (HTTP 2xx),
+    ``False`` otherwise.  When *delete_original* depends on the DB being
+    updated first, callers can gate the deletion on this return value.
 
     Note: SSL verification is disabled because companion and main app
     typically run on an internal network behind a reverse proxy (HAProxy)
@@ -2479,21 +2483,24 @@ def _send_callback(callback_url: str, payload: dict):
     """
     if not callback_url:
         logger.info("No callback URL configured — skipping result notification for job %s", payload.get("job_id", "?"))
-        return
+        return False
     # Validate URL scheme to prevent SSRF to non-HTTP destinations
     from urllib.parse import urlparse
     parsed = urlparse(callback_url)
     if parsed.scheme not in ("http", "https"):
         logger.warning("Callback URL rejected (invalid scheme): %s", callback_url)
-        return
+        return False
     try:
         headers = {"Content-Type": "application/json"}
         if API_KEY:
             headers["X-API-Key"] = API_KEY
-        http_requests.post(callback_url, json=payload, headers=headers, timeout=10, verify=False)  # noqa: S501
+        resp = http_requests.post(callback_url, json=payload, headers=headers, timeout=10, verify=False)  # noqa: S501
+        resp.raise_for_status()
         logger.info("Callback sent to %s for job %s", callback_url, payload.get("job_id"))
+        return True
     except Exception as exc:
         logger.warning("Callback to %s failed: %s", callback_url, exc)
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -2737,11 +2744,6 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
         upload_sec = round(time.time() - upload_start, 1)
         jlog(f"Upload complete — {upload_count} files in {upload_sec}s")
 
-        # Delete original source from S3 if requested
-        if delete_original:
-            jlog(f"Deleting original source: {s3_source_key}")
-            _s3_delete(s3, s3_source_key)
-
         total_sec = round(time.time() - jobs[job_id].get("started_at", time.time()), 1)
         jlog(f"Job completed successfully — total time {total_sec}s")
 
@@ -2759,7 +2761,7 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
         with job_lock:
             vid_id = jobs[job_id].get("video_id")
             src_id = jobs[job_id].get("source_id")
-        _send_callback(cb_url, {
+        cb_ok = _send_callback(cb_url, {
             "job_id": job_id,
             "video_id": vid_id,
             "source_id": src_id,
@@ -2769,6 +2771,17 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
             "hls_segments_path": output_prefix,
             "variants": variant_playlists,
         })
+
+        # Delete original source from S3 only AFTER the callback has
+        # successfully updated hls_status to 'ready'.  If the callback
+        # failed the original file is kept so the player can still serve
+        # it until the next retry / manual intervention.
+        if delete_original:
+            if cb_ok:
+                jlog(f"Deleting original source: {s3_source_key}")
+                _s3_delete(s3, s3_source_key)
+            else:
+                jlog("Skipping original deletion — callback failed; keeping source until DB is updated", "warn")
 
     except Exception as exc:
         logger.error("HLS transcode job %s failed: %s", job_id, exc)

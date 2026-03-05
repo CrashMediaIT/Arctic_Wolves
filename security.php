@@ -39,7 +39,7 @@ function setSecurityHeaders($extraConnectSrc = []) {
            "img-src 'self' data: https:; " .
            "font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; " .
            "connect-src $connectSrc; " .
-           "worker-src 'self'; " .
+           "worker-src 'self' blob:; " .
            "manifest-src 'self'; " .
            "media-src 'self' blob: mediastream: https:; " .
            "frame-src 'self' https://www.google.com https://www.gstatic.com; " .
