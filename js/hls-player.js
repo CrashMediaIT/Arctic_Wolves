@@ -43,6 +43,7 @@
                 maxBufferLength: 30,
                 maxMaxBufferLength: 60,
                 startLevel: -1, // Auto quality selection
+                enableWorker: true,
             });
 
             hls.loadSource(url);
@@ -53,11 +54,22 @@
                 _buildCustomControls(video, hls, data.levels);
             });
 
+            var _networkRetries = 0;
+            var _MAX_NETWORK_RETRIES = 2;
             hls.on(Hls.Events.ERROR, function(_event, data) {
                 if (data.fatal) {
                     switch (data.type) {
                         case Hls.ErrorTypes.NETWORK_ERROR:
-                            hls.startLoad();
+                            if (_networkRetries < _MAX_NETWORK_RETRIES) {
+                                _networkRetries++;
+                                hls.startLoad();
+                            } else {
+                                // Exhausted retries — destroy HLS.js and fire
+                                // a native error so view-level fallback handlers
+                                // (e.g. data-hls-url retry) can take over.
+                                hls.destroy();
+                                video.dispatchEvent(new Event('error'));
+                            }
                             break;
                         case Hls.ErrorTypes.MEDIA_ERROR:
                             hls.recoverMediaError();
