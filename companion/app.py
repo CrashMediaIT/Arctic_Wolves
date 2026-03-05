@@ -2540,7 +2540,7 @@ def _send_callback(callback_url: str, payload: dict):
                     if not location:
                         break
                     target_url = urljoin(target_url, location)
-                    logger.info("Callback redirected (%d) to %s — re-sending as POST (attempt %d)", resp.status_code, target_url, attempt)
+                    logger.info("Callback redirect %d (%d) to %s — re-sending as POST (retry %d)", _redir + 1, resp.status_code, target_url, attempt)
                     resp = http_requests.post(target_url, json=payload, headers=headers, timeout=30, verify=False, allow_redirects=False)  # noqa: S501
                 else:
                     break
