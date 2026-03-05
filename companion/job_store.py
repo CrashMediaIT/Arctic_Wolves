@@ -79,6 +79,9 @@ class JobStore:
         self._db_path = db_path
         self._max_jobs = max_jobs
         self._local = threading.local()
+        # Ensure the parent directory exists so sqlite3.connect() can
+        # create the database file on first run.
+        os.makedirs(os.path.dirname(db_path) or ".", exist_ok=True)
         # Initialise the schema (uses a temporary connection)
         self._init_schema()
 
