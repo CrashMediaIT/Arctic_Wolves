@@ -103,6 +103,15 @@
         .btn-retry:hover { border-color: #f59e0b; background: rgba(245, 158, 11, 0.15); transform: translateY(-1px); }
         .btn-retry:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
+        .btn-retry-cb {
+            color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.4); padding: 5px 12px;
+            font-weight: 800; border-radius: 4px; display: inline-flex; align-items: center; gap: 5px;
+            transition: 0.2s ease; background: rgba(34, 197, 94, 0.08);
+            cursor: pointer; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .btn-retry-cb:hover { border-color: #22c55e; background: rgba(34, 197, 94, 0.15); transform: translateY(-1px); }
+        .btn-retry-cb:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
         .filter-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 20px; }
         .filter-btn {
             padding: 6px 16px; border-radius: 4px; border: 1px solid var(--border);
@@ -264,9 +273,13 @@
                     html += '<span style="color:#f59e0b;"><b>⚠ Original file kept (not confirmed)</b></span>';
                 }
             }
-            // Show retry button for failed jobs OR completed jobs where callback was not confirmed
+            // Show retry buttons for failed jobs OR completed jobs where callback was not confirmed
             if (job.status === 'failed' || (job.status === 'completed' && job.callback_confirmed !== true)) {
                 html += '<span><button class="btn-retry" data-job-id="' + escapeHtml(job.id || '') + '" onclick="retryJob(this.dataset.jobId); event.stopPropagation();">↻ Retry Transcode</button></span>';
+            }
+            // Retry Callback only — for completed jobs where HLS files exist but callback was not confirmed
+            if (job.status === 'completed' && job.callback_confirmed !== true) {
+                html += '<span><button class="btn-retry-cb" data-job-id="' + escapeHtml(job.id || '') + '" onclick="retryCallback(this.dataset.jobId); event.stopPropagation();">⟳ Retry Callback Only</button></span>';
             }
             html += '</div>';
             var log = job.log || [];
@@ -457,6 +470,38 @@
             } catch (e) {
                 alert('Retry failed: ' + e.message);
                 if (btn) { btn.disabled = false; btn.textContent = '↻ Retry Transcode'; }
+            }
+        }
+
+        async function retryCallback(jobId) {
+            if (!jobId) return;
+            var btn = document.querySelector('.btn-retry-cb[data-job-id="' + jobId + '"]');
+            if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+            try {
+                var res = await fetch(API_BASE + '/api/hls/retry-callback', {
+                    method: 'POST',
+                    headers: apiHeaders(),
+                    body: JSON.stringify({ job_id: jobId })
+                });
+                var result = await res.json().catch(function() { return {}; });
+                if (!res.ok) {
+                    alert('Retry callback failed: ' + (result.error || 'HTTP ' + res.status));
+                    if (btn) { btn.disabled = false; btn.textContent = '⟳ Retry Callback Only'; }
+                    return;
+                }
+                if (result.callback_confirmed) {
+                    alert('✓ Main app confirmed the DB update' + (result.original_deleted ? ' — original file deleted' : ''));
+                } else if (result.callback_ok) {
+                    alert('⚠ Callback sent but main app still did not confirm. Check main app logs.');
+                } else {
+                    alert('✗ Could not reach main app for callback.');
+                }
+                // Refresh the detail panel to show updated status
+                _fetchJobLog(jobId);
+                refreshJobs();
+            } catch (e) {
+                alert('Retry callback failed: ' + e.message);
+                if (btn) { btn.disabled = false; btn.textContent = '⟳ Retry Callback Only'; }
             }
         }
 

@@ -150,6 +150,7 @@ CONFIG_FILE = os.path.join(CONFIG_DIR, "companion_config.enc")
 KEY_FILE = os.path.join(CONFIG_DIR, "encryption.key")
 JOBS_FILE = os.path.join(CONFIG_DIR, "companion_jobs.json")
 _MAX_PERSISTED_JOBS = 500
+_LOG_SAVE_INTERVAL = 50   # persist job history every N log entries
 
 
 def _read_key_file() -> str:
@@ -2544,16 +2545,29 @@ HLS_VARIANTS = [
 
 
 def _job_log(job_id: str, message: str, level: str = "info"):
-    """Append a timestamped log entry to a job's ``log`` list."""
+    """Append a timestamped log entry to a job's ``log`` list.
+
+    Periodically persists the job history so that log entries survive a
+    crash during long-running operations (e.g. upload of hundreds of HLS
+    segments).  A save is triggered every ``_LOG_SAVE_INTERVAL`` entries
+    or immediately for ``warn`` / ``error`` level messages.
+    """
     entry = {
         "ts": time.time(),
         "level": level,
         "msg": message,
     }
+    should_save = False
     with job_lock:
         job = jobs.get(job_id)
         if job is not None:
-            job.setdefault("log", []).append(entry)
+            log_list = job.setdefault("log", [])
+            log_list.append(entry)
+            # Save on warnings/errors or every _LOG_SAVE_INTERVAL entries
+            if level in ("warn", "error") or len(log_list) % _LOG_SAVE_INTERVAL == 0:
+                should_save = True
+    if should_save:
+        _save_jobs()
 
 
 def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
@@ -2930,6 +2944,8 @@ def hls_transcode():
         "variants": [],
         "video_id": video_id,
         "source_id": source_id,
+        "callback_url": callback_url,
+        "delete_original": delete_original,
         "created_at": time.time(),
         "started_at": None,
         "finished_at": None,
@@ -2982,6 +2998,7 @@ def hls_retry():
             output_prefix = output_prefix or old_job.get("output_prefix", "")
             video_id = video_id or old_job.get("video_id")
             source_id = source_id or old_job.get("source_id")
+            callback_url = callback_url or old_job.get("callback_url", "")
         else:
             return jsonify({"error": "Original job not found"}), 404
 
@@ -3002,6 +3019,8 @@ def hls_retry():
         "variants": [],
         "video_id": video_id,
         "source_id": source_id,
+        "callback_url": callback_url,
+        "delete_original": delete_original,
         "created_at": time.time(),
         "started_at": None,
         "finished_at": None,
@@ -3020,6 +3039,108 @@ def hls_retry():
     )
     thread.start()
     return jsonify(job), 202
+
+
+@app.route("/api/hls/retry-callback", methods=["POST"])
+def hls_retry_callback():
+    """Re-send the completion callback for a finished job without re-transcoding.
+
+    Use this when the original callback returned ``confirmed: false`` (e.g.
+    the main app's DB update did not register) but the HLS files were already
+    uploaded to S3 successfully.
+
+    POST JSON body:
+        job_id:  The ID of the completed job whose callback should be re-sent.
+
+    Returns the updated callback result (ok / confirmed) and, if the main app
+    now confirms, optionally deletes the original source file.
+    """
+    auth_err = _require_api_key()
+    if auth_err:
+        return auth_err
+
+    data = request.get_json(silent=True) or {}
+    job_id = data.get("job_id", "")
+
+    if not job_id:
+        return jsonify({"error": "job_id is required"}), 400
+
+    with job_lock:
+        job = jobs.get(job_id)
+    if not job:
+        return jsonify({"error": "Job not found"}), 404
+
+    if job.get("status") != "completed":
+        return jsonify({"error": f"Job is not completed (status={job.get('status')})"}), 400
+
+    manifest = job.get("hls_manifest")
+    if not manifest:
+        return jsonify({"error": "Job has no HLS manifest — nothing to notify"}), 400
+
+    # Resolve callback URL from job, request body, or global fallback
+    cb_url = (data.get("callback_url", "")
+              or job.get("callback_url", "")
+              or (MAIN_APP_URL + "/api/v1/companion/callback" if MAIN_APP_URL else ""))
+    if not cb_url:
+        return jsonify({"error": "No callback URL available — set main_app_url in settings"}), 400
+
+    vid_id = job.get("video_id")
+    src_id = job.get("source_id")
+    output_prefix = job.get("output_prefix", "")
+    variant_labels = job.get("variants") or []
+    variant_playlists = {lbl: f"{output_prefix}/{lbl}/playlist.m3u8" for lbl in variant_labels}
+
+    jlog = lambda msg, level="info": _job_log(job_id, msg, level)
+    jlog("Retry-callback requested")
+
+    cb_result = _send_callback(cb_url, {
+        "job_id": job_id,
+        "video_id": vid_id,
+        "source_id": src_id,
+        "status": "completed",
+        "hls_status": "ready",
+        "source_key": job.get("source_key", ""),
+        "hls_manifest": manifest,
+        "hls_segments_path": output_prefix,
+        "variants": variant_playlists,
+    })
+
+    with job_lock:
+        jobs[job_id]["callback_ok"] = cb_result["ok"]
+        jobs[job_id]["callback_confirmed"] = cb_result["confirmed"]
+    _save_jobs()
+
+    if cb_result["confirmed"]:
+        jlog("Retry-callback confirmed by main app ✓")
+    elif cb_result["ok"]:
+        jlog("Retry-callback sent but main app still did NOT confirm DB update", "warn")
+    else:
+        jlog("Retry-callback failed to reach main app", "error")
+
+    # If now confirmed, optionally delete the original source
+    delete_original = job.get("delete_original", False)
+    if cb_result["confirmed"] and delete_original and not job.get("original_deleted"):
+        s3 = _get_s3_client()
+        s3_source_key = job.get("source_key", "")
+        if s3 and s3_source_key:
+            jlog(f"Main app now confirmed — deleting original source: {s3_source_key}")
+            deleted = _s3_delete(s3, s3_source_key)
+            if deleted:
+                jlog(f"Original source deleted successfully: {s3_source_key}")
+                with job_lock:
+                    jobs[job_id]["original_deleted"] = True
+            else:
+                jlog(f"Failed to delete original source: {s3_source_key}", "warn")
+                with job_lock:
+                    jobs[job_id]["original_deleted"] = False
+            _save_jobs()
+
+    return jsonify({
+        "job_id": job_id,
+        "callback_ok": cb_result["ok"],
+        "callback_confirmed": cb_result["confirmed"],
+        "original_deleted": jobs.get(job_id, {}).get("original_deleted"),
+    }), 200
 
 
 # ---------------------------------------------------------------------------
