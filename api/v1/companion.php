@@ -40,13 +40,20 @@ function authenticateCompanion(): bool {
         $stmt->execute();
         $stored_key = $stmt->fetchColumn();
         return $stored_key && hash_equals($stored_key, $key);
-    } catch (Exception $e) {
+    } catch (\Throwable $e) {
         return false;
     }
 }
 
 if ($sub_resource === 'callback' && $method === 'POST') {
-    handleCompanionCallback();
+    try {
+        handleCompanionCallback();
+    } catch (\Throwable $e) {
+        // Catch any unhandled error (TypeError from null $pdo, missing
+        // DB columns, etc.) so the response is always valid JSON.
+        ErrorLogger::error("Companion callback unhandled error: " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine());
+        apiResponse(500, ['success' => false, 'confirmed' => false, 'error' => 'Internal server error', 'rows_affected' => 0]);
+    }
 } else {
     apiResponse(404, ['success' => false, 'error' => 'Companion endpoint not found. Use POST /v1/companion/callback']);
 }
@@ -206,7 +213,7 @@ function handleCompanionCallback(): void {
             apiResponse(200, [
                 'success'       => true,
                 'confirmed'     => $confirmed,
-                'message'       => $confirmed ? 'Video updated to ready' : 'No rows updated — record may have been deleted',
+                'message'       => $confirmed ? 'Video updated to ready' : 'No rows updated -- record may have been deleted',
                 'rows_affected' => $rows_affected,
             ]);
 
