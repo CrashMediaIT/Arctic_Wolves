@@ -126,9 +126,10 @@ function checkCsrfToken() {
         session_start();
     }
     
-    // Detect if this is an AJAX request
-    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
-              strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+    // Detect if this is an AJAX/fetch request (not a standard form submission)
+    $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+              strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+              || (isset($_SERVER['HTTP_SEC_FETCH_DEST']) && $_SERVER['HTTP_SEC_FETCH_DEST'] === 'empty');
     
     // Check if token exists in POST
     if (!isset($_POST['csrf_token'])) {
