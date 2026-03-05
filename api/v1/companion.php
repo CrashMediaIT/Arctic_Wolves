@@ -168,10 +168,16 @@ function handleCompanionCallback(): void {
 
             $rows_affected = $stmt->rowCount();
             ErrorLogger::info("HLS transcode completed for $label $db_record_id (job $job_id) — $rows_affected row(s) updated");
-            if ($rows_affected === 0) {
+            $confirmed = $rows_affected > 0;
+            if (!$confirmed) {
                 ErrorLogger::warning("Companion callback: UPDATE affected 0 rows for $label $db_record_id (job $job_id) — record may have been deleted");
             }
-            apiResponse(200, ['success' => true, 'message' => 'Video updated to ready', 'rows_affected' => $rows_affected]);
+            apiResponse(200, [
+                'success'       => true,
+                'confirmed'     => $confirmed,
+                'message'       => $confirmed ? 'Video updated to ready' : 'No rows updated — record may have been deleted',
+                'rows_affected' => $rows_affected,
+            ]);
 
         } elseif ($status === 'failed') {
             $error = $body['error'] ?? 'Unknown error';

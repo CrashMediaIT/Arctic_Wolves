@@ -247,7 +247,25 @@
             html += '<span><b>Job:</b> ' + escapeHtml(job.id || '—') + '</span>';
             html += '<span><b>Status:</b> ' + escapeHtml(job.status || '—') + '</span>';
             if (job.error) html += '<span><b>Error:</b> ' + escapeHtml(job.error) + '</span>';
-            if (job.status === 'failed') {
+            // Show callback confirmation status for completed jobs
+            if (job.status === 'completed') {
+                if (job.callback_confirmed === true) {
+                    html += '<span style="color:#22c55e;"><b>✓ Main app confirmed DB update</b></span>';
+                } else if (job.callback_ok === true) {
+                    html += '<span style="color:#f59e0b;"><b>⚠ Callback sent but DB update NOT confirmed</b></span>';
+                } else if (job.callback_ok === false) {
+                    html += '<span style="color:#ef4444;"><b>✗ Callback to main app failed</b></span>';
+                }
+                if (job.original_deleted === true) {
+                    html += '<span style="color:#22c55e;"><b>✓ Original file deleted</b></span>';
+                } else if (job.original_deleted === false) {
+                    html += '<span style="color:#ef4444;"><b>✗ Original file deletion failed</b></span>';
+                } else if (job.callback_confirmed !== true) {
+                    html += '<span style="color:#f59e0b;"><b>⚠ Original file kept (not confirmed)</b></span>';
+                }
+            }
+            // Show retry button for failed jobs OR completed jobs where callback was not confirmed
+            if (job.status === 'failed' || (job.status === 'completed' && job.callback_confirmed !== true)) {
                 html += '<span><button class="btn-retry" data-job-id="' + escapeHtml(job.id || '') + '" onclick="retryJob(this.dataset.jobId); event.stopPropagation();">↻ Retry Transcode</button></span>';
             }
             html += '</div>';
@@ -293,7 +311,12 @@
             var duration = formatDuration(j.started_at, j.finished_at);
             var shortId = (j.id || '').substring(0, 8);
             var safeId = (j.id || '').replace(/[^a-zA-Z0-9\-]/g, '');
-            return { safeId: safeId, shortId: shortId, created: created, duration: duration, status: j.status, description: j.description || '—' };
+            // Show a warning status for completed jobs where callback was not confirmed
+            var displayStatus = j.status;
+            if (j.status === 'completed' && j.callback_confirmed !== true) {
+                displayStatus = 'completed ⚠';
+            }
+            return { safeId: safeId, shortId: shortId, created: created, duration: duration, status: j.status, displayStatus: displayStatus, description: j.description || '—' };
         }
 
         function _createHistoryRows(j) {
@@ -305,7 +328,7 @@
             tr.innerHTML =
                 '<td style="font-family:monospace;font-size:11px;">' + d.shortId + '…</td>' +
                 '<td>' + escapeHtml(d.description) + '</td>' +
-                '<td><span class="job-status ' + d.status + '">' + d.status + '</span></td>' +
+                '<td><span class="job-status ' + d.status + '">' + escapeHtml(d.displayStatus) + '</span></td>' +
                 '<td>' + d.created + '</td>' +
                 '<td>' + d.duration + '</td>';
 
@@ -322,9 +345,9 @@
             var d = _buildHistoryRowHtml(j);
             var cells = existingRow.children;
             var statusSpan = cells[2] ? cells[2].querySelector('.job-status') : null;
-            if (statusSpan && (statusSpan.textContent !== d.status || statusSpan.className !== 'job-status ' + d.status)) {
+            if (statusSpan && (statusSpan.textContent !== d.displayStatus || statusSpan.className !== 'job-status ' + d.status)) {
                 statusSpan.className = 'job-status ' + d.status;
-                statusSpan.textContent = d.status;
+                statusSpan.textContent = d.displayStatus;
             }
             if (cells[1] && cells[1].textContent !== d.description) {
                 cells[1].textContent = d.description;
