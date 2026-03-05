@@ -261,7 +261,20 @@ $reviewed_videos = array_filter($videos, function($v) {
                         <span class="badge-warning"><i class="fas fa-clock"></i> Pending</span>
                     </div>
                     <div class="video-actions-inline">
-                        <button class="btn-icon" title="Watch Video" data-action="view-video" data-video-id="<?= $video['id'] ?>" data-video-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, getPreferredVideoUrl($video)) ?? '') ?>"<?php if (!empty($video['hls_url'])): ?> data-hls-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['hls_url']) ?? '') ?>"<?php endif; ?> data-thumbnail-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['thumbnail_url'] ?? '') ?? '') ?>"><i class="fas fa-play"></i></button>
+                        <?php
+                            $vcr_video_url = resolveRustfsUrl($pdo, getPreferredVideoUrl($video)) ?? '';
+                            $vcr_hls_url = !empty($video['hls_url']) ? (resolveRustfsUrl($pdo, $video['hls_url']) ?? '') : '';
+                            if (empty($vcr_hls_url) && !preg_match('/\.m3u8(\?|&|$)/i', $vcr_video_url)) {
+                                $vcr_hls_url = deriveHlsFallbackUrl($vcr_video_url);
+                            }
+                            $vcr_thumb_url = resolveRustfsUrl($pdo, $video['thumbnail_url'] ?? '') ?? '';
+                        ?>
+                        <button class="btn-icon" title="Watch Video"
+                            data-action="view-video"
+                            data-video-id="<?= $video['id'] ?>"
+                            data-video-url="<?= htmlspecialchars($vcr_video_url) ?>"
+                            <?php if (!empty($vcr_hls_url)): ?>data-hls-url="<?= htmlspecialchars($vcr_hls_url) ?>"<?php endif; ?>
+                            data-thumbnail-url="<?= htmlspecialchars($vcr_thumb_url) ?>"><i class="fas fa-play"></i></button>
                         <?php if ($isAnyCoach): ?>
                         <button class="btn-icon btn-review" title="Review" data-action="review-video" data-video-id="<?= $video['id'] ?>"><i class="fas fa-check"></i></button>
                         <?php endif; ?>
@@ -327,7 +340,20 @@ $reviewed_videos = array_filter($videos, function($v) {
                         <span class="badge-success"><i class="fas fa-check-circle"></i> Reviewed</span>
                     </div>
                     <div class="video-actions-inline">
-                        <button class="btn-icon" title="Watch Video" data-action="view-video" data-video-id="<?= $video['id'] ?>" data-video-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, getPreferredVideoUrl($video)) ?? '') ?>"<?php if (!empty($video['hls_url'])): ?> data-hls-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['hls_url']) ?? '') ?>"<?php endif; ?> data-thumbnail-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['thumbnail_url'] ?? '') ?? '') ?>"><i class="fas fa-play"></i></button>
+                        <?php
+                            $vcr_video_url = resolveRustfsUrl($pdo, getPreferredVideoUrl($video)) ?? '';
+                            $vcr_hls_url = !empty($video['hls_url']) ? (resolveRustfsUrl($pdo, $video['hls_url']) ?? '') : '';
+                            if (empty($vcr_hls_url) && !preg_match('/\.m3u8(\?|&|$)/i', $vcr_video_url)) {
+                                $vcr_hls_url = deriveHlsFallbackUrl($vcr_video_url);
+                            }
+                            $vcr_thumb_url = resolveRustfsUrl($pdo, $video['thumbnail_url'] ?? '') ?? '';
+                        ?>
+                        <button class="btn-icon" title="Watch Video"
+                            data-action="view-video"
+                            data-video-id="<?= $video['id'] ?>"
+                            data-video-url="<?= htmlspecialchars($vcr_video_url) ?>"
+                            <?php if (!empty($vcr_hls_url)): ?>data-hls-url="<?= htmlspecialchars($vcr_hls_url) ?>"<?php endif; ?>
+                            data-thumbnail-url="<?= htmlspecialchars($vcr_thumb_url) ?>"><i class="fas fa-play"></i></button>
                         <a href="?page=video_review_detail&video_id=<?= $video['id'] ?>" class="btn-icon" title="View Details"><i class="fas fa-comments"></i></a>
                     </div>
                 </div>

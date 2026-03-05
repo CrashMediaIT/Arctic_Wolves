@@ -127,3 +127,35 @@ function getPreferredVideoUrl($video) {
     }
     return $video['video_url'] ?? $video['file_path'] ?? '';
 }
+
+/**
+ * Derive an HLS fallback URL from a video's original proxy URL.
+ *
+ * When the companion transcodes a video it writes HLS segments to a
+ * predictable path based on the original file name:
+ *   Original: Images/videos/…/athlete_video_xxx.mkv
+ *   HLS:      Images/videos/…/athlete_video_xxx/hls/master.m3u8
+ *
+ * This function replicates that convention so the player can attempt
+ * HLS playback even if the companion callback never updated hls_url
+ * in the database (e.g. callback routing / reverse-proxy issues).
+ *
+ * @param string $video_url  The original video proxy URL (api/media.php?key=…)
+ * @return string  Derived HLS proxy URL, or empty string if not derivable
+ */
+function deriveHlsFallbackUrl($video_url) {
+    if (empty($video_url)) return '';
+
+    // Only derive for media-proxy URLs with a recognised video extension
+    if (preg_match('#api/media\.php\?key=(.+)$#', $video_url, $m)) {
+        $encoded_key = $m[1];
+        $object_key  = rawurldecode($encoded_key);
+
+        // Strip the video extension to get the base name
+        if (preg_match('#\.(mp4|mkv|mov|avi|webm)$#i', $object_key)) {
+            $base = preg_replace('#\.[^.]+$#', '', $object_key);
+            return 'api/media.php?key=' . rawurlencode($base . '/hls/master.m3u8');
+        }
+    }
+    return '';
+}
