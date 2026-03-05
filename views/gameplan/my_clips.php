@@ -48,6 +48,7 @@ try {
                c.thumbnail_path, c.created_at,
                vs.filename AS source_filename, vs.file_path AS source_path,
                vs.camera_angle, vs.duration AS source_duration,
+               vs.hls_url AS source_hls_url, vs.hls_status AS source_hls_status,
                GROUP_CONCAT(DISTINCT t.name ORDER BY t.name SEPARATOR ', ') AS tag_names,
                gs.opponent_team, gs.game_date
         FROM vr_clip_athletes ca
@@ -155,8 +156,12 @@ if (!function_exists('vr_format_duration')) {
 </div>
 <?php else: ?>
 <div class="gp-grid">
-    <?php foreach ($mc_clips as $clip): ?>
-    <div class="gp-card vr-clip-card" data-clip-id="<?= (int)$clip['id'] ?>" data-source="<?= htmlspecialchars(resolveRustfsUrl($pdo, $clip['source_path'] ?? '') ?? '') ?>">
+    <?php foreach ($mc_clips as $clip):
+        $clip_src_row = ['file_path' => $clip['source_path'] ?? '', 'hls_url' => $clip['source_hls_url'] ?? '', 'hls_status' => $clip['source_hls_status'] ?? ''];
+        $clip_play_url = resolveRustfsUrl($pdo, getPreferredVideoUrl($clip_src_row)) ?? '';
+        $clip_hls_fallback = !empty($clip['source_hls_url']) ? (resolveRustfsUrl($pdo, $clip['source_hls_url']) ?? '') : '';
+    ?>
+    <div class="gp-card vr-clip-card" data-clip-id="<?= (int)$clip['id'] ?>" data-source="<?= htmlspecialchars($clip_play_url) ?>"<?php if ($clip_hls_fallback && $clip_hls_fallback !== $clip_play_url): ?> data-hls-url="<?= htmlspecialchars($clip_hls_fallback) ?>"<?php endif; ?>>
         <div class="gp-card-thumb">
             <?php if (!empty($clip['thumbnail_path'])): ?>
             <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $clip['thumbnail_path'])) ?>" alt="" loading="lazy">
@@ -252,10 +257,14 @@ document.addEventListener('DOMContentLoaded', function() {
     var source = document.getElementById('vrModalSource');
     var titleEl = document.getElementById('vrPlayerTitle');
     var clipsHls = null;
+    var _clipHlsFallbackUrl = '';
+    var _clipHlsFallbackTried = false;
 
     document.querySelectorAll('.vr-clip-card').forEach(function(card) {
         card.addEventListener('click', function() {
             var src = card.dataset.source || '';
+            _clipHlsFallbackUrl = card.dataset.hlsUrl || '';
+            _clipHlsFallbackTried = false;
             var title = card.querySelector('.gp-card-title');
             titleEl.textContent = title ? title.textContent : 'Clip';
             if (clipsHls) { clipsHls.destroy(); clipsHls = null; }
@@ -273,6 +282,18 @@ document.addEventListener('DOMContentLoaded', function() {
             modal.classList.add('vr-modal-open');
         });
     });
+
+    // Fallback: if the primary source fails (e.g. 502 because companion
+    // deleted the original after HLS transcode), retry with the HLS URL.
+    video.addEventListener('error', function() {
+        if (_clipHlsFallbackUrl && !_clipHlsFallbackTried) {
+            _clipHlsFallbackTried = true;
+            if (clipsHls) { clipsHls.destroy(); clipsHls = null; }
+            if (typeof window.awInitHlsPlayer === 'function') {
+                clipsHls = window.awInitHlsPlayer(video, _clipHlsFallbackUrl);
+            }
+        }
+    }, true);
 
     function closeClipModal() {
         modal.classList.remove('vr-modal-open');

@@ -118,7 +118,7 @@ $vr_mc_angles = [];
 if ($vr_tab === 'multicam' && $vr_mc_game_id > 0) {
     try {
         $stmt = $pdo->prepare("
-            SELECT id, filename, file_path, camera_angle, duration
+            SELECT id, filename, file_path, camera_angle, duration, hls_url, hls_status
             FROM vr_video_sources WHERE game_id = ?
             ORDER BY camera_angle
         ");
@@ -342,9 +342,11 @@ if (!function_exists('vr_format_duration')) {
         <div class="vr-player-placeholder">
             <i class="fas fa-play-circle"></i>
             <p><?= htmlspecialchars($vr_edit_source['filename'] ?? 'Source Video') ?></p>
-            <?php if (!empty($vr_edit_source['file_path'])): ?>
-            <video id="vrVideoPlayer" controls preload="metadata" style="width:100%;aspect-ratio:16/9;border-radius:8px;display:none;object-fit:contain;background:#000">
-                <source src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $vr_edit_source['file_path'])) ?>">
+            <?php if (!empty($vr_edit_source['file_path']) || !empty($vr_edit_source['hls_url'])): ?>
+            <?php $vr_edit_play_url = resolveRustfsUrl($pdo, getPreferredVideoUrl($vr_edit_source)); ?>
+            <?php $vr_edit_hls_fallback = !empty($vr_edit_source['hls_url']) ? resolveRustfsUrl($pdo, $vr_edit_source['hls_url']) : ''; ?>
+            <video id="vrVideoPlayer" controls preload="metadata"<?php if ($vr_edit_hls_fallback && $vr_edit_hls_fallback !== $vr_edit_play_url): ?> data-hls-url="<?= htmlspecialchars($vr_edit_hls_fallback) ?>"<?php endif; ?> style="width:100%;aspect-ratio:16/9;border-radius:8px;display:none;object-fit:contain;background:#000">
+                <source src="<?= htmlspecialchars($vr_edit_play_url) ?>">
             </video>
             <?php endif; ?>
             <span class="vr-file-hint"><?= htmlspecialchars(ucfirst($vr_edit_source['camera_angle'] ?? '')) ?> · <?= !empty($vr_edit_source['duration']) ? gmdate('H:i:s', (int)$vr_edit_source['duration']) : 'Unknown duration' ?></span>
@@ -904,6 +906,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 filmHls = window.awInitHlsPlayer(player, src);
             }
         });
+
+        // Fallback: if the primary source fails (e.g. 502 because companion
+        // deleted the original after HLS transcode), retry with the HLS URL.
+        var _filmHlsFallbackTried = false;
+        player.addEventListener('error', function() {
+            var hlsUrl = player.dataset.hlsUrl;
+            if (hlsUrl && !_filmHlsFallbackTried) {
+                _filmHlsFallbackTried = true;
+                if (filmHls) { filmHls.destroy(); filmHls = null; }
+                if (typeof window.awInitHlsPlayer === 'function') {
+                    filmHls = window.awInitHlsPlayer(player, hlsUrl);
+                }
+            }
+        }, true);
     }
 });
 </script>
