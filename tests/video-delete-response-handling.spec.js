@@ -44,14 +44,18 @@ test.describe('video_coach_reviews.php delete response handling', () => {
     expect(deleteSection).toContain('j.error');
   });
 
-  test('delete fetch should not call r.json() directly without r.ok guard', () => {
+  test('delete fetch should guard r.json() call with r.ok check', () => {
     const content = readFile('views/video_coach_reviews.php');
     const deleteSection = content.slice(
       content.indexOf("formData.append('action', 'delete_video')"),
       content.indexOf("confirmDeleteBtn.disabled = false")
     );
-    // Should NOT have the old unguarded pattern: .then(function(r) { return r.json(); })
-    expect(deleteSection).not.toMatch(/\.then\(function\(r\)\s*\{\s*return r\.json\(\);\s*\}\)/);
+    // The r.ok check must appear before the r.json() call
+    const okIndex = deleteSection.indexOf('!r.ok');
+    const jsonIndex = deleteSection.indexOf('r.json()');
+    expect(okIndex).toBeGreaterThan(-1);
+    expect(jsonIndex).toBeGreaterThan(-1);
+    expect(okIndex).toBeLessThan(jsonIndex);
   });
 });
 
