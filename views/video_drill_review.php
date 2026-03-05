@@ -264,7 +264,7 @@ $is_demo_data = false;
                             <button class="btn-primary btn-full" data-action="play-video" 
                                     data-video-id="<?= htmlspecialchars($video['id']) ?>"
                                     data-video-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, getPreferredVideoUrl($video)) ?? '') ?>"
-                                    <?php if (!empty($video['hls_url'])): ?>data-hls-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['hls_url']) ?? '') ?>"<?php endif; ?>
+                                    data-hls-url="<?= !empty($video['hls_url']) ? htmlspecialchars(resolveRustfsUrl($pdo, $video['hls_url']) ?? '') : '' ?>"
                                     data-thumbnail-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['thumbnail_url'] ?? '') ?? '') ?>"
                                     data-video-description="<?= htmlspecialchars($video['description'] ?? '') ?>"
                                     data-video-coach="<?= htmlspecialchars(trim(($video['coach_first_name'] ?? '') . ' ' . ($video['coach_last_name'] ?? ''))) ?>"
