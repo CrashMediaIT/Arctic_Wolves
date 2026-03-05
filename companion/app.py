@@ -1815,6 +1815,113 @@ def run_diagnostics():
     return jsonify({"all_passed": all_passed, "tests": results})
 
 
+@app.route("/api/test-callback", methods=["POST"])
+def test_callback():
+    """Test the callback route to the main application.
+
+    Sends a POST to the main app's ``/api/v1/companion/ping`` endpoint
+    using the same HTTP method, headers, and redirect-following logic as
+    a real transcode callback.  This validates the full chain:
+    nginx routing → API key authentication → JSON response.
+
+    POST JSON body (all optional):
+        main_app_url:  Override URL to test (uses saved config if omitted)
+
+    Returns detailed results so the admin can see exactly what failed.
+    """
+    auth_err = _require_api_key()
+    if auth_err:
+        return auth_err
+
+    data = request.get_json(silent=True) or {}
+    test_url = (data.get("main_app_url") or MAIN_APP_URL or "").rstrip("/")
+
+    if not test_url:
+        return jsonify({"success": False, "error": "Main App URL is not configured"}), 400
+
+    # Validate URL scheme to prevent SSRF
+    from urllib.parse import urlparse, urljoin
+    parsed = urlparse(test_url)
+    if parsed.scheme not in ("http", "https") or not parsed.hostname:
+        return jsonify({"success": False, "error": "Invalid URL — must be http:// or https://"}), 400
+
+    ping_url = test_url + "/api/v1/companion/ping"
+    result = {
+        "success": False,
+        "url": ping_url,
+        "http_status": None,
+        "authenticated": False,
+        "json_ok": False,
+        "response_body": None,
+        "error": None,
+    }
+
+    try:
+        headers = {"Content-Type": "application/json"}
+        if API_KEY:
+            headers["X-API-Key"] = API_KEY
+
+        # Use the same redirect-preserving logic as _send_callback
+        resp = http_requests.post(ping_url, json={"test": True}, headers=headers, timeout=15, verify=False, allow_redirects=False)  # noqa: S501
+
+        target = ping_url
+        for _redir in range(5):
+            if resp.is_redirect or resp.status_code in (301, 302, 303, 307, 308):
+                location = resp.headers.get("Location", "")
+                if not location:
+                    break
+                target = urljoin(target, location)
+                if urlparse(target).scheme not in ("http", "https"):
+                    break
+                logger.info("Test-callback redirect %d (%d) to %s", _redir + 1, resp.status_code, target)
+                resp = http_requests.post(target, json={"test": True}, headers=headers, timeout=15, verify=False, allow_redirects=False)  # noqa: S501
+            else:
+                break
+
+        result["http_status"] = resp.status_code
+
+        # Check for HTML response (wrong nginx routing)
+        content_type = resp.headers.get("Content-Type", "")
+        if "text/html" in content_type:
+            result["error"] = (
+                "Received HTML instead of JSON (Content-Type: " + content_type + "). "
+                "The URL is likely hitting the main site instead of the API. "
+                "Check that nginx has a 'location /api/' block on the main domain."
+            )
+            return jsonify(result), 200
+
+        if resp.status_code == 401:
+            result["error"] = "Authentication failed — the API key does not match the main app's configured companion API key"
+            return jsonify(result), 200
+
+        # Try to parse JSON
+        try:
+            body = resp.json()
+            result["json_ok"] = True
+            result["response_body"] = body
+            result["authenticated"] = body.get("success", False)
+
+            if body.get("pong"):
+                result["success"] = True
+            elif body.get("error"):
+                result["error"] = "Main app responded with: " + str(body["error"])
+            else:
+                result["error"] = "Unexpected response — got JSON but no 'pong' field"
+
+        except Exception:
+            preview = resp.text[:300] if resp.text else "(empty)"
+            result["error"] = "Response is not valid JSON: " + preview
+
+    except http_requests.exceptions.ConnectionError:
+        result["error"] = "Connection refused — the main app may be offline or the URL is incorrect"
+    except http_requests.exceptions.Timeout:
+        result["error"] = "Connection timed out after 15 seconds"
+    except Exception as exc:
+        result["error"] = str(exc)[:500]
+
+    return jsonify(result), 200
+
+
 @app.route("/api/probe", methods=["POST"])
 def probe():
     """Get video file metadata."""

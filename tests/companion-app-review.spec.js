@@ -482,3 +482,108 @@ test.describe('Companion _send_callback HTML response detection', () => {
     expect(func).toContain('location /api/');
   });
 });
+
+// =====================================================
+// 12. Callback test button on companion settings page
+// =====================================================
+
+test.describe('Companion settings callback test button', () => {
+
+  test('settings.html should have Test Callback button near Main App URL', () => {
+    const c = readFile('companion/templates/settings.html');
+    expect(c).toContain('test-callback-btn');
+    expect(c).toContain('Test Callback');
+    expect(c).toContain('testCallback()');
+  });
+
+  test('settings.html should have testCallback JavaScript function', () => {
+    const c = readFile('companion/templates/settings.html');
+    expect(c).toContain('async function testCallback()');
+    expect(c).toContain('/api/test-callback');
+  });
+
+  test('settings.html should show callback test results detail area', () => {
+    const c = readFile('companion/templates/settings.html');
+    expect(c).toContain('test-callback-detail');
+    expect(c).toContain('test-callback-msg');
+  });
+});
+
+test.describe('Companion /api/test-callback endpoint', () => {
+  const content = () => readFile('companion/app.py');
+
+  test('should have /api/test-callback route', () => {
+    const c = content();
+    expect(c).toContain('@app.route("/api/test-callback"');
+    expect(c).toContain('def test_callback()');
+  });
+
+  test('should require API key authentication', () => {
+    const c = content();
+    const funcStart = c.indexOf('def test_callback()');
+    const funcEnd = c.indexOf('\ndef ', funcStart + 1);
+    const func = c.substring(funcStart, funcEnd > funcStart ? funcEnd : c.length);
+    expect(func).toContain('_require_api_key');
+  });
+
+  test('should POST to /api/v1/companion/ping on main app', () => {
+    const c = content();
+    const funcStart = c.indexOf('def test_callback()');
+    const funcEnd = c.indexOf('\ndef ', funcStart + 1);
+    const func = c.substring(funcStart, funcEnd > funcStart ? funcEnd : c.length);
+    expect(func).toContain('/api/v1/companion/ping');
+    expect(func).toContain('http_requests.post');
+  });
+
+  test('should validate URL scheme to prevent SSRF', () => {
+    const c = content();
+    const funcStart = c.indexOf('def test_callback()');
+    const funcEnd = c.indexOf('\ndef ', funcStart + 1);
+    const func = c.substring(funcStart, funcEnd > funcStart ? funcEnd : c.length);
+    expect(func).toContain('urlparse');
+    expect(func).toContain('"http"');
+    expect(func).toContain('"https"');
+  });
+
+  test('should follow redirects preserving POST method', () => {
+    const c = content();
+    const funcStart = c.indexOf('def test_callback()');
+    const funcEnd = c.indexOf('\ndef ', funcStart + 1);
+    const func = c.substring(funcStart, funcEnd > funcStart ? funcEnd : c.length);
+    expect(func).toContain('allow_redirects=False');
+    expect(func).toContain('is_redirect');
+  });
+
+  test('should detect HTML responses from misconfigured nginx', () => {
+    const c = content();
+    const funcStart = c.indexOf('def test_callback()');
+    const funcEnd = c.indexOf('\ndef ', funcStart + 1);
+    const func = c.substring(funcStart, funcEnd > funcStart ? funcEnd : c.length);
+    expect(func).toContain('text/html');
+  });
+});
+
+test.describe('PHP companion ping endpoint', () => {
+  const content = () => readFile('api/v1/companion.php');
+
+  test('should handle POST /v1/companion/ping', () => {
+    const c = content();
+    expect(c).toContain("'ping'");
+    expect(c).toContain("'pong'");
+  });
+
+  test('should require authentication for ping', () => {
+    const c = content();
+    // Find the ping handler section
+    const pingStart = c.indexOf("'ping'");
+    const pingEnd = c.indexOf('} else', pingStart);
+    const pingBlock = c.substring(pingStart, pingEnd > -1 ? pingEnd : c.length);
+    expect(pingBlock).toContain('authenticateCompanion');
+  });
+
+  test('should return JSON response with pong field', () => {
+    const c = content();
+    expect(c).toContain("'pong' => true");
+    expect(c).toContain("'Callback route is reachable and authenticated'");
+  });
+});

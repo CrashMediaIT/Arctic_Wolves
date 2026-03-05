@@ -54,6 +54,15 @@ if ($sub_resource === 'callback' && $method === 'POST') {
         ErrorLogger::error("Companion callback unhandled error: " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine());
         apiResponse(500, ['success' => false, 'confirmed' => false, 'error' => 'Internal server error', 'rows_affected' => 0]);
     }
+} elseif ($sub_resource === 'ping' && $method === 'POST') {
+    // Lightweight endpoint that validates the full callback chain
+    // (POST through nginx/HAProxy, API key authentication, JSON response)
+    // without modifying any data.  Used by the companion "Test Callback" button.
+    if (!authenticateCompanion()) {
+        apiResponse(401, ['success' => false, 'error' => 'Unauthorized']);
+    } else {
+        apiResponse(200, ['success' => true, 'pong' => true, 'message' => 'Callback route is reachable and authenticated']);
+    }
 } else {
     apiResponse(404, ['success' => false, 'error' => 'Companion endpoint not found. Use POST /v1/companion/callback']);
 }
