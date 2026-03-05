@@ -103,5 +103,13 @@ for DRI_NODE in /dev/dri/renderD* /dev/dri/card*; do
     [ -c "$DRI_NODE" ] && _grant_dri_access "$DRI_NODE"
 done
 
+# Ensure the persistent /config volume is writable by the companion user.
+# When a Docker volume or bind-mount is created, the directory may be owned
+# by root — the build-time chown does not carry over.  Fix ownership here
+# (while we are still root) so that SQLite, the config file, and the log
+# directory can all be written after we drop privileges.
+chown -R companion:companion /config 2>/dev/null \
+    || echo "Warning: could not chown /config — companion user may lack write access"
+
 # Drop to non-root user and exec the CMD
 exec gosu companion "$@"
