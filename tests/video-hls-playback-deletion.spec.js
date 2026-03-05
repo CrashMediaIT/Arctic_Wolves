@@ -204,6 +204,16 @@ test.describe('deleteRustFSPrefix helper function', () => {
     expect(func).toContain("'failed'");
   });
 
+  test('deleteRustFSPrefix should fall back to individual deletes if batch fails', () => {
+    const content = readFile('lib/rustfs_storage.php');
+    const funcStart = content.indexOf('function deleteRustFSPrefix(');
+    const funcEnd = content.indexOf('\nfunction ', funcStart + 1);
+    const func = content.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
+    // Should retry failed keys individually
+    expect(func).toContain('deleteFromRustFS');
+    expect(func).toContain('$still_failed');
+  });
+
 });
 
 // =====================================================
@@ -289,16 +299,6 @@ test.describe('batchDeleteFromRustFS helper function', () => {
     const funcEnd = content.indexOf('\nfunction ', funcStart + 1);
     const func = content.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
     expect(func).toContain('<Quiet>true</Quiet>');
-  });
-
-  test('deleteRustFSPrefix should fall back to individual deletes if batch fails', () => {
-    const content = readFile('lib/rustfs_storage.php');
-    const funcStart = content.indexOf('function deleteRustFSPrefix(');
-    const funcEnd = content.indexOf('\nfunction ', funcStart + 1);
-    const func = content.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
-    // Should retry failed keys individually
-    expect(func).toContain('deleteFromRustFS');
-    expect(func).toContain('$still_failed');
   });
 
 });
