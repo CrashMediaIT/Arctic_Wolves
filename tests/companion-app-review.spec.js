@@ -430,3 +430,56 @@ test.describe('API index (api/index.php)', () => {
     expect(c).toContain('/v1/companion');
   });
 });
+
+// =====================================================
+// 10. NGINX routes /api/ on main domain to api/index.php
+// =====================================================
+
+test.describe('NGINX main site routes /api/ to API entry point', () => {
+  const content = () => readFile('deployment/arctic_wolves.conf');
+
+  test('main site server block should have location /api/ block', () => {
+    const c = content();
+    // Find the main site server block (arcticwolves.ca / www.arcticwolves.ca)
+    const mainStart = c.indexOf('server_name arcticwolves.ca www.arcticwolves.ca;');
+    expect(mainStart).toBeGreaterThan(0);
+    const mainEnd = c.indexOf('\n}', mainStart);
+    const mainBlock = c.substring(mainStart, mainEnd);
+    expect(mainBlock).toContain('location /api/');
+  });
+
+  test('location /api/ should route to /api/index.php', () => {
+    const c = content();
+    const mainStart = c.indexOf('server_name arcticwolves.ca www.arcticwolves.ca;');
+    const mainEnd = c.indexOf('\n}', mainStart);
+    const mainBlock = c.substring(mainStart, mainEnd);
+    // The try_files inside location /api/ should fall back to /api/index.php
+    const apiLocStart = mainBlock.indexOf('location /api/');
+    expect(apiLocStart).toBeGreaterThan(-1);
+    const apiLocBlock = mainBlock.substring(apiLocStart, mainBlock.indexOf('}', apiLocStart) + 1);
+    expect(apiLocBlock).toContain('/api/index.php');
+  });
+});
+
+// =====================================================
+// 11. Companion _send_callback detects HTML responses
+// =====================================================
+
+test.describe('Companion _send_callback HTML response detection', () => {
+  test('should check Content-Type for text/html to detect misconfigured routing', () => {
+    const c = readFile('companion/app.py');
+    const funcStart = c.indexOf('def _send_callback(');
+    const funcEnd = c.indexOf('\ndef ', funcStart + 1);
+    const func = c.substring(funcStart, funcEnd);
+    expect(func).toContain('text/html');
+    expect(func).toContain('Content-Type');
+  });
+
+  test('should provide actionable hint about nginx location /api/ block', () => {
+    const c = readFile('companion/app.py');
+    const funcStart = c.indexOf('def _send_callback(');
+    const funcEnd = c.indexOf('\ndef ', funcStart + 1);
+    const func = c.substring(funcStart, funcEnd);
+    expect(func).toContain('location /api/');
+  });
+});
