@@ -284,6 +284,10 @@
             <i class="fas fa-video"></i> Video Test
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
+        <a href="?page=admin_wishlist" class="pwa-menu-item">
+            <i class="fas fa-clipboard-list"></i> Wishlist
+            <i class="fas fa-chevron-right menu-chevron"></i>
+        </a>
     </ul>
 </div>
 <?php endif; ?>
