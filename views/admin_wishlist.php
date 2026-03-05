@@ -15,7 +15,10 @@ try {
         INDEX `idx_display_order` (`display_order`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 } catch (PDOException $e) {
-    // Table may already exist
+    // Table may already exist; log other errors
+    if (strpos($e->getMessage(), 'already exists') === false) {
+        error_log("Wishlist table creation error: " . $e->getMessage());
+    }
 }
 
 // Fetch wishlist items ordered by display_order
@@ -32,6 +35,7 @@ try {
         $items = decryptUserRows($items);
     }
 } catch (PDOException $e) {
+    error_log("Wishlist items fetch error: " . $e->getMessage());
     $items = [];
 }
 
@@ -369,8 +373,12 @@ foreach ($items as $item) {
                 <?php endif; ?>
                 <?php if (!empty($item['link'])): ?>
                     <span class="wishlist-link">
+                        <?php
+                            $linkHost = parse_url($item['link'], PHP_URL_HOST);
+                            $linkLabel = $linkHost ? $linkHost : 'View Link';
+                        ?>
                         <a href="<?= htmlspecialchars($item['link']) ?>" target="_blank" rel="noopener noreferrer">
-                            <i class="fas fa-external-link-alt"></i> <?= htmlspecialchars(parse_url($item['link'], PHP_URL_HOST) ?: 'View Link') ?>
+                            <i class="fas fa-external-link-alt"></i> <?= htmlspecialchars($linkLabel) ?>
                         </a>
                     </span>
                 <?php endif; ?>
@@ -466,6 +474,7 @@ foreach ($items as $item) {
     'use strict';
 
     var csrfToken = '<?= generateCSRFToken() ?>';
+    var emptyStateHtml = '<div class="wishlist-empty"><i class="fas fa-clipboard-list"></i><h4>No Wishlist Items Yet</h4><p>Add items you need to purchase for the business.</p></div>';
 
     // Toast helper
     function showToast(message, type) {
@@ -644,7 +653,7 @@ foreach ($items as $item) {
                         updatePriorityBadges();
                         // Show empty state if no items left
                         if (!document.querySelectorAll('#wishlistList .wishlist-item').length) {
-                            document.getElementById('wishlistList').innerHTML = '<div class="wishlist-empty"><i class="fas fa-clipboard-list"></i><h4>No Wishlist Items Yet</h4><p>Add items you need to purchase for the business.</p></div>';
+                            document.getElementById('wishlistList').innerHTML = emptyStateHtml;
                         }
                     } else {
                         showToast(data.message || 'Failed to delete', 'error');

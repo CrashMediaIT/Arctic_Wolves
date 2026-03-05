@@ -52,7 +52,10 @@ try {
         INDEX `idx_display_order` (`display_order`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 } catch (PDOException $e) {
-    // Table may already exist; ignore
+    // Table may already exist; log other errors
+    if (strpos($e->getMessage(), 'already exists') === false) {
+        error_log("Wishlist table creation error: " . $e->getMessage());
+    }
 }
 
 // Helper function to send response (either redirect or JSON)
