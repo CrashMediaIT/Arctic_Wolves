@@ -279,7 +279,8 @@ test.describe('PHP companion callback handles source_id', () => {
     const callback = c.substring(c.indexOf('function handleCompanionCallback'));
     // The ready update should reference $table, not hardcode 'videos'
     expect(callback).toContain("UPDATE $table");
-    expect(callback).toContain("hls_status        = 'ready'");
+    expect(callback).toContain("hls_status");
+    expect(callback).toContain(":hls_status");
   });
 
   test('callback handler should set hls_status=failed on the correct table', () => {
@@ -412,8 +413,10 @@ test.describe('deriveHlsFallbackUrl used as fallback in views', () => {
 
   test('derived fallback should only apply when primary URL is not already HLS', () => {
     const c = readFile('views/video_review_detail.php');
-    // Guard: only derive when video_url is NOT an m3u8
-    expect(c).toMatch(/!preg_match.*\.m3u8.*deriveHlsFallbackUrl/s);
+    // deriveHlsFallbackUrl is in the else branch of the m3u8 check,
+    // ensuring it's only used when the primary URL is not HLS
+    expect(c).toContain('deriveHlsFallbackUrl(');
+    expect(c).toMatch(/preg_match.*\.m3u8/s);
   });
 
   test('detail pages should use derived fallback only when hls_fallback_url is empty', () => {

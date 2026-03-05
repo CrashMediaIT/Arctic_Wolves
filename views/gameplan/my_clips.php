@@ -159,9 +159,13 @@ if (!function_exists('vr_format_duration')) {
     <?php foreach ($mc_clips as $clip):
         $clip_src_row = ['file_path' => $clip['source_path'] ?? '', 'hls_url' => $clip['source_hls_url'] ?? '', 'hls_status' => $clip['source_hls_status'] ?? ''];
         $clip_play_url = resolveRustfsUrl($pdo, getPreferredVideoUrl($clip_src_row)) ?? '';
-        $clip_hls_fallback = resolveRustfsUrl($pdo, $clip['source_hls_url'] ?? '') ?? '';
-        if (empty($clip_hls_fallback) && !preg_match('/\.m3u8(\?|&|$)/i', $clip_play_url)) {
-            $clip_hls_fallback = deriveHlsFallbackUrl($clip_play_url);
+        $clip_hls_fallback = '';
+        if (preg_match('/\.m3u8(\?|&|$)/i', $clip_play_url)) {
+            $orig = resolveRustfsUrl($pdo, $clip['source_path'] ?? '') ?? '';
+            if ($orig && $orig !== $clip_play_url) $clip_hls_fallback = $orig;
+        } else {
+            $clip_hls_fallback = resolveRustfsUrl($pdo, $clip['source_hls_url'] ?? '') ?? '';
+            if (empty($clip_hls_fallback)) $clip_hls_fallback = deriveHlsFallbackUrl($clip_play_url);
         }
     ?>
     <div class="gp-card vr-clip-card" data-clip-id="<?= (int)$clip['id'] ?>" data-source="<?= htmlspecialchars($clip_play_url) ?>"<?php if ($clip_hls_fallback && $clip_hls_fallback !== $clip_play_url): ?> data-hls-url="<?= htmlspecialchars($clip_hls_fallback) ?>"<?php endif; ?>>

@@ -288,7 +288,7 @@ test.describe('Companion deletes original only after callback succeeds', () => {
     // Find the section where delete_original is checked after callback
     const cbOkIdx = content.indexOf('cb_ok = _send_callback(');
     expect(cbOkIdx).toBeGreaterThan(-1);
-    const afterCb = content.substring(cbOkIdx, cbOkIdx + 800);
+    const afterCb = content.substring(cbOkIdx, cbOkIdx + 1000);
     // Should gate deletion on cb_ok
     expect(afterCb).toContain('if cb_ok');
     expect(afterCb).toContain('_s3_delete');

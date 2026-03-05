@@ -263,9 +263,16 @@ $reviewed_videos = array_filter($videos, function($v) {
                     <div class="video-actions-inline">
                         <?php
                             $vcr_video_url = resolveRustfsUrl($pdo, getPreferredVideoUrl($video)) ?? '';
-                            $vcr_hls_url = !empty($video['hls_url']) ? (resolveRustfsUrl($pdo, $video['hls_url']) ?? '') : '';
-                            if (empty($vcr_hls_url) && !preg_match('/\.m3u8(\?|&|$)/i', $vcr_video_url)) {
-                                $vcr_hls_url = deriveHlsFallbackUrl($vcr_video_url);
+                            $vcr_hls_url = '';
+                            if (preg_match('/\.m3u8(\?|&|$)/i', $vcr_video_url)) {
+                                $orig = resolveRustfsUrl($pdo, $video['video_url'] ?? $video['file_path'] ?? '') ?? '';
+                                if ($orig && $orig !== $vcr_video_url) $vcr_hls_url = $orig;
+                            } else {
+                                if (!empty($video['hls_url'])) {
+                                    $hls = resolveRustfsUrl($pdo, $video['hls_url']) ?? '';
+                                    if ($hls && $hls !== $vcr_video_url) $vcr_hls_url = $hls;
+                                }
+                                if (empty($vcr_hls_url)) $vcr_hls_url = deriveHlsFallbackUrl($vcr_video_url);
                             }
                             $vcr_thumb_url = resolveRustfsUrl($pdo, $video['thumbnail_url'] ?? '') ?? '';
                         ?>
@@ -342,9 +349,16 @@ $reviewed_videos = array_filter($videos, function($v) {
                     <div class="video-actions-inline">
                         <?php
                             $vcr_video_url = resolveRustfsUrl($pdo, getPreferredVideoUrl($video)) ?? '';
-                            $vcr_hls_url = !empty($video['hls_url']) ? (resolveRustfsUrl($pdo, $video['hls_url']) ?? '') : '';
-                            if (empty($vcr_hls_url) && !preg_match('/\.m3u8(\?|&|$)/i', $vcr_video_url)) {
-                                $vcr_hls_url = deriveHlsFallbackUrl($vcr_video_url);
+                            $vcr_hls_url = '';
+                            if (preg_match('/\.m3u8(\?|&|$)/i', $vcr_video_url)) {
+                                $orig = resolveRustfsUrl($pdo, $video['video_url'] ?? $video['file_path'] ?? '') ?? '';
+                                if ($orig && $orig !== $vcr_video_url) $vcr_hls_url = $orig;
+                            } else {
+                                if (!empty($video['hls_url'])) {
+                                    $hls = resolveRustfsUrl($pdo, $video['hls_url']) ?? '';
+                                    if ($hls && $hls !== $vcr_video_url) $vcr_hls_url = $hls;
+                                }
+                                if (empty($vcr_hls_url)) $vcr_hls_url = deriveHlsFallbackUrl($vcr_video_url);
                             }
                             $vcr_thumb_url = resolveRustfsUrl($pdo, $video['thumbnail_url'] ?? '') ?? '';
                         ?>

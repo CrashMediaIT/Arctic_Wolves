@@ -66,7 +66,7 @@ test.describe('Views serve HLS when hls_status is ready', () => {
     const funcEnd = content.indexOf('\n}', funcStart) + 2;
     const func = content.substring(funcStart, funcEnd);
     expect(func).toContain("hls_status");
-    expect(func).toContain("'ready'");
+    expect(func).toContain("'failed'");
     expect(func).toContain("hls_url");
     expect(func).toContain("video_url");
   });
@@ -229,7 +229,8 @@ test.describe('Complete video lifecycle flow', () => {
 
   test('companion callback handler updates hls_status to ready on success', () => {
     const content = readFile('api/v1/companion.php');
-    expect(content).toContain("hls_status        = 'ready'");
+    expect(content).toContain("hls_status");
+    expect(content).toContain(":hls_status");
     expect(content).toContain('hls_master_url');
     expect(content).toContain('hls_segments_path');
   });

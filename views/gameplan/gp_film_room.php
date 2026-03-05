@@ -365,9 +365,13 @@ if (!function_exists('vr_format_duration')) {
             <?php if (!empty($vr_edit_source['file_path']) || !empty($vr_edit_source['hls_url'])): ?>
             <?php $vr_edit_play_url = resolveRustfsUrl($pdo, getPreferredVideoUrl($vr_edit_source)); ?>
             <?php
-                $vr_edit_hls_fallback = resolveRustfsUrl($pdo, $vr_edit_source['hls_url'] ?? '') ?? '';
-                if (empty($vr_edit_hls_fallback) && !preg_match('/\.m3u8(\?|&|$)/i', $vr_edit_play_url ?? '')) {
-                    $vr_edit_hls_fallback = deriveHlsFallbackUrl($vr_edit_play_url ?? '');
+                $vr_edit_hls_fallback = '';
+                if (preg_match('/\.m3u8(\?|&|$)/i', $vr_edit_play_url ?? '')) {
+                    $orig = resolveRustfsUrl($pdo, $vr_edit_source['file_path'] ?? '') ?? '';
+                    if ($orig && $orig !== $vr_edit_play_url) $vr_edit_hls_fallback = $orig;
+                } else {
+                    $vr_edit_hls_fallback = resolveRustfsUrl($pdo, $vr_edit_source['hls_url'] ?? '') ?? '';
+                    if (empty($vr_edit_hls_fallback)) $vr_edit_hls_fallback = deriveHlsFallbackUrl($vr_edit_play_url ?? '');
                 }
             ?>
             <video id="vrVideoPlayer" controls preload="metadata" style="width:100%; aspect-ratio:16/9; border-radius:8px; display:none; object-fit:contain; background:#000;"<?php if ($vr_edit_hls_fallback && $vr_edit_hls_fallback !== $vr_edit_play_url): ?> data-hls-url="<?= htmlspecialchars($vr_edit_hls_fallback) ?>"<?php endif; ?>>

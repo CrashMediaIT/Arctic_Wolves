@@ -263,9 +263,16 @@ $is_demo_data = false;
                         <div class="video-actions">
                             <?php
                                 $dr_video_url = resolveRustfsUrl($pdo, getPreferredVideoUrl($video)) ?? '';
-                                $dr_hls_url = !empty($video['hls_url']) ? (resolveRustfsUrl($pdo, $video['hls_url']) ?? '') : '';
-                                if (empty($dr_hls_url) && !preg_match('/\.m3u8(\?|&|$)/i', $dr_video_url)) {
-                                    $dr_hls_url = deriveHlsFallbackUrl($dr_video_url);
+                                $dr_hls_url = '';
+                                if (preg_match('/\.m3u8(\?|&|$)/i', $dr_video_url)) {
+                                    $orig = resolveRustfsUrl($pdo, $video['video_url'] ?? $video['file_path'] ?? '') ?? '';
+                                    if ($orig && $orig !== $dr_video_url) $dr_hls_url = $orig;
+                                } else {
+                                    if (!empty($video['hls_url'])) {
+                                        $hls = resolveRustfsUrl($pdo, $video['hls_url']) ?? '';
+                                        if ($hls && $hls !== $dr_video_url) $dr_hls_url = $hls;
+                                    }
+                                    if (empty($dr_hls_url)) $dr_hls_url = deriveHlsFallbackUrl($dr_video_url);
                                 }
                             ?>
                             <button class="btn-primary btn-full" data-action="play-video" 
