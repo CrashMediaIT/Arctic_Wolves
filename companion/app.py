@@ -1861,7 +1861,10 @@ def test_callback():
         if API_KEY:
             headers["X-API-Key"] = API_KEY
 
-        # Use the same redirect-preserving logic as _send_callback
+        # Use the same redirect-preserving logic as _send_callback.
+        # SSL verification is disabled because companion and main app
+        # typically run on an internal network behind a reverse proxy
+        # (HAProxy) with self-signed or internal certificates.
         resp = http_requests.post(ping_url, json={"test": True}, headers=headers, timeout=15, verify=False, allow_redirects=False)  # noqa: S501
 
         target = ping_url
@@ -1871,7 +1874,8 @@ def test_callback():
                 if not location:
                     break
                 target = urljoin(target, location)
-                if urlparse(target).scheme not in ("http", "https"):
+                redir_parsed = urlparse(target)
+                if redir_parsed.scheme not in ("http", "https") or not redir_parsed.hostname:
                     break
                 logger.info("Test-callback redirect %d (%d) to %s", _redir + 1, resp.status_code, target)
                 resp = http_requests.post(target, json={"test": True}, headers=headers, timeout=15, verify=False, allow_redirects=False)  # noqa: S501

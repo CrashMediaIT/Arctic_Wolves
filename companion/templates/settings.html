@@ -655,7 +655,7 @@
                 // Build detail lines
                 var lines = [];
                 lines.push('URL: ' + (d.url || 'N/A'));
-                if (d.http_status !== null && d.http_status !== undefined) lines.push('HTTP Status: ' + d.http_status);
+                if (d.http_status != null) lines.push('HTTP Status: ' + d.http_status);
                 lines.push('JSON Response: ' + (d.json_ok ? '✓ valid' : '✗ invalid or missing'));
                 lines.push('Authenticated: ' + (d.authenticated ? '✓ yes' : '✗ no'));
                 if (d.error) lines.push('Error: ' + d.error);
