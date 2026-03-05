@@ -252,6 +252,11 @@ $coach_name   = trim(($video['coach_first_name'] ?? '') . ' ' . ($video['coach_l
                     <textarea name="description" id="detailDescription" rows="3"
                               class="detail-input" placeholder="Video description..." <?= (!$is_owner && !$is_coach) ? 'readonly' : '' ?>><?= htmlspecialchars($video['description'] ?? '') ?></textarea>
                 </div>
+                <div style="display:flex; justify-content:flex-end;">
+                    <button type="button" id="saveMetaBtn" class="m-vrd-btn" style="display:none; padding:10px 20px; font-size:13px;">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                </div>
             </form>
             <?php else: ?>
                 <?php if (!empty($video['description'])): ?>
@@ -380,6 +385,65 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         }, true);
+    }
+
+    // Show "Save Changes" button when title or description is modified
+    var saveMetaBtn = document.getElementById('saveMetaBtn');
+    var titleInput = document.getElementById('detailTitle');
+    var descInput = document.getElementById('detailDescription');
+    if (saveMetaBtn && titleInput && descInput) {
+        var origTitle = titleInput.value;
+        var origDesc = descInput.value;
+        function checkMetaChanged() {
+            if (titleInput.value !== origTitle || descInput.value !== origDesc) {
+                saveMetaBtn.style.display = '';
+            } else {
+                saveMetaBtn.style.display = 'none';
+            }
+        }
+        titleInput.addEventListener('input', checkMetaChanged);
+        descInput.addEventListener('input', checkMetaChanged);
+
+        saveMetaBtn.addEventListener('click', function() {
+            var videoId = <?= (int)$video_id ?>;
+            var csrfToken = '<?= htmlspecialchars($csrf_token, ENT_QUOTES) ?>';
+
+            saveMetaBtn.disabled = true;
+            saveMetaBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+            var formData = new FormData();
+            formData.append('video_id', videoId);
+            formData.append('csrf_token', csrfToken);
+            formData.append('action', 'update_video');
+            formData.append('title', titleInput.value.trim());
+            formData.append('description', descInput.value.trim());
+
+            fetch('process_video.php', {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        if (typeof showToast === 'function') showToast(data.message || 'Saved successfully.', 'success');
+                        origTitle = titleInput.value;
+                        origDesc = descInput.value;
+                        saveMetaBtn.style.display = 'none';
+                        var titleHeading = document.getElementById('videoTitle');
+                        if (titleHeading) titleHeading.textContent = titleInput.value.trim();
+                    } else {
+                        if (typeof showToast === 'function') showToast('Save failed: ' + (data.error || data.message || 'Unknown error'), 'error');
+                    }
+                })
+                .catch(function(err) {
+                    if (typeof showToast === 'function') showToast('Save failed: ' + err.message, 'error');
+                })
+                .finally(function() {
+                    saveMetaBtn.disabled = false;
+                    saveMetaBtn.innerHTML = '<i class="fas fa-save"></i> Save Changes';
+                });
+        });
     }
 
     var saveBtn = document.getElementById('saveDetailBtn');

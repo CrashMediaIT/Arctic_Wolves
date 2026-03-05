@@ -229,8 +229,8 @@ $reviewed_videos = array_filter($videos, function($v) {
             
             <?php if (count($pending_videos) > 0): ?>
                 <?php foreach ($pending_videos as $video): ?>
-                <div class="video-list-item" data-video-id="<?= $video['id'] ?>">
-                    <a href="?page=video_review_detail&video_id=<?= $video['id'] ?>" class="video-thumbnail-small" style="text-decoration:none;">
+                <div class="video-list-item" data-video-id="<?= $video['id'] ?>" data-detail-url="?page=video_review_detail&video_id=<?= $video['id'] ?>&from=coaches_reviews">
+                    <a href="?page=video_review_detail&video_id=<?= $video['id'] ?>&from=coaches_reviews" class="video-thumbnail-small" style="text-decoration:none;">
                         <?php if (!empty($video['thumbnail_url'])): ?>
                             <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['thumbnail_url']) ?? '') ?>" alt="Thumbnail">
                         <?php else: ?>
@@ -239,7 +239,7 @@ $reviewed_videos = array_filter($videos, function($v) {
                         <span class="play-overlay"><i class="fas fa-play"></i></span>
                     </a>
                     <div class="video-details">
-                        <h4><a href="?page=video_review_detail&video_id=<?= $video['id'] ?>" style="color:inherit; text-decoration:none;"><?= htmlspecialchars($video['title']) ?></a></h4>
+                        <h4><a href="?page=video_review_detail&video_id=<?= $video['id'] ?>&from=coaches_reviews" style="color:inherit; text-decoration:none;"><?= htmlspecialchars($video['title']) ?></a></h4>
                         <?php if (!empty($video['description'])): ?>
                             <div class="athlete-notes-preview">
                                 <i class="fas fa-comment-alt"></i> <?= htmlspecialchars(mb_strimwidth($video['description'], 0, 150, '...')) ?>
@@ -310,8 +310,8 @@ $reviewed_videos = array_filter($videos, function($v) {
             
             <?php if (count($reviewed_videos) > 0): ?>
                 <?php foreach ($reviewed_videos as $video): ?>
-                <div class="video-list-item" data-video-id="<?= $video['id'] ?>">
-                    <a href="?page=video_review_detail&video_id=<?= $video['id'] ?>" class="video-thumbnail-small" style="text-decoration:none;">
+                <div class="video-list-item" data-video-id="<?= $video['id'] ?>" data-detail-url="?page=video_review_detail&video_id=<?= $video['id'] ?>&from=coaches_reviews">
+                    <a href="?page=video_review_detail&video_id=<?= $video['id'] ?>&from=coaches_reviews" class="video-thumbnail-small" style="text-decoration:none;">
                         <?php if (!empty($video['thumbnail_url'])): ?>
                             <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['thumbnail_url']) ?? '') ?>" alt="Thumbnail">
                         <?php else: ?>
@@ -320,7 +320,7 @@ $reviewed_videos = array_filter($videos, function($v) {
                         <span class="play-overlay"><i class="fas fa-play"></i></span>
                     </a>
                     <div class="video-details">
-                        <h4><a href="?page=video_review_detail&video_id=<?= $video['id'] ?>" style="color:inherit; text-decoration:none;"><?= htmlspecialchars($video['title']) ?></a></h4>
+                        <h4><a href="?page=video_review_detail&video_id=<?= $video['id'] ?>&from=coaches_reviews" style="color:inherit; text-decoration:none;"><?= htmlspecialchars($video['title']) ?></a></h4>
                         <?php if (!empty($video['description'])): ?>
                             <div class="athlete-notes-preview">
                                 <i class="fas fa-comment-alt"></i> <?= htmlspecialchars(mb_strimwidth($video['description'], 0, 150, '...')) ?>
@@ -368,7 +368,7 @@ $reviewed_videos = array_filter($videos, function($v) {
                             data-video-url="<?= htmlspecialchars($vcr_video_url) ?>"
                             <?php if (!empty($vcr_hls_url)): ?>data-hls-url="<?= htmlspecialchars($vcr_hls_url) ?>"<?php endif; ?>
                             data-thumbnail-url="<?= htmlspecialchars($vcr_thumb_url) ?>"><i class="fas fa-play"></i></button>
-                        <a href="?page=video_review_detail&video_id=<?= $video['id'] ?>" class="btn-icon" title="View Details"><i class="fas fa-comments"></i></a>
+                        <a href="?page=video_review_detail&video_id=<?= $video['id'] ?>&from=coaches_reviews" class="btn-icon" title="View Details"><i class="fas fa-comments"></i></a>
                     </div>
                 </div>
                 <?php endforeach; ?>
@@ -681,7 +681,7 @@ $reviewed_videos = array_filter($videos, function($v) {
 .section-title { font-size: 18px; font-weight: 700; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; color: var(--text-white); }
 .section-title::before { content: ''; width: 4px; height: 24px; background: linear-gradient(180deg, var(--primary), var(--accent)); border-radius: 2px; }
 
-.video-list-item { display: grid; grid-template-columns: 120px 1fr auto auto; align-items: center; gap: 20px; padding: 16px 20px; background: linear-gradient(135deg, var(--bg-main) 0%, rgba(22, 22, 31, 0.8) 100%); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 12px; transition: all 0.3s ease; }
+.video-list-item { display: grid; grid-template-columns: 120px 1fr auto auto; align-items: center; gap: 20px; padding: 16px 20px; background: linear-gradient(135deg, var(--bg-main) 0%, rgba(22, 22, 31, 0.8) 100%); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 12px; transition: all 0.3s ease; cursor: pointer; }
 .video-list-item:hover { border-color: var(--primary); transform: translateY(-2px); }
 
 .video-thumbnail-small { width: 120px; height: 80px; background: linear-gradient(135deg, rgba(107, 70, 193, 0.15), rgba(139, 92, 246, 0.1)); border-radius: 10px; display: flex; align-items: center; justify-content: center; position: relative; border: 1px solid rgba(107, 70, 193, 0.2); }
@@ -881,6 +881,16 @@ $reviewed_videos = array_filter($videos, function($v) {
 <script src="js/offline-upload-queue.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Make entire video-list-item cards clickable to navigate to detail view.
+    // Clicks on buttons, links, or other interactive elements inside the card
+    // are left alone so actions like play, review, and delete still work.
+    document.querySelectorAll('.video-list-item[data-detail-url]').forEach(function(card) {
+        card.addEventListener('click', function(e) {
+            if (e.target.closest('a, button, [data-action]')) return;
+            window.location.href = card.dataset.detailUrl;
+        });
+    });
+
     // Video player modal
     var vpModal = document.getElementById('coachVideoPlayerModal');
     var vpVideo = document.getElementById('coachVideoPlayer');
