@@ -261,10 +261,17 @@ $is_demo_data = false;
                             </div>
                         </div>
                         <div class="video-actions">
+                            <?php
+                                $dr_video_url = resolveRustfsUrl($pdo, getPreferredVideoUrl($video)) ?? '';
+                                $dr_hls_url = !empty($video['hls_url']) ? (resolveRustfsUrl($pdo, $video['hls_url']) ?? '') : '';
+                                if (empty($dr_hls_url) && !preg_match('/\.m3u8(\?|&|$)/i', $dr_video_url)) {
+                                    $dr_hls_url = deriveHlsFallbackUrl($dr_video_url);
+                                }
+                            ?>
                             <button class="btn-primary btn-full" data-action="play-video" 
                                     data-video-id="<?= htmlspecialchars($video['id']) ?>"
-                                    data-video-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, getPreferredVideoUrl($video)) ?? '') ?>"
-                                    data-hls-url="<?= !empty($video['hls_url']) ? htmlspecialchars(resolveRustfsUrl($pdo, $video['hls_url']) ?? '') : '' ?>"
+                                    data-video-url="<?= htmlspecialchars($dr_video_url) ?>"
+                                    data-hls-url="<?= htmlspecialchars($dr_hls_url) ?>"
                                     data-thumbnail-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['thumbnail_url'] ?? '') ?? '') ?>"
                                     data-video-description="<?= htmlspecialchars($video['description'] ?? '') ?>"
                                     data-video-coach="<?= htmlspecialchars(trim(($video['coach_first_name'] ?? '') . ' ' . ($video['coach_last_name'] ?? ''))) ?>"

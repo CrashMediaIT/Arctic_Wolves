@@ -68,6 +68,12 @@ if (!empty($video['hls_url'])) {
         $hls_fallback_url = $resolved_hls;
     }
 }
+// If the DB has no hls_url (callback never arrived or columns missing),
+// derive the expected HLS URL from the video_url naming convention so the
+// JS error handler can still attempt HLS playback.
+if (empty($hls_fallback_url) && !preg_match('/\.m3u8(\?|&|$)/i', $video_url)) {
+    $hls_fallback_url = deriveHlsFallbackUrl($video_url);
+}
 
 $csrf_token = $_SESSION['csrf_token'] ?? '';
 $is_coach = $isAnyCoach;
