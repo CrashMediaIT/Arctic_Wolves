@@ -1260,7 +1260,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (result.success) {
                     uploadLog('Upload confirmed! Triggering background transcode…');
                     // Step 4: trigger transcode as a separate explicit action
-                    // (matches the admin video test view pattern for reliability)
+                    // (separate explicit action for reliability)
                     var transcodeParams = { action: 'trigger_transcode', object_key: result.object_key };
                     if (result.video_id) transcodeParams.video_id = result.video_id;
                     if (result.source_id) transcodeParams.source_id = result.source_id;
