@@ -233,6 +233,7 @@ $allowed_pages = [
     'admin_feature_import'    => 'views/admin_feature_import.php',
     'admin_theme_settings'    => 'views/admin_theme_settings.php',
     'admin_security'          => 'views/admin_security.php',
+    'admin_wishlist'          => 'views/admin_wishlist.php',
     'business_partners'       => 'views/admin_business_partners.php',
     'ihs_import'              => 'views/ihs_import.php',
     'session_templates'       => 'views/library_sessions.php',

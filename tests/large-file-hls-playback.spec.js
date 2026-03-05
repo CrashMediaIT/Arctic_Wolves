@@ -5,8 +5,6 @@
  * 1. api/media.php streams non-m3u8 files (e.g. .ts segments) directly without
  *    buffering the entire response in PHP memory
  * 2. api/media.php includes CORS headers on error responses
- * 3. views/admin_video_test.php loadVideoPlayer uses HLS.js error events when
- *    HLS.js is active, avoiding misleading native video errors
  */
 
 import { test, expect } from '@playwright/test';
@@ -155,62 +153,5 @@ test.describe('api/media.php CORS headers on error responses', () => {
     const streamOnly = streamBlock.substring(0, streamBlock.indexOf('Buffered path'));
     // CORS headers should be in the streaming path for errors and success
     expect(streamOnly).toContain('_media_cors_headers()');
-  });
-});
-
-// =====================================================
-// 3. admin_video_test.php HLS.js error handling
-// =====================================================
-
-test.describe('admin_video_test.php loadVideoPlayer HLS.js error handling', () => {
-  const content = () => readFile('views/admin_video_test.php');
-
-  test('loadVideoPlayer should capture the HLS.js instance from awInitHlsPlayer', () => {
-    const c = content();
-    expect(c).toContain('var hlsInstance');
-    expect(c).toContain('hlsInstance = window.awInitHlsPlayer');
-  });
-
-  test('loadVideoPlayer should listen to HLS.js error events when HLS.js is active', () => {
-    const c = content();
-    expect(c).toContain('hlsInstance.on(Hls.Events.ERROR');
-  });
-
-  test('loadVideoPlayer should log HLS fatal error type and details', () => {
-    const c = content();
-    expect(c).toContain('data.type');
-    expect(c).toContain('data.details');
-  });
-
-  test('loadVideoPlayer should handle NETWORK_ERROR specifically', () => {
-    const c = content();
-    expect(c).toContain('Hls.ErrorTypes.NETWORK_ERROR');
-  });
-
-  test('loadVideoPlayer should handle MEDIA_ERROR specifically', () => {
-    const c = content();
-    expect(c).toContain('Hls.ErrorTypes.MEDIA_ERROR');
-  });
-
-  test('loadVideoPlayer should fall back to native error only when no HLS.js', () => {
-    const c = content();
-    // The native error listener should only be added when hlsInstance is not available
-    const loadFunc = c.substring(c.indexOf('function loadVideoPlayer'));
-    const nativeErrorBlock = loadFunc.substring(loadFunc.indexOf("} else {", loadFunc.indexOf('hlsInstance &&')));
-    expect(nativeErrorBlock).toContain("videoPlayer.addEventListener('error'");
-  });
-
-  test('loadVideoPlayer should include HLS error details in playback error message', () => {
-    const c = content();
-    // When HLS.js has a non-recoverable error, the message should include details
-    expect(c).toContain("'Playback error (' + data.details + '). HLS URL: '");
-  });
-
-  test('loadVideoPlayer should still show loadedmetadata info', () => {
-    const c = content();
-    const loadFunc = c.substring(c.indexOf('function loadVideoPlayer'));
-    expect(loadFunc).toContain("videoPlayer.addEventListener('loadedmetadata'");
-    expect(loadFunc).toContain('videoPlayer.duration');
-    expect(loadFunc).toContain('videoPlayer.videoWidth');
   });
 });

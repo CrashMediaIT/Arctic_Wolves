@@ -240,6 +240,7 @@ $allowed_pages = [
     'admin_feature_import'    => 'views/admin_feature_import.php',
     'admin_theme_settings'    => 'views/admin_theme_settings.php',
     'admin_security'          => 'views/admin_security.php',
+    'admin_wishlist'          => 'views/admin_wishlist.php',
     'business_partners'       => 'views/admin_business_partners.php',
     'ihs_import'              => 'views/ihs_import.php',
     'session_templates'       => 'views/library_sessions.php',
@@ -495,6 +496,7 @@ try {
             <a href="?page=system_tools" class="nav-link <?= $page=='system_tools'?'active':'' ?>"><i class="fa-solid fa-screwdriver-wrench"></i> System Tools</a>
             <!-- Audit Log removed - available in Security Center -->
             <a href="?page=marketing" class="nav-link <?= $page=='marketing'?'active':'' ?>"><i class="fa-solid fa-bullhorn"></i> Marketing</a>
+            <a href="?page=admin_wishlist" class="nav-link <?= $page=='admin_wishlist'?'active':'' ?>"><i class="fa-solid fa-clipboard-list"></i> Wishlist</a>
         </nav>
     </div>
     <?php endif; ?>

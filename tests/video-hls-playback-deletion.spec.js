@@ -406,38 +406,3 @@ test.describe('Complete video lifecycle flow', () => {
   });
 
 });
-
-// =====================================================
-// 5. Admin Video Test page uses shared HLS player
-// =====================================================
-
-test.describe('Admin Video Test loadVideoPlayer uses awInitHlsPlayer', () => {
-
-  test('loadVideoPlayer should call awInitHlsPlayer when available', () => {
-    const content = readFile('views/admin_video_test.php');
-    expect(content).toContain('awInitHlsPlayer');
-  });
-
-  test('loadVideoPlayer should check typeof awInitHlsPlayer before calling it', () => {
-    const content = readFile('views/admin_video_test.php');
-    expect(content).toContain("typeof window.awInitHlsPlayer === 'function'");
-  });
-
-  test('loadVideoPlayer should fall back to direct src assignment when awInitHlsPlayer is unavailable', () => {
-    const content = readFile('views/admin_video_test.php');
-    // The else branch should still set videoPlayer.src as a fallback
-    const funcStart = content.indexOf('function loadVideoPlayer(');
-    const funcEnd = content.indexOf('\n    }', content.indexOf('loadedmetadata', funcStart));
-    const func = content.substring(funcStart, funcEnd);
-    expect(func).toContain('videoPlayer.src = hlsUrl');
-    expect(func).toContain('videoPlayer.load()');
-  });
-
-  test('dashboard.php includes HLS.js CDN and hls-player.js before admin_video_test view', () => {
-    const content = readFile('dashboard.php');
-    expect(content).toContain('hls.min.js');
-    expect(content).toContain('js/hls-player.js');
-    expect(content).toContain('admin_video_test');
-  });
-
-});

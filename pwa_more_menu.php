@@ -280,8 +280,8 @@
             <i class="fas fa-bullhorn"></i> Marketing
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
-        <a href="?page=admin_video_test" class="pwa-menu-item">
-            <i class="fas fa-video"></i> Video Test
+        <a href="?page=admin_wishlist" class="pwa-menu-item">
+            <i class="fas fa-clipboard-list"></i> Wishlist
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
     </ul>
