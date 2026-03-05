@@ -170,7 +170,22 @@ function handleCompanionCallback(): void {
             ErrorLogger::info("HLS transcode completed for $label $db_record_id (job $job_id) — $rows_affected row(s) updated");
             $confirmed = $rows_affected > 0;
             if (!$confirmed) {
-                ErrorLogger::warning("Companion callback: UPDATE affected 0 rows for $label $db_record_id (job $job_id) — record may have been deleted");
+                // rowCount() returns changed rows, not matched rows. If the
+                // record already has the target hls_status (e.g. callback
+                // retry, or values pre-set by the trigger), the UPDATE
+                // changes zero rows even though the record exists.  Verify
+                // the current state before reporting "not confirmed".
+                $check = $pdo->prepare("SELECT hls_status FROM $table WHERE id = ? LIMIT 1");
+                $check->execute([$db_record_id]);
+                $current = $check->fetch(PDO::FETCH_ASSOC);
+                if ($current && $current['hls_status'] === $hls_status_value) {
+                    // Record already has the correct status — treat as confirmed
+                    $confirmed = true;
+                    $rows_affected = 1;
+                    ErrorLogger::info("Companion callback: record $label $db_record_id already has hls_status=$hls_status_value — confirmed (idempotent)");
+                } else {
+                    ErrorLogger::warning("Companion callback: UPDATE affected 0 rows for $label $db_record_id (job $job_id) — record may have been deleted");
+                }
             }
             apiResponse(200, [
                 'success'       => true,
