@@ -2723,7 +2723,7 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
                 relative = os.path.relpath(local_file, hls_output)
                 s3_key = f"{output_prefix}/{relative}"
                 ct = "application/vnd.apple.mpegurl" if filename.endswith(".m3u8") else "video/mp2t"
-                file_size = os.path.getsize(local_file) if os.path.isfile(local_file) else 0
+                file_size = os.path.getsize(local_file)
                 upload_count += 1
                 if file_size >= 1024 * 1024:
                     size_label = f"{round(file_size / (1024 * 1024), 1)} MB"
