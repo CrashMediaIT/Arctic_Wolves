@@ -374,7 +374,7 @@ TEMP_DIR = "/tmp/companion"
 VIDEO_BASE_PATH = "/videos"
 COMPANION_HOST = "0.0.0.0"
 COMPANION_PORT = int(os.getenv("COMPANION_PORT", "5100"))
-VERSION = "1.3.0"
+VERSION = "20260305.1"
 
 Path(TEMP_DIR).mkdir(parents=True, exist_ok=True)
 
@@ -2712,18 +2712,27 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
         logger.info("HLS job %s: uploading segments to S3 prefix %s", job_id, s3_output_prefix)
         upload_start = time.time()
         upload_count = 0
-        # Upload all HLS files to S3 (with multipart and retries for large segments)
+        # Count total files for progress reporting
         output_prefix = s3_output_prefix.rstrip("/")
+        total_files = sum(len(f) for _, _, f in os.walk(hls_output))
+        jlog(f"Found {total_files} files to upload")
+        # Upload all HLS files to S3 (with multipart and retries for large segments)
         for root, _dirs, files in os.walk(hls_output):
             for filename in files:
                 local_file = os.path.join(root, filename)
                 relative = os.path.relpath(local_file, hls_output)
                 s3_key = f"{output_prefix}/{relative}"
                 ct = "application/vnd.apple.mpegurl" if filename.endswith(".m3u8") else "video/mp2t"
+                file_size = os.path.getsize(local_file) if os.path.isfile(local_file) else 0
+                upload_count += 1
+                if file_size >= 1024 * 1024:
+                    size_label = f"{round(file_size / (1024 * 1024), 1)} MB"
+                else:
+                    size_label = f"{round(file_size / 1024, 1)} KB"
+                jlog(f"Uploading file {upload_count}/{total_files}: {relative} ({size_label})")
                 if not _s3_upload(s3, local_file, s3_key, ct):
                     jlog(f"Failed to upload {s3_key} after {_S3_MAX_RETRIES} attempts", "error")
                     raise RuntimeError(f"Failed to upload {s3_key} after {_S3_MAX_RETRIES} attempts")
-                upload_count += 1
 
         upload_sec = round(time.time() - upload_start, 1)
         jlog(f"Upload complete — {upload_count} files in {upload_sec}s")

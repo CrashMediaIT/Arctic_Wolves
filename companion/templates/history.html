@@ -226,58 +226,7 @@
         }
 
         var expandedJobs = {};
-
-        async function refreshJobs() {
-            try {
-                const res = await fetch(API_BASE + '/api/jobs', { headers: apiHeaders() });
-                if (!res.ok) return;
-                let jobsList = await res.json();
-
-                if (currentFilter === 'completed') {
-                    jobsList = jobsList.filter(function(j) { return j.status === 'completed'; });
-                } else if (currentFilter === 'failed') {
-                    jobsList = jobsList.filter(function(j) { return j.status === 'failed'; });
-                } else if (currentFilter === 'active') {
-                    jobsList = jobsList.filter(function(j) { return ['queued', 'running', 'downloading', 'transcoding', 'uploading'].indexOf(j.status) !== -1; });
-                }
-
-                // Remember which detail rows are currently expanded
-                var wasExpanded = {};
-                Object.keys(expandedJobs).forEach(function(id) {
-                    if (expandedJobs[id]) wasExpanded[id] = true;
-                });
-
-                const tbody = document.getElementById('jobs-body');
-                if (!jobsList.length) {
-                    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No jobs found</td></tr>';
-                    return;
-                }
-                tbody.innerHTML = jobsList.map(function(j) {
-                    var created = j.created_at ? new Date(j.created_at * 1000).toLocaleString() : '—';
-                    var duration = formatDuration(j.started_at, j.finished_at);
-                    var shortId = (j.id || '').substring(0, 8);
-                    var safeId = (j.id || '').replace(/[^a-zA-Z0-9\-]/g, '');
-                    var eid = 'job-detail-' + safeId;
-                    var isOpen = !!wasExpanded[safeId];
-                    return '<tr class="job-row" data-job-id="' + safeId + '" onclick="toggleJobLog(this.dataset.jobId)">' +
-                        '<td style="font-family:monospace;font-size:11px;">' + shortId + '…</td>' +
-                        '<td>' + escapeHtml(j.description || '—') + '</td>' +
-                        '<td><span class="job-status ' + j.status + '">' + j.status + '</span></td>' +
-                        '<td>' + created + '</td>' +
-                        '<td>' + duration + '</td>' +
-                        '</tr>' +
-                        '<tr class="job-detail-row" id="' + eid + '" style="display:' + (isOpen ? '' : 'none') + ';">' +
-                        '<td colspan="5"><div class="job-log-panel">' + (isOpen ? 'Loading…' : '') + '</div></td></tr>';
-                }).join('');
-
-                // Re-fetch logs for any previously expanded rows
-                Object.keys(wasExpanded).forEach(function(id) {
-                    _fetchJobLog(id);
-                });
-            } catch (e) {
-                document.getElementById('jobs-body').innerHTML = '<tr><td colspan="5" class="empty-state">Failed to load jobs</td></tr>';
-            }
-        }
+        var _lastJobData = {};
 
         async function _fetchJobLog(jobId) {
             var detailRow = document.getElementById('job-detail-' + jobId);
@@ -337,6 +286,132 @@
             var div = document.createElement('div');
             div.appendChild(document.createTextNode(str));
             return div.innerHTML;
+        }
+
+        function _buildHistoryRowHtml(j) {
+            var created = j.created_at ? new Date(j.created_at * 1000).toLocaleString() : '—';
+            var duration = formatDuration(j.started_at, j.finished_at);
+            var shortId = (j.id || '').substring(0, 8);
+            var safeId = (j.id || '').replace(/[^a-zA-Z0-9\-]/g, '');
+            return { safeId: safeId, shortId: shortId, created: created, duration: duration, status: j.status, description: j.description || '—' };
+        }
+
+        function _createHistoryRows(j) {
+            var d = _buildHistoryRowHtml(j);
+            var tr = document.createElement('tr');
+            tr.className = 'job-row';
+            tr.dataset.jobId = d.safeId;
+            tr.setAttribute('onclick', 'toggleJobLog(this.dataset.jobId)');
+            tr.innerHTML =
+                '<td style="font-family:monospace;font-size:11px;">' + d.shortId + '…</td>' +
+                '<td>' + escapeHtml(d.description) + '</td>' +
+                '<td><span class="job-status ' + d.status + '">' + d.status + '</span></td>' +
+                '<td>' + d.created + '</td>' +
+                '<td>' + d.duration + '</td>';
+
+            var detailTr = document.createElement('tr');
+            detailTr.className = 'job-detail-row';
+            detailTr.id = 'job-detail-' + d.safeId;
+            detailTr.style.display = 'none';
+            detailTr.innerHTML = '<td colspan="5"><div class="job-log-panel"></div></td>';
+
+            return { row: tr, detail: detailTr };
+        }
+
+        function _updateHistoryRow(existingRow, j) {
+            var d = _buildHistoryRowHtml(j);
+            var cells = existingRow.children;
+            var statusSpan = cells[2] ? cells[2].querySelector('.job-status') : null;
+            if (statusSpan && (statusSpan.textContent !== d.status || statusSpan.className !== 'job-status ' + d.status)) {
+                statusSpan.className = 'job-status ' + d.status;
+                statusSpan.textContent = d.status;
+            }
+            if (cells[1] && cells[1].textContent !== d.description) {
+                cells[1].textContent = d.description;
+            }
+            if (cells[4] && cells[4].textContent !== d.duration) {
+                cells[4].textContent = d.duration;
+            }
+        }
+
+        async function refreshJobs() {
+            try {
+                const res = await fetch(API_BASE + '/api/jobs', { headers: apiHeaders() });
+                if (!res.ok) return;
+                let jobsList = await res.json();
+
+                if (currentFilter === 'completed') {
+                    jobsList = jobsList.filter(function(j) { return j.status === 'completed'; });
+                } else if (currentFilter === 'failed') {
+                    jobsList = jobsList.filter(function(j) { return j.status === 'failed'; });
+                } else if (currentFilter === 'active') {
+                    jobsList = jobsList.filter(function(j) { return ['queued', 'running', 'downloading', 'transcoding', 'uploading'].indexOf(j.status) !== -1; });
+                }
+
+                const tbody = document.getElementById('jobs-body');
+
+                if (!jobsList.length) {
+                    _lastJobData = {};
+                    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No jobs found</td></tr>';
+                    return;
+                }
+
+                var newJobMap = {};
+                jobsList.forEach(function(j) {
+                    var safeId = (j.id || '').replace(/[^a-zA-Z0-9\-]/g, '');
+                    newJobMap[safeId] = j;
+                });
+
+                // Remove jobs that are no longer in the filtered list
+                var existingRows = tbody.querySelectorAll('tr.job-row');
+                existingRows.forEach(function(row) {
+                    var id = row.dataset.jobId;
+                    if (!newJobMap[id]) {
+                        var detail = document.getElementById('job-detail-' + id);
+                        if (detail) detail.remove();
+                        row.remove();
+                        delete expandedJobs[id];
+                        delete _lastJobData[id];
+                    }
+                });
+
+                // Clear empty-state placeholder if present
+                var emptyRow = tbody.querySelector('.empty-state');
+                if (emptyRow) { emptyRow.closest('tr').remove(); }
+
+                // Update existing rows or add new ones
+                var prevRow = null;
+                jobsList.forEach(function(j) {
+                    var safeId = (j.id || '').replace(/[^a-zA-Z0-9\-]/g, '');
+                    var existingRow = tbody.querySelector('tr.job-row[data-job-id="' + safeId + '"]');
+                    var detailRow = document.getElementById('job-detail-' + safeId);
+
+                    if (existingRow) {
+                        _updateHistoryRow(existingRow, j);
+                        // Live-update expanded log panel only when status changes
+                        if (expandedJobs[safeId] && detailRow) {
+                            var oldData = _lastJobData[safeId];
+                            if (!oldData || oldData.status !== j.status) {
+                                _fetchJobLog(safeId);
+                            }
+                        }
+                        prevRow = detailRow || existingRow;
+                    } else {
+                        var newRows = _createHistoryRows(j);
+                        if (prevRow && prevRow.nextSibling) {
+                            tbody.insertBefore(newRows.row, prevRow.nextSibling);
+                            tbody.insertBefore(newRows.detail, newRows.row.nextSibling);
+                        } else {
+                            tbody.appendChild(newRows.row);
+                            tbody.appendChild(newRows.detail);
+                        }
+                        prevRow = newRows.detail;
+                    }
+                    _lastJobData[safeId] = { status: j.status, description: j.description };
+                });
+            } catch (e) {
+                document.getElementById('jobs-body').innerHTML = '<tr><td colspan="5" class="empty-state">Failed to load jobs</td></tr>';
+            }
         }
 
         async function retryJob(jobId) {

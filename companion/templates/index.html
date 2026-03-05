@@ -500,6 +500,7 @@
         }
 
         var expandedJobs = {};
+        var _lastJobData = {};
 
         async function toggleJobLog(jobId) {
             var detailRow = document.getElementById('job-detail-' + jobId);
@@ -516,6 +517,58 @@
             _fetchJobLog(jobId);
         }
 
+        function _buildJobRowHtml(j) {
+            var created = j.created_at ? new Date(j.created_at * 1000).toLocaleString() : '—';
+            var canCancel = j.status === 'queued' || j.status === 'running';
+            var shortId = (j.id || '').substring(0, 8);
+            var safeId = (j.id || '').replace(/[^a-zA-Z0-9\-]/g, '');
+            return { safeId: safeId, shortId: shortId, created: created, canCancel: canCancel, status: j.status, description: j.description || '—' };
+        }
+
+        function _createJobRows(j) {
+            var d = _buildJobRowHtml(j);
+            var tr = document.createElement('tr');
+            tr.className = 'job-row';
+            tr.dataset.jobId = d.safeId;
+            tr.setAttribute('onclick', 'toggleJobLog(this.dataset.jobId)');
+            tr.innerHTML =
+                '<td style="font-family:monospace;font-size:11px;">' + d.shortId + '…</td>' +
+                '<td>' + escapeHtml(d.description) + '</td>' +
+                '<td><span class="job-status ' + d.status + '">' + d.status + '</span></td>' +
+                '<td>' + d.created + '</td>' +
+                '<td>' + (d.canCancel ? '<button class="btn-secondary btn-sm btn-danger" onclick="event.stopPropagation();cancelJob(\'' + d.safeId + '\')">Cancel</button>' : '—') + '</td>';
+
+            var detailTr = document.createElement('tr');
+            detailTr.className = 'job-detail-row';
+            detailTr.id = 'job-detail-' + d.safeId;
+            detailTr.style.display = 'none';
+            detailTr.innerHTML = '<td colspan="5"><div class="job-log-panel"></div></td>';
+
+            return { row: tr, detail: detailTr };
+        }
+
+        function _updateJobRow(existingRow, j) {
+            var d = _buildJobRowHtml(j);
+            var cells = existingRow.children;
+            var statusSpan = cells[2] ? cells[2].querySelector('.job-status') : null;
+            if (statusSpan && (statusSpan.textContent !== d.status || statusSpan.className !== 'job-status ' + d.status)) {
+                statusSpan.className = 'job-status ' + d.status;
+                statusSpan.textContent = d.status;
+            }
+            if (cells[1] && cells[1].textContent !== d.description) {
+                cells[1].textContent = d.description;
+            }
+            var actionCell = cells[4];
+            if (actionCell) {
+                var hasCancel = !!actionCell.querySelector('button');
+                if (d.canCancel && !hasCancel) {
+                    actionCell.innerHTML = '<button class="btn-secondary btn-sm btn-danger" onclick="event.stopPropagation();cancelJob(\'' + d.safeId + '\')">Cancel</button>';
+                } else if (!d.canCancel && hasCancel) {
+                    actionCell.textContent = '—';
+                }
+            }
+        }
+
         /* --- Fetch active jobs only (completed/failed are on /history) --- */
         async function refreshJobs() {
             try {
@@ -525,39 +578,66 @@
                 const activeStatuses = ['queued', 'running', 'downloading', 'transcoding', 'uploading'];
                 const jobsList = allJobs.filter(j => activeStatuses.indexOf(j.status) !== -1);
 
-                // Remember which detail rows are currently expanded
-                var wasExpanded = {};
-                Object.keys(expandedJobs).forEach(function(id) {
-                    if (expandedJobs[id]) wasExpanded[id] = true;
-                });
-
                 const tbody = document.getElementById('jobs-body');
+
                 if (!jobsList.length) {
+                    _lastJobData = {};
                     tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No active jobs — <a href="/history" style="color:var(--primary);">view history</a></td></tr>';
                     return;
                 }
-                tbody.innerHTML = jobsList.map(j => {
-                    const created = j.created_at ? new Date(j.created_at * 1000).toLocaleString() : '—';
-                    const canCancel = j.status === 'queued' || j.status === 'running';
-                    const shortId = (j.id || '').substring(0, 8);
-                    const safeId = (j.id || '').replace(/[^a-zA-Z0-9\-]/g, '');
-                    const eid = 'job-detail-' + safeId;
-                    const isOpen = !!wasExpanded[safeId];
-                    return '<tr class="job-row" data-job-id="' + safeId + '" onclick="toggleJobLog(this.dataset.jobId)">' +
-                        '<td style="font-family:monospace;font-size:11px;">' + shortId + '…</td>' +
-                        '<td>' + escapeHtml(j.description || '—') + '</td>' +
-                        '<td><span class="job-status ' + j.status + '">' + j.status + '</span></td>' +
-                        '<td>' + created + '</td>' +
-                        '<td>' + (canCancel ? '<button class="btn-secondary btn-sm btn-danger" onclick="event.stopPropagation();cancelJob(\'' + safeId + '\')">' +
-                            'Cancel</button>' : '—') + '</td>' +
-                        '</tr>' +
-                        '<tr class="job-detail-row" id="' + eid + '" style="display:' + (isOpen ? '' : 'none') + ';">' +
-                        '<td colspan="5"><div class="job-log-panel">' + (isOpen ? 'Loading…' : '') + '</div></td></tr>';
-                }).join('');
 
-                // Re-fetch logs for any previously expanded rows
-                Object.keys(wasExpanded).forEach(function(id) {
-                    _fetchJobLog(id);
+                var newJobMap = {};
+                jobsList.forEach(function(j) {
+                    var safeId = (j.id || '').replace(/[^a-zA-Z0-9\-]/g, '');
+                    newJobMap[safeId] = j;
+                });
+
+                // Remove jobs that are no longer active
+                var existingRows = tbody.querySelectorAll('tr.job-row');
+                existingRows.forEach(function(row) {
+                    var id = row.dataset.jobId;
+                    if (!newJobMap[id]) {
+                        var detail = document.getElementById('job-detail-' + id);
+                        if (detail) detail.remove();
+                        row.remove();
+                        delete expandedJobs[id];
+                        delete _lastJobData[id];
+                    }
+                });
+
+                // Clear empty-state placeholder if present
+                var emptyRow = tbody.querySelector('.empty-state');
+                if (emptyRow) { emptyRow.closest('tr').remove(); }
+
+                // Update existing rows or add new ones
+                var prevRow = null;
+                jobsList.forEach(function(j) {
+                    var safeId = (j.id || '').replace(/[^a-zA-Z0-9\-]/g, '');
+                    var existingRow = tbody.querySelector('tr.job-row[data-job-id="' + safeId + '"]');
+                    var detailRow = document.getElementById('job-detail-' + safeId);
+
+                    if (existingRow) {
+                        _updateJobRow(existingRow, j);
+                        // Live-update expanded log panel without full rebuild
+                        if (expandedJobs[safeId] && detailRow) {
+                            var oldData = _lastJobData[safeId];
+                            if (!oldData || oldData.status !== j.status) {
+                                _fetchJobLog(safeId);
+                            }
+                        }
+                        prevRow = detailRow || existingRow;
+                    } else {
+                        var newRows = _createJobRows(j);
+                        if (prevRow && prevRow.nextSibling) {
+                            tbody.insertBefore(newRows.row, prevRow.nextSibling);
+                            tbody.insertBefore(newRows.detail, newRows.row.nextSibling);
+                        } else {
+                            tbody.appendChild(newRows.row);
+                            tbody.appendChild(newRows.detail);
+                        }
+                        prevRow = newRows.detail;
+                    }
+                    _lastJobData[safeId] = { status: j.status, description: j.description };
                 });
             } catch {
                 document.getElementById('jobs-body').innerHTML = '<tr><td colspan="5" class="empty-state">Failed to load jobs</td></tr>';
