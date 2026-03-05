@@ -715,9 +715,111 @@ function listRustFSObjects($settings, $prefix = '', $max_keys = 1000) {
 }
 
 /**
+ * Batch-delete multiple objects from RustFS S3 in a single request.
+ *
+ * Uses the S3 multi-object delete API (POST /?delete) to remove up to 1000
+ * objects per request, dramatically reducing the number of HTTP round-trips
+ * compared to deleting objects one at a time.
+ *
+ * @param array  $settings    RustFS settings
+ * @param array  $object_keys Array of S3 object key strings to delete
+ * @return array ['success'=>bool, 'deleted'=>int, 'failed'=>array, 'message'=>string|null]
+ */
+function batchDeleteFromRustFS($settings, $object_keys) {
+    if (!isRustFSConfigured($settings)) {
+        return ['success' => false, 'deleted' => 0, 'failed' => $object_keys, 'message' => 'RustFS is not configured'];
+    }
+
+    if (empty($object_keys)) {
+        return ['success' => true, 'deleted' => 0, 'failed' => [], 'message' => null];
+    }
+
+    $total_deleted = 0;
+    $all_failed = [];
+
+    // S3 multi-object delete supports up to 1000 keys per request
+    $batches = array_chunk($object_keys, 1000);
+
+    foreach ($batches as $batch) {
+        try {
+            // Build the XML payload for multi-object delete
+            $xml_parts = ['<?xml version="1.0" encoding="UTF-8"?>', '<Delete><Quiet>true</Quiet>'];
+            foreach ($batch as $key) {
+                $escaped_key = htmlspecialchars(ltrim($key, '/'), ENT_XML1, 'UTF-8');
+                $xml_parts[] = '<Object><Key>' . $escaped_key . '</Key></Object>';
+            }
+            $xml_parts[] = '</Delete>';
+            $payload = implode('', $xml_parts);
+
+            $base_url = getRustFSBaseUrl($settings);
+            $url = $base_url . '/?delete';
+            $region = $settings['rustfs_region'] ?? 'us-east-1';
+
+            $content_md5 = base64_encode(md5($payload, true));
+            $extra_headers = ['content-type' => 'application/xml', 'content-md5' => $content_md5];
+
+            $signed = signRustFSRequest('POST', $url, $extra_headers, $payload, $settings['rustfs_access_key'], $settings['rustfs_secret_key'], $region);
+
+            $curl_headers = [
+                'Authorization: ' . $signed['Authorization'],
+                'x-amz-date: ' . $signed['x-amz-date'],
+                'x-amz-content-sha256: ' . $signed['x-amz-content-sha256'],
+                'Content-Type: application/xml',
+                'Content-MD5: ' . $content_md5,
+            ];
+
+            $ch = curl_init($url);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $curl_headers);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+
+            $response = curl_exec($ch);
+            $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($http_code !== 200) {
+                // Batch request itself failed — mark all keys in this batch as failed
+                error_log("RustFS batch delete HTTP error $http_code for " . count($batch) . " objects");
+                $all_failed = array_merge($all_failed, $batch);
+                continue;
+            }
+
+            // Parse response for per-key errors (Quiet mode only returns errors)
+            $batch_failed = [];
+            $xml = @simplexml_load_string($response);
+            if ($xml !== false) {
+                foreach ($xml->Error as $error) {
+                    $failed_key = (string)$error->Key;
+                    $batch_failed[] = $failed_key;
+                    error_log("RustFS batch delete: failed to delete object " . $failed_key . " — " . (string)($error->Message ?? 'Unknown'));
+                }
+            }
+
+            $batch_deleted = count($batch) - count($batch_failed);
+            $total_deleted += $batch_deleted;
+            $all_failed = array_merge($all_failed, $batch_failed);
+        } catch (Exception $e) {
+            error_log("RustFS batch delete error: " . $e->getMessage());
+            $all_failed = array_merge($all_failed, $batch);
+        }
+    }
+
+    $message = null;
+    if (!empty($all_failed)) {
+        $message = count($all_failed) . ' object(s) failed to delete';
+    }
+
+    return ['success' => true, 'deleted' => $total_deleted, 'failed' => $all_failed, 'message' => $message];
+}
+
+/**
  * Delete all objects under a prefix in RustFS S3.
  *
- * Lists all objects matching the prefix and deletes them individually.
+ * Lists all objects matching the prefix and deletes them using the S3
+ * multi-object delete API for efficiency.  Falls back to individual
+ * deletes only when the batch API request itself fails.
  * Used to clean up HLS segments and playlists when a video is deleted.
  *
  * @param array  $settings  RustFS settings
@@ -739,23 +841,34 @@ function deleteRustFSPrefix($settings, $prefix) {
             return ['success' => false, 'deleted' => 0, 'failed' => [], 'message' => 'Failed to list objects: ' . ($listing['message'] ?? '')];
         }
 
-        $deleted = 0;
-        $failed = [];
-        foreach ($listing['objects'] as $obj) {
-            if (deleteFromRustFS($settings, $obj['key'])) {
-                $deleted++;
-            } else {
-                $failed[] = $obj['key'];
-                error_log("RustFS prefix delete: failed to delete object " . $obj['key']);
+        $keys = array_map(function ($obj) { return $obj['key']; }, $listing['objects']);
+        if (empty($keys)) {
+            return ['success' => true, 'deleted' => 0, 'failed' => [], 'message' => null];
+        }
+
+        // Use batch delete for efficiency (single HTTP request per 1000 objects)
+        $result = batchDeleteFromRustFS($settings, $keys);
+
+        // If batch delete had failures, retry them individually as a fallback
+        if (!empty($result['failed'])) {
+            $retry_deleted = 0;
+            $still_failed = [];
+            foreach ($result['failed'] as $key) {
+                if (deleteFromRustFS($settings, $key)) {
+                    $retry_deleted++;
+                } else {
+                    $still_failed[] = $key;
+                    error_log("RustFS prefix delete: failed to delete object " . $key);
+                }
             }
+            $result['deleted'] += $retry_deleted;
+            $result['failed'] = $still_failed;
+            $result['message'] = !empty($still_failed)
+                ? count($still_failed) . ' object(s) failed to delete'
+                : null;
         }
 
-        $message = null;
-        if (!empty($failed)) {
-            $message = count($failed) . ' object(s) failed to delete';
-        }
-
-        return ['success' => true, 'deleted' => $deleted, 'failed' => $failed, 'message' => $message];
+        return $result;
     } catch (Exception $e) {
         error_log("RustFS prefix delete error for prefix=$prefix: " . $e->getMessage());
         return ['success' => false, 'deleted' => 0, 'failed' => [], 'message' => $e->getMessage()];

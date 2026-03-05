@@ -182,7 +182,9 @@ test.describe('deleteRustFSPrefix helper function', () => {
     const funcEnd = content.indexOf('\nfunction ', funcStart + 1);
     const func = content.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
     expect(func).toContain("'deleted'");
-    expect(func).toContain('$deleted');
+    // Deletion count is tracked via batchDeleteFromRustFS result + retry_deleted fallback
+    expect(func).toContain('batchDeleteFromRustFS');
+    expect(func).toContain('$retry_deleted');
   });
 
   test('deleteRustFSPrefix should log individual deletion failures', () => {
@@ -205,8 +207,153 @@ test.describe('deleteRustFSPrefix helper function', () => {
 });
 
 // =====================================================
-// 4. Complete video lifecycle flow verification
+// 3b. batchDeleteFromRustFS function
 // =====================================================
+
+test.describe('batchDeleteFromRustFS helper function', () => {
+
+  test('batchDeleteFromRustFS should exist in lib/rustfs_storage.php', () => {
+    const content = readFile('lib/rustfs_storage.php');
+    expect(content).toContain('function batchDeleteFromRustFS(');
+  });
+
+  test('batchDeleteFromRustFS should accept settings and object_keys parameters', () => {
+    const content = readFile('lib/rustfs_storage.php');
+    const funcStart = content.indexOf('function batchDeleteFromRustFS(');
+    const funcSig = content.substring(funcStart, content.indexOf(')', funcStart) + 1);
+    expect(funcSig).toContain('$settings');
+    expect(funcSig).toContain('$object_keys');
+  });
+
+  test('batchDeleteFromRustFS should use S3 multi-object delete API', () => {
+    const content = readFile('lib/rustfs_storage.php');
+    const funcStart = content.indexOf('function batchDeleteFromRustFS(');
+    const funcEnd = content.indexOf('\nfunction ', funcStart + 1);
+    const func = content.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
+    // Should build XML Delete payload for S3 multi-object delete
+    expect(func).toContain('<Delete>');
+    expect(func).toContain('<Object><Key>');
+    expect(func).toContain('?delete');
+  });
+
+  test('batchDeleteFromRustFS should batch keys in groups of 1000', () => {
+    const content = readFile('lib/rustfs_storage.php');
+    const funcStart = content.indexOf('function batchDeleteFromRustFS(');
+    const funcEnd = content.indexOf('\nfunction ', funcStart + 1);
+    const func = content.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
+    expect(func).toContain('array_chunk');
+    expect(func).toContain('1000');
+  });
+
+  test('batchDeleteFromRustFS should use Content-MD5 header for integrity', () => {
+    const content = readFile('lib/rustfs_storage.php');
+    const funcStart = content.indexOf('function batchDeleteFromRustFS(');
+    const funcEnd = content.indexOf('\nfunction ', funcStart + 1);
+    const func = content.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
+    expect(func).toContain('content-md5');
+    expect(func).toContain('Content-MD5');
+  });
+
+  test('batchDeleteFromRustFS should handle empty key list', () => {
+    const content = readFile('lib/rustfs_storage.php');
+    const funcStart = content.indexOf('function batchDeleteFromRustFS(');
+    const funcEnd = content.indexOf('\nfunction ', funcStart + 1);
+    const func = content.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
+    expect(func).toContain('empty($object_keys)');
+  });
+
+  test('batchDeleteFromRustFS should return deleted count and failed keys', () => {
+    const content = readFile('lib/rustfs_storage.php');
+    const funcStart = content.indexOf('function batchDeleteFromRustFS(');
+    const funcEnd = content.indexOf('\nfunction ', funcStart + 1);
+    const func = content.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
+    expect(func).toContain("'deleted'");
+    expect(func).toContain("'failed'");
+    expect(func).toContain('$total_deleted');
+    expect(func).toContain('$all_failed');
+  });
+
+  test('batchDeleteFromRustFS should parse per-key errors from response', () => {
+    const content = readFile('lib/rustfs_storage.php');
+    const funcStart = content.indexOf('function batchDeleteFromRustFS(');
+    const funcEnd = content.indexOf('\nfunction ', funcStart + 1);
+    const func = content.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
+    // S3 Quiet mode returns only Error elements for failed keys
+    expect(func).toContain('Error');
+    expect(func).toContain('$batch_failed');
+  });
+
+  test('batchDeleteFromRustFS should use Quiet mode for efficiency', () => {
+    const content = readFile('lib/rustfs_storage.php');
+    const funcStart = content.indexOf('function batchDeleteFromRustFS(');
+    const funcEnd = content.indexOf('\nfunction ', funcStart + 1);
+    const func = content.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
+    expect(func).toContain('<Quiet>true</Quiet>');
+  });
+
+  test('deleteRustFSPrefix should fall back to individual deletes if batch fails', () => {
+    const content = readFile('lib/rustfs_storage.php');
+    const funcStart = content.indexOf('function deleteRustFSPrefix(');
+    const funcEnd = content.indexOf('\nfunction ', funcStart + 1);
+    const func = content.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
+    // Should retry failed keys individually
+    expect(func).toContain('deleteFromRustFS');
+    expect(func).toContain('$still_failed');
+  });
+
+});
+
+// =====================================================
+// 3c. Deferred deletion pattern in handleVideoDelete
+// =====================================================
+
+test.describe('handleVideoDelete deferred deletion pattern', () => {
+
+  test('handleVideoDelete should delete DB record before sending response', () => {
+    const content = readFile('process_video.php');
+    const funcStart = content.indexOf('function handleVideoDelete()');
+    const funcEnd = content.indexOf('\nfunction ', funcStart + 1);
+    const func = content.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
+    // DB delete should come before json_encode response
+    const dbDeletePos = func.indexOf("DELETE FROM videos");
+    const responsePos = func.indexOf("json_encode");
+    expect(dbDeletePos).toBeGreaterThan(-1);
+    expect(responsePos).toBeGreaterThan(-1);
+    expect(dbDeletePos).toBeLessThan(responsePos);
+  });
+
+  test('handleVideoDelete should flush response before storage cleanup', () => {
+    const content = readFile('process_video.php');
+    const funcStart = content.indexOf('function handleVideoDelete()');
+    const funcEnd = content.indexOf('\nfunction ', funcStart + 1);
+    const func = content.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
+    // Should use fastcgi_finish_request or ob_end_flush/flush
+    expect(func).toContain('fastcgi_finish_request');
+    expect(func).toContain('flush');
+  });
+
+  test('handleVideoDelete should use ignore_user_abort for cleanup', () => {
+    const content = readFile('process_video.php');
+    const funcStart = content.indexOf('function handleVideoDelete()');
+    const funcEnd = content.indexOf('\nfunction ', funcStart + 1);
+    const func = content.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
+    expect(func).toContain('ignore_user_abort(true)');
+  });
+
+  test('handleVideoDelete storage cleanup should happen after response flush', () => {
+    const content = readFile('process_video.php');
+    const funcStart = content.indexOf('function handleVideoDelete()');
+    const funcEnd = content.indexOf('\nfunction ', funcStart + 1);
+    const func = content.substring(funcStart, funcEnd > -1 ? funcEnd : undefined);
+    // flush/fastcgi_finish_request should appear before deleteRustFSPrefix
+    const flushPos = func.indexOf('fastcgi_finish_request');
+    const hlsDeletePos = func.indexOf('deleteRustFSPrefix');
+    expect(flushPos).toBeGreaterThan(-1);
+    expect(hlsDeletePos).toBeGreaterThan(-1);
+    expect(flushPos).toBeLessThan(hlsDeletePos);
+  });
+
+});
 
 test.describe('Complete video lifecycle flow', () => {
 

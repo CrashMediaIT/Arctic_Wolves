@@ -1412,6 +1412,11 @@ function handleVideoUpdate() {
 
 /**
  * Handle video deletion
+ *
+ * Deletes the database record first and sends the JSON response immediately
+ * so the client is never blocked.  Storage cleanup (original file + HLS
+ * segments) runs *after* the response has been flushed, preventing 504
+ * gateway timeouts when there are many HLS segment files to remove.
  */
 function handleVideoDelete() {
     global $pdo, $user_id, $user_role;
@@ -1437,6 +1442,35 @@ function handleVideoDelete() {
         throw new Exception('You can only delete videos you uploaded yourself');
     }
     
+    // Delete database record first so the UI updates immediately
+    $stmt = $pdo->prepare("DELETE FROM videos WHERE id = ?");
+    $stmt->execute([$video_id]);
+    Auditor::log($pdo, $user_id, 'delete', 'videos', $video_id, ['action' => 'Video deleted']);
+    
+    logSecurityEvent('video_delete', "Video ID: $video_id deleted", $user_id);
+    
+    // Send response to the client before starting storage cleanup
+    header('Content-Type: application/json');
+    echo json_encode(['success' => true, 'message' => 'Video deleted successfully']);
+
+    // Flush the response so the client is not waiting during file cleanup.
+    // fastcgi_finish_request() (PHP-FPM) ends the HTTP response while
+    // allowing PHP to continue running.  The ob_end_flush/flush fallback
+    // covers non-FPM SAPIs.
+    if (function_exists('fastcgi_finish_request')) {
+        fastcgi_finish_request();
+    } else {
+        if (ob_get_level()) {
+            ob_end_flush();
+        }
+        flush();
+    }
+
+    // Continue running even if the client disconnects
+    ignore_user_abort(true);
+
+    // --- Storage cleanup (runs after the response has been sent) ---
+
     $rustfs = getRustFSSettings($pdo);
     $rustfs_configured = isRustFSConfigured($rustfs);
 
@@ -1480,16 +1514,6 @@ function handleVideoDelete() {
             error_log("Failed to delete HLS files for video $video_id: " . $e->getMessage());
         }
     }
-    
-    // Delete database record
-    $stmt = $pdo->prepare("DELETE FROM videos WHERE id = ?");
-    $stmt->execute([$video_id]);
-    Auditor::log($pdo, $user_id, 'delete', 'videos', $video_id, ['action' => 'Video deleted']);
-    
-    logSecurityEvent('video_delete', "Video ID: $video_id deleted", $user_id);
-    
-    header('Content-Type: application/json');
-    echo json_encode(['success' => true, 'message' => 'Video deleted successfully']);
 }
 
 /**
