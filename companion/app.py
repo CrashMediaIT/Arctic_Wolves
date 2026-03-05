@@ -3118,28 +3118,32 @@ def hls_retry_callback():
         jlog("Retry-callback failed to reach main app", "error")
 
     # If now confirmed, optionally delete the original source
+    original_deleted = job.get("original_deleted")
     delete_original = job.get("delete_original", False)
-    if cb_result["confirmed"] and delete_original and not job.get("original_deleted"):
+    if cb_result["confirmed"] and delete_original and not original_deleted:
         s3 = _get_s3_client()
         s3_source_key = job.get("source_key", "")
         if s3 and s3_source_key:
             jlog(f"Main app now confirmed — deleting original source: {s3_source_key}")
             deleted = _s3_delete(s3, s3_source_key)
+            with job_lock:
+                if deleted:
+                    jobs[job_id]["original_deleted"] = True
+                    original_deleted = True
+                else:
+                    jobs[job_id]["original_deleted"] = False
+                    original_deleted = False
             if deleted:
                 jlog(f"Original source deleted successfully: {s3_source_key}")
-                with job_lock:
-                    jobs[job_id]["original_deleted"] = True
             else:
                 jlog(f"Failed to delete original source: {s3_source_key}", "warn")
-                with job_lock:
-                    jobs[job_id]["original_deleted"] = False
             _save_jobs()
 
     return jsonify({
         "job_id": job_id,
         "callback_ok": cb_result["ok"],
         "callback_confirmed": cb_result["confirmed"],
-        "original_deleted": jobs.get(job_id, {}).get("original_deleted"),
+        "original_deleted": original_deleted,
     }), 200
 
 
