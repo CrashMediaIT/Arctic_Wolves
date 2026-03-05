@@ -147,8 +147,8 @@ function apiResponse($status, $data) {
     $json = json_encode($data);
     if ($json === false) {
         // Fallback: encoding failed (e.g. invalid UTF-8 in a value).
-        // Return a safe ASCII-only error so callers always get valid JSON.
-        echo json_encode(['success' => false, 'error' => 'JSON encoding error: ' . json_last_error_msg()]);
+        // Use a hardcoded ASCII-only string so this echo can never fail.
+        echo '{"success":false,"error":"JSON encoding failed"}';
     } else {
         echo $json;
     }
