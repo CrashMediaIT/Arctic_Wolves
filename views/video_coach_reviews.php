@@ -261,7 +261,7 @@ $reviewed_videos = array_filter($videos, function($v) {
                         <span class="badge-warning"><i class="fas fa-clock"></i> Pending</span>
                     </div>
                     <div class="video-actions-inline">
-                        <button class="btn-icon" title="Watch Video" data-action="view-video" data-video-id="<?= $video['id'] ?>" data-video-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, getPreferredVideoUrl($video)) ?? '') ?>" data-thumbnail-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['thumbnail_url'] ?? '') ?? '') ?>"><i class="fas fa-play"></i></button>
+                        <button class="btn-icon" title="Watch Video" data-action="view-video" data-video-id="<?= $video['id'] ?>" data-video-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, getPreferredVideoUrl($video)) ?? '') ?>"<?php if (!empty($video['hls_url'])): ?> data-hls-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['hls_url']) ?? '') ?>"<?php endif; ?> data-thumbnail-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['thumbnail_url'] ?? '') ?? '') ?>"><i class="fas fa-play"></i></button>
                         <?php if ($isAnyCoach): ?>
                         <button class="btn-icon btn-review" title="Review" data-action="review-video" data-video-id="<?= $video['id'] ?>"><i class="fas fa-check"></i></button>
                         <?php endif; ?>
@@ -327,7 +327,7 @@ $reviewed_videos = array_filter($videos, function($v) {
                         <span class="badge-success"><i class="fas fa-check-circle"></i> Reviewed</span>
                     </div>
                     <div class="video-actions-inline">
-                        <button class="btn-icon" title="Watch Video" data-action="view-video" data-video-id="<?= $video['id'] ?>" data-video-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, getPreferredVideoUrl($video)) ?? '') ?>" data-thumbnail-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['thumbnail_url'] ?? '') ?? '') ?>"><i class="fas fa-play"></i></button>
+                        <button class="btn-icon" title="Watch Video" data-action="view-video" data-video-id="<?= $video['id'] ?>" data-video-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, getPreferredVideoUrl($video)) ?? '') ?>"<?php if (!empty($video['hls_url'])): ?> data-hls-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['hls_url']) ?? '') ?>"<?php endif; ?> data-thumbnail-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['thumbnail_url'] ?? '') ?? '') ?>"><i class="fas fa-play"></i></button>
                         <a href="?page=video_review_detail&video_id=<?= $video['id'] ?>" class="btn-icon" title="View Details"><i class="fas fa-comments"></i></a>
                     </div>
                 </div>
@@ -846,9 +846,13 @@ document.addEventListener('DOMContentLoaded', function() {
     var vpVideo = document.getElementById('coachVideoPlayer');
     var vpTitle = document.getElementById('coachVideoModalTitle');
     var vpHls = null;
+    var vpHlsFallbackUrl = '';
+    var vpHlsFallbackTried = false;
 
     function cleanupCoachVideoPlayer() {
         if (vpHls) { vpHls.destroy(); vpHls = null; }
+        vpHlsFallbackUrl = '';
+        vpHlsFallbackTried = false;
         if (vpVideo) {
             var container = vpVideo.parentElement;
             if (container) {
@@ -872,9 +876,24 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Fallback: if primary video source fails (e.g. 502 because the companion
+    // deleted the original after HLS transcode but the callback didn't update
+    // hls_status), retry with the pre-set HLS URL.
+    if (vpVideo) {
+        vpVideo.addEventListener('error', function() {
+            if (vpHlsFallbackUrl && !vpHlsFallbackTried) {
+                vpHlsFallbackTried = true;
+                if (typeof window.awInitHlsPlayer === 'function') {
+                    vpHls = window.awInitHlsPlayer(vpVideo, vpHlsFallbackUrl);
+                }
+            }
+        }, true);
+    }
+
     document.querySelectorAll('[data-action="view-video"]').forEach(function(btn) {
         btn.addEventListener('click', function() {
             var url = this.dataset.videoUrl;
+            var hlsUrl = this.dataset.hlsUrl || '';
             var thumbnailUrl = this.dataset.thumbnailUrl || '';
             var item = this.closest('.video-list-item');
             var title = item ? (item.querySelector('.video-details h4')?.textContent || 'Video') : 'Video';
@@ -882,6 +901,9 @@ document.addEventListener('DOMContentLoaded', function() {
             vpModal.style.display = 'flex';
             vpTitle.innerHTML = '<i class="fas fa-play-circle"></i> ' + title;
             cleanupCoachVideoPlayer();
+            // Store HLS fallback URL for error recovery
+            vpHlsFallbackUrl = (hlsUrl && hlsUrl !== url) ? hlsUrl : '';
+            vpHlsFallbackTried = false;
             if (thumbnailUrl) vpVideo.poster = thumbnailUrl;
             if (url && typeof window.awInitHlsPlayer === 'function') {
                 vpHls = window.awInitHlsPlayer(vpVideo, url);

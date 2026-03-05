@@ -264,6 +264,7 @@ $is_demo_data = false;
                             <button class="btn-primary btn-full" data-action="play-video" 
                                     data-video-id="<?= htmlspecialchars($video['id']) ?>"
                                     data-video-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, getPreferredVideoUrl($video)) ?? '') ?>"
+                                    <?php if (!empty($video['hls_url'])): ?>data-hls-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['hls_url']) ?? '') ?>"<?php endif; ?>
                                     data-thumbnail-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['thumbnail_url'] ?? '') ?? '') ?>"
                                     data-video-description="<?= htmlspecialchars($video['description'] ?? '') ?>"
                                     data-video-coach="<?= htmlspecialchars(trim(($video['coach_first_name'] ?? '') . ' ' . ($video['coach_last_name'] ?? ''))) ?>"
@@ -1451,9 +1452,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const videoDetailTitle = document.getElementById('videoDetailTitle');
     const videoDetailMeta = document.getElementById('videoDetailMeta');
     var activeHls = null;
+    var drHlsFallbackUrl = '';
+    var drHlsFallbackTried = false;
 
     function cleanupVideoPlayer() {
         if (activeHls) { activeHls.destroy(); activeHls = null; }
+        drHlsFallbackUrl = '';
+        drHlsFallbackTried = false;
         if (videoPlayer) {
             // Clean up custom controls injected by hls-player.js
             var container = videoPlayer.parentElement;
@@ -1478,11 +1483,26 @@ document.addEventListener('DOMContentLoaded', function() {
             videoPlayer.currentTime = 0;
         }
     }
+
+    // Fallback: if primary video source fails (e.g. 502 because the companion
+    // deleted the original after HLS transcode but the callback didn't update
+    // hls_status), retry with the pre-set HLS URL.
+    if (videoPlayer) {
+        videoPlayer.addEventListener('error', function() {
+            if (drHlsFallbackUrl && !drHlsFallbackTried) {
+                drHlsFallbackTried = true;
+                if (typeof window.awInitHlsPlayer === 'function') {
+                    activeHls = window.awInitHlsPlayer(videoPlayer, drHlsFallbackUrl);
+                }
+            }
+        }, true);
+    }
     
     // Play video buttons
     document.querySelectorAll('[data-action="play-video"]').forEach(btn => {
         btn.addEventListener('click', function() {
             const videoUrl = this.dataset.videoUrl;
+            const hlsUrl = this.dataset.hlsUrl || '';
             const thumbnailUrl = this.dataset.thumbnailUrl || '';
             const title = this.closest('.video-card').querySelector('.video-title')?.textContent || 'Video';
             const description = this.dataset.videoDescription || '';
@@ -1524,6 +1544,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (videoUrl) {
                     // Destroy any previous HLS instance and clean up controls
                     cleanupVideoPlayer();
+
+                    // Store HLS fallback URL for error recovery
+                    drHlsFallbackUrl = (hlsUrl && hlsUrl !== videoUrl) ? hlsUrl : '';
+                    drHlsFallbackTried = false;
 
                     // Set poster/thumbnail for preview before video loads
                     if (thumbnailUrl) videoPlayer.poster = thumbnailUrl;

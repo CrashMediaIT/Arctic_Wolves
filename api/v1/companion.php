@@ -66,34 +66,71 @@ function handleCompanionCallback(): void {
     $body = getJsonBody();
     $job_id    = $body['job_id'] ?? '';
     $video_id  = $body['video_id'] ?? null;
+    $source_id = $body['source_id'] ?? null;
     $status    = $body['status'] ?? '';
 
     if (empty($status)) {
         apiResponse(400, ['success' => false, 'error' => 'status is required']);
     }
 
-    // Try to find the video row by video_id first, then by hls_job_id
-    $vid = null;
-    if ($video_id) {
+    // Determine which table to update: vr_video_sources (if source_id) or videos
+    $table = null;       // 'videos' or 'vr_video_sources'
+    $db_record_id = null;
+
+    // Check vr_video_sources first if source_id is provided
+    if ($source_id) {
+        $stmt = $pdo->prepare("SELECT id FROM vr_video_sources WHERE id = ? LIMIT 1");
+        $stmt->execute([(int) $source_id]);
+        $src = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($src) {
+            $table = 'vr_video_sources';
+            $db_record_id = (int) $src['id'];
+        }
+    }
+
+    // Fall back to videos table by video_id, then by hls_job_id
+    if (!$table && $video_id) {
         $stmt = $pdo->prepare("SELECT id FROM videos WHERE id = ? LIMIT 1");
         $stmt->execute([(int) $video_id]);
         $vid = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($vid) {
+            $table = 'videos';
+            $db_record_id = (int) $vid['id'];
+        }
     }
-    if (!$vid && $job_id) {
+    if (!$table && $job_id) {
+        // Try videos table by hls_job_id
         $stmt = $pdo->prepare("SELECT id FROM videos WHERE hls_job_id = ? LIMIT 1");
         $stmt->execute([$job_id]);
         $vid = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($vid) {
+            $table = 'videos';
+            $db_record_id = (int) $vid['id'];
+        }
+        // Try vr_video_sources table by hls_job_id
+        if (!$table) {
+            try {
+                $stmt = $pdo->prepare("SELECT id FROM vr_video_sources WHERE hls_job_id = ? LIMIT 1");
+                $stmt->execute([$job_id]);
+                $src = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($src) {
+                    $table = 'vr_video_sources';
+                    $db_record_id = (int) $src['id'];
+                }
+            } catch (PDOException $e) {
+                // hls_job_id column may not exist yet — non-fatal
+            }
+        }
     }
 
-    if (!$vid) {
+    if (!$table || !$db_record_id) {
         // Sanitize log values to prevent log injection
         $safe_job = preg_replace('/[^a-zA-Z0-9-]/', '', substr($job_id, 0, 64));
         $safe_vid = $video_id !== null ? (int) $video_id : 'null';
-        ErrorLogger::warning("Companion callback: no matching video for job_id=$safe_job video_id=$safe_vid");
+        $safe_src = $source_id !== null ? (int) $source_id : 'null';
+        ErrorLogger::warning("Companion callback: no matching record for job_id=$safe_job video_id=$safe_vid source_id=$safe_src");
         apiResponse(404, ['success' => false, 'error' => 'Video record not found']);
     }
-
-    $db_video_id = (int) $vid['id'];
 
     try {
         if ($status === 'completed') {
@@ -108,7 +145,7 @@ function handleCompanionCallback(): void {
             }
 
             $stmt = $pdo->prepare("
-                UPDATE videos
+                UPDATE $table
                 SET hls_status        = 'ready',
                     hls_master_url    = :manifest,
                     hls_segments_path = :segments,
@@ -119,19 +156,21 @@ function handleCompanionCallback(): void {
                 ':manifest' => $hls_manifest,
                 ':segments' => $hls_segments,
                 ':hls_url'  => $hls_url,
-                ':id'       => $db_video_id,
+                ':id'       => $db_record_id,
             ]);
 
-            ErrorLogger::info("HLS transcode completed for video $db_video_id (job $job_id)");
+            $label = $table === 'vr_video_sources' ? 'source' : 'video';
+            ErrorLogger::info("HLS transcode completed for $label $db_record_id (job $job_id)");
             apiResponse(200, ['success' => true, 'message' => 'Video updated to ready']);
 
         } elseif ($status === 'failed') {
             $error = $body['error'] ?? 'Unknown error';
 
-            $stmt = $pdo->prepare("UPDATE videos SET hls_status = 'failed' WHERE id = ?");
-            $stmt->execute([$db_video_id]);
+            $stmt = $pdo->prepare("UPDATE $table SET hls_status = 'failed' WHERE id = ?");
+            $stmt->execute([$db_record_id]);
 
-            ErrorLogger::error("HLS transcode failed for video $db_video_id (job $job_id): $error");
+            $label = $table === 'vr_video_sources' ? 'source' : 'video';
+            ErrorLogger::error("HLS transcode failed for $label $db_record_id (job $job_id): $error");
             apiResponse(200, ['success' => true, 'message' => 'Video marked as failed']);
 
         } else {
