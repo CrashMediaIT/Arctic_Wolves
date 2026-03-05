@@ -16,6 +16,10 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 const readFile = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
 
+// Length of code window to search after a match point.  Must be large
+// enough to span the error-handling block in each view / hls-player.js.
+const CODE_WINDOW = 600;
+
 /* ------------------------------------------------------------------ */
 /*  1. CSP worker-src allows blob: for HLS.js web workers             */
 /* ------------------------------------------------------------------ */
@@ -52,7 +56,7 @@ test.describe('HLS.js network error retry limit', () => {
     // Find the NETWORK_ERROR handler
     const networkIdx = content.indexOf('NETWORK_ERROR');
     expect(networkIdx).toBeGreaterThan(-1);
-    const section = content.substring(networkIdx, networkIdx + 500);
+    const section = content.substring(networkIdx, networkIdx + CODE_WINDOW);
     // Should check retries before calling startLoad
     expect(section).toContain('_networkRetries < _MAX_NETWORK_RETRIES');
     expect(section).toContain('hls.startLoad()');
@@ -61,7 +65,7 @@ test.describe('HLS.js network error retry limit', () => {
   test('hls-player.js should destroy HLS and dispatch error after exhausting retries', () => {
     const content = readFile('js/hls-player.js');
     const networkIdx = content.indexOf('NETWORK_ERROR');
-    const section = content.substring(networkIdx, networkIdx + 600);
+    const section = content.substring(networkIdx, networkIdx + CODE_WINDOW);
     // After retries exhausted, should destroy HLS.js
     expect(section).toContain('hls.destroy()');
     // Should dispatch a native error event for view-level handlers
@@ -71,7 +75,7 @@ test.describe('HLS.js network error retry limit', () => {
   test('hls-player.js should NOT infinitely retry network errors', () => {
     const content = readFile('js/hls-player.js');
     const networkIdx = content.indexOf('NETWORK_ERROR');
-    const section = content.substring(networkIdx, networkIdx + 100);
+    const section = content.substring(networkIdx, networkIdx + CODE_WINDOW);
     // Should NOT just unconditionally call startLoad
     expect(section).not.toMatch(/NETWORK_ERROR:\s*\n\s*hls\.startLoad\(\)/);
   });
@@ -121,7 +125,7 @@ test.describe('All video views have HLS fallback error handlers', () => {
       // The error handler should use awInitHlsPlayer for the retry
       const errorIdx = content.indexOf("addEventListener('error'");
       expect(errorIdx).toBeGreaterThan(-1);
-      const afterError = content.substring(errorIdx, errorIdx + 400);
+      const afterError = content.substring(errorIdx, errorIdx + CODE_WINDOW);
       expect(afterError).toContain('awInitHlsPlayer');
     });
 
