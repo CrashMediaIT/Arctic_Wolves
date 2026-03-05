@@ -430,8 +430,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         origTitle = titleInput.value;
                         origDesc = descInput.value;
                         saveMetaBtn.style.display = 'none';
-                        var h2 = document.getElementById('videoTitle');
-                        if (h2) h2.textContent = titleInput.value.trim();
+                        var titleHeading = document.getElementById('videoTitle');
+                        if (titleHeading) titleHeading.textContent = titleInput.value.trim();
                     } else {
                         if (typeof showToast === 'function') showToast('Save failed: ' + (data.error || data.message || 'Unknown error'), 'error');
                     }

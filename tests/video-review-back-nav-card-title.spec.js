@@ -133,7 +133,7 @@ test.describe('video_review_detail.php has a Save Changes button for title/descr
     const c = readFile('views/video_review_detail.php');
     // After successful save, the video title heading should be updated
     expect(c).toContain("getElementById('videoTitle')");
-    expect(c).toContain('h2.textContent = titleInput.value.trim()');
+    expect(c).toContain('titleHeading.textContent = titleInput.value.trim()');
   });
 
   test('PWA: contains saveMetaBtn button', () => {

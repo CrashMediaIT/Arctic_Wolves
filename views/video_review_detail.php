@@ -360,8 +360,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         origDesc = descInput.value;
                         saveMetaBtn.style.display = 'none';
                         // Update the displayed title heading
-                        var h2 = document.getElementById('videoTitle');
-                        if (h2) h2.textContent = titleInput.value.trim();
+                        var titleHeading = document.getElementById('videoTitle');
+                        if (titleHeading) titleHeading.textContent = titleInput.value.trim();
                     } else {
                         if (typeof showToast === 'function') showToast('Save failed: ' + (data.error || data.message || 'Unknown error'), 'error');
                     }
