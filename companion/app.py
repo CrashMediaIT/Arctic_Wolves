@@ -2749,9 +2749,11 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
         variant_playlists = {v["label"]: f"{output_prefix}/{v['label']}/playlist.m3u8" for v in variants}
         with job_lock:
             vid_id = jobs[job_id].get("video_id")
+            src_id = jobs[job_id].get("source_id")
         _send_callback(cb_url, {
             "job_id": job_id,
             "video_id": vid_id,
+            "source_id": src_id,
             "status": "completed",
             "source_key": s3_source_key,
             "hls_manifest": f"{output_prefix}/master.m3u8",
@@ -2771,9 +2773,11 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
         _save_jobs()
         with job_lock:
             vid_id = jobs[job_id].get("video_id")
+            src_id = jobs[job_id].get("source_id")
         _send_callback(cb_url, {
             "job_id": job_id,
             "video_id": vid_id,
+            "source_id": src_id,
             "status": "failed",
             "source_key": s3_source_key,
             "error": str(exc)[:2000],
@@ -2828,6 +2832,7 @@ def hls_transcode():
     delete_original = data.get("delete_original", True)
     callback_url = data.get("callback_url", "")
     video_id = data.get("video_id")
+    source_id = data.get("source_id")
 
     if not source_key:
         return jsonify({"error": "source_key is required"}), 400
@@ -2856,6 +2861,7 @@ def hls_transcode():
         "hls_manifest": None,
         "variants": [],
         "video_id": video_id,
+        "source_id": source_id,
         "created_at": time.time(),
         "started_at": None,
         "finished_at": None,
@@ -2897,6 +2903,7 @@ def hls_retry():
     delete_original = data.get("delete_original", False)
     callback_url = data.get("callback_url", "")
     video_id = data.get("video_id")
+    source_id = data.get("source_id")
 
     # Resolve from the old job if job_id given
     if old_job_id and (not source_key or not output_prefix):
@@ -2906,6 +2913,7 @@ def hls_retry():
             source_key = source_key or old_job.get("source_key", "")
             output_prefix = output_prefix or old_job.get("output_prefix", "")
             video_id = video_id or old_job.get("video_id")
+            source_id = source_id or old_job.get("source_id")
         else:
             return jsonify({"error": "Original job not found"}), 404
 
@@ -2925,6 +2933,7 @@ def hls_retry():
         "hls_manifest": None,
         "variants": [],
         "video_id": video_id,
+        "source_id": source_id,
         "created_at": time.time(),
         "started_at": None,
         "finished_at": None,
