@@ -2508,7 +2508,7 @@ def _send_callback(callback_url: str, payload: dict):
     typically run on an internal network behind a reverse proxy (HAProxy)
     with self-signed or internal certificates.
     """
-    result = {"ok": False, "confirmed": False}
+    result = {"ok": False, "confirmed": False, "response_detail": ""}
     if not callback_url:
         logger.info("No callback URL configured — skipping result notification for job %s", payload.get("job_id", "?"))
         return result
@@ -2528,7 +2528,7 @@ def _send_callback(callback_url: str, payload: dict):
             resp = http_requests.post(callback_url, json=payload, headers=headers, timeout=30, verify=False)  # noqa: S501
             resp.raise_for_status()
             result["ok"] = True
-            logger.info("Callback sent to %s for job %s (attempt %d)", callback_url, payload.get("job_id"), attempt)
+            logger.info("Callback sent to %s for job %s (attempt %d, HTTP %d)", callback_url, payload.get("job_id"), attempt, resp.status_code)
             # Parse the response to check for explicit DB confirmation
             try:
                 body = resp.json()
@@ -2536,12 +2536,23 @@ def _send_callback(callback_url: str, payload: dict):
                 rows = body.get("rows_affected", 0)
                 if confirmed and rows > 0:
                     result["confirmed"] = True
+                    result["response_detail"] = f"HTTP {resp.status_code} confirmed, rows_affected={rows}"
                     logger.info("Main app confirmed DB update for job %s (rows_affected=%d)", payload.get("job_id"), rows)
                 else:
-                    logger.warning("Main app did NOT confirm DB update for job %s (confirmed=%s, rows_affected=%s)", payload.get("job_id"), confirmed, rows)
+                    # Log the full response body so admins can diagnose
+                    # why the main app did not confirm the update.
+                    resp_text = resp.text[:500] if resp.text else "(empty)"
+                    result["response_detail"] = f"HTTP {resp.status_code} confirmed={confirmed} rows={rows} body={resp_text}"
+                    logger.warning(
+                        "Main app did NOT confirm DB update for job %s "
+                        "(confirmed=%s, rows_affected=%s, http=%d, body=%s)",
+                        payload.get("job_id"), confirmed, rows, resp.status_code, resp_text,
+                    )
             except Exception:
                 # Non-JSON or missing fields — treat as unconfirmed but HTTP OK
-                logger.warning("Could not parse confirmation from callback response for job %s", payload.get("job_id"))
+                resp_text = resp.text[:500] if resp.text else "(empty)"
+                result["response_detail"] = f"HTTP {resp.status_code} non-JSON body={resp_text}"
+                logger.warning("Could not parse confirmation from callback response for job %s (http=%d, body=%s)", payload.get("job_id"), resp.status_code, resp_text)
             return result
         except Exception as exc:
             logger.warning("Callback to %s failed (attempt %d/%d): %s", callback_url, attempt, max_retries, exc)
@@ -2857,7 +2868,8 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
                         jobs[job_id]["original_deleted"] = False
                     _save_job(job_id)
             elif cb_result["ok"]:
-                jlog("Skipping original deletion — callback succeeded but main app did NOT confirm DB update; keeping source for safety", "warn")
+                detail = cb_result.get("response_detail", "")
+                jlog(f"Skipping original deletion — callback succeeded but main app did NOT confirm DB update; keeping source for safety. Response: {detail}", "warn")
             else:
                 jlog("Skipping original deletion — callback failed; keeping source until DB is updated", "warn")
 
@@ -3131,7 +3143,8 @@ def hls_retry_callback():
     if cb_result["confirmed"]:
         jlog("Retry-callback confirmed by main app ✓")
     elif cb_result["ok"]:
-        jlog("Retry-callback sent but main app still did NOT confirm DB update", "warn")
+        detail = cb_result.get("response_detail", "")
+        jlog(f"Retry-callback sent but main app still did NOT confirm DB update. Response: {detail}", "warn")
     else:
         jlog("Retry-callback failed to reach main app", "error")
 

@@ -14,6 +14,15 @@
 require_once __DIR__ . '/../../db_config.php';
 require_once __DIR__ . '/../../error_logger.php';
 
+// db_config.php calls ErrorLogger::setDatabase() only if ErrorLogger is
+// already loaded.  Because error_logger.php is required *after* db_config,
+// the call is skipped and logs never reach the error_logs DB table — making
+// companion callback events invisible in the admin Error Logs UI.
+// Re-apply the database connection now that both are loaded.
+if (isset($pdo) && $pdo instanceof PDO) {
+    ErrorLogger::setDatabase($pdo);
+}
+
 $method   = $GLOBALS['api_method'];
 $segments = $GLOBALS['api_segments'] ?? [];
 
@@ -68,6 +77,12 @@ function handleCompanionCallback(): void {
     $video_id  = $body['video_id'] ?? null;
     $source_id = $body['source_id'] ?? null;
     $status    = $body['status'] ?? '';
+
+    // Log the incoming callback for diagnostics (visible in admin Error Logs)
+    $safe_job = preg_replace('/[^a-zA-Z0-9-]/', '', substr($job_id, 0, 64));
+    $safe_vid = $video_id !== null ? (int) $video_id : 'null';
+    $safe_src = $source_id !== null ? (int) $source_id : 'null';
+    ErrorLogger::info("Companion callback received: job_id=$safe_job video_id=$safe_vid source_id=$safe_src status=$status");
 
     if (empty($status)) {
         apiResponse(400, ['success' => false, 'error' => 'status is required']);
@@ -187,6 +202,7 @@ function handleCompanionCallback(): void {
                     ErrorLogger::warning("Companion callback: UPDATE affected 0 rows for $label $db_record_id (job $job_id) — record may have been deleted");
                 }
             }
+            ErrorLogger::info("Companion callback response: confirmed=$confirmed rows_affected=$rows_affected for $label $db_record_id (job $job_id)");
             apiResponse(200, [
                 'success'       => true,
                 'confirmed'     => $confirmed,
@@ -202,12 +218,12 @@ function handleCompanionCallback(): void {
 
             $label = $table === 'vr_video_sources' ? 'source' : 'video';
             ErrorLogger::error("HLS transcode failed for $label $db_record_id (job $job_id): $error");
-            apiResponse(200, ['success' => true, 'message' => 'Video marked as failed']);
+            apiResponse(200, ['success' => true, 'confirmed' => true, 'message' => 'Video marked as failed', 'rows_affected' => 1]);
 
         } else {
             apiResponse(400, ['success' => false, 'error' => 'Invalid status. Must be completed or failed.']);
         }
-    } catch (Exception $e) {
+    } catch (\Throwable $e) {
         ErrorLogger::error("Companion callback error for job $job_id: " . $e->getMessage());
         apiResponse(500, ['success' => false, 'error' => 'Internal server error']);
     }
