@@ -22,6 +22,7 @@ try {
         `created_by` INT DEFAULT NULL,
         `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
         INDEX `idx_sort_order` (`sort_order`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 }
@@ -236,6 +237,7 @@ if ($editItemId > 0) {
 (function() {
     var tbody = document.getElementById('wishlist-body');
     if (!tbody) return;
+    var csrfToken = '<?= htmlspecialchars($_SESSION["csrf_token"] ?? "", ENT_QUOTES) ?>';
 
     var dragRow = null;
 
@@ -299,12 +301,13 @@ if ($editItemId > 0) {
         fetch('process_wishlist.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'reorder', order: order })
+            body: JSON.stringify({ action: 'reorder', order: order, csrf_token: csrfToken })
         }).then(function(r) { return r.json(); }).then(function(data) {
             if (!data.success) {
-                console.error('Reorder failed:', data.error);
+                alert('Failed to save new order: ' + (data.error || 'Unknown error'));
             }
         }).catch(function(err) {
+            alert('Failed to save new order. Please refresh and try again.');
             console.error('Reorder request failed:', err);
         });
     });

@@ -26,17 +26,29 @@ if (stripos($contentType, 'application/json') !== false) {
     $action = $input['action'] ?? '';
 
     if ($action === 'reorder') {
+        // Validate CSRF token
+        $token = $input['csrf_token'] ?? '';
+        if (empty($token) || $token !== ($_SESSION['csrf_token'] ?? '')) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'error' => 'Invalid CSRF token']);
+            exit;
+        }
+
         $order = $input['order'] ?? [];
-        if (!is_array($order)) {
+        if (!is_array($order) || empty($order)) {
             http_response_code(400);
             echo json_encode(['success' => false, 'error' => 'Invalid order data']);
             exit;
         }
+
+        // Sanitize IDs to integers
+        $order = array_map('intval', $order);
+
         try {
             $pdo->beginTransaction();
             $stmt = $pdo->prepare("UPDATE wishlist_items SET sort_order = ?, updated_at = NOW() WHERE id = ?");
             foreach ($order as $index => $id) {
-                $stmt->execute([(int)$index, (int)$id]);
+                $stmt->execute([(int)$index, $id]);
             }
             $pdo->commit();
             echo json_encode(['success' => true]);
@@ -56,6 +68,21 @@ if (stripos($contentType, 'application/json') !== false) {
 // Form POST actions
 checkCsrfToken();
 
+/**
+ * Sanitize link: if it looks like a URL, ensure it uses a safe scheme (http/https).
+ * Non-URL text (e.g. distributor names) is passed through unchanged.
+ */
+function sanitizeWishlistLink($link) {
+    if ($link === '' || $link === null) return $link;
+    // If it looks like a URI with a scheme, only allow http(s)
+    if (preg_match('/^[a-z][a-z0-9+.-]*:/i', $link)) {
+        if (!preg_match('/^https?:\/\//i', $link)) {
+            return ''; // reject non-http(s) URI schemes
+        }
+    }
+    return $link;
+}
+
 $action = $_POST['action'] ?? '';
 
 try {
@@ -64,7 +91,7 @@ try {
             $name = trim($_POST['name'] ?? '');
             $description = trim($_POST['description'] ?? '');
             $price = $_POST['price'] ?? null;
-            $link = trim($_POST['link'] ?? '');
+            $link = sanitizeWishlistLink(trim($_POST['link'] ?? ''));
 
             if (empty($name)) {
                 header("Location: dashboard.php?page=admin_wishlist&status=error&message=" . urlencode('Item name is required'));
@@ -77,8 +104,9 @@ try {
                 $price = null;
             }
 
-            // Get next sort_order
-            $maxOrder = $pdo->query("SELECT COALESCE(MAX(sort_order), -1) + 1 FROM wishlist_items")->fetchColumn();
+            // Get next sort_order within a transaction to avoid race conditions
+            $pdo->beginTransaction();
+            $maxOrder = $pdo->query("SELECT COALESCE(MAX(sort_order), -1) + 1 FROM wishlist_items FOR UPDATE")->fetchColumn();
 
             $stmt = $pdo->prepare("INSERT INTO wishlist_items (name, description, price, link, sort_order, created_by)
                 VALUES (?, ?, ?, ?, ?, ?)");
@@ -90,6 +118,7 @@ try {
                 (int)$maxOrder,
                 $user_id
             ]);
+            $pdo->commit();
 
             header("Location: dashboard.php?page=admin_wishlist&status=success&message=" . urlencode('Item added successfully'));
             exit();
@@ -99,7 +128,7 @@ try {
             $name = trim($_POST['name'] ?? '');
             $description = trim($_POST['description'] ?? '');
             $price = $_POST['price'] ?? null;
-            $link = trim($_POST['link'] ?? '');
+            $link = sanitizeWishlistLink(trim($_POST['link'] ?? ''));
 
             if ($item_id <= 0 || empty($name)) {
                 header("Location: dashboard.php?page=admin_wishlist&status=error&message=" . urlencode('Invalid data'));
