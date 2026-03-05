@@ -443,21 +443,20 @@ test.describe('NGINX main site routes /api/ to API entry point', () => {
     // Find the main site server block (arcticwolves.ca / www.arcticwolves.ca)
     const mainStart = c.indexOf('server_name arcticwolves.ca www.arcticwolves.ca;');
     expect(mainStart).toBeGreaterThan(0);
-    const mainEnd = c.indexOf('\n}', mainStart);
-    const mainBlock = c.substring(mainStart, mainEnd);
+    // Use the next section separator as boundary instead of first closing brace
+    const mainEnd = c.indexOf('# =====', mainStart);
+    const mainBlock = c.substring(mainStart, mainEnd > -1 ? mainEnd : undefined);
     expect(mainBlock).toContain('location /api/');
   });
 
   test('location /api/ should route to /api/index.php', () => {
     const c = content();
     const mainStart = c.indexOf('server_name arcticwolves.ca www.arcticwolves.ca;');
-    const mainEnd = c.indexOf('\n}', mainStart);
-    const mainBlock = c.substring(mainStart, mainEnd);
-    // The try_files inside location /api/ should fall back to /api/index.php
-    const apiLocStart = mainBlock.indexOf('location /api/');
-    expect(apiLocStart).toBeGreaterThan(-1);
-    const apiLocBlock = mainBlock.substring(apiLocStart, mainBlock.indexOf('}', apiLocStart) + 1);
-    expect(apiLocBlock).toContain('/api/index.php');
+    const mainEnd = c.indexOf('# =====', mainStart);
+    const mainBlock = c.substring(mainStart, mainEnd > -1 ? mainEnd : undefined);
+    // The location /api/ block is a simple single try_files directive
+    expect(mainBlock).toContain('location /api/');
+    expect(mainBlock).toMatch(/location\s+\/api\/\s*\{[^}]*\/api\/index\.php/);
   });
 });
 
@@ -470,7 +469,7 @@ test.describe('Companion _send_callback HTML response detection', () => {
     const c = readFile('companion/app.py');
     const funcStart = c.indexOf('def _send_callback(');
     const funcEnd = c.indexOf('\ndef ', funcStart + 1);
-    const func = c.substring(funcStart, funcEnd);
+    const func = c.substring(funcStart, funcEnd > funcStart ? funcEnd : c.length);
     expect(func).toContain('text/html');
     expect(func).toContain('Content-Type');
   });
@@ -479,7 +478,7 @@ test.describe('Companion _send_callback HTML response detection', () => {
     const c = readFile('companion/app.py');
     const funcStart = c.indexOf('def _send_callback(');
     const funcEnd = c.indexOf('\ndef ', funcStart + 1);
-    const func = c.substring(funcStart, funcEnd);
+    const func = c.substring(funcStart, funcEnd > funcStart ? funcEnd : c.length);
     expect(func).toContain('location /api/');
   });
 });
