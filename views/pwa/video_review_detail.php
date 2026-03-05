@@ -59,22 +59,22 @@ $video_url = resolveRustfsUrl($pdo, getPreferredVideoUrl($video)) ?? '';
 $thumbnail_url = resolveRustfsUrl($pdo, $video['thumbnail_url'] ?? '') ?? '';
 $video_type = preg_match('/\.m3u8(\?|&|$)/i', $video_url) ? 'application/vnd.apple.mpegurl' : 'video/mp4';
 
-// Compute HLS fallback URL for JS error recovery.
-// When the companion deletes the original MP4 after transcoding but the
-// callback fails to update hls_status, the preferred URL still points at the
-// (now-deleted) MP4.  Passing the HLS URL as a data attribute lets JS retry.
+// Compute a fallback URL for JS error recovery (bidirectional).
+// When the primary URL is the HLS manifest (transcode initiated), the
+// fallback is the original file (in case the manifest isn't uploaded yet).
+// When the primary is the original file, the fallback is the HLS manifest.
 $hls_fallback_url = '';
-if (!empty($video['hls_url'])) {
-    $resolved_hls = resolveRustfsUrl($pdo, $video['hls_url']);
-    if ($resolved_hls && $resolved_hls !== $video_url) {
-        $hls_fallback_url = $resolved_hls;
+if (preg_match('/\.m3u8(\?|&|$)/i', $video_url)) {
+    // Primary is HLS → fallback to original video file
+    $orig = resolveRustfsUrl($pdo, $video['video_url'] ?? $video['file_path'] ?? '') ?? '';
+    if ($orig && $orig !== $video_url) $hls_fallback_url = $orig;
+} else {
+    // Primary is original → fallback to HLS manifest
+    if (!empty($video['hls_url'])) {
+        $hls = resolveRustfsUrl($pdo, $video['hls_url']) ?? '';
+        if ($hls && $hls !== $video_url) $hls_fallback_url = $hls;
     }
-}
-// If the DB has no hls_url (callback never arrived or columns missing),
-// derive the expected HLS URL from the video_url naming convention so the
-// JS error handler can still attempt HLS playback.
-if (empty($hls_fallback_url) && !preg_match('/\.m3u8(\?|&|$)/i', $video_url)) {
-    $hls_fallback_url = deriveHlsFallbackUrl($video_url);
+    if (empty($hls_fallback_url)) $hls_fallback_url = deriveHlsFallbackUrl($video_url);
 }
 
 $csrf_token = $_SESSION['csrf_token'] ?? '';

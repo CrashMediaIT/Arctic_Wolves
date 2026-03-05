@@ -2477,6 +2477,9 @@ def _send_callback(callback_url: str, payload: dict):
     ``False`` otherwise.  When *delete_original* depends on the DB being
     updated first, callers can gate the deletion on this return value.
 
+    Retries up to 3 times with exponential backoff to handle transient
+    network issues between the companion and the main application.
+
     Note: SSL verification is disabled because companion and main app
     typically run on an internal network behind a reverse proxy (HAProxy)
     with self-signed or internal certificates.
@@ -2490,17 +2493,22 @@ def _send_callback(callback_url: str, payload: dict):
     if parsed.scheme not in ("http", "https"):
         logger.warning("Callback URL rejected (invalid scheme): %s", callback_url)
         return False
-    try:
-        headers = {"Content-Type": "application/json"}
-        if API_KEY:
-            headers["X-API-Key"] = API_KEY
-        resp = http_requests.post(callback_url, json=payload, headers=headers, timeout=10, verify=False)  # noqa: S501
-        resp.raise_for_status()
-        logger.info("Callback sent to %s for job %s", callback_url, payload.get("job_id"))
-        return True
-    except Exception as exc:
-        logger.warning("Callback to %s failed: %s", callback_url, exc)
-        return False
+
+    max_retries = 3
+    for attempt in range(1, max_retries + 1):
+        try:
+            headers = {"Content-Type": "application/json"}
+            if API_KEY:
+                headers["X-API-Key"] = API_KEY
+            resp = http_requests.post(callback_url, json=payload, headers=headers, timeout=30, verify=False)  # noqa: S501
+            resp.raise_for_status()
+            logger.info("Callback sent to %s for job %s (attempt %d)", callback_url, payload.get("job_id"), attempt)
+            return True
+        except Exception as exc:
+            logger.warning("Callback to %s failed (attempt %d/%d): %s", callback_url, attempt, max_retries, exc)
+            if attempt < max_retries:
+                time.sleep(2 ** attempt)  # 2s, 4s backoff
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -2766,6 +2774,7 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
             "video_id": vid_id,
             "source_id": src_id,
             "status": "completed",
+            "hls_status": "ready",
             "source_key": s3_source_key,
             "hls_manifest": f"{output_prefix}/master.m3u8",
             "hls_segments_path": output_prefix,

@@ -137,6 +137,9 @@ function handleCompanionCallback(): void {
             $hls_manifest     = $body['hls_manifest'] ?? '';
             $hls_segments     = $body['hls_segments_path'] ?? '';
             $variants         = $body['variants'] ?? [];
+            // Use the explicit hls_status from the companion if provided,
+            // otherwise default to 'ready' for completed jobs.
+            $hls_status_value = $body['hls_status'] ?? 'ready';
 
             // Build the media proxy URL for the master playlist
             $hls_url = '';
@@ -144,24 +147,31 @@ function handleCompanionCallback(): void {
                 $hls_url = "api/media.php?key=" . rawurlencode($hls_manifest);
             }
 
+            $label = $table === 'vr_video_sources' ? 'source' : 'video';
+            ErrorLogger::info("Companion callback: updating $label $db_record_id to hls_status=$hls_status_value hls_url=$hls_url (job $job_id)");
+
             $stmt = $pdo->prepare("
                 UPDATE $table
-                SET hls_status        = 'ready',
+                SET hls_status        = :hls_status,
                     hls_master_url    = :manifest,
                     hls_segments_path = :segments,
                     hls_url           = :hls_url
                 WHERE id = :id
             ");
             $stmt->execute([
+                ':hls_status' => $hls_status_value,
                 ':manifest' => $hls_manifest,
                 ':segments' => $hls_segments,
                 ':hls_url'  => $hls_url,
                 ':id'       => $db_record_id,
             ]);
 
-            $label = $table === 'vr_video_sources' ? 'source' : 'video';
-            ErrorLogger::info("HLS transcode completed for $label $db_record_id (job $job_id)");
-            apiResponse(200, ['success' => true, 'message' => 'Video updated to ready']);
+            $rows_affected = $stmt->rowCount();
+            ErrorLogger::info("HLS transcode completed for $label $db_record_id (job $job_id) — $rows_affected row(s) updated");
+            if ($rows_affected === 0) {
+                ErrorLogger::warning("Companion callback: UPDATE affected 0 rows for $label $db_record_id (job $job_id) — record may have been deleted");
+            }
+            apiResponse(200, ['success' => true, 'message' => 'Video updated to ready', 'rows_affected' => $rows_affected]);
 
         } elseif ($status === 'failed') {
             $error = $body['error'] ?? 'Unknown error';
@@ -177,7 +187,7 @@ function handleCompanionCallback(): void {
             apiResponse(400, ['success' => false, 'error' => 'Invalid status. Must be completed or failed.']);
         }
     } catch (Exception $e) {
-        ErrorLogger::error("Companion callback error: " . $e->getMessage());
+        ErrorLogger::error("Companion callback error for job $job_id: " . $e->getMessage());
         apiResponse(500, ['success' => false, 'error' => 'Internal server error']);
     }
 }
