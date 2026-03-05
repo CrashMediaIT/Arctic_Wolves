@@ -2473,9 +2473,13 @@ def pull_settings():
 def _send_callback(callback_url: str, payload: dict):
     """POST job results back to the main application.
 
-    Returns ``True`` if the callback was successfully delivered (HTTP 2xx),
-    ``False`` otherwise.  When *delete_original* depends on the DB being
-    updated first, callers can gate the deletion on this return value.
+    Returns a dict ``{"ok": bool, "confirmed": bool}`` where *ok* means the
+    HTTP request succeeded (2xx) and *confirmed* means the main app
+    acknowledged that the database was actually updated (``confirmed: true``
+    and ``rows_affected > 0`` in the JSON response).
+
+    Callers should gate original-file deletion on *confirmed* to ensure the
+    main app can serve the HLS stream before the original is removed.
 
     Retries up to 3 times with exponential backoff to handle transient
     network issues between the companion and the main application.
@@ -2484,15 +2488,16 @@ def _send_callback(callback_url: str, payload: dict):
     typically run on an internal network behind a reverse proxy (HAProxy)
     with self-signed or internal certificates.
     """
+    result = {"ok": False, "confirmed": False}
     if not callback_url:
         logger.info("No callback URL configured — skipping result notification for job %s", payload.get("job_id", "?"))
-        return False
+        return result
     # Validate URL scheme to prevent SSRF to non-HTTP destinations
     from urllib.parse import urlparse
     parsed = urlparse(callback_url)
     if parsed.scheme not in ("http", "https"):
         logger.warning("Callback URL rejected (invalid scheme): %s", callback_url)
-        return False
+        return result
 
     max_retries = 3
     for attempt in range(1, max_retries + 1):
@@ -2502,13 +2507,27 @@ def _send_callback(callback_url: str, payload: dict):
                 headers["X-API-Key"] = API_KEY
             resp = http_requests.post(callback_url, json=payload, headers=headers, timeout=30, verify=False)  # noqa: S501
             resp.raise_for_status()
+            result["ok"] = True
             logger.info("Callback sent to %s for job %s (attempt %d)", callback_url, payload.get("job_id"), attempt)
-            return True
+            # Parse the response to check for explicit DB confirmation
+            try:
+                body = resp.json()
+                confirmed = body.get("confirmed", False)
+                rows = body.get("rows_affected", 0)
+                if confirmed and rows > 0:
+                    result["confirmed"] = True
+                    logger.info("Main app confirmed DB update for job %s (rows_affected=%d)", payload.get("job_id"), rows)
+                else:
+                    logger.warning("Main app did NOT confirm DB update for job %s (confirmed=%s, rows_affected=%s)", payload.get("job_id"), confirmed, rows)
+            except Exception:
+                # Non-JSON or missing fields — treat as unconfirmed but HTTP OK
+                logger.warning("Could not parse confirmation from callback response for job %s", payload.get("job_id"))
+            return result
         except Exception as exc:
             logger.warning("Callback to %s failed (attempt %d/%d): %s", callback_url, attempt, max_retries, exc)
             if attempt < max_retries:
                 time.sleep(2 ** attempt)  # exponential backoff: 2s, 4s
-    return False
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -2769,7 +2788,7 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
         with job_lock:
             vid_id = jobs[job_id].get("video_id")
             src_id = jobs[job_id].get("source_id")
-        cb_ok = _send_callback(cb_url, {
+        cb_result = _send_callback(cb_url, {
             "job_id": job_id,
             "video_id": vid_id,
             "source_id": src_id,
@@ -2781,14 +2800,32 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
             "variants": variant_playlists,
         })
 
-        # Delete original source from S3 only AFTER the callback has
-        # successfully updated hls_status to 'ready'.  If the callback
-        # failed the original file is kept so the player can still serve
-        # it until the next retry / manual intervention.
+        # Store callback confirmation status in the job for the history UI
+        with job_lock:
+            jobs[job_id]["callback_ok"] = cb_result["ok"]
+            jobs[job_id]["callback_confirmed"] = cb_result["confirmed"]
+        _save_jobs()
+
+        # Delete original source from S3 only AFTER the main app has
+        # confirmed the DB update (confirmed=true and rows_affected>0).
+        # If the callback failed or the DB was not updated, the original
+        # is kept so the player can still serve it until manual retry.
         if delete_original:
-            if cb_ok:
-                jlog(f"Deleting original source: {s3_source_key}")
-                _s3_delete(s3, s3_source_key)
+            if cb_result["confirmed"]:
+                jlog(f"Main app confirmed DB update — deleting original source: {s3_source_key}")
+                deleted = _s3_delete(s3, s3_source_key)
+                if deleted:
+                    jlog(f"Original source deleted successfully: {s3_source_key}")
+                    with job_lock:
+                        jobs[job_id]["original_deleted"] = True
+                    _save_jobs()
+                else:
+                    jlog(f"Failed to delete original source: {s3_source_key} — file may still exist in S3", "warn")
+                    with job_lock:
+                        jobs[job_id]["original_deleted"] = False
+                    _save_jobs()
+            elif cb_result["ok"]:
+                jlog("Skipping original deletion — callback succeeded but main app did NOT confirm DB update; keeping source for safety", "warn")
             else:
                 jlog("Skipping original deletion — callback failed; keeping source until DB is updated", "warn")
 

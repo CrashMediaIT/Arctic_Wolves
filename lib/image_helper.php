@@ -113,22 +113,19 @@ function resolveRustfsUrl($pdo, $url) {
 /**
  * Get the preferred playback URL for a video.
  *
- * When HLS transcoding has been initiated the main app pre-builds the
- * expected hls_url and stores it in the database alongside the status.
- * Once the companion finishes, the original source file is deleted — so we
- * must serve the HLS manifest whenever the transcode pipeline has started
- * (pending / processing / ready) and the hls_url is available.
- *
- * Only when hls_status is explicitly 'failed' (companion reported an error)
- * do we fall back to the original video_url, because the companion preserves
- * the original file on failure.
+ * Returns the HLS manifest URL only when the companion has confirmed the
+ * transcode is complete (hls_status === 'ready').  While the transcode is
+ * still running (pending / processing) the original video file is served so
+ * the player always has a valid source.  The original file is only deleted
+ * by the companion after the main app confirms the DB update, so it is safe
+ * to serve it during the transcode window.
  *
  * @param array $video  Video row from the database (must include video_url or file_path, hls_url, hls_status)
  * @return string  The URL to use for playback (video_url/file_path or hls_url)
  */
 function getPreferredVideoUrl($video) {
     $hls_status = $video['hls_status'] ?? '';
-    if ($hls_status !== '' && $hls_status !== 'failed' && !empty($video['hls_url'])) {
+    if ($hls_status === 'ready' && !empty($video['hls_url'])) {
         return $video['hls_url'];
     }
     return $video['video_url'] ?? $video['file_path'] ?? '';
