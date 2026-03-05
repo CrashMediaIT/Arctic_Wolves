@@ -144,7 +144,14 @@ function getJsonBody() {
  */
 function apiResponse($status, $data) {
     http_response_code($status);
-    echo json_encode($data);
+    $json = json_encode($data);
+    if ($json === false) {
+        // Fallback: encoding failed (e.g. invalid UTF-8 in a value).
+        // Use a hardcoded ASCII-only string so this echo can never fail.
+        echo '{"success":false,"error":"JSON encoding failed"}';
+    } else {
+        echo $json;
+    }
     exit;
 }
 
