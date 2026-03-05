@@ -42,10 +42,10 @@ test.describe('video_coach_reviews.php HLS fallback attribute', () => {
 
   test('data-hls-url should resolve hls_url through resolveRustfsUrl', () => {
     const c = content();
-    // Both occurrences of data-hls-url should use resolveRustfsUrl
-    const matches = c.match(/data-hls-url=".*?resolveRustfsUrl\(\$pdo,\s*\$video\['hls_url'\]\)/g);
-    expect(matches).not.toBeNull();
-    expect(matches.length).toBeGreaterThanOrEqual(2);
+    // The HLS URL is now computed in a PHP block that resolves via resolveRustfsUrl,
+    // then the result is referenced from the data-hls-url attribute.
+    expect(c).toContain("resolveRustfsUrl($pdo, $video['hls_url'])");
+    expect(c).toContain('data-hls-url=');
   });
 
   test('data-hls-url should only be emitted when hls_url is non-empty', () => {
@@ -121,7 +121,10 @@ test.describe('video_drill_review.php HLS fallback attribute', () => {
 
   test('data-hls-url should resolve hls_url through resolveRustfsUrl', () => {
     const c = content();
-    expect(c).toMatch(/data-hls-url=".*?resolveRustfsUrl\(\$pdo,\s*\$video\['hls_url'\]\)/);
+    // The HLS URL is now computed in a PHP block that resolves via resolveRustfsUrl,
+    // then the result is referenced from the data-hls-url attribute.
+    expect(c).toContain("resolveRustfsUrl($pdo, $video['hls_url']");
+    expect(c).toContain('data-hls-url=');
   });
 
   test('data-hls-url should only be emitted when hls_url is non-empty', () => {
@@ -320,5 +323,101 @@ test.describe('Detail pages retain existing HLS fallback', () => {
   test('video_review_detail.php (pwa) should have JS error handler for HLS fallback', () => {
     const c = readFile('views/pwa/video_review_detail.php');
     expect(c).toContain('_hlsFallbackTried');
+  });
+});
+
+// =====================================================
+// 8. deriveHlsFallbackUrl function in image_helper.php
+// =====================================================
+
+test.describe('deriveHlsFallbackUrl in lib/image_helper.php', () => {
+  const content = () => readFile('lib/image_helper.php');
+
+  test('function deriveHlsFallbackUrl should exist', () => {
+    const c = content();
+    expect(c).toContain('function deriveHlsFallbackUrl(');
+  });
+
+  test('should detect media proxy URLs (api/media.php?key=)', () => {
+    const c = content();
+    expect(c).toContain('api/media\\.php\\?key=');
+  });
+
+  test('should match video file extensions (mp4, mkv, mov, avi, webm)', () => {
+    const c = content();
+    expect(c).toMatch(/mp4\|mkv\|mov\|avi\|webm/);
+  });
+
+  test('should derive HLS path by appending /hls/master.m3u8', () => {
+    const c = content();
+    expect(c).toContain('/hls/master.m3u8');
+  });
+
+  test('should return empty string for non-proxy URLs', () => {
+    const c = content();
+    expect(c).toContain("if (empty($video_url)) return ''");
+  });
+
+  test('should use rawurlencode for the derived URL', () => {
+    const c = content();
+    expect(c).toContain('rawurlencode(');
+  });
+});
+
+// =====================================================
+// 9. Derived HLS fallback applied in all views
+// =====================================================
+
+test.describe('deriveHlsFallbackUrl used as fallback in views', () => {
+
+  test('video_review_detail.php (desktop) should call deriveHlsFallbackUrl', () => {
+    const c = readFile('views/video_review_detail.php');
+    expect(c).toContain('deriveHlsFallbackUrl(');
+  });
+
+  test('video_review_detail.php (pwa) should call deriveHlsFallbackUrl', () => {
+    const c = readFile('views/pwa/video_review_detail.php');
+    expect(c).toContain('deriveHlsFallbackUrl(');
+  });
+
+  test('video_coach_reviews.php should call deriveHlsFallbackUrl', () => {
+    const c = readFile('views/video_coach_reviews.php');
+    expect(c).toContain('deriveHlsFallbackUrl(');
+  });
+
+  test('video_drill_review.php should call deriveHlsFallbackUrl', () => {
+    const c = readFile('views/video_drill_review.php');
+    expect(c).toContain('deriveHlsFallbackUrl(');
+  });
+
+  test('gameplan film_room.php should call deriveHlsFallbackUrl', () => {
+    const c = readFile('views/gameplan/film_room.php');
+    expect(c).toContain('deriveHlsFallbackUrl(');
+  });
+
+  test('gameplan gp_film_room.php should call deriveHlsFallbackUrl', () => {
+    const c = readFile('views/gameplan/gp_film_room.php');
+    expect(c).toContain('deriveHlsFallbackUrl(');
+  });
+
+  test('gameplan my_clips.php should call deriveHlsFallbackUrl', () => {
+    const c = readFile('views/gameplan/my_clips.php');
+    expect(c).toContain('deriveHlsFallbackUrl(');
+  });
+
+  test('gameplan gp_my_clips.php should call deriveHlsFallbackUrl', () => {
+    const c = readFile('views/gameplan/gp_my_clips.php');
+    expect(c).toContain('deriveHlsFallbackUrl(');
+  });
+
+  test('derived fallback should only apply when primary URL is not already HLS', () => {
+    const c = readFile('views/video_review_detail.php');
+    // Guard: only derive when video_url is NOT an m3u8
+    expect(c).toMatch(/!preg_match.*\.m3u8.*deriveHlsFallbackUrl/s);
+  });
+
+  test('detail pages should use derived fallback only when hls_fallback_url is empty', () => {
+    const c = readFile('views/video_review_detail.php');
+    expect(c).toContain("empty($hls_fallback_url)");
   });
 });
