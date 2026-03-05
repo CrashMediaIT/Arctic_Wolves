@@ -265,7 +265,7 @@ $reviewed_videos = array_filter($videos, function($v) {
                             $vcr_video_url = resolveRustfsUrl($pdo, getPreferredVideoUrl($video)) ?? '';
                             $vcr_hls_url = '';
                             if (preg_match('/\.m3u8(\?|&|$)/i', $vcr_video_url)) {
-                                $orig = resolveRustfsUrl($pdo, $video['video_url'] ?? '') ?? '';
+                                $orig = resolveRustfsUrl($pdo, $video['video_url'] ?? $video['file_path'] ?? '') ?? '';
                                 if ($orig && $orig !== $vcr_video_url) $vcr_hls_url = $orig;
                             } else {
                                 if (!empty($video['hls_url'])) {
@@ -351,7 +351,7 @@ $reviewed_videos = array_filter($videos, function($v) {
                             $vcr_video_url = resolveRustfsUrl($pdo, getPreferredVideoUrl($video)) ?? '';
                             $vcr_hls_url = '';
                             if (preg_match('/\.m3u8(\?|&|$)/i', $vcr_video_url)) {
-                                $orig = resolveRustfsUrl($pdo, $video['video_url'] ?? '') ?? '';
+                                $orig = resolveRustfsUrl($pdo, $video['video_url'] ?? $video['file_path'] ?? '') ?? '';
                                 if ($orig && $orig !== $vcr_video_url) $vcr_hls_url = $orig;
                             } else {
                                 if (!empty($video['hls_url'])) {

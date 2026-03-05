@@ -2507,7 +2507,7 @@ def _send_callback(callback_url: str, payload: dict):
         except Exception as exc:
             logger.warning("Callback to %s failed (attempt %d/%d): %s", callback_url, attempt, max_retries, exc)
             if attempt < max_retries:
-                time.sleep(2 ** attempt)  # 2s, 4s backoff
+                time.sleep(2 ** attempt)  # exponential backoff: 2s, 4s
     return False
 
 

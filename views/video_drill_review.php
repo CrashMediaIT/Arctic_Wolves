@@ -265,7 +265,7 @@ $is_demo_data = false;
                                 $dr_video_url = resolveRustfsUrl($pdo, getPreferredVideoUrl($video)) ?? '';
                                 $dr_hls_url = '';
                                 if (preg_match('/\.m3u8(\?|&|$)/i', $dr_video_url)) {
-                                    $orig = resolveRustfsUrl($pdo, $video['video_url'] ?? '') ?? '';
+                                    $orig = resolveRustfsUrl($pdo, $video['video_url'] ?? $video['file_path'] ?? '') ?? '';
                                     if ($orig && $orig !== $dr_video_url) $dr_hls_url = $orig;
                                 } else {
                                     if (!empty($video['hls_url'])) {
