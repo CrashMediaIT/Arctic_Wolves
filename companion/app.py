@@ -2540,6 +2540,10 @@ def _send_callback(callback_url: str, payload: dict):
                     if not location:
                         break
                     target_url = urljoin(target_url, location)
+                    # Validate redirect target scheme to prevent SSRF
+                    if urlparse(target_url).scheme not in ("http", "https"):
+                        logger.warning("Callback redirect target rejected (invalid scheme): %s", target_url)
+                        break
                     logger.info("Callback redirect %d (%d) to %s — re-sending as POST (retry %d)", _redir + 1, resp.status_code, target_url, attempt)
                     resp = http_requests.post(target_url, json=payload, headers=headers, timeout=30, verify=False, allow_redirects=False)  # noqa: S501
                 else:
