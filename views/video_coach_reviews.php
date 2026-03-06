@@ -997,8 +997,6 @@ document.addEventListener('DOMContentLoaded', function() {
             // Set DASH URL on video element for fallback
             if (dashUrl) { vpVideo.setAttribute('data-dash-url', dashUrl); }
             else { vpVideo.removeAttribute('data-dash-url'); }
-            vpPrimaryUrl = url || '';
-            vpFallbackTried = false;
             if (typeof window.awReportPlaybackError === 'function') {
                 window.awReportPlaybackError('Coach reviews: play button clicked', { view: 'coach_reviews', action: 'play_click', primaryUrl: url, fallbackUrl: hlsUrl, title: title, type: 'lifecycle' });
             }

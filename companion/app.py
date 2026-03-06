@@ -3134,11 +3134,6 @@ def _generate_dash_manifest(jlog, local_source: str, dash_output: str,
     cmd = [FFMPEG_PATH, "-y"] + decode_flags + ["-i", local_source]
 
     # Add output streams for each variant
-    map_args = []
-    adapt_video_ids = []
-    adapt_audio_ids = []
-    stream_idx = 0
-
     for i, v in enumerate(variants):
         encode_flags = _select_encoder(hw_info, "h264", hw_decode=bool(decode_flags))
         vf_flags = _hw_vf(encode_flags, scale_height=v["height"])
@@ -3146,20 +3141,14 @@ def _generate_dash_manifest(jlog, local_source: str, dash_output: str,
         cmd += ["-map", "0:v:0", "-map", "0:a:0?"]
         cmd += encode_flags + vf_flags
         # Per-stream bitrate/quality settings using stream specifier
-        vid_idx = stream_idx
-        aud_idx = stream_idx + 1
         cmd += [
             f"-b:v:{i}", v["vbitrate"],
             f"-maxrate:{i}", v["vbitrate"],
             f"-bufsize:{i}", str(int(v["vbitrate"].replace("k", "")) * 2) + "k",
             f"-c:a:{i}", "aac", f"-b:a:{i}", v["abitrate"],
         ]
-        adapt_video_ids.append(str(vid_idx))
-        adapt_audio_ids.append(str(aud_idx))
-        stream_idx += 2
 
     # DASH muxer options
-    adaptation_sets = f"id=0,streams={'v'.join(str(i * 2) for i in range(len(variants)))} " if len(variants) == 1 else ""
     cmd += [
         "-f", "dash",
         "-seg_duration", "6",
