@@ -1505,9 +1505,14 @@ document.addEventListener('DOMContentLoaded', function() {
         videoPlayer.addEventListener('error', function() {
             if (drHlsFallbackUrl && !drHlsFallbackTried) {
                 drHlsFallbackTried = true;
+                if (typeof window.awReportPlaybackError === 'function') {
+                    window.awReportPlaybackError('Drill review: primary source failed, trying fallback', { fallback: drHlsFallbackUrl });
+                }
                 if (typeof window.awInitHlsPlayer === 'function') {
                     activeHls = window.awInitHlsPlayer(videoPlayer, drHlsFallbackUrl);
                 }
+            } else if (!drHlsFallbackUrl && typeof window.awReportPlaybackError === 'function') {
+                window.awReportPlaybackError('Drill review: video playback failed — no fallback URL', {});
             }
         }, true);
     }

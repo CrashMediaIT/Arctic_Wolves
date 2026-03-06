@@ -148,6 +148,7 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES) ?>">
     <meta name="theme-color" content="#6B46C1">
     <title>Game Plan – Arctic Wolves</title>
     <link rel="icon" type="image/png" href="<?= htmlspecialchars($site_favicon_url) ?>">

@@ -933,9 +933,14 @@ document.addEventListener('DOMContentLoaded', function() {
         vpVideo.addEventListener('error', function() {
             if (vpHlsFallbackUrl && !vpHlsFallbackTried) {
                 vpHlsFallbackTried = true;
+                if (typeof window.awReportPlaybackError === 'function') {
+                    window.awReportPlaybackError('Coach reviews: primary source failed, trying fallback', { fallback: vpHlsFallbackUrl });
+                }
                 if (typeof window.awInitHlsPlayer === 'function') {
                     vpHls = window.awInitHlsPlayer(vpVideo, vpHlsFallbackUrl);
                 }
+            } else if (!vpHlsFallbackUrl && typeof window.awReportPlaybackError === 'function') {
+                window.awReportPlaybackError('Coach reviews: video playback failed — no fallback URL', {});
             }
         }, true);
     }
