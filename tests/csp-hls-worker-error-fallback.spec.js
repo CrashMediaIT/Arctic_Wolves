@@ -114,10 +114,10 @@ test.describe('All video views have HLS fallback error handlers', () => {
       expect(content).toContain("addEventListener('error'");
     });
 
-    test(`${view.name} (${view.file}) should have HLS fallback URL variable`, () => {
+    test(`${view.name} (${view.file}) should have fallback URL variable`, () => {
       const content = readFile(view.file);
-      // Should have some form of HLS fallback URL tracking
-      expect(content).toMatch(/[Hh]ls[Ff]allback/);
+      // Should have some form of fallback URL tracking
+      expect(content).toMatch(/[Ff]allback[Uu]rl/);
     });
 
     test(`${view.name} (${view.file}) should call awInitHlsPlayer in fallback`, () => {
