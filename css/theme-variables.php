@@ -21,12 +21,6 @@ try {
     $defaults = [
         'primary_color' => '#6B46C1',
         'secondary_color' => '#c0c0c0',
-        'background_color' => '#06080b',
-        'card_background_color' => '#0d1117',
-        'text_color' => '#ffffff',
-        'text_muted_color' => '#94a3b8',
-        'border_color' => '#1e293b',
-        'sidebar_color' => '#020305',
         'button_hover_color' => '#a78bfa',
         'success_color' => '#22c55e',
         'error_color' => '#ef4444',
@@ -51,19 +45,7 @@ try {
     --secondary: <?= htmlspecialchars($colors['secondary_color'], ENT_QUOTES, 'UTF-8') ?>;
     --accent: <?= htmlspecialchars($colors['secondary_color'], ENT_QUOTES, 'UTF-8') ?>;
     
-    /* Background Colors */
-    --bg: <?= htmlspecialchars($colors['background_color'], ENT_QUOTES, 'UTF-8') ?>;
-    --bg-main: <?= htmlspecialchars($colors['background_color'], ENT_QUOTES, 'UTF-8') ?>;
-    --bg-card: <?= htmlspecialchars($colors['card_background_color'], ENT_QUOTES, 'UTF-8') ?>;
-    --sidebar: <?= htmlspecialchars($colors['sidebar_color'], ENT_QUOTES, 'UTF-8') ?>;
-    
-    /* Text Colors */
-    --text: <?= htmlspecialchars($colors['text_muted_color'], ENT_QUOTES, 'UTF-8') ?>;
-    --text-white: <?= htmlspecialchars($colors['text_color'], ENT_QUOTES, 'UTF-8') ?>;
-    --text-dim: <?= htmlspecialchars($colors['text_muted_color'], ENT_QUOTES, 'UTF-8') ?>;
-    
     /* UI Colors */
-    --border: <?= htmlspecialchars($colors['border_color'], ENT_QUOTES, 'UTF-8') ?>;
     --button-hover: <?= htmlspecialchars($colors['button_hover_color'], ENT_QUOTES, 'UTF-8') ?>;
     
     /* Status Colors */
@@ -75,12 +57,7 @@ try {
     --container-padding: 30px;
 }
 
-/* Override any hardcoded colors with theme variables */
-body {
-    background: var(--bg-main) !important;
-    color: var(--text-white) !important;
-}
-
+/* Override brand colors with theme variables */
 .btn-primary,
 .nav-btn {
     background: var(--primary) !important;

@@ -71,7 +71,6 @@ try {
 $theme_defaults = [
     'primary_color' => '#6B46C1',
     'secondary_color' => '#c0c0c0',
-    'background_color' => '#06080b',
     'logo_url' => '',
     'logo_method' => 'url',
     'use_logo_as_favicon' => '0',
@@ -1527,7 +1526,7 @@ foreach ($url_keys as $uk) {
                     <!-- Color Scheme Section -->
                     <div class="sync-options" style="margin-bottom: 24px;">
                         <h4><i class="fas fa-swatchbook"></i> Color Scheme</h4>
-                        <p class="help-text" style="margin-bottom: 16px;">Customize the application's color palette</p>
+                        <p class="help-text" style="margin-bottom: 16px;">Customize the application's brand colors</p>
                         <div class="theme-colors" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
                             <div class="color-picker-item">
                                 <label style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--text-dim);">Primary Color</label>
@@ -1548,17 +1547,6 @@ foreach ($url_keys as $uk) {
                                            style="width: 50px; height: 40px; border: none; border-radius: 6px; cursor: pointer;">
                                     <input type="text" class="form-input" id="theme_secondary_color_text" 
                                            value="<?php echo htmlspecialchars($theme_settings['secondary_color']); ?>" 
-                                           style="width: 100px; font-family: monospace;" readonly>
-                                </div>
-                            </div>
-                            <div class="color-picker-item">
-                                <label style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--text-dim);">Background Color</label>
-                                <div style="display: flex; align-items: center; gap: 10px;">
-                                    <input type="color" name="background_color" id="theme_background_color" 
-                                           value="<?php echo htmlspecialchars($theme_settings['background_color']); ?>"
-                                           style="width: 50px; height: 40px; border: none; border-radius: 6px; cursor: pointer;">
-                                    <input type="text" class="form-input" id="theme_background_color_text" 
-                                           value="<?php echo htmlspecialchars($theme_settings['background_color']); ?>" 
                                            style="width: 100px; font-family: monospace;" readonly>
                                 </div>
                             </div>
@@ -3305,8 +3293,7 @@ async function resetThemeColors() {
     
     const defaults = {
         'theme_primary_color': '#6B46C1',
-        'theme_secondary_color': '#c0c0c0',
-        'theme_background_color': '#06080b'
+        'theme_secondary_color': '#c0c0c0'
     };
     
     for (const [id, value] of Object.entries(defaults)) {
