@@ -2664,9 +2664,32 @@ def _send_callback(callback_url: str, payload: dict):
             result["ok"] = True
             logger.info("Callback sent to %s for job %s (attempt %d, HTTP %d)", target_url, payload.get("job_id"), attempt, resp.status_code)
             resp_preview = resp.text[:500] if resp.text else "(empty)"
-            # Parse the response to check for explicit DB confirmation
+            content_type = resp.headers.get("Content-Type", "")
+
+            # Try to parse the response as JSON.
+            # If the Content-Type is text/html the body may contain a PHP
+            # error/warning prepended to valid JSON — try to extract it.
+            body = None
             try:
                 body = resp.json()
+            except Exception:
+                # resp.json() failed — the body may be "HTML + JSON" when
+                # a PHP warning is emitted before the JSON payload.  Look
+                # for the first '{' and try to parse from there.
+                if resp.text:
+                    brace = resp.text.find("{")
+                    if brace > 0:
+                        try:
+                            body = json.loads(resp.text[brace:])
+                            logger.info(
+                                "Extracted JSON from mixed HTML+JSON response for job %s "
+                                "(skipped %d leading bytes of non-JSON output)",
+                                payload.get("job_id"), brace,
+                            )
+                        except Exception:
+                            pass  # truly not JSON
+
+            if body and isinstance(body, dict):
                 confirmed = body.get("confirmed", False)
                 rows = body.get("rows_affected", 0)
                 if confirmed and rows > 0:
@@ -2682,28 +2705,22 @@ def _send_callback(callback_url: str, payload: dict):
                         "(confirmed=%s, rows_affected=%s, http=%d, body=%s)",
                         payload.get("job_id"), confirmed, rows, resp.status_code, resp_preview,
                     )
-            except Exception:
-                # Non-JSON or missing fields — treat as unconfirmed but HTTP OK.
-                # Detect HTML responses which typically mean the request hit the
-                # wrong server block (e.g. main site instead of the API).
-                content_type = resp.headers.get("Content-Type", "")
+            else:
+                # Completely non-JSON — include body preview for diagnostics.
                 if "text/html" in content_type:
                     result["response_detail"] = (
                         f"HTTP {resp.status_code} returned HTML instead of JSON "
-                        f"(Content-Type: {content_type}). The callback URL may be "
-                        f"hitting the main site instead of the API — check nginx "
-                        f"config has a location /api/ block on the main domain."
+                        f"(Content-Type: {content_type}). "
+                        f"Body preview: {resp_preview}"
                     )
                     logger.warning(
                         "Callback for job %s returned HTML (Content-Type: %s) instead of JSON — "
-                        "the URL %s likely routes to the main site, not the API. "
-                        "Ensure nginx has 'location /api/ { try_files ... /api/index.php; }' "
-                        "in the main server block.",
-                        payload.get("job_id"), content_type, target_url,
+                        "URL: %s — check nginx has a location /api/ block. Body: %s",
+                        payload.get("job_id"), content_type, target_url, resp_preview,
                     )
                 else:
-                    result["response_detail"] = f"HTTP {resp.status_code} non-JSON body={resp_preview}"
-                    logger.warning("Could not parse confirmation from callback response for job %s (http=%d, body=%s)", payload.get("job_id"), resp.status_code, resp_preview)
+                    result["response_detail"] = f"HTTP {resp.status_code} non-JSON (Content-Type: {content_type}) body={resp_preview}"
+                    logger.warning("Could not parse confirmation from callback response for job %s (http=%d, ct=%s, body=%s)", payload.get("job_id"), resp.status_code, content_type, resp_preview)
             return result
         except Exception as exc:
             logger.warning("Callback to %s failed (attempt %d/%d): %s", callback_url, attempt, max_retries, exc)

@@ -11,8 +11,70 @@
  * Authentication: X-API-Key header matching gameplan_companion_api_key
  */
 
+// ── Safety net: guarantee every response from this handler is JSON ──────
+// ErrorLogger::init() (loaded by error_logger.php) installs a global
+// exception handler that outputs plain-text / HTML.  That handler is
+// designed for browser-facing pages, but for an API endpoint it breaks
+// JSON callers.  We install our own JSON-safe handlers *after* the
+// includes so they take precedence.
+
+// Buffer output during includes — any stray PHP warning or whitespace
+// from db_config / error_logger / encryption would corrupt the JSON body.
+ob_start();
+
 require_once __DIR__ . '/../../db_config.php';
 require_once __DIR__ . '/../../error_logger.php';
+
+// Discard any stray output produced by the includes above.
+$_stray = ob_get_clean();
+if ($_stray) {
+    error_log('[companion.php] Stray output from includes (' . strlen($_stray) . ' bytes): ' . substr($_stray, 0, 300));
+}
+unset($_stray);
+
+// Re-assert JSON Content-Type — an included file or ErrorLogger::init()
+// may have triggered output that committed headers with the default
+// text/html type, or a prior header() call may have been lost.
+if (!headers_sent()) {
+    header('Content-Type: application/json; charset=utf-8');
+}
+
+// Override ErrorLogger's global exception handler with a JSON-safe one.
+// This ensures that ANY uncaught exception — including from ErrorLogger
+// itself — produces a valid JSON response instead of HTML / plain text.
+set_exception_handler(function (\Throwable $e) {
+    if (!headers_sent()) {
+        header('Content-Type: application/json; charset=utf-8');
+        http_response_code(500);
+    }
+    echo json_encode([
+        'success'       => false,
+        'confirmed'     => false,
+        'error'         => 'Unhandled server error',
+        'rows_affected' => 0,
+    ]);
+    // Best-effort log (file only — DB may be the source of the failure)
+    @error_log('[companion.php] Uncaught exception: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+    exit;
+});
+
+// JSON-safe shutdown handler for fatal errors (out of memory, etc.)
+register_shutdown_function(function () {
+    $err = error_get_last();
+    if ($err && in_array($err['type'], [E_ERROR, E_CORE_ERROR, E_COMPILE_ERROR, E_PARSE])) {
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=utf-8');
+            http_response_code(500);
+        }
+        echo json_encode([
+            'success'       => false,
+            'confirmed'     => false,
+            'error'         => 'Fatal server error',
+            'rows_affected' => 0,
+        ]);
+        @error_log('[companion.php] Fatal error: ' . $err['message'] . ' in ' . $err['file'] . ':' . $err['line']);
+    }
+});
 
 // db_config.php calls ErrorLogger::setDatabase() only if ErrorLogger is
 // already loaded.  Because error_logger.php is required *after* db_config,
@@ -51,7 +113,13 @@ if ($sub_resource === 'callback' && $method === 'POST') {
     } catch (\Throwable $e) {
         // Catch any unhandled error (TypeError from null $pdo, missing
         // DB columns, etc.) so the response is always valid JSON.
-        ErrorLogger::error("Companion callback unhandled error: " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine());
+        // Wrap ErrorLogger call in its own try/catch — if the logger
+        // itself throws (e.g. DB gone), we must still send JSON.
+        try {
+            ErrorLogger::error("Companion callback unhandled error: " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine());
+        } catch (\Throwable $logErr) {
+            @error_log('[companion.php] ErrorLogger failed while handling callback error: ' . $logErr->getMessage());
+        }
         apiResponse(500, ['success' => false, 'confirmed' => false, 'error' => 'Internal server error', 'rows_affected' => 0]);
     }
 } elseif ($sub_resource === 'ping' && $method === 'POST') {
