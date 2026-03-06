@@ -28,7 +28,7 @@ test.describe('DASH MPD path resolution helper', () => {
         expect(content()).toContain('function _resolve_media_path(');
     });
 
-    test('_resolve_media_path normalises ../ path components', () => {
+    test('_resolve_media_path normalizes ../ path components', () => {
         const c = content();
         const fn = c.substring(
             c.indexOf('function _resolve_media_path('),

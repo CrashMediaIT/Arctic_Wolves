@@ -252,7 +252,7 @@ function _media_cors_headers() {
 }
 
 /**
- * Resolve a relative path against a base directory, normalising ../  and ./
+ * Resolve a relative path against a base directory, normalizing ../  and ./
  * Used for both HLS playlist and DASH MPD segment URL rewriting.
  */
 function _resolve_media_path(string $base_dir, string $relative): string {
