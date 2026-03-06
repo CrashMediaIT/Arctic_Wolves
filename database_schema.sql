@@ -397,6 +397,8 @@ CREATE TABLE IF NOT EXISTS `videos` (
     `hls_job_id` VARCHAR(36) DEFAULT NULL COMMENT 'Companion server HLS transcode job ID',
     `hls_master_url` VARCHAR(500) DEFAULT NULL COMMENT 'S3 key to master.m3u8 manifest',
     `hls_segments_path` VARCHAR(500) DEFAULT NULL COMMENT 'S3 prefix containing HLS segments',
+    `dash_url` VARCHAR(500) DEFAULT NULL COMMENT 'MPEG-DASH MPD manifest URL (api/media.php proxy path)',
+    `dash_manifest_url` VARCHAR(500) DEFAULT NULL COMMENT 'S3 key to DASH manifest.mpd',
     `thumbnail_url` VARCHAR(255) DEFAULT NULL,
     `upload_date` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `video_type` ENUM('drill_review', 'coach_review', 'uploaded_by_athlete') DEFAULT 'drill_review',
@@ -4370,6 +4372,8 @@ CREATE TABLE IF NOT EXISTS `vr_video_sources` (
     `hls_job_id` VARCHAR(36) DEFAULT NULL COMMENT 'Companion server HLS transcode job ID',
     `hls_master_url` VARCHAR(500) DEFAULT NULL COMMENT 'S3 key to master.m3u8 manifest',
     `hls_segments_path` VARCHAR(500) DEFAULT NULL COMMENT 'S3 prefix containing HLS segments',
+    `dash_url` VARCHAR(500) DEFAULT NULL COMMENT 'MPEG-DASH MPD manifest URL (api/media.php proxy path)',
+    `dash_manifest_url` VARCHAR(500) DEFAULT NULL COMMENT 'S3 key to DASH manifest.mpd',
     `game_id` INT DEFAULT NULL,
     `team_id` INT DEFAULT NULL,
     `uploaded_by` INT DEFAULT NULL,
@@ -4685,7 +4689,9 @@ ADD COLUMN IF NOT EXISTS `hls_url` VARCHAR(500) DEFAULT NULL COMMENT 'HLS master
 ADD COLUMN IF NOT EXISTS `hls_status` ENUM('pending', 'processing', 'ready', 'failed') DEFAULT NULL COMMENT 'HLS transcoding status',
 ADD COLUMN IF NOT EXISTS `hls_job_id` VARCHAR(36) DEFAULT NULL COMMENT 'Companion server HLS transcode job ID',
 ADD COLUMN IF NOT EXISTS `hls_master_url` VARCHAR(500) DEFAULT NULL COMMENT 'S3 key to master.m3u8 manifest',
-ADD COLUMN IF NOT EXISTS `hls_segments_path` VARCHAR(500) DEFAULT NULL COMMENT 'S3 prefix containing HLS segments';
+ADD COLUMN IF NOT EXISTS `hls_segments_path` VARCHAR(500) DEFAULT NULL COMMENT 'S3 prefix containing HLS segments',
+ADD COLUMN IF NOT EXISTS `dash_url` VARCHAR(500) DEFAULT NULL COMMENT 'MPEG-DASH MPD manifest URL (api/media.php proxy path)',
+ADD COLUMN IF NOT EXISTS `dash_manifest_url` VARCHAR(500) DEFAULT NULL COMMENT 'S3 key to DASH manifest.mpd';
 
 -- Default RustFS S3 storage settings
 INSERT IGNORE INTO `system_settings` (`setting_key`, `setting_value`, `setting_type`, `description`) VALUES
@@ -4707,7 +4713,9 @@ ADD COLUMN IF NOT EXISTS `hls_url` VARCHAR(500) DEFAULT NULL COMMENT 'HLS master
 ADD COLUMN IF NOT EXISTS `hls_status` ENUM('pending', 'processing', 'ready', 'failed') DEFAULT NULL COMMENT 'HLS transcoding status' AFTER `hls_url`,
 ADD COLUMN IF NOT EXISTS `hls_job_id` VARCHAR(36) DEFAULT NULL COMMENT 'Companion server HLS transcode job ID' AFTER `hls_status`,
 ADD COLUMN IF NOT EXISTS `hls_master_url` VARCHAR(500) DEFAULT NULL COMMENT 'S3 key to master.m3u8 manifest' AFTER `hls_job_id`,
-ADD COLUMN IF NOT EXISTS `hls_segments_path` VARCHAR(500) DEFAULT NULL COMMENT 'S3 prefix containing HLS segments' AFTER `hls_master_url`;
+ADD COLUMN IF NOT EXISTS `hls_segments_path` VARCHAR(500) DEFAULT NULL COMMENT 'S3 prefix containing HLS segments' AFTER `hls_master_url`,
+ADD COLUMN IF NOT EXISTS `dash_url` VARCHAR(500) DEFAULT NULL COMMENT 'MPEG-DASH MPD manifest URL (api/media.php proxy path)' AFTER `hls_segments_path`,
+ADD COLUMN IF NOT EXISTS `dash_manifest_url` VARCHAR(500) DEFAULT NULL COMMENT 'S3 key to DASH manifest.mpd' AFTER `dash_url`;
 
 -- Companion server settings for HLS transcoding (keys match process_gameplan_settings.php)
 INSERT IGNORE INTO `system_settings` (`setting_key`, `setting_value`, `setting_type`, `description`) VALUES

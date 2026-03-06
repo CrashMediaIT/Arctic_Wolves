@@ -257,6 +257,8 @@ CREATE TABLE IF NOT EXISTS `videos` (
     `hls_job_id` VARCHAR(36) DEFAULT NULL,
     `hls_master_url` VARCHAR(500) DEFAULT NULL,
     `hls_segments_path` VARCHAR(500) DEFAULT NULL,
+    `dash_url` VARCHAR(500) DEFAULT NULL,
+    `dash_manifest_url` VARCHAR(500) DEFAULT NULL,
     `thumbnail_url` VARCHAR(255) DEFAULT NULL,
     `upload_date` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `video_type` ENUM('drill_review', 'coach_review', 'uploaded_by_athlete') DEFAULT 'drill_review',

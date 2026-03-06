@@ -336,6 +336,9 @@ try {
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="views/shared_styles.css">
     <link rel="stylesheet" href="css/pwa-tablet.css">
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dashjs@5.0.0/dist/dash.all.min.js"></script>
+    <script src="js/hls-player.js"></script>
     <script src="js/typeahead.js"></script>
 </head>
 <body class="pwa-tablet-body">

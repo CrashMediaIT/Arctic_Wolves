@@ -83,6 +83,10 @@ try {
             handleTriggerTranscode();
             break;
 
+        case 'trigger_dash':
+            handleTriggerDash();
+            break;
+
         case 'get_offline_queue':
             handleGetOfflineQueue();
             break;
@@ -646,6 +650,48 @@ function handleTriggerTranscode() {
             'hls_status' => $hls_status,
             'hls_job_id' => $hls_job_id,
         ]);
+    } else {
+        throw new Exception('video_id or source_id is required');
+    }
+    exit;
+}
+
+/**
+ * Trigger DASH generation for an already-transcoded video.
+ * Called by the admin or front-end to add the missing DASH manifest to
+ * videos that were transcoded before DASH support was added.
+ */
+function handleTriggerDash() {
+    global $pdo, $user_id;
+
+    ignore_user_abort(true);
+    header('Content-Type: application/json');
+
+    $video_id   = filter_input(INPUT_POST, 'video_id', FILTER_VALIDATE_INT);
+    $source_id  = filter_input(INPUT_POST, 'source_id', FILTER_VALIDATE_INT);
+
+    if ($source_id) {
+        $stmt = $pdo->prepare("SELECT id, hls_segments_path, hls_status FROM vr_video_sources WHERE id = ? AND uploaded_by = ?");
+        $stmt->execute([$source_id, $user_id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) throw new Exception('Video source not found or access denied');
+        if ($row['hls_status'] !== 'ready') throw new Exception('Video must be fully transcoded (hls_status=ready) before generating DASH');
+        if (empty($row['hls_segments_path'])) throw new Exception('No HLS segments path found — video may not have been transcoded');
+
+        triggerDashGeneration($pdo, 'vr_video_sources', $source_id, $row['hls_segments_path']);
+
+        echo json_encode(['success' => true, 'source_id' => $source_id]);
+    } elseif ($video_id) {
+        $stmt = $pdo->prepare("SELECT id, hls_segments_path, hls_status FROM videos WHERE id = ? AND (athlete_id = ? OR coach_id = ?)");
+        $stmt->execute([$video_id, $user_id, $user_id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) throw new Exception('Video not found or access denied');
+        if ($row['hls_status'] !== 'ready') throw new Exception('Video must be fully transcoded (hls_status=ready) before generating DASH');
+        if (empty($row['hls_segments_path'])) throw new Exception('No HLS segments path found — video may not have been transcoded');
+
+        triggerDashGeneration($pdo, 'videos', $video_id, $row['hls_segments_path']);
+
+        echo json_encode(['success' => true, 'video_id' => $video_id]);
     } else {
         throw new Exception('video_id or source_id is required');
     }
@@ -3461,5 +3507,77 @@ function triggerHlsTranscodeSource($pdo, $source_id, $object_key) {
     } catch (Exception $e) {
         ErrorLogger::error("Companion transcode trigger exception for source $source_id: " . $e->getMessage());
         // Non-fatal: the upload still succeeds
+    }
+}
+
+/**
+ * Trigger DASH manifest generation via the companion /api/dash endpoint.
+ * Sends the HLS segments_path to the companion, which downloads the existing
+ * HLS segments, generates DASH fMP4/MPD, and uploads them alongside HLS.
+ *
+ * @param PDO    $pdo          Database connection
+ * @param string $table        Table name ('videos' or 'vr_video_sources')
+ * @param int    $record_id    Row ID in the target table
+ * @param string $segments_path S3 prefix containing the existing HLS segments
+ */
+function triggerDashGeneration($pdo, $table, $record_id, $segments_path) {
+    try {
+        $stmt = $pdo->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('gameplan_companion_url', 'gameplan_companion_api_key', 'gameplan_app_url')");
+        $stmt->execute();
+        $settings = [];
+        while ($row = $stmt->fetch()) {
+            $settings[$row['setting_key']] = $row['setting_value'] ?? '';
+        }
+        $companion_url = $settings['gameplan_companion_url'] ?? '';
+        $companion_key = $settings['gameplan_companion_api_key'] ?? '';
+        $app_url       = $settings['gameplan_app_url'] ?? '';
+
+        if (empty($companion_url)) {
+            return; // Companion not configured
+        }
+
+        $companion_url = rtrim($companion_url, "/");
+
+        $callback_url = '';
+        if (!empty($app_url)) {
+            $callback_url = rtrim($app_url, '/') . '/api/v1/companion/callback';
+        }
+
+        $payload = json_encode([
+            "segments_path" => $segments_path,
+            "callback_url"  => $callback_url,
+            "video_id"      => $table === 'videos' ? $record_id : null,
+            "source_id"     => $table === 'vr_video_sources' ? $record_id : null,
+        ]);
+
+        $ch = curl_init($companion_url . "/api/dash");
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            "Content-Type: application/json",
+            "X-API-Key: " . $companion_key,
+        ]);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curl_errno = curl_errno($ch);
+        $curl_error = curl_error($ch);
+        curl_close($ch);
+
+        if ($curl_errno !== 0) {
+            ErrorLogger::error("Companion DASH trigger failed for $table $record_id: curl error [$curl_errno] $curl_error");
+            return;
+        }
+
+        if ($http_code !== 202) {
+            $body_snippet = $response ? substr($response, 0, 500) : '(empty)';
+            ErrorLogger::error("Companion DASH trigger failed for $table $record_id: HTTP $http_code — $body_snippet");
+        }
+    } catch (Exception $e) {
+        ErrorLogger::error("Companion DASH trigger exception for $table $record_id: " . $e->getMessage());
     }
 }

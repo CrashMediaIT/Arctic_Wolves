@@ -145,6 +145,30 @@ function getPreferredVideoUrl($video) {
 }
 
 /**
+ * Get the MPEG-DASH manifest URL for a video, if available.
+ *
+ * Returns the DASH MPD URL when the companion has produced one alongside
+ * the HLS transcode.  The JS player uses this as a cross-browser fallback
+ * when HLS.js is unavailable or fails.
+ *
+ * @param array $video  Video row from the database (must include dash_url, dash_manifest_url, hls_status)
+ * @return string  DASH manifest proxy URL, or empty string if unavailable
+ */
+function getDashUrl($video) {
+    if (($video['hls_status'] ?? '') !== 'ready') {
+        return '';
+    }
+    if (!empty($video['dash_url'])) {
+        return $video['dash_url'];
+    }
+    // Reconstruct from raw S3 key if dash_url wasn't set but manifest exists
+    if (!empty($video['dash_manifest_url'])) {
+        return 'api/media.php?key=' . rawurlencode($video['dash_manifest_url']);
+    }
+    return '';
+}
+
+/**
  * Derive a fallback URL from a video's original proxy URL.
  *
  * When the companion transcodes a video it writes HLS segments to a

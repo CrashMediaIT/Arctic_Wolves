@@ -118,7 +118,7 @@ $vr_mc_angles = [];
 if ($vr_tab === 'multicam' && $vr_mc_game_id > 0) {
     try {
         $stmt = $pdo->prepare("
-            SELECT id, filename, file_path, camera_angle, duration, hls_url, hls_status
+            SELECT id, filename, file_path, camera_angle, duration, hls_url, hls_status, dash_url, dash_manifest_url
             FROM vr_video_sources WHERE game_id = ?
             ORDER BY camera_angle
         ");
@@ -353,8 +353,10 @@ if (!function_exists('vr_format_duration')) {
                     $vr_edit_fallback = resolveRustfsUrl($pdo, $vr_edit_source['hls_url'] ?? '') ?? '';
                     if (empty($vr_edit_fallback)) $vr_edit_fallback = deriveFallbackUrl($vr_edit_play_url ?? '');
                 }
+                $vr_edit_dash = getDashUrl($vr_edit_source);
+                if ($vr_edit_dash) $vr_edit_dash = resolveRustfsUrl($pdo, $vr_edit_dash) ?? '';
             ?>
-            <video id="vrVideoPlayer" controls preload="metadata" style="width:100%;aspect-ratio:16/9;border-radius:8px;display:none;object-fit:contain;background:#000"<?php if ($vr_edit_fallback && $vr_edit_fallback !== $vr_edit_play_url): ?> data-fallback-url="<?= htmlspecialchars($vr_edit_fallback) ?>"<?php endif; ?>>
+            <video id="vrVideoPlayer" controls preload="metadata" style="width:100%;aspect-ratio:16/9;border-radius:8px;display:none;object-fit:contain;background:#000"<?php if ($vr_edit_fallback && $vr_edit_fallback !== $vr_edit_play_url): ?> data-fallback-url="<?= htmlspecialchars($vr_edit_fallback) ?>"<?php endif; ?><?php if ($vr_edit_dash): ?> data-dash-url="<?= htmlspecialchars($vr_edit_dash) ?>"<?php endif; ?>>
                 <source src="<?= htmlspecialchars($vr_edit_play_url) ?>">
             </video>
             <?php endif; ?>
@@ -919,7 +921,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Fallback: if the primary source fails (e.g. 502 because companion
         // deleted the original after HLS transcode), retry with the HLS URL.
         var _filmFallbackTried = false;
-        player.addEventListener('error', function() {
+        player.addEventListener('error', function(e) {
+            if (e && e.target !== player) return;
             var hlsUrl = player.dataset.fallbackUrl;
             if (hlsUrl && !_filmFallbackTried) {
                 _filmFallbackTried = true;
@@ -927,6 +930,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (typeof window.awInitHlsPlayer === 'function') {
                     filmHls = window.awInitHlsPlayer(player, hlsUrl);
                 }
+            } else if (typeof window.awTryDashFallback === 'function' && player.getAttribute('data-dash-url') && !player._dashTried) {
+                player._dashTried = true;
+                window.awTryDashFallback(player);
             }
         }, true);
     }

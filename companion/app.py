@@ -2948,36 +2948,63 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
             f.write("\n".join(master_lines) + "\n")
         jlog(f"Master playlist written: {len(variants)} variants")
 
+        # ── Generate MPEG-DASH manifest from same source ─────────────
+        # DASH provides cross-browser coverage (Chrome/Edge/Firefox natively
+        # via MSE, Safari via HLS).  We produce fMP4 segments + MPD manifest
+        # alongside the HLS .ts segments so the player can fall back to DASH
+        # when HLS.js is unavailable or fails.
+        dash_manifest_key = ""
+        dash_output = os.path.join(work_dir, "dash")
+        try:
+            dash_manifest_key = _generate_dash_manifest(
+                jlog, local_source, dash_output, variants, hw_info,
+                s3_output_prefix.rstrip("/"))
+        except Exception as dash_exc:
+            # DASH generation is best-effort; HLS is the primary format.
+            jlog(f"DASH manifest generation failed (non-fatal): {dash_exc}", "warn")
+            logger.warning("DASH generation failed for job %s: %s", job_id, dash_exc)
+
         # ── Upload ────────────────────────────────────────────────────
         with job_lock:
             jobs[job_id]["status"] = "uploading"
 
+        output_prefix = s3_output_prefix.rstrip("/")
+
+        # Upload HLS files
         jlog(f"Uploading HLS segments to S3 prefix: {s3_output_prefix}")
         jlog(f"S3 upload: multipart for files > 64 MB, {_S3_MAX_RETRIES} retries per file")
         logger.info("HLS job %s: uploading segments to S3 prefix %s", job_id, s3_output_prefix)
         upload_start = time.time()
         upload_count = 0
-        # Count total files for progress reporting
-        output_prefix = s3_output_prefix.rstrip("/")
-        total_files = sum(len(f) for _, _, f in os.walk(hls_output))
-        jlog(f"Found {total_files} files to upload")
-        # Upload all HLS files to S3 (with multipart and retries for large segments)
-        for root, _dirs, files in os.walk(hls_output):
-            for filename in files:
-                local_file = os.path.join(root, filename)
-                relative = os.path.relpath(local_file, hls_output)
-                s3_key = f"{output_prefix}/{relative}"
-                ct = "application/vnd.apple.mpegurl" if filename.endswith(".m3u8") else "video/mp2t"
-                file_size = os.path.getsize(local_file)
-                upload_count += 1
-                if file_size >= 1024 * 1024:
-                    size_label = f"{round(file_size / (1024 * 1024), 1)} MB"
-                else:
-                    size_label = f"{round(file_size / 1024, 1)} KB"
-                jlog(f"Uploading file {upload_count}/{total_files}: {relative} ({size_label})")
-                if not _s3_upload(s3, local_file, s3_key, ct):
-                    jlog(f"Failed to upload {s3_key} after {_S3_MAX_RETRIES} attempts", "error")
-                    raise RuntimeError(f"Failed to upload {s3_key} after {_S3_MAX_RETRIES} attempts")
+
+        all_upload_dirs = [(hls_output, "")]
+        # Include DASH output if it was generated
+        if os.path.isdir(dash_output):
+            all_upload_dirs.append((dash_output, "dash"))
+
+        for upload_dir, sub_prefix in all_upload_dirs:
+            total_files = sum(len(f) for _, _, f in os.walk(upload_dir))
+            dir_label = sub_prefix or "hls"
+            jlog(f"Found {total_files} {dir_label} files to upload")
+            for root, _dirs, files in os.walk(upload_dir):
+                for filename in files:
+                    local_file = os.path.join(root, filename)
+                    relative = os.path.relpath(local_file, upload_dir)
+                    if sub_prefix:
+                        s3_key = f"{output_prefix}/{sub_prefix}/{relative}"
+                    else:
+                        s3_key = f"{output_prefix}/{relative}"
+                    ct = _dash_content_type(filename)
+                    file_size = os.path.getsize(local_file)
+                    upload_count += 1
+                    if file_size >= 1024 * 1024:
+                        size_label = f"{round(file_size / (1024 * 1024), 1)} MB"
+                    else:
+                        size_label = f"{round(file_size / 1024, 1)} KB"
+                    jlog(f"Uploading [{dir_label}] {relative} ({size_label})")
+                    if not _s3_upload(s3, local_file, s3_key, ct):
+                        jlog(f"Failed to upload {s3_key} after {_S3_MAX_RETRIES} attempts", "error")
+                        raise RuntimeError(f"Failed to upload {s3_key} after {_S3_MAX_RETRIES} attempts")
 
         upload_sec = round(time.time() - upload_start, 1)
         jlog(f"Upload complete — {upload_count} files in {upload_sec}s")
@@ -2988,18 +3015,21 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
         with job_lock:
             jobs[job_id]["status"] = "completed"
             jobs[job_id]["hls_manifest"] = f"{output_prefix}/master.m3u8"
+            jobs[job_id]["dash_manifest"] = dash_manifest_key
             jobs[job_id]["finished_at"] = time.time()
             jobs[job_id]["variants"] = [v["label"] for v in variants]
         _save_job(job_id)
 
-        logger.info("HLS job %s completed: %d variants, manifest=%s", job_id, len(variants), f"{output_prefix}/master.m3u8")
+        logger.info("HLS job %s completed: %d variants, manifest=%s, dash=%s",
+                     job_id, len(variants), f"{output_prefix}/master.m3u8",
+                     dash_manifest_key or "(none)")
 
         # Notify the main application that transcoding is complete
         variant_playlists = {v["label"]: f"{output_prefix}/{v['label']}/playlist.m3u8" for v in variants}
         with job_lock:
             vid_id = jobs[job_id].get("video_id")
             src_id = jobs[job_id].get("source_id")
-        cb_result = _send_callback(cb_url, {
+        cb_payload = {
             "job_id": job_id,
             "video_id": vid_id,
             "source_id": src_id,
@@ -3009,7 +3039,10 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
             "hls_manifest": f"{output_prefix}/master.m3u8",
             "hls_segments_path": output_prefix,
             "variants": variant_playlists,
-        })
+        }
+        if dash_manifest_key:
+            cb_payload["dash_manifest"] = dash_manifest_key
+        cb_result = _send_callback(cb_url, cb_payload)
 
         # Store callback confirmation status in the job for the history UI
         with job_lock:
@@ -3065,6 +3098,90 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
     finally:
         # Clean up temp files
         shutil.rmtree(work_dir, ignore_errors=True)
+
+
+def _dash_content_type(filename: str) -> str:
+    """Return the correct Content-Type for HLS/DASH files during S3 upload."""
+    ext = os.path.splitext(filename)[1].lower()
+    ct_map = {
+        ".m3u8": "application/vnd.apple.mpegurl",
+        ".ts":   "video/mp2t",
+        ".mpd":  "application/dash+xml",
+        ".m4s":  "video/iso.segment",
+        ".mp4":  "video/mp4",
+        ".m4a":  "audio/mp4",
+    }
+    return ct_map.get(ext, "application/octet-stream")
+
+
+def _generate_dash_manifest(jlog, local_source: str, dash_output: str,
+                            variants: list, hw_info: dict,
+                            output_prefix: str) -> str:
+    """Generate an MPEG-DASH manifest (MPD) with fMP4 segments from the source.
+
+    Uses a single FFmpeg call with multiple outputs to create fragmented MP4
+    (fMP4) segments and an MPD manifest for all quality variants in one pass.
+
+    Returns the S3 key where the MPD manifest will be uploaded (relative to
+    output_prefix), or empty string if generation fails.
+    """
+    jlog("Generating MPEG-DASH manifest…")
+    os.makedirs(dash_output, exist_ok=True)
+
+    # Build ffmpeg command for multi-variant DASH output
+    # Uses -f dash with -adaptation_sets to produce one MPD with all variants.
+    decode_flags = _hwaccel_decode_flags(hw_info)
+    cmd = [FFMPEG_PATH, "-y"] + decode_flags + ["-i", local_source]
+
+    # Add output streams for each variant
+    for i, v in enumerate(variants):
+        encode_flags = _select_encoder(hw_info, "h264", hw_decode=bool(decode_flags))
+        vf_flags = _hw_vf(encode_flags, scale_height=v["height"])
+
+        cmd += ["-map", "0:v:0", "-map", "0:a:0?"]
+        cmd += encode_flags + vf_flags
+        # Per-stream bitrate/quality settings using stream specifier
+        cmd += [
+            f"-b:v:{i}", v["vbitrate"],
+            f"-maxrate:{i}", v["vbitrate"],
+            f"-bufsize:{i}", str(int(v["vbitrate"].replace("k", "")) * 2) + "k",
+            f"-c:a:{i}", "aac", f"-b:a:{i}", v["abitrate"],
+        ]
+
+    # DASH muxer options
+    cmd += [
+        "-f", "dash",
+        "-seg_duration", "6",
+        "-init_seg_name", "init-$RepresentationID$.m4s",
+        "-media_seg_name", "seg-$RepresentationID$-$Number%05d$.m4s",
+        "-use_timeline", "1",
+        "-use_template", "1",
+        "-adaptation_sets",
+        " ".join([
+            f"id=0,streams=" + ",".join(str(i * 2) for i in range(len(variants))),
+            f"id=1,streams=" + ",".join(str(i * 2 + 1) for i in range(len(variants))),
+        ]),
+        os.path.join(dash_output, "manifest.mpd"),
+    ]
+
+    jlog(f"  DASH ffmpeg command: {' '.join(cmd)}")
+
+    dash_start = time.time()
+    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=7200)
+    dash_sec = round(time.time() - dash_start, 1)
+
+    if proc.returncode != 0:
+        jlog(f"DASH FFmpeg FAILED (exit code {proc.returncode}) after {dash_sec}s", "warn")
+        jlog(f"  stderr: {proc.stderr[:2000]}", "warn")
+        raise RuntimeError(f"DASH generation failed: {proc.stderr[:500]}")
+
+    jlog(f"DASH manifest generated in {dash_sec}s")
+
+    # Count generated files
+    dash_file_count = sum(len(f) for _, _, f in os.walk(dash_output))
+    jlog(f"DASH output: {dash_file_count} files")
+
+    return f"{output_prefix}/dash/manifest.mpd"
 
 
 def _resolution_width(height: int) -> int:
@@ -3291,7 +3408,7 @@ def hls_retry_callback():
     jlog = lambda msg, level="info": _job_log(job_id, msg, level)
     jlog("Retry-callback requested")
 
-    cb_result = _send_callback(cb_url, {
+    cb_payload = {
         "job_id": job_id,
         "video_id": vid_id,
         "source_id": src_id,
@@ -3301,7 +3418,11 @@ def hls_retry_callback():
         "hls_manifest": manifest,
         "hls_segments_path": output_prefix,
         "variants": variant_playlists,
-    })
+    }
+    dash_manifest = job.get("dash_manifest")
+    if dash_manifest:
+        cb_payload["dash_manifest"] = dash_manifest
+    cb_result = _send_callback(cb_url, cb_payload)
 
     with job_lock:
         jobs[job_id]["callback_ok"] = cb_result["ok"]
@@ -3344,6 +3465,312 @@ def hls_retry_callback():
         "callback_confirmed": cb_result["confirmed"],
         "original_deleted": original_deleted,
     }), 200
+
+
+# ---------------------------------------------------------------------------
+# MPEG-DASH generation for already-transcoded videos
+# ---------------------------------------------------------------------------
+
+def _dash_only_transcode_s3(job_id: str, s3_segments_path: str,
+                             callback_url: str = ""):
+    """Download existing HLS segments from S3, generate a DASH manifest from the
+    original source (re-downloaded from the HLS segments path), and upload the
+    DASH files back.  This allows adding DASH to videos that were transcoded
+    before DASH support was added.
+
+    The function looks for the source video (or re-uses HLS segments) in the
+    S3 output prefix to produce the DASH manifest.
+    """
+    jlog = lambda msg, level="info": _job_log(job_id, msg, level)
+
+    jlog(f"DASH-only job {job_id} started")
+    jlog(f"S3 segments path: {s3_segments_path}")
+
+    s3 = _get_s3_client()
+    if not s3:
+        jlog("S3/RustFS client not configured — cannot proceed", "error")
+        with job_lock:
+            jobs[job_id]["status"] = "failed"
+            jobs[job_id]["error"] = "S3 not configured"
+            jobs[job_id]["finished_at"] = time.time()
+        _save_job(job_id)
+        return
+
+    cb_url = callback_url or (MAIN_APP_URL + "/api/v1/companion/callback" if MAIN_APP_URL else "")
+    work_dir = os.path.join(TEMP_DIR, job_id)
+    os.makedirs(work_dir, exist_ok=True)
+
+    output_prefix = s3_segments_path.rstrip("/")
+
+    try:
+        with job_lock:
+            jobs[job_id]["status"] = "downloading"
+            jobs[job_id]["started_at"] = time.time()
+
+        # We need the master.m3u8 to know which variants exist
+        master_key = f"{output_prefix}/master.m3u8"
+        local_master = os.path.join(work_dir, "master.m3u8")
+        jlog(f"Downloading HLS master playlist: {master_key}")
+        if not _s3_download(s3, master_key, local_master):
+            raise RuntimeError(f"Failed to download master playlist: {master_key}")
+
+        # Parse variant labels from the master playlist
+        variant_labels = []
+        with open(local_master) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    # e.g. "360p/playlist.m3u8" → "360p"
+                    parts = line.split("/")
+                    if len(parts) >= 2:
+                        variant_labels.append(parts[0])
+
+        if not variant_labels:
+            raise RuntimeError("No variants found in master playlist")
+
+        jlog(f"Found variants: {variant_labels}")
+
+        # Download the first .ts segment from the first variant to probe resolution
+        # and determine variant parameters
+        variants = []
+        for label in variant_labels:
+            # Match label to HLS_VARIANTS
+            matched = next((v for v in HLS_VARIANTS if v["label"] == label), None)
+            if matched:
+                variants.append(matched)
+            else:
+                jlog(f"Unknown variant label '{label}' — using 720p defaults", "warn")
+                variants.append({"height": 720, "vbitrate": "2800k", "abitrate": "128k", "label": label})
+
+        # Download all variant playlists and segments for DASH re-muxing
+        hls_local = os.path.join(work_dir, "hls")
+        os.makedirs(hls_local, exist_ok=True)
+
+        for v in variants:
+            label = v["label"]
+            variant_dir = os.path.join(hls_local, label)
+            os.makedirs(variant_dir, exist_ok=True)
+
+            # Download playlist
+            pl_key = f"{output_prefix}/{label}/playlist.m3u8"
+            local_pl = os.path.join(variant_dir, "playlist.m3u8")
+            jlog(f"Downloading variant playlist: {pl_key}")
+            if not _s3_download(s3, pl_key, local_pl):
+                raise RuntimeError(f"Failed to download variant playlist: {pl_key}")
+
+            # Parse segment filenames from playlist
+            with open(local_pl) as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#"):
+                        seg_key = f"{output_prefix}/{label}/{line}"
+                        local_seg = os.path.join(variant_dir, line)
+                        if not os.path.exists(local_seg):
+                            jlog(f"Downloading segment: {seg_key}")
+                            if not _s3_download(s3, seg_key, local_seg):
+                                raise RuntimeError(f"Failed to download segment: {seg_key}")
+
+        # Concatenate .ts segments per variant into a single file for ffmpeg input
+        with job_lock:
+            jobs[job_id]["status"] = "transcoding"
+
+        jlog("Concatenating HLS segments per variant for DASH generation…")
+        concat_files = []
+        for v in variants:
+            label = v["label"]
+            variant_dir = os.path.join(hls_local, label)
+            concat_path = os.path.join(work_dir, f"{label}_concat.ts")
+
+            # Read playlist to get ordered segments
+            segments = []
+            pl_path = os.path.join(variant_dir, "playlist.m3u8")
+            with open(pl_path) as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#"):
+                        segments.append(os.path.join(variant_dir, line))
+
+            # Write ffmpeg concat file
+            concat_list = os.path.join(work_dir, f"{label}_concat.txt")
+            with open(concat_list, "w") as f:
+                for seg in segments:
+                    f.write(f"file '{seg}'\n")
+
+            concat_files.append((v, concat_list))
+
+        # Generate DASH from the concatenated segments
+        dash_output = os.path.join(work_dir, "dash")
+        os.makedirs(dash_output, exist_ok=True)
+
+        # Build a multi-input ffmpeg command for DASH
+        hw_info = _detect_hw_accel()
+        cmd = [FFMPEG_PATH, "-y"]
+        for v, concat_list in concat_files:
+            cmd += ["-f", "concat", "-safe", "0", "-i", concat_list]
+
+        for i, (v, _) in enumerate(concat_files):
+            cmd += ["-map", f"{i}:v:0", "-map", f"{i}:a:0?"]
+            cmd += ["-c:v", "copy", "-c:a", "copy"]
+
+        cmd += [
+            "-f", "dash",
+            "-seg_duration", "6",
+            "-init_seg_name", "init-$RepresentationID$.m4s",
+            "-media_seg_name", "seg-$RepresentationID$-$Number%05d$.m4s",
+            "-use_timeline", "1",
+            "-use_template", "1",
+            "-adaptation_sets",
+            " ".join([
+                f"id=0,streams=" + ",".join(str(i * 2) for i in range(len(concat_files))),
+                f"id=1,streams=" + ",".join(str(i * 2 + 1) for i in range(len(concat_files))),
+            ]),
+            os.path.join(dash_output, "manifest.mpd"),
+        ]
+
+        jlog(f"DASH ffmpeg command: {' '.join(cmd)}")
+        dash_start = time.time()
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=7200)
+        dash_sec = round(time.time() - dash_start, 1)
+
+        if proc.returncode != 0:
+            jlog(f"DASH FFmpeg FAILED (exit code {proc.returncode}) after {dash_sec}s", "error")
+            jlog(f"  stderr: {proc.stderr[:2000]}", "error")
+            raise RuntimeError(f"DASH generation failed: {proc.stderr[:500]}")
+
+        jlog(f"DASH manifest generated in {dash_sec}s")
+
+        # Upload DASH files
+        with job_lock:
+            jobs[job_id]["status"] = "uploading"
+
+        jlog("Uploading DASH files to S3…")
+        upload_count = 0
+        for root, _dirs, files in os.walk(dash_output):
+            for filename in files:
+                local_file = os.path.join(root, filename)
+                relative = os.path.relpath(local_file, dash_output)
+                s3_key = f"{output_prefix}/dash/{relative}"
+                ct = _dash_content_type(filename)
+                upload_count += 1
+                jlog(f"Uploading DASH file: {relative}")
+                if not _s3_upload(s3, local_file, s3_key, ct):
+                    raise RuntimeError(f"Failed to upload {s3_key}")
+
+        jlog(f"DASH upload complete — {upload_count} files")
+
+        dash_manifest_key = f"{output_prefix}/dash/manifest.mpd"
+
+        with job_lock:
+            jobs[job_id]["status"] = "completed"
+            jobs[job_id]["dash_manifest"] = dash_manifest_key
+            jobs[job_id]["finished_at"] = time.time()
+        _save_job(job_id)
+
+        jlog(f"DASH-only job completed: {dash_manifest_key}")
+
+        # Send callback to notify main app about the DASH manifest
+        with job_lock:
+            vid_id = jobs[job_id].get("video_id")
+            src_id = jobs[job_id].get("source_id")
+        _send_callback(cb_url, {
+            "job_id": job_id,
+            "video_id": vid_id,
+            "source_id": src_id,
+            "status": "completed",
+            "hls_status": "ready",
+            "dash_manifest": dash_manifest_key,
+            "hls_segments_path": output_prefix,
+        })
+
+    except Exception as exc:
+        logger.error("DASH-only job %s failed: %s", job_id, exc)
+        jlog(f"JOB FAILED: {exc}", "error")
+        import traceback
+        jlog(f"Traceback:\n{traceback.format_exc()}", "error")
+        with job_lock:
+            jobs[job_id]["status"] = "failed"
+            jobs[job_id]["error"] = str(exc)[:2000]
+            jobs[job_id]["finished_at"] = time.time()
+        _save_job(job_id)
+        with job_lock:
+            vid_id = jobs[job_id].get("video_id")
+            src_id = jobs[job_id].get("source_id")
+        _send_callback(cb_url, {
+            "job_id": job_id,
+            "video_id": vid_id,
+            "source_id": src_id,
+            "status": "failed",
+            "error": str(exc)[:2000],
+        })
+    finally:
+        shutil.rmtree(work_dir, ignore_errors=True)
+
+
+def _run_dash_job(job_id: str, s3_segments_path: str, callback_url: str = ""):
+    """Wrapper that acquires the semaphore and runs DASH-only transcode."""
+    with job_semaphore:
+        _dash_only_transcode_s3(job_id, s3_segments_path, callback_url)
+
+
+@app.route("/api/dash", methods=["POST"])
+def dash_transcode():
+    """Generate an MPEG-DASH manifest for an already-transcoded HLS video.
+
+    Use this to add DASH support to videos that were transcoded before DASH
+    generation was added.  The companion downloads the existing HLS segments
+    from S3, re-muxes them into fMP4/DASH format, and uploads the MPD
+    manifest alongside the existing HLS files.
+
+    POST JSON body:
+        segments_path:  S3 prefix containing the existing HLS segments (required)
+        callback_url:   (optional) URL to POST result when complete
+        video_id:       (optional) main-app video row ID, echoed in the callback
+        source_id:      (optional) main-app source row ID, echoed in the callback
+    """
+    auth_err = _require_api_key()
+    if auth_err:
+        return auth_err
+
+    s3 = _get_s3_client()
+    if not s3:
+        return jsonify({"error": "S3/RustFS is not configured on companion server"}), 503
+
+    data = request.get_json(silent=True) or {}
+    segments_path = data.get("segments_path", "")
+    callback_url = data.get("callback_url", "")
+    video_id = data.get("video_id")
+    source_id = data.get("source_id")
+
+    if not segments_path:
+        return jsonify({"error": "segments_path is required"}), 400
+
+    job_id = str(uuid.uuid4())
+    job = {
+        "id": job_id,
+        "status": "queued",
+        "description": f"DASH generation: {segments_path}",
+        "segments_path": segments_path,
+        "dash_manifest": None,
+        "video_id": video_id,
+        "source_id": source_id,
+        "callback_url": callback_url,
+        "created_at": time.time(),
+        "started_at": None,
+        "finished_at": None,
+        "error": None,
+        "log": [],
+    }
+    with job_lock:
+        jobs[job_id] = job
+    _save_job(job_id)
+
+    thread = threading.Thread(
+        target=_run_dash_job,
+        args=(job_id, segments_path, callback_url),
+        daemon=True,
+    )
+    thread.start()
+    return jsonify(job), 202
 
 
 # ---------------------------------------------------------------------------

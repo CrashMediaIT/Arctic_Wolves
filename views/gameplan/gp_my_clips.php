@@ -49,6 +49,7 @@ try {
                vs.filename AS source_filename, vs.file_path AS source_path,
                vs.camera_angle, vs.duration AS source_duration,
                vs.hls_url AS source_hls_url, vs.hls_status AS source_hls_status,
+               vs.dash_url AS source_dash_url, vs.dash_manifest_url AS source_dash_manifest_url,
                GROUP_CONCAT(DISTINCT t.name ORDER BY t.name SEPARATOR ', ') AS tag_names,
                gs.opponent_team, gs.game_date
         FROM vr_clip_athletes ca
@@ -187,7 +188,7 @@ if (!function_exists('gp_format_duration')) {
 <?php else: ?>
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;">
     <?php foreach ($mc_clips as $clip):
-        $clip_src_row = ['file_path' => $clip['source_path'] ?? '', 'hls_url' => $clip['source_hls_url'] ?? '', 'hls_status' => $clip['source_hls_status'] ?? ''];
+        $clip_src_row = ['file_path' => $clip['source_path'] ?? '', 'hls_url' => $clip['source_hls_url'] ?? '', 'hls_status' => $clip['source_hls_status'] ?? '', 'dash_url' => $clip['source_dash_url'] ?? '', 'dash_manifest_url' => $clip['source_dash_manifest_url'] ?? ''];
         $clip_play_url = resolveRustfsUrl($pdo, getPreferredVideoUrl($clip_src_row)) ?? '';
         $clip_fallback = '';
         if (preg_match('/\.m3u8(\?|&|$)/i', $clip_play_url)) {
@@ -197,8 +198,10 @@ if (!function_exists('gp_format_duration')) {
             $clip_fallback = resolveRustfsUrl($pdo, $clip['source_hls_url'] ?? '') ?? '';
             if (empty($clip_fallback)) $clip_fallback = deriveFallbackUrl($clip_play_url);
         }
+        $clip_dash_url = getDashUrl($clip_src_row);
+        if ($clip_dash_url) $clip_dash_url = resolveRustfsUrl($pdo, $clip_dash_url) ?? '';
     ?>
-    <div class="card gp-clip-item" style="margin-bottom:0;cursor:pointer;transition:transform .15s,border-color .2s;" data-clip-id="<?= (int)$clip['id'] ?>" data-source="<?= htmlspecialchars($clip_play_url) ?>"<?php if ($clip_fallback && $clip_fallback !== $clip_play_url): ?> data-fallback-url="<?= htmlspecialchars($clip_fallback) ?>"<?php endif; ?>>
+    <div class="card gp-clip-item" style="margin-bottom:0;cursor:pointer;transition:transform .15s,border-color .2s;" data-clip-id="<?= (int)$clip['id'] ?>" data-source="<?= htmlspecialchars($clip_play_url) ?>"<?php if ($clip_fallback && $clip_fallback !== $clip_play_url): ?> data-fallback-url="<?= htmlspecialchars($clip_fallback) ?>"<?php endif; ?><?php if ($clip_dash_url): ?> data-dash-url="<?= htmlspecialchars($clip_dash_url) ?>"<?php endif; ?>>
         <div style="position:relative;background:#0a0a0f;border-radius:12px 12px 0 0;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;overflow:hidden;">
             <?php if (!empty($clip['thumbnail_path'])): ?>
             <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $clip['thumbnail_path'])) ?>" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;">
@@ -265,6 +268,10 @@ document.addEventListener('DOMContentLoaded', function() {
             var src = card.dataset.source || '';
             _gpClipFallbackUrl = card.dataset.fallbackUrl || '';
             _gpClipFallbackTried = false;
+            video._dashTried = false;
+            var dashUrl = card.dataset.dashUrl || '';
+            if (dashUrl) { video.setAttribute('data-dash-url', dashUrl); }
+            else { video.removeAttribute('data-dash-url'); }
             var titleNode = card.querySelector('[style*="font-weight:700"]');
             titleEl.innerHTML = '<i class="fas fa-play-circle"></i> ' + (titleNode ? titleNode.textContent.trim() : 'Clip');
             if (gpClipsHls) { gpClipsHls.destroy(); gpClipsHls = null; }
@@ -285,19 +292,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Fallback: if the primary source fails (e.g. 502 because companion
     // deleted the original after HLS transcode), retry with the HLS URL.
-    video.addEventListener('error', function() {
+    video.addEventListener('error', function(e) {
+        if (e && e.target !== video) return;
         if (_gpClipFallbackUrl && !_gpClipFallbackTried) {
             _gpClipFallbackTried = true;
             if (gpClipsHls) { gpClipsHls.destroy(); gpClipsHls = null; }
             if (typeof window.awInitHlsPlayer === 'function') {
                 gpClipsHls = window.awInitHlsPlayer(video, _gpClipFallbackUrl);
             }
+        } else if (typeof window.awTryDashFallback === 'function' && video.getAttribute('data-dash-url') && !video._dashTried) {
+            video._dashTried = true;
+            window.awTryDashFallback(video);
         }
     }, true);
 
     function closeGpClipModal() {
         modal.style.display = 'none';
         if (gpClipsHls) { gpClipsHls.destroy(); gpClipsHls = null; }
+        if (video._awDash) { try { video._awDash.reset(); } catch(e){} video._awDash = null; }
         video.pause();
         video.removeAttribute('src');
     }

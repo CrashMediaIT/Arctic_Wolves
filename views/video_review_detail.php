@@ -76,6 +76,12 @@ if (preg_match('/\.m3u8(\?|&|$)/i', $video_url)) {
     if (empty($fallback_url)) $fallback_url = deriveFallbackUrl($video_url);
 }
 
+// DASH fallback URL for cross-browser playback (Chrome/Firefox/Edge)
+$dash_url = getDashUrl($video);
+if ($dash_url) {
+    $dash_url = resolveRustfsUrl($pdo, $dash_url) ?? '';
+}
+
 $csrf_token = $_SESSION['csrf_token'] ?? '';
 $is_coach = $isAnyCoach;
 $is_owner = (int)$video['athlete_id'] === (int)$user_id;
@@ -92,7 +98,7 @@ $coach_name   = trim(($video['coach_first_name'] ?? '') . ' ' . ($video['coach_l
 <div style="max-width: 1000px; margin: 0 auto; padding: 0 16px;">
     <!-- Video Player -->
     <div style="position: relative; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 24px; border: 1px solid var(--border); aspect-ratio: 16 / 9;">
-        <video id="detailVideoPlayer" controls preload="none"<?= $thumbnail_url ? ' poster="' . htmlspecialchars($thumbnail_url) . '"' : '' ?><?= $fallback_url ? ' data-fallback-url="' . htmlspecialchars($fallback_url) . '"' : '' ?> style="width: 100%; height: 100%; display: block; object-fit: contain;">
+        <video id="detailVideoPlayer" controls preload="none"<?= $thumbnail_url ? ' poster="' . htmlspecialchars($thumbnail_url) . '"' : '' ?><?= $fallback_url ? ' data-fallback-url="' . htmlspecialchars($fallback_url) . '"' : '' ?><?= $dash_url ? ' data-dash-url="' . htmlspecialchars($dash_url) . '"' : '' ?> style="width: 100%; height: 100%; display: block; object-fit: contain;">
             <source src="<?= htmlspecialchars($video_url) ?>" type="<?= $video_type ?>">
             Your browser does not support the video tag.
         </video>
@@ -318,7 +324,13 @@ document.addEventListener('DOMContentLoaded', function() {
     if (detailPlayer) {
         var _fallbackTried = false;
         var _reloadTried = false;
-        detailPlayer.addEventListener('error', function() {
+        detailPlayer.addEventListener('error', function(e) {
+            // Ignore errors from <source> child elements — when HLS.js manages
+            // playback via MSE the native <source> fires a spurious error because
+            // the browser cannot play .m3u8 natively.  HLS.js handles its own
+            // errors and dispatches an error event on the <video> element when
+            // recovery is exhausted.
+            if (e && e.target !== detailPlayer) return;
             var hlsUrl = detailPlayer.dataset.fallbackUrl;
             var srcEl = detailPlayer.querySelector('source');
             var diagState = { primaryUrl: _detailPrimaryUrl, fallbackUrl: hlsUrl || '', fallbackTried: _fallbackTried, reloadTried: _reloadTried, currentSrc: srcEl ? srcEl.getAttribute('src') : '' };
@@ -338,6 +350,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (typeof window.awInitHlsPlayer === 'function') {
                     window.awInitHlsPlayer(detailPlayer, _detailPrimaryUrl);
                 }
+            } else if (typeof window.awTryDashFallback === 'function' && detailPlayer.getAttribute('data-dash-url') && !detailPlayer._dashTried) {
+                detailPlayer._dashTried = true;
+                if (typeof window.awReportPlaybackError === 'function') {
+                    window.awReportPlaybackError('Detail page: HLS recovery exhausted, trying DASH fallback', { view: 'video_review_detail', action: 'try_dash', state: diagState });
+                }
+                window.awTryDashFallback(detailPlayer);
             } else if (typeof window.awReportPlaybackError === 'function') {
                 window.awReportPlaybackError('Detail page: video playback failed — all recovery exhausted', { view: 'video_review_detail', action: 'give_up', state: diagState });
             }

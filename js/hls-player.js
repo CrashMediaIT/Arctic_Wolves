@@ -1,17 +1,20 @@
 /**
- * Arctic Wolves HLS Video Player
- * Application-wide video player with HLS.js support for adaptive quality streaming.
+ * Arctic Wolves Video Player
+ * Application-wide video player with HLS.js and dash.js support for
+ * adaptive quality streaming across all browsers.
  * YouTube-style custom controls with resolution picker and auto bandwidth detection.
  *
  * Usage:
  *   var hls = window.awInitHlsPlayer(videoElement, videoUrl);
  *   // To destroy: if (hls) hls.destroy();
  *
- * Automatically detects HLS (.m3u8) URLs and uses HLS.js for playback with
- * quality selection. Falls back to native video for non-HLS sources or
- * Safari's native HLS support.
+ * Playback priority:
+ *   1. HLS via HLS.js (Chrome/Firefox/Edge via MSE)
+ *   2. Native HLS (Safari)
+ *   3. MPEG-DASH via dash.js (cross-browser fallback via data-dash-url)
+ *   4. Direct video file (MP4/WebM/etc.)
  *
- * Requires: HLS.js loaded before this script (CDN or local).
+ * Requires: HLS.js and/or dash.js loaded before this script (CDN or local).
  */
 (function() {
     'use strict';
@@ -404,13 +407,22 @@
             return null;
         }
 
-        // HLS URL but no player available — report so admins can diagnose
+        // HLS URL but no player available — try DASH fallback
         if (isHLS) {
+            var dashUrl = video.getAttribute('data-dash-url');
+            if (dashUrl && typeof dashjs !== 'undefined') {
+                _reportPlaybackError('HLS unavailable, trying DASH fallback via dash.js', {
+                    element: video.id || 'unknown', hlsUrl: url, dashUrl: dashUrl, type: 'lifecycle'
+                });
+                return _initDashPlayer(video, dashUrl);
+            }
             _reportPlaybackError('HLS stream cannot play: HLS.js not available and browser has no native HLS support', {
                 element: video.id || 'unknown',
                 url: url,
                 hlsJsLoaded: typeof Hls !== 'undefined',
                 hlsSupported: (typeof Hls !== 'undefined') ? Hls.isSupported() : false,
+                dashJsLoaded: typeof dashjs !== 'undefined',
+                dashUrl: dashUrl || '',
                 type: 'hls_unavailable'
             });
             return null;
@@ -430,6 +442,80 @@
         });
         _buildCustomControls(video, null, null);
         return null;
+    }
+
+    /**
+     * Initialise MPEG-DASH playback via dash.js.
+     * Used as a cross-browser fallback when HLS.js is unavailable or fails.
+     *
+     * @param {HTMLVideoElement} video  The <video> element.
+     * @param {string}           url    DASH MPD manifest URL.
+     * @returns {object|null}  The dash.js MediaPlayer instance, or null.
+     */
+    function _initDashPlayer(video, url) {
+        if (!video || !url) return null;
+        if (typeof dashjs === 'undefined' || !dashjs.MediaPlayer) {
+            _reportPlaybackError('DASH init failed: dash.js not loaded', { element: video.id || 'unknown', url: url, type: 'dash_unavailable' });
+            return null;
+        }
+
+        _reportPlaybackError('DASH init: creating dash.js player', { element: video.id || 'unknown', url: url, type: 'lifecycle' });
+
+        // Destroy any previous HLS.js instance
+        if (video._awHls) {
+            try { video._awHls.destroy(); } catch (e) { /* ignore */ }
+            video._awHls = null;
+        }
+        // Destroy any previous dash.js instance
+        if (video._awDash) {
+            try { video._awDash.reset(); } catch (e) { /* ignore */ }
+            video._awDash = null;
+        }
+
+        try {
+            var player = dashjs.MediaPlayer().create();
+            player.initialize(video, url, true);
+            video._awDash = player;
+
+            player.on('error', function(e) {
+                _reportPlaybackError('DASH error: ' + (e.error ? e.error.message || e.error.code : 'unknown'), {
+                    element: video.id || 'unknown', url: url, type: 'dash_error',
+                    error: e.error || e
+                });
+            });
+
+            player.on('streamInitialized', function() {
+                _reportPlaybackError('DASH lifecycle: stream initialized', { url: url, type: 'lifecycle' });
+                _buildCustomControls(video, null, null);
+            });
+
+            return player;
+        } catch (err) {
+            _reportPlaybackError('DASH init exception: ' + (err.message || err), { element: video.id || 'unknown', url: url, type: 'dash_error' });
+            return null;
+        }
+    }
+
+    /**
+     * Try DASH fallback for a video element.
+     * Called by view-level error handlers when HLS playback fails completely.
+     * Reads the data-dash-url attribute from the video element.
+     *
+     * @param {HTMLVideoElement} video  The <video> element.
+     * @returns {object|null}  The dash.js player instance, or null if DASH unavailable.
+     */
+    function awTryDashFallback(video) {
+        if (!video) return null;
+        var dashUrl = video.getAttribute('data-dash-url');
+        if (!dashUrl) {
+            _reportPlaybackError('DASH fallback: no data-dash-url attribute', { element: video.id || 'unknown', type: 'dash_unavailable' });
+            return null;
+        }
+        if (typeof dashjs === 'undefined') {
+            _reportPlaybackError('DASH fallback: dash.js library not loaded', { element: video.id || 'unknown', dashUrl: dashUrl, type: 'dash_unavailable' });
+            return null;
+        }
+        return _initDashPlayer(video, dashUrl);
     }
 
     /**
@@ -986,5 +1072,6 @@
 
     // Expose globally
     window.awInitHlsPlayer = awInitHlsPlayer;
+    window.awTryDashFallback = awTryDashFallback;
     window.awReportPlaybackError = _reportPlaybackError;
 })();

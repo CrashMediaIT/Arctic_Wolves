@@ -275,12 +275,15 @@ $reviewed_videos = array_filter($videos, function($v) {
                                 if (empty($vcr_hls_url)) $vcr_hls_url = deriveFallbackUrl($vcr_video_url);
                             }
                             $vcr_thumb_url = resolveRustfsUrl($pdo, $video['thumbnail_url'] ?? '') ?? '';
+                            $vcr_dash_url = getDashUrl($video);
+                            if ($vcr_dash_url) $vcr_dash_url = resolveRustfsUrl($pdo, $vcr_dash_url) ?? '';
                         ?>
                         <button class="btn-icon" title="Watch Video"
                             data-action="view-video"
                             data-video-id="<?= $video['id'] ?>"
                             data-video-url="<?= htmlspecialchars($vcr_video_url) ?>"
                             <?php if (!empty($vcr_hls_url)): ?>data-fallback-url="<?= htmlspecialchars($vcr_hls_url) ?>"<?php endif; ?>
+                            <?php if (!empty($vcr_dash_url)): ?>data-dash-url="<?= htmlspecialchars($vcr_dash_url) ?>"<?php endif; ?>
                             data-thumbnail-url="<?= htmlspecialchars($vcr_thumb_url) ?>"><i class="fas fa-play"></i></button>
                         <?php if ($isAnyCoach): ?>
                         <button class="btn-icon btn-review" title="Review" data-action="review-video" data-video-id="<?= $video['id'] ?>"><i class="fas fa-check"></i></button>
@@ -361,12 +364,15 @@ $reviewed_videos = array_filter($videos, function($v) {
                                 if (empty($vcr_hls_url)) $vcr_hls_url = deriveFallbackUrl($vcr_video_url);
                             }
                             $vcr_thumb_url = resolveRustfsUrl($pdo, $video['thumbnail_url'] ?? '') ?? '';
+                            $vcr_dash_url = getDashUrl($video);
+                            if ($vcr_dash_url) $vcr_dash_url = resolveRustfsUrl($pdo, $vcr_dash_url) ?? '';
                         ?>
                         <button class="btn-icon" title="Watch Video"
                             data-action="view-video"
                             data-video-id="<?= $video['id'] ?>"
                             data-video-url="<?= htmlspecialchars($vcr_video_url) ?>"
                             <?php if (!empty($vcr_hls_url)): ?>data-fallback-url="<?= htmlspecialchars($vcr_hls_url) ?>"<?php endif; ?>
+                            <?php if (!empty($vcr_dash_url)): ?>data-dash-url="<?= htmlspecialchars($vcr_dash_url) ?>"<?php endif; ?>
                             data-thumbnail-url="<?= htmlspecialchars($vcr_thumb_url) ?>"><i class="fas fa-play"></i></button>
                         <a href="?page=video_review_detail&video_id=<?= $video['id'] ?>&from=coaches_reviews" class="btn-icon" title="View Details"><i class="fas fa-comments"></i></a>
                     </div>
@@ -902,6 +908,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function cleanupCoachVideoPlayer() {
         if (vpHls) { vpHls.destroy(); vpHls = null; }
+        if (vpVideo && vpVideo._awDash) { try { vpVideo._awDash.reset(); } catch(e){} vpVideo._awDash = null; }
         vpFallbackUrl = '';
         vpFallbackTried = false;
         vpPrimaryUrl = '';
@@ -935,7 +942,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // (the failure may have been transient, e.g. a temporary buffer error).
     var vpReloadTried = false;
     if (vpVideo) {
-        vpVideo.addEventListener('error', function() {
+        vpVideo.addEventListener('error', function(e) {
+            // Ignore errors from <source> child elements — when HLS.js manages
+            // playback via MSE the native <source> fires a spurious error because
+            // the browser cannot play .m3u8 natively.
+            if (e && e.target !== vpVideo) return;
             var diagState = { primaryUrl: vpPrimaryUrl, fallbackUrl: vpFallbackUrl, fallbackTried: vpFallbackTried, reloadTried: vpReloadTried };
             if (vpFallbackUrl && !vpFallbackTried) {
                 vpFallbackTried = true;
@@ -953,6 +964,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (typeof window.awInitHlsPlayer === 'function') {
                     vpHls = window.awInitHlsPlayer(vpVideo, vpPrimaryUrl);
                 }
+            } else if (typeof window.awTryDashFallback === 'function' && vpVideo.getAttribute('data-dash-url') && !vpVideo._dashTried) {
+                vpVideo._dashTried = true;
+                if (typeof window.awReportPlaybackError === 'function') {
+                    window.awReportPlaybackError('Coach reviews: HLS recovery exhausted, trying DASH fallback', { view: 'coach_reviews', action: 'try_dash', state: diagState });
+                }
+                window.awTryDashFallback(vpVideo);
             } else if (typeof window.awReportPlaybackError === 'function') {
                 window.awReportPlaybackError('Coach reviews: video playback failed — all recovery exhausted', { view: 'coach_reviews', action: 'give_up', state: diagState });
             }
@@ -963,6 +980,7 @@ document.addEventListener('DOMContentLoaded', function() {
         btn.addEventListener('click', function() {
             var url = this.dataset.videoUrl;
             var hlsUrl = this.dataset.fallbackUrl || '';
+            var dashUrl = this.dataset.dashUrl || '';
             var thumbnailUrl = this.dataset.thumbnailUrl || '';
             var item = this.closest('.video-list-item');
             var title = item ? (item.querySelector('.video-details h4')?.textContent || 'Video') : 'Video';
@@ -971,10 +989,14 @@ document.addEventListener('DOMContentLoaded', function() {
             vpTitle.innerHTML = '<i class="fas fa-play-circle"></i> ' + title;
             cleanupCoachVideoPlayer();
             vpReloadTried = false;
+            vpVideo._dashTried = false;
             // Store HLS fallback URL for error recovery
             vpFallbackUrl = (hlsUrl && hlsUrl !== url) ? hlsUrl : '';
             vpPrimaryUrl = url || '';
             vpFallbackTried = false;
+            // Set DASH URL on video element for fallback
+            if (dashUrl) { vpVideo.setAttribute('data-dash-url', dashUrl); }
+            else { vpVideo.removeAttribute('data-dash-url'); }
             if (typeof window.awReportPlaybackError === 'function') {
                 window.awReportPlaybackError('Coach reviews: play button clicked', { view: 'coach_reviews', action: 'play_click', primaryUrl: url, fallbackUrl: hlsUrl, title: title, type: 'lifecycle' });
             }

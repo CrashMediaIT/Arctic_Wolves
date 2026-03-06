@@ -204,6 +204,7 @@ if ($range_header) {
             'mp4'  => 'video/mp4',   'webm' => 'video/webm',  'mov'  => 'video/quicktime',
             'avi'  => 'video/x-msvideo', 'pdf' => 'application/pdf',
             'm3u8' => 'application/vnd.apple.mpegurl', 'ts' => 'video/mp2t',
+            'mpd'  => 'application/dash+xml', 'm4s' => 'video/iso.segment',
         ];
         $ct = $mime_map[$ext] ?? 'application/octet-stream';
     }
@@ -258,14 +259,17 @@ $mime_map = [
     'avi'  => 'video/x-msvideo', 'pdf' => 'application/pdf',
     'json' => 'application/json', 'txt' => 'text/plain',
     'm3u8' => 'application/vnd.apple.mpegurl', 'ts' => 'video/mp2t',
+    'mpd'  => 'application/dash+xml', 'm4s' => 'video/iso.segment',
 ];
 
 $m3u8_ext = strtolower(pathinfo($object_key_clean, PATHINFO_EXTENSION));
 
-// ── Streaming path for non-m3u8 files (e.g. .ts segments, images) ───────
+// ── Streaming path for non-manifest files (e.g. .ts/.m4s segments, images) ──
 // Pipes S3 response directly to the client without buffering the entire body
-// in PHP memory. Reduces latency and memory usage for large HLS segments.
-if ($m3u8_ext !== 'm3u8') {
+// in PHP memory. Reduces latency and memory usage for large HLS/DASH segments.
+// Both .m3u8 (HLS) and .mpd (DASH) manifests need URL rewriting, so they go
+// through the buffered path below.
+if ($m3u8_ext !== 'm3u8' && $m3u8_ext !== 'mpd') {
     $guessed_ct = $mime_map[$m3u8_ext] ?? 'application/octet-stream';
 
     $stream_resp_headers = [];
@@ -360,7 +364,9 @@ if ($m3u8_ext !== 'm3u8') {
     exit;
 }
 
-// ── Buffered path for m3u8 playlists (needs URL rewriting) ──────────────
+// ── Buffered path for manifest files (HLS .m3u8 / DASH .mpd) ────────────
+// Both manifest types contain relative paths that need rewriting to go
+// through this media proxy.
 $ch = curl_init($url);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, $curl_headers);
@@ -413,32 +419,52 @@ if ($http_code !== 200) {
     exit;
 }
 
-// ── Rewrite relative URLs in HLS playlists ──────────────────────────────
-// HLS .m3u8 files contain relative paths to variant playlists and segments.
-// Because we serve them through a query-string proxy (media.php?key=…) the
-// browser/HLS.js would resolve those relatives against /api/ rather than the
-// S3 directory the manifest lives in.  Fix by rewriting every relative
-// reference to go back through this proxy.
 $base_dir = dirname($object_key_clean);
-$lines = explode("\n", $body);
-$rewritten = [];
-foreach ($lines as $line) {
-    $trimmed = trim($line);
-    if ($trimmed === '' || (isset($trimmed[0]) && $trimmed[0] === '#')) {
-        $rewritten[] = $line;
-        continue;
+
+if ($m3u8_ext === 'mpd') {
+    // ── Rewrite relative URLs in DASH MPD manifests ─────────────────────
+    // DASH .mpd files are XML and reference segments via <BaseURL>, media=
+    // attributes, and initialization= attributes with relative paths.
+    // Inject a <BaseURL> element pointing back to this proxy so the DASH
+    // player resolves all segment paths through the proxy.
+    $proxy_base = 'media.php?key=' . rawurlencode($base_dir . '/');
+    // Insert <BaseURL> after the opening <MPD ...> tag if not already present
+    if (stripos($body, '<BaseURL>') === false) {
+        $body = preg_replace(
+            '#(<MPD[^>]*>)#i',
+            '$1' . "\n  <BaseURL>" . htmlspecialchars($proxy_base) . "</BaseURL>",
+            $body,
+            1
+        );
     }
-    if (preg_match('#^https?://#', $trimmed)) {
-        $rewritten[] = $line;
-        continue;
+    $content_type = 'application/dash+xml';
+} else {
+    // ── Rewrite relative URLs in HLS playlists ──────────────────────────
+    // HLS .m3u8 files contain relative paths to variant playlists and segments.
+    // Because we serve them through a query-string proxy (media.php?key=…) the
+    // browser/HLS.js would resolve those relatives against /api/ rather than the
+    // S3 directory the manifest lives in.  Fix by rewriting every relative
+    // reference to go back through this proxy.
+    $lines = explode("\n", $body);
+    $rewritten = [];
+    foreach ($lines as $line) {
+        $trimmed = trim($line);
+        if ($trimmed === '' || (isset($trimmed[0]) && $trimmed[0] === '#')) {
+            $rewritten[] = $line;
+            continue;
+        }
+        if (preg_match('#^https?://#', $trimmed)) {
+            $rewritten[] = $line;
+            continue;
+        }
+        $resolved_key = $base_dir . '/' . $trimmed;
+        $rewritten[] = 'media.php?key=' . rawurlencode($resolved_key);
     }
-    $resolved_key = $base_dir . '/' . $trimmed;
-    $rewritten[] = 'media.php?key=' . rawurlencode($resolved_key);
+    $body = implode("\n", $rewritten);
+    $content_type = 'application/vnd.apple.mpegurl';
 }
-$body = implode("\n", $rewritten);
 
 // ── Send response ───────────────────────────────────────────────────────
-$content_type = 'application/vnd.apple.mpegurl';
 header('Content-Type: ' . $content_type);
 header('Content-Length: ' . strlen($body));
 header('Accept-Ranges: bytes');
