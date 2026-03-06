@@ -1062,6 +1062,36 @@ def _hw_vf(encode_flags: list[str], scale_height: int | None = None,
     return []
 
 
+def _ffmpeg_error_summary(stderr: str, max_len: int = 1000) -> str:
+    """Extract meaningful error lines from FFmpeg stderr.
+
+    FFmpeg always prints its version banner and build configuration to stderr,
+    which can consume the first 500+ characters.  When we truncate stderr for
+    error messages, the real error is hidden.  This helper strips the banner
+    and returns only the diagnostically useful lines.
+    """
+    if not stderr:
+        return "(no stderr output)"
+    lines = stderr.splitlines()
+    useful: list[str] = []
+    in_banner = True
+    for line in lines:
+        stripped = line.strip()
+        # Skip the version/config banner block at the top of stderr
+        if in_banner:
+            if (stripped.startswith("ffmpeg version")
+                    or stripped.startswith("built with")
+                    or stripped.startswith("configuration:")
+                    or stripped.startswith("lib")
+                    or stripped.startswith("--")
+                    or stripped == ""):
+                continue
+            in_banner = False
+        useful.append(line)
+    summary = "\n".join(useful).strip() if useful else stderr.strip()
+    return summary[:max_len] if len(summary) > max_len else summary
+
+
 def _probe_file(filepath: str) -> dict:
     """Use ffprobe to get video metadata."""
     cmd = [
@@ -2919,12 +2949,14 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
             enc_sec = round(time.time() - enc_start, 1)
 
             if proc.returncode != 0:
+                err_summary = _ffmpeg_error_summary(proc.stderr)
                 jlog(f"FFmpeg FAILED for {label} (exit code {proc.returncode}) after {enc_sec}s", "error")
-                jlog(f"  stderr: {proc.stderr[:2000]}", "error")
+                jlog(f"  stderr (full): {proc.stderr[:2000]}", "error")
+                jlog(f"  error summary: {err_summary}", "error")
                 if proc.stdout:
                     jlog(f"  stdout: {proc.stdout[:500]}", "error")
-                logger.error("FFmpeg failed for %s: %s", label, proc.stderr[:1000])
-                raise RuntimeError(f"Transcode failed for {label}: {proc.stderr[:500]}")
+                logger.error("FFmpeg failed for %s: %s", label, err_summary)
+                raise RuntimeError(f"Transcode failed for {label}: {err_summary}")
 
             jlog(f"Variant {label} completed in {enc_sec}s (exit code 0)")
             if proc.stderr:
@@ -3128,25 +3160,55 @@ def _generate_dash_manifest(jlog, local_source: str, dash_output: str,
     jlog("Generating MPEG-DASH manifest…")
     os.makedirs(dash_output, exist_ok=True)
 
+    # Probe source to determine if audio is present
+    has_audio = False
+    try:
+        probe = _probe_file(local_source)
+        has_audio = any(
+            s.get("codec_type") == "audio"
+            for s in probe.get("streams", [])
+        )
+    except Exception as probe_exc:
+        jlog(f"Audio probe failed, assuming audio present: {probe_exc}", "warn")
+        has_audio = True
+
+    jlog(f"Source audio detected: {has_audio}")
+
     # Build ffmpeg command for multi-variant DASH output
     # Uses -f dash with -adaptation_sets to produce one MPD with all variants.
     decode_flags = _hwaccel_decode_flags(hw_info)
     cmd = [FFMPEG_PATH, "-y"] + decode_flags + ["-i", local_source]
 
-    # Add output streams for each variant
+    # Add output streams for each variant, tracking stream indices
+    video_streams = []
+    audio_streams = []
+    stream_idx = 0
     for i, v in enumerate(variants):
         encode_flags = _select_encoder(hw_info, "h264", hw_decode=bool(decode_flags))
         vf_flags = _hw_vf(encode_flags, scale_height=v["height"])
 
-        cmd += ["-map", "0:v:0", "-map", "0:a:0?"]
+        cmd += ["-map", "0:v:0"]
+        video_streams.append(stream_idx)
+        stream_idx += 1
+        if has_audio:
+            cmd += ["-map", "0:a:0?"]
+            audio_streams.append(stream_idx)
+            stream_idx += 1
+
         cmd += encode_flags + vf_flags
         # Per-stream bitrate/quality settings using stream specifier
         cmd += [
             f"-b:v:{i}", v["vbitrate"],
             f"-maxrate:{i}", v["vbitrate"],
             f"-bufsize:{i}", str(int(v["vbitrate"].replace("k", "")) * 2) + "k",
-            f"-c:a:{i}", "aac", f"-b:a:{i}", v["abitrate"],
         ]
+        if has_audio:
+            cmd += [f"-c:a:{i}", "aac", f"-b:a:{i}", v["abitrate"]]
+
+    # Build adaptation_sets matching actual mapped streams
+    adapt_parts = [f"id=0,streams={','.join(str(s) for s in video_streams)}"]
+    if audio_streams:
+        adapt_parts.append(f"id=1,streams={','.join(str(s) for s in audio_streams)}")
 
     # DASH muxer options
     cmd += [
@@ -3156,11 +3218,7 @@ def _generate_dash_manifest(jlog, local_source: str, dash_output: str,
         "-media_seg_name", "seg-$RepresentationID$-$Number%05d$.m4s",
         "-use_timeline", "1",
         "-use_template", "1",
-        "-adaptation_sets",
-        " ".join([
-            f"id=0,streams=" + ",".join(str(i * 2) for i in range(len(variants))),
-            f"id=1,streams=" + ",".join(str(i * 2 + 1) for i in range(len(variants))),
-        ]),
+        "-adaptation_sets", " ".join(adapt_parts),
         os.path.join(dash_output, "manifest.mpd"),
     ]
 
@@ -3171,9 +3229,11 @@ def _generate_dash_manifest(jlog, local_source: str, dash_output: str,
     dash_sec = round(time.time() - dash_start, 1)
 
     if proc.returncode != 0:
+        err_summary = _ffmpeg_error_summary(proc.stderr)
         jlog(f"DASH FFmpeg FAILED (exit code {proc.returncode}) after {dash_sec}s", "warn")
-        jlog(f"  stderr: {proc.stderr[:2000]}", "warn")
-        raise RuntimeError(f"DASH generation failed: {proc.stderr[:500]}")
+        jlog(f"  stderr (full): {proc.stderr[:2000]}", "warn")
+        jlog(f"  error summary: {err_summary}", "warn")
+        raise RuntimeError(f"DASH generation failed: {err_summary}")
 
     jlog(f"DASH manifest generated in {dash_sec}s")
 
@@ -3602,15 +3662,61 @@ def _dash_only_transcode_s3(job_id: str, s3_segments_path: str,
         dash_output = os.path.join(work_dir, "dash")
         os.makedirs(dash_output, exist_ok=True)
 
+        # Probe the first segment to determine if audio streams are present
+        has_audio = False
+        first_variant_dir = os.path.join(hls_local, variants[0]["label"])
+        first_pl_path = os.path.join(first_variant_dir, "playlist.m3u8")
+        try:
+            with open(first_pl_path) as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#"):
+                        first_seg = os.path.join(first_variant_dir, line)
+                        probe = _probe_file(first_seg)
+                        has_audio = any(
+                            s.get("codec_type") == "audio"
+                            for s in probe.get("streams", [])
+                        )
+                        break
+        except Exception as probe_exc:
+            jlog(f"Audio probe failed, assuming audio present: {probe_exc}", "warn")
+            has_audio = True
+
+        jlog(f"Audio detected in segments: {has_audio}")
+
         # Build a multi-input ffmpeg command for DASH
-        hw_info = _detect_hw_accel()
         cmd = [FFMPEG_PATH, "-y"]
         for v, concat_list in concat_files:
             cmd += ["-f", "concat", "-safe", "0", "-i", concat_list]
 
+        # Map streams and build adaptation_sets based on actual stream layout.
+        # Re-encode audio as AAC instead of copy — copying AAC from MPEG-TS
+        # (ADTS) into fMP4 (ASC) fails when channel layout must be guessed
+        # (e.g. 5.1 surround) and the DASH muxer cannot build a valid init
+        # segment.  Audio re-encoding is fast and avoids the TS→fMP4 format
+        # conversion issues entirely.
+        video_streams = []
+        audio_streams = []
+        stream_idx = 0
         for i, (v, _) in enumerate(concat_files):
-            cmd += ["-map", f"{i}:v:0", "-map", f"{i}:a:0?"]
-            cmd += ["-c:v", "copy", "-c:a", "copy"]
+            cmd += ["-map", f"{i}:v:0"]
+            video_streams.append(stream_idx)
+            stream_idx += 1
+            if has_audio:
+                cmd += ["-map", f"{i}:a:0?"]
+                audio_streams.append(stream_idx)
+                stream_idx += 1
+
+        cmd += ["-c:v", "copy"]
+        if has_audio:
+            cmd += ["-c:a", "aac"]
+            for idx, (v, _) in enumerate(concat_files):
+                cmd += [f"-b:a:{idx}", v.get("abitrate", "128k")]
+
+        # Build adaptation_sets matching actual mapped streams
+        adapt_parts = [f"id=0,streams={','.join(str(s) for s in video_streams)}"]
+        if audio_streams:
+            adapt_parts.append(f"id=1,streams={','.join(str(s) for s in audio_streams)}")
 
         cmd += [
             "-f", "dash",
@@ -3619,11 +3725,7 @@ def _dash_only_transcode_s3(job_id: str, s3_segments_path: str,
             "-media_seg_name", "seg-$RepresentationID$-$Number%05d$.m4s",
             "-use_timeline", "1",
             "-use_template", "1",
-            "-adaptation_sets",
-            " ".join([
-                f"id=0,streams=" + ",".join(str(i * 2) for i in range(len(concat_files))),
-                f"id=1,streams=" + ",".join(str(i * 2 + 1) for i in range(len(concat_files))),
-            ]),
+            "-adaptation_sets", " ".join(adapt_parts),
             os.path.join(dash_output, "manifest.mpd"),
         ]
 
@@ -3633,9 +3735,11 @@ def _dash_only_transcode_s3(job_id: str, s3_segments_path: str,
         dash_sec = round(time.time() - dash_start, 1)
 
         if proc.returncode != 0:
+            err_summary = _ffmpeg_error_summary(proc.stderr)
             jlog(f"DASH FFmpeg FAILED (exit code {proc.returncode}) after {dash_sec}s", "error")
-            jlog(f"  stderr: {proc.stderr[:2000]}", "error")
-            raise RuntimeError(f"DASH generation failed: {proc.stderr[:500]}")
+            jlog(f"  stderr (full): {proc.stderr[:2000]}", "error")
+            jlog(f"  error summary: {err_summary}", "error")
+            raise RuntimeError(f"DASH generation failed: {err_summary}")
 
         jlog(f"DASH manifest generated in {dash_sec}s")
 
