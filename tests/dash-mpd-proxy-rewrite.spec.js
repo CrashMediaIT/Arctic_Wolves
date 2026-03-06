@@ -19,30 +19,30 @@ function readFile(relativePath) {
 }
 
 // =====================================================
-// 1. _resolve_mpd_path helper function exists
+// 1. _resolve_media_path helper function exists
 // =====================================================
 test.describe('DASH MPD path resolution helper', () => {
     const content = () => readFile('api/media.php');
 
-    test('_resolve_mpd_path function is defined', () => {
-        expect(content()).toContain('function _resolve_mpd_path(');
+    test('_resolve_media_path function is defined', () => {
+        expect(content()).toContain('function _resolve_media_path(');
     });
 
-    test('_resolve_mpd_path normalises ../ path components', () => {
+    test('_resolve_media_path normalises ../ path components', () => {
         const c = content();
         const fn = c.substring(
-            c.indexOf('function _resolve_mpd_path('),
-            c.indexOf('}', c.indexOf('function _resolve_mpd_path(') + 100) + 1
+            c.indexOf('function _resolve_media_path('),
+            c.indexOf('}', c.indexOf('function _resolve_media_path(') + 100) + 1
         );
         expect(fn).toContain("'..'");
         expect(fn).toContain('array_pop');
     });
 
-    test('_resolve_mpd_path combines base_dir and relative path', () => {
+    test('_resolve_media_path combines base_dir and relative path', () => {
         const c = content();
         const fn = c.substring(
-            c.indexOf('function _resolve_mpd_path('),
-            c.indexOf('}', c.indexOf('function _resolve_mpd_path(') + 100) + 1
+            c.indexOf('function _resolve_media_path('),
+            c.indexOf('}', c.indexOf('function _resolve_media_path(') + 100) + 1
         );
         expect(fn).toContain("$base_dir . '/' . $relative");
     });
@@ -102,9 +102,9 @@ test.describe('DASH MPD segment URL rewriting (no BaseURL)', () => {
         expect(c).toContain('proxy_prefix');
     });
 
-    test('should use _resolve_mpd_path for literal URLs', () => {
+    test('should use _resolve_media_path for literal URLs', () => {
         const c = content();
-        expect(c).toContain('_resolve_mpd_path($base_dir, $url)');
+        expect(c).toContain('_resolve_media_path($base_dir, $url)');
     });
 
     test('should produce media.php?key= proxy URLs', () => {
@@ -125,7 +125,7 @@ test.describe('DASH MPD segment URL rewriting (no BaseURL)', () => {
 });
 
 // =====================================================
-// 3. HLS rewriting is preserved (not broken by DASH changes)
+// 3. HLS rewriting is preserved and enhanced
 // =====================================================
 test.describe('HLS playlist rewriting still works', () => {
     const content = () => readFile('api/media.php');
@@ -135,10 +135,23 @@ test.describe('HLS playlist rewriting still works', () => {
         expect(c).toContain("$content_type = 'application/vnd.apple.mpegurl'");
     });
 
-    test('HLS rewriting resolves relative paths through proxy', () => {
+    test('HLS rewriting resolves relative paths through proxy using _resolve_media_path', () => {
         const c = content();
-        expect(c).toContain("$resolved_key = $base_dir . '/' . $trimmed");
-        expect(c).toContain("'media.php?key=' . rawurlencode($resolved_key)");
+        expect(c).toContain("_resolve_media_path($base_dir, $trimmed)");
+        expect(c).toContain("'media.php?key=' . rawurlencode($resolved)");
+    });
+
+    test('HLS rewriting handles EXT-X-MAP URI for fMP4 init segments', () => {
+        const c = content();
+        expect(c).toContain('EXT-X-MAP');
+        expect(c).toContain('URI="');
+        expect(c).toContain("_resolve_media_path($base_dir, $uri)");
+    });
+
+    test('HLS rewriting handles EXT-X-KEY URI for encryption keys', () => {
+        const c = content();
+        // The URI rewriting is generic — covers both EXT-X-MAP and EXT-X-KEY
+        expect(c).toContain("preg_match('/URI=\"([^\"]+)\"/'");
     });
 });
 
@@ -160,5 +173,38 @@ test.describe('getDashUrl helper produces proxy URLs', () => {
         const c = content();
         expect(c).toContain("'api/media.php?key='");
         expect(c).toContain("$video['dash_manifest_url']");
+    });
+});
+
+// =====================================================
+// 5. DASH→HLS fallback in hls-player.js
+// =====================================================
+test.describe('DASH to HLS fallback prevents re-entry loop', () => {
+    const content = () => readFile('js/hls-player.js');
+
+    test('preferDash checks _awDashFallbackAttempted flag', () => {
+        const c = content();
+        expect(c).toContain('_awDashFallbackAttempted');
+        // The preferDash condition must include the flag check
+        const preferDashLine = c.substring(
+            c.indexOf('var preferDash'),
+            c.indexOf(';', c.indexOf('var preferDash')) + 1
+        );
+        expect(preferDashLine).toContain('_awDashFallbackAttempted');
+    });
+
+    test('DASH error handler sets _awDashFallbackAttempted before calling awInitHlsPlayer', () => {
+        const c = content();
+        // _awDashFallbackAttempted is set BEFORE calling awInitHlsPlayer
+        const flagSetPos = c.indexOf('_awDashFallbackAttempted = true');
+        const hlsCallPos = c.indexOf('awInitHlsPlayer(video, hlsFallback)');
+        expect(flagSetPos).toBeGreaterThan(0);
+        expect(hlsCallPos).toBeGreaterThan(0);
+        expect(flagSetPos).toBeLessThan(hlsCallPos);
+    });
+
+    test('DASH error handler calls awInitHlsPlayer with HLS URL', () => {
+        const c = content();
+        expect(c).toContain('awInitHlsPlayer(video, hlsFallback)');
     });
 });

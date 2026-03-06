@@ -253,9 +253,9 @@ function _media_cors_headers() {
 
 /**
  * Resolve a relative path against a base directory, normalising ../  and ./
- * Used for DASH MPD segment URL rewriting.
+ * Used for both HLS playlist and DASH MPD segment URL rewriting.
  */
-function _resolve_mpd_path(string $base_dir, string $relative): string {
+function _resolve_media_path(string $base_dir, string $relative): string {
     $parts = explode('/', $base_dir . '/' . $relative);
     $normalized = [];
     foreach ($parts as $part) {
@@ -475,7 +475,7 @@ if ($m3u8_ext === 'mpd') {
                 return $m[1] . $proxy_prefix . $url . $m[3];
             }
             // Literal URL: resolve relative path and encode
-            $resolved = _resolve_mpd_path($base_dir, $url);
+            $resolved = _resolve_media_path($base_dir, $url);
             return $m[1] . 'media.php?key=' . rawurlencode($resolved) . $m[3];
         },
         $body
@@ -489,11 +489,30 @@ if ($m3u8_ext === 'mpd') {
     // browser/HLS.js would resolve those relatives against /api/ rather than the
     // S3 directory the manifest lives in.  Fix by rewriting every relative
     // reference to go back through this proxy.
+    //
+    // For fMP4 HLS (EXT-X-VERSION:7), the playlist also contains
+    // #EXT-X-MAP:URI="init.mp4" for the initialisation segment.  This and
+    // any other tag with a URI="…" attribute must be rewritten too — they
+    // are on #-prefixed lines which the old code skipped entirely.
     $lines = explode("\n", $body);
     $rewritten = [];
     foreach ($lines as $line) {
         $trimmed = trim($line);
-        if ($trimmed === '' || (isset($trimmed[0]) && $trimmed[0] === '#')) {
+        if ($trimmed === '') {
+            $rewritten[] = $line;
+            continue;
+        }
+        // Comment / tag lines — check for URI="…" attributes that need rewriting
+        // (e.g. #EXT-X-MAP:URI="init.mp4", #EXT-X-KEY:URI="key.key")
+        if (isset($trimmed[0]) && $trimmed[0] === '#') {
+            if (preg_match('/URI="([^"]+)"/', $trimmed, $uri_match)) {
+                $uri = $uri_match[1];
+                if (!preg_match('#^https?://#', $uri)) {
+                    $resolved = _resolve_media_path($base_dir, $uri);
+                    $proxy_url = 'media.php?key=' . rawurlencode($resolved);
+                    $line = str_replace('URI="' . $uri . '"', 'URI="' . $proxy_url . '"', $line);
+                }
+            }
             $rewritten[] = $line;
             continue;
         }
@@ -501,8 +520,8 @@ if ($m3u8_ext === 'mpd') {
             $rewritten[] = $line;
             continue;
         }
-        $resolved_key = $base_dir . '/' . $trimmed;
-        $rewritten[] = 'media.php?key=' . rawurlencode($resolved_key);
+        $resolved = _resolve_media_path($base_dir, $trimmed);
+        $rewritten[] = 'media.php?key=' . rawurlencode($resolved);
     }
     $body = implode("\n", $rewritten);
     $content_type = 'application/vnd.apple.mpegurl';
