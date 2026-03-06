@@ -54,7 +54,7 @@ if (mb_strlen($message) > 1000) {
 // Parse optional context
 $context = [];
 $raw_context = $_POST['context'] ?? '';
-if ($raw_context !== '') {
+if ($raw_context !== '' && mb_strlen($raw_context) <= 5000) {
     $decoded = json_decode($raw_context, true);
     if (is_array($decoded)) {
         $context = $decoded;
