@@ -78,6 +78,12 @@ if (preg_match('/\.m3u8(\?|&|$)/i', $video_url)) {
     if (empty($fallback_url)) $fallback_url = deriveFallbackUrl($video_url);
 }
 
+// DASH fallback URL for cross-browser playback (Chrome/Firefox/Edge)
+$dash_url = getDashUrl($video);
+if ($dash_url) {
+    $dash_url = resolveRustfsUrl($pdo, $dash_url) ?? '';
+}
+
 $csrf_token = $_SESSION['csrf_token'] ?? '';
 $is_coach = $isAnyCoach;
 $is_owner = (int)$video['athlete_id'] === (int)$user_id;
@@ -207,7 +213,7 @@ $coach_name   = trim(($video['coach_first_name'] ?? '') . ' ' . ($video['coach_l
 
     <!-- Video Player – full width -->
     <div class="m-vrd-player">
-        <video id="detailVideoPlayer" controls playsinline preload="none"<?= $thumbnail_url ? ' poster="' . htmlspecialchars($thumbnail_url) . '"' : '' ?><?= $fallback_url ? ' data-fallback-url="' . htmlspecialchars($fallback_url) . '"' : '' ?>>
+        <video id="detailVideoPlayer" controls playsinline preload="none"<?= $thumbnail_url ? ' poster="' . htmlspecialchars($thumbnail_url) . '"' : '' ?><?= $fallback_url ? ' data-fallback-url="' . htmlspecialchars($fallback_url) . '"' : '' ?><?= $dash_url ? ' data-dash-url="' . htmlspecialchars($dash_url) . '"' : '' ?>>
             <source src="<?= htmlspecialchars($video_url) ?>" type="<?= $video_type ?>">
             Your browser does not support the video tag.
         </video>
@@ -415,6 +421,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (typeof window.awInitHlsPlayer === 'function') {
                     window.awInitHlsPlayer(detailPlayer, _detailPrimaryUrl);
                 }
+            } else if (typeof window.awTryDashFallback === 'function' && detailPlayer.getAttribute('data-dash-url') && !detailPlayer._dashTried) {
+                detailPlayer._dashTried = true;
+                if (typeof window.awReportPlaybackError === 'function') {
+                    window.awReportPlaybackError('Detail page (PWA): HLS recovery exhausted, trying DASH fallback', { view: 'pwa_video_review_detail', action: 'try_dash', state: diagState });
+                }
+                window.awTryDashFallback(detailPlayer);
             } else if (typeof window.awReportPlaybackError === 'function') {
                 window.awReportPlaybackError('Detail page (PWA): video playback failed — all recovery exhausted', { view: 'pwa_video_review_detail', action: 'give_up', state: diagState });
             }

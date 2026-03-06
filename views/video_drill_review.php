@@ -274,11 +274,14 @@ $is_demo_data = false;
                                     }
                                     if (empty($dr_hls_url)) $dr_hls_url = deriveFallbackUrl($dr_video_url);
                                 }
+                                $dr_dash_url = getDashUrl($video);
+                                if ($dr_dash_url) $dr_dash_url = resolveRustfsUrl($pdo, $dr_dash_url) ?? '';
                             ?>
                             <button class="btn-primary btn-full" data-action="play-video" 
                                     data-video-id="<?= htmlspecialchars($video['id']) ?>"
                                     data-video-url="<?= htmlspecialchars($dr_video_url) ?>"
                                     data-fallback-url="<?= htmlspecialchars($dr_hls_url) ?>"
+                                    <?php if (!empty($dr_dash_url)): ?>data-dash-url="<?= htmlspecialchars($dr_dash_url) ?>"<?php endif; ?>
                                     data-thumbnail-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['thumbnail_url'] ?? '') ?? '') ?>"
                                     data-video-description="<?= htmlspecialchars($video['description'] ?? '') ?>"
                                     data-video-coach="<?= htmlspecialchars(trim(($video['coach_first_name'] ?? '') . ' ' . ($video['coach_last_name'] ?? ''))) ?>"
@@ -1529,6 +1532,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (typeof window.awInitHlsPlayer === 'function') {
                     activeHls = window.awInitHlsPlayer(videoPlayer, drPrimaryUrl);
                 }
+            } else if (typeof window.awTryDashFallback === 'function' && videoPlayer.getAttribute('data-dash-url') && !videoPlayer._dashTried) {
+                videoPlayer._dashTried = true;
+                if (typeof window.awReportPlaybackError === 'function') {
+                    window.awReportPlaybackError('Drill review: HLS recovery exhausted, trying DASH fallback', { view: 'drill_review', action: 'try_dash', state: diagState });
+                }
+                window.awTryDashFallback(videoPlayer);
             } else if (typeof window.awReportPlaybackError === 'function') {
                 window.awReportPlaybackError('Drill review: video playback failed — all recovery exhausted', { view: 'drill_review', action: 'give_up', state: diagState });
             }
@@ -1540,6 +1549,7 @@ document.addEventListener('DOMContentLoaded', function() {
         btn.addEventListener('click', function() {
             const videoUrl = this.dataset.videoUrl;
             const hlsUrl = this.dataset.fallbackUrl || '';
+            const dashUrl = this.dataset.dashUrl || '';
             const thumbnailUrl = this.dataset.thumbnailUrl || '';
             const title = this.closest('.video-card').querySelector('.video-title')?.textContent || 'Video';
             const description = this.dataset.videoDescription || '';
@@ -1587,6 +1597,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     drFallbackUrl = (hlsUrl && hlsUrl !== videoUrl) ? hlsUrl : '';
                     drPrimaryUrl = videoUrl;
                     drFallbackTried = false;
+                    videoPlayer._dashTried = false;
+                    // Set DASH URL on video element for fallback
+                    if (dashUrl) { videoPlayer.setAttribute('data-dash-url', dashUrl); }
+                    else { videoPlayer.removeAttribute('data-dash-url'); }
 
                     if (typeof window.awReportPlaybackError === 'function') {
                         window.awReportPlaybackError('Drill review: play button clicked', { view: 'drill_review', action: 'play_click', primaryUrl: videoUrl, fallbackUrl: hlsUrl, title: title, type: 'lifecycle' });

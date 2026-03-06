@@ -157,7 +157,7 @@ if (!function_exists('vr_format_duration')) {
 <?php else: ?>
 <div class="gp-grid">
     <?php foreach ($mc_clips as $clip):
-        $clip_src_row = ['file_path' => $clip['source_path'] ?? '', 'hls_url' => $clip['source_hls_url'] ?? '', 'hls_status' => $clip['source_hls_status'] ?? ''];
+        $clip_src_row = ['file_path' => $clip['source_path'] ?? '', 'hls_url' => $clip['source_hls_url'] ?? '', 'hls_status' => $clip['source_hls_status'] ?? '', 'dash_url' => $clip['source_dash_url'] ?? '', 'dash_manifest_url' => $clip['source_dash_manifest_url'] ?? ''];
         $clip_play_url = resolveRustfsUrl($pdo, getPreferredVideoUrl($clip_src_row)) ?? '';
         $clip_fallback = '';
         if (preg_match('/\.m3u8(\?|&|$)/i', $clip_play_url)) {
@@ -167,8 +167,10 @@ if (!function_exists('vr_format_duration')) {
             $clip_fallback = resolveRustfsUrl($pdo, $clip['source_hls_url'] ?? '') ?? '';
             if (empty($clip_fallback)) $clip_fallback = deriveFallbackUrl($clip_play_url);
         }
+        $clip_dash_url = getDashUrl($clip_src_row);
+        if ($clip_dash_url) $clip_dash_url = resolveRustfsUrl($pdo, $clip_dash_url) ?? '';
     ?>
-    <div class="gp-card vr-clip-card" data-clip-id="<?= (int)$clip['id'] ?>" data-source="<?= htmlspecialchars($clip_play_url) ?>"<?php if ($clip_fallback && $clip_fallback !== $clip_play_url): ?> data-fallback-url="<?= htmlspecialchars($clip_fallback) ?>"<?php endif; ?>>
+    <div class="gp-card vr-clip-card" data-clip-id="<?= (int)$clip['id'] ?>" data-source="<?= htmlspecialchars($clip_play_url) ?>"<?php if ($clip_fallback && $clip_fallback !== $clip_play_url): ?> data-fallback-url="<?= htmlspecialchars($clip_fallback) ?>"<?php endif; ?><?php if ($clip_dash_url): ?> data-dash-url="<?= htmlspecialchars($clip_dash_url) ?>"<?php endif; ?>>
         <div class="gp-card-thumb">
             <?php if (!empty($clip['thumbnail_path'])): ?>
             <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $clip['thumbnail_path'])) ?>" alt="" loading="lazy">
@@ -272,6 +274,10 @@ document.addEventListener('DOMContentLoaded', function() {
             var src = card.dataset.source || '';
             _clipFallbackUrl = card.dataset.fallbackUrl || '';
             _clipFallbackTried = false;
+            video._dashTried = false;
+            var dashUrl = card.dataset.dashUrl || '';
+            if (dashUrl) { video.setAttribute('data-dash-url', dashUrl); }
+            else { video.removeAttribute('data-dash-url'); }
             var title = card.querySelector('.gp-card-title');
             titleEl.textContent = title ? title.textContent : 'Clip';
             if (clipsHls) { clipsHls.destroy(); clipsHls = null; }
@@ -300,6 +306,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if (typeof window.awInitHlsPlayer === 'function') {
                 clipsHls = window.awInitHlsPlayer(video, _clipFallbackUrl);
             }
+        } else if (typeof window.awTryDashFallback === 'function' && video.getAttribute('data-dash-url') && !video._dashTried) {
+            video._dashTried = true;
+            window.awTryDashFallback(video);
         }
     }, true);
 
