@@ -203,24 +203,41 @@ test.describe('PWA Navigation Label Parity with Desktop', () => {
 
 test.describe('PWA Missing Features & Navigation Gaps', () => {
 
-  test('pwa_more_menu.php includes coach_evaluations link', () => {
+  test('pwa_more_menu.php includes coach_evaluations link in Coaches Corner', () => {
     const content = readFileSync(join(ROOT, 'pwa_more_menu.php'), 'utf-8');
     expect(content).toContain('page=coach_evaluations');
+    // Verify it's in the Coaches Corner section (after section label, before next section)
+    const coachesIdx = content.indexOf('Coaches Corner');
+    const evalIdx = content.indexOf('page=coach_evaluations');
+    expect(coachesIdx).toBeGreaterThan(-1);
+    expect(evalIdx).toBeGreaterThan(coachesIdx);
   });
 
-  test('pwa_more_menu.php includes coach_goals link', () => {
+  test('pwa_more_menu.php includes coach_goals link in Coaches Corner', () => {
     const content = readFileSync(join(ROOT, 'pwa_more_menu.php'), 'utf-8');
     expect(content).toContain('page=coach_goals');
+    const coachesIdx = content.indexOf('Coaches Corner');
+    const goalsIdx = content.indexOf('page=coach_goals');
+    expect(coachesIdx).toBeGreaterThan(-1);
+    expect(goalsIdx).toBeGreaterThan(coachesIdx);
   });
 
-  test('pwa_tablet.php includes coach_evaluations link', () => {
+  test('pwa_tablet.php includes coach_evaluations link in Coaches Corner', () => {
     const content = readFileSync(join(ROOT, 'pwa_tablet.php'), 'utf-8');
     expect(content).toContain('page=coach_evaluations');
+    const coachesIdx = content.indexOf('Coaches Corner');
+    const evalIdx = content.indexOf('page=coach_evaluations');
+    expect(coachesIdx).toBeGreaterThan(-1);
+    expect(evalIdx).toBeGreaterThan(coachesIdx);
   });
 
-  test('pwa_tablet.php includes coach_goals link', () => {
+  test('pwa_tablet.php includes coach_goals link in Coaches Corner', () => {
     const content = readFileSync(join(ROOT, 'pwa_tablet.php'), 'utf-8');
     expect(content).toContain('page=coach_goals');
+    const coachesIdx = content.indexOf('Coaches Corner');
+    const goalsIdx = content.indexOf('page=coach_goals');
+    expect(coachesIdx).toBeGreaterThan(-1);
+    expect(goalsIdx).toBeGreaterThan(coachesIdx);
   });
 
   test('dashboard.php includes coach_evaluations link in sidebar', () => {
