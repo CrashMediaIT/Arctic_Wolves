@@ -908,6 +908,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function cleanupCoachVideoPlayer() {
         if (vpHls) { vpHls.destroy(); vpHls = null; }
+        if (vpVideo && vpVideo._awDash) { try { vpVideo._awDash.reset(); } catch(e){} vpVideo._awDash = null; }
         vpFallbackUrl = '';
         vpFallbackTried = false;
         vpPrimaryUrl = '';

@@ -118,7 +118,7 @@ $vr_mc_angles = [];
 if ($vr_tab === 'multicam' && $vr_mc_game_id > 0) {
     try {
         $stmt = $pdo->prepare("
-            SELECT id, filename, file_path, camera_angle, duration, hls_url, hls_status
+            SELECT id, filename, file_path, camera_angle, duration, hls_url, hls_status, dash_url, dash_manifest_url
             FROM vr_video_sources WHERE game_id = ?
             ORDER BY camera_angle
         ");

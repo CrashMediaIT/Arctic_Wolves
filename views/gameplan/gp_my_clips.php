@@ -49,6 +49,7 @@ try {
                vs.filename AS source_filename, vs.file_path AS source_path,
                vs.camera_angle, vs.duration AS source_duration,
                vs.hls_url AS source_hls_url, vs.hls_status AS source_hls_status,
+               vs.dash_url AS source_dash_url, vs.dash_manifest_url AS source_dash_manifest_url,
                GROUP_CONCAT(DISTINCT t.name ORDER BY t.name SEPARATOR ', ') AS tag_names,
                gs.opponent_team, gs.game_date
         FROM vr_clip_athletes ca
@@ -308,6 +309,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function closeGpClipModal() {
         modal.style.display = 'none';
         if (gpClipsHls) { gpClipsHls.destroy(); gpClipsHls = null; }
+        if (video._awDash) { try { video._awDash.reset(); } catch(e){} video._awDash = null; }
         video.pause();
         video.removeAttribute('src');
     }

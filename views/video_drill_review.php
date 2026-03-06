@@ -1475,6 +1475,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function cleanupVideoPlayer() {
         if (activeHls) { activeHls.destroy(); activeHls = null; }
+        if (videoPlayer && videoPlayer._awDash) { try { videoPlayer._awDash.reset(); } catch(e){} videoPlayer._awDash = null; }
         drFallbackUrl = '';
         drFallbackTried = false;
         drPrimaryUrl = '';
