@@ -517,12 +517,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ["ALTER TABLE videos ADD COLUMN hls_job_id VARCHAR(36) DEFAULT NULL COMMENT 'Companion server HLS transcode job ID' AFTER hls_status", "videos.hls_job_id"],
                     ["ALTER TABLE videos ADD COLUMN hls_master_url VARCHAR(500) DEFAULT NULL COMMENT 'S3 key to master.m3u8 manifest' AFTER hls_job_id", "videos.hls_master_url"],
                     ["ALTER TABLE videos ADD COLUMN hls_segments_path VARCHAR(500) DEFAULT NULL COMMENT 'S3 prefix containing HLS segments' AFTER hls_master_url", "videos.hls_segments_path"],
+                    ["ALTER TABLE videos ADD COLUMN dash_url VARCHAR(500) DEFAULT NULL COMMENT 'MPEG-DASH MPD manifest URL (api/media.php proxy path)' AFTER hls_segments_path", "videos.dash_url"],
+                    ["ALTER TABLE videos ADD COLUMN dash_manifest_url VARCHAR(500) DEFAULT NULL COMMENT 'S3 key to DASH manifest.mpd' AFTER dash_url", "videos.dash_manifest_url"],
                     ["ALTER TABLE vr_video_sources ADD COLUMN nextcloud_path VARCHAR(500) DEFAULT NULL COMMENT 'Cloud storage path for gameplan video (RustFS URL)'", "vr_video_sources.nextcloud_path"],
                     ["ALTER TABLE vr_video_sources ADD COLUMN hls_url VARCHAR(500) DEFAULT NULL COMMENT 'HLS master playlist URL (api/media.php proxy path)'", "vr_video_sources.hls_url"],
                     ["ALTER TABLE vr_video_sources ADD COLUMN hls_status ENUM('pending', 'processing', 'ready', 'failed') DEFAULT NULL COMMENT 'HLS transcoding status'", "vr_video_sources.hls_status"],
                     ["ALTER TABLE vr_video_sources ADD COLUMN hls_job_id VARCHAR(36) DEFAULT NULL COMMENT 'Companion server HLS transcode job ID'", "vr_video_sources.hls_job_id"],
                     ["ALTER TABLE vr_video_sources ADD COLUMN hls_master_url VARCHAR(500) DEFAULT NULL COMMENT 'S3 key to master.m3u8 manifest'", "vr_video_sources.hls_master_url"],
                     ["ALTER TABLE vr_video_sources ADD COLUMN hls_segments_path VARCHAR(500) DEFAULT NULL COMMENT 'S3 prefix containing HLS segments'", "vr_video_sources.hls_segments_path"],
+                    ["ALTER TABLE vr_video_sources ADD COLUMN dash_url VARCHAR(500) DEFAULT NULL COMMENT 'MPEG-DASH MPD manifest URL (api/media.php proxy path)'", "vr_video_sources.dash_url"],
+                    ["ALTER TABLE vr_video_sources ADD COLUMN dash_manifest_url VARCHAR(500) DEFAULT NULL COMMENT 'S3 key to DASH manifest.mpd'", "vr_video_sources.dash_manifest_url"],
                 ];
                 
                 foreach ($inline_migrations as $mig) {

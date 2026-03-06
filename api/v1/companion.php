@@ -239,6 +239,7 @@ function handleCompanionCallback(): void {
             $hls_manifest     = $body['hls_manifest'] ?? '';
             $hls_segments     = $body['hls_segments_path'] ?? '';
             $variants         = $body['variants'] ?? [];
+            $dash_manifest    = $body['dash_manifest'] ?? '';
             // Use the explicit hls_status from the companion if provided,
             // otherwise default to 'ready' for completed jobs.
             $hls_status_value = $body['hls_status'] ?? 'ready';
@@ -253,43 +254,39 @@ function handleCompanionCallback(): void {
                 $hls_url = "api/media.php?key=" . rawurlencode($hls_manifest);
             }
 
-            $label = $table === 'vr_video_sources' ? 'source' : 'video';
-            ErrorLogger::info("Companion callback: updating $label $db_record_id to hls_status=$hls_status_value hls_url=$hls_url (job $job_id)");
-
-            // When hls_url would be empty, use COALESCE to preserve the
-            // existing value in the database rather than blanking it out.
-            if ($hls_url !== '') {
-                $stmt = $pdo->prepare("
-                    UPDATE $table
-                    SET hls_status        = :hls_status,
-                        hls_master_url    = :manifest,
-                        hls_segments_path = :segments,
-                        hls_url           = :hls_url
-                    WHERE id = :id
-                ");
-                $stmt->execute([
-                    ':hls_status' => $hls_status_value,
-                    ':manifest' => $hls_manifest,
-                    ':segments' => $hls_segments,
-                    ':hls_url'  => $hls_url,
-                    ':id'       => $db_record_id,
-                ]);
-            } else {
-                // Preserve existing hls_url — only update status/paths
-                $stmt = $pdo->prepare("
-                    UPDATE $table
-                    SET hls_status        = :hls_status,
-                        hls_master_url    = :manifest,
-                        hls_segments_path = :segments
-                    WHERE id = :id
-                ");
-                $stmt->execute([
-                    ':hls_status' => $hls_status_value,
-                    ':manifest' => $hls_manifest,
-                    ':segments' => $hls_segments,
-                    ':id'       => $db_record_id,
-                ]);
+            // Build the DASH manifest proxy URL if provided
+            $dash_url = '';
+            if ($dash_manifest) {
+                $dash_url = "api/media.php?key=" . rawurlencode($dash_manifest);
             }
+
+            $label = $table === 'vr_video_sources' ? 'source' : 'video';
+            ErrorLogger::info("Companion callback: updating $label $db_record_id to hls_status=$hls_status_value hls_url=$hls_url dash_url=$dash_url (job $job_id)");
+
+            // Build the UPDATE query dynamically to include DASH columns when present
+            $sql_sets = ["hls_status = :hls_status", "hls_master_url = :manifest", "hls_segments_path = :segments"];
+            $params = [
+                ':hls_status' => $hls_status_value,
+                ':manifest'   => $hls_manifest,
+                ':segments'   => $hls_segments,
+                ':id'         => $db_record_id,
+            ];
+
+            if ($hls_url !== '') {
+                $sql_sets[] = "hls_url = :hls_url";
+                $params[':hls_url'] = $hls_url;
+            }
+            if ($dash_url !== '') {
+                $sql_sets[] = "dash_url = :dash_url";
+                $params[':dash_url'] = $dash_url;
+            }
+            if ($dash_manifest !== '') {
+                $sql_sets[] = "dash_manifest_url = :dash_manifest";
+                $params[':dash_manifest'] = $dash_manifest;
+            }
+
+            $stmt = $pdo->prepare("UPDATE $table SET " . implode(', ', $sql_sets) . " WHERE id = :id");
+            $stmt->execute($params);
 
             $rows_affected = $stmt->rowCount();
             ErrorLogger::info("HLS transcode completed for $label $db_record_id (job $job_id) — $rows_affected row(s) updated");
