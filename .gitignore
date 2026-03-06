@@ -75,4 +75,3 @@ android-tv/*.idsig
 *.pending
 node_modules/
 test-results/
-node_modules/

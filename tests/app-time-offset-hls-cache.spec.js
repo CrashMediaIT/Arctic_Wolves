@@ -193,6 +193,72 @@ test.describe('HLS.js cache-busting and retry improvements', () => {
     const c = content();
     expect(c).toContain("'HLS network error (retry '");
   });
+
+  test('destroys previous HLS instance to prevent conflicts', () => {
+    const c = content();
+    expect(c).toContain('video._awHls');
+    expect(c).toContain('_awHls.destroy()');
+  });
+
+  test('detects page URL as empty source and reports', () => {
+    const c = content();
+    expect(c).toContain('window.location.href');
+    expect(c).toContain('source likely empty');
+  });
+
+  test('reports when HLS.js is not available for m3u8 URL', () => {
+    const c = content();
+    expect(c).toContain('hls_unavailable');
+    expect(c).toContain('HLS stream cannot play');
+  });
+
+  test('reports direct video play failures', () => {
+    const c = content();
+    expect(c).toContain('direct_play_error');
+  });
+});
+
+// =====================================================
+// 4b. Video views use getAttribute for source URL
+// =====================================================
+
+test.describe('Video views use getAttribute to avoid empty src resolution', () => {
+  test('desktop video_review_detail.php uses getAttribute("src")', () => {
+    const c = readFile('views/video_review_detail.php');
+    expect(c).toContain("getAttribute('src')");
+    expect(c).not.toMatch(/\bsrc\.src\b/);
+  });
+
+  test('PWA video_review_detail.php uses getAttribute("src")', () => {
+    const c = readFile('views/pwa/video_review_detail.php');
+    expect(c).toContain("getAttribute('src')");
+    expect(c).not.toMatch(/\bsrc\.src\b/);
+  });
+
+  test('desktop video_review_detail.php has preload="none"', () => {
+    const c = readFile('views/video_review_detail.php');
+    expect(c).toContain('preload="none"');
+  });
+
+  test('PWA video_review_detail.php has preload="none"', () => {
+    const c = readFile('views/pwa/video_review_detail.php');
+    expect(c).toContain('preload="none"');
+  });
+
+  test('video_coach_reviews.php has preload="none"', () => {
+    const c = readFile('views/video_coach_reviews.php');
+    expect(c).toContain('preload="none"');
+  });
+
+  test('video_drill_review.php has preload="none"', () => {
+    const c = readFile('views/video_drill_review.php');
+    expect(c).toContain('preload="none"');
+  });
+
+  test('detail views report empty source attribute', () => {
+    const c = readFile('views/video_review_detail.php');
+    expect(c).toContain('empty_source');
+  });
 });
 
 // =====================================================

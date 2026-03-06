@@ -625,7 +625,7 @@ $reviewed_videos = array_filter($videos, function($v) {
         </div>
         <div class="modal-body">
             <div style="position: relative; background: #000; border-radius: 8px; overflow: hidden; aspect-ratio: 16 / 9;">
-                <video id="coachVideoPlayer" controls style="width: 100%; height: 100%; display: block; object-fit: contain;">
+                <video id="coachVideoPlayer" controls preload="none" style="width: 100%; height: 100%; display: block; object-fit: contain;">
                     <source src="" type="video/mp4">
                     Your browser does not support the video tag.
                 </video>

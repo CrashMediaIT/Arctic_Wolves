@@ -166,7 +166,7 @@ class Logger {
         ];
         
         // Write to separate security log
-        $log_file = self::$log_dir . 'security-' . date('Y-m-d') . '.log';
+        $log_file = self::$log_dir . 'security-' . (function_exists('appDate') ? appDate('Y-m-d') : date('Y-m-d')) . '.log';
         $timestamp = function_exists('appDate') ? appDate('Y-m-d H:i:s') : date('Y-m-d H:i:s');
         $log_entry = "[{$timestamp}] [SECURITY] {$event} | " . json_encode($context) . "\n";
         file_put_contents($log_file, $log_entry, FILE_APPEND);

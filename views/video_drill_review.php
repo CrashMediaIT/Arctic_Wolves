@@ -534,7 +534,7 @@ $is_demo_data = false;
         </div>
         <div class="modal-body">
             <div class="video-player-container">
-                <video id="videoPlayer" controls class="video-player">
+                <video id="videoPlayer" controls preload="none" class="video-player">
                     <source src="" type="video/mp4">
                     Your browser does not support the video tag.
                 </video>
