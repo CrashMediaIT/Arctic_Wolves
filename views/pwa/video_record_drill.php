@@ -124,6 +124,12 @@ endif;
                 <i class="fas fa-cloud-arrow-up"></i> Upload Video
             </button>
             <p class="m-upload-status" id="mUploadStatus"></p>
+            <details id="pwaUploadLogDetails" style="width:100%;margin-top:8px;text-align:left;display:none;">
+                <summary style="cursor:pointer;font-weight:600;font-size:12px;color:var(--text-dim,#6b7280);user-select:none;">
+                    <i class="fas fa-terminal"></i> Upload Log
+                </summary>
+                <pre id="pwaUploadLogPre" style="margin-top:6px;max-height:180px;overflow:auto;background:#0a0a0f;color:#cdd6f4;padding:10px;border-radius:6px;font-size:11px;white-space:pre-wrap;line-height:1.5;"></pre>
+            </details>
         </form>
     </div>
 </div>
@@ -131,6 +137,23 @@ endif;
 <script>
 (function() {
     var stream = null, recorder = null, chunks = [], facingMode = 'environment', blob = null;
+
+    var PROGRESS_LOG_INTERVAL = 10;
+    var pwaLogPre = document.getElementById('pwaUploadLogPre');
+    var pwaLogDetails = document.getElementById('pwaUploadLogDetails');
+    function pwaLog(msg) {
+        if (pwaLogPre) {
+            pwaLogPre.textContent += '[' + new Date().toLocaleTimeString() + '] ' + msg + '\n';
+            pwaLogPre.scrollTop = pwaLogPre.scrollHeight;
+        }
+        console.log('[PWADrillUpload] ' + msg);
+    }
+    function pwaLogError(msg) { pwaLog('ERROR: ' + msg); }
+    function pwaLogWarn(msg) { pwaLog('WARNING: ' + msg); }
+    function pwaElapsed(start) {
+        var s = Math.round((Date.now() - start) / 1000);
+        return s < 60 ? s + 's' : Math.floor(s / 60) + 'm ' + (s % 60) + 's';
+    }
 
     window.mStartCamera = function() {
         if (stream) { stream.getTracks().forEach(function(t) { t.stop(); }); }
@@ -184,6 +207,9 @@ endif;
         var statusEl = document.getElementById('mUploadStatus');
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+        if (pwaLogDetails) pwaLogDetails.style.display = '';
+        if (pwaLogPre) pwaLogPre.textContent = '';
+        pwaLog('Recording: ' + (blob.size / 1048576).toFixed(1) + ' MB');
 
         var progressWrap = document.createElement('div');
         progressWrap.style.cssText = 'width:100%;height:8px;background:#2D2D3F;border-radius:4px;margin-top:8px;overflow:hidden;';
@@ -220,6 +246,7 @@ endif;
                 uploadNonce = data.upload_nonce;
                 proxyUploadUrl = data.proxy_upload_url || null;
                 proxyToken = data.proxy_token || null;
+                pwaLog('Presigned URL obtained.' + (data.object_key ? ' Object key: ' + data.object_key : ''));
 
                 statusEl.textContent = 'Uploading to cloud storage...';
 
@@ -227,12 +254,15 @@ endif;
                 var url = presignedUrl ? presignedUrl : ((proxyUploadUrl && proxyToken) ? proxyUploadUrl : null);
                 var useProxy = !presignedUrl && !!(proxyUploadUrl && proxyToken);
                 if (!url) throw new Error('No upload URL available');
+                pwaLog('Uploading ' + (useProxy ? 'via proxy' : 'direct to cloud') + '…');
+                var uploadStart = Date.now();
                 return new Promise(function(resolve, reject) {
                     var xhr = new XMLHttpRequest();
                     xhr.open('PUT', url, true);
                     xhr.setRequestHeader('Content-Type', contentType);
                     if (useProxy) xhr.setRequestHeader('X-Upload-Token', proxyToken);
                     var uploadStarted = false;
+                    var lastLogTime = 0;
                     var connTimer = setTimeout(function() {
                         if (!uploadStarted) { xhr.abort(); reject(new Error((useProxy ? 'Proxy' : 'Cloud storage') + ' connection timed out')); }
                     }, 30000);
@@ -242,11 +272,16 @@ endif;
                             var pct = Math.round((ev.loaded / ev.total) * 100);
                             progressBar.style.width = pct + '%';
                             statusEl.textContent = pct < 100 ? (useProxy ? 'Uploading via proxy... ' : 'Uploading... ') + pct + '%' : 'Finalizing...';
+                            var now = Date.now();
+                            if (ev.loaded > 0 && (now - lastLogTime) >= PROGRESS_LOG_INTERVAL * 1000) {
+                                lastLogTime = now;
+                                pwaLog('Progress: ' + pct + '% — ' + (ev.loaded / 1048576).toFixed(1) + ' / ' + (ev.total / 1048576).toFixed(1) + ' MB');
+                            }
                         }
                     };
                     xhr.onload = function() {
                         clearTimeout(connTimer);
-                        if (xhr.status >= 200 && xhr.status < 300) resolve();
+                        if (xhr.status >= 200 && xhr.status < 300) { pwaLog('Upload completed in ' + pwaElapsed(uploadStart)); resolve(); }
                         else reject(new Error((useProxy ? 'Proxy' : 'Cloud') + ' upload failed (HTTP ' + xhr.status + ')'));
                     };
                     xhr.onerror = function() { clearTimeout(connTimer); reject(new Error('Network error during upload')); };
@@ -256,6 +291,7 @@ endif;
             .catch(function(uploadErr) {
                 // Direct RustFS upload failed — fall back to same-origin proxy
                 if (!proxyUploadUrl || !proxyToken) throw uploadErr;
+                pwaLogWarn('Direct upload failed: ' + uploadErr.message + ' — trying server proxy');
                 console.warn('[Upload] Direct upload failed:', uploadErr.message, '— trying server proxy');
                 statusEl.textContent = 'Retrying via server...';
                 progressBar.style.width = '0%';
@@ -266,6 +302,7 @@ endif;
                     xhr.setRequestHeader('Content-Type', contentType);
                     xhr.setRequestHeader('X-Upload-Token', proxyToken);
                     var uploadStarted = false;
+                    var lastLogTime = 0;
                     var connTimer = setTimeout(function() {
                         if (!uploadStarted) { xhr.abort(); reject(new Error('Proxy connection timed out')); }
                     }, 30000);
@@ -275,11 +312,16 @@ endif;
                             var pct = Math.round((ev.loaded / ev.total) * 100);
                             progressBar.style.width = pct + '%';
                             statusEl.textContent = pct < 100 ? 'Uploading via server... ' + pct + '%' : 'Finalizing...';
+                            var now = Date.now();
+                            if (ev.loaded > 0 && (now - lastLogTime) >= PROGRESS_LOG_INTERVAL * 1000) {
+                                lastLogTime = now;
+                                pwaLog('Proxy progress: ' + pct + '% — ' + (ev.loaded / 1048576).toFixed(1) + ' / ' + (ev.total / 1048576).toFixed(1) + ' MB');
+                            }
                         }
                     };
                     xhr.onload = function() {
                         clearTimeout(connTimer);
-                        if (xhr.status >= 200 && xhr.status < 300) resolve();
+                        if (xhr.status >= 200 && xhr.status < 300) { pwaLog('Proxy upload completed.'); resolve(); }
                         else reject(new Error('Proxy upload failed (HTTP ' + xhr.status + ')'));
                     };
                     xhr.onerror = function() { clearTimeout(connTimer); reject(new Error('Network error during proxy upload')); };
@@ -288,6 +330,7 @@ endif;
             })
             .then(function() {
                 // Step 3: confirm upload
+                pwaLog('Confirming upload with server…');
                 statusEl.textContent = 'Confirming upload...';
                 var confirmData = new FormData();
                 confirmData.append('action', 'confirm_video_upload');
@@ -298,6 +341,7 @@ endif;
             })
             .then(function(result) {
                 if (result.success) {
+                    pwaLog('Upload confirmed! Triggering background transcode…');
                     statusEl.textContent = 'Upload complete!';
                     // Trigger transcode as a separate explicit action
                     var tp = new FormData();
@@ -306,7 +350,10 @@ endif;
                     tp.append('object_key', result.object_key || '');
                     if (result.video_id) tp.append('video_id', result.video_id);
                     if (result.source_id) tp.append('source_id', result.source_id);
-                    fetch('process_video.php', { method: 'POST', body: tp, keepalive: true }).catch(function() {});
+                    fetch('process_video.php', { method: 'POST', body: tp, keepalive: true })
+                        .then(function(r) { return r.json(); })
+                        .then(function(t) { pwaLog('Transcode triggered (job: ' + (t.hls_job_id || 'N/A') + ')'); })
+                        .catch(function(e) { pwaLogWarn('Transcode trigger: ' + (e && e.message || String(e))); });
                     btn.disabled = true;
                     btn.innerHTML = '<i class="fas fa-cloud-arrow-up"></i> Upload Video';
                     progressWrap.remove();
@@ -317,6 +364,7 @@ endif;
             })
             .catch(function(err) {
                 // Proxy upload failed, trying direct S3
+                pwaLogWarn('Upload attempt failed: ' + err.message + ' — trying direct S3');
                 console.warn('[Upload] Proxy upload failed:', err.message, '— trying direct S3');
                 statusEl.textContent = 'Retrying via direct cloud upload...';
                 progressBar.style.width = '0%';
@@ -334,6 +382,8 @@ endif;
                     .then(function(data2) {
                         if (!data2.presigned_url) throw new Error('No presigned URL available');
                         uploadNonce = data2.upload_nonce || uploadNonce;
+                        pwaLog('Retry presigned URL obtained. Uploading…');
+                        var retryStart = Date.now();
                         return new Promise(function(resolve, reject) {
                             var xhr = new XMLHttpRequest();
                             xhr.open('PUT', data2.presigned_url, true);
@@ -346,7 +396,7 @@ endif;
                                 }
                             };
                             xhr.onload = function() {
-                                if (xhr.status >= 200 && xhr.status < 300) resolve();
+                                if (xhr.status >= 200 && xhr.status < 300) { pwaLog('Retry upload completed in ' + pwaElapsed(retryStart)); resolve(); }
                                 else reject(new Error('Cloud upload failed (HTTP ' + xhr.status + ')'));
                             };
                             xhr.onerror = function() { reject(new Error('Network error during cloud upload')); };
@@ -354,6 +404,7 @@ endif;
                         });
                     })
                     .then(function() {
+                        pwaLog('Confirming retry upload…');
                         statusEl.textContent = 'Confirming upload...';
                         var confirmData = new FormData();
                         confirmData.append('action', 'confirm_video_upload');
@@ -364,6 +415,7 @@ endif;
                     })
                     .then(function(result) {
                         if (result.success) {
+                            pwaLog('Upload confirmed! Triggering transcode…');
                             statusEl.textContent = 'Upload complete!';
                             // Trigger transcode as a separate explicit action
                             var tp = new FormData();
@@ -381,6 +433,7 @@ endif;
                     });
             })
             .catch(function(err) {
+                pwaLogError(err.message);
                 statusEl.textContent = 'Upload failed: ' + err.message;
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-cloud-arrow-up"></i> Upload Video';

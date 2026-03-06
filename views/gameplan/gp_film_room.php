@@ -230,6 +230,12 @@ if (!function_exists('vr_format_duration')) {
                     <div id="vrUploadProgressBar" style="width:0%; height:100%; background:var(--primary, #6B46C1); border-radius:8px; transition:width 0.3s;"></div>
                 </div>
                 <div id="vrUploadProgressPercent" style="text-align:right; font-size:12px; margin-top:4px; color:var(--text-muted, #888);">0%</div>
+                <details id="frUploadLogDetails" style="width:100%;margin-top:12px;text-align:left;">
+                    <summary style="cursor:pointer;font-weight:600;font-size:12px;color:var(--text-muted,#6b7280);user-select:none;">
+                        <i class="fas fa-terminal"></i> Upload Log
+                    </summary>
+                    <pre id="frUploadLogPre" style="margin-top:6px;max-height:200px;overflow:auto;background:var(--bg-main,#0a0a0f);color:#cdd6f4;padding:10px;border-radius:6px;font-size:11px;white-space:pre-wrap;line-height:1.5;"></pre>
+                </details>
                 <button type="button" class="btn btn-danger" id="vrCancelUploadBtn" style="margin-top: 10px; font-size: 13px;">
                     <i class="fas fa-times"></i> Cancel Upload
                 </button>
@@ -534,8 +540,24 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(function() { t.remove(); }, 3000);
     }
 
+    var PROGRESS_LOG_INTERVAL = 10;
+    var frLogPre = document.getElementById('frUploadLogPre');
+    function frLog(msg) {
+        if (frLogPre) {
+            frLogPre.textContent += '[' + new Date().toLocaleTimeString() + '] ' + msg + '\n';
+            frLogPre.scrollTop = frLogPre.scrollHeight;
+        }
+        console.log('[FilmRoomUpload] ' + msg);
+    }
+    function frLogError(msg) { frLog('ERROR: ' + msg); }
+    function frLogWarn(msg) { frLog('WARNING: ' + msg); }
+    function frElapsed(start) {
+        var s = Math.round((Date.now() - start) / 1000);
+        return s < 60 ? s + 's' : Math.floor(s / 60) + 'm ' + (s % 60) + 's';
+    }
+
     if (fileArea && fileInput) {
-        fileArea.addEventListener('click', function() { fileInput.click(); });
+        fileArea.addEventListener('click', function(e) { if (e.target === fileInput) return; fileInput.click(); });
         fileArea.addEventListener('dragover', function(e) { e.preventDefault(); fileArea.style.borderColor = 'var(--gp-primary-light)'; });
         fileArea.addEventListener('dragleave', function() { fileArea.style.borderColor = ''; });
         fileArea.addEventListener('drop', function(e) {
@@ -574,6 +596,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     vrCurrentUploadXhr.abort();
                     vrCurrentUploadXhr = null;
                 }
+                frLog('Upload cancelled by user.');
                 document.getElementById('vrUploadProgressOverlay').style.display = 'none';
                 document.getElementById('vrUploadSubmitBtn').disabled = false;
                 frToast('Upload cancelled.');
@@ -599,6 +622,8 @@ document.addEventListener('DOMContentLoaded', function() {
             bar.style.width = '0%';
             percent.textContent = '0%';
             status.textContent = 'Requesting upload URL...';
+            if (frLogPre) frLogPre.textContent = '';
+            frLog('Selected file: ' + videoFile.name + ' (' + (videoFile.size / 1048576).toFixed(1) + ' MB)');
 
             // Collect form values for presigned URL request
             var csrfInput = uploadForm.querySelector('[name="csrf_token"]');
@@ -634,17 +659,21 @@ document.addEventListener('DOMContentLoaded', function() {
                     uploadNonce = data.upload_nonce;
                     proxyUploadUrl = data.proxy_upload_url || null;
                     proxyToken = data.proxy_token || null;
+                    frLog('Presigned URL obtained.' + (data.object_key ? ' Object key: ' + data.object_key : ''));
 
                     // Try direct-to-RustFS upload first (faster, avoids server timeout for large files)
                     if (data.presigned_url) {
                         var presignedUrl = data.presigned_url;
                         status.textContent = 'Uploading to cloud storage...';
+                        frLog('Uploading direct to cloud storage…');
+                        var uploadStart = Date.now();
                         return new Promise(function(resolve, reject) {
                             var xhr = new XMLHttpRequest();
                             vrCurrentUploadXhr = xhr;
                             xhr.open('PUT', presignedUrl, true);
                             xhr.setRequestHeader('Content-Type', contentType);
                             var uploadStarted = false;
+                            var lastLogTime = 0;
                             var connTimer = setTimeout(function() {
                                 if (!uploadStarted) { xhr.abort(); reject(new Error('Cloud storage connection timed out — check that the S3/RustFS endpoint is reachable from this browser')); }
                             }, 30000);
@@ -655,11 +684,16 @@ document.addEventListener('DOMContentLoaded', function() {
                                     bar.style.width = pct + '%';
                                     percent.textContent = pct + '%';
                                     status.textContent = pct < 100 ? 'Uploading to cloud storage... ' + pct + '%' : 'Finalizing upload...';
+                                    var now = Date.now();
+                                    if (ev.loaded > 0 && (now - lastLogTime) >= PROGRESS_LOG_INTERVAL * 1000) {
+                                        lastLogTime = now;
+                                        frLog('Progress: ' + pct + '% — ' + (ev.loaded / 1048576).toFixed(1) + ' / ' + (ev.total / 1048576).toFixed(1) + ' MB');
+                                    }
                                 }
                             };
                             xhr.onload = function() {
                                 clearTimeout(connTimer);
-                                if (xhr.status >= 200 && xhr.status < 300) resolve();
+                                if (xhr.status >= 200 && xhr.status < 300) { frLog('Upload completed in ' + frElapsed(uploadStart)); resolve(); }
                                 else reject(new Error('Cloud upload failed (HTTP ' + xhr.status + ')'));
                             };
                             xhr.onerror = function() { clearTimeout(connTimer); reject(new Error('Network error during upload — ensure the S3/RustFS endpoint is accessible')); };
@@ -669,7 +703,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     // No presigned URL — fall back to server proxy
                     if (proxyUploadUrl && proxyToken) {
+                        frLog('No presigned URL — falling back to server proxy…');
                         status.textContent = 'Uploading video...';
+                        var uploadStart = Date.now();
                         return new Promise(function(resolve, reject) {
                             var xhr = new XMLHttpRequest();
                             vrCurrentUploadXhr = xhr;
@@ -677,6 +713,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             xhr.setRequestHeader('Content-Type', contentType);
                             xhr.setRequestHeader('X-Upload-Token', proxyToken);
                             var uploadStarted = false;
+                            var lastLogTime = 0;
                             var connTimer = setTimeout(function() {
                                 if (!uploadStarted) { xhr.abort(); reject(new Error('Upload connection timed out')); }
                             }, 30000);
@@ -687,11 +724,16 @@ document.addEventListener('DOMContentLoaded', function() {
                                     bar.style.width = pct + '%';
                                     percent.textContent = pct + '%';
                                     status.textContent = pct < 100 ? 'Uploading video... ' + pct + '%' : 'Finalizing upload...';
+                                    var now = Date.now();
+                                    if (ev.loaded > 0 && (now - lastLogTime) >= PROGRESS_LOG_INTERVAL * 1000) {
+                                        lastLogTime = now;
+                                        frLog('Proxy progress: ' + pct + '% — ' + (ev.loaded / 1048576).toFixed(1) + ' / ' + (ev.total / 1048576).toFixed(1) + ' MB');
+                                    }
                                 }
                             };
                             xhr.onload = function() {
                                 clearTimeout(connTimer);
-                                if (xhr.status >= 200 && xhr.status < 300) resolve();
+                                if (xhr.status >= 200 && xhr.status < 300) { frLog('Proxy upload completed in ' + frElapsed(uploadStart)); resolve(); }
                                 else reject(new Error('Upload failed (HTTP ' + xhr.status + ')'));
                             };
                             xhr.onerror = function() { clearTimeout(connTimer); reject(new Error('Network error during upload')); };
@@ -704,6 +746,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 .catch(function(uploadErr) {
                     // Direct RustFS upload failed — fall back to same-origin proxy
                     if (!proxyUploadUrl || !proxyToken) throw uploadErr;
+                    frLogWarn('Direct upload failed: ' + uploadErr.message + ' — trying server proxy');
                     console.warn('[Upload] Direct upload failed:', uploadErr.message, '— trying server proxy');
                     status.textContent = 'Retrying via server...';
                     bar.style.width = '0%';
@@ -716,6 +759,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         xhr.setRequestHeader('Content-Type', contentType);
                         xhr.setRequestHeader('X-Upload-Token', proxyToken);
                         var uploadStarted = false;
+                        var lastLogTime = 0;
                         var connTimer = setTimeout(function() {
                             if (!uploadStarted) { xhr.abort(); reject(new Error('Proxy connection timed out')); }
                         }, 30000);
@@ -726,11 +770,16 @@ document.addEventListener('DOMContentLoaded', function() {
                                 bar.style.width = pct + '%';
                                 percent.textContent = pct + '%';
                                 status.textContent = pct < 100 ? 'Uploading via server... ' + pct + '%' : 'Finalizing upload...';
+                                var now = Date.now();
+                                if (ev.loaded > 0 && (now - lastLogTime) >= PROGRESS_LOG_INTERVAL * 1000) {
+                                    lastLogTime = now;
+                                    frLog('Retry progress: ' + pct + '% — ' + (ev.loaded / 1048576).toFixed(1) + ' / ' + (ev.total / 1048576).toFixed(1) + ' MB');
+                                }
                             }
                         };
                         xhr.onload = function() {
                             clearTimeout(connTimer);
-                            if (xhr.status >= 200 && xhr.status < 300) resolve();
+                            if (xhr.status >= 200 && xhr.status < 300) { frLog('Retry upload completed.'); resolve(); }
                             else reject(new Error('Proxy upload failed (HTTP ' + xhr.status + ')'));
                         };
                         xhr.onerror = function() { clearTimeout(connTimer); reject(new Error('Network error during proxy upload')); };
@@ -739,6 +788,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
                 .then(function() {
                     // Step 3: confirm upload
+                    frLog('Confirming upload with server…');
                     status.textContent = 'Confirming upload...';
                     var confirmData = new FormData();
                     confirmData.append('action', 'confirm_video_upload');
@@ -750,6 +800,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
                 .then(function(result) {
                     if (result.success) {
+                        frLog('Upload confirmed! Triggering background transcode…');
                         bar.style.width = '100%';
                         percent.textContent = '100%';
                         status.textContent = 'Upload complete! Redirecting...';
@@ -760,7 +811,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         tp.append('object_key', result.object_key || '');
                         if (result.video_id) tp.append('video_id', result.video_id);
                         if (result.source_id) tp.append('source_id', result.source_id);
-                        fetch('/process_video.php', { method: 'POST', body: tp, keepalive: true }).catch(function() {});
+                        fetch('/process_video.php', { method: 'POST', body: tp, keepalive: true })
+                            .then(function(r) { return r.json(); })
+                            .then(function(t) { frLog('Transcode triggered (job: ' + (t.hls_job_id || 'N/A') + ')'); })
+                            .catch(function(e) { frLogWarn('Transcode trigger: ' + (e && e.message || String(e))); });
                         window.location.href = result.redirect || '/gameplan.php?page=film_room&tab=upload&success=source_uploaded';
                     } else {
                         throw new Error(result.error || 'Confirmation failed');
@@ -768,6 +822,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
                 .catch(function(err) {
                     // Proxy upload failed, trying direct S3
+                    frLogWarn('Upload attempt failed: ' + err.message + ' — trying direct S3');
                     console.warn('[Upload] Proxy upload failed:', err.message, '— trying direct S3');
                     status.textContent = 'Retrying via direct cloud upload...';
                     bar.style.width = '0%';
@@ -786,6 +841,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         .then(function(data2) {
                             if (!data2.presigned_url) throw new Error('No presigned URL available');
                             uploadNonce = data2.upload_nonce || uploadNonce;
+                            frLog('Retry presigned URL obtained. Uploading…');
+                            var retryStart = Date.now();
                             return new Promise(function(resolve, reject) {
                                 var xhr = new XMLHttpRequest();
                                 vrCurrentUploadXhr = xhr;
@@ -800,7 +857,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     }
                                 };
                                 xhr.onload = function() {
-                                    if (xhr.status >= 200 && xhr.status < 300) resolve();
+                                    if (xhr.status >= 200 && xhr.status < 300) { frLog('Retry upload completed in ' + frElapsed(retryStart)); resolve(); }
                                     else reject(new Error('Cloud upload failed (HTTP ' + xhr.status + ')'));
                                 };
                                 xhr.onerror = function() { reject(new Error('Network error during cloud upload')); };
@@ -808,6 +865,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             });
                         })
                         .then(function() {
+                            frLog('Confirming retry upload…');
                             status.textContent = 'Confirming upload...';
                             var confirmData = new FormData();
                             confirmData.append('action', 'confirm_video_upload');
@@ -818,6 +876,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         })
                         .then(function(result) {
                             if (result.success) {
+                                frLog('Upload confirmed! Triggering transcode…');
                                 bar.style.width = '100%';
                                 percent.textContent = '100%';
                                 status.textContent = 'Upload complete! Redirecting...';
@@ -837,6 +896,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
                 .catch(function(err) {
                     // Fall back to legacy server-side upload if both direct and proxy fail
+                    frLogWarn('All cloud uploads failed: ' + err.message + ' — falling back to legacy server upload');
                     console.warn('Direct + proxy upload failed, falling back to legacy upload:', err.message);
                     status.textContent = 'Retrying via server...';
                     bar.style.width = '0%';
@@ -859,20 +919,24 @@ document.addEventListener('DOMContentLoaded', function() {
                         try {
                             var resp = JSON.parse(legacyXhr.responseText);
                             if (resp.success) {
+                                frLog('Legacy upload succeeded. Redirecting…');
                                 bar.style.width = '100%';
                                 percent.textContent = '100%';
                                 status.textContent = 'Upload complete! Redirecting...';
                                 window.location.href = resp.redirect || '/gameplan.php?page=film_room&tab=upload&success=source_uploaded';
                             } else {
+                                frLogError('Legacy upload failed: ' + (resp.error || 'Unknown error'));
                                 status.textContent = 'Upload failed: ' + (resp.error || 'Unknown error');
                                 submitBtn.disabled = false;
                             }
                         } catch (parseErr) {
+                            frLogError('Legacy upload failed: server returned unexpected response');
                             status.textContent = 'Upload failed: Server returned an unexpected response.';
                             submitBtn.disabled = false;
                         }
                     };
                     legacyXhr.onerror = function() {
+                        frLogError('Legacy upload failed: network error');
                         status.textContent = 'Upload failed: Network error.';
                         submitBtn.disabled = false;
                     };
