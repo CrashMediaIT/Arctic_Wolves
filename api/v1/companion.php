@@ -27,7 +27,7 @@ require_once __DIR__ . '/../../error_logger.php';
 
 // Discard any stray output produced by the includes above.
 $_stray = ob_get_clean();
-if ($_stray !== '' && $_stray !== false) {
+if ($_stray) {
     error_log('[companion.php] Stray output from includes (' . strlen($_stray) . ' bytes): ' . substr($_stray, 0, 300));
 }
 unset($_stray);

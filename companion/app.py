@@ -2680,8 +2680,7 @@ def _send_callback(callback_url: str, payload: dict):
                     brace = resp.text.find("{")
                     if brace > 0:
                         try:
-                            import json as _json
-                            body = _json.loads(resp.text[brace:])
+                            body = json.loads(resp.text[brace:])
                             logger.info(
                                 "Extracted JSON from mixed HTML+JSON response for job %s "
                                 "(skipped %d leading bytes of non-JSON output)",
