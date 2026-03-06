@@ -115,6 +115,7 @@ class JobStore:
         conn.executescript(_SCHEMA_SQL)
         conn.commit()
         # Migrate existing tables: add columns that may not exist yet.
+        # Note: col/coldef are from a hardcoded tuple — not user input.
         for col, coldef in (
             ("dash_manifest", "TEXT"),
             ("segments_path", "TEXT DEFAULT ''"),
