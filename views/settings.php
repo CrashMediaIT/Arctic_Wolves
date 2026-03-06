@@ -3,9 +3,11 @@
 // Load current settings from database
 $_gs_settings = [];
 try {
-    $gs_q = $pdo->query("SELECT setting_key, setting_value FROM system_settings");
-    while ($gs_r = $gs_q->fetch(PDO::FETCH_ASSOC)) {
-        $_gs_settings[$gs_r['setting_key']] = $gs_r['setting_value'];
+    if (isset($pdo) && $pdo instanceof PDO) {
+        $gs_q = $pdo->query("SELECT setting_key, setting_value FROM system_settings");
+        while ($gs_r = $gs_q->fetch(PDO::FETCH_ASSOC)) {
+            $_gs_settings[$gs_r['setting_key']] = $gs_r['setting_value'];
+        }
     }
 } catch (Exception $e) { /* table may not exist yet */ }
 $_gs = function($key, $default = '') use ($_gs_settings) {

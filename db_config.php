@@ -223,8 +223,11 @@ if ($db_connected && $pdo) {
             $mysql_tz  = $sign . $hours . ':' . $minutes;
             $pdo->exec("SET time_zone = " . $pdo->quote($mysql_tz));
         } catch (Exception $e2) {
-            // MySQL SET time_zone failed — timezone and offset are still valid
-            // for PHP; only MySQL NOW() may not match the configured timezone.
+            // MySQL SET time_zone can fail if the named timezone is not loaded
+            // in MySQL's timezone tables.  This is non-fatal: PHP date/time
+            // functions still use the correct timezone, and app_time_offset is
+            // preserved.  Only MySQL NOW()/CURDATE() may return server-default
+            // time instead of the configured timezone.
         }
     } catch (Exception $e) {
         // Silently fail — table may not exist yet (pre-setup)
