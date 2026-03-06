@@ -40,11 +40,13 @@
                 <div class="form-group">
                     <label>Timezone *</label>
                     <select name="timezone" class="form-input" required>
-                        <option>-- Select Timezone --</option>
-                        <option selected>America/New_York (EST)</option>
-                        <option>America/Chicago (CST)</option>
-                        <option>America/Denver (MST)</option>
-                        <option>America/Los_Angeles (PST)</option>
+                        <option value="">-- Select Timezone --</option>
+                        <option value="America/St_Johns">Newfoundland (NST)</option>
+                        <option value="America/Halifax">Atlantic (AST)</option>
+                        <option value="America/New_York" selected>Eastern (EST)</option>
+                        <option value="America/Chicago">Central (CST)</option>
+                        <option value="America/Denver">Mountain (MST)</option>
+                        <option value="America/Los_Angeles">Pacific (PST)</option>
                     </select>
                 </div>
 
