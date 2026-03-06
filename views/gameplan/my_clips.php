@@ -159,16 +159,16 @@ if (!function_exists('vr_format_duration')) {
     <?php foreach ($mc_clips as $clip):
         $clip_src_row = ['file_path' => $clip['source_path'] ?? '', 'hls_url' => $clip['source_hls_url'] ?? '', 'hls_status' => $clip['source_hls_status'] ?? ''];
         $clip_play_url = resolveRustfsUrl($pdo, getPreferredVideoUrl($clip_src_row)) ?? '';
-        $clip_hls_fallback = '';
+        $clip_fallback = '';
         if (preg_match('/\.m3u8(\?|&|$)/i', $clip_play_url)) {
             $orig = resolveRustfsUrl($pdo, $clip['source_path'] ?? '') ?? '';
-            if ($orig && $orig !== $clip_play_url) $clip_hls_fallback = $orig;
+            if ($orig && $orig !== $clip_play_url) $clip_fallback = $orig;
         } else {
-            $clip_hls_fallback = resolveRustfsUrl($pdo, $clip['source_hls_url'] ?? '') ?? '';
-            if (empty($clip_hls_fallback)) $clip_hls_fallback = deriveHlsFallbackUrl($clip_play_url);
+            $clip_fallback = resolveRustfsUrl($pdo, $clip['source_hls_url'] ?? '') ?? '';
+            if (empty($clip_fallback)) $clip_fallback = deriveFallbackUrl($clip_play_url);
         }
     ?>
-    <div class="gp-card vr-clip-card" data-clip-id="<?= (int)$clip['id'] ?>" data-source="<?= htmlspecialchars($clip_play_url) ?>"<?php if ($clip_hls_fallback && $clip_hls_fallback !== $clip_play_url): ?> data-hls-url="<?= htmlspecialchars($clip_hls_fallback) ?>"<?php endif; ?>>
+    <div class="gp-card vr-clip-card" data-clip-id="<?= (int)$clip['id'] ?>" data-source="<?= htmlspecialchars($clip_play_url) ?>"<?php if ($clip_fallback && $clip_fallback !== $clip_play_url): ?> data-fallback-url="<?= htmlspecialchars($clip_fallback) ?>"<?php endif; ?>>
         <div class="gp-card-thumb">
             <?php if (!empty($clip['thumbnail_path'])): ?>
             <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $clip['thumbnail_path'])) ?>" alt="" loading="lazy">
@@ -264,14 +264,14 @@ document.addEventListener('DOMContentLoaded', function() {
     var source = document.getElementById('vrModalSource');
     var titleEl = document.getElementById('vrPlayerTitle');
     var clipsHls = null;
-    var _clipHlsFallbackUrl = '';
-    var _clipHlsFallbackTried = false;
+    var _clipFallbackUrl = '';
+    var _clipFallbackTried = false;
 
     document.querySelectorAll('.vr-clip-card').forEach(function(card) {
         card.addEventListener('click', function() {
             var src = card.dataset.source || '';
-            _clipHlsFallbackUrl = card.dataset.hlsUrl || '';
-            _clipHlsFallbackTried = false;
+            _clipFallbackUrl = card.dataset.fallbackUrl || '';
+            _clipFallbackTried = false;
             var title = card.querySelector('.gp-card-title');
             titleEl.textContent = title ? title.textContent : 'Clip';
             if (clipsHls) { clipsHls.destroy(); clipsHls = null; }
@@ -293,11 +293,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Fallback: if the primary source fails (e.g. 502 because companion
     // deleted the original after HLS transcode), retry with the HLS URL.
     video.addEventListener('error', function() {
-        if (_clipHlsFallbackUrl && !_clipHlsFallbackTried) {
-            _clipHlsFallbackTried = true;
+        if (_clipFallbackUrl && !_clipFallbackTried) {
+            _clipFallbackTried = true;
             if (clipsHls) { clipsHls.destroy(); clipsHls = null; }
             if (typeof window.awInitHlsPlayer === 'function') {
-                clipsHls = window.awInitHlsPlayer(video, _clipHlsFallbackUrl);
+                clipsHls = window.awInitHlsPlayer(video, _clipFallbackUrl);
             }
         }
     }, true);

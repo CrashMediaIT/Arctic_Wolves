@@ -165,11 +165,13 @@ test.describe('api/media.php error response caching prevention', () => {
 test.describe('HLS.js cache-busting and retry improvements', () => {
   const content = () => readFile('js/hls-player.js');
 
-  test('HLS.js config includes xhrSetup for cache-busting', () => {
+  test('HLS.js config does NOT use xhrSetup xhr.open (causes bufferAppendError)', () => {
     const c = content();
-    expect(c).toContain('xhrSetup');
-    expect(c).toContain('_t=');
-    expect(c).toContain('Date.now()');
+    // xhrSetup with xhr.open() resets responseType on .ts segment requests,
+    // causing bufferAppendError. Server-side Cache-Control: no-store on error
+    // responses (api/media.php) handles caching prevention instead.
+    expect(c).not.toContain("xhr.open('GET'");
+    expect(c).toContain('do NOT use xhrSetup');
   });
 
   test('reports empty URL as silent failure', () => {

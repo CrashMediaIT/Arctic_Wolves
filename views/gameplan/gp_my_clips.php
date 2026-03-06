@@ -189,16 +189,16 @@ if (!function_exists('gp_format_duration')) {
     <?php foreach ($mc_clips as $clip):
         $clip_src_row = ['file_path' => $clip['source_path'] ?? '', 'hls_url' => $clip['source_hls_url'] ?? '', 'hls_status' => $clip['source_hls_status'] ?? ''];
         $clip_play_url = resolveRustfsUrl($pdo, getPreferredVideoUrl($clip_src_row)) ?? '';
-        $clip_hls_fallback = '';
+        $clip_fallback = '';
         if (preg_match('/\.m3u8(\?|&|$)/i', $clip_play_url)) {
             $orig = resolveRustfsUrl($pdo, $clip['source_path'] ?? '') ?? '';
-            if ($orig && $orig !== $clip_play_url) $clip_hls_fallback = $orig;
+            if ($orig && $orig !== $clip_play_url) $clip_fallback = $orig;
         } else {
-            $clip_hls_fallback = resolveRustfsUrl($pdo, $clip['source_hls_url'] ?? '') ?? '';
-            if (empty($clip_hls_fallback)) $clip_hls_fallback = deriveHlsFallbackUrl($clip_play_url);
+            $clip_fallback = resolveRustfsUrl($pdo, $clip['source_hls_url'] ?? '') ?? '';
+            if (empty($clip_fallback)) $clip_fallback = deriveFallbackUrl($clip_play_url);
         }
     ?>
-    <div class="card gp-clip-item" style="margin-bottom:0;cursor:pointer;transition:transform .15s,border-color .2s;" data-clip-id="<?= (int)$clip['id'] ?>" data-source="<?= htmlspecialchars($clip_play_url) ?>"<?php if ($clip_hls_fallback && $clip_hls_fallback !== $clip_play_url): ?> data-hls-url="<?= htmlspecialchars($clip_hls_fallback) ?>"<?php endif; ?>>
+    <div class="card gp-clip-item" style="margin-bottom:0;cursor:pointer;transition:transform .15s,border-color .2s;" data-clip-id="<?= (int)$clip['id'] ?>" data-source="<?= htmlspecialchars($clip_play_url) ?>"<?php if ($clip_fallback && $clip_fallback !== $clip_play_url): ?> data-fallback-url="<?= htmlspecialchars($clip_fallback) ?>"<?php endif; ?>>
         <div style="position:relative;background:#0a0a0f;border-radius:12px 12px 0 0;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;overflow:hidden;">
             <?php if (!empty($clip['thumbnail_path'])): ?>
             <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $clip['thumbnail_path'])) ?>" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;">
@@ -257,14 +257,14 @@ document.addEventListener('DOMContentLoaded', function() {
     var source = document.getElementById('gpModalSource');
     var titleEl = document.getElementById('gpPlayerTitle');
     var gpClipsHls = null;
-    var _gpClipHlsFallbackUrl = '';
-    var _gpClipHlsFallbackTried = false;
+    var _gpClipFallbackUrl = '';
+    var _gpClipFallbackTried = false;
 
     document.querySelectorAll('.gp-clip-item').forEach(function(card) {
         card.addEventListener('click', function() {
             var src = card.dataset.source || '';
-            _gpClipHlsFallbackUrl = card.dataset.hlsUrl || '';
-            _gpClipHlsFallbackTried = false;
+            _gpClipFallbackUrl = card.dataset.fallbackUrl || '';
+            _gpClipFallbackTried = false;
             var titleNode = card.querySelector('[style*="font-weight:700"]');
             titleEl.innerHTML = '<i class="fas fa-play-circle"></i> ' + (titleNode ? titleNode.textContent.trim() : 'Clip');
             if (gpClipsHls) { gpClipsHls.destroy(); gpClipsHls = null; }
@@ -286,11 +286,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Fallback: if the primary source fails (e.g. 502 because companion
     // deleted the original after HLS transcode), retry with the HLS URL.
     video.addEventListener('error', function() {
-        if (_gpClipHlsFallbackUrl && !_gpClipHlsFallbackTried) {
-            _gpClipHlsFallbackTried = true;
+        if (_gpClipFallbackUrl && !_gpClipFallbackTried) {
+            _gpClipFallbackTried = true;
             if (gpClipsHls) { gpClipsHls.destroy(); gpClipsHls = null; }
             if (typeof window.awInitHlsPlayer === 'function') {
-                gpClipsHls = window.awInitHlsPlayer(video, _gpClipHlsFallbackUrl);
+                gpClipsHls = window.awInitHlsPlayer(video, _gpClipFallbackUrl);
             }
         }
     }, true);

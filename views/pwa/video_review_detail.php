@@ -59,22 +59,23 @@ $video_url = resolveRustfsUrl($pdo, getPreferredVideoUrl($video)) ?? '';
 $thumbnail_url = resolveRustfsUrl($pdo, $video['thumbnail_url'] ?? '') ?? '';
 $video_type = preg_match('/\.m3u8(\?|&|$)/i', $video_url) ? 'application/vnd.apple.mpegurl' : 'video/mp4';
 
-// Compute a fallback URL for JS error recovery (bidirectional).
-// When the primary URL is the HLS manifest (transcode initiated), the
-// fallback is the original file (in case the manifest isn't uploaded yet).
-// When the primary is the original file, the fallback is the HLS manifest.
-$hls_fallback_url = '';
+// Compute a fallback URL for JS error recovery.
+// Once transcoding completes, HLS is the primary stream and the original
+// file is deleted.  The fallback provides an alternate source if the
+// primary fails (e.g. original still available during transcode window,
+// or derived HLS path if the callback didn't update hls_url).
+$fallback_url = '';
 if (preg_match('/\.m3u8(\?|&|$)/i', $video_url)) {
-    // Primary is HLS → fallback to original video file
+    // Primary is HLS → fallback to original video file (if still available)
     $orig = resolveRustfsUrl($pdo, $video['video_url'] ?? $video['file_path'] ?? '') ?? '';
-    if ($orig && $orig !== $video_url) $hls_fallback_url = $orig;
+    if ($orig && $orig !== $video_url) $fallback_url = $orig;
 } else {
-    // Primary is original → fallback to HLS manifest
+    // Primary is original (transcode not yet complete) → fallback to HLS
     if (!empty($video['hls_url'])) {
         $hls = resolveRustfsUrl($pdo, $video['hls_url']) ?? '';
-        if ($hls && $hls !== $video_url) $hls_fallback_url = $hls;
+        if ($hls && $hls !== $video_url) $fallback_url = $hls;
     }
-    if (empty($hls_fallback_url)) $hls_fallback_url = deriveHlsFallbackUrl($video_url);
+    if (empty($fallback_url)) $fallback_url = deriveFallbackUrl($video_url);
 }
 
 $csrf_token = $_SESSION['csrf_token'] ?? '';
@@ -206,7 +207,7 @@ $coach_name   = trim(($video['coach_first_name'] ?? '') . ' ' . ($video['coach_l
 
     <!-- Video Player – full width -->
     <div class="m-vrd-player">
-        <video id="detailVideoPlayer" controls playsinline preload="none"<?= $thumbnail_url ? ' poster="' . htmlspecialchars($thumbnail_url) . '"' : '' ?><?= $hls_fallback_url ? ' data-hls-url="' . htmlspecialchars($hls_fallback_url) . '"' : '' ?>>
+        <video id="detailVideoPlayer" controls playsinline preload="none"<?= $thumbnail_url ? ' poster="' . htmlspecialchars($thumbnail_url) . '"' : '' ?><?= $fallback_url ? ' data-fallback-url="' . htmlspecialchars($fallback_url) . '"' : '' ?>>
             <source src="<?= htmlspecialchars($video_url) ?>" type="<?= $video_type ?>">
             Your browser does not support the video tag.
         </video>
@@ -375,15 +376,16 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Fallback: if the primary video source fails (e.g. 502 because the
-    // companion deleted the original MP4 after HLS transcode but the
-    // callback didn't update hls_status), retry with the HLS URL.
+    // Fallback: if the primary video source fails, try the alternate URL.
+    // After transcoding, HLS is the primary stream; the fallback (if any)
+    // is the original file.  Before transcoding completes, the original is
+    // primary and the fallback points to the derived HLS manifest.
     if (detailPlayer) {
-        var _hlsFallbackTried = false;
+        var _fallbackTried = false;
         detailPlayer.addEventListener('error', function() {
-            var hlsUrl = detailPlayer.dataset.hlsUrl;
-            if (hlsUrl && !_hlsFallbackTried) {
-                _hlsFallbackTried = true;
+            var hlsUrl = detailPlayer.dataset.fallbackUrl;
+            if (hlsUrl && !_fallbackTried) {
+                _fallbackTried = true;
                 if (typeof window.awReportPlaybackError === 'function') {
                     var srcEl = detailPlayer.querySelector('source');
                     window.awReportPlaybackError('Primary video source failed, trying fallback', { primary: srcEl ? srcEl.getAttribute('src') : '', fallback: hlsUrl });

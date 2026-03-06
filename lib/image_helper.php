@@ -111,17 +111,21 @@ function resolveRustfsUrl($pdo, $url) {
 }
 
 /**
- * Get the preferred playback URL for a video.
+ * Get the primary playback URL for a video.
  *
- * Returns the HLS manifest URL only when the companion has confirmed the
- * transcode is complete (hls_status === 'ready').  While the transcode is
- * still running (pending / processing) the original video file is served so
- * the player always has a valid source.  The original file is only deleted
- * by the companion after the main app confirms the DB update, so it is safe
- * to serve it during the transcode window.
+ * Flow: Upload → serve original file → companion transcodes → callback
+ * confirms completion → HLS becomes the primary (and only) stream.
+ *
+ * Returns the HLS manifest URL when the companion has confirmed the
+ * transcode is complete (hls_status === 'ready').  The companion deletes
+ * the original file after the main app confirms the DB update, so HLS
+ * is the only available source once transcoding finishes.
+ *
+ * While the transcode is still running (pending / processing), the
+ * original video file is served so the player always has a valid source.
  *
  * @param array $video  Video row from the database (must include video_url or file_path, hls_url, hls_status)
- * @return string  The URL to use for playback (video_url/file_path or hls_url)
+ * @return string  The URL to use for playback (hls_url when ready, otherwise video_url/file_path)
  */
 function getPreferredVideoUrl($video) {
     $hls_status = $video['hls_status'] ?? '';
@@ -141,21 +145,23 @@ function getPreferredVideoUrl($video) {
 }
 
 /**
- * Derive an HLS fallback URL from a video's original proxy URL.
+ * Derive a fallback URL from a video's original proxy URL.
  *
  * When the companion transcodes a video it writes HLS segments to a
  * predictable path based on the original file name:
  *   Original: Images/videos/…/athlete_video_xxx.mkv
  *   HLS:      Images/videos/…/athlete_video_xxx/hls/master.m3u8
  *
- * This function replicates that convention so the player can attempt
- * HLS playback even if the companion callback never updated hls_url
- * in the database (e.g. callback routing / reverse-proxy issues).
+ * Once transcoding completes, HLS is the primary stream and the original
+ * file is deleted.  This function derives the HLS manifest URL from the
+ * original file path so the player can attempt playback even if the
+ * companion callback never updated hls_url in the database (e.g.
+ * callback routing / reverse-proxy issues).
  *
  * @param string $video_url  The original video proxy URL (api/media.php?key=…)
  * @return string  Derived HLS proxy URL, or empty string if not derivable
  */
-function deriveHlsFallbackUrl($video_url) {
+function deriveFallbackUrl($video_url) {
     if (empty($video_url)) return '';
 
     // Only derive for media-proxy URLs with a recognised video extension
