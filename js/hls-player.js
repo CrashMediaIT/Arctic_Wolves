@@ -175,7 +175,8 @@
         var dashUrl = video.getAttribute('data-dash-url');
         var isSafari = _browserInfo.browser === 'Safari';
         var preferDash = !isSafari && dashUrl && typeof dashjs !== 'undefined'
-                         && typeof MediaSource !== 'undefined';
+                         && typeof MediaSource !== 'undefined'
+                         && !video._awDashFallbackAttempted;
 
         if (isHLS && preferDash) {
             _reportPlaybackError('Format selection: preferring DASH for ' + _browserInfo.browser, {
