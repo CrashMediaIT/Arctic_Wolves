@@ -107,14 +107,14 @@ test.describe('DASH MPD segment URL rewriting (no BaseURL)', () => {
         expect(c).toContain('_resolve_media_path($base_dir, $url)');
     });
 
-    test('should produce media.php?key= proxy URLs', () => {
+    test('should produce absolute proxy URLs via $proxy_base', () => {
         const c = content();
-        // Check that the rewriting produces proxy URLs
+        // Check that the rewriting produces absolute proxy URLs using $proxy_base
         const mpdBlock = c.substring(
             c.indexOf("=== 'mpd'"),
             c.indexOf("} else {", c.indexOf("=== 'mpd'"))
         );
-        expect(mpdBlock).toContain("'media.php?key='");
+        expect(mpdBlock).toContain("$proxy_base . '?key='");
         expect(mpdBlock).toContain('rawurlencode');
     });
 
@@ -138,7 +138,7 @@ test.describe('HLS playlist rewriting still works', () => {
     test('HLS rewriting resolves relative paths through proxy using _resolve_media_path', () => {
         const c = content();
         expect(c).toContain("_resolve_media_path($base_dir, $trimmed)");
-        expect(c).toContain("'media.php?key=' . rawurlencode($resolved)");
+        expect(c).toContain("$proxy_base . '?key=' . rawurlencode($resolved)");
     });
 
     test('HLS rewriting handles EXT-X-MAP URI for fMP4 init segments', () => {
