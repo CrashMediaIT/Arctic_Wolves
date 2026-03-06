@@ -437,7 +437,7 @@ try {
             <a href="?page=coach_video_reviews" class="nav-link <?= in_array($page, ['coach_video_reviews','coach_pending_reviews'])?'active':'' ?>"><i class="fa-solid fa-video"></i> Video Reviews</a>
             <a href="?page=travel" class="nav-link <?= in_array($page, ['travel','mileage'])?'active':'' ?>"><i class="fa-solid fa-plane"></i> Travel</a>
             <a href="?page=record_drill_video" class="nav-link <?= $page=='record_drill_video'?'active':'' ?>"><i class="fa-solid fa-video"></i> Video Recording</a>
-            <a href="/gameplan.php" class="nav-link"><i class="fa-solid fa-chess-board"></i> Game Plan</a>
+            <a href="?page=gameplan" class="nav-link <?= $page=='gameplan'?'active':'' ?>"><i class="fa-solid fa-chess-board"></i> Game Plan</a>
         </nav>
     </div>
     <?php endif; ?>

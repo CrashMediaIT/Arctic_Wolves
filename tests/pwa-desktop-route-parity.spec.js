@@ -327,3 +327,70 @@ test.describe('PWA Missing Features & Navigation Gaps', () => {
   });
 
 });
+
+test.describe('PWA View Parity - Desktop Source of Truth', () => {
+
+  const deletedPwaViews = [
+    'coach_evaluations.php',    // Had extra create-evaluation form not in desktop
+    'coach_goals.php',          // Had full CRUD not in desktop (desktop is read-only)
+    'coach_session_evaluations.php', // Missing calendar tab, different architecture
+    'athlete_evaluations.php',  // Pulled from extra data source not in desktop
+    'profile.php',              // Only 140L stub, missing all 5 desktop tabs
+    'shop.php',                 // Wrong database tables (product_categories vs merchandise_categories)
+    'marketing.php',            // 89% smaller, missing desktop features
+    'all_users.php',            // 88% smaller, missing user management features
+    'session_templates.php',    // Confused data sources (2 tables)
+    'categories.php',           // Only 2/5 desktop tabs implemented
+    'settings.php',             // Extra features (Large Text, Notifications) not in desktop; missing Booking/Payment
+    'session_history.php',      // Extra filter/export not in desktop
+  ];
+
+  for (const view of deletedPwaViews) {
+    test(`views/pwa/${view} should NOT exist (desktop view is source of truth)`, () => {
+      const fs = require('fs');
+      const filePath = join(ROOT, 'views', 'pwa', view);
+      expect(fs.existsSync(filePath)).toBe(false);
+    });
+  }
+
+  test('pwa_tablet.php Main Menu includes notifications link matching dashboard.php', () => {
+    const tablet = readFileSync(join(ROOT, 'pwa_tablet.php'), 'utf-8');
+    // Extract the Main Menu section
+    const mainMenuStart = tablet.indexOf('<!-- MAIN MENU');
+    const mainMenuEnd = tablet.indexOf('<!-- TEAM', mainMenuStart);
+    const mainMenuSection = tablet.substring(mainMenuStart, mainMenuEnd);
+    expect(mainMenuSection).toContain('page=notifications');
+  });
+
+  test('pwa_tablet.php Game Plan uses inline ?page=gameplan not standalone /gameplan.php', () => {
+    const tablet = readFileSync(join(ROOT, 'pwa_tablet.php'), 'utf-8');
+    // Should use inline page routing so PWA view override can serve views/pwa/gameplan.php
+    expect(tablet).toContain('page=gameplan');
+    // Should NOT link to standalone module from sidebar
+    expect(tablet).not.toMatch(/href="\/gameplan\.php".*nav-link/);
+  });
+
+  test('pwa_more_menu.php Game Plan uses inline ?page=gameplan', () => {
+    const moreMenu = readFileSync(join(ROOT, 'pwa_more_menu.php'), 'utf-8');
+    expect(moreMenu).toContain('page=gameplan');
+    expect(moreMenu).not.toContain('/gameplan.php');
+  });
+
+  // Verify key desktop views that should NOT have PWA overrides still exist as desktop views
+  const mustExistDesktop = [
+    'views/coach_evaluations.php',
+    'views/coach_goals.php',
+    'views/coach_session_evaluations.php',
+    'views/athlete_evaluations.php',
+    'views/profile.php',
+    'views/shop.php',
+    'views/settings.php',
+  ];
+  for (const view of mustExistDesktop) {
+    test(`desktop ${view} still exists`, () => {
+      const fs = require('fs');
+      expect(fs.existsSync(join(ROOT, view))).toBe(true);
+    });
+  }
+
+});
