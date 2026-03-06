@@ -294,11 +294,16 @@ $coach_name   = trim(($video['coach_first_name'] ?? '') . ' ' . ($video['coach_l
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize HLS player if available
     var detailPlayer = document.getElementById('detailVideoPlayer');
+    var _detailPrimaryUrl = '';
     if (detailPlayer && typeof window.awInitHlsPlayer === 'function') {
         var src = detailPlayer.querySelector('source');
         // Use getAttribute to avoid empty src="" resolving to the page URL
         var srcUrl = src ? src.getAttribute('src') : '';
+        _detailPrimaryUrl = srcUrl;
         if (srcUrl) {
+            if (typeof window.awReportPlaybackError === 'function') {
+                window.awReportPlaybackError('Detail page: initializing video player', { view: 'video_review_detail', primaryUrl: srcUrl, fallbackUrl: detailPlayer.dataset.fallbackUrl || '', type: 'lifecycle' });
+            }
             window.awInitHlsPlayer(detailPlayer, srcUrl);
         } else if (typeof window.awReportPlaybackError === 'function') {
             window.awReportPlaybackError('Video source element has no src attribute', { element: 'detailVideoPlayer', type: 'empty_source' });
@@ -309,22 +314,32 @@ document.addEventListener('DOMContentLoaded', function() {
     // After transcoding, HLS is the primary stream; the fallback (if any)
     // is the original file.  Before transcoding completes, the original is
     // primary and the fallback points to the derived HLS manifest.
+    // When no fallback exists, try reloading the primary HLS URL once.
     if (detailPlayer) {
         var _fallbackTried = false;
+        var _reloadTried = false;
         detailPlayer.addEventListener('error', function() {
             var hlsUrl = detailPlayer.dataset.fallbackUrl;
+            var srcEl = detailPlayer.querySelector('source');
+            var diagState = { primaryUrl: _detailPrimaryUrl, fallbackUrl: hlsUrl || '', fallbackTried: _fallbackTried, reloadTried: _reloadTried, currentSrc: srcEl ? srcEl.getAttribute('src') : '' };
             if (hlsUrl && !_fallbackTried) {
                 _fallbackTried = true;
                 if (typeof window.awReportPlaybackError === 'function') {
-                    var srcEl = detailPlayer.querySelector('source');
-                    window.awReportPlaybackError('Primary video source failed, trying fallback', { primary: srcEl ? srcEl.getAttribute('src') : '', fallback: hlsUrl });
+                    window.awReportPlaybackError('Detail page: primary source failed, trying fallback', { view: 'video_review_detail', action: 'try_fallback', fallback: hlsUrl, state: diagState });
                 }
                 if (typeof window.awInitHlsPlayer === 'function') {
                     window.awInitHlsPlayer(detailPlayer, hlsUrl);
                 }
-            } else if (!hlsUrl && typeof window.awReportPlaybackError === 'function') {
-                var srcEl = detailPlayer.querySelector('source');
-                window.awReportPlaybackError('Video playback failed — no fallback URL available', { src: srcEl ? srcEl.getAttribute('src') : '' });
+            } else if (!hlsUrl && _detailPrimaryUrl && !_reloadTried) {
+                _reloadTried = true;
+                if (typeof window.awReportPlaybackError === 'function') {
+                    window.awReportPlaybackError('Detail page: no fallback URL, reloading primary HLS stream', { view: 'video_review_detail', action: 'reload_primary', primary: _detailPrimaryUrl, state: diagState });
+                }
+                if (typeof window.awInitHlsPlayer === 'function') {
+                    window.awInitHlsPlayer(detailPlayer, _detailPrimaryUrl);
+                }
+            } else if (typeof window.awReportPlaybackError === 'function') {
+                window.awReportPlaybackError('Detail page: video playback failed — all recovery exhausted', { view: 'video_review_detail', action: 'give_up', state: diagState });
             }
         }, true);
     }

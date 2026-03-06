@@ -193,7 +193,7 @@ test.describe('HLS.js cache-busting and retry improvements', () => {
 
   test('logs each retry attempt', () => {
     const c = content();
-    expect(c).toContain("'HLS network error (retry '");
+    expect(c).toContain("'HLS FATAL network error (retry '");
   });
 
   test('destroys previous HLS instance to prevent conflicts', () => {

@@ -27,25 +27,55 @@
     }
 
     /**
-     * Report a video playback error to the server so it appears in the
-     * admin Security / error_logs view.  Fire-and-forget — failures are
+     * Collect browser / environment diagnostics once for inclusion in logs.
+     */
+    var _browserInfo = (function() {
+        try {
+            var ua = navigator.userAgent || '';
+            var browser = 'unknown';
+            if (/Edg\//i.test(ua))          browser = 'Edge';
+            else if (/Chrome\//i.test(ua))  browser = 'Chrome';
+            else if (/Firefox\//i.test(ua)) browser = 'Firefox';
+            else if (/Safari\//i.test(ua))  browser = 'Safari';
+            var mse = typeof MediaSource !== 'undefined';
+            var hlsNative = false;
+            try { hlsNative = !!document.createElement('video').canPlayType('application/vnd.apple.mpegurl'); } catch (_) {}
+            return {
+                browser: browser,
+                ua: ua.substring(0, 200),
+                mse: mse,
+                hlsNative: hlsNative,
+                hlsJsVersion: (typeof Hls !== 'undefined' && Hls.version) ? Hls.version : 'n/a'
+            };
+        } catch (_) { return {}; }
+    })();
+
+    /**
+     * Report a video playback event / error to the server so it appears in
+     * the admin Security / error_logs view.  Fire-and-forget — failures are
      * silently ignored to avoid disrupting the user experience.
      *
-     * Throttled: only one report per _ERROR_THROTTLE_MS per message prefix
-     * to prevent log flooding when HLS.js fires rapid-fire errors.
+     * Duplicate-suppressed: truly identical messages within 1 s are dropped
+     * to prevent runaway loops, but every *distinct* message is sent so
+     * admins get a complete diagnostic trail.
      */
-    var _errorLastSent = {};  // key → timestamp of last report
-    var _ERROR_THROTTLE_MS = 5000;
+    var _errorLastSent = {};  // throttleKey → timestamp
+    var _DEDUP_MS = 1000;     // suppress exact-duplicate within 1 s
 
     function _reportPlaybackError(message, context) {
         try {
-            // Throttle: group by first 60 chars of message
-            var throttleKey = String(message).substring(0, 60);
+            // De-duplicate truly identical messages within 1 s
+            var dedupeKey = String(message).substring(0, 80);
             var now = Date.now();
-            if (_errorLastSent[throttleKey] && (now - _errorLastSent[throttleKey]) < _ERROR_THROTTLE_MS) {
-                return; // Throttled — skip this report
+            if (_errorLastSent[dedupeKey] && (now - _errorLastSent[dedupeKey]) < _DEDUP_MS) {
+                return;
             }
-            _errorLastSent[throttleKey] = now;
+            _errorLastSent[dedupeKey] = now;
+
+            // Always attach browser diagnostics
+            if (context && typeof context === 'object') {
+                context._browser = _browserInfo;
+            }
 
             var meta = document.querySelector('meta[name="csrf-token"]');
             var token = meta ? meta.getAttribute('content') : '';
@@ -55,8 +85,6 @@
             if (context) {
                 body += '&context=' + encodeURIComponent(JSON.stringify(context));
             }
-            // Use navigator.sendBeacon where available for reliability,
-            // falling back to fetch for broader support.
             if (typeof fetch === 'function') {
                 fetch('process_log_client_error.php', {
                     method: 'POST',
@@ -66,6 +94,41 @@
                 }).catch(function() {});
             }
         } catch (_e) { /* never throw from error reporter */ }
+    }
+
+    /**
+     * Snapshot the current video / HLS buffer state for diagnostic context.
+     */
+    function _videoState(video, hls) {
+        var state = {};
+        try {
+            if (video) {
+                state.currentTime = video.currentTime;
+                state.duration    = video.duration;
+                state.paused      = video.paused;
+                state.ended       = video.ended;
+                state.readyState  = video.readyState;
+                state.networkState = video.networkState;
+                state.error       = video.error ? { code: video.error.code, message: video.error.message || '' } : null;
+                // Buffered ranges
+                var buf = video.buffered;
+                if (buf && buf.length) {
+                    state.buffered = [];
+                    for (var i = 0; i < buf.length; i++) {
+                        state.buffered.push([+buf.start(i).toFixed(2), +buf.end(i).toFixed(2)]);
+                    }
+                }
+            }
+            if (hls) {
+                state.hlsLevel       = hls.currentLevel;
+                state.hlsLoadLevel   = hls.loadLevel;
+                state.hlsBandwidth   = hls.bandwidthEstimate;
+                if (hls.levels && hls.levels.length) {
+                    state.hlsLevelCount = hls.levels.length;
+                }
+            }
+        } catch (_) { /* best-effort */ }
+        return state;
     }
 
     /**
@@ -92,6 +155,7 @@
         // Destroy any previous HLS.js instance attached to this video to avoid
         // two instances fighting for the same MediaSource object.
         if (video._awHls) {
+            _reportPlaybackError('HLS init: destroying previous instance before re-init', { element: video.id || 'unknown', url: url, type: 'lifecycle' });
             try { video._awHls.destroy(); } catch (e) { /* ignore */ }
             video._awHls = null;
         }
@@ -100,6 +164,12 @@
 
         // HLS source and HLS.js is available
         if (isHLS && typeof Hls !== 'undefined' && Hls.isSupported()) {
+            _reportPlaybackError('HLS init: creating HLS.js instance', {
+                element: video.id || 'unknown', url: url, type: 'lifecycle',
+                isHLS: true, hlsJsVersion: (Hls.version || 'unknown'),
+                mseSupported: Hls.isSupported()
+            });
+
             var hls = new Hls({
                 maxBufferLength: 30,
                 maxMaxBufferLength: 60,
@@ -117,11 +187,98 @@
             hls.loadSource(url);
             hls.attachMedia(video);
 
+            // --- Lifecycle event logging for diagnostics ---
+            hls.on(Hls.Events.MANIFEST_LOADING, function(_event, data) {
+                _reportPlaybackError('HLS lifecycle: manifest loading', { url: data.url, type: 'lifecycle' });
+            });
+
+            hls.on(Hls.Events.MANIFEST_LOADED, function(_event, data) {
+                _reportPlaybackError('HLS lifecycle: manifest loaded', {
+                    url: data.url, type: 'lifecycle',
+                    levels: data.levels ? data.levels.length : 0,
+                    audioTracks: data.audioTracks ? data.audioTracks.length : 0
+                });
+            });
+
             hls.on(Hls.Events.MANIFEST_PARSED, function(_event, data) {
+                var levelInfo = [];
+                if (data.levels) {
+                    for (var i = 0; i < data.levels.length; i++) {
+                        var lv = data.levels[i];
+                        levelInfo.push({
+                            index: i,
+                            width: lv.width, height: lv.height,
+                            bitrate: lv.bitrate,
+                            codecs: lv.codecSet || lv.attrs && lv.attrs.CODECS || ''
+                        });
+                    }
+                }
+                _reportPlaybackError('HLS lifecycle: manifest parsed — starting playback', {
+                    url: url, type: 'lifecycle',
+                    levels: levelInfo,
+                    firstLevel: data.firstLevel,
+                    video: data.video, audio: data.audio
+                });
                 video.play().catch(function() {});
                 _buildCustomControls(video, hls, data.levels);
             });
 
+            hls.on(Hls.Events.LEVEL_SWITCHING, function(_event, data) {
+                var lv = hls.levels && hls.levels[data.level];
+                _reportPlaybackError('HLS lifecycle: level switching to ' + data.level, {
+                    url: url, type: 'lifecycle',
+                    level: data.level,
+                    resolution: lv ? (lv.width + 'x' + lv.height) : 'unknown',
+                    bitrate: lv ? lv.bitrate : 0
+                });
+            });
+
+            hls.on(Hls.Events.FRAG_LOADED, function(_event, data) {
+                // Log the first fragment load for diagnostics, then every 10th
+                if (!hls._awFragCount) hls._awFragCount = 0;
+                hls._awFragCount++;
+                if (hls._awFragCount === 1 || hls._awFragCount % 10 === 0) {
+                    _reportPlaybackError('HLS lifecycle: fragment loaded (#' + hls._awFragCount + ')', {
+                        url: url, type: 'lifecycle',
+                        fragUrl: data.frag ? data.frag.url : '',
+                        fragSn: data.frag ? data.frag.sn : '',
+                        fragLevel: data.frag ? data.frag.level : '',
+                        fragDuration: data.frag ? data.frag.duration : 0,
+                        videoState: _videoState(video, hls)
+                    });
+                }
+            });
+
+            hls.on(Hls.Events.BUFFER_CREATED, function(_event, data) {
+                var tracks = {};
+                if (data.tracks) {
+                    for (var k in data.tracks) {
+                        if (data.tracks.hasOwnProperty(k)) {
+                            tracks[k] = {
+                                container: data.tracks[k].container,
+                                codec: data.tracks[k].codec || data.tracks[k].levelCodec || ''
+                            };
+                        }
+                    }
+                }
+                _reportPlaybackError('HLS lifecycle: source buffers created', { url: url, type: 'lifecycle', tracks: tracks });
+            });
+
+            // --- Video element event logging ---
+            video.addEventListener('playing', function _awPlaying() {
+                _reportPlaybackError('HLS video event: playing', { url: url, type: 'video_event', videoState: _videoState(video, hls) });
+                video.removeEventListener('playing', _awPlaying);
+            });
+
+            video.addEventListener('waiting', function() {
+                _reportPlaybackError('HLS video event: waiting (stall/rebuffer)', { url: url, type: 'video_event', videoState: _videoState(video, hls) });
+            });
+
+            video.addEventListener('stalled', function() {
+                _reportPlaybackError('HLS video event: stalled', { url: url, type: 'video_event', videoState: _videoState(video, hls) });
+            });
+
+            // --- Error handling with full diagnostic logging ---
             var _networkRetries = 0;
             var _MAX_NETWORK_RETRIES = 4;
             // Time-based media error recovery per HLS.js recommended pattern.
@@ -131,32 +288,46 @@
             var _mediaRecoveryAttempts = 0;
             var _MAX_MEDIA_RECOVERY = 3;
             var _MEDIA_RECOVER_COOLDOWN_MS = 5000;
+
             hls.on(Hls.Events.ERROR, function(_event, data) {
                 var errDetail = (data.details || 'unknown') + (data.reason ? ' — ' + data.reason : '');
+                var errContext = {
+                    url: url,
+                    type: data.type ? String(data.type) : 'unknown',
+                    detail: data.details || 'unknown',
+                    fatal: !!data.fatal,
+                    videoState: _videoState(video, hls)
+                };
+                // Include fragment info when available
+                if (data.frag) {
+                    errContext.frag = { sn: data.frag.sn, url: data.frag.url, level: data.frag.level, duration: data.frag.duration };
+                }
+                // Include response info when available (network errors)
+                if (data.response) {
+                    errContext.response = { code: data.response.code, text: (data.response.text || '').substring(0, 200) };
+                }
 
-                // --- Non-fatal bufferAppendError: flush buffer proactively ---
-                if (!data.fatal && data.details === 'bufferAppendError') {
-                    // HLS.js retries internally (appendErrorMaxRetry times).
-                    // We don't need to act, but log once for diagnostics.
-                    if (!hls._awBufferWarnLogged) {
-                        hls._awBufferWarnLogged = true;
-                        _reportPlaybackError('HLS non-fatal buffer append issue (internal retry): ' + errDetail, { url: url, type: 'media_nonfatal' });
-                    }
+                // --- Log ALL non-fatal errors for diagnostics ---
+                if (!data.fatal) {
+                    _reportPlaybackError('HLS non-fatal error: ' + errDetail, errContext);
                     return;
                 }
 
-                if (!data.fatal) return; // Other non-fatal errors: HLS.js handles internally
-
+                // --- Fatal errors ---
                 switch (data.type) {
                     case Hls.ErrorTypes.NETWORK_ERROR:
                         if (_networkRetries < _MAX_NETWORK_RETRIES) {
                             _networkRetries++;
                             // Exponential backoff: 500ms, 1s, 2s, 4s
                             var delay = Math.min(500 * Math.pow(2, _networkRetries - 1), 4000);
-                            _reportPlaybackError('HLS network error (retry ' + _networkRetries + '/' + _MAX_NETWORK_RETRIES + '): ' + errDetail, { url: url, type: 'network', retry: _networkRetries });
+                            errContext.retry = _networkRetries;
+                            errContext.maxRetries = _MAX_NETWORK_RETRIES;
+                            errContext.backoffMs = delay;
+                            _reportPlaybackError('HLS FATAL network error (retry ' + _networkRetries + '/' + _MAX_NETWORK_RETRIES + '): ' + errDetail, errContext);
                             setTimeout(function() { hls.startLoad(); }, delay);
                         } else {
-                            _reportPlaybackError('HLS network error (retries exhausted): ' + errDetail, { url: url, type: 'network' });
+                            errContext.action = 'destroying_hls';
+                            _reportPlaybackError('HLS FATAL network error (retries exhausted): ' + errDetail, errContext);
                             // Exhausted retries — destroy HLS.js and fire
                             // a native error so view-level fallback handlers
                             // (e.g. data-fallback-url retry) can take over.
@@ -166,20 +337,28 @@
                         break;
                     case Hls.ErrorTypes.MEDIA_ERROR:
                         var now = Date.now();
+                        errContext.recoveryAttempts = _mediaRecoveryAttempts;
+                        errContext.maxRecovery = _MAX_MEDIA_RECOVERY;
+                        errContext.msSinceLastRecovery = _lastMediaRecovery ? (now - _lastMediaRecovery) : null;
+                        errContext.cooldownMs = _MEDIA_RECOVER_COOLDOWN_MS;
+
                         if (_mediaRecoveryAttempts < _MAX_MEDIA_RECOVERY &&
                             (!_lastMediaRecovery || (now - _lastMediaRecovery) > _MEDIA_RECOVER_COOLDOWN_MS)) {
                             _mediaRecoveryAttempts++;
                             _lastMediaRecovery = now;
-                            _reportPlaybackError('HLS media error (recovery ' + _mediaRecoveryAttempts + '/' + _MAX_MEDIA_RECOVERY + '): ' + errDetail, { url: url, type: 'media', attempt: _mediaRecoveryAttempts });
+                            errContext.action = 'recoverMediaError';
+                            errContext.attempt = _mediaRecoveryAttempts;
+                            _reportPlaybackError('HLS FATAL media error (recovery ' + _mediaRecoveryAttempts + '/' + _MAX_MEDIA_RECOVERY + '): ' + errDetail, errContext);
                             hls.recoverMediaError();
                         } else if (_mediaRecoveryAttempts >= _MAX_MEDIA_RECOVERY) {
-                            _reportPlaybackError('HLS media error (recovery exhausted): ' + errDetail, { url: url, type: 'media' });
+                            errContext.action = 'destroying_hls';
+                            _reportPlaybackError('HLS FATAL media error (recovery exhausted): ' + errDetail, errContext);
                             hls.destroy();
                             video.dispatchEvent(new Event('error'));
                         } else {
-                            // Cooldown not elapsed — skip recovery to avoid
-                            // rapid-fire recoverMediaError loops that flood logs.
-                            // Schedule a deferred recovery attempt instead.
+                            // Cooldown not elapsed — schedule a deferred recovery attempt.
+                            errContext.action = 'deferred_recovery';
+                            _reportPlaybackError('HLS FATAL media error (cooldown active, deferring recovery): ' + errDetail, errContext);
                             if (!hls._awDeferredRecovery) {
                                 hls._awDeferredRecovery = true;
                                 setTimeout(function() {
@@ -187,7 +366,10 @@
                                     if (hls.media) {
                                         _mediaRecoveryAttempts++;
                                         _lastMediaRecovery = Date.now();
-                                        _reportPlaybackError('HLS media error (deferred recovery ' + _mediaRecoveryAttempts + '/' + _MAX_MEDIA_RECOVERY + '): ' + errDetail, { url: url, type: 'media', attempt: _mediaRecoveryAttempts });
+                                        _reportPlaybackError('HLS FATAL media error (deferred recovery ' + _mediaRecoveryAttempts + '/' + _MAX_MEDIA_RECOVERY + '): ' + errDetail, {
+                                            url: url, type: 'media', attempt: _mediaRecoveryAttempts, action: 'recoverMediaError',
+                                            videoState: _videoState(video, hls)
+                                        });
                                         hls.recoverMediaError();
                                     }
                                 }, _MEDIA_RECOVER_COOLDOWN_MS);
@@ -195,7 +377,8 @@
                         }
                         break;
                     default:
-                        _reportPlaybackError('HLS fatal error: ' + errDetail, { url: url, type: String(data.type) });
+                        errContext.action = 'destroying_hls';
+                        _reportPlaybackError('HLS FATAL error: ' + errDetail, errContext);
                         hls.destroy();
                         // Dispatch a native error so view-level fallback
                         // handlers (e.g. data-fallback-url retry) can take over.
@@ -211,6 +394,7 @@
 
         // Safari native HLS or non-HLS source
         if (isHLS && video.canPlayType('application/vnd.apple.mpegurl')) {
+            _reportPlaybackError('HLS init: using native Safari HLS support', { element: video.id || 'unknown', url: url, type: 'lifecycle' });
             video.src = url;
             video.addEventListener('loadedmetadata', function() {
                 video.play().catch(function() {});
@@ -232,6 +416,7 @@
         }
 
         // Direct video file (MP4/WebM/etc.)
+        _reportPlaybackError('HLS init: direct file playback (non-HLS)', { element: video.id || 'unknown', url: url, type: 'lifecycle' });
         var source = video.querySelector('source');
         if (source) {
             source.src = url;

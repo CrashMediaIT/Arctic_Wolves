@@ -1508,10 +1508,11 @@ document.addEventListener('DOMContentLoaded', function() {
     var drReloadTried = false;
     if (videoPlayer) {
         videoPlayer.addEventListener('error', function() {
+            var diagState = { primaryUrl: drPrimaryUrl, fallbackUrl: drFallbackUrl, fallbackTried: drFallbackTried, reloadTried: drReloadTried };
             if (drFallbackUrl && !drFallbackTried) {
                 drFallbackTried = true;
                 if (typeof window.awReportPlaybackError === 'function') {
-                    window.awReportPlaybackError('Drill review: primary source failed, trying fallback', { fallback: drFallbackUrl });
+                    window.awReportPlaybackError('Drill review: primary source failed, trying fallback', { view: 'drill_review', action: 'try_fallback', fallback: drFallbackUrl, state: diagState });
                 }
                 if (typeof window.awInitHlsPlayer === 'function') {
                     activeHls = window.awInitHlsPlayer(videoPlayer, drFallbackUrl);
@@ -1519,13 +1520,13 @@ document.addEventListener('DOMContentLoaded', function() {
             } else if (!drFallbackUrl && drPrimaryUrl && !drReloadTried) {
                 drReloadTried = true;
                 if (typeof window.awReportPlaybackError === 'function') {
-                    window.awReportPlaybackError('Drill review: no fallback URL, reloading primary HLS stream', { primary: drPrimaryUrl });
+                    window.awReportPlaybackError('Drill review: no fallback URL, reloading primary HLS stream', { view: 'drill_review', action: 'reload_primary', primary: drPrimaryUrl, state: diagState });
                 }
                 if (typeof window.awInitHlsPlayer === 'function') {
                     activeHls = window.awInitHlsPlayer(videoPlayer, drPrimaryUrl);
                 }
             } else if (typeof window.awReportPlaybackError === 'function') {
-                window.awReportPlaybackError('Drill review: video playback failed — no fallback URL', {});
+                window.awReportPlaybackError('Drill review: video playback failed — all recovery exhausted', { view: 'drill_review', action: 'give_up', state: diagState });
             }
         }, true);
     }
@@ -1582,6 +1583,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     drFallbackUrl = (hlsUrl && hlsUrl !== videoUrl) ? hlsUrl : '';
                     drPrimaryUrl = videoUrl;
                     drFallbackTried = false;
+
+                    if (typeof window.awReportPlaybackError === 'function') {
+                        window.awReportPlaybackError('Drill review: play button clicked', { view: 'drill_review', action: 'play_click', primaryUrl: videoUrl, fallbackUrl: hlsUrl, title: title, type: 'lifecycle' });
+                    }
 
                     // Set poster/thumbnail for preview before video loads
                     if (thumbnailUrl) videoPlayer.poster = thumbnailUrl;

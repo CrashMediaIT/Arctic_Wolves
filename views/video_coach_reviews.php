@@ -936,10 +936,11 @@ document.addEventListener('DOMContentLoaded', function() {
     var vpReloadTried = false;
     if (vpVideo) {
         vpVideo.addEventListener('error', function() {
+            var diagState = { primaryUrl: vpPrimaryUrl, fallbackUrl: vpFallbackUrl, fallbackTried: vpFallbackTried, reloadTried: vpReloadTried };
             if (vpFallbackUrl && !vpFallbackTried) {
                 vpFallbackTried = true;
                 if (typeof window.awReportPlaybackError === 'function') {
-                    window.awReportPlaybackError('Coach reviews: primary source failed, trying fallback', { fallback: vpFallbackUrl });
+                    window.awReportPlaybackError('Coach reviews: primary source failed, trying fallback', { view: 'coach_reviews', action: 'try_fallback', fallback: vpFallbackUrl, state: diagState });
                 }
                 if (typeof window.awInitHlsPlayer === 'function') {
                     vpHls = window.awInitHlsPlayer(vpVideo, vpFallbackUrl);
@@ -947,13 +948,13 @@ document.addEventListener('DOMContentLoaded', function() {
             } else if (!vpFallbackUrl && vpPrimaryUrl && !vpReloadTried) {
                 vpReloadTried = true;
                 if (typeof window.awReportPlaybackError === 'function') {
-                    window.awReportPlaybackError('Coach reviews: no fallback URL, reloading primary HLS stream', { primary: vpPrimaryUrl });
+                    window.awReportPlaybackError('Coach reviews: no fallback URL, reloading primary HLS stream', { view: 'coach_reviews', action: 'reload_primary', primary: vpPrimaryUrl, state: diagState });
                 }
                 if (typeof window.awInitHlsPlayer === 'function') {
                     vpHls = window.awInitHlsPlayer(vpVideo, vpPrimaryUrl);
                 }
             } else if (typeof window.awReportPlaybackError === 'function') {
-                window.awReportPlaybackError('Coach reviews: video playback failed — no fallback URL', {});
+                window.awReportPlaybackError('Coach reviews: video playback failed — all recovery exhausted', { view: 'coach_reviews', action: 'give_up', state: diagState });
             }
         }, true);
     }
@@ -974,6 +975,9 @@ document.addEventListener('DOMContentLoaded', function() {
             vpFallbackUrl = (hlsUrl && hlsUrl !== url) ? hlsUrl : '';
             vpPrimaryUrl = url || '';
             vpFallbackTried = false;
+            if (typeof window.awReportPlaybackError === 'function') {
+                window.awReportPlaybackError('Coach reviews: play button clicked', { view: 'coach_reviews', action: 'play_click', primaryUrl: url, fallbackUrl: hlsUrl, title: title, type: 'lifecycle' });
+            }
             if (thumbnailUrl) vpVideo.poster = thumbnailUrl;
             if (url && typeof window.awInitHlsPlayer === 'function') {
                 vpHls = window.awInitHlsPlayer(vpVideo, url);
