@@ -438,6 +438,13 @@ if ($http_code !== 200) {
 
 $base_dir = dirname($object_key_clean);
 
+// Build an absolute proxy base path so rewritten URLs start with "/" and are
+// resolved directly against the origin.  Relative proxy URLs like
+// "media.php?key=…" depend on HLS.js / dash.js performing correct RFC 3986
+// relative-reference resolution, which breaks when the manifest is served
+// through a query-string proxy.  Absolute paths eliminate this class of bug.
+$proxy_base = ($_SERVER['SCRIPT_NAME'] ?? '/api/media.php');
+
 if ($m3u8_ext === 'mpd') {
     // ── Rewrite relative URLs in DASH MPD manifests ─────────────────────
     // DASH .mpd manifests reference segments via sourceURL, media, and
@@ -458,7 +465,7 @@ if ($m3u8_ext === 'mpd') {
     // relative paths (not starting with http:// or https://)
     $body = preg_replace_callback(
         '#((?:sourceURL|media|initialization)\s*=\s*")([^"]+)(")#i',
-        function ($m) use ($base_dir) {
+        function ($m) use ($base_dir, $proxy_base) {
             $url = $m[2];
             // Skip absolute URLs
             if (preg_match('#^https?://#i', $url)) {
@@ -471,12 +478,12 @@ if ($m3u8_ext === 'mpd') {
             // Check for DASH template variables ($RepresentationID$, $Number$, etc.)
             if (strpos($url, '$') !== false) {
                 // Template URL: prepend proxy base, preserve template variables
-                $proxy_prefix = 'media.php?key=' . rawurlencode($base_dir . '/');
+                $proxy_prefix = $proxy_base . '?key=' . rawurlencode($base_dir . '/');
                 return $m[1] . $proxy_prefix . $url . $m[3];
             }
             // Literal URL: resolve relative path and encode
             $resolved = _resolve_media_path($base_dir, $url);
-            return $m[1] . 'media.php?key=' . rawurlencode($resolved) . $m[3];
+            return $m[1] . $proxy_base . '?key=' . rawurlencode($resolved) . $m[3];
         },
         $body
     );
@@ -509,7 +516,7 @@ if ($m3u8_ext === 'mpd') {
                 $uri = $uri_match[1];
                 if (!preg_match('#^https?://#', $uri)) {
                     $resolved = _resolve_media_path($base_dir, $uri);
-                    $proxy_url = 'media.php?key=' . rawurlencode($resolved);
+                    $proxy_url = $proxy_base . '?key=' . rawurlencode($resolved);
                     $line = str_replace('URI="' . $uri . '"', 'URI="' . $proxy_url . '"', $line);
                 }
             }
@@ -521,7 +528,7 @@ if ($m3u8_ext === 'mpd') {
             continue;
         }
         $resolved = _resolve_media_path($base_dir, $trimmed);
-        $rewritten[] = 'media.php?key=' . rawurlencode($resolved);
+        $rewritten[] = $proxy_base . '?key=' . rawurlencode($resolved);
     }
     $body = implode("\n", $rewritten);
     $content_type = 'application/vnd.apple.mpegurl';
@@ -531,7 +538,9 @@ if ($m3u8_ext === 'mpd') {
 header('Content-Type: ' . $content_type);
 header('Content-Length: ' . strlen($body));
 header('Accept-Ranges: bytes');
-header('Cache-Control: public, max-age=86400');
+// Short cache for manifests — they are rewritten by this proxy and must not
+// be served stale if the rewriting logic or upstream content changes.
+header('Cache-Control: public, max-age=300');
 header('X-Content-Type-Options: nosniff');
 _media_cors_headers();
 
