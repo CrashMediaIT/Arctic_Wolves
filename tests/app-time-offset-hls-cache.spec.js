@@ -57,19 +57,22 @@ test.describe('db_config.php app time offset', () => {
     expect(c).toContain('appTime()');
   });
 
-  test('includes app_time_offset in MySQL timezone calculation', () => {
+  test('loads app_time_offset separately from MySQL timezone', () => {
     const c = content();
     expect(c).toContain('$_app_time_offset');
-    expect(c).toContain('$total_offset');
+    expect(c).toContain("SET time_zone");
   });
 
-  test('applies total_offset (tz + app offset) to MySQL SET time_zone', () => {
+  test('MySQL SET time_zone uses only timezone offset (not app_time_offset)', () => {
     const c = content();
-    const offsetCalc = c.indexOf('$total_offset = $offset_s + $_app_time_offset');
+    // app_time_offset is a PHP-side correction; MySQL timezone uses only the
+    // actual timezone offset to avoid out-of-range failures.
+    expect(c).toContain('$offset_s');
     const setTz = c.indexOf("SET time_zone");
-    expect(offsetCalc).toBeGreaterThan(-1);
     expect(setTz).toBeGreaterThan(-1);
-    expect(offsetCalc).toBeLessThan(setTz);
+    // The SET time_zone should be inside its own try/catch
+    const innerTry = c.lastIndexOf('try {', setTz);
+    expect(innerTry).toBeGreaterThan(-1);
   });
 });
 
@@ -309,7 +312,7 @@ test.describe('Time synchronisation handlers in process_settings.php', () => {
     const c = content();
     const generalIdx = c.indexOf("case 'update_general':");
     expect(generalIdx).toBeGreaterThan(-1);
-    const handler = c.substring(generalIdx, generalIdx + 500);
+    const handler = c.substring(generalIdx, generalIdx + 800);
     expect(handler).toContain('$valid_timezones');
   });
 });

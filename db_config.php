@@ -210,16 +210,25 @@ if ($db_connected && $pdo) {
 
         // Sync the database session timezone to match PHP.
         // DateTimeZone::getOffset() returns seconds; convert to ±HH:MM for MySQL.
-        // Include the app_time_offset so MySQL NOW() returns corrected time.
-        $tz_obj    = new DateTimeZone($tz_value);
-        $offset_s  = $tz_obj->getOffset(new DateTime('now', $tz_obj));
-        $total_offset = $offset_s + $_app_time_offset;
-        $sign      = $total_offset >= 0 ? '+' : '-';
-        $abs       = abs($total_offset);
-        $hours     = str_pad((int)($abs / 3600), 2, '0', STR_PAD_LEFT);
-        $minutes   = str_pad((int)(($abs % 3600) / 60), 2, '0', STR_PAD_LEFT);
-        $mysql_tz  = $sign . $hours . ':' . $minutes;
-        $pdo->exec("SET time_zone = " . $pdo->quote($mysql_tz));
+        // Only use the actual timezone offset for MySQL — app_time_offset is a
+        // PHP-side correction only.  Combining them previously caused out-of-range
+        // failures (MySQL only accepts ±13:59) which silently zeroed the offset.
+        try {
+            $tz_obj    = new DateTimeZone($tz_value);
+            $offset_s  = $tz_obj->getOffset(new DateTime('now', $tz_obj));
+            $sign      = $offset_s >= 0 ? '+' : '-';
+            $abs       = abs($offset_s);
+            $hours     = str_pad((int)($abs / 3600), 2, '0', STR_PAD_LEFT);
+            $minutes   = str_pad((int)(($abs % 3600) / 60), 2, '0', STR_PAD_LEFT);
+            $mysql_tz  = $sign . $hours . ':' . $minutes;
+            $pdo->exec("SET time_zone = " . $pdo->quote($mysql_tz));
+        } catch (Exception $e2) {
+            // MySQL SET time_zone can fail if the named timezone is not loaded
+            // in MySQL's timezone tables.  This is non-fatal: PHP date/time
+            // functions still use the correct timezone, and app_time_offset is
+            // preserved.  Only MySQL NOW()/CURDATE() may return server-default
+            // time instead of the configured timezone.
+        }
     } catch (Exception $e) {
         // Silently fail — table may not exist yet (pre-setup)
         $_app_time_offset = 0;

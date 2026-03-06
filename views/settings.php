@@ -1,4 +1,19 @@
 <!-- Global Settings View -->
+<?php
+// Load current settings from database
+$_gs_settings = [];
+try {
+    if (isset($pdo) && $pdo instanceof PDO) {
+        $gs_q = $pdo->query("SELECT setting_key, setting_value FROM system_settings");
+        while ($gs_r = $gs_q->fetch(PDO::FETCH_ASSOC)) {
+            $_gs_settings[$gs_r['setting_key']] = $gs_r['setting_value'];
+        }
+    }
+} catch (Exception $e) { /* table may not exist yet */ }
+$_gs = function($key, $default = '') use ($_gs_settings) {
+    return $_gs_settings[$key] ?? $default;
+};
+?>
 <div class="page-header">
     <h1 class="page-title">
         <i class="fas fa-cogs"></i> Global Settings
@@ -18,35 +33,42 @@
                 <input type="hidden" name="action" value="update_general">
                 <div class="form-group">
                     <label>Organization Name *</label>
-                    <input type="text" name="org_name" class="form-input" value="Arctic Wolves" required>
+                    <input type="text" name="org_name" class="form-input" value="<?= htmlspecialchars($_gs('org_name', 'Arctic Wolves')) ?>" required>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
                         <label>Contact Email *</label>
-                        <input type="email" name="contact_email" class="form-input" value="info@arcticwolves.ca" required>
+                        <input type="email" name="contact_email" class="form-input" value="<?= htmlspecialchars($_gs('contact_email', 'info@arcticwolves.ca')) ?>" required>
                     </div>
                     <div class="form-group">
                         <label>Contact Phone</label>
-                        <input type="tel" name="contact_phone" class="form-input" placeholder="(555) 123-4567">
+                        <input type="tel" name="contact_phone" class="form-input" value="<?= htmlspecialchars($_gs('contact_phone', '')) ?>" placeholder="(555) 123-4567">
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label>Organization Address</label>
-                    <textarea name="org_address" class="form-textarea" rows="3" placeholder="Full address"></textarea>
+                    <textarea name="org_address" class="form-textarea" rows="3" placeholder="Full address"><?= htmlspecialchars($_gs('org_address', '')) ?></textarea>
                 </div>
 
                 <div class="form-group">
                     <label>Timezone *</label>
                     <select name="timezone" class="form-input" required>
-                        <option value="">-- Select Timezone --</option>
-                        <option value="America/St_Johns">Newfoundland (NST)</option>
-                        <option value="America/Halifax">Atlantic (AST)</option>
-                        <option value="America/New_York" selected>Eastern (EST)</option>
-                        <option value="America/Chicago">Central (CST)</option>
-                        <option value="America/Denver">Mountain (MST)</option>
-                        <option value="America/Los_Angeles">Pacific (PST)</option>
+                        <?php
+                        $tzOptions = [
+                            'America/St_Johns' => 'Newfoundland (NST)',
+                            'America/Halifax' => 'Atlantic (AST)',
+                            'America/New_York' => 'Eastern (EST)',
+                            'America/Chicago' => 'Central (CST)',
+                            'America/Denver' => 'Mountain (MST)',
+                            'America/Los_Angeles' => 'Pacific (PST)',
+                        ];
+                        $curTz = $_gs('timezone', 'America/New_York');
+                        foreach ($tzOptions as $tzVal => $tzLabel):
+                        ?>
+                        <option value="<?= htmlspecialchars($tzVal) ?>" <?= $curTz === $tzVal ? 'selected' : '' ?>><?= htmlspecialchars($tzLabel) ?></option>
+                        <?php endforeach; ?>
                     </select>
                 </div>
 
@@ -54,17 +76,25 @@
                     <div class="form-group">
                         <label>Currency</label>
                         <select name="currency" class="form-input">
-                            <option selected>USD ($)</option>
-                            <option>CAD ($)</option>
-                            <option>EUR (€)</option>
+                            <?php
+                            $currOptions = ['USD ($)', 'CAD ($)', 'EUR (€)'];
+                            $curCurrency = $_gs('currency', 'USD ($)');
+                            foreach ($currOptions as $c):
+                            ?>
+                            <option <?= $curCurrency === $c ? 'selected' : '' ?>><?= htmlspecialchars($c) ?></option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
                     <div class="form-group">
                         <label>Date Format</label>
                         <select name="date_format" class="form-input">
-                            <option selected>MM/DD/YYYY</option>
-                            <option>DD/MM/YYYY</option>
-                            <option>YYYY-MM-DD</option>
+                            <?php
+                            $fmtOptions = ['MM/DD/YYYY', 'DD/MM/YYYY', 'YYYY-MM-DD'];
+                            $curFmt = $_gs('date_format', 'MM/DD/YYYY');
+                            foreach ($fmtOptions as $f):
+                            ?>
+                            <option <?= $curFmt === $f ? 'selected' : '' ?>><?= htmlspecialchars($f) ?></option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
                 </div>
