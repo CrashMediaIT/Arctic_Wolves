@@ -2930,7 +2930,7 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
                 "-b:v", v["vbitrate"],
                 "-maxrate", v["vbitrate"],
                 "-bufsize", str(int(v["vbitrate"].replace("k", "")) * 2) + "k",
-                "-c:a", "aac", "-b:a", v["abitrate"],
+                "-c:a", "aac", "-ac", "2", "-b:a", v["abitrate"],
                 "-f", "hls",
                 "-hls_time", "6",
                 "-hls_list_size", "0",
@@ -3384,7 +3384,7 @@ def _generate_dash_manifest(jlog, local_source: str, dash_output: str,
             f"-bufsize:{i}", str(int(v["vbitrate"].replace("k", "")) * 2) + "k",
         ]
         if has_audio:
-            cmd += [f"-c:a:{i}", "aac", f"-b:a:{i}", v["abitrate"]]
+            cmd += [f"-c:a:{i}", "aac", f"-ac:{i}", "2", f"-b:a:{i}", v["abitrate"]]
 
     # Build adaptation_sets matching actual mapped streams
     adapt_parts = [f"id=0,streams={','.join(str(s) for s in video_streams)}"]

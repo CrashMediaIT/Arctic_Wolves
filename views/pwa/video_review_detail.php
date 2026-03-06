@@ -64,11 +64,13 @@ $video_type = preg_match('/\.m3u8(\?|&|$)/i', $video_url) ? 'application/vnd.app
 // file is deleted.  The fallback provides an alternate source if the
 // primary fails (e.g. original still available during transcode window,
 // or derived HLS path if the callback didn't update hls_url).
+// Skip non-browser-playable formats (.mkv, .avi) — the original is
+// deleted after transcoding and browsers cannot play these natively.
 $fallback_url = '';
 if (preg_match('/\.m3u8(\?|&|$)/i', $video_url)) {
-    // Primary is HLS → fallback to original video file (if still available)
+    // Primary is HLS → fallback to original only if browser-playable
     $orig = resolveRustfsUrl($pdo, $video['video_url'] ?? $video['file_path'] ?? '') ?? '';
-    if ($orig && $orig !== $video_url) $fallback_url = $orig;
+    if ($orig && $orig !== $video_url && isBrowserPlayableUrl($orig)) $fallback_url = $orig;
 } else {
     // Primary is original (transcode not yet complete) → fallback to HLS
     if (!empty($video['hls_url'])) {
@@ -387,11 +389,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Fallback: if the primary video source fails, try the alternate URL.
-    // After transcoding, HLS is the primary stream; the fallback (if any)
-    // is the original file.  Before transcoding completes, the original is
-    // primary and the fallback points to the derived HLS manifest.
-    // When no fallback exists, try reloading the primary HLS URL once.
+    // Fallback: if the primary video source fails, try alternates.
+    // Priority: DASH (same fMP4 segments, different manifest format) →
+    // fallback URL (browser-playable original, if any) → reload primary.
     if (detailPlayer) {
         var _fallbackTried = false;
         var _reloadTried = false;
@@ -405,28 +405,28 @@ document.addEventListener('DOMContentLoaded', function() {
             var hlsUrl = detailPlayer.dataset.fallbackUrl;
             var srcEl = detailPlayer.querySelector('source');
             var diagState = { primaryUrl: _detailPrimaryUrl, fallbackUrl: hlsUrl || '', fallbackTried: _fallbackTried, reloadTried: _reloadTried, currentSrc: srcEl ? srcEl.getAttribute('src') : '' };
-            if (hlsUrl && !_fallbackTried) {
+            if (typeof window.awTryDashFallback === 'function' && detailPlayer.getAttribute('data-dash-url') && !detailPlayer._dashTried) {
+                detailPlayer._dashTried = true;
+                if (typeof window.awReportPlaybackError === 'function') {
+                    window.awReportPlaybackError('Detail page (PWA): primary source failed, trying DASH fallback', { view: 'pwa_video_review_detail', action: 'try_dash', state: diagState });
+                }
+                window.awTryDashFallback(detailPlayer);
+            } else if (hlsUrl && !_fallbackTried) {
                 _fallbackTried = true;
                 if (typeof window.awReportPlaybackError === 'function') {
-                    window.awReportPlaybackError('Detail page (PWA): primary source failed, trying fallback', { view: 'pwa_video_review_detail', action: 'try_fallback', fallback: hlsUrl, state: diagState });
+                    window.awReportPlaybackError('Detail page (PWA): DASH unavailable, trying fallback URL', { view: 'pwa_video_review_detail', action: 'try_fallback', fallback: hlsUrl, state: diagState });
                 }
                 if (typeof window.awInitHlsPlayer === 'function') {
                     window.awInitHlsPlayer(detailPlayer, hlsUrl);
                 }
-            } else if (!hlsUrl && _detailPrimaryUrl && !_reloadTried) {
+            } else if (_detailPrimaryUrl && !_reloadTried) {
                 _reloadTried = true;
                 if (typeof window.awReportPlaybackError === 'function') {
-                    window.awReportPlaybackError('Detail page (PWA): no fallback URL, reloading primary HLS stream', { view: 'pwa_video_review_detail', action: 'reload_primary', primary: _detailPrimaryUrl, state: diagState });
+                    window.awReportPlaybackError('Detail page (PWA): reloading primary stream as last resort', { view: 'pwa_video_review_detail', action: 'reload_primary', primary: _detailPrimaryUrl, state: diagState });
                 }
                 if (typeof window.awInitHlsPlayer === 'function') {
                     window.awInitHlsPlayer(detailPlayer, _detailPrimaryUrl);
                 }
-            } else if (typeof window.awTryDashFallback === 'function' && detailPlayer.getAttribute('data-dash-url') && !detailPlayer._dashTried) {
-                detailPlayer._dashTried = true;
-                if (typeof window.awReportPlaybackError === 'function') {
-                    window.awReportPlaybackError('Detail page (PWA): HLS recovery exhausted, trying DASH fallback', { view: 'pwa_video_review_detail', action: 'try_dash', state: diagState });
-                }
-                window.awTryDashFallback(detailPlayer);
             } else if (typeof window.awReportPlaybackError === 'function') {
                 window.awReportPlaybackError('Detail page (PWA): video playback failed — all recovery exhausted', { view: 'pwa_video_review_detail', action: 'give_up', state: diagState });
             }
