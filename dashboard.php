@@ -806,6 +806,9 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="?page=payment_history" class="nav-link <?= $page=='payment_history'?'active':'' ?>">
                 <i class="fa-solid fa-receipt icon"></i> Purchase History
             </a>
+            <a href="?page=notifications" class="nav-link <?= $page=='notifications'?'active':'' ?>">
+                <i class="fa-solid fa-bell icon"></i> Notifications
+            </a>
         </nav>
     </div>
 
@@ -843,6 +846,12 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             </a>
             <a href="?page=coach_shot_speed" class="nav-link <?= $page=='coach_shot_speed'?'active':'' ?>">
                 <i class="fa-solid fa-hockey-puck icon"></i> Shot Speed
+            </a>
+            <a href="?page=coach_evaluations" class="nav-link <?= $page=='coach_evaluations'?'active':'' ?>">
+                <i class="fa-solid fa-star icon"></i> Evaluations
+            </a>
+            <a href="?page=coach_goals" class="nav-link <?= $page=='coach_goals'?'active':'' ?>">
+                <i class="fa-solid fa-bullseye icon"></i> Goals
             </a>
             <a href="?page=coach_session_evaluations" class="nav-link <?= in_array($page, ['coach_session_evaluations','session_evaluation_form'])?'active':'' ?>">
                 <i class="fa-solid fa-clipboard-check icon"></i> Session Evaluations
@@ -999,6 +1008,18 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
     </div>
     <?php endif; ?>
 
+    <!-- PARENT FEATURES (Parents only) -->
+    <?php if($isParent): ?>
+    <div class="nav-group">
+        <span class="nav-label">Parent</span>
+        <nav class="nav-menu">
+            <a href="?page=camp_checkin" class="nav-link <?= $page=='camp_checkin'?'active':'' ?>">
+                <i class="fa-solid fa-check-circle icon"></i> Camp Check-in
+            </a>
+        </nav>
+    </div>
+    <?php endif; ?>
+
     <div class="sidebar-footer">
         <?php if($isStaff): ?>
         <a href="?page=sip_settings" class="nav-link <?= $page=='sip_settings'?'active':'' ?>">
@@ -1007,6 +1028,9 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
         <?php endif; ?>
         <a href="?page=profile" class="nav-link <?= $page=='profile'?'active':'' ?>">
             <i class="fa-solid fa-user-gear"></i> Profile Settings
+        </a>
+        <a href="?page=settings" class="nav-link <?= $page=='settings'?'active':'' ?>">
+            <i class="fa-solid fa-cog"></i> Settings
         </a>
         <a href="logout.php" class="nav-link" style="color:#ef4444;">
             <i class="fa-solid fa-power-off"></i> Sign Out

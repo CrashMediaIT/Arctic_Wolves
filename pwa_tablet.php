@@ -285,6 +285,16 @@ $allowed_pages = [
 ];
 
 $view_file = $allowed_pages[$page] ?? 'views/home.php';
+
+// Prefer mobile-native PWA views when available (same as pwa.php)
+// Skip PWA override for profile page when edit or change_password params are set
+// so the full desktop profile form is used instead
+$pwa_view_file = 'views/pwa/' . $page . '.php';
+$skipPwaOverride = ($page === 'profile' && isset($_GET['tab']));
+if (!$skipPwaOverride && file_exists(__DIR__ . '/' . $pwa_view_file)) {
+    $view_file = $pwa_view_file;
+}
+
 // Unread notification count
 $unreadNotifCount = 0;
 try {
@@ -420,6 +430,8 @@ try {
             <a href="?page=roster" class="nav-link <?= $page=='roster'?'active':'' ?>"><i class="fa-solid fa-users-gear"></i> Roster</a>
             <a href="?page=coach_stopwatch" class="nav-link <?= $page=='coach_stopwatch'?'active':'' ?>"><i class="fa-solid fa-stopwatch"></i> Stopwatch</a>
             <a href="?page=coach_shot_speed" class="nav-link <?= $page=='coach_shot_speed'?'active':'' ?>"><i class="fa-solid fa-hockey-puck"></i> Shot Speed</a>
+            <a href="?page=coach_evaluations" class="nav-link <?= $page=='coach_evaluations'?'active':'' ?>"><i class="fa-solid fa-star"></i> Evaluations</a>
+            <a href="?page=coach_goals" class="nav-link <?= $page=='coach_goals'?'active':'' ?>"><i class="fa-solid fa-bullseye"></i> Goals</a>
             <a href="?page=coach_session_evaluations" class="nav-link <?= in_array($page, ['coach_session_evaluations','session_evaluation_form'])?'active':'' ?>"><i class="fa-solid fa-clipboard-check"></i> Session Evaluations</a>
             <a href="?page=coach_video_reviews" class="nav-link <?= in_array($page, ['coach_video_reviews','coach_pending_reviews'])?'active':'' ?>"><i class="fa-solid fa-video"></i> Video Reviews</a>
             <a href="?page=travel" class="nav-link <?= in_array($page, ['travel','mileage'])?'active':'' ?>"><i class="fa-solid fa-plane"></i> Travel</a>
@@ -505,12 +517,23 @@ try {
     </div>
     <?php endif; ?>
 
+    <!-- PARENT FEATURES -->
+    <?php if($isParent): ?>
+    <div class="nav-group">
+        <span class="nav-label">Parent</span>
+        <nav class="nav-menu">
+            <a href="?page=camp_checkin" class="nav-link <?= $page=='camp_checkin'?'active':'' ?>"><i class="fa-solid fa-check-circle"></i> Camp Check-in</a>
+        </nav>
+    </div>
+    <?php endif; ?>
+
     <!-- SIDEBAR FOOTER -->
     <div class="sidebar-footer">
         <?php if($isStaff): ?>
         <a href="?page=sip_settings" class="nav-link <?= $page=='sip_settings'?'active':'' ?>"><i class="fa-solid fa-address-book"></i> Company Directory</a>
         <?php endif; ?>
         <a href="?page=profile" class="nav-link <?= $page=='profile'?'active':'' ?>"><i class="fa-solid fa-user-gear"></i> Profile Settings</a>
+        <a href="?page=settings" class="nav-link <?= $page=='settings'?'active':'' ?>"><i class="fa-solid fa-cog"></i> Settings</a>
         <a href="?view=desktop" class="nav-link"><i class="fa-solid fa-desktop"></i> Desktop View</a>
         <a href="logout.php" class="nav-link" style="color:#ef4444;"><i class="fa-solid fa-power-off"></i> Sign Out</a>
         <div style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-top:1px solid var(--border);margin-top:8px;">

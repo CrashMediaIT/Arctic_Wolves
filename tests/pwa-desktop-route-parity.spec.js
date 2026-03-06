@@ -200,3 +200,113 @@ test.describe('PWA Navigation Label Parity with Desktop', () => {
   });
 
 });
+
+test.describe('PWA Missing Features & Navigation Gaps', () => {
+
+  test('pwa_more_menu.php includes coach_evaluations link', () => {
+    const content = readFileSync(join(ROOT, 'pwa_more_menu.php'), 'utf-8');
+    expect(content).toContain('page=coach_evaluations');
+  });
+
+  test('pwa_more_menu.php includes coach_goals link', () => {
+    const content = readFileSync(join(ROOT, 'pwa_more_menu.php'), 'utf-8');
+    expect(content).toContain('page=coach_goals');
+  });
+
+  test('pwa_tablet.php includes coach_evaluations link', () => {
+    const content = readFileSync(join(ROOT, 'pwa_tablet.php'), 'utf-8');
+    expect(content).toContain('page=coach_evaluations');
+  });
+
+  test('pwa_tablet.php includes coach_goals link', () => {
+    const content = readFileSync(join(ROOT, 'pwa_tablet.php'), 'utf-8');
+    expect(content).toContain('page=coach_goals');
+  });
+
+  test('dashboard.php includes coach_evaluations link in sidebar', () => {
+    const content = readFileSync(join(ROOT, 'dashboard.php'), 'utf-8');
+    expect(content).toContain('page=coach_evaluations');
+  });
+
+  test('dashboard.php includes coach_goals link in sidebar', () => {
+    const content = readFileSync(join(ROOT, 'dashboard.php'), 'utf-8');
+    expect(content).toContain('page=coach_goals');
+  });
+
+  test('pwa_more_menu.php includes settings link', () => {
+    const content = readFileSync(join(ROOT, 'pwa_more_menu.php'), 'utf-8');
+    expect(content).toContain('page=settings');
+  });
+
+  test('pwa_tablet.php includes settings link', () => {
+    const content = readFileSync(join(ROOT, 'pwa_tablet.php'), 'utf-8');
+    expect(content).toContain('page=settings');
+  });
+
+  test('dashboard.php includes settings link in sidebar', () => {
+    const content = readFileSync(join(ROOT, 'dashboard.php'), 'utf-8');
+    expect(content).toContain('page=settings');
+  });
+
+  test('dashboard.php includes notifications link in sidebar', () => {
+    const content = readFileSync(join(ROOT, 'dashboard.php'), 'utf-8');
+    expect(content).toContain('page=notifications');
+  });
+
+  test('pwa_tablet.php has Parent section with camp_checkin for parents', () => {
+    const content = readFileSync(join(ROOT, 'pwa_tablet.php'), 'utf-8');
+    expect(content).toContain('page=camp_checkin');
+    // Verify it's in a Parent section
+    const parentIdx = content.indexOf('>Parent<');
+    const campIdx = content.indexOf('page=camp_checkin');
+    expect(parentIdx).toBeGreaterThan(-1);
+    expect(campIdx).toBeGreaterThan(-1);
+    expect(campIdx).toBeGreaterThan(parentIdx);
+  });
+
+  test('dashboard.php has Parent section with camp_checkin for parents', () => {
+    const content = readFileSync(join(ROOT, 'dashboard.php'), 'utf-8');
+    // camp_checkin should be in sidebar as a nav link
+    expect(content).toMatch(/page=camp_checkin.*nav-link/s);
+  });
+
+  test('pwa_tablet.php uses PWA view override for mobile-optimized views', () => {
+    const content = readFileSync(join(ROOT, 'pwa_tablet.php'), 'utf-8');
+    // Should check for views/pwa/ directory overrides
+    expect(content).toContain("views/pwa/'");
+    expect(content).toContain('$pwa_view_file');
+  });
+
+  test('Coaches Corner order: evaluations and goals after shot speed in all menus', () => {
+    // Check pwa_more_menu.php
+    const moreMenu = readFileSync(join(ROOT, 'pwa_more_menu.php'), 'utf-8');
+    const shotSpeedIdxMore = moreMenu.indexOf('page=coach_shot_speed');
+    const evalIdxMore = moreMenu.indexOf('page=coach_evaluations');
+    const goalsIdxMore = moreMenu.indexOf('page=coach_goals');
+    const sessionEvalIdxMore = moreMenu.indexOf('page=coach_session_evaluations');
+    expect(shotSpeedIdxMore).toBeLessThan(evalIdxMore);
+    expect(evalIdxMore).toBeLessThan(goalsIdxMore);
+    expect(goalsIdxMore).toBeLessThan(sessionEvalIdxMore);
+
+    // Check pwa_tablet.php
+    const tablet = readFileSync(join(ROOT, 'pwa_tablet.php'), 'utf-8');
+    const shotSpeedIdxTablet = tablet.indexOf('page=coach_shot_speed');
+    const evalIdxTablet = tablet.indexOf('page=coach_evaluations');
+    const goalsIdxTablet = tablet.indexOf('page=coach_goals');
+    const sessionEvalIdxTablet = tablet.indexOf('page=coach_session_evaluations');
+    expect(shotSpeedIdxTablet).toBeLessThan(evalIdxTablet);
+    expect(evalIdxTablet).toBeLessThan(goalsIdxTablet);
+    expect(goalsIdxTablet).toBeLessThan(sessionEvalIdxTablet);
+
+    // Check dashboard.php
+    const dashboard = readFileSync(join(ROOT, 'dashboard.php'), 'utf-8');
+    const shotSpeedIdxDash = dashboard.indexOf('page=coach_shot_speed');
+    const evalIdxDash = dashboard.indexOf('page=coach_evaluations');
+    const goalsIdxDash = dashboard.indexOf('page=coach_goals');
+    const sessionEvalIdxDash = dashboard.indexOf('page=coach_session_evaluations');
+    expect(shotSpeedIdxDash).toBeLessThan(evalIdxDash);
+    expect(evalIdxDash).toBeLessThan(goalsIdxDash);
+    expect(goalsIdxDash).toBeLessThan(sessionEvalIdxDash);
+  });
+
+});

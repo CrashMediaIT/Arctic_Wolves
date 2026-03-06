@@ -98,6 +98,14 @@
             <i class="fas fa-hockey-puck"></i> Shot Speed
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
+        <a href="?page=coach_evaluations" class="pwa-menu-item">
+            <i class="fas fa-star"></i> Evaluations
+            <i class="fas fa-chevron-right menu-chevron"></i>
+        </a>
+        <a href="?page=coach_goals" class="pwa-menu-item">
+            <i class="fas fa-bullseye"></i> Goals
+            <i class="fas fa-chevron-right menu-chevron"></i>
+        </a>
         <a href="?page=coach_session_evaluations" class="pwa-menu-item">
             <i class="fas fa-clipboard-check"></i> Session Evaluations
             <i class="fas fa-chevron-right menu-chevron"></i>
@@ -313,6 +321,10 @@
         <?php endif; ?>
         <a href="?page=profile" class="pwa-menu-item">
             <i class="fas fa-user-gear"></i> Profile Settings
+            <i class="fas fa-chevron-right menu-chevron"></i>
+        </a>
+        <a href="?page=settings" class="pwa-menu-item">
+            <i class="fas fa-cog"></i> Settings
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
         <a href="?view=desktop" class="pwa-menu-item">
