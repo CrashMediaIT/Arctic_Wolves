@@ -75,6 +75,14 @@
             }
             _errorLastSent[dedupeKey] = now;
 
+            // Log to browser console for developer visibility
+            var isError = context && context.type && context.type !== 'lifecycle' && context.type !== 'video_event';
+            if (isError) {
+                console.error('[AW Video] ' + message, context || '');
+            } else {
+                console.log('[AW Video] ' + message);
+            }
+
             // Always attach browser diagnostics
             if (context && typeof context === 'object') {
                 context._browser = _browserInfo;
@@ -135,6 +143,23 @@
     }
 
     /**
+     * Convert a relative URL to an absolute URL.
+     * Player libraries (especially dash.js v5) may fail to resolve relative
+     * URLs when the manifest is served through a query-string proxy like
+     * media.php?key=…  Using absolute URLs avoids this class of bugs.
+     */
+    function _toAbsoluteUrl(url) {
+        if (!url) return url;
+        // Already absolute
+        if (/^https?:\/\//i.test(url) || /^blob:/i.test(url)) return url;
+        try {
+            return new URL(url, window.location.href).href;
+        } catch (_) {
+            return url;
+        }
+    }
+
+    /**
      * Initialise a video element for playback.
      * @param {HTMLVideoElement} video  The <video> element.
      * @param {string}           url    Video URL (.m3u8 for HLS, or direct file).
@@ -158,10 +183,21 @@
         // Destroy any previous HLS.js instance attached to this video to avoid
         // two instances fighting for the same MediaSource object.
         if (video._awHls) {
-            _reportPlaybackError('HLS init: destroying previous instance before re-init', { element: video.id || 'unknown', url: url, type: 'lifecycle' });
+            _reportPlaybackError('HLS init: destroying previous HLS.js instance before re-init', { element: video.id || 'unknown', url: url, type: 'lifecycle' });
             try { video._awHls.destroy(); } catch (e) { /* ignore */ }
             video._awHls = null;
         }
+        // Destroy any previous dash.js instance too
+        if (video._awDash) {
+            _reportPlaybackError('HLS init: destroying previous dash.js instance before re-init', { element: video.id || 'unknown', url: url, type: 'lifecycle' });
+            try { video._awDash.reset(); } catch (e) { /* ignore */ }
+            video._awDash = null;
+        }
+
+        // Convert relative URL to absolute — some player libraries
+        // (particularly dash.js v5) may not resolve relative URLs properly
+        // through a query-string based media proxy.
+        url = _toAbsoluteUrl(url);
 
         var isHLS = /\.m3u8(\?|$)/i.test(url);
 
@@ -173,6 +209,7 @@
         //     avoids HLS.js overhead when fMP4 segments are shared)
         //   • Fallback → HLS via HLS.js if DASH init fails
         var dashUrl = video.getAttribute('data-dash-url');
+        if (dashUrl) dashUrl = _toAbsoluteUrl(dashUrl);
         var isSafari = _browserInfo.browser === 'Safari';
         var preferDash = !isSafari && dashUrl && typeof dashjs !== 'undefined'
                          && typeof MediaSource !== 'undefined'
@@ -502,12 +539,34 @@
             video._awDash = null;
         }
 
+        // Convert to absolute URL — dash.js v5 may not resolve relative
+        // query-string proxy URLs correctly
+        url = _toAbsoluteUrl(url);
+
         try {
             var player = dashjs.MediaPlayer().create();
-            player.initialize(video, url, true);
+            player.initialize(video, url, /* autoPlay */ false);
             video._awDash = player;
 
+            // Timeout: if DASH doesn't initialise within 10 s, fall back to HLS.
+            // This catches silent failures where dash.js never fires an error.
+            var _dashTimeout = setTimeout(function() {
+                if (video._awDash === player && !video._awDashStreamOk) {
+                    _reportPlaybackError('DASH timeout: stream not initialized after 10 s, falling back to HLS', {
+                        element: video.id || 'unknown', url: url, type: 'dash_error'
+                    });
+                    var hlsFallback = video._awHlsFallbackUrl;
+                    if (hlsFallback && !video._awDashFallbackAttempted) {
+                        video._awDashFallbackAttempted = true;
+                        try { player.reset(); } catch (_) {}
+                        video._awDash = null;
+                        awInitHlsPlayer(video, hlsFallback);
+                    }
+                }
+            }, 10000);
+
             player.on('error', function(e) {
+                clearTimeout(_dashTimeout);
                 _reportPlaybackError('DASH error: ' + (e.error ? e.error.message || e.error.code : 'unknown'), {
                     element: video.id || 'unknown', url: url, type: 'dash_error',
                     error: e.error || e
@@ -526,7 +585,10 @@
             });
 
             player.on('streamInitialized', function() {
+                clearTimeout(_dashTimeout);
+                video._awDashStreamOk = true;
                 _reportPlaybackError('DASH lifecycle: stream initialized', { url: url, type: 'lifecycle' });
+                video.play().catch(function() {});
                 _buildCustomControls(video, null, null);
             });
 
@@ -548,6 +610,7 @@
     function awTryDashFallback(video) {
         if (!video) return null;
         var dashUrl = video.getAttribute('data-dash-url');
+        if (dashUrl) dashUrl = _toAbsoluteUrl(dashUrl);
         if (!dashUrl) {
             _reportPlaybackError('DASH fallback: no data-dash-url attribute', { element: video.id || 'unknown', type: 'dash_unavailable' });
             return null;

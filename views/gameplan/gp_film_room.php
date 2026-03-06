@@ -376,7 +376,7 @@ if (!function_exists('vr_format_duration')) {
                 $vr_edit_dash = getDashUrl($vr_edit_source);
                 if ($vr_edit_dash) $vr_edit_dash = resolveRustfsUrl($pdo, $vr_edit_dash) ?? '';
             ?>
-            <video id="vrVideoPlayer" controls preload="metadata" style="width:100%; aspect-ratio:16/9; border-radius:8px; display:none; object-fit:contain; background:#000;"<?php if ($vr_edit_fallback && $vr_edit_fallback !== $vr_edit_play_url): ?> data-fallback-url="<?= htmlspecialchars($vr_edit_fallback) ?>"<?php endif; ?><?php if ($vr_edit_dash): ?> data-dash-url="<?= htmlspecialchars($vr_edit_dash) ?>"<?php endif; ?>>
+            <video id="vrVideoPlayer" controls preload="none" style="width:100%; aspect-ratio:16/9; border-radius:8px; display:none; object-fit:contain; background:#000;"<?php if ($vr_edit_fallback && $vr_edit_fallback !== $vr_edit_play_url): ?> data-fallback-url="<?= htmlspecialchars($vr_edit_fallback) ?>"<?php endif; ?><?php if ($vr_edit_dash): ?> data-dash-url="<?= htmlspecialchars($vr_edit_dash) ?>"<?php endif; ?>>
                 <source src="<?= htmlspecialchars($vr_edit_play_url) ?>">
             </video>
             <?php endif; ?>
@@ -889,7 +889,7 @@ document.addEventListener('DOMContentLoaded', function() {
         placeholder.addEventListener('click', function() {
             player.style.display = 'block';
             placeholder.style.display = 'none';
-            var src = player.querySelector('source')?.src;
+            var src = player.querySelector('source')?.getAttribute('src');
             if (src && typeof window.awInitHlsPlayer === 'function' && !gpFilmHls) {
                 gpFilmHls = window.awInitHlsPlayer(player, src);
             }
