@@ -251,6 +251,23 @@ function _media_cors_headers() {
     header('Access-Control-Expose-Headers: Content-Range, Accept-Ranges, Content-Length');
 }
 
+/**
+ * Resolve a relative path against a base directory, normalising ../  and ./
+ * Used for DASH MPD segment URL rewriting.
+ */
+function _resolve_mpd_path(string $base_dir, string $relative): string {
+    $parts = explode('/', $base_dir . '/' . $relative);
+    $normalized = [];
+    foreach ($parts as $part) {
+        if ($part === '..' && !empty($normalized)) {
+            array_pop($normalized);
+        } elseif ($part !== '' && $part !== '.') {
+            $normalized[] = $part;
+        }
+    }
+    return implode('/', $normalized);
+}
+
 // Common MIME map shared by both streaming and buffered paths
 $mime_map = [
     'jpg'  => 'image/jpeg',  'jpeg' => 'image/jpeg',  'png'  => 'image/png',
@@ -423,20 +440,47 @@ $base_dir = dirname($object_key_clean);
 
 if ($m3u8_ext === 'mpd') {
     // ── Rewrite relative URLs in DASH MPD manifests ─────────────────────
-    // DASH .mpd files are XML and reference segments via <BaseURL>, media=
-    // attributes, and initialization= attributes with relative paths.
-    // Inject a <BaseURL> element pointing back to this proxy so the DASH
-    // player resolves all segment paths through the proxy.
-    $proxy_base = 'media.php?key=' . rawurlencode($base_dir . '/');
-    // Insert <BaseURL> after the opening <MPD ...> tag if not already present
-    if (stripos($body, '<BaseURL>') === false) {
-        $body = preg_replace(
-            '#(<MPD[^>]*>)#i',
-            '$1' . "\n  <BaseURL>" . htmlspecialchars($proxy_base) . "</BaseURL>",
-            $body,
-            1
-        );
-    }
+    // DASH .mpd manifests reference segments via sourceURL, media, and
+    // initialization attributes with relative paths.  Because we serve the
+    // manifest through a query-string proxy (media.php?key=…), RFC 3986
+    // relative URL resolution operates on the path component (/api/) rather
+    // than the S3 directory the manifest lives in.
+    //
+    // Fix: rewrite every relative reference to an absolute proxy URL,
+    // exactly as we do for HLS .m3u8 playlists.  This replaces the former
+    // <BaseURL> injection which dash.js could not resolve correctly through
+    // a query-string proxy.
+
+    // Remove any existing <BaseURL> elements — we use absolute URLs instead
+    $body = preg_replace('#\s*<BaseURL>[^<]*</BaseURL>#i', '', $body);
+
+    // Rewrite sourceURL, media, and initialization attributes that contain
+    // relative paths (not starting with http:// or https://)
+    $body = preg_replace_callback(
+        '#((?:sourceURL|media|initialization)\s*=\s*")([^"]+)(")#i',
+        function ($m) use ($base_dir) {
+            $url = $m[2];
+            // Skip absolute URLs
+            if (preg_match('#^https?://#i', $url)) {
+                return $m[0];
+            }
+            // Skip byte-range values (e.g. "0-999")
+            if (preg_match('#^\d+-\d+$#', $url)) {
+                return $m[0];
+            }
+            // Check for DASH template variables ($RepresentationID$, $Number$, etc.)
+            if (strpos($url, '$') !== false) {
+                // Template URL: prepend proxy base, preserve template variables
+                $proxy_prefix = 'media.php?key=' . rawurlencode($base_dir . '/');
+                return $m[1] . $proxy_prefix . $url . $m[3];
+            }
+            // Literal URL: resolve relative path and encode
+            $resolved = _resolve_mpd_path($base_dir, $url);
+            return $m[1] . 'media.php?key=' . rawurlencode($resolved) . $m[3];
+        },
+        $body
+    );
+
     $content_type = 'application/dash+xml';
 } else {
     // ── Rewrite relative URLs in HLS playlists ──────────────────────────
