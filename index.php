@@ -1,4 +1,18 @@
 <?php
+// ── Catch-all: route /api/ requests to the REST API entry point ────────
+// nginx should have a `location /api/` block that routes directly to
+// api/index.php.  If that block is missing, inactive, or the request
+// otherwise falls through to this file, the main site would serve an
+// HTML page instead of a JSON response — breaking companion callbacks
+// and any other API caller.  This guard ensures /api/ requests always
+// reach the API handler regardless of web-server configuration.
+$_api_path = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '';
+if (strncmp($_api_path, '/api/', 5) === 0) {
+    require __DIR__ . '/api/index.php';
+    exit;
+}
+unset($_api_path);
+
 // Check if database is configured and connected
 require_once __DIR__ . '/db_config.php';
 
