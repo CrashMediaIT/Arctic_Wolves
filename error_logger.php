@@ -104,7 +104,7 @@ class ErrorLogger {
      * Log message to file
      */
     public static function log($message, $level = 'INFO', $file = 'application.log') {
-        $timestamp = date('Y-m-d H:i:s');
+        $timestamp = function_exists('appDate') ? appDate('Y-m-d H:i:s') : date('Y-m-d H:i:s');
         $logMessage = "[{$timestamp}] [{$level}] {$message}\n";
         
         $logFile = self::$logPath . $file;
@@ -147,7 +147,7 @@ class ErrorLogger {
             ]);
         } catch (PDOException $e) {
             // Fallback to file-only logging to avoid infinite recursion
-            $fallbackMsg = "[" . date('Y-m-d H:i:s') . "] [ERROR] Failed to write to error_logs table: " . $e->getMessage() . "\n";
+            $fallbackMsg = "[" . (function_exists('appDate') ? appDate('Y-m-d H:i:s') : date('Y-m-d H:i:s')) . "] [ERROR] Failed to write to error_logs table: " . $e->getMessage() . "\n";
             file_put_contents(self::$logPath . 'error.log', $fallbackMsg, FILE_APPEND);
         }
     }
@@ -164,7 +164,7 @@ class ErrorLogger {
         $line = isset($caller['line']) ? $caller['line'] : null;
         
         // Write to file
-        $timestamp = date('Y-m-d H:i:s');
+        $timestamp = function_exists('appDate') ? appDate('Y-m-d H:i:s') : date('Y-m-d H:i:s');
         $logMessage = "[{$timestamp}] [ERROR] {$message}{$contextStr}\n";
         file_put_contents(self::$logPath . 'error.log', $logMessage, FILE_APPEND);
         
@@ -183,7 +183,7 @@ class ErrorLogger {
         $file = isset($caller['file']) ? $caller['file'] : null;
         $line = isset($caller['line']) ? $caller['line'] : null;
         
-        $timestamp = date('Y-m-d H:i:s');
+        $timestamp = function_exists('appDate') ? appDate('Y-m-d H:i:s') : date('Y-m-d H:i:s');
         $logMessage = "[{$timestamp}] [WARNING] {$message}{$contextStr}\n";
         file_put_contents(self::$logPath . 'warning.log', $logMessage, FILE_APPEND);
         
@@ -197,7 +197,7 @@ class ErrorLogger {
         $contextStr = !empty($context) ? ' | Context: ' . json_encode($context) : '';
         $contextJson = !empty($context) ? json_encode($context) : null;
         
-        $timestamp = date('Y-m-d H:i:s');
+        $timestamp = function_exists('appDate') ? appDate('Y-m-d H:i:s') : date('Y-m-d H:i:s');
         $logMessage = "[{$timestamp}] [INFO] {$message}{$contextStr}\n";
         file_put_contents(self::$logPath . 'application.log', $logMessage, FILE_APPEND);
         
@@ -215,7 +215,7 @@ class ErrorLogger {
         $file = isset($caller['file']) ? $caller['file'] : null;
         $line = isset($caller['line']) ? $caller['line'] : null;
         
-        $timestamp = date('Y-m-d H:i:s');
+        $timestamp = function_exists('appDate') ? appDate('Y-m-d H:i:s') : date('Y-m-d H:i:s');
         $logMessage = "[{$timestamp}] [SECURITY] {$message}{$contextStr}\n";
         file_put_contents(self::$logPath . 'security.log', $logMessage, FILE_APPEND);
         
@@ -237,7 +237,7 @@ class ErrorLogger {
         $message = "Error [{$errno}]: {$errstr} in {$errfile} on line {$errline}";
         
         // Write to file
-        $timestamp = date('Y-m-d H:i:s');
+        $timestamp = function_exists('appDate') ? appDate('Y-m-d H:i:s') : date('Y-m-d H:i:s');
         $logMessage = "[{$timestamp}] [ERROR] {$message}\n";
         file_put_contents(self::$logPath . 'error.log', $logMessage, FILE_APPEND);
         
@@ -258,7 +258,7 @@ class ErrorLogger {
                    "\nStack trace:\n" . $exception->getTraceAsString();
         
         // Write to file
-        $timestamp = date('Y-m-d H:i:s');
+        $timestamp = function_exists('appDate') ? appDate('Y-m-d H:i:s') : date('Y-m-d H:i:s');
         $logMessage = "[{$timestamp}] [ERROR] {$message}\n";
         file_put_contents(self::$logPath . 'error.log', $logMessage, FILE_APPEND);
         
@@ -287,7 +287,7 @@ class ErrorLogger {
             $message = "Fatal Error [{$error['type']}]: {$error['message']} in {$error['file']} on line {$error['line']}";
             
             // Write to file
-            $timestamp = date('Y-m-d H:i:s');
+            $timestamp = function_exists('appDate') ? appDate('Y-m-d H:i:s') : date('Y-m-d H:i:s');
             $logMessage = "[{$timestamp}] [ERROR] {$message}\n";
             file_put_contents(self::$logPath . 'error.log', $logMessage, FILE_APPEND);
             

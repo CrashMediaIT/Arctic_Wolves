@@ -251,11 +251,18 @@ try {
                 <label class="m-settings-form-label">Timezone *</label>
                 <select name="timezone" class="m-settings-form-input" required>
                     <?php
-                    $tzOptions = ['America/New_York (EST)','America/Chicago (CST)','America/Denver (MST)','America/Los_Angeles (PST)'];
-                    $curTz = $currentSettings['timezone'] ?? 'America/New_York (EST)';
-                    foreach ($tzOptions as $tz):
+                    $tzOptions = [
+                        'America/St_Johns' => 'Newfoundland (NST)',
+                        'America/Halifax' => 'Atlantic (AST)',
+                        'America/New_York' => 'Eastern (EST)',
+                        'America/Chicago' => 'Central (CST)',
+                        'America/Denver' => 'Mountain (MST)',
+                        'America/Los_Angeles' => 'Pacific (PST)',
+                    ];
+                    $curTz = $currentSettings['timezone'] ?? 'America/New_York';
+                    foreach ($tzOptions as $tzVal => $tzLabel):
                     ?>
-                    <option <?= $curTz === $tz ? 'selected' : '' ?>><?= htmlspecialchars($tz) ?></option>
+                    <option value="<?= htmlspecialchars($tzVal) ?>" <?= $curTz === $tzVal ? 'selected' : '' ?>><?= htmlspecialchars($tzLabel) ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>

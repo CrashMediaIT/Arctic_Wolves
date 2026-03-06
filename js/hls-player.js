@@ -61,7 +61,12 @@
      * @returns {Hls|null}  The HLS.js instance (if used), or null.
      */
     function awInitHlsPlayer(video, url) {
-        if (!video || !url) return null;
+        if (!video || !url) {
+            if (video && !url) {
+                _reportPlaybackError('HLS init skipped: empty video URL', { element: video.id || 'unknown', type: 'silent_failure' });
+            }
+            return null;
+        }
 
         var isHLS = /\.m3u8(\?|$)/i.test(url);
 
@@ -72,6 +77,12 @@
                 maxMaxBufferLength: 60,
                 startLevel: -1, // Auto quality selection
                 enableWorker: true,
+                // Prevent browser from caching error responses on retry
+                xhrSetup: function(xhr, xhrUrl) {
+                    // Append a cache-buster to force fresh requests on each attempt
+                    var sep = xhrUrl.indexOf('?') === -1 ? '?' : '&';
+                    xhr.open('GET', xhrUrl + sep + '_t=' + Date.now(), true);
+                },
             });
 
             hls.loadSource(url);
@@ -83,7 +94,7 @@
             });
 
             var _networkRetries = 0;
-            var _MAX_NETWORK_RETRIES = 2;
+            var _MAX_NETWORK_RETRIES = 4;
             hls.on(Hls.Events.ERROR, function(_event, data) {
                 if (data.fatal) {
                     var errDetail = (data.details || 'unknown') + (data.reason ? ' — ' + data.reason : '');
@@ -91,7 +102,10 @@
                         case Hls.ErrorTypes.NETWORK_ERROR:
                             if (_networkRetries < _MAX_NETWORK_RETRIES) {
                                 _networkRetries++;
-                                hls.startLoad();
+                                // Exponential backoff: 500ms, 1s, 2s, 4s
+                                var delay = Math.min(500 * Math.pow(2, _networkRetries - 1), 4000);
+                                _reportPlaybackError('HLS network error (retry ' + _networkRetries + '/' + _MAX_NETWORK_RETRIES + '): ' + errDetail, { url: url, type: 'network', retry: _networkRetries });
+                                setTimeout(function() { hls.startLoad(); }, delay);
                             } else {
                                 _reportPlaybackError('HLS network error (retries exhausted): ' + errDetail, { url: url, type: 'network' });
                                 // Exhausted retries — destroy HLS.js and fire
