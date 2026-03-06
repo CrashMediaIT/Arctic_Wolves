@@ -384,12 +384,13 @@ foreach ($url_keys as $uk) {
                 <?php
                     $app_offset = (int)($settings['app_time_offset'] ?? 0);
                     $app_now = time() + $app_offset;
+                    $configured_tz = date_default_timezone_get();
                 ?>
                 <div class="settings-list">
                     <div class="setting-item">
                         <div class="setting-info">
                             <h4>Application Time</h4>
-                            <p>Current date &amp; time the application is using</p>
+                            <p>Current date &amp; time the application is using (<?php echo htmlspecialchars($configured_tz); ?>)</p>
                         </div>
                         <span id="app-clock" style="font-size: 16px; font-weight: 600; font-family: monospace; color: var(--text-color);">
                             <?php echo date('Y-m-d H:i:s', $app_now); ?>
@@ -397,11 +398,11 @@ foreach ($url_keys as $uk) {
                     </div>
                     <div class="setting-item">
                         <div class="setting-info">
-                            <h4>Server System Clock</h4>
-                            <p>Raw system time (may differ from real time in Docker)</p>
+                            <h4>Server System Clock (UTC)</h4>
+                            <p>Raw system time in UTC (may differ from real time in Docker)</p>
                         </div>
                         <span id="sys-clock" style="font-size: 14px; font-family: monospace; color: var(--text-dim);">
-                            <?php echo date('Y-m-d H:i:s'); ?>
+                            <?php echo gmdate('Y-m-d H:i:s'); ?>
                         </span>
                     </div>
                     <div class="setting-item">
@@ -478,11 +479,11 @@ foreach ($url_keys as $uk) {
                             appEl.textContent = formatUtcDate(new Date((appUtcSec + serverTzOffset) * 1000));
                         }
 
-                        // System clock: server UTC + elapsed, in server TZ (no app offset)
+                        // System clock: server UTC + elapsed, displayed in UTC (raw system time)
                         var sysUtcSec = serverTimestamp + elapsedSec;
                         var sysEl = document.getElementById('sys-clock');
                         if (sysEl) {
-                            sysEl.textContent = formatUtcDate(new Date((sysUtcSec + serverTzOffset) * 1000));
+                            sysEl.textContent = formatUtcDate(new Date(sysUtcSec * 1000));
                         }
                     }
                     setInterval(tickClock, 1000);
