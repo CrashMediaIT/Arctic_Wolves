@@ -245,6 +245,10 @@
                 maxMaxBufferLength: 60,
                 startLevel: -1, // Auto quality selection
                 enableWorker: true,
+                // Increase append-error retries for fMP4 segments where
+                // init-segment switching across quality levels can cause
+                // transient SourceBuffer errors.
+                appendErrorMaxRetry: 5,
                 // Note: do NOT use xhrSetup with xhr.open() — it resets
                 // responseType which causes bufferAppendError on .ts segments.
                 // Server-side Cache-Control: no-store on error responses
@@ -417,10 +421,23 @@
                             (!_lastMediaRecovery || (now - _lastMediaRecovery) > _MEDIA_RECOVER_COOLDOWN_MS)) {
                             _mediaRecoveryAttempts++;
                             _lastMediaRecovery = now;
-                            errContext.action = 'recoverMediaError';
-                            errContext.attempt = _mediaRecoveryAttempts;
-                            _reportPlaybackError('HLS FATAL media error (recovery ' + _mediaRecoveryAttempts + '/' + _MAX_MEDIA_RECOVERY + '): ' + errDetail, errContext);
-                            hls.recoverMediaError();
+                            // HLS.js recommended pattern: on the 2nd recovery
+                            // attempt, swap the audio codec before recovering.
+                            // This fixes bufferAppendError caused by audio
+                            // codec mismatches when switching quality levels
+                            // (e.g. surround → stereo AAC at different bitrates).
+                            if (_mediaRecoveryAttempts === 2) {
+                                errContext.action = 'swapAudioCodec+recoverMediaError';
+                                errContext.attempt = _mediaRecoveryAttempts;
+                                _reportPlaybackError('HLS FATAL media error (swap audio codec + recovery ' + _mediaRecoveryAttempts + '/' + _MAX_MEDIA_RECOVERY + '): ' + errDetail, errContext);
+                                hls.swapAudioCodec();
+                                hls.recoverMediaError();
+                            } else {
+                                errContext.action = 'recoverMediaError';
+                                errContext.attempt = _mediaRecoveryAttempts;
+                                _reportPlaybackError('HLS FATAL media error (recovery ' + _mediaRecoveryAttempts + '/' + _MAX_MEDIA_RECOVERY + '): ' + errDetail, errContext);
+                                hls.recoverMediaError();
+                            }
                         } else if (_mediaRecoveryAttempts >= _MAX_MEDIA_RECOVERY) {
                             errContext.action = 'destroying_hls';
                             _reportPlaybackError('HLS FATAL media error (recovery exhausted): ' + errDetail, errContext);

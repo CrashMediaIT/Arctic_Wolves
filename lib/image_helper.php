@@ -169,6 +169,28 @@ function getDashUrl($video) {
 }
 
 /**
+ * Check if a URL points to a format that browsers can play natively.
+ *
+ * After transcoding the companion deletes the original file, so falling
+ * back to it is pointless.  Even when the original still exists, formats
+ * like .mkv and .avi are not natively playable in any major browser.
+ * This helper prevents wasting a recovery attempt on a guaranteed failure.
+ *
+ * @param string $url  A video URL (may be a proxy URL like api/media.php?key=…)
+ * @return bool  True if the extension is natively playable in most browsers
+ */
+function isBrowserPlayableUrl($url) {
+    // Extract the real key from proxy URLs
+    if (preg_match('#api/media\.php\?key=([^&]+)#', $url, $m)) {
+        $url = rawurldecode($m[1]);
+    }
+    $ext = strtolower(pathinfo(parse_url($url, PHP_URL_PATH) ?: $url, PATHINFO_EXTENSION));
+    // mp4 and webm are universally supported; mov has Safari support.
+    // mkv, avi, and other container formats are NOT playable.
+    return in_array($ext, ['mp4', 'webm', 'mov'], true);
+}
+
+/**
  * Derive a fallback URL from a video's original proxy URL.
  *
  * When the companion transcodes a video it writes HLS segments to a
