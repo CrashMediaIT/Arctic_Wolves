@@ -209,7 +209,7 @@
                             index: i,
                             width: lv.width, height: lv.height,
                             bitrate: lv.bitrate,
-                            codecs: lv.codecSet || lv.attrs && lv.attrs.CODECS || ''
+                            codecs: lv.codecSet || (lv.attrs && lv.attrs.CODECS) || ''
                         });
                     }
                 }
@@ -235,10 +235,9 @@
 
             hls.on(Hls.Events.FRAG_LOADED, function(_event, data) {
                 // Log the first fragment load for diagnostics, then every 10th
-                if (!hls._awFragCount) hls._awFragCount = 0;
-                hls._awFragCount++;
-                if (hls._awFragCount === 1 || hls._awFragCount % 10 === 0) {
-                    _reportPlaybackError('HLS lifecycle: fragment loaded (#' + hls._awFragCount + ')', {
+                _fragCount++;
+                if (_fragCount === 1 || _fragCount % 10 === 0) {
+                    _reportPlaybackError('HLS lifecycle: fragment loaded (#' + _fragCount + ')', {
                         url: url, type: 'lifecycle',
                         fragUrl: data.frag ? data.frag.url : '',
                         fragSn: data.frag ? data.frag.sn : '',
@@ -279,6 +278,8 @@
             });
 
             // --- Error handling with full diagnostic logging ---
+            var _fragCount = 0;
+            var _deferredRecovery = false;
             var _networkRetries = 0;
             var _MAX_NETWORK_RETRIES = 4;
             // Time-based media error recovery per HLS.js recommended pattern.
@@ -359,10 +360,10 @@
                             // Cooldown not elapsed — schedule a deferred recovery attempt.
                             errContext.action = 'deferred_recovery';
                             _reportPlaybackError('HLS FATAL media error (cooldown active, deferring recovery): ' + errDetail, errContext);
-                            if (!hls._awDeferredRecovery) {
-                                hls._awDeferredRecovery = true;
+                            if (!_deferredRecovery) {
+                                _deferredRecovery = true;
                                 setTimeout(function() {
-                                    hls._awDeferredRecovery = false;
+                                    _deferredRecovery = false;
                                     if (hls.media) {
                                         _mediaRecoveryAttempts++;
                                         _lastMediaRecovery = Date.now();
