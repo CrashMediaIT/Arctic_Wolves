@@ -406,6 +406,7 @@ try {
             <a href="?page=health" class="nav-link <?= in_array($page, ['health','strength_conditioning','nutrition'])?'active':'' ?>"><i class="fa-solid fa-heart-pulse"></i> Health</a>
             <a href="?page=shop" class="nav-link <?= $page=='shop'?'active':'' ?>"><i class="fa-solid fa-store"></i> Shop</a>
             <a href="?page=payment_history" class="nav-link <?= $page=='payment_history'?'active':'' ?>"><i class="fa-solid fa-receipt"></i> Purchase History</a>
+            <a href="?page=notifications" class="nav-link <?= $page=='notifications'?'active':'' ?>"><i class="fa-solid fa-bell"></i> Notifications</a>
         </nav>
     </div>
 
