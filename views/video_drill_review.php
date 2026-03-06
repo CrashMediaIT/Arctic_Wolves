@@ -1468,11 +1468,13 @@ document.addEventListener('DOMContentLoaded', function() {
     var activeHls = null;
     var drFallbackUrl = '';
     var drFallbackTried = false;
+    var drPrimaryUrl = '';   // stash primary URL for reload-on-no-fallback
 
     function cleanupVideoPlayer() {
         if (activeHls) { activeHls.destroy(); activeHls = null; }
         drFallbackUrl = '';
         drFallbackTried = false;
+        drPrimaryUrl = '';
         if (videoPlayer) {
             // Clean up custom controls injected by hls-player.js
             var container = videoPlayer.parentElement;
@@ -1501,18 +1503,30 @@ document.addEventListener('DOMContentLoaded', function() {
     // Fallback: if primary video source fails (e.g. 502 because the companion
     // deleted the original after HLS transcode but the callback didn't update
     // hls_status), retry with the pre-set HLS URL.
+    // When no fallback exists, try reloading the primary HLS URL once
+    // (the failure may have been transient, e.g. a temporary buffer error).
+    var drReloadTried = false;
     if (videoPlayer) {
         videoPlayer.addEventListener('error', function() {
+            var diagState = { primaryUrl: drPrimaryUrl, fallbackUrl: drFallbackUrl, fallbackTried: drFallbackTried, reloadTried: drReloadTried };
             if (drFallbackUrl && !drFallbackTried) {
                 drFallbackTried = true;
                 if (typeof window.awReportPlaybackError === 'function') {
-                    window.awReportPlaybackError('Drill review: primary source failed, trying fallback', { fallback: drFallbackUrl });
+                    window.awReportPlaybackError('Drill review: primary source failed, trying fallback', { view: 'drill_review', action: 'try_fallback', fallback: drFallbackUrl, state: diagState });
                 }
                 if (typeof window.awInitHlsPlayer === 'function') {
                     activeHls = window.awInitHlsPlayer(videoPlayer, drFallbackUrl);
                 }
-            } else if (!drFallbackUrl && typeof window.awReportPlaybackError === 'function') {
-                window.awReportPlaybackError('Drill review: video playback failed — no fallback URL', {});
+            } else if (!drFallbackUrl && drPrimaryUrl && !drReloadTried) {
+                drReloadTried = true;
+                if (typeof window.awReportPlaybackError === 'function') {
+                    window.awReportPlaybackError('Drill review: no fallback URL, reloading primary HLS stream', { view: 'drill_review', action: 'reload_primary', primary: drPrimaryUrl, state: diagState });
+                }
+                if (typeof window.awInitHlsPlayer === 'function') {
+                    activeHls = window.awInitHlsPlayer(videoPlayer, drPrimaryUrl);
+                }
+            } else if (typeof window.awReportPlaybackError === 'function') {
+                window.awReportPlaybackError('Drill review: video playback failed — all recovery exhausted', { view: 'drill_review', action: 'give_up', state: diagState });
             }
         }, true);
     }
@@ -1563,10 +1577,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (videoUrl) {
                     // Destroy any previous HLS instance and clean up controls
                     cleanupVideoPlayer();
+                    drReloadTried = false;
 
                     // Store HLS fallback URL for error recovery
                     drFallbackUrl = (hlsUrl && hlsUrl !== videoUrl) ? hlsUrl : '';
+                    drPrimaryUrl = videoUrl;
                     drFallbackTried = false;
+
+                    if (typeof window.awReportPlaybackError === 'function') {
+                        window.awReportPlaybackError('Drill review: play button clicked', { view: 'drill_review', action: 'play_click', primaryUrl: videoUrl, fallbackUrl: hlsUrl, title: title, type: 'lifecycle' });
+                    }
 
                     // Set poster/thumbnail for preview before video loads
                     if (thumbnailUrl) videoPlayer.poster = thumbnailUrl;
