@@ -285,6 +285,19 @@ $allowed_pages = [
 ];
 
 $view_file = $allowed_pages[$page] ?? 'views/home.php';
+
+// Prefer mobile-native PWA views when available (same as pwa.php)
+// Skip PWA override for profile page when tab params are set
+// so the full desktop profile form is used instead.
+// Also skip for system_tools when a tab param targets a specific tab within the
+// desktop admin_system_tools.php view (settings, smtp, etc.).
+$pwa_view_file = 'views/pwa/' . $page . '.php';
+$skipPwaOverride = ($page === 'profile' && isset($_GET['tab']))
+                || ($page === 'system_tools' && isset($_GET['tab']));
+if (!$skipPwaOverride && file_exists(__DIR__ . '/' . $pwa_view_file)) {
+    $view_file = $pwa_view_file;
+}
+
 // Unread notification count
 $unreadNotifCount = 0;
 try {
@@ -501,6 +514,16 @@ try {
             <!-- Audit Log removed - available in Security Center -->
             <a href="?page=marketing" class="nav-link <?= $page=='marketing'?'active':'' ?>"><i class="fa-solid fa-bullhorn"></i> Marketing</a>
             <a href="?page=admin_wishlist" class="nav-link <?= $page=='admin_wishlist'?'active':'' ?>"><i class="fa-solid fa-clipboard-list"></i> Wishlist</a>
+        </nav>
+    </div>
+    <?php endif; ?>
+
+    <!-- PARENT FEATURES -->
+    <?php if($isParent): ?>
+    <div class="nav-group">
+        <span class="nav-label">Parent</span>
+        <nav class="nav-menu">
+            <a href="?page=camp_checkin" class="nav-link <?= $page=='camp_checkin'?'active':'' ?>"><i class="fa-solid fa-check-circle"></i> Camp Check-in</a>
         </nav>
     </div>
     <?php endif; ?>

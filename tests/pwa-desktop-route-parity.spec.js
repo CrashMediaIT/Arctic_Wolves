@@ -200,3 +200,74 @@ test.describe('PWA Navigation Label Parity with Desktop', () => {
   });
 
 });
+
+test.describe('PWA View Override and Feature Parity', () => {
+
+  test('pwa_tablet.php has PWA view override logic like pwa.php', () => {
+    const tabletContent = readFileSync(join(ROOT, 'pwa_tablet.php'), 'utf-8');
+    // Must have the PWA view override logic
+    expect(tabletContent).toContain("views/pwa/' . $page . '.php'");
+    expect(tabletContent).toContain('$pwa_view_file');
+    expect(tabletContent).toContain('$skipPwaOverride');
+    expect(tabletContent).toContain('file_exists');
+  });
+
+  test('pwa.php and pwa_tablet.php both skip PWA override for system_tools with tab param', () => {
+    const pwaContent = readFileSync(join(ROOT, 'pwa.php'), 'utf-8');
+    const tabletContent = readFileSync(join(ROOT, 'pwa_tablet.php'), 'utf-8');
+
+    // Both should skip PWA override when system_tools has a tab parameter
+    expect(pwaContent).toContain("$page === 'system_tools' && isset($_GET['tab'])");
+    expect(tabletContent).toContain("$page === 'system_tools' && isset($_GET['tab'])");
+  });
+
+  test('pwa/system_tools.php does not reference deprecated audit_log page', () => {
+    const content = readFileSync(join(ROOT, 'views', 'pwa', 'system_tools.php'), 'utf-8');
+    expect(content).not.toContain("'audit_log'");
+    expect(content).not.toContain('page=audit_log');
+  });
+
+  test('pwa/system_tools.php includes all desktop system_tools tabs', () => {
+    const content = readFileSync(join(ROOT, 'views', 'pwa', 'system_tools.php'), 'utf-8');
+    const desktopTabs = [
+      'settings', 'mileage', 'smtp', 'rustfs', 'docuseal', 'payments',
+      'stallion', 'paperless', 'encryption', 'landing', 'updates',
+      'api_keys', 'ndi_cameras', 'gameplan'
+    ];
+    for (const tab of desktopTabs) {
+      // Check the PHP array values: 'tab' => 'tabname'
+      expect(content, `Missing system_tools tab: ${tab}`).toContain(`'tab' => '${tab}'`);
+    }
+  });
+
+  test('pwa/system_tools.php includes separate-page tools', () => {
+    const content = readFileSync(join(ROOT, 'views', 'pwa', 'system_tools.php'), 'utf-8');
+    const pages = [
+      'admin_database_tools', 'admin_system_check', 'admin_database_backup',
+      'admin_database_restore', 'admin_security', 'cron_jobs',
+      'admin_feature_import', 'admin_theme_settings'
+    ];
+    for (const page of pages) {
+      expect(content, `Missing tool page: ${page}`).toContain(page);
+    }
+  });
+
+  test('pwa_tablet.php sidebar includes Parent Camp Check-in section', () => {
+    const content = readFileSync(join(ROOT, 'pwa_tablet.php'), 'utf-8');
+    expect(content).toContain('$isParent');
+    expect(content).toContain('page=camp_checkin');
+    expect(content).toContain('Camp Check-in');
+  });
+
+  test('pwa_tablet.php and pwa_more_menu.php both have Parent section matching', () => {
+    const tabletContent = readFileSync(join(ROOT, 'pwa_tablet.php'), 'utf-8');
+    const mobileContent = readFileSync(join(ROOT, 'pwa_more_menu.php'), 'utf-8');
+
+    // Both should have parent check and camp_checkin link
+    expect(tabletContent).toContain('$isParent');
+    expect(tabletContent).toContain('page=camp_checkin');
+    expect(mobileContent).toContain('$isParent');
+    expect(mobileContent).toContain('page=camp_checkin');
+  });
+
+});
