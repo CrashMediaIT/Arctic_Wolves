@@ -48,7 +48,8 @@ test.describe('NGINX real_ip configuration for HAProxy', () => {
 test.describe('Application timezone from database', () => {
   test('db_config.php loads timezone from system_settings after connection', () => {
     const content = readFile('db_config.php');
-    expect(content).toContain("setting_key = 'timezone'");
+    expect(content).toContain("'timezone'");
+    expect(content).toContain("'app_time_offset'");
     expect(content).toContain('date_default_timezone_set');
     expect(content).toContain('timezone_identifiers_list');
   });
