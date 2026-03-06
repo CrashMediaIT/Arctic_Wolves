@@ -31,9 +31,13 @@ try {
     
     switch ($action) {
         case 'update_general':
-            $site_name = trim($_POST['site_name']);
-            $timezone = trim($_POST['timezone']);
-            $language = trim($_POST['language']);
+            $org_name = trim($_POST['org_name'] ?? '');
+            $contact_email = trim($_POST['contact_email'] ?? '');
+            $contact_phone = trim($_POST['contact_phone'] ?? '');
+            $org_address = trim($_POST['org_address'] ?? '');
+            $timezone = trim($_POST['timezone'] ?? 'America/New_York');
+            $currency = trim($_POST['currency'] ?? '');
+            $date_format = trim($_POST['date_format'] ?? 'MM/DD/YYYY');
             
             // Validate timezone against supported list
             $valid_timezones = ['America/St_Johns','America/Halifax','America/New_York','America/Chicago','America/Denver','America/Los_Angeles'];
@@ -41,13 +45,17 @@ try {
                 $timezone = 'America/New_York';
             }
             
-            updateSetting($pdo, 'site_name', $site_name);
+            updateSetting($pdo, 'org_name', $org_name);
+            updateSetting($pdo, 'contact_email', $contact_email);
+            updateSetting($pdo, 'contact_phone', $contact_phone);
+            updateSetting($pdo, 'org_address', $org_address);
             updateSetting($pdo, 'timezone', $timezone);
-            updateSetting($pdo, 'language', $language);
+            updateSetting($pdo, 'currency', $currency);
+            updateSetting($pdo, 'date_format', $date_format);
             
             Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
                 'action' => 'update_general',
-                'settings' => ['site_name' => $site_name, 'timezone' => $timezone, 'language' => $language]
+                'settings' => ['org_name' => $org_name, 'timezone' => $timezone]
             ]);
             
             header('Location: dashboard.php?page=system_tools&tab=settings&success=1');
