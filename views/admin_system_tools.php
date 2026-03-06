@@ -446,7 +446,8 @@ foreach ($url_keys as $uk) {
 
                 <script>
                 (function() {
-                    var csrfToken = document.querySelector('input[name="csrf_token"]').value;
+                    var csrfInput = document.querySelector('input[name="csrf_token"]');
+                    var csrfToken = csrfInput ? csrfInput.value : '';
                     var offsetSeconds = <?php echo $app_offset; ?>;
 
                     // Live clock tick

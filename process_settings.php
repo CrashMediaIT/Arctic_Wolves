@@ -1824,7 +1824,7 @@ try {
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
                 curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
                 curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
                 curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
                 $srv_date = '';
                 curl_setopt($ch, CURLOPT_HEADERFUNCTION, function ($c, $header) use (&$srv_date) {
