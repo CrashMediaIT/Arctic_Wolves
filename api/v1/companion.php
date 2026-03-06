@@ -243,7 +243,11 @@ function handleCompanionCallback(): void {
             // otherwise default to 'ready' for completed jobs.
             $hls_status_value = $body['hls_status'] ?? 'ready';
 
-            // Build the media proxy URL for the master playlist
+            // Build the media proxy URL for the master playlist.
+            // Only overwrite the existing hls_url if we have a non-empty
+            // manifest; an empty manifest means the callback body was
+            // incomplete and we should preserve the value that was pre-set
+            // by triggerHlsTranscode.
             $hls_url = '';
             if ($hls_manifest) {
                 $hls_url = "api/media.php?key=" . rawurlencode($hls_manifest);
@@ -252,21 +256,40 @@ function handleCompanionCallback(): void {
             $label = $table === 'vr_video_sources' ? 'source' : 'video';
             ErrorLogger::info("Companion callback: updating $label $db_record_id to hls_status=$hls_status_value hls_url=$hls_url (job $job_id)");
 
-            $stmt = $pdo->prepare("
-                UPDATE $table
-                SET hls_status        = :hls_status,
-                    hls_master_url    = :manifest,
-                    hls_segments_path = :segments,
-                    hls_url           = :hls_url
-                WHERE id = :id
-            ");
-            $stmt->execute([
-                ':hls_status' => $hls_status_value,
-                ':manifest' => $hls_manifest,
-                ':segments' => $hls_segments,
-                ':hls_url'  => $hls_url,
-                ':id'       => $db_record_id,
-            ]);
+            // When hls_url would be empty, use COALESCE to preserve the
+            // existing value in the database rather than blanking it out.
+            if ($hls_url !== '') {
+                $stmt = $pdo->prepare("
+                    UPDATE $table
+                    SET hls_status        = :hls_status,
+                        hls_master_url    = :manifest,
+                        hls_segments_path = :segments,
+                        hls_url           = :hls_url
+                    WHERE id = :id
+                ");
+                $stmt->execute([
+                    ':hls_status' => $hls_status_value,
+                    ':manifest' => $hls_manifest,
+                    ':segments' => $hls_segments,
+                    ':hls_url'  => $hls_url,
+                    ':id'       => $db_record_id,
+                ]);
+            } else {
+                // Preserve existing hls_url — only update status/paths
+                $stmt = $pdo->prepare("
+                    UPDATE $table
+                    SET hls_status        = :hls_status,
+                        hls_master_url    = :manifest,
+                        hls_segments_path = :segments
+                    WHERE id = :id
+                ");
+                $stmt->execute([
+                    ':hls_status' => $hls_status_value,
+                    ':manifest' => $hls_manifest,
+                    ':segments' => $hls_segments,
+                    ':id'       => $db_record_id,
+                ]);
+            }
 
             $rows_affected = $stmt->rowCount();
             ErrorLogger::info("HLS transcode completed for $label $db_record_id (job $job_id) — $rows_affected row(s) updated");

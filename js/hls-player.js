@@ -27,6 +27,34 @@
     }
 
     /**
+     * Report a video playback error to the server so it appears in the
+     * admin Security / error_logs view.  Fire-and-forget — failures are
+     * silently ignored to avoid disrupting the user experience.
+     */
+    function _reportPlaybackError(message, context) {
+        try {
+            var meta = document.querySelector('meta[name="csrf-token"]');
+            var token = meta ? meta.getAttribute('content') : '';
+            if (!token) return; // No CSRF token available — skip
+            var body = 'csrf_token=' + encodeURIComponent(token)
+                     + '&message=' + encodeURIComponent(message);
+            if (context) {
+                body += '&context=' + encodeURIComponent(JSON.stringify(context));
+            }
+            // Use navigator.sendBeacon where available for reliability,
+            // falling back to fetch for broader support.
+            if (typeof fetch === 'function') {
+                fetch('process_log_client_error.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: body,
+                    keepalive: true
+                }).catch(function() {});
+            }
+        } catch (_e) { /* never throw from error reporter */ }
+    }
+
+    /**
      * Initialise a video element for playback.
      * @param {HTMLVideoElement} video  The <video> element.
      * @param {string}           url    Video URL (.m3u8 for HLS, or direct file).
@@ -58,12 +86,14 @@
             var _MAX_NETWORK_RETRIES = 2;
             hls.on(Hls.Events.ERROR, function(_event, data) {
                 if (data.fatal) {
+                    var errDetail = (data.details || 'unknown') + (data.reason ? ' — ' + data.reason : '');
                     switch (data.type) {
                         case Hls.ErrorTypes.NETWORK_ERROR:
                             if (_networkRetries < _MAX_NETWORK_RETRIES) {
                                 _networkRetries++;
                                 hls.startLoad();
                             } else {
+                                _reportPlaybackError('HLS network error (retries exhausted): ' + errDetail, { url: url, type: 'network' });
                                 // Exhausted retries — destroy HLS.js and fire
                                 // a native error so view-level fallback handlers
                                 // (e.g. data-hls-url retry) can take over.
@@ -72,14 +102,17 @@
                             }
                             break;
                         case Hls.ErrorTypes.MEDIA_ERROR:
+                            _reportPlaybackError('HLS media error: ' + errDetail, { url: url, type: 'media' });
                             hls.recoverMediaError();
                             break;
                         default:
+                            _reportPlaybackError('HLS fatal error: ' + errDetail, { url: url, type: String(data.type) });
                             hls.destroy();
-                            // Fallback to direct play and rebuild controls
-                            video.src = url;
-                            video.load();
-                            _buildCustomControls(video, null, null);
+                            // Dispatch a native error so view-level fallback
+                            // handlers (e.g. data-hls-url retry) can take over.
+                            // Setting video.src to an m3u8 URL on Chrome would
+                            // fail silently since native HLS is unsupported.
+                            video.dispatchEvent(new Event('error'));
                             break;
                     }
                 }
@@ -665,4 +698,5 @@
 
     // Expose globally
     window.awInitHlsPlayer = awInitHlsPlayer;
+    window.awReportPlaybackError = _reportPlaybackError;
 })();

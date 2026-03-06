@@ -125,8 +125,17 @@ function resolveRustfsUrl($pdo, $url) {
  */
 function getPreferredVideoUrl($video) {
     $hls_status = $video['hls_status'] ?? '';
-    if ($hls_status === 'ready' && !empty($video['hls_url'])) {
-        return $video['hls_url'];
+    if ($hls_status === 'ready') {
+        if (!empty($video['hls_url'])) {
+            return $video['hls_url'];
+        }
+        // hls_url may be empty if the callback payload was incomplete or
+        // if the column was cleared by a re-trigger.  Reconstruct it from
+        // hls_master_url (the raw S3 key to master.m3u8) which the
+        // callback always stores alongside hls_status.
+        if (!empty($video['hls_master_url'])) {
+            return 'api/media.php?key=' . rawurlencode($video['hls_master_url']);
+        }
     }
     return $video['video_url'] ?? $video['file_path'] ?? '';
 }

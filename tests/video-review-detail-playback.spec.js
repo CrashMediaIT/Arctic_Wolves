@@ -103,6 +103,35 @@ test.describe('getPreferredVideoUrl returns HLS URL when ready', () => {
     // Should return video_url as fallback
     expect(funcMatch[0]).toContain("video_url");
   });
+
+  test('reconstructs HLS URL from hls_master_url when hls_url is empty', () => {
+    const c = readFile('lib/image_helper.php');
+    const funcMatch = c.match(/function getPreferredVideoUrl[\s\S]*?^}/m);
+    expect(funcMatch).not.toBeNull();
+    const func = funcMatch[0];
+    // When hls_status is 'ready' but hls_url is empty, should construct from hls_master_url
+    expect(func).toContain('hls_master_url');
+    expect(func).toContain('rawurlencode');
+    expect(func).toContain("api/media.php?key=");
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  Callback handler preserves hls_url                                */
+/* ------------------------------------------------------------------ */
+test.describe('Callback handler preserves hls_url when manifest is empty', () => {
+
+  test('callback handler has conditional hls_url update', () => {
+    const c = readFile('api/v1/companion.php');
+    // When hls_url is empty, should NOT overwrite existing value
+    expect(c).toContain("Preserve existing hls_url");
+  });
+
+  test('callback handler still updates hls_url when manifest is provided', () => {
+    const c = readFile('api/v1/companion.php');
+    // Normal path: update hls_url when manifest is present
+    expect(c).toContain("hls_url           = :hls_url");
+  });
 });
 
 /* ------------------------------------------------------------------ */
@@ -164,5 +193,103 @@ test.describe('Detail pages show poster thumbnails', () => {
     const c = readFile('views/pwa/video_review_detail.php');
     expect(c).toContain('poster=');
     expect(c).toContain('$thumbnail_url');
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  HLS.js error handler dispatches native error for fallback         */
+/* ------------------------------------------------------------------ */
+test.describe('HLS player error handling dispatches error for view fallback', () => {
+
+  test('default fatal error dispatches native error event', () => {
+    const c = readFile('js/hls-player.js');
+    // The default case in the error handler should dispatch error event
+    // instead of trying video.src = url (which fails silently on Chrome for m3u8)
+    const errorSection = c.match(/default:[\s\S]*?break;/);
+    expect(errorSection).not.toBeNull();
+    expect(errorSection[0]).toContain("dispatchEvent(new Event('error'))");
+    // Should NOT try to set video.src for direct playback of m3u8
+    expect(errorSection[0]).not.toContain('video.src = url');
+  });
+
+  test('network error also dispatches native error after retries exhausted', () => {
+    const c = readFile('js/hls-player.js');
+    // Network error handler should also dispatch error after max retries
+    const networkSection = c.match(/NETWORK_ERROR[\s\S]*?break;/);
+    expect(networkSection).not.toBeNull();
+    expect(networkSection[0]).toContain("dispatchEvent(new Event('error'))");
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  Video playback errors reported to server error log                 */
+/* ------------------------------------------------------------------ */
+test.describe('Video playback errors are reported to the server', () => {
+
+  test('hls-player.js has _reportPlaybackError helper', () => {
+    const c = readFile('js/hls-player.js');
+    expect(c).toContain('function _reportPlaybackError');
+    expect(c).toContain('process_log_client_error.php');
+    expect(c).toContain('csrf-token');
+  });
+
+  test('hls-player.js reports HLS network errors', () => {
+    const c = readFile('js/hls-player.js');
+    const networkSection = c.match(/NETWORK_ERROR[\s\S]*?break;/);
+    expect(networkSection).not.toBeNull();
+    expect(networkSection[0]).toContain('_reportPlaybackError');
+  });
+
+  test('hls-player.js reports HLS media errors', () => {
+    const c = readFile('js/hls-player.js');
+    const mediaSection = c.match(/MEDIA_ERROR[\s\S]*?break;/);
+    expect(mediaSection).not.toBeNull();
+    expect(mediaSection[0]).toContain('_reportPlaybackError');
+  });
+
+  test('hls-player.js reports HLS default/fatal errors', () => {
+    const c = readFile('js/hls-player.js');
+    const defaultSection = c.match(/default:[\s\S]*?break;/);
+    expect(defaultSection).not.toBeNull();
+    expect(defaultSection[0]).toContain('_reportPlaybackError');
+  });
+
+  test('hls-player.js exposes awReportPlaybackError globally', () => {
+    const c = readFile('js/hls-player.js');
+    expect(c).toContain('window.awReportPlaybackError');
+  });
+
+  test('video_review_detail.php (desktop) reports errors on fallback', () => {
+    const c = readFile('views/video_review_detail.php');
+    expect(c).toContain('awReportPlaybackError');
+  });
+
+  test('video_review_detail.php (PWA) reports errors on fallback', () => {
+    const c = readFile('views/pwa/video_review_detail.php');
+    expect(c).toContain('awReportPlaybackError');
+  });
+
+  test('video_coach_reviews.php reports errors on fallback', () => {
+    const c = readFile('views/video_coach_reviews.php');
+    expect(c).toContain('awReportPlaybackError');
+  });
+
+  test('video_drill_review.php reports errors on fallback', () => {
+    const c = readFile('views/video_drill_review.php');
+    expect(c).toContain('awReportPlaybackError');
+  });
+
+  test('process_log_client_error.php exists and uses ErrorLogger', () => {
+    const c = readFile('process_log_client_error.php');
+    expect(c).toContain('ErrorLogger');
+    expect(c).toContain('checkCsrfToken');
+    expect(c).toContain("$_SESSION['logged_in']");
+  });
+
+  test('entry points have csrf-token meta tag', () => {
+    for (const file of ['dashboard.php', 'pwa.php', 'pwa_tablet.php', 'gameplan.php']) {
+      const c = readFile(file);
+      expect(c).toContain('name="csrf-token"');
+    }
   });
 });

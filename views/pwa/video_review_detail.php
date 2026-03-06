@@ -380,9 +380,14 @@ document.addEventListener('DOMContentLoaded', function() {
             var hlsUrl = detailPlayer.dataset.hlsUrl;
             if (hlsUrl && !_hlsFallbackTried) {
                 _hlsFallbackTried = true;
+                if (typeof window.awReportPlaybackError === 'function') {
+                    window.awReportPlaybackError('Primary video source failed, trying fallback', { primary: detailPlayer.querySelector('source') ? detailPlayer.querySelector('source').src : '', fallback: hlsUrl });
+                }
                 if (typeof window.awInitHlsPlayer === 'function') {
                     window.awInitHlsPlayer(detailPlayer, hlsUrl);
                 }
+            } else if (!hlsUrl && typeof window.awReportPlaybackError === 'function') {
+                window.awReportPlaybackError('Video playback failed — no fallback URL available', { src: detailPlayer.querySelector('source') ? detailPlayer.querySelector('source').src : '' });
             }
         }, true);
     }

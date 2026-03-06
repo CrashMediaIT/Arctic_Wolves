@@ -358,6 +358,7 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES) ?>">
     <title>Arctic Wolves Dashboard</title>
     <link rel="icon" type="image/png" href="<?= htmlspecialchars($site_favicon_url) ?>">
     <link rel="apple-touch-icon" href="<?= htmlspecialchars($site_favicon_url) ?>">
