@@ -143,6 +143,13 @@ function getJsonBody() {
  * @param array $data   Response data
  */
 function apiResponse($status, $data) {
+    // Re-assert JSON Content-Type right before output.  An included handler
+    // file (or ErrorLogger::init()) may have installed exception/error
+    // handlers that reset the Content-Type or triggered stray output that
+    // committed headers with the default text/html type.
+    if (!headers_sent()) {
+        header('Content-Type: application/json; charset=utf-8');
+    }
     http_response_code($status);
     $json = json_encode($data);
     if ($json === false) {
