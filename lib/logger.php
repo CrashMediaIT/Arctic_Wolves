@@ -105,12 +105,12 @@ class Logger {
         }
         
         // Format the log entry
-        $timestamp = date('Y-m-d H:i:s');
+        $timestamp = function_exists('appDate') ? appDate('Y-m-d H:i:s') : date('Y-m-d H:i:s');
         $context_str = !empty($context) ? ' | Context: ' . json_encode($context) : '';
         $log_entry = "[{$timestamp}] [{$level}] {$message}{$context_str}\n";
         
         // Determine log file based on date
-        $log_file = self::$log_dir . 'app-' . date('Y-m-d') . '.log';
+        $log_file = self::$log_dir . 'app-' . (function_exists('appDate') ? appDate('Y-m-d') : date('Y-m-d')) . '.log';
         
         // Write to log file
         $result = file_put_contents($log_file, $log_entry, FILE_APPEND);
@@ -166,8 +166,8 @@ class Logger {
         ];
         
         // Write to separate security log
-        $log_file = self::$log_dir . 'security-' . date('Y-m-d') . '.log';
-        $timestamp = date('Y-m-d H:i:s');
+        $log_file = self::$log_dir . 'security-' . (function_exists('appDate') ? appDate('Y-m-d') : date('Y-m-d')) . '.log';
+        $timestamp = function_exists('appDate') ? appDate('Y-m-d H:i:s') : date('Y-m-d H:i:s');
         $log_entry = "[{$timestamp}] [SECURITY] {$event} | " . json_encode($context) . "\n";
         file_put_contents($log_file, $log_entry, FILE_APPEND);
         

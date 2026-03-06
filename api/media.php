@@ -41,6 +41,7 @@ $object_key = ltrim($object_key, '/');
 if ($object_key === '') {
     http_response_code(400);
     header('Content-Type: application/json');
+    header('Cache-Control: no-store, no-cache, must-revalidate');
     echo json_encode(['error' => 'Missing required parameter: key']);
     exit;
 }
@@ -49,6 +50,7 @@ if ($object_key === '') {
 if (strpos($object_key, '..') !== false || preg_match('/[\x00-\x1f]/', $object_key)) {
     http_response_code(400);
     header('Content-Type: application/json');
+    header('Cache-Control: no-store, no-cache, must-revalidate');
     echo json_encode(['error' => 'Invalid key']);
     exit;
 }
@@ -57,6 +59,7 @@ if (strpos($object_key, '..') !== false || preg_match('/[\x00-\x1f]/', $object_k
 if (!$db_connected || !$pdo) {
     http_response_code(503);
     header('Content-Type: application/json');
+    header('Cache-Control: no-store, no-cache, must-revalidate');
     echo json_encode(['error' => 'Database unavailable']);
     exit;
 }
@@ -66,6 +69,7 @@ $rustfs = getRustFSSettings($pdo);
 if (!isRustFSConfigured($rustfs)) {
     http_response_code(503);
     header('Content-Type: application/json');
+    header('Cache-Control: no-store, no-cache, must-revalidate');
     echo json_encode(['error' => 'Storage not configured']);
     exit;
 }
@@ -139,6 +143,8 @@ if ($range_header) {
     if ($head_code !== 200) {
         http_response_code(502);
         header('Content-Type: application/json');
+        header('Cache-Control: no-store, no-cache, must-revalidate');
+        _media_cors_headers();
         echo json_encode(['error' => 'Storage error']);
         exit;
     }
@@ -149,6 +155,8 @@ if ($range_header) {
     if ($total_size <= 0) {
         http_response_code(502);
         header('Content-Type: application/json');
+        header('Cache-Control: no-store, no-cache, must-revalidate');
+        _media_cors_headers();
         echo json_encode(['error' => 'Unable to determine file size']);
         exit;
     }
@@ -295,6 +303,7 @@ if ($m3u8_ext !== 'm3u8') {
                 if ($code === 404) {
                     http_response_code(404);
                     header('Content-Type: application/json');
+                    header('Cache-Control: no-store, no-cache, must-revalidate');
                     _media_cors_headers();
                     echo json_encode(['error' => 'File not found']);
                     $stream_error = true;
@@ -304,6 +313,7 @@ if ($m3u8_ext !== 'm3u8') {
                     error_log("media.php stream proxy: RustFS returned HTTP $code for key=$object_key_clean");
                     http_response_code(502);
                     header('Content-Type: application/json');
+                    header('Cache-Control: no-store, no-cache, must-revalidate');
                     _media_cors_headers();
                     echo json_encode(['error' => 'Storage error']);
                     $stream_error = true;
@@ -343,6 +353,7 @@ if ($m3u8_ext !== 'm3u8') {
         error_log("media.php stream proxy error for key=$object_key_clean: $curl_error");
         http_response_code(502);
         header('Content-Type: application/json');
+        header('Cache-Control: no-store, no-cache, must-revalidate');
         _media_cors_headers();
         echo json_encode(['error' => 'Storage connection error']);
     }
@@ -377,6 +388,7 @@ if (!empty($curl_error)) {
     error_log("media.php proxy error for key=$object_key_clean: $curl_error");
     http_response_code(502);
     header('Content-Type: application/json');
+    header('Cache-Control: no-store, no-cache, must-revalidate');
     _media_cors_headers();
     echo json_encode(['error' => 'Storage connection error']);
     exit;
@@ -385,6 +397,7 @@ if (!empty($curl_error)) {
 if ($http_code === 404) {
     http_response_code(404);
     header('Content-Type: application/json');
+    header('Cache-Control: no-store, no-cache, must-revalidate');
     _media_cors_headers();
     echo json_encode(['error' => 'File not found']);
     exit;
@@ -394,6 +407,7 @@ if ($http_code !== 200) {
     error_log("media.php proxy: RustFS returned HTTP $http_code for key=$object_key_clean");
     http_response_code(502);
     header('Content-Type: application/json');
+    header('Cache-Control: no-store, no-cache, must-revalidate');
     _media_cors_headers();
     echo json_encode(['error' => 'Storage error']);
     exit;

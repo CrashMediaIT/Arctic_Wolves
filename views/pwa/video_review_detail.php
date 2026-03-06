@@ -206,7 +206,7 @@ $coach_name   = trim(($video['coach_first_name'] ?? '') . ' ' . ($video['coach_l
 
     <!-- Video Player – full width -->
     <div class="m-vrd-player">
-        <video id="detailVideoPlayer" controls playsinline<?= $thumbnail_url ? ' poster="' . htmlspecialchars($thumbnail_url) . '"' : '' ?><?= $hls_fallback_url ? ' data-hls-url="' . htmlspecialchars($hls_fallback_url) . '"' : '' ?>>
+        <video id="detailVideoPlayer" controls playsinline preload="none"<?= $thumbnail_url ? ' poster="' . htmlspecialchars($thumbnail_url) . '"' : '' ?><?= $hls_fallback_url ? ' data-hls-url="' . htmlspecialchars($hls_fallback_url) . '"' : '' ?>>
             <source src="<?= htmlspecialchars($video_url) ?>" type="<?= $video_type ?>">
             Your browser does not support the video tag.
         </video>
@@ -366,8 +366,12 @@ document.addEventListener('DOMContentLoaded', function() {
     var detailPlayer = document.getElementById('detailVideoPlayer');
     if (detailPlayer && typeof window.awInitHlsPlayer === 'function') {
         var src = detailPlayer.querySelector('source');
-        if (src && src.src) {
-            window.awInitHlsPlayer(detailPlayer, src.src);
+        // Use getAttribute to avoid empty src="" resolving to the page URL
+        var srcUrl = src ? src.getAttribute('src') : '';
+        if (srcUrl) {
+            window.awInitHlsPlayer(detailPlayer, srcUrl);
+        } else if (typeof window.awReportPlaybackError === 'function') {
+            window.awReportPlaybackError('Video source element has no src attribute', { element: 'detailVideoPlayer', type: 'empty_source' });
         }
     }
 
@@ -381,13 +385,15 @@ document.addEventListener('DOMContentLoaded', function() {
             if (hlsUrl && !_hlsFallbackTried) {
                 _hlsFallbackTried = true;
                 if (typeof window.awReportPlaybackError === 'function') {
-                    window.awReportPlaybackError('Primary video source failed, trying fallback', { primary: detailPlayer.querySelector('source') ? detailPlayer.querySelector('source').src : '', fallback: hlsUrl });
+                    var srcEl = detailPlayer.querySelector('source');
+                    window.awReportPlaybackError('Primary video source failed, trying fallback', { primary: srcEl ? srcEl.getAttribute('src') : '', fallback: hlsUrl });
                 }
                 if (typeof window.awInitHlsPlayer === 'function') {
                     window.awInitHlsPlayer(detailPlayer, hlsUrl);
                 }
             } else if (!hlsUrl && typeof window.awReportPlaybackError === 'function') {
-                window.awReportPlaybackError('Video playback failed — no fallback URL available', { src: detailPlayer.querySelector('source') ? detailPlayer.querySelector('source').src : '' });
+                var srcEl = detailPlayer.querySelector('source');
+                window.awReportPlaybackError('Video playback failed — no fallback URL available', { src: srcEl ? srcEl.getAttribute('src') : '' });
             }
         }, true);
     }

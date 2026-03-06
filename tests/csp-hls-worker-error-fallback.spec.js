@@ -18,7 +18,7 @@ const readFile = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
 
 // Length of code window to search after a match point.  Must be large
 // enough to span the error-handling block in each view / hls-player.js.
-const CODE_WINDOW = 600;
+const CODE_WINDOW = 1200;
 
 /* ------------------------------------------------------------------ */
 /*  1. CSP worker-src allows blob: for HLS.js web workers             */

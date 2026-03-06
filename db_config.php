@@ -158,24 +158,34 @@ if ($db_config_valid) {
     }
 }
 
-// 5. APPLY TIMEZONE FROM SYSTEM SETTINGS
+// 5. APPLY TIMEZONE AND TIME OFFSET FROM SYSTEM SETTINGS
 // Load the configured timezone early so ALL PHP date/time functions use it,
 // not just the Logger / ErrorLogger classes.
 // Also sync the MySQL session timezone so NOW(), CURDATE(), CURRENT_TIMESTAMP
 // return local time instead of the server default (often UTC in Docker).
+// An optional app_time_offset (seconds) corrects clock drift when the system
+// clock cannot be changed directly (e.g. inside Docker containers).
 if ($db_connected && $pdo) {
     try {
-        $tz_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'timezone' LIMIT 1");
-        $tz_value = $tz_stmt->fetchColumn();
+        $tz_stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('timezone', 'app_time_offset')");
+        $_aw_settings = [];
+        while ($r = $tz_stmt->fetch(PDO::FETCH_ASSOC)) {
+            $_aw_settings[$r['setting_key']] = $r['setting_value'];
+        }
+        $tz_value = $_aw_settings['timezone'] ?? '';
+        $_app_time_offset = (int)($_aw_settings['app_time_offset'] ?? 0);
+
         if (!empty($tz_value) && in_array($tz_value, timezone_identifiers_list())) {
             date_default_timezone_set($tz_value);
 
             // Sync the database session timezone to match PHP.
             // DateTimeZone::getOffset() returns seconds; convert to ±HH:MM for MySQL.
+            // Include the app_time_offset so MySQL NOW() returns corrected time.
             $tz_obj    = new DateTimeZone($tz_value);
             $offset_s  = $tz_obj->getOffset(new DateTime('now', $tz_obj));
-            $sign      = $offset_s >= 0 ? '+' : '-';
-            $abs       = abs($offset_s);
+            $total_offset = $offset_s + $_app_time_offset;
+            $sign      = $total_offset >= 0 ? '+' : '-';
+            $abs       = abs($total_offset);
             $hours     = str_pad((int)($abs / 3600), 2, '0', STR_PAD_LEFT);
             $minutes   = str_pad((int)(($abs % 3600) / 60), 2, '0', STR_PAD_LEFT);
             $mysql_tz  = $sign . $hours . ':' . $minutes;
@@ -183,6 +193,29 @@ if ($db_connected && $pdo) {
         }
     } catch (Exception $e) {
         // Silently fail — table may not exist yet (pre-setup)
+        $_app_time_offset = 0;
+    }
+}
+
+// Define the time offset constant so it is available application-wide.
+if (!defined('APP_TIME_OFFSET')) {
+    define('APP_TIME_OFFSET', $_app_time_offset ?? 0);
+}
+
+// Helper: return the corrected current Unix timestamp.
+if (!function_exists('appTime')) {
+    function appTime() {
+        return time() + APP_TIME_OFFSET;
+    }
+}
+
+// Helper: corrected date() — applies APP_TIME_OFFSET when no timestamp given.
+if (!function_exists('appDate')) {
+    function appDate($format, $timestamp = null) {
+        if ($timestamp === null) {
+            $timestamp = appTime();
+        }
+        return date($format, $timestamp);
     }
 }
 

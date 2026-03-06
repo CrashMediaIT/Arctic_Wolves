@@ -19,7 +19,7 @@ $action = $_POST['action'] ?? '';
 $user_id = $_SESSION['user_id'] ?? 0;
 
 // Determine if we should return JSON or redirect
-$json_actions = ['test_smtp', 'test_github', 'check_updates', 'apply_updates', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library', 'test_docuseal', 'test_stallion', 'test_google_maps', 'create_restriction', 'remove_restriction', 'add_blocklist_entry', 'remove_blocklist_entry', 'add_pos_whitelist_entry', 'remove_pos_whitelist_entry', 'toggle_pos_whitelist_entry', 'get_ndi_camera', 'update_ndi_camera', 'delete_ndi_camera', 'toggle_ndi_camera', 'get_cluster_status', 'test_cluster_node', 'add_cluster_node', 'remove_cluster_node', 'save_cluster_settings', 'test_paperless', 'test_rustfs', 'test_upload_api'];
+$json_actions = ['test_smtp', 'test_github', 'check_updates', 'apply_updates', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library', 'test_docuseal', 'test_stallion', 'test_google_maps', 'create_restriction', 'remove_restriction', 'add_blocklist_entry', 'remove_blocklist_entry', 'add_pos_whitelist_entry', 'remove_pos_whitelist_entry', 'toggle_pos_whitelist_entry', 'get_ndi_camera', 'update_ndi_camera', 'delete_ndi_camera', 'toggle_ndi_camera', 'get_cluster_status', 'test_cluster_node', 'add_cluster_node', 'remove_cluster_node', 'save_cluster_settings', 'test_paperless', 'test_rustfs', 'test_upload_api', 'ntp_sync', 'set_manual_time', 'reset_time_offset'];
 $is_json = in_array($action, $json_actions);
 
 if ($is_json) {
@@ -34,6 +34,12 @@ try {
             $site_name = trim($_POST['site_name']);
             $timezone = trim($_POST['timezone']);
             $language = trim($_POST['language']);
+            
+            // Validate timezone against supported list
+            $valid_timezones = ['America/St_Johns','America/Halifax','America/New_York','America/Chicago','America/Denver','America/Los_Angeles'];
+            if (!in_array($timezone, $valid_timezones)) {
+                $timezone = 'America/New_York';
+            }
             
             updateSetting($pdo, 'site_name', $site_name);
             updateSetting($pdo, 'timezone', $timezone);
@@ -1799,6 +1805,125 @@ try {
             exit;
 
         // ---- End Cluster Management ---------------------------------------------------
+
+        // ---- Time Synchronisation -------------------------------------------------------
+
+        case 'ntp_sync':
+            // Query a reliable HTTP server's Date header to determine the real time,
+            // then compute the offset between system clock and real time.
+            $ntp_servers = [
+                'https://www.google.com',
+                'https://www.cloudflare.com',
+                'https://www.apple.com',
+            ];
+            $server_time = null;
+            $used_server = '';
+            foreach ($ntp_servers as $srv) {
+                $ch = curl_init($srv);
+                curl_setopt($ch, CURLOPT_NOBODY, true);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+                curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+                $srv_date = '';
+                curl_setopt($ch, CURLOPT_HEADERFUNCTION, function ($c, $header) use (&$srv_date) {
+                    if (stripos($header, 'Date:') === 0) {
+                        $srv_date = trim(substr($header, 5));
+                    }
+                    return strlen($header);
+                });
+                curl_exec($ch);
+                $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close($ch);
+
+                if ($http_code > 0 && !empty($srv_date)) {
+                    $parsed = strtotime($srv_date);
+                    if ($parsed !== false) {
+                        $server_time = $parsed;
+                        $used_server = $srv;
+                        break;
+                    }
+                }
+            }
+
+            if ($server_time === null) {
+                echo json_encode(['success' => false, 'message' => 'Could not reach any time server. Check outbound internet connectivity.']);
+                exit;
+            }
+
+            $system_time = time();
+            $offset = $server_time - $system_time;
+
+            updateSetting($pdo, 'app_time_offset', (string)$offset);
+
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
+                'action' => 'ntp_sync',
+                'server' => $used_server,
+                'offset_seconds' => $offset,
+            ]);
+
+            $corrected = date('Y-m-d H:i:s', $system_time + $offset);
+            echo json_encode([
+                'success' => true,
+                'message' => 'Time synchronised successfully.',
+                'offset' => $offset,
+                'corrected_time' => $corrected,
+                'source' => $used_server,
+            ]);
+            exit;
+
+        case 'set_manual_time':
+            // Admin provides the correct date/time; we compute the offset.
+            $manual_dt = trim($_POST['manual_datetime'] ?? '');
+            if (empty($manual_dt)) {
+                echo json_encode(['success' => false, 'message' => 'Date/time value is required.']);
+                exit;
+            }
+
+            // Load the configured timezone so strtotime interprets correctly
+            $tz_stmt2 = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'timezone' LIMIT 1");
+            $tz_val2 = $tz_stmt2->fetchColumn();
+            if (!empty($tz_val2) && in_array($tz_val2, timezone_identifiers_list())) {
+                date_default_timezone_set($tz_val2);
+            }
+
+            $target_ts = strtotime($manual_dt);
+            if ($target_ts === false) {
+                echo json_encode(['success' => false, 'message' => 'Invalid date/time format.']);
+                exit;
+            }
+
+            $offset = $target_ts - time();
+            updateSetting($pdo, 'app_time_offset', (string)$offset);
+
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
+                'action' => 'set_manual_time',
+                'target' => $manual_dt,
+                'offset_seconds' => $offset,
+            ]);
+
+            echo json_encode([
+                'success' => true,
+                'message' => 'Application clock set to ' . date('Y-m-d H:i:s', time() + $offset) . '.',
+                'offset' => $offset,
+            ]);
+            exit;
+
+        case 'reset_time_offset':
+            updateSetting($pdo, 'app_time_offset', '0');
+
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
+                'action' => 'reset_time_offset',
+            ]);
+
+            echo json_encode([
+                'success' => true,
+                'message' => 'Time offset reset to zero. Application will use system clock directly.',
+            ]);
+            exit;
+
+        // ---- End Time Synchronisation ---------------------------------------------------
 
         default:
             throw new Exception('Invalid action');

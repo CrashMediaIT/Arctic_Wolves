@@ -61,7 +61,26 @@
      * @returns {Hls|null}  The HLS.js instance (if used), or null.
      */
     function awInitHlsPlayer(video, url) {
-        if (!video || !url) return null;
+        if (!video || !url) {
+            if (video && !url) {
+                _reportPlaybackError('HLS init skipped: empty video URL', { element: video.id || 'unknown', type: 'silent_failure' });
+            }
+            return null;
+        }
+
+        // Guard: if url is the page URL (happens when <source src=""> resolves
+        // the empty attribute to the current document), bail out and report.
+        if (url === window.location.href || url === window.location.origin + window.location.pathname) {
+            _reportPlaybackError('HLS init skipped: URL resolved to page URL (source likely empty)', { element: video.id || 'unknown', url: url, type: 'silent_failure' });
+            return null;
+        }
+
+        // Destroy any previous HLS.js instance attached to this video to avoid
+        // two instances fighting for the same MediaSource object.
+        if (video._awHls) {
+            try { video._awHls.destroy(); } catch (e) { /* ignore */ }
+            video._awHls = null;
+        }
 
         var isHLS = /\.m3u8(\?|$)/i.test(url);
 
@@ -72,7 +91,16 @@
                 maxMaxBufferLength: 60,
                 startLevel: -1, // Auto quality selection
                 enableWorker: true,
+                // Prevent browser from caching error responses on retry
+                xhrSetup: function(xhr, xhrUrl) {
+                    // Append a cache-buster to force fresh requests on each attempt
+                    var sep = xhrUrl.indexOf('?') === -1 ? '?' : '&';
+                    xhr.open('GET', xhrUrl + sep + '_t=' + Date.now(), true);
+                },
             });
+
+            // Store reference so subsequent calls can clean up
+            video._awHls = hls;
 
             hls.loadSource(url);
             hls.attachMedia(video);
@@ -83,7 +111,7 @@
             });
 
             var _networkRetries = 0;
-            var _MAX_NETWORK_RETRIES = 2;
+            var _MAX_NETWORK_RETRIES = 4;
             hls.on(Hls.Events.ERROR, function(_event, data) {
                 if (data.fatal) {
                     var errDetail = (data.details || 'unknown') + (data.reason ? ' — ' + data.reason : '');
@@ -91,7 +119,10 @@
                         case Hls.ErrorTypes.NETWORK_ERROR:
                             if (_networkRetries < _MAX_NETWORK_RETRIES) {
                                 _networkRetries++;
-                                hls.startLoad();
+                                // Exponential backoff: 500ms, 1s, 2s, 4s
+                                var delay = Math.min(500 * Math.pow(2, _networkRetries - 1), 4000);
+                                _reportPlaybackError('HLS network error (retry ' + _networkRetries + '/' + _MAX_NETWORK_RETRIES + '): ' + errDetail, { url: url, type: 'network', retry: _networkRetries });
+                                setTimeout(function() { hls.startLoad(); }, delay);
                             } else {
                                 _reportPlaybackError('HLS network error (retries exhausted): ' + errDetail, { url: url, type: 'network' });
                                 // Exhausted retries — destroy HLS.js and fire
@@ -131,6 +162,18 @@
             return null;
         }
 
+        // HLS URL but no player available — report so admins can diagnose
+        if (isHLS) {
+            _reportPlaybackError('HLS stream cannot play: HLS.js not available and browser has no native HLS support', {
+                element: video.id || 'unknown',
+                url: url,
+                hlsJsLoaded: typeof Hls !== 'undefined',
+                hlsSupported: (typeof Hls !== 'undefined') ? Hls.isSupported() : false,
+                type: 'hls_unavailable'
+            });
+            return null;
+        }
+
         // Direct video file (MP4/WebM/etc.)
         var source = video.querySelector('source');
         if (source) {
@@ -139,7 +182,9 @@
         } else {
             video.src = url;
         }
-        video.play().catch(function() {});
+        video.play().catch(function(err) {
+            _reportPlaybackError('Direct video play failed: ' + (err.message || err), { element: video.id || 'unknown', url: url, type: 'direct_play_error' });
+        });
         _buildCustomControls(video, null, null);
         return null;
     }
