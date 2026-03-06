@@ -196,6 +196,14 @@
                         <div class="form-group master-only-settings">
                             <label for="cfg-main-app-url">Main App URL</label>
                             <input id="cfg-main-app-url" name="main_app_url" type="text" class="form-input" placeholder="https://your-app-domain.com" autocomplete="off">
+                            <div style="margin-top:8px;display:flex;align-items:center;gap:12px;">
+                                <button type="button" class="btn-secondary btn-sm" id="test-callback-btn" onclick="testCallback()">
+                                    <span id="test-callback-label">Test Callback</span>
+                                </button>
+                                <span id="test-callback-msg" style="font-size:12px;"></span>
+                            </div>
+                            <div id="test-callback-detail" style="display:none;margin-top:8px;padding:10px 12px;background:var(--bg-main);border:1px solid var(--border);border-radius:6px;font-size:12px;line-height:1.6;color:var(--text-dim);white-space:pre-wrap;word-break:break-all;"></div>
+                            <div class="form-hint">URL of the main application — used for transcode-complete callbacks</div>
                         </div>
                         <div class="form-group">
                             <label for="cfg-hw-accel">Hardware Acceleration</label>
@@ -610,6 +618,58 @@
             } catch (e) {
                 showToast('Network error while generating API key', 'error');
             }
+        }
+
+        /* --- Test Callback --- */
+        async function testCallback() {
+            var btn = document.getElementById('test-callback-btn');
+            var labelEl = document.getElementById('test-callback-label');
+            var msgEl = document.getElementById('test-callback-msg');
+            var detailEl = document.getElementById('test-callback-detail');
+            var urlVal = document.getElementById('cfg-main-app-url').value.trim();
+
+            btn.disabled = true;
+            labelEl.textContent = 'Testing…';
+            msgEl.textContent = '';
+            msgEl.style.color = '';
+            detailEl.style.display = 'none';
+            detailEl.textContent = '';
+
+            try {
+                var payload = {};
+                if (urlVal) payload.main_app_url = urlVal;
+
+                var res = await fetch(API_BASE + '/api/test-callback', {
+                    method: 'POST', headers: apiHeaders(), body: JSON.stringify(payload)
+                });
+                var d = await res.json();
+
+                if (d.success) {
+                    msgEl.style.color = '#22c55e';
+                    msgEl.textContent = '✓ Callback route verified — POST received, authenticated, JSON response OK';
+                } else {
+                    msgEl.style.color = '#ef4444';
+                    msgEl.textContent = '✗ ' + (d.error || 'Callback test failed');
+                }
+
+                // Build detail lines
+                var lines = [];
+                lines.push('URL: ' + (d.url || 'N/A'));
+                if (d.http_status != null) lines.push('HTTP Status: ' + d.http_status);
+                lines.push('JSON Response: ' + (d.json_ok ? '✓ valid' : '✗ invalid or missing'));
+                lines.push('Authenticated: ' + (d.authenticated ? '✓ yes' : '✗ no'));
+                if (d.error) lines.push('Error: ' + d.error);
+                if (d.response_body) lines.push('Response: ' + JSON.stringify(d.response_body, null, 2));
+                detailEl.textContent = lines.join('\n');
+                detailEl.style.display = 'block';
+
+            } catch (e) {
+                msgEl.style.color = '#ef4444';
+                msgEl.textContent = '✗ Network error — could not reach companion API';
+            }
+
+            btn.disabled = false;
+            labelEl.textContent = 'Test Callback';
         }
 
         /* --- Node Management --- */
