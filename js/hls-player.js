@@ -76,10 +76,11 @@
                             break;
                         default:
                             hls.destroy();
-                            // Fallback to direct play and rebuild controls
-                            video.src = url;
-                            video.load();
-                            _buildCustomControls(video, null, null);
+                            // Dispatch a native error so view-level fallback
+                            // handlers (e.g. data-hls-url retry) can take over.
+                            // Setting video.src to an m3u8 URL on Chrome would
+                            // fail silently since native HLS is unsupported.
+                            video.dispatchEvent(new Event('error'));
                             break;
                     }
                 }
