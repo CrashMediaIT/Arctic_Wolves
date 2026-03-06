@@ -64,7 +64,7 @@ if ($raw_context !== '') {
 // Tag as a client-side report so admins can distinguish from server errors
 $context['source'] = 'client';
 
-// Initialise ErrorLogger with database if available
+// Initialize ErrorLogger with database if available
 if (isset($pdo)) {
     ErrorLogger::setDatabase($pdo);
 }
