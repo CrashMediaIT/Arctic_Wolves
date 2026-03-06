@@ -3182,9 +3182,14 @@ def _build_dash_mpd_from_hls(jlog, hls_output: str, variants: list,
             for line in f:
                 line = line.strip()
                 if line.startswith("#EXTINF:"):
-                    # Format: #EXTINF:<duration>,
+                    # Format: #EXTINF:<duration>[,<title>]
                     try:
-                        pending_dur = float(line.split(":")[1].rstrip(","))
+                        dur_part = line[len("#EXTINF:"):]
+                        # Duration ends at the first comma (title separator)
+                        comma = dur_part.find(",")
+                        if comma >= 0:
+                            dur_part = dur_part[:comma]
+                        pending_dur = float(dur_part.strip())
                     except (ValueError, IndexError):
                         pending_dur = 6.0
                 elif line and not line.startswith("#") and pending_dur is not None:
