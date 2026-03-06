@@ -165,6 +165,21 @@ if ($db_config_valid) {
 // return local time instead of the server default (often UTC in Docker).
 // An optional app_time_offset (seconds) corrects clock drift when the system
 // clock cannot be changed directly (e.g. inside Docker containers).
+
+// Cache the valid timezone list once (avoids repeated calls to timezone_identifiers_list()).
+$_aw_valid_tz = timezone_identifiers_list();
+
+// Resolve a fallback timezone from the TZ env var or default to America/New_York.
+if (!function_exists('_awFallbackTimezone')) {
+    function _awFallbackTimezone(array $valid) {
+        $env_tz = getenv('TZ');
+        if (!empty($env_tz) && in_array($env_tz, $valid)) {
+            return $env_tz;
+        }
+        return 'America/New_York';
+    }
+}
+
 $_aw_tz_applied = false;
 
 if ($db_connected && $pdo) {
@@ -179,7 +194,7 @@ if ($db_connected && $pdo) {
 
         // Discard invalid timezone values (e.g. "America/New_York (EST)" from
         // a form that lacked proper value attributes).
-        if (!empty($tz_value) && !in_array($tz_value, timezone_identifiers_list())) {
+        if (!empty($tz_value) && !in_array($tz_value, $_aw_valid_tz)) {
             $tz_value = '';
         }
 
@@ -187,12 +202,7 @@ if ($db_connected && $pdo) {
         // 1. TZ environment variable (often set in Docker Compose)
         // 2. Application default (matches admin_system_tools.php defaults)
         if (empty($tz_value)) {
-            $env_tz = getenv('TZ');
-            if (!empty($env_tz) && in_array($env_tz, timezone_identifiers_list())) {
-                $tz_value = $env_tz;
-            } else {
-                $tz_value = 'America/New_York';
-            }
+            $tz_value = _awFallbackTimezone($_aw_valid_tz);
         }
 
         date_default_timezone_set($tz_value);
@@ -214,11 +224,7 @@ if ($db_connected && $pdo) {
         // Silently fail — table may not exist yet (pre-setup)
         $_app_time_offset = 0;
         if (!$_aw_tz_applied) {
-            $fallback_tz = getenv('TZ');
-            if (empty($fallback_tz) || !in_array($fallback_tz, timezone_identifiers_list())) {
-                $fallback_tz = 'America/New_York';
-            }
-            date_default_timezone_set($fallback_tz);
+            date_default_timezone_set(_awFallbackTimezone($_aw_valid_tz));
             $_aw_tz_applied = true;
         }
     }
@@ -226,11 +232,7 @@ if ($db_connected && $pdo) {
 
 // Guarantee timezone is always set even if DB was not connected.
 if (!$_aw_tz_applied) {
-    $fallback_tz = getenv('TZ');
-    if (empty($fallback_tz) || !in_array($fallback_tz, timezone_identifiers_list())) {
-        $fallback_tz = 'America/New_York';
-    }
-    date_default_timezone_set($fallback_tz);
+    date_default_timezone_set(_awFallbackTimezone($_aw_valid_tz));
 }
 
 // Define the time offset constant so it is available application-wide.
