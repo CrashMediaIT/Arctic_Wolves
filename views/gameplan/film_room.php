@@ -837,7 +837,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         fetch('/process_video.php', { method: 'POST', body: tp, keepalive: true })
                             .then(function(r) { return r.json(); })
                             .then(function(t) { frLog('Transcode triggered (job: ' + (t.hls_job_id || 'N/A') + ')'); })
-                            .catch(function(e) { frLogWarn('Transcode trigger: ' + e.message); });
+                            .catch(function(e) { frLogWarn('Transcode trigger: ' + (e && e.message || String(e))); });
                         window.location.href = result.redirect || '/gameplan.php?page=film_room&tab=upload&success=source_uploaded';
                     } else {
                         throw new Error(result.error || 'Confirmation failed');

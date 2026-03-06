@@ -353,7 +353,7 @@ endif;
                     fetch('process_video.php', { method: 'POST', body: tp, keepalive: true })
                         .then(function(r) { return r.json(); })
                         .then(function(t) { pwaLog('Transcode triggered (job: ' + (t.hls_job_id || 'N/A') + ')'); })
-                        .catch(function(e) { pwaLogWarn('Transcode trigger: ' + e.message); });
+                        .catch(function(e) { pwaLogWarn('Transcode trigger: ' + (e && e.message || String(e))); });
                     btn.disabled = true;
                     btn.innerHTML = '<i class="fas fa-cloud-arrow-up"></i> Upload Video';
                     progressWrap.remove();
