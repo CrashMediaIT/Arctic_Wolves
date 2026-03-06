@@ -545,12 +545,12 @@
 
         try {
             var player = dashjs.MediaPlayer().create();
-            player.initialize(video, url, /* autoPlay */ false);
+            player.initialize(video, url, /* autoPlay: false — use manual play() after streamInitialized to avoid browser autoplay restrictions */ false);
             video._awDash = player;
 
             // Timeout: if DASH doesn't initialise within 10 s, fall back to HLS.
             // This catches silent failures where dash.js never fires an error.
-            var _dashTimeout = setTimeout(function() {
+            var dashTimeout = setTimeout(function() {
                 if (video._awDash === player && !video._awDashStreamOk) {
                     _reportPlaybackError('DASH timeout: stream not initialized after 10 s, falling back to HLS', {
                         element: video.id || 'unknown', url: url, type: 'dash_error'
@@ -566,7 +566,7 @@
             }, 10000);
 
             player.on('error', function(e) {
-                clearTimeout(_dashTimeout);
+                clearTimeout(dashTimeout);
                 _reportPlaybackError('DASH error: ' + (e.error ? e.error.message || e.error.code : 'unknown'), {
                     element: video.id || 'unknown', url: url, type: 'dash_error',
                     error: e.error || e
@@ -585,7 +585,7 @@
             });
 
             player.on('streamInitialized', function() {
-                clearTimeout(_dashTimeout);
+                clearTimeout(dashTimeout);
                 video._awDashStreamOk = true;
                 _reportPlaybackError('DASH lifecycle: stream initialized', { url: url, type: 'lifecycle' });
                 video.play().catch(function() {});
