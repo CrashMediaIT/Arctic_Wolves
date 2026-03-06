@@ -898,11 +898,13 @@ document.addEventListener('DOMContentLoaded', function() {
     var vpHls = null;
     var vpFallbackUrl = '';
     var vpFallbackTried = false;
+    var vpPrimaryUrl = '';   // stash primary URL for reload-on-no-fallback
 
     function cleanupCoachVideoPlayer() {
         if (vpHls) { vpHls.destroy(); vpHls = null; }
         vpFallbackUrl = '';
         vpFallbackTried = false;
+        vpPrimaryUrl = '';
         if (vpVideo) {
             var container = vpVideo.parentElement;
             if (container) {
@@ -929,6 +931,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Fallback: if primary video source fails, try the alternate URL.
     // After transcoding, HLS is the primary stream and the original is
     // deleted.  If HLS itself fails, there may be no fallback available.
+    // When no fallback exists, try reloading the primary HLS URL once
+    // (the failure may have been transient, e.g. a temporary buffer error).
+    var vpReloadTried = false;
     if (vpVideo) {
         vpVideo.addEventListener('error', function() {
             if (vpFallbackUrl && !vpFallbackTried) {
@@ -939,7 +944,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (typeof window.awInitHlsPlayer === 'function') {
                     vpHls = window.awInitHlsPlayer(vpVideo, vpFallbackUrl);
                 }
-            } else if (!vpFallbackUrl && typeof window.awReportPlaybackError === 'function') {
+            } else if (!vpFallbackUrl && vpPrimaryUrl && !vpReloadTried) {
+                vpReloadTried = true;
+                if (typeof window.awReportPlaybackError === 'function') {
+                    window.awReportPlaybackError('Coach reviews: no fallback URL, reloading primary HLS stream', { primary: vpPrimaryUrl });
+                }
+                if (typeof window.awInitHlsPlayer === 'function') {
+                    vpHls = window.awInitHlsPlayer(vpVideo, vpPrimaryUrl);
+                }
+            } else if (typeof window.awReportPlaybackError === 'function') {
                 window.awReportPlaybackError('Coach reviews: video playback failed — no fallback URL', {});
             }
         }, true);
@@ -956,8 +969,10 @@ document.addEventListener('DOMContentLoaded', function() {
             vpModal.style.display = 'flex';
             vpTitle.innerHTML = '<i class="fas fa-play-circle"></i> ' + title;
             cleanupCoachVideoPlayer();
+            vpReloadTried = false;
             // Store HLS fallback URL for error recovery
             vpFallbackUrl = (hlsUrl && hlsUrl !== url) ? hlsUrl : '';
+            vpPrimaryUrl = url || '';
             vpFallbackTried = false;
             if (thumbnailUrl) vpVideo.poster = thumbnailUrl;
             if (url && typeof window.awInitHlsPlayer === 'function') {

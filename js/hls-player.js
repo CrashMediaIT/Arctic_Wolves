@@ -30,9 +30,23 @@
      * Report a video playback error to the server so it appears in the
      * admin Security / error_logs view.  Fire-and-forget — failures are
      * silently ignored to avoid disrupting the user experience.
+     *
+     * Throttled: only one report per _ERROR_THROTTLE_MS per message prefix
+     * to prevent log flooding when HLS.js fires rapid-fire errors.
      */
+    var _errorLastSent = {};  // key → timestamp of last report
+    var _ERROR_THROTTLE_MS = 5000;
+
     function _reportPlaybackError(message, context) {
         try {
+            // Throttle: group by first 60 chars of message
+            var throttleKey = String(message).substring(0, 60);
+            var now = Date.now();
+            if (_errorLastSent[throttleKey] && (now - _errorLastSent[throttleKey]) < _ERROR_THROTTLE_MS) {
+                return; // Throttled — skip this report
+            }
+            _errorLastSent[throttleKey] = now;
+
             var meta = document.querySelector('meta[name="csrf-token"]');
             var token = meta ? meta.getAttribute('content') : '';
             if (!token) return; // No CSRF token available — skip
@@ -110,56 +124,85 @@
 
             var _networkRetries = 0;
             var _MAX_NETWORK_RETRIES = 4;
-            var _mediaRetries = 0;
-            var _MAX_MEDIA_RETRIES = 3;
+            // Time-based media error recovery per HLS.js recommended pattern.
+            // Only attempt recovery if at least _MEDIA_RECOVER_COOLDOWN_MS has
+            // elapsed since the last attempt, and cap total attempts.
+            var _lastMediaRecovery = 0;
+            var _mediaRecoveryAttempts = 0;
+            var _MAX_MEDIA_RECOVERY = 3;
+            var _MEDIA_RECOVER_COOLDOWN_MS = 5000;
             hls.on(Hls.Events.ERROR, function(_event, data) {
-                if (data.fatal) {
-                    var errDetail = (data.details || 'unknown') + (data.reason ? ' — ' + data.reason : '');
-                    switch (data.type) {
-                        case Hls.ErrorTypes.NETWORK_ERROR:
-                            if (_networkRetries < _MAX_NETWORK_RETRIES) {
-                                _networkRetries++;
-                                // Exponential backoff: 500ms, 1s, 2s, 4s
-                                var delay = Math.min(500 * Math.pow(2, _networkRetries - 1), 4000);
-                                _reportPlaybackError('HLS network error (retry ' + _networkRetries + '/' + _MAX_NETWORK_RETRIES + '): ' + errDetail, { url: url, type: 'network', retry: _networkRetries });
-                                setTimeout(function() { hls.startLoad(); }, delay);
-                            } else {
-                                _reportPlaybackError('HLS network error (retries exhausted): ' + errDetail, { url: url, type: 'network' });
-                                // Exhausted retries — destroy HLS.js and fire
-                                // a native error so view-level fallback handlers
-                                // (e.g. data-fallback-url retry) can take over.
-                                hls.destroy();
-                                video.dispatchEvent(new Event('error'));
-                            }
-                            break;
-                        case Hls.ErrorTypes.MEDIA_ERROR:
-                            if (_mediaRetries < _MAX_MEDIA_RETRIES) {
-                                _mediaRetries++;
-                                // Only report on first attempt to avoid log flooding
-                                if (_mediaRetries === 1) {
-                                    _reportPlaybackError('HLS media error (retry ' + _mediaRetries + '/' + _MAX_MEDIA_RETRIES + '): ' + errDetail, { url: url, type: 'media', retry: _mediaRetries });
-                                }
-                                // HLS.js recommends swapAudioCodec on 2nd recovery attempt
-                                if (_mediaRetries >= 2) {
-                                    hls.swapAudioCodec();
-                                }
-                                hls.recoverMediaError();
-                            } else {
-                                _reportPlaybackError('HLS media error (retries exhausted): ' + errDetail, { url: url, type: 'media' });
-                                hls.destroy();
-                                video.dispatchEvent(new Event('error'));
-                            }
-                            break;
-                        default:
-                            _reportPlaybackError('HLS fatal error: ' + errDetail, { url: url, type: String(data.type) });
-                            hls.destroy();
-                            // Dispatch a native error so view-level fallback
-                            // handlers (e.g. data-fallback-url retry) can take over.
-                            // Setting video.src to an m3u8 URL on Chrome would
-                            // fail silently since native HLS is unsupported.
-                            video.dispatchEvent(new Event('error'));
-                            break;
+                var errDetail = (data.details || 'unknown') + (data.reason ? ' — ' + data.reason : '');
+
+                // --- Non-fatal bufferAppendError: flush buffer proactively ---
+                if (!data.fatal && data.details === 'bufferAppendError') {
+                    // HLS.js retries internally (appendErrorMaxRetry times).
+                    // We don't need to act, but log once for diagnostics.
+                    if (!hls._awBufferWarnLogged) {
+                        hls._awBufferWarnLogged = true;
+                        _reportPlaybackError('HLS non-fatal buffer append issue (internal retry): ' + errDetail, { url: url, type: 'media_nonfatal' });
                     }
+                    return;
+                }
+
+                if (!data.fatal) return; // Other non-fatal errors: HLS.js handles internally
+
+                switch (data.type) {
+                    case Hls.ErrorTypes.NETWORK_ERROR:
+                        if (_networkRetries < _MAX_NETWORK_RETRIES) {
+                            _networkRetries++;
+                            // Exponential backoff: 500ms, 1s, 2s, 4s
+                            var delay = Math.min(500 * Math.pow(2, _networkRetries - 1), 4000);
+                            _reportPlaybackError('HLS network error (retry ' + _networkRetries + '/' + _MAX_NETWORK_RETRIES + '): ' + errDetail, { url: url, type: 'network', retry: _networkRetries });
+                            setTimeout(function() { hls.startLoad(); }, delay);
+                        } else {
+                            _reportPlaybackError('HLS network error (retries exhausted): ' + errDetail, { url: url, type: 'network' });
+                            // Exhausted retries — destroy HLS.js and fire
+                            // a native error so view-level fallback handlers
+                            // (e.g. data-fallback-url retry) can take over.
+                            hls.destroy();
+                            video.dispatchEvent(new Event('error'));
+                        }
+                        break;
+                    case Hls.ErrorTypes.MEDIA_ERROR:
+                        var now = Date.now();
+                        if (_mediaRecoveryAttempts < _MAX_MEDIA_RECOVERY &&
+                            (!_lastMediaRecovery || (now - _lastMediaRecovery) > _MEDIA_RECOVER_COOLDOWN_MS)) {
+                            _mediaRecoveryAttempts++;
+                            _lastMediaRecovery = now;
+                            _reportPlaybackError('HLS media error (recovery ' + _mediaRecoveryAttempts + '/' + _MAX_MEDIA_RECOVERY + '): ' + errDetail, { url: url, type: 'media', attempt: _mediaRecoveryAttempts });
+                            hls.recoverMediaError();
+                        } else if (_mediaRecoveryAttempts >= _MAX_MEDIA_RECOVERY) {
+                            _reportPlaybackError('HLS media error (recovery exhausted): ' + errDetail, { url: url, type: 'media' });
+                            hls.destroy();
+                            video.dispatchEvent(new Event('error'));
+                        } else {
+                            // Cooldown not elapsed — skip recovery to avoid
+                            // rapid-fire recoverMediaError loops that flood logs.
+                            // Schedule a deferred recovery attempt instead.
+                            if (!hls._awDeferredRecovery) {
+                                hls._awDeferredRecovery = true;
+                                setTimeout(function() {
+                                    hls._awDeferredRecovery = false;
+                                    if (hls.media) {
+                                        _mediaRecoveryAttempts++;
+                                        _lastMediaRecovery = Date.now();
+                                        _reportPlaybackError('HLS media error (deferred recovery ' + _mediaRecoveryAttempts + '/' + _MAX_MEDIA_RECOVERY + '): ' + errDetail, { url: url, type: 'media', attempt: _mediaRecoveryAttempts });
+                                        hls.recoverMediaError();
+                                    }
+                                }, _MEDIA_RECOVER_COOLDOWN_MS);
+                            }
+                        }
+                        break;
+                    default:
+                        _reportPlaybackError('HLS fatal error: ' + errDetail, { url: url, type: String(data.type) });
+                        hls.destroy();
+                        // Dispatch a native error so view-level fallback
+                        // handlers (e.g. data-fallback-url retry) can take over.
+                        // Setting video.src to an m3u8 URL on Chrome would
+                        // fail silently since native HLS is unsupported.
+                        video.dispatchEvent(new Event('error'));
+                        break;
                 }
             });
 
