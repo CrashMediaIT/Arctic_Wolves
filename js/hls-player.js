@@ -9,9 +9,9 @@
  *   // To destroy: if (hls) hls.destroy();
  *
  * Playback priority:
- *   1. HLS via HLS.js (Chrome/Firefox/Edge via MSE)
- *   2. Native HLS (Safari)
- *   3. MPEG-DASH via dash.js (cross-browser fallback via data-dash-url)
+ *   1. MPEG-DASH via dash.js on Chrome/Edge/Firefox (MSE-native, shared fMP4 segments)
+ *   2. Native HLS on Safari/iOS (built-in, zero library overhead)
+ *   3. HLS via HLS.js (fallback for all MSE-capable browsers)
  *   4. Direct video file (MP4/WebM/etc.)
  *
  * Requires: HLS.js and/or dash.js loaded before this script (CDN or local).
@@ -164,6 +164,35 @@
         }
 
         var isHLS = /\.m3u8(\?|$)/i.test(url);
+
+        // ── Smart format selection ──────────────────────────────────
+        // Both HLS and DASH manifests reference the same fMP4 segments
+        // (single encode).  Choose the optimal manifest per browser:
+        //   • Safari / iOS → native HLS (built-in, zero library overhead)
+        //   • Chrome / Edge / Firefox → DASH via dash.js (native MSE,
+        //     avoids HLS.js overhead when fMP4 segments are shared)
+        //   • Fallback → HLS via HLS.js if DASH init fails
+        var dashUrl = video.getAttribute('data-dash-url');
+        var isSafari = _browserInfo.browser === 'Safari';
+        var preferDash = !isSafari && dashUrl && typeof dashjs !== 'undefined'
+                         && typeof MediaSource !== 'undefined';
+
+        if (isHLS && preferDash) {
+            _reportPlaybackError('Format selection: preferring DASH for ' + _browserInfo.browser, {
+                element: video.id || 'unknown', hlsUrl: url, dashUrl: dashUrl,
+                type: 'lifecycle', browser: _browserInfo.browser
+            });
+            var dashPlayer = _initDashPlayer(video, dashUrl);
+            if (dashPlayer) {
+                // Store the HLS URL so we can fall back if DASH errors out
+                video._awHlsFallbackUrl = url;
+                return dashPlayer;
+            }
+            // DASH init failed — fall through to HLS
+            _reportPlaybackError('DASH preferred but init failed, falling back to HLS', {
+                element: video.id || 'unknown', url: url, type: 'lifecycle'
+            });
+        }
 
         // HLS source and HLS.js is available
         if (isHLS && typeof Hls !== 'undefined' && Hls.isSupported()) {
@@ -482,6 +511,17 @@
                     element: video.id || 'unknown', url: url, type: 'dash_error',
                     error: e.error || e
                 });
+                // If DASH was the preferred format and it errored, fall back to HLS
+                var hlsFallback = video._awHlsFallbackUrl;
+                if (hlsFallback && !video._awDashFallbackAttempted) {
+                    video._awDashFallbackAttempted = true;
+                    _reportPlaybackError('DASH failed, falling back to HLS', {
+                        element: video.id || 'unknown', hlsUrl: hlsFallback, type: 'lifecycle'
+                    });
+                    try { player.reset(); } catch (_) {}
+                    video._awDash = null;
+                    awInitHlsPlayer(video, hlsFallback);
+                }
             });
 
             player.on('streamInitialized', function() {
