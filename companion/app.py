@@ -1062,6 +1062,36 @@ def _hw_vf(encode_flags: list[str], scale_height: int | None = None,
     return []
 
 
+def _ffmpeg_error_summary(stderr: str, max_len: int = 1000) -> str:
+    """Extract meaningful error lines from FFmpeg stderr.
+
+    FFmpeg always prints its version banner and build configuration to stderr,
+    which can consume the first 500+ characters.  When we truncate stderr for
+    error messages, the real error is hidden.  This helper strips the banner
+    and returns only the diagnostically useful lines.
+    """
+    if not stderr:
+        return "(no stderr output)"
+    lines = stderr.splitlines()
+    useful: list[str] = []
+    in_banner = True
+    for line in lines:
+        stripped = line.strip()
+        # Skip the version/config banner block at the top of stderr
+        if in_banner:
+            if (stripped.startswith("ffmpeg version")
+                    or stripped.startswith("built with")
+                    or stripped.startswith("configuration:")
+                    or stripped.startswith("lib")
+                    or stripped.startswith("--")
+                    or stripped == ""):
+                continue
+            in_banner = False
+        useful.append(line)
+    summary = "\n".join(useful).strip() if useful else stderr.strip()
+    return summary[:max_len] if len(summary) > max_len else summary
+
+
 def _probe_file(filepath: str) -> dict:
     """Use ffprobe to get video metadata."""
     cmd = [
@@ -2904,7 +2934,9 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
                 "-f", "hls",
                 "-hls_time", "6",
                 "-hls_list_size", "0",
-                "-hls_segment_filename", os.path.join(variant_dir, "seg_%03d.ts"),
+                "-hls_segment_type", "fmp4",
+                "-hls_fmp4_init_filename", "init.mp4",
+                "-hls_segment_filename", os.path.join(variant_dir, "seg_%03d.m4s"),
                 os.path.join(variant_dir, "playlist.m3u8"),
             ]
 
@@ -2919,12 +2951,14 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
             enc_sec = round(time.time() - enc_start, 1)
 
             if proc.returncode != 0:
+                err_summary = _ffmpeg_error_summary(proc.stderr)
                 jlog(f"FFmpeg FAILED for {label} (exit code {proc.returncode}) after {enc_sec}s", "error")
-                jlog(f"  stderr: {proc.stderr[:2000]}", "error")
+                jlog(f"  stderr (full): {proc.stderr[:2000]}", "error")
+                jlog(f"  error summary: {err_summary}", "error")
                 if proc.stdout:
                     jlog(f"  stdout: {proc.stdout[:500]}", "error")
-                logger.error("FFmpeg failed for %s: %s", label, proc.stderr[:1000])
-                raise RuntimeError(f"Transcode failed for {label}: {proc.stderr[:500]}")
+                logger.error("FFmpeg failed for %s: %s", label, err_summary)
+                raise RuntimeError(f"Transcode failed for {label}: {err_summary}")
 
             jlog(f"Variant {label} completed in {enc_sec}s (exit code 0)")
             if proc.stderr:
@@ -2933,7 +2967,7 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
 
         # ── Build master playlist ─────────────────────────────────────
         jlog("Building HLS master playlist…")
-        master_lines = ["#EXTM3U"]
+        master_lines = ["#EXTM3U", "#EXT-X-VERSION:7"]
         for v in variants:
             bandwidth = int(v["vbitrate"].replace("k", "")) * 1000
             master_lines.append(
@@ -2948,16 +2982,14 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
             f.write("\n".join(master_lines) + "\n")
         jlog(f"Master playlist written: {len(variants)} variants")
 
-        # ── Generate MPEG-DASH manifest from same source ─────────────
-        # DASH provides cross-browser coverage (Chrome/Edge/Firefox natively
-        # via MSE, Safari via HLS).  We produce fMP4 segments + MPD manifest
-        # alongside the HLS .ts segments so the player can fall back to DASH
-        # when HLS.js is unavailable or fails.
+        # ── Generate MPEG-DASH manifest from same fMP4 segments ───────
+        # Since HLS now encodes fMP4 segments (init.mp4 + seg_NNN.m4s),
+        # the DASH manifest simply references those same files — no
+        # re-encoding needed.
         dash_manifest_key = ""
-        dash_output = os.path.join(work_dir, "dash")
         try:
-            dash_manifest_key = _generate_dash_manifest(
-                jlog, local_source, dash_output, variants, hw_info,
+            dash_manifest_key = _build_dash_mpd_from_hls(
+                jlog, hls_output, variants,
                 s3_output_prefix.rstrip("/"))
         except Exception as dash_exc:
             # DASH generation is best-effort; HLS is the primary format.
@@ -2978,7 +3010,8 @@ def _hls_transcode_s3(job_id: str, s3_source_key: str, s3_output_prefix: str,
         upload_count = 0
 
         all_upload_dirs = [(hls_output, "")]
-        # Include DASH output if it was generated
+        # Include DASH manifest directory if it was generated
+        dash_output = os.path.join(work_dir, "dash")
         if os.path.isdir(dash_output):
             all_upload_dirs.append((dash_output, "dash"))
 
@@ -3114,6 +3147,182 @@ def _dash_content_type(filename: str) -> str:
     return ct_map.get(ext, "application/octet-stream")
 
 
+def _build_dash_mpd_from_hls(jlog, hls_output: str, variants: list,
+                              output_prefix: str) -> str:
+    """Build a DASH MPD manifest that references the same fMP4 segments HLS uses.
+
+    Since HLS is now encoded with ``-hls_segment_type fmp4``, the segment files
+    (``init.mp4`` + ``seg_NNN.m4s``) are already in fragmented-MP4 format —
+    exactly what DASH needs.  This function generates only the ``.mpd`` manifest
+    XML; **no FFmpeg re-encoding** is performed.
+
+    Returns the S3 key where the MPD will be uploaded, or empty string on failure.
+    """
+    jlog("Building DASH manifest from fMP4 HLS segments (no re-encode)…")
+
+    # Collect per-variant info by parsing the HLS playlist + probing init seg
+    representations = []
+    total_duration = 0.0
+
+    for v in variants:
+        label = v["label"]
+        variant_dir = os.path.join(hls_output, label)
+        pl_path = os.path.join(variant_dir, "playlist.m3u8")
+        init_path = os.path.join(variant_dir, "init.mp4")
+
+        if not os.path.isfile(pl_path):
+            jlog(f"DASH: missing playlist for {label}, skipping", "warn")
+            continue
+
+        # Parse segment durations from HLS playlist
+        seg_durations: list[float] = []
+        seg_files: list[str] = []
+        with open(pl_path) as f:
+            pending_dur = None
+            for line in f:
+                line = line.strip()
+                if line.startswith("#EXTINF:"):
+                    # Format: #EXTINF:<duration>[,<title>]
+                    try:
+                        dur_part = line[len("#EXTINF:"):]
+                        # Duration ends at the first comma (title separator)
+                        comma = dur_part.find(",")
+                        if comma >= 0:
+                            dur_part = dur_part[:comma]
+                        pending_dur = float(dur_part.strip())
+                    except (ValueError, IndexError):
+                        pending_dur = 6.0
+                elif line and not line.startswith("#") and pending_dur is not None:
+                    seg_durations.append(pending_dur)
+                    seg_files.append(line)
+                    pending_dur = None
+
+        if not seg_files:
+            jlog(f"DASH: no segments found in {label} playlist", "warn")
+            continue
+
+        variant_dur = sum(seg_durations)
+        total_duration = max(total_duration, variant_dur)
+
+        # Probe init segment for codec info
+        width = _resolution_width(v["height"])
+        height = v["height"]
+        video_codec = "avc1.64001f"
+        audio_codec = "mp4a.40.2"
+        has_audio = False
+
+        if os.path.isfile(init_path):
+            try:
+                probe = _probe_file(init_path)
+                for s in probe.get("streams", []):
+                    if s.get("codec_type") == "video":
+                        # Build proper codec string from profile/level
+                        profile = s.get("profile", "")
+                        level = s.get("level", 31)
+                        w = int(s.get("width", width))
+                        h = int(s.get("height", height))
+                        if w:
+                            width = w
+                        if h:
+                            height = h
+                        tag = s.get("codec_tag_string", "")
+                        if tag.startswith("avc"):
+                            video_codec = tag
+                        else:
+                            video_codec = "avc1.64001f"
+                    elif s.get("codec_type") == "audio":
+                        has_audio = True
+            except Exception as probe_exc:
+                jlog(f"DASH: init probe failed for {label}: {probe_exc}", "warn")
+                has_audio = True
+        else:
+            jlog(f"DASH: no init.mp4 for {label}, using defaults", "warn")
+            has_audio = True
+
+        bandwidth = int(v["vbitrate"].replace("k", "")) * 1000
+        if has_audio:
+            bandwidth += int(v.get("abitrate", "128k").replace("k", "")) * 1000
+
+        representations.append({
+            "label": label,
+            "width": width,
+            "height": height,
+            "bandwidth": bandwidth,
+            "video_codec": video_codec,
+            "audio_codec": audio_codec if has_audio else "",
+            "has_audio": has_audio,
+            "seg_durations": seg_durations,
+            "seg_files": seg_files,
+            "init_path": f"../{label}/init.mp4",
+        })
+
+    if not representations:
+        jlog("DASH: no valid representations found — skipping", "warn")
+        return ""
+
+    # Format duration as ISO 8601 for MPD
+    dur_h = int(total_duration // 3600)
+    dur_m = int((total_duration % 3600) // 60)
+    dur_s = total_duration % 60
+    iso_dur = f"PT{dur_h}H{dur_m}M{dur_s:.3f}S"
+
+    # ── Build MPD XML ─────────────────────────────────────────────
+    has_any_audio = any(r["has_audio"] for r in representations)
+    codecs_str_parts = [representations[0]["video_codec"]]
+    if has_any_audio:
+        codecs_str_parts.append(representations[0]["audio_codec"] or "mp4a.40.2")
+    codecs_attr = ",".join(codecs_str_parts)
+
+    # Use SegmentList so each segment's real duration is preserved
+    mpd_lines = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<MPD xmlns="urn:mpeg:dash:schema:mpd:2011"',
+        '     profiles="urn:mpeg:dash:profile:isoff-main:2011"',
+        '     type="static"',
+        f'     mediaPresentationDuration="{iso_dur}"',
+        '     minBufferTime="PT2S">',
+        '  <Period>',
+        f'    <AdaptationSet mimeType="video/mp4" segmentAlignment="true"'
+        f' codecs="{codecs_attr}" subsegmentAlignment="true"'
+        f' subsegmentStartsWithSAP="1">',
+    ]
+
+    for rep in representations:
+        mpd_lines.append(
+            f'      <Representation id="{rep["label"]}" bandwidth="{rep["bandwidth"]}"'
+            f' width="{rep["width"]}" height="{rep["height"]}"'
+            f' codecs="{",".join(c for c in [rep["video_codec"], rep["audio_codec"]] if c)}">'
+        )
+        # Timescale=1 means durations are in seconds
+        mpd_lines.append('        <SegmentList timescale="1">')
+        mpd_lines.append(f'          <Initialization sourceURL="{rep["init_path"]}"/>')
+        for dur, seg in zip(rep["seg_durations"], rep["seg_files"]):
+            mpd_lines.append(
+                f'          <SegmentURL media="../{rep["label"]}/{seg}" duration="{dur:.6f}"/>'
+            )
+        mpd_lines.append('        </SegmentList>')
+        mpd_lines.append('      </Representation>')
+
+    mpd_lines += [
+        '    </AdaptationSet>',
+        '  </Period>',
+        '</MPD>',
+    ]
+
+    # Write the MPD file
+    dash_dir = os.path.join(hls_output, "..", "dash")
+    os.makedirs(dash_dir, exist_ok=True)
+    mpd_path = os.path.join(dash_dir, "manifest.mpd")
+    with open(mpd_path, "w") as f:
+        f.write("\n".join(mpd_lines) + "\n")
+
+    seg_count = sum(len(r["seg_files"]) for r in representations)
+    jlog(f"DASH manifest written: {len(representations)} representations, "
+         f"{seg_count} segment references, duration={iso_dur}")
+
+    return f"{output_prefix}/dash/manifest.mpd"
+
+
 def _generate_dash_manifest(jlog, local_source: str, dash_output: str,
                             variants: list, hw_info: dict,
                             output_prefix: str) -> str:
@@ -3124,29 +3333,63 @@ def _generate_dash_manifest(jlog, local_source: str, dash_output: str,
 
     Returns the S3 key where the MPD manifest will be uploaded (relative to
     output_prefix), or empty string if generation fails.
+
+    NOTE: This is the legacy re-encode path kept for backward compatibility.
+    New transcodes use _build_dash_mpd_from_hls() which creates a DASH manifest
+    from the same fMP4 segments that HLS already encoded — zero re-encoding.
     """
     jlog("Generating MPEG-DASH manifest…")
     os.makedirs(dash_output, exist_ok=True)
+
+    # Probe source to determine if audio is present
+    has_audio = False
+    try:
+        probe = _probe_file(local_source)
+        has_audio = any(
+            s.get("codec_type") == "audio"
+            for s in probe.get("streams", [])
+        )
+    except Exception as probe_exc:
+        jlog(f"Audio probe failed, assuming audio present: {probe_exc}", "warn")
+        has_audio = True
+
+    jlog(f"Source audio detected: {has_audio}")
 
     # Build ffmpeg command for multi-variant DASH output
     # Uses -f dash with -adaptation_sets to produce one MPD with all variants.
     decode_flags = _hwaccel_decode_flags(hw_info)
     cmd = [FFMPEG_PATH, "-y"] + decode_flags + ["-i", local_source]
 
-    # Add output streams for each variant
+    # Add output streams for each variant, tracking stream indices
+    video_streams = []
+    audio_streams = []
+    stream_idx = 0
     for i, v in enumerate(variants):
         encode_flags = _select_encoder(hw_info, "h264", hw_decode=bool(decode_flags))
         vf_flags = _hw_vf(encode_flags, scale_height=v["height"])
 
-        cmd += ["-map", "0:v:0", "-map", "0:a:0?"]
+        cmd += ["-map", "0:v:0"]
+        video_streams.append(stream_idx)
+        stream_idx += 1
+        if has_audio:
+            cmd += ["-map", "0:a:0?"]
+            audio_streams.append(stream_idx)
+            stream_idx += 1
+
         cmd += encode_flags + vf_flags
         # Per-stream bitrate/quality settings using stream specifier
         cmd += [
             f"-b:v:{i}", v["vbitrate"],
             f"-maxrate:{i}", v["vbitrate"],
             f"-bufsize:{i}", str(int(v["vbitrate"].replace("k", "")) * 2) + "k",
-            f"-c:a:{i}", "aac", f"-b:a:{i}", v["abitrate"],
         ]
+        if has_audio:
+            cmd += [f"-c:a:{i}", "aac", f"-b:a:{i}", v["abitrate"]]
+
+    # Build adaptation_sets matching actual mapped streams
+    adapt_parts = [f"id=0,streams={','.join(str(s) for s in video_streams)}"]
+    if audio_streams:
+        adapt_parts.append(f"id=1,streams={','.join(str(s) for s in audio_streams)}")
 
     # DASH muxer options
     cmd += [
@@ -3156,11 +3399,7 @@ def _generate_dash_manifest(jlog, local_source: str, dash_output: str,
         "-media_seg_name", "seg-$RepresentationID$-$Number%05d$.m4s",
         "-use_timeline", "1",
         "-use_template", "1",
-        "-adaptation_sets",
-        " ".join([
-            f"id=0,streams=" + ",".join(str(i * 2) for i in range(len(variants))),
-            f"id=1,streams=" + ",".join(str(i * 2 + 1) for i in range(len(variants))),
-        ]),
+        "-adaptation_sets", " ".join(adapt_parts),
         os.path.join(dash_output, "manifest.mpd"),
     ]
 
@@ -3171,9 +3410,11 @@ def _generate_dash_manifest(jlog, local_source: str, dash_output: str,
     dash_sec = round(time.time() - dash_start, 1)
 
     if proc.returncode != 0:
+        err_summary = _ffmpeg_error_summary(proc.stderr)
         jlog(f"DASH FFmpeg FAILED (exit code {proc.returncode}) after {dash_sec}s", "warn")
-        jlog(f"  stderr: {proc.stderr[:2000]}", "warn")
-        raise RuntimeError(f"DASH generation failed: {proc.stderr[:500]}")
+        jlog(f"  stderr (full): {proc.stderr[:2000]}", "warn")
+        jlog(f"  error summary: {err_summary}", "warn")
+        raise RuntimeError(f"DASH generation failed: {err_summary}")
 
     jlog(f"DASH manifest generated in {dash_sec}s")
 
@@ -3473,13 +3714,16 @@ def hls_retry_callback():
 
 def _dash_only_transcode_s3(job_id: str, s3_segments_path: str,
                              callback_url: str = ""):
-    """Download existing HLS segments from S3, generate a DASH manifest from the
-    original source (re-downloaded from the HLS segments path), and upload the
-    DASH files back.  This allows adding DASH to videos that were transcoded
-    before DASH support was added.
+    """Download existing HLS segments from S3 and generate a DASH manifest.
 
-    The function looks for the source video (or re-uses HLS segments) in the
-    S3 output prefix to produce the DASH manifest.
+    For **fMP4-based HLS** (new transcodes with ``init.mp4`` + ``.m4s``
+    segments) this function only builds the ``.mpd`` manifest — no FFmpeg
+    re-encoding at all.
+
+    For **legacy TS-based HLS** (``.ts`` segments) it re-muxes the segments
+    through FFmpeg to produce fMP4 DASH output.
+
+    This allows adding DASH to videos transcoded before DASH support was added.
     """
     jlog = lambda msg, level="info": _job_log(job_id, msg, level)
 
@@ -3558,7 +3802,14 @@ def _dash_only_transcode_s3(job_id: str, s3_segments_path: str,
             if not _s3_download(s3, pl_key, local_pl):
                 raise RuntimeError(f"Failed to download variant playlist: {pl_key}")
 
-            # Parse segment filenames from playlist
+            # Parse segment filenames and check for fMP4 init segments
+            has_init = False
+            init_key = f"{output_prefix}/{label}/init.mp4"
+            local_init = os.path.join(variant_dir, "init.mp4")
+            if _s3_download(s3, init_key, local_init):
+                has_init = True
+                jlog(f"Found fMP4 init segment for {label}")
+
             with open(local_pl) as f:
                 for line in f:
                     line = line.strip()
@@ -3570,93 +3821,166 @@ def _dash_only_transcode_s3(job_id: str, s3_segments_path: str,
                             if not _s3_download(s3, seg_key, local_seg):
                                 raise RuntimeError(f"Failed to download segment: {seg_key}")
 
-        # Concatenate .ts segments per variant into a single file for ffmpeg input
+        # ── Detect segment format (fMP4 vs legacy TS) ────────────────
+        # Check if any variant has .m4s segments (fMP4) by looking at the
+        # first variant's playlist.
+        first_variant_dir = os.path.join(hls_local, variants[0]["label"])
+        first_pl = os.path.join(first_variant_dir, "playlist.m3u8")
+        is_fmp4 = False
+        with open(first_pl) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    is_fmp4 = line.endswith(".m4s") or line.endswith(".mp4")
+                    break
+
+        first_init = os.path.join(first_variant_dir, "init.mp4")
+        if os.path.isfile(first_init):
+            is_fmp4 = True
+
+        jlog(f"Segment format: {'fMP4' if is_fmp4 else 'MPEG-TS (legacy)'}")
+
+        # ── Generate DASH manifest ───────────────────────────────────
         with job_lock:
             jobs[job_id]["status"] = "transcoding"
 
-        jlog("Concatenating HLS segments per variant for DASH generation…")
-        concat_files = []
-        for v in variants:
-            label = v["label"]
-            variant_dir = os.path.join(hls_local, label)
-            concat_path = os.path.join(work_dir, f"{label}_concat.ts")
+        if is_fmp4:
+            # ── Fast path: fMP4 segments — manifest only, no FFmpeg ──
+            jlog("fMP4 segments detected — generating DASH manifest only (no re-encode)")
+            dash_manifest_key = _build_dash_mpd_from_hls(
+                jlog, hls_local, variants, output_prefix)
 
-            # Read playlist to get ordered segments
-            segments = []
-            pl_path = os.path.join(variant_dir, "playlist.m3u8")
-            with open(pl_path) as f:
-                for line in f:
-                    line = line.strip()
-                    if line and not line.startswith("#"):
-                        segments.append(os.path.join(variant_dir, line))
+            if not dash_manifest_key:
+                raise RuntimeError("Failed to build DASH manifest from fMP4 segments")
 
-            # Write ffmpeg concat file
-            concat_list = os.path.join(work_dir, f"{label}_concat.txt")
-            with open(concat_list, "w") as f:
-                for seg in segments:
-                    f.write(f"file '{seg}'\n")
+            # Upload only the DASH manifest (segments are already on S3)
+            with job_lock:
+                jobs[job_id]["status"] = "uploading"
 
-            concat_files.append((v, concat_list))
+            dash_dir = os.path.join(hls_local, "..", "dash")
+            mpd_local = os.path.join(dash_dir, "manifest.mpd")
+            mpd_s3_key = f"{output_prefix}/dash/manifest.mpd"
+            jlog(f"Uploading DASH manifest: {mpd_s3_key}")
+            if not _s3_upload(s3, mpd_local, mpd_s3_key,
+                              "application/dash+xml"):
+                raise RuntimeError(f"Failed to upload {mpd_s3_key}")
+            jlog("DASH manifest uploaded (1 file — segments shared with HLS)")
+        else:
+            # ── Legacy path: TS segments — re-mux via FFmpeg ─────────
+            jlog("Legacy TS segments — re-muxing to fMP4 via FFmpeg for DASH")
 
-        # Generate DASH from the concatenated segments
-        dash_output = os.path.join(work_dir, "dash")
-        os.makedirs(dash_output, exist_ok=True)
+            concat_files = []
+            for v in variants:
+                label = v["label"]
+                variant_dir = os.path.join(hls_local, label)
 
-        # Build a multi-input ffmpeg command for DASH
-        hw_info = _detect_hw_accel()
-        cmd = [FFMPEG_PATH, "-y"]
-        for v, concat_list in concat_files:
-            cmd += ["-f", "concat", "-safe", "0", "-i", concat_list]
+                segments = []
+                pl_path = os.path.join(variant_dir, "playlist.m3u8")
+                with open(pl_path) as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith("#"):
+                            segments.append(os.path.join(variant_dir, line))
 
-        for i, (v, _) in enumerate(concat_files):
-            cmd += ["-map", f"{i}:v:0", "-map", f"{i}:a:0?"]
-            cmd += ["-c:v", "copy", "-c:a", "copy"]
+                concat_list = os.path.join(work_dir, f"{label}_concat.txt")
+                with open(concat_list, "w") as f:
+                    for seg in segments:
+                        f.write(f"file '{seg}'\n")
 
-        cmd += [
-            "-f", "dash",
-            "-seg_duration", "6",
-            "-init_seg_name", "init-$RepresentationID$.m4s",
-            "-media_seg_name", "seg-$RepresentationID$-$Number%05d$.m4s",
-            "-use_timeline", "1",
-            "-use_template", "1",
-            "-adaptation_sets",
-            " ".join([
-                f"id=0,streams=" + ",".join(str(i * 2) for i in range(len(concat_files))),
-                f"id=1,streams=" + ",".join(str(i * 2 + 1) for i in range(len(concat_files))),
-            ]),
-            os.path.join(dash_output, "manifest.mpd"),
-        ]
+                concat_files.append((v, concat_list))
 
-        jlog(f"DASH ffmpeg command: {' '.join(cmd)}")
-        dash_start = time.time()
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=7200)
-        dash_sec = round(time.time() - dash_start, 1)
+            dash_output = os.path.join(work_dir, "dash")
+            os.makedirs(dash_output, exist_ok=True)
 
-        if proc.returncode != 0:
-            jlog(f"DASH FFmpeg FAILED (exit code {proc.returncode}) after {dash_sec}s", "error")
-            jlog(f"  stderr: {proc.stderr[:2000]}", "error")
-            raise RuntimeError(f"DASH generation failed: {proc.stderr[:500]}")
+            # Probe first segment for audio
+            has_audio = False
+            try:
+                with open(first_pl) as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith("#"):
+                            first_seg = os.path.join(first_variant_dir, line)
+                            probe = _probe_file(first_seg)
+                            has_audio = any(
+                                s.get("codec_type") == "audio"
+                                for s in probe.get("streams", [])
+                            )
+                            break
+            except Exception as probe_exc:
+                jlog(f"Audio probe failed, assuming audio present: {probe_exc}", "warn")
+                has_audio = True
 
-        jlog(f"DASH manifest generated in {dash_sec}s")
+            jlog(f"Audio detected in segments: {has_audio}")
 
-        # Upload DASH files
-        with job_lock:
-            jobs[job_id]["status"] = "uploading"
+            cmd = [FFMPEG_PATH, "-y"]
+            for v, concat_list in concat_files:
+                cmd += ["-f", "concat", "-safe", "0", "-i", concat_list]
 
-        jlog("Uploading DASH files to S3…")
-        upload_count = 0
-        for root, _dirs, files in os.walk(dash_output):
-            for filename in files:
-                local_file = os.path.join(root, filename)
-                relative = os.path.relpath(local_file, dash_output)
-                s3_key = f"{output_prefix}/dash/{relative}"
-                ct = _dash_content_type(filename)
-                upload_count += 1
-                jlog(f"Uploading DASH file: {relative}")
-                if not _s3_upload(s3, local_file, s3_key, ct):
-                    raise RuntimeError(f"Failed to upload {s3_key}")
+            video_streams = []
+            audio_streams = []
+            stream_idx = 0
+            for i, (v, _) in enumerate(concat_files):
+                cmd += ["-map", f"{i}:v:0"]
+                video_streams.append(stream_idx)
+                stream_idx += 1
+                if has_audio:
+                    cmd += ["-map", f"{i}:a:0?"]
+                    audio_streams.append(stream_idx)
+                    stream_idx += 1
 
-        jlog(f"DASH upload complete — {upload_count} files")
+            cmd += ["-c:v", "copy"]
+            if has_audio:
+                cmd += ["-c:a", "aac"]
+                for idx, (v, _) in enumerate(concat_files):
+                    cmd += [f"-b:a:{idx}", v.get("abitrate", "128k")]
+
+            adapt_parts = [f"id=0,streams={','.join(str(s) for s in video_streams)}"]
+            if audio_streams:
+                adapt_parts.append(f"id=1,streams={','.join(str(s) for s in audio_streams)}")
+
+            cmd += [
+                "-f", "dash",
+                "-seg_duration", "6",
+                "-init_seg_name", "init-$RepresentationID$.m4s",
+                "-media_seg_name", "seg-$RepresentationID$-$Number%05d$.m4s",
+                "-use_timeline", "1",
+                "-use_template", "1",
+                "-adaptation_sets", " ".join(adapt_parts),
+                os.path.join(dash_output, "manifest.mpd"),
+            ]
+
+            jlog(f"DASH ffmpeg command: {' '.join(cmd)}")
+            dash_start = time.time()
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=7200)
+            dash_sec = round(time.time() - dash_start, 1)
+
+            if proc.returncode != 0:
+                err_summary = _ffmpeg_error_summary(proc.stderr)
+                jlog(f"DASH FFmpeg FAILED (exit code {proc.returncode}) after {dash_sec}s", "error")
+                jlog(f"  stderr (full): {proc.stderr[:2000]}", "error")
+                jlog(f"  error summary: {err_summary}", "error")
+                raise RuntimeError(f"DASH generation failed: {err_summary}")
+
+            jlog(f"DASH manifest generated in {dash_sec}s")
+
+            # Upload DASH files (legacy path creates new segment files)
+            with job_lock:
+                jobs[job_id]["status"] = "uploading"
+
+            jlog("Uploading DASH files to S3…")
+            upload_count = 0
+            for root, _dirs, files in os.walk(dash_output):
+                for filename in files:
+                    local_file = os.path.join(root, filename)
+                    relative = os.path.relpath(local_file, dash_output)
+                    s3_key = f"{output_prefix}/dash/{relative}"
+                    ct = _dash_content_type(filename)
+                    upload_count += 1
+                    jlog(f"Uploading DASH file: {relative}")
+                    if not _s3_upload(s3, local_file, s3_key, ct):
+                        raise RuntimeError(f"Failed to upload {s3_key}")
+
+            jlog(f"DASH upload complete — {upload_count} files")
 
         dash_manifest_key = f"{output_prefix}/dash/manifest.mpd"
 
