@@ -114,10 +114,10 @@ test.describe('All video views have HLS fallback error handlers', () => {
       expect(content).toContain("addEventListener('error'");
     });
 
-    test(`${view.name} (${view.file}) should have HLS fallback URL variable`, () => {
+    test(`${view.name} (${view.file}) should have fallback URL variable`, () => {
       const content = readFile(view.file);
-      // Should have some form of HLS fallback URL tracking
-      expect(content).toMatch(/[Hh]ls[Ff]allback/);
+      // Should have some form of fallback URL tracking
+      expect(content).toMatch(/[Ff]allback[Uu]rl/);
     });
 
     test(`${view.name} (${view.file}) should call awInitHlsPlayer in fallback`, () => {
@@ -136,15 +136,15 @@ test.describe('All video views have HLS fallback error handlers', () => {
     });
   }
 
-  // Coach reviews specifically: uses getPreferredVideoUrl + data-hls-url
+  // Coach reviews specifically: uses getPreferredVideoUrl + data-fallback-url
   test('Coach Reviews should use getPreferredVideoUrl for primary URL', () => {
     const content = readFile('views/video_coach_reviews.php');
     expect(content).toContain('getPreferredVideoUrl');
   });
 
-  test('Coach Reviews should have data-hls-url attribute on buttons', () => {
+  test('Coach Reviews should have data-fallback-url attribute on buttons', () => {
     const content = readFile('views/video_coach_reviews.php');
-    expect(content).toContain('data-hls-url=');
+    expect(content).toContain('data-fallback-url=');
   });
 
   test('Drill Review should use getPreferredVideoUrl for primary URL', () => {
@@ -152,8 +152,8 @@ test.describe('All video views have HLS fallback error handlers', () => {
     expect(content).toContain('getPreferredVideoUrl');
   });
 
-  test('Drill Review should have data-hls-url attribute on buttons', () => {
+  test('Drill Review should have data-fallback-url attribute on buttons', () => {
     const content = readFile('views/video_drill_review.php');
-    expect(content).toContain('data-hls-url');
+    expect(content).toContain('data-fallback-url');
   });
 });

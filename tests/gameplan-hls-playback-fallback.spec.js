@@ -3,11 +3,11 @@
  *
  * Verifies:
  * 1. Film room views use getPreferredVideoUrl for editor video source
- * 2. Film room views include data-hls-url fallback attribute
+ * 2. Film room views include data-fallback-url fallback attribute
  * 3. Film room JS has error handler for HLS fallback
  * 4. My clips views fetch HLS columns from vr_video_sources
  * 5. My clips views use getPreferredVideoUrl for data-source attribute
- * 6. My clips views include data-hls-url fallback and JS error handler
+ * 6. My clips views include data-fallback-url fallback and JS error handler
  * 7. getPreferredVideoUrl falls back to file_path when video_url is absent
  * 8. Multi-camera query includes hls_url and hls_status columns
  */
@@ -82,18 +82,18 @@ test.describe('Film room editor uses HLS-aware video URL', () => {
 });
 
 /* ------------------------------------------------------------------ */
-/*  3. Film room has data-hls-url fallback attribute                  */
+/*  3. Film room has data-fallback-url fallback attribute                  */
 /* ------------------------------------------------------------------ */
 test.describe('Film room editor has HLS fallback attribute', () => {
 
-  test('film_room.php should have data-hls-url on video element', () => {
+  test('film_room.php should have data-fallback-url on video element', () => {
     const content = readFile('views/gameplan/film_room.php');
-    expect(content).toContain('data-hls-url=');
+    expect(content).toContain('data-fallback-url=');
   });
 
-  test('gp_film_room.php should have data-hls-url on video element', () => {
+  test('gp_film_room.php should have data-fallback-url on video element', () => {
     const content = readFile('views/gameplan/gp_film_room.php');
-    expect(content).toContain('data-hls-url=');
+    expect(content).toContain('data-fallback-url=');
   });
 });
 
@@ -107,14 +107,14 @@ test.describe('Film room JS error handler retries with HLS URL', () => {
     expect(content).toContain("player.addEventListener('error'");
   });
 
-  test('film_room.php error handler should read data-hls-url', () => {
+  test('film_room.php error handler should read data-fallback-url', () => {
     const content = readFile('views/gameplan/film_room.php');
-    expect(content).toContain('player.dataset.hlsUrl');
+    expect(content).toContain('player.dataset.fallbackUrl');
   });
 
   test('film_room.php error handler should have fallback-tried guard', () => {
     const content = readFile('views/gameplan/film_room.php');
-    expect(content).toContain('_filmHlsFallbackTried');
+    expect(content).toContain('_filmFallbackTried');
   });
 
   test('gp_film_room.php should have error event listener on player', () => {
@@ -122,14 +122,14 @@ test.describe('Film room JS error handler retries with HLS URL', () => {
     expect(content).toContain("player.addEventListener('error'");
   });
 
-  test('gp_film_room.php error handler should read data-hls-url', () => {
+  test('gp_film_room.php error handler should read data-fallback-url', () => {
     const content = readFile('views/gameplan/gp_film_room.php');
-    expect(content).toContain('player.dataset.hlsUrl');
+    expect(content).toContain('player.dataset.fallbackUrl');
   });
 
   test('gp_film_room.php error handler should have fallback-tried guard', () => {
     const content = readFile('views/gameplan/gp_film_room.php');
-    expect(content).toContain('_gpFilmHlsFallbackTried');
+    expect(content).toContain('_gpFilmFallbackTried');
   });
 });
 
@@ -193,14 +193,14 @@ test.describe('My clips views use HLS-aware video URL', () => {
     expect(content).toContain('getPreferredVideoUrl');
   });
 
-  test('my_clips.php should have data-hls-url on clip cards', () => {
+  test('my_clips.php should have data-fallback-url on clip cards', () => {
     const content = readFile('views/gameplan/my_clips.php');
-    expect(content).toContain('data-hls-url=');
+    expect(content).toContain('data-fallback-url=');
   });
 
-  test('gp_my_clips.php should have data-hls-url on clip cards', () => {
+  test('gp_my_clips.php should have data-fallback-url on clip cards', () => {
     const content = readFile('views/gameplan/gp_my_clips.php');
-    expect(content).toContain('data-hls-url=');
+    expect(content).toContain('data-fallback-url=');
   });
 });
 
@@ -216,12 +216,12 @@ test.describe('My clips JS error handler retries with HLS URL', () => {
 
   test('my_clips.php should read hlsUrl from card dataset on click', () => {
     const content = readFile('views/gameplan/my_clips.php');
-    expect(content).toContain('card.dataset.hlsUrl');
+    expect(content).toContain('card.dataset.fallbackUrl');
   });
 
   test('my_clips.php error handler should have fallback-tried guard', () => {
     const content = readFile('views/gameplan/my_clips.php');
-    expect(content).toContain('_clipHlsFallbackTried');
+    expect(content).toContain('_clipFallbackTried');
   });
 
   test('gp_my_clips.php should have error event listener on video', () => {
@@ -231,12 +231,12 @@ test.describe('My clips JS error handler retries with HLS URL', () => {
 
   test('gp_my_clips.php should read hlsUrl from card dataset on click', () => {
     const content = readFile('views/gameplan/gp_my_clips.php');
-    expect(content).toContain('card.dataset.hlsUrl');
+    expect(content).toContain('card.dataset.fallbackUrl');
   });
 
   test('gp_my_clips.php error handler should have fallback-tried guard', () => {
     const content = readFile('views/gameplan/gp_my_clips.php');
-    expect(content).toContain('_gpClipHlsFallbackTried');
+    expect(content).toContain('_gpClipFallbackTried');
   });
 });
 

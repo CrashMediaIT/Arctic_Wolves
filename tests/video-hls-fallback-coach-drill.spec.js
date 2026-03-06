@@ -3,7 +3,7 @@
  *
  * When the companion deletes the original video after HLS transcoding but
  * the callback fails to update hls_status, the primary video URL returns 502.
- * These tests verify that both views include a data-hls-url fallback
+ * These tests verify that both views include a data-fallback-url fallback
  * attribute and JS error recovery so the HLS stream can still be used.
  *
  * Also verifies the companion server and PHP callback handler correctly
@@ -27,28 +27,28 @@ function readFile(relativePath) {
 test.describe('video_coach_reviews.php HLS fallback attribute', () => {
   const content = () => readFile('views/video_coach_reviews.php');
 
-  test('pending tab play button should include data-hls-url attribute', () => {
+  test('pending tab play button should include data-fallback-url attribute', () => {
     const c = content();
     // Find the pending video play button (first data-action="view-video")
     const pendingSection = c.substring(0, c.indexOf('reviewed-tab'));
-    expect(pendingSection).toContain('data-hls-url=');
+    expect(pendingSection).toContain('data-fallback-url=');
   });
 
-  test('reviewed tab play button should include data-hls-url attribute', () => {
+  test('reviewed tab play button should include data-fallback-url attribute', () => {
     const c = content();
     const reviewedSection = c.substring(c.indexOf('reviewed-tab'));
-    expect(reviewedSection).toContain('data-hls-url=');
+    expect(reviewedSection).toContain('data-fallback-url=');
   });
 
-  test('data-hls-url should resolve hls_url through resolveRustfsUrl', () => {
+  test('data-fallback-url should resolve hls_url through resolveRustfsUrl', () => {
     const c = content();
     // The HLS URL is now computed in a PHP block that resolves via resolveRustfsUrl,
-    // then the result is referenced from the data-hls-url attribute.
+    // then the result is referenced from the data-fallback-url attribute.
     expect(c).toContain("resolveRustfsUrl($pdo, $video['hls_url'])");
-    expect(c).toContain('data-hls-url=');
+    expect(c).toContain('data-fallback-url=');
   });
 
-  test('data-hls-url should only be emitted when hls_url is non-empty', () => {
+  test('data-fallback-url should only be emitted when hls_url is non-empty', () => {
     const c = content();
     // Both buttons should guard with !empty($video['hls_url'])
     const guards = (c.match(/!empty\(\$video\['hls_url'\]\)/g) || []).length;
@@ -63,14 +63,14 @@ test.describe('video_coach_reviews.php HLS fallback attribute', () => {
 test.describe('video_coach_reviews.php JS HLS error fallback', () => {
   const content = () => readFile('views/video_coach_reviews.php');
 
-  test('should declare vpHlsFallbackUrl variable', () => {
+  test('should declare vpFallbackUrl variable', () => {
     const c = content();
-    expect(c).toContain('vpHlsFallbackUrl');
+    expect(c).toContain('vpFallbackUrl');
   });
 
-  test('should declare vpHlsFallbackTried variable', () => {
+  test('should declare vpFallbackTried variable', () => {
     const c = content();
-    expect(c).toContain('vpHlsFallbackTried');
+    expect(c).toContain('vpFallbackTried');
   });
 
   test('should add error event listener on video element with capture=true', () => {
@@ -83,16 +83,16 @@ test.describe('video_coach_reviews.php JS HLS error fallback', () => {
     const c = content();
     // Find the error handler block
     const errorBlock = c.substring(c.indexOf("vpVideo.addEventListener('error'"));
-    expect(errorBlock).toContain('vpHlsFallbackUrl');
+    expect(errorBlock).toContain('vpFallbackUrl');
     expect(errorBlock).toContain('awInitHlsPlayer');
   });
 
-  test('click handler should read hlsUrl from data-hls-url attribute', () => {
+  test('click handler should read hlsUrl from data-fallback-url attribute', () => {
     const c = content();
-    expect(c).toContain('this.dataset.hlsUrl');
+    expect(c).toContain('this.dataset.fallbackUrl');
   });
 
-  test('click handler should set vpHlsFallbackUrl only when different from primary URL', () => {
+  test('click handler should set vpFallbackUrl only when different from primary URL', () => {
     const c = content();
     expect(c).toContain('hlsUrl !== url');
   });
@@ -102,8 +102,8 @@ test.describe('video_coach_reviews.php JS HLS error fallback', () => {
     const cleanupStart = c.indexOf('function cleanupCoachVideoPlayer()');
     const cleanupEnd = c.indexOf('\n    }', cleanupStart + 40);
     const cleanup = c.substring(cleanupStart, cleanupEnd);
-    expect(cleanup).toContain("vpHlsFallbackUrl = ''");
-    expect(cleanup).toContain('vpHlsFallbackTried = false');
+    expect(cleanup).toContain("vpFallbackUrl = ''");
+    expect(cleanup).toContain('vpFallbackTried = false');
   });
 });
 
@@ -114,20 +114,20 @@ test.describe('video_coach_reviews.php JS HLS error fallback', () => {
 test.describe('video_drill_review.php HLS fallback attribute', () => {
   const content = () => readFile('views/video_drill_review.php');
 
-  test('play button should include data-hls-url attribute', () => {
+  test('play button should include data-fallback-url attribute', () => {
     const c = content();
-    expect(c).toContain('data-hls-url=');
+    expect(c).toContain('data-fallback-url=');
   });
 
-  test('data-hls-url should resolve hls_url through resolveRustfsUrl', () => {
+  test('data-fallback-url should resolve hls_url through resolveRustfsUrl', () => {
     const c = content();
     // The HLS URL is now computed in a PHP block that resolves via resolveRustfsUrl,
-    // then the result is referenced from the data-hls-url attribute.
+    // then the result is referenced from the data-fallback-url attribute.
     expect(c).toContain("resolveRustfsUrl($pdo, $video['hls_url']");
-    expect(c).toContain('data-hls-url=');
+    expect(c).toContain('data-fallback-url=');
   });
 
-  test('data-hls-url should only be emitted when hls_url is non-empty', () => {
+  test('data-fallback-url should only be emitted when hls_url is non-empty', () => {
     const c = content();
     expect(c).toContain("!empty($video['hls_url'])");
   });
@@ -140,14 +140,14 @@ test.describe('video_drill_review.php HLS fallback attribute', () => {
 test.describe('video_drill_review.php JS HLS error fallback', () => {
   const content = () => readFile('views/video_drill_review.php');
 
-  test('should declare drHlsFallbackUrl variable', () => {
+  test('should declare drFallbackUrl variable', () => {
     const c = content();
-    expect(c).toContain('drHlsFallbackUrl');
+    expect(c).toContain('drFallbackUrl');
   });
 
-  test('should declare drHlsFallbackTried variable', () => {
+  test('should declare drFallbackTried variable', () => {
     const c = content();
-    expect(c).toContain('drHlsFallbackTried');
+    expect(c).toContain('drFallbackTried');
   });
 
   test('should add error event listener on video element with capture=true', () => {
@@ -158,16 +158,16 @@ test.describe('video_drill_review.php JS HLS error fallback', () => {
   test('error handler should call awInitHlsPlayer with fallback URL', () => {
     const c = content();
     const errorBlock = c.substring(c.indexOf("videoPlayer.addEventListener('error'"));
-    expect(errorBlock).toContain('drHlsFallbackUrl');
+    expect(errorBlock).toContain('drFallbackUrl');
     expect(errorBlock).toContain('awInitHlsPlayer');
   });
 
-  test('click handler should read hlsUrl from data-hls-url attribute', () => {
+  test('click handler should read hlsUrl from data-fallback-url attribute', () => {
     const c = content();
-    expect(c).toContain('this.dataset.hlsUrl');
+    expect(c).toContain('this.dataset.fallbackUrl');
   });
 
-  test('click handler should set drHlsFallbackUrl only when different from primary URL', () => {
+  test('click handler should set drFallbackUrl only when different from primary URL', () => {
     const c = content();
     expect(c).toContain('hlsUrl !== videoUrl');
   });
@@ -177,8 +177,8 @@ test.describe('video_drill_review.php JS HLS error fallback', () => {
     const cleanupStart = c.indexOf('function cleanupVideoPlayer()');
     const cleanupEnd = c.indexOf('\n    }', cleanupStart + 40);
     const cleanup = c.substring(cleanupStart, cleanupEnd);
-    expect(cleanup).toContain("drHlsFallbackUrl = ''");
-    expect(cleanup).toContain('drHlsFallbackTried = false');
+    expect(cleanup).toContain("drFallbackUrl = ''");
+    expect(cleanup).toContain('drFallbackTried = false');
   });
 });
 
@@ -303,40 +303,40 @@ test.describe('PHP companion callback handles source_id', () => {
 
 test.describe('Detail pages retain existing HLS fallback', () => {
 
-  test('video_review_detail.php (desktop) should have data-hls-url fallback', () => {
+  test('video_review_detail.php (desktop) should have data-fallback-url fallback', () => {
     const c = readFile('views/video_review_detail.php');
-    expect(c).toContain('data-hls-url=');
-    expect(c).toContain('hls_fallback_url');
+    expect(c).toContain('data-fallback-url=');
+    expect(c).toContain('fallback_url');
   });
 
-  test('video_review_detail.php (pwa) should have data-hls-url fallback', () => {
+  test('video_review_detail.php (pwa) should have data-fallback-url fallback', () => {
     const c = readFile('views/pwa/video_review_detail.php');
-    expect(c).toContain('data-hls-url=');
-    expect(c).toContain('hls_fallback_url');
+    expect(c).toContain('data-fallback-url=');
+    expect(c).toContain('fallback_url');
   });
 
   test('video_review_detail.php (desktop) should have JS error handler for HLS fallback', () => {
     const c = readFile('views/video_review_detail.php');
-    expect(c).toContain('_hlsFallbackTried');
+    expect(c).toContain('_fallbackTried');
     expect(c).toContain("detailPlayer.addEventListener('error'");
   });
 
   test('video_review_detail.php (pwa) should have JS error handler for HLS fallback', () => {
     const c = readFile('views/pwa/video_review_detail.php');
-    expect(c).toContain('_hlsFallbackTried');
+    expect(c).toContain('_fallbackTried');
   });
 });
 
 // =====================================================
-// 8. deriveHlsFallbackUrl function in image_helper.php
+// 8. deriveFallbackUrl function in image_helper.php
 // =====================================================
 
-test.describe('deriveHlsFallbackUrl in lib/image_helper.php', () => {
+test.describe('deriveFallbackUrl in lib/image_helper.php', () => {
   const content = () => readFile('lib/image_helper.php');
 
-  test('function deriveHlsFallbackUrl should exist', () => {
+  test('function deriveFallbackUrl should exist', () => {
     const c = content();
-    expect(c).toContain('function deriveHlsFallbackUrl(');
+    expect(c).toContain('function deriveFallbackUrl(');
   });
 
   test('should detect media proxy URLs (api/media.php?key=)', () => {
@@ -369,58 +369,58 @@ test.describe('deriveHlsFallbackUrl in lib/image_helper.php', () => {
 // 9. Derived HLS fallback applied in all views
 // =====================================================
 
-test.describe('deriveHlsFallbackUrl used as fallback in views', () => {
+test.describe('deriveFallbackUrl used as fallback in views', () => {
 
-  test('video_review_detail.php (desktop) should call deriveHlsFallbackUrl', () => {
+  test('video_review_detail.php (desktop) should call deriveFallbackUrl', () => {
     const c = readFile('views/video_review_detail.php');
-    expect(c).toContain('deriveHlsFallbackUrl(');
+    expect(c).toContain('deriveFallbackUrl(');
   });
 
-  test('video_review_detail.php (pwa) should call deriveHlsFallbackUrl', () => {
+  test('video_review_detail.php (pwa) should call deriveFallbackUrl', () => {
     const c = readFile('views/pwa/video_review_detail.php');
-    expect(c).toContain('deriveHlsFallbackUrl(');
+    expect(c).toContain('deriveFallbackUrl(');
   });
 
-  test('video_coach_reviews.php should call deriveHlsFallbackUrl', () => {
+  test('video_coach_reviews.php should call deriveFallbackUrl', () => {
     const c = readFile('views/video_coach_reviews.php');
-    expect(c).toContain('deriveHlsFallbackUrl(');
+    expect(c).toContain('deriveFallbackUrl(');
   });
 
-  test('video_drill_review.php should call deriveHlsFallbackUrl', () => {
+  test('video_drill_review.php should call deriveFallbackUrl', () => {
     const c = readFile('views/video_drill_review.php');
-    expect(c).toContain('deriveHlsFallbackUrl(');
+    expect(c).toContain('deriveFallbackUrl(');
   });
 
-  test('gameplan film_room.php should call deriveHlsFallbackUrl', () => {
+  test('gameplan film_room.php should call deriveFallbackUrl', () => {
     const c = readFile('views/gameplan/film_room.php');
-    expect(c).toContain('deriveHlsFallbackUrl(');
+    expect(c).toContain('deriveFallbackUrl(');
   });
 
-  test('gameplan gp_film_room.php should call deriveHlsFallbackUrl', () => {
+  test('gameplan gp_film_room.php should call deriveFallbackUrl', () => {
     const c = readFile('views/gameplan/gp_film_room.php');
-    expect(c).toContain('deriveHlsFallbackUrl(');
+    expect(c).toContain('deriveFallbackUrl(');
   });
 
-  test('gameplan my_clips.php should call deriveHlsFallbackUrl', () => {
+  test('gameplan my_clips.php should call deriveFallbackUrl', () => {
     const c = readFile('views/gameplan/my_clips.php');
-    expect(c).toContain('deriveHlsFallbackUrl(');
+    expect(c).toContain('deriveFallbackUrl(');
   });
 
-  test('gameplan gp_my_clips.php should call deriveHlsFallbackUrl', () => {
+  test('gameplan gp_my_clips.php should call deriveFallbackUrl', () => {
     const c = readFile('views/gameplan/gp_my_clips.php');
-    expect(c).toContain('deriveHlsFallbackUrl(');
+    expect(c).toContain('deriveFallbackUrl(');
   });
 
   test('derived fallback should only apply when primary URL is not already HLS', () => {
     const c = readFile('views/video_review_detail.php');
-    // deriveHlsFallbackUrl is in the else branch of the m3u8 check,
+    // deriveFallbackUrl is in the else branch of the m3u8 check,
     // ensuring it's only used when the primary URL is not HLS
-    expect(c).toContain('deriveHlsFallbackUrl(');
+    expect(c).toContain('deriveFallbackUrl(');
     expect(c).toMatch(/preg_match.*\.m3u8/s);
   });
 
-  test('detail pages should use derived fallback only when hls_fallback_url is empty', () => {
+  test('detail pages should use derived fallback only when fallback_url is empty', () => {
     const c = readFile('views/video_review_detail.php');
-    expect(c).toContain("empty($hls_fallback_url)");
+    expect(c).toContain("empty($fallback_url)");
   });
 });

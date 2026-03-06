@@ -272,13 +272,13 @@ $is_demo_data = false;
                                         $hls = resolveRustfsUrl($pdo, $video['hls_url']) ?? '';
                                         if ($hls && $hls !== $dr_video_url) $dr_hls_url = $hls;
                                     }
-                                    if (empty($dr_hls_url)) $dr_hls_url = deriveHlsFallbackUrl($dr_video_url);
+                                    if (empty($dr_hls_url)) $dr_hls_url = deriveFallbackUrl($dr_video_url);
                                 }
                             ?>
                             <button class="btn-primary btn-full" data-action="play-video" 
                                     data-video-id="<?= htmlspecialchars($video['id']) ?>"
                                     data-video-url="<?= htmlspecialchars($dr_video_url) ?>"
-                                    data-hls-url="<?= htmlspecialchars($dr_hls_url) ?>"
+                                    data-fallback-url="<?= htmlspecialchars($dr_hls_url) ?>"
                                     data-thumbnail-url="<?= htmlspecialchars(resolveRustfsUrl($pdo, $video['thumbnail_url'] ?? '') ?? '') ?>"
                                     data-video-description="<?= htmlspecialchars($video['description'] ?? '') ?>"
                                     data-video-coach="<?= htmlspecialchars(trim(($video['coach_first_name'] ?? '') . ' ' . ($video['coach_last_name'] ?? ''))) ?>"
@@ -1466,13 +1466,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const videoDetailTitle = document.getElementById('videoDetailTitle');
     const videoDetailMeta = document.getElementById('videoDetailMeta');
     var activeHls = null;
-    var drHlsFallbackUrl = '';
-    var drHlsFallbackTried = false;
+    var drFallbackUrl = '';
+    var drFallbackTried = false;
 
     function cleanupVideoPlayer() {
         if (activeHls) { activeHls.destroy(); activeHls = null; }
-        drHlsFallbackUrl = '';
-        drHlsFallbackTried = false;
+        drFallbackUrl = '';
+        drFallbackTried = false;
         if (videoPlayer) {
             // Clean up custom controls injected by hls-player.js
             var container = videoPlayer.parentElement;
@@ -1503,15 +1503,15 @@ document.addEventListener('DOMContentLoaded', function() {
     // hls_status), retry with the pre-set HLS URL.
     if (videoPlayer) {
         videoPlayer.addEventListener('error', function() {
-            if (drHlsFallbackUrl && !drHlsFallbackTried) {
-                drHlsFallbackTried = true;
+            if (drFallbackUrl && !drFallbackTried) {
+                drFallbackTried = true;
                 if (typeof window.awReportPlaybackError === 'function') {
-                    window.awReportPlaybackError('Drill review: primary source failed, trying fallback', { fallback: drHlsFallbackUrl });
+                    window.awReportPlaybackError('Drill review: primary source failed, trying fallback', { fallback: drFallbackUrl });
                 }
                 if (typeof window.awInitHlsPlayer === 'function') {
-                    activeHls = window.awInitHlsPlayer(videoPlayer, drHlsFallbackUrl);
+                    activeHls = window.awInitHlsPlayer(videoPlayer, drFallbackUrl);
                 }
-            } else if (!drHlsFallbackUrl && typeof window.awReportPlaybackError === 'function') {
+            } else if (!drFallbackUrl && typeof window.awReportPlaybackError === 'function') {
                 window.awReportPlaybackError('Drill review: video playback failed — no fallback URL', {});
             }
         }, true);
@@ -1521,7 +1521,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('[data-action="play-video"]').forEach(btn => {
         btn.addEventListener('click', function() {
             const videoUrl = this.dataset.videoUrl;
-            const hlsUrl = this.dataset.hlsUrl || '';
+            const hlsUrl = this.dataset.fallbackUrl || '';
             const thumbnailUrl = this.dataset.thumbnailUrl || '';
             const title = this.closest('.video-card').querySelector('.video-title')?.textContent || 'Video';
             const description = this.dataset.videoDescription || '';
@@ -1565,8 +1565,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     cleanupVideoPlayer();
 
                     // Store HLS fallback URL for error recovery
-                    drHlsFallbackUrl = (hlsUrl && hlsUrl !== videoUrl) ? hlsUrl : '';
-                    drHlsFallbackTried = false;
+                    drFallbackUrl = (hlsUrl && hlsUrl !== videoUrl) ? hlsUrl : '';
+                    drFallbackTried = false;
 
                     // Set poster/thumbnail for preview before video loads
                     if (thumbnailUrl) videoPlayer.poster = thumbnailUrl;

@@ -272,7 +272,7 @@ $reviewed_videos = array_filter($videos, function($v) {
                                     $hls = resolveRustfsUrl($pdo, $video['hls_url']) ?? '';
                                     if ($hls && $hls !== $vcr_video_url) $vcr_hls_url = $hls;
                                 }
-                                if (empty($vcr_hls_url)) $vcr_hls_url = deriveHlsFallbackUrl($vcr_video_url);
+                                if (empty($vcr_hls_url)) $vcr_hls_url = deriveFallbackUrl($vcr_video_url);
                             }
                             $vcr_thumb_url = resolveRustfsUrl($pdo, $video['thumbnail_url'] ?? '') ?? '';
                         ?>
@@ -280,7 +280,7 @@ $reviewed_videos = array_filter($videos, function($v) {
                             data-action="view-video"
                             data-video-id="<?= $video['id'] ?>"
                             data-video-url="<?= htmlspecialchars($vcr_video_url) ?>"
-                            <?php if (!empty($vcr_hls_url)): ?>data-hls-url="<?= htmlspecialchars($vcr_hls_url) ?>"<?php endif; ?>
+                            <?php if (!empty($vcr_hls_url)): ?>data-fallback-url="<?= htmlspecialchars($vcr_hls_url) ?>"<?php endif; ?>
                             data-thumbnail-url="<?= htmlspecialchars($vcr_thumb_url) ?>"><i class="fas fa-play"></i></button>
                         <?php if ($isAnyCoach): ?>
                         <button class="btn-icon btn-review" title="Review" data-action="review-video" data-video-id="<?= $video['id'] ?>"><i class="fas fa-check"></i></button>
@@ -358,7 +358,7 @@ $reviewed_videos = array_filter($videos, function($v) {
                                     $hls = resolveRustfsUrl($pdo, $video['hls_url']) ?? '';
                                     if ($hls && $hls !== $vcr_video_url) $vcr_hls_url = $hls;
                                 }
-                                if (empty($vcr_hls_url)) $vcr_hls_url = deriveHlsFallbackUrl($vcr_video_url);
+                                if (empty($vcr_hls_url)) $vcr_hls_url = deriveFallbackUrl($vcr_video_url);
                             }
                             $vcr_thumb_url = resolveRustfsUrl($pdo, $video['thumbnail_url'] ?? '') ?? '';
                         ?>
@@ -366,7 +366,7 @@ $reviewed_videos = array_filter($videos, function($v) {
                             data-action="view-video"
                             data-video-id="<?= $video['id'] ?>"
                             data-video-url="<?= htmlspecialchars($vcr_video_url) ?>"
-                            <?php if (!empty($vcr_hls_url)): ?>data-hls-url="<?= htmlspecialchars($vcr_hls_url) ?>"<?php endif; ?>
+                            <?php if (!empty($vcr_hls_url)): ?>data-fallback-url="<?= htmlspecialchars($vcr_hls_url) ?>"<?php endif; ?>
                             data-thumbnail-url="<?= htmlspecialchars($vcr_thumb_url) ?>"><i class="fas fa-play"></i></button>
                         <a href="?page=video_review_detail&video_id=<?= $video['id'] ?>&from=coaches_reviews" class="btn-icon" title="View Details"><i class="fas fa-comments"></i></a>
                     </div>
@@ -896,13 +896,13 @@ document.addEventListener('DOMContentLoaded', function() {
     var vpVideo = document.getElementById('coachVideoPlayer');
     var vpTitle = document.getElementById('coachVideoModalTitle');
     var vpHls = null;
-    var vpHlsFallbackUrl = '';
-    var vpHlsFallbackTried = false;
+    var vpFallbackUrl = '';
+    var vpFallbackTried = false;
 
     function cleanupCoachVideoPlayer() {
         if (vpHls) { vpHls.destroy(); vpHls = null; }
-        vpHlsFallbackUrl = '';
-        vpHlsFallbackTried = false;
+        vpFallbackUrl = '';
+        vpFallbackTried = false;
         if (vpVideo) {
             var container = vpVideo.parentElement;
             if (container) {
@@ -926,20 +926,20 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Fallback: if primary video source fails (e.g. 502 because the companion
-    // deleted the original after HLS transcode but the callback didn't update
-    // hls_status), retry with the pre-set HLS URL.
+    // Fallback: if primary video source fails, try the alternate URL.
+    // After transcoding, HLS is the primary stream and the original is
+    // deleted.  If HLS itself fails, there may be no fallback available.
     if (vpVideo) {
         vpVideo.addEventListener('error', function() {
-            if (vpHlsFallbackUrl && !vpHlsFallbackTried) {
-                vpHlsFallbackTried = true;
+            if (vpFallbackUrl && !vpFallbackTried) {
+                vpFallbackTried = true;
                 if (typeof window.awReportPlaybackError === 'function') {
-                    window.awReportPlaybackError('Coach reviews: primary source failed, trying fallback', { fallback: vpHlsFallbackUrl });
+                    window.awReportPlaybackError('Coach reviews: primary source failed, trying fallback', { fallback: vpFallbackUrl });
                 }
                 if (typeof window.awInitHlsPlayer === 'function') {
-                    vpHls = window.awInitHlsPlayer(vpVideo, vpHlsFallbackUrl);
+                    vpHls = window.awInitHlsPlayer(vpVideo, vpFallbackUrl);
                 }
-            } else if (!vpHlsFallbackUrl && typeof window.awReportPlaybackError === 'function') {
+            } else if (!vpFallbackUrl && typeof window.awReportPlaybackError === 'function') {
                 window.awReportPlaybackError('Coach reviews: video playback failed — no fallback URL', {});
             }
         }, true);
@@ -948,7 +948,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('[data-action="view-video"]').forEach(function(btn) {
         btn.addEventListener('click', function() {
             var url = this.dataset.videoUrl;
-            var hlsUrl = this.dataset.hlsUrl || '';
+            var hlsUrl = this.dataset.fallbackUrl || '';
             var thumbnailUrl = this.dataset.thumbnailUrl || '';
             var item = this.closest('.video-list-item');
             var title = item ? (item.querySelector('.video-details h4')?.textContent || 'Video') : 'Video';
@@ -957,8 +957,8 @@ document.addEventListener('DOMContentLoaded', function() {
             vpTitle.innerHTML = '<i class="fas fa-play-circle"></i> ' + title;
             cleanupCoachVideoPlayer();
             // Store HLS fallback URL for error recovery
-            vpHlsFallbackUrl = (hlsUrl && hlsUrl !== url) ? hlsUrl : '';
-            vpHlsFallbackTried = false;
+            vpFallbackUrl = (hlsUrl && hlsUrl !== url) ? hlsUrl : '';
+            vpFallbackTried = false;
             if (thumbnailUrl) vpVideo.poster = thumbnailUrl;
             if (url && typeof window.awInitHlsPlayer === 'function') {
                 vpHls = window.awInitHlsPlayer(vpVideo, url);

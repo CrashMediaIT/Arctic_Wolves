@@ -3,7 +3,7 @@
  *
  * Verifies:
  * 1. <source> type attribute is dynamic (video/mp4 vs application/vnd.apple.mpegurl)
- * 2. HLS fallback URL is computed and passed as data-hls-url attribute
+ * 2. HLS fallback URL is computed and passed as data-fallback-url attribute
  * 3. JS error handler retries with HLS URL when primary source fails
  * 4. Both desktop and PWA detail pages have the same resilience
  */
@@ -66,13 +66,13 @@ test.describe('Source type attribute is dynamic based on URL', () => {
 /* ------------------------------------------------------------------ */
 /*  2. HLS fallback URL computed and passed as data attribute          */
 /* ------------------------------------------------------------------ */
-test.describe('HLS fallback URL is passed as data-hls-url', () => {
+test.describe('HLS fallback URL is passed as data-fallback-url', () => {
 
-  test('desktop: computes $hls_fallback_url from video hls_url', () => {
+  test('desktop: computes $fallback_url from video hls_url', () => {
     const c = readFile('views/video_review_detail.php');
-    expect(c).toContain('$hls_fallback_url');
+    expect(c).toContain('$fallback_url');
     // Should resolve hls_url via resolveRustfsUrl
-    expect(c).toMatch(/hls_fallback_url[\s\S]*resolveRustfsUrl\(\$pdo,\s*\$video\['hls_url'\]\)/);
+    expect(c).toMatch(/fallback_url[\s\S]*resolveRustfsUrl\(\$pdo,\s*\$video\['hls_url'\]\)/);
   });
 
   test('desktop: only sets fallback when different from primary URL', () => {
@@ -81,16 +81,16 @@ test.describe('HLS fallback URL is passed as data-hls-url', () => {
     expect(c).toMatch(/\$resolved_hls\s*&&\s*\$resolved_hls\s*!==\s*\$video_url/);
   });
 
-  test('desktop: video element conditionally has data-hls-url attribute', () => {
+  test('desktop: video element conditionally has data-fallback-url attribute', () => {
     const c = readFile('views/video_review_detail.php');
-    expect(c).toContain('data-hls-url');
-    expect(c).toContain('$hls_fallback_url');
+    expect(c).toContain('data-fallback-url');
+    expect(c).toContain('$fallback_url');
   });
 
-  test('PWA: computes $hls_fallback_url from video hls_url', () => {
+  test('PWA: computes $fallback_url from video hls_url', () => {
     const c = readFile('views/pwa/video_review_detail.php');
-    expect(c).toContain('$hls_fallback_url');
-    expect(c).toMatch(/hls_fallback_url[\s\S]*resolveRustfsUrl\(\$pdo,\s*\$video\['hls_url'\]\)/);
+    expect(c).toContain('$fallback_url');
+    expect(c).toMatch(/fallback_url[\s\S]*resolveRustfsUrl\(\$pdo,\s*\$video\['hls_url'\]\)/);
   });
 
   test('PWA: only sets fallback when different from primary URL', () => {
@@ -98,10 +98,10 @@ test.describe('HLS fallback URL is passed as data-hls-url', () => {
     expect(c).toMatch(/\$resolved_hls\s*&&\s*\$resolved_hls\s*!==\s*\$video_url/);
   });
 
-  test('PWA: video element conditionally has data-hls-url attribute', () => {
+  test('PWA: video element conditionally has data-fallback-url attribute', () => {
     const c = readFile('views/pwa/video_review_detail.php');
-    expect(c).toContain('data-hls-url');
-    expect(c).toContain('$hls_fallback_url');
+    expect(c).toContain('data-fallback-url');
+    expect(c).toContain('$fallback_url');
   });
 });
 
@@ -117,9 +117,9 @@ test.describe('JS error handler retries with HLS fallback', () => {
     expect(c).toContain(', true)');
   });
 
-  test('desktop: error handler reads data-hls-url from dataset', () => {
+  test('desktop: error handler reads data-fallback-url from dataset', () => {
     const c = readFile('views/video_review_detail.php');
-    expect(c).toContain('dataset.hlsUrl');
+    expect(c).toContain('dataset.fallbackUrl');
   });
 
   test('desktop: error handler calls awInitHlsPlayer with HLS URL', () => {
@@ -133,7 +133,7 @@ test.describe('JS error handler retries with HLS fallback', () => {
   test('desktop: error handler prevents infinite retry loop', () => {
     const c = readFile('views/video_review_detail.php');
     // Should have a flag to prevent multiple fallback attempts
-    expect(c).toContain('_hlsFallbackTried');
+    expect(c).toContain('_fallbackTried');
   });
 
   test('PWA: registers error event listener on video element', () => {
@@ -142,9 +142,9 @@ test.describe('JS error handler retries with HLS fallback', () => {
     expect(c).toContain(', true)');
   });
 
-  test('PWA: error handler reads data-hls-url from dataset', () => {
+  test('PWA: error handler reads data-fallback-url from dataset', () => {
     const c = readFile('views/pwa/video_review_detail.php');
-    expect(c).toContain('dataset.hlsUrl');
+    expect(c).toContain('dataset.fallbackUrl');
   });
 
   test('PWA: error handler calls awInitHlsPlayer with HLS URL', () => {
@@ -156,7 +156,7 @@ test.describe('JS error handler retries with HLS fallback', () => {
 
   test('PWA: error handler prevents infinite retry loop', () => {
     const c = readFile('views/pwa/video_review_detail.php');
-    expect(c).toContain('_hlsFallbackTried');
+    expect(c).toContain('_fallbackTried');
   });
 });
 
