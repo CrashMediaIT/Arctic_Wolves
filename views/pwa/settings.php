@@ -111,16 +111,6 @@ try {
         <div class="m-settings-card">
             <div class="m-settings-item">
                 <div class="m-settings-item-left">
-                    <span class="m-settings-item-icon"><i class="fas fa-moon"></i></span>
-                    <div>
-                        <div class="m-settings-item-label">Dark Mode</div>
-                        <div class="m-settings-item-desc">Always on for PWA</div>
-                    </div>
-                </div>
-                <button class="m-settings-toggle m-toggle-on" onclick="this.classList.toggle('m-toggle-on')" type="button"></button>
-            </div>
-            <div class="m-settings-item">
-                <div class="m-settings-item-left">
                     <span class="m-settings-item-icon"><i class="fas fa-text-height"></i></span>
                     <div>
                         <div class="m-settings-item-label">Large Text</div>

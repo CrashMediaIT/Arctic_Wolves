@@ -126,12 +126,6 @@ try {
             $colors = [
                 'primary_color' => $_POST['primary_color'] ?? '#6B46C1',
                 'secondary_color' => $_POST['secondary_color'] ?? '#c0c0c0',
-                'background_color' => $_POST['background_color'] ?? '#0A0A0F',
-                'card_background_color' => $_POST['card_background_color'] ?? '#16161F',
-                'text_color' => $_POST['text_color'] ?? '#ffffff',
-                'text_muted_color' => $_POST['text_muted_color'] ?? '#A8A8B8',
-                'border_color' => $_POST['border_color'] ?? '#2D2D3F',
-                'sidebar_color' => $_POST['sidebar_color'] ?? '#020305',
                 'button_hover_color' => $_POST['button_hover_color'] ?? '#a78bfa',
                 'success_color' => $_POST['success_color'] ?? '#22c55e',
                 'error_color' => $_POST['error_color'] ?? '#ef4444',
@@ -372,12 +366,6 @@ try {
             $defaults = [
                 'primary_color' => '#6B46C1',
                 'secondary_color' => '#c0c0c0',
-                'background_color' => '#0A0A0F',
-                'card_background_color' => '#16161F',
-                'text_color' => '#ffffff',
-                'text_muted_color' => '#A8A8B8',
-                'border_color' => '#2D2D3F',
-                'sidebar_color' => '#020305',
                 'button_hover_color' => '#a78bfa',
                 'success_color' => '#22c55e',
                 'error_color' => '#ef4444',
@@ -396,11 +384,10 @@ try {
         case 'update_theme':
         case 'save_theme':
             // Handle theme update from system_tools theme tab
-            // Process colors - check for both 'background_color' and 'bg_color' keys
+            // Process brand colors only
             $colors = [
                 'primary_color' => $_POST['primary_color'] ?? null,
                 'secondary_color' => $_POST['secondary_color'] ?? null,
-                'background_color' => $_POST['background_color'] ?? $_POST['bg_color'] ?? null
             ];
             
             foreach ($colors as $name => $value) {
@@ -500,9 +487,8 @@ try {
             
             // 1. Process colors
             $color_names = [
-                'primary_color', 'secondary_color', 'background_color',
-                'card_background_color', 'text_color', 'text_muted_color',
-                'border_color', 'sidebar_color', 'button_hover_color',
+                'primary_color', 'secondary_color',
+                'button_hover_color',
                 'success_color', 'error_color', 'warning_color'
             ];
             foreach ($color_names as $name) {

@@ -33,12 +33,6 @@ try {
 $defaults = [
     'primary_color' => '#6B46C1',
     'secondary_color' => '#c0c0c0',
-    'background_color' => '#0A0A0F',
-    'card_background_color' => '#16161F',
-    'text_color' => '#ffffff',
-    'text_muted_color' => '#A8A8B8',
-    'border_color' => '#2D2D3F',
-    'sidebar_color' => '#020305',
     'button_hover_color' => '#a78bfa',
     'success_color' => '#22c55e',
     'error_color' => '#ef4444',
@@ -822,87 +816,6 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
                     </div>
                 </div>
                 
-                <!-- Background Colors -->
-                <div class="settings-section">
-                    <h3 class="section-title">
-                        <i class="fas fa-fill-drip"></i>
-                        Background Colors
-                    </h3>
-                    <div class="color-input-group">
-                        <div class="color-field">
-                            <label>Main Background</label>
-                            <div class="color-picker-wrapper">
-                                <div class="color-swatch" style="background: <?= htmlspecialchars($colors['background_color']) ?>;" onclick="document.getElementById('background_color_picker').click()"></div>
-                                <input type="text" class="color-hex-input" name="background_color" value="<?= htmlspecialchars($colors['background_color']) ?>" pattern="^#[0-9A-Fa-f]{6}$" required>
-                                <input type="color" id="background_color_picker" class="color-picker" value="<?= htmlspecialchars($colors['background_color']) ?>">
-                            </div>
-                        </div>
-                        
-                        <div class="color-field">
-                            <label>Card Background</label>
-                            <div class="color-picker-wrapper">
-                                <div class="color-swatch" style="background: <?= htmlspecialchars($colors['card_background_color']) ?>;" onclick="document.getElementById('card_background_color_picker').click()"></div>
-                                <input type="text" class="color-hex-input" name="card_background_color" value="<?= htmlspecialchars($colors['card_background_color']) ?>" pattern="^#[0-9A-Fa-f]{6}$" required>
-                                <input type="color" id="card_background_color_picker" class="color-picker" value="<?= htmlspecialchars($colors['card_background_color']) ?>">
-                            </div>
-                        </div>
-                        
-                        <div class="color-field">
-                            <label>Sidebar Background</label>
-                            <div class="color-picker-wrapper">
-                                <div class="color-swatch" style="background: <?= htmlspecialchars($colors['sidebar_color']) ?>;" onclick="document.getElementById('sidebar_color_picker').click()"></div>
-                                <input type="text" class="color-hex-input" name="sidebar_color" value="<?= htmlspecialchars($colors['sidebar_color']) ?>" pattern="^#[0-9A-Fa-f]{6}$" required>
-                                <input type="color" id="sidebar_color_picker" class="color-picker" value="<?= htmlspecialchars($colors['sidebar_color']) ?>">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Text Colors -->
-                <div class="settings-section">
-                    <h3 class="section-title">
-                        <i class="fas fa-font"></i>
-                        Text Colors
-                    </h3>
-                    <div class="color-input-group">
-                        <div class="color-field">
-                            <label>Primary Text</label>
-                            <div class="color-picker-wrapper">
-                                <div class="color-swatch" style="background: <?= htmlspecialchars($colors['text_color']) ?>;" onclick="document.getElementById('text_color_picker').click()"></div>
-                                <input type="text" class="color-hex-input" name="text_color" value="<?= htmlspecialchars($colors['text_color']) ?>" pattern="^#[0-9A-Fa-f]{6}$" required>
-                                <input type="color" id="text_color_picker" class="color-picker" value="<?= htmlspecialchars($colors['text_color']) ?>">
-                            </div>
-                        </div>
-                        
-                        <div class="color-field">
-                            <label>Muted Text</label>
-                            <div class="color-picker-wrapper">
-                                <div class="color-swatch" style="background: <?= htmlspecialchars($colors['text_muted_color']) ?>;" onclick="document.getElementById('text_muted_color_picker').click()"></div>
-                                <input type="text" class="color-hex-input" name="text_muted_color" value="<?= htmlspecialchars($colors['text_muted_color']) ?>" pattern="^#[0-9A-Fa-f]{6}$" required>
-                                <input type="color" id="text_muted_color_picker" class="color-picker" value="<?= htmlspecialchars($colors['text_muted_color']) ?>">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- UI Colors -->
-                <div class="settings-section">
-                    <h3 class="section-title">
-                        <i class="fas fa-border-style"></i>
-                        UI Colors
-                    </h3>
-                    <div class="color-input-group">
-                        <div class="color-field">
-                            <label>Border Color</label>
-                            <div class="color-picker-wrapper">
-                                <div class="color-swatch" style="background: <?= htmlspecialchars($colors['border_color']) ?>;" onclick="document.getElementById('border_color_picker').click()"></div>
-                                <input type="text" class="color-hex-input" name="border_color" value="<?= htmlspecialchars($colors['border_color']) ?>" pattern="^#[0-9A-Fa-f]{6}$" required>
-                                <input type="color" id="border_color_picker" class="color-picker" value="<?= htmlspecialchars($colors['border_color']) ?>">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
                 <!-- Status Colors -->
                 <div class="settings-section">
                     <h3 class="section-title">
@@ -1445,12 +1358,6 @@ function updatePreview() {
     const container = document.getElementById('previewContainer');
     
     container.style.setProperty('--primary', formData.get('primary_color'));
-    container.style.setProperty('--bg', formData.get('background_color'));
-    container.style.setProperty('--card-bg', formData.get('card_background_color'));
-    container.style.setProperty('--sidebar', formData.get('sidebar_color'));
-    container.style.setProperty('--text-color', formData.get('text_color'));
-    container.style.setProperty('--text-muted', formData.get('text_muted_color'));
-    container.style.setProperty('--border', formData.get('border_color'));
     container.style.setProperty('--button-hover', formData.get('button_hover_color'));
     container.style.setProperty('--success', formData.get('success_color'));
     container.style.setProperty('--error', formData.get('error_color'));
