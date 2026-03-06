@@ -34,6 +34,8 @@ CREATE TABLE IF NOT EXISTS jobs (
     output_prefix    TEXT DEFAULT '',
     output           TEXT DEFAULT '',
     hls_manifest     TEXT,
+    dash_manifest    TEXT,
+    segments_path    TEXT DEFAULT '',
     variants         TEXT DEFAULT '[]',
     video_id         TEXT,
     source_id        TEXT,
@@ -69,7 +71,8 @@ class JobStore:
     # Columns that live in the *jobs* table (everything except ``log``).
     _JOB_COLUMNS = (
         "id", "status", "description", "source_key", "output_prefix",
-        "output", "hls_manifest", "variants", "video_id", "source_id",
+        "output", "hls_manifest", "dash_manifest", "segments_path",
+        "variants", "video_id", "source_id",
         "callback_url", "delete_original", "callback_ok",
         "callback_confirmed", "original_deleted", "retry_of",
         "created_at", "started_at", "finished_at", "error",
@@ -111,6 +114,17 @@ class JobStore:
         conn = self._get_conn()
         conn.executescript(_SCHEMA_SQL)
         conn.commit()
+        # Migrate existing tables: add columns that may not exist yet.
+        # Note: col/coldef are from a hardcoded tuple — not user input.
+        for col, coldef in (
+            ("dash_manifest", "TEXT"),
+            ("segments_path", "TEXT DEFAULT ''"),
+        ):
+            try:
+                conn.execute(f"ALTER TABLE jobs ADD COLUMN {col} {coldef}")
+                conn.commit()
+            except sqlite3.OperationalError:
+                pass  # column already exists
 
     # -- public API -----------------------------------------------------------
 
