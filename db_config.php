@@ -175,6 +175,18 @@ if ($db_connected && $pdo) {
         $tz_value = $_aw_settings['timezone'] ?? '';
         $_app_time_offset = (int)($_aw_settings['app_time_offset'] ?? 0);
 
+        // Fallback chain when no timezone stored in DB:
+        // 1. TZ environment variable (often set in Docker Compose)
+        // 2. Application default (matches admin_system_tools.php defaults)
+        if (empty($tz_value)) {
+            $env_tz = getenv('TZ');
+            if (!empty($env_tz) && in_array($env_tz, timezone_identifiers_list())) {
+                $tz_value = $env_tz;
+            } else {
+                $tz_value = 'America/New_York';
+            }
+        }
+
         if (!empty($tz_value) && in_array($tz_value, timezone_identifiers_list())) {
             date_default_timezone_set($tz_value);
 

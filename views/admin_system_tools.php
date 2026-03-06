@@ -450,18 +450,39 @@ foreach ($url_keys as $uk) {
                     var csrfToken = csrfInput ? csrfInput.value : '';
                     var offsetSeconds = <?php echo $app_offset; ?>;
 
+                    // Server-anchored clock: use server UTC timestamp + server TZ offset
+                    // so the display always matches the server's configured timezone,
+                    // regardless of the browser's local timezone.
+                    var serverTimestamp = <?php echo time(); ?>;
+                    var serverTzOffset = <?php echo date('Z'); ?>;
+                    var pageLoadClient = Date.now();
+
+                    function formatUtcDate(d) {
+                        var y  = d.getUTCFullYear();
+                        var mo = String(d.getUTCMonth() + 1).padStart(2, '0');
+                        var dy = String(d.getUTCDate()).padStart(2, '0');
+                        var h  = String(d.getUTCHours()).padStart(2, '0');
+                        var mi = String(d.getUTCMinutes()).padStart(2, '0');
+                        var s  = String(d.getUTCSeconds()).padStart(2, '0');
+                        return y + '-' + mo + '-' + dy + ' ' + h + ':' + mi + ':' + s;
+                    }
+
                     // Live clock tick
                     function tickClock() {
-                        var now = new Date(Date.now() + offsetSeconds * 1000);
-                        var el = document.getElementById('app-clock');
-                        if (el) {
-                            var y = now.getFullYear();
-                            var mo = String(now.getMonth() + 1).padStart(2, '0');
-                            var d = String(now.getDate()).padStart(2, '0');
-                            var h = String(now.getHours()).padStart(2, '0');
-                            var mi = String(now.getMinutes()).padStart(2, '0');
-                            var s = String(now.getSeconds()).padStart(2, '0');
-                            el.textContent = y + '-' + mo + '-' + d + ' ' + h + ':' + mi + ':' + s;
+                        var elapsedSec = (Date.now() - pageLoadClient) / 1000;
+
+                        // Application time: server UTC + app offset + elapsed, in server TZ
+                        var appUtcSec = serverTimestamp + offsetSeconds + elapsedSec;
+                        var appEl = document.getElementById('app-clock');
+                        if (appEl) {
+                            appEl.textContent = formatUtcDate(new Date((appUtcSec + serverTzOffset) * 1000));
+                        }
+
+                        // System clock: server UTC + elapsed, in server TZ (no app offset)
+                        var sysUtcSec = serverTimestamp + elapsedSec;
+                        var sysEl = document.getElementById('sys-clock');
+                        if (sysEl) {
+                            sysEl.textContent = formatUtcDate(new Date((sysUtcSec + serverTzOffset) * 1000));
                         }
                     }
                     setInterval(tickClock, 1000);
