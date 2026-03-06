@@ -285,7 +285,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Fallback: if the primary source fails (e.g. 502 because companion
     // deleted the original after HLS transcode), retry with the HLS URL.
-    video.addEventListener('error', function() {
+    video.addEventListener('error', function(e) {
+        if (e && e.target !== video) return;
         if (_gpClipFallbackUrl && !_gpClipFallbackTried) {
             _gpClipFallbackTried = true;
             if (gpClipsHls) { gpClipsHls.destroy(); gpClipsHls = null; }

@@ -935,7 +935,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // (the failure may have been transient, e.g. a temporary buffer error).
     var vpReloadTried = false;
     if (vpVideo) {
-        vpVideo.addEventListener('error', function() {
+        vpVideo.addEventListener('error', function(e) {
+            // Ignore errors from <source> child elements — when HLS.js manages
+            // playback via MSE the native <source> fires a spurious error because
+            // the browser cannot play .m3u8 natively.
+            if (e && e.target !== vpVideo) return;
             var diagState = { primaryUrl: vpPrimaryUrl, fallbackUrl: vpFallbackUrl, fallbackTried: vpFallbackTried, reloadTried: vpReloadTried };
             if (vpFallbackUrl && !vpFallbackTried) {
                 vpFallbackTried = true;

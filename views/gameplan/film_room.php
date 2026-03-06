@@ -919,7 +919,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Fallback: if the primary source fails (e.g. 502 because companion
         // deleted the original after HLS transcode), retry with the HLS URL.
         var _filmFallbackTried = false;
-        player.addEventListener('error', function() {
+        player.addEventListener('error', function(e) {
+            if (e && e.target !== player) return;
             var hlsUrl = player.dataset.fallbackUrl;
             if (hlsUrl && !_filmFallbackTried) {
                 _filmFallbackTried = true;

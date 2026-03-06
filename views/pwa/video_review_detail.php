@@ -389,7 +389,13 @@ document.addEventListener('DOMContentLoaded', function() {
     if (detailPlayer) {
         var _fallbackTried = false;
         var _reloadTried = false;
-        detailPlayer.addEventListener('error', function() {
+        detailPlayer.addEventListener('error', function(e) {
+            // Ignore errors from <source> child elements — when HLS.js manages
+            // playback via MSE the native <source> fires a spurious error because
+            // the browser cannot play .m3u8 natively.  HLS.js handles its own
+            // errors and dispatches an error event on the <video> element when
+            // recovery is exhausted.
+            if (e && e.target !== detailPlayer) return;
             var hlsUrl = detailPlayer.dataset.fallbackUrl;
             var srcEl = detailPlayer.querySelector('source');
             var diagState = { primaryUrl: _detailPrimaryUrl, fallbackUrl: hlsUrl || '', fallbackTried: _fallbackTried, reloadTried: _reloadTried, currentSrc: srcEl ? srcEl.getAttribute('src') : '' };
