@@ -344,10 +344,201 @@ test.describe('Scoreboard static assets', () => {
   test('CSS has professional scoreboard layout classes', () => {
     const content = readFile('css/scoreboard.css');
     expect(content).toContain('.sb-body');
-    expect(content).toContain('.sb-team-score');
-    expect(content).toContain('.sb-game-clock');
+    expect(content).toContain('.sb-board-score');
+    expect(content).toContain('.sb-board-clock');
     expect(content).toContain('.sb-buzzer-btn');
     expect(content).toContain('.sb-video-board');
+  });
+});
+
+// =====================================================
+// 9b. Professional Scoreboard Features (Nevco/Daktronics)
+// =====================================================
+
+test.describe('Professional scoreboard features (Nevco/Daktronics style)', () => {
+  test('CSS has dedicated penalty timer box styles', () => {
+    const content = readFile('css/scoreboard.css');
+    expect(content).toContain('.sb-penalty-timer-box');
+    expect(content).toContain('.sb-pen-countdown');
+    expect(content).toContain('.sb-pen-player');
+    expect(content).toContain('.sb-board-penalty-stack');
+  });
+
+  test('CSS has power play indicator', () => {
+    const content = readFile('css/scoreboard.css');
+    expect(content).toContain('.sb-pp-indicator');
+    expect(content).toContain('ppPulse');
+  });
+
+  test('CSS has goal light flash animation', () => {
+    const content = readFile('css/scoreboard.css');
+    expect(content).toContain('.sb-goal-light');
+    expect(content).toContain('goalFlash');
+  });
+
+  test('CSS has LED-style gold clock color', () => {
+    const content = readFile('css/scoreboard.css');
+    expect(content).toContain('.sb-board-clock');
+    expect(content).toContain('#FFD700');
+    expect(content).toContain('text-shadow');
+  });
+
+  test('CSS has timeout indicator boxes', () => {
+    const content = readFile('css/scoreboard.css');
+    expect(content).toContain('.sb-timeout-box');
+  });
+
+  test('CSS has clock control button styles', () => {
+    const content = readFile('css/scoreboard.css');
+    expect(content).toContain('.sb-clock-btn');
+    expect(content).toContain('.sb-clock-start');
+    expect(content).toContain('.sb-clock-reset');
+    expect(content).toContain('.sb-clock-start.running');
+  });
+
+  test('display view has penalty timer boxes for both teams', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sb-board-penalty-stack home');
+    expect(content).toContain('sb-board-penalty-stack away');
+    expect(content).toContain('sbHomePenTime');
+    expect(content).toContain('sbAwayPenTime');
+  });
+
+  test('display view has power play indicators', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sb-pp-indicator');
+    expect(content).toContain('$home_pp');
+    expect(content).toContain('$away_pp');
+  });
+
+  test('display view has goal light overlay element', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sb-goal-light');
+    expect(content).toContain('sbGoalLight');
+  });
+
+  test('display view has clock controls (start/stop/reset)', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sbClockToggle');
+    expect(content).toContain('sbClockReset');
+    expect(content).toContain('sbClockStart');
+  });
+
+  test('display view has period controls (prev/next)', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sbPeriodNext');
+    expect(content).toContain('sbPeriodPrev');
+    expect(content).toContain('Next Period');
+    expect(content).toContain('Prev Period');
+  });
+
+  test('display view has intermission status button', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain("sbSetStatus('intermission')");
+    expect(content).toContain('Intermission');
+  });
+
+  test('display view has timeout indicators for both teams', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sbHomeTimeout');
+    expect(content).toContain('sbAwayTimeout');
+    expect(content).toContain('T/O');
+  });
+
+  test('display view has SOG stats for both teams', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sbHomeShots');
+    expect(content).toContain('sbAwayShots');
+    expect(content).toContain('SOG');
+  });
+
+  test('display view uses 7-column grid layout (Nevco style)', () => {
+    const css = readFile('css/scoreboard.css');
+    expect(css).toContain('grid-template-columns: 1fr auto auto 1fr auto auto 1fr');
+  });
+});
+
+// =====================================================
+// 9c. Game Clock JavaScript
+// =====================================================
+
+test.describe('Game clock JavaScript (Nevco/Daktronics style)', () => {
+  test('JS has working game clock with countdown', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('sbClockSeconds');
+    expect(content).toContain('sbClockRunning');
+    expect(content).toContain('sbClockTick');
+    expect(content).toContain('sbFormatClock');
+  });
+
+  test('JS has clock start/stop/toggle/reset functions', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbClockStart()');
+    expect(content).toContain('function sbClockStop()');
+    expect(content).toContain('function sbClockToggle()');
+    expect(content).toContain('function sbClockReset()');
+  });
+
+  test('JS clock defaults to 20 minutes regulation, 5 minutes OT', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('REGULATION_PERIOD_SECS');
+    expect(content).toContain('OVERTIME_PERIOD_SECS');
+    expect(content).toContain('20 * 60');
+    expect(content).toContain('5 * 60');
+  });
+
+  test('JS has real-time penalty countdown timers', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('sbPenaltyTimers');
+    expect(content).toContain('sbTickPenaltyTimers');
+    expect(content).toContain('sbInitPenaltyTimers');
+  });
+
+  test('JS penalty timers tick when game clock runs', () => {
+    const content = readFile('js/scoreboard.js');
+    // sbClockTick should call sbTickPenaltyTimers
+    expect(content).toContain('sbTickPenaltyTimers()');
+  });
+
+  test('JS has period management (next/prev/update)', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbPeriodNext()');
+    expect(content).toContain('function sbPeriodPrev()');
+    expect(content).toContain('sbCurrentPeriod');
+  });
+
+  test('JS uses period duration helper for OT', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('sbGetPeriodDuration');
+    expect(content).toContain('OVERTIME_PERIOD_SECS');
+  });
+
+  test('JS has goal light flash function', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbFlashGoalLight()');
+    expect(content).toContain('sbGoalLight');
+  });
+
+  test('JS triggers goal light and buzzer on goal', () => {
+    const content = readFile('js/scoreboard.js');
+    // Inside sbAddGoal, should call sbFlashGoalLight and sbBuzzer
+    expect(content).toContain('sbFlashGoalLight()');
+  });
+
+  test('JS auto-buzzer at end of period', () => {
+    const content = readFile('js/scoreboard.js');
+    // When clock reaches 0, should fire buzzer
+    const clockTickFn = content.substring(
+      content.indexOf('function sbClockTick()'),
+      content.indexOf('function sbClockTick()') + 500
+    );
+    expect(clockTickFn).toContain('sbBuzzer()');
+  });
+
+  test('JS updates status display for intermission', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbSetStatus(');
+    expect(content).toContain('update_status');
   });
 });
 

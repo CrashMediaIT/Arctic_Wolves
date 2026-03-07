@@ -1,9 +1,35 @@
 <?php
 /**
- * Scoreboard Display View
- * Primary arena display with score, clock, controls, penalties, and music.
+ * Scoreboard Display View – Professional Arena Layout
+ *
+ * Modeled after Nevco 4770 / Daktronics hockey scoreboards:
+ *   - Large score & game clock in center panel
+ *   - Dedicated penalty timer boxes (2 per team) with player # + countdown
+ *   - Power Play / Short Handed indicators
+ *   - Shots on Goal per team
+ *   - Timeout indicators
+ *   - Goal light flash animation
+ *   - Working game clock with operator controls
  */
+
+// Separate home/away penalties for the penalty box display (most recent 2 per team)
+$home_penalties = array_filter($game_penalties, function($p) { return ($p['team'] ?? '') === 'home'; });
+$away_penalties = array_filter($game_penalties, function($p) { return ($p['team'] ?? '') === 'away'; });
+$home_penalties = array_values($home_penalties);
+$away_penalties = array_values($away_penalties);
+// Most recent 2 for display
+$home_pen_display = array_slice($home_penalties, -2);
+$away_pen_display = array_slice($away_penalties, -2);
+// Power play status
+$home_active_pens = count($home_penalties);
+$away_active_pens = count($away_penalties);
+$home_pp = ($away_active_pens > 0 && $away_active_pens > $home_active_pens);
+$away_pp = ($home_active_pens > 0 && $home_active_pens > $away_active_pens);
 ?>
+
+<!-- Goal light overlay -->
+<div class="sb-goal-light" id="sbGoalLight"></div>
+
 <div class="sb-topbar">
     <div class="sb-topbar-brand">
         <img src="<?= htmlspecialchars($site_logo_url) ?>" alt="Arctic Wolves">
@@ -33,33 +59,107 @@
 </div>
 
 <?php else: ?>
-<!-- Active Scoreboard -->
+<!-- ═══════════════════════════════════════════════════════
+     PROFESSIONAL ARENA SCOREBOARD (Nevco / Daktronics style)
+     ═══════════════════════════════════════════════════════ -->
 <div class="sb-main">
-    <!-- Score Display -->
-    <div class="sb-score-area">
-        <div class="sb-team home">
-            <div class="sb-team-name"><?= htmlspecialchars($active_game['home_team_name'] ?? 'Home') ?></div>
-            <div class="sb-team-score" id="sbHomeScore"><?= $home_score ?></div>
-            <div class="sb-team-shots">SOG: <span id="sbHomeShots"><?= $home_shots ?></span></div>
-        </div>
 
-        <div class="sb-center-display">
-            <div class="sb-period" id="sbPeriod">Period <?= htmlspecialchars($active_game['current_period'] ?? '1') ?></div>
-            <div class="sb-game-clock" id="sbGameClock">20:00</div>
-            <div class="sb-game-status <?= ($active_game['status'] === 'intermission') ? 'intermission' : '' ?>" id="sbStatus">
-                <?= htmlspecialchars(ucfirst($active_game['status'] ?? 'warmup')) ?>
+    <!-- ── Top Board: Score + Clock + Penalty Timers ────── -->
+    <div class="sb-board">
+
+        <!-- HOME TEAM SIDE -->
+        <div class="sb-board-team home">
+            <div class="sb-board-team-header">
+                <span class="sb-board-label">HOME</span>
+                <?php if ($home_pp): ?><span class="sb-pp-indicator">PP</span><?php endif; ?>
+            </div>
+            <div class="sb-board-team-name"><?= htmlspecialchars($active_game['home_team_name'] ?? 'Home') ?></div>
+            <div class="sb-board-score" id="sbHomeScore"><?= $home_score ?></div>
+            <div class="sb-board-stats">
+                <div class="sb-stat-box">
+                    <span class="sb-stat-label">SOG</span>
+                    <span class="sb-stat-value" id="sbHomeShots"><?= $home_shots ?></span>
+                </div>
+                <div class="sb-stat-box sb-timeout-box" id="sbHomeTimeout">
+                    <span class="sb-stat-label">T/O</span>
+                    <span class="sb-stat-value">●</span>
+                </div>
             </div>
         </div>
 
-        <div class="sb-team away">
-            <div class="sb-team-name"><?= htmlspecialchars($active_game['away_team_name'] ?? 'Away') ?></div>
-            <div class="sb-team-score" id="sbAwayScore"><?= $away_score ?></div>
-            <div class="sb-team-shots">SOG: <span id="sbAwayShots"><?= $away_shots ?></span></div>
+        <!-- HOME PENALTY BOX -->
+        <div class="sb-board-penalty-stack home">
+            <div class="sb-penalty-timer-label">HOME PENALTIES</div>
+            <?php for ($i = 0; $i < 2; $i++): ?>
+            <div class="sb-penalty-timer-box <?= isset($home_pen_display[$i]) ? 'active' : '' ?>" id="sbHomePen<?= $i ?>">
+                <span class="sb-pen-player"><?= isset($home_pen_display[$i]) ? '#' . htmlspecialchars($home_pen_display[$i]['player_number'] ?? '?') : '—' ?></span>
+                <span class="sb-pen-countdown" id="sbHomePenTime<?= $i ?>"><?= isset($home_pen_display[$i]) ? htmlspecialchars($home_pen_display[$i]['duration_minutes'] ?? '2') . ':00' : '--:--' ?></span>
+            </div>
+            <?php endfor; ?>
         </div>
-    </div>
 
-    <!-- Control Panels -->
+        <!-- CENTER CLOCK -->
+        <div class="sb-board-center">
+            <div class="sb-board-period" id="sbPeriod">
+                <span class="sb-period-label">PERIOD</span>
+                <span class="sb-period-value"><?= htmlspecialchars($active_game['current_period'] ?? '1') ?></span>
+            </div>
+            <div class="sb-board-clock" id="sbGameClock">20:00</div>
+            <div class="sb-board-status <?= ($active_game['status'] === 'intermission') ? 'intermission' : '' ?>" id="sbStatus">
+                <?= htmlspecialchars(strtoupper($active_game['status'] ?? 'WARMUP')) ?>
+            </div>
+        </div>
+
+        <!-- AWAY PENALTY BOX -->
+        <div class="sb-board-penalty-stack away">
+            <div class="sb-penalty-timer-label">AWAY PENALTIES</div>
+            <?php for ($i = 0; $i < 2; $i++): ?>
+            <div class="sb-penalty-timer-box <?= isset($away_pen_display[$i]) ? 'active' : '' ?>" id="sbAwayPen<?= $i ?>">
+                <span class="sb-pen-player"><?= isset($away_pen_display[$i]) ? '#' . htmlspecialchars($away_pen_display[$i]['player_number'] ?? '?') : '—' ?></span>
+                <span class="sb-pen-countdown" id="sbAwayPenTime<?= $i ?>"><?= isset($away_pen_display[$i]) ? htmlspecialchars($away_pen_display[$i]['duration_minutes'] ?? '2') . ':00' : '--:--' ?></span>
+            </div>
+            <?php endfor; ?>
+        </div>
+
+        <!-- AWAY TEAM SIDE -->
+        <div class="sb-board-team away">
+            <div class="sb-board-team-header">
+                <?php if ($away_pp): ?><span class="sb-pp-indicator">PP</span><?php endif; ?>
+                <span class="sb-board-label">GUEST</span>
+            </div>
+            <div class="sb-board-team-name"><?= htmlspecialchars($active_game['away_team_name'] ?? 'Away') ?></div>
+            <div class="sb-board-score" id="sbAwayScore"><?= $away_score ?></div>
+            <div class="sb-board-stats">
+                <div class="sb-stat-box sb-timeout-box" id="sbAwayTimeout">
+                    <span class="sb-stat-label">T/O</span>
+                    <span class="sb-stat-value">●</span>
+                </div>
+                <div class="sb-stat-box">
+                    <span class="sb-stat-label">SOG</span>
+                    <span class="sb-stat-value" id="sbAwayShots"><?= $away_shots ?></span>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /.sb-board -->
+
+    <!-- ── Operator Control Panels ─────────────────────── -->
     <div class="sb-controls">
+
+        <!-- Clock Controls -->
+        <div class="sb-panel sb-panel-clock">
+            <div class="sb-panel-title"><i class="fas fa-clock"></i> Clock &amp; Period</div>
+            <div class="sb-clock-controls">
+                <button class="sb-clock-btn sb-clock-start" id="sbClockStart" onclick="sbClockToggle()"><i class="fas fa-play"></i> Start</button>
+                <button class="sb-clock-btn sb-clock-reset" onclick="sbClockReset()"><i class="fas fa-redo"></i> Reset 20:00</button>
+            </div>
+            <div class="sb-period-controls">
+                <button class="sb-action-btn" onclick="sbPeriodPrev()"><i class="fas fa-chevron-left"></i> Prev Period</button>
+                <button class="sb-action-btn" onclick="sbPeriodNext()"><i class="fas fa-chevron-right"></i> Next Period</button>
+                <button class="sb-action-btn" onclick="sbSetStatus('intermission')" style="grid-column:span 2;"><i class="fas fa-pause-circle"></i> Intermission</button>
+            </div>
+        </div>
+
         <!-- Goals & Shots Panel -->
         <div class="sb-panel">
             <div class="sb-panel-title"><i class="fas fa-hockey-puck"></i> Goals &amp; Shots</div>
@@ -68,8 +168,8 @@
                 <button class="sb-action-btn away-btn" onclick="sbAddGoal('away')"><i class="fas fa-plus-circle"></i> Away Goal</button>
                 <button class="sb-action-btn home-btn" onclick="sbAddShot('home')"><i class="fas fa-bullseye"></i> Home Shot</button>
                 <button class="sb-action-btn away-btn" onclick="sbAddShot('away')"><i class="fas fa-bullseye"></i> Away Shot</button>
-                <button class="sb-action-btn home-btn" onclick="sbUndoGoal('home')"><i class="fas fa-minus-circle"></i> Undo Home Goal</button>
-                <button class="sb-action-btn away-btn" onclick="sbUndoGoal('away')"><i class="fas fa-minus-circle"></i> Undo Away Goal</button>
+                <button class="sb-action-btn home-btn" onclick="sbUndoGoal('home')"><i class="fas fa-minus-circle"></i> Undo Goal</button>
+                <button class="sb-action-btn away-btn" onclick="sbUndoGoal('away')"><i class="fas fa-minus-circle"></i> Undo Goal</button>
                 <button class="sb-buzzer-btn" id="sbBuzzerBtn" onclick="sbBuzzer()"><i class="fas fa-bullhorn"></i> BUZZER / HORN</button>
             </div>
         </div>

@@ -1,9 +1,12 @@
 /**
  * Arctic Wolves – Scoreboard Module JavaScript
  *
- * Handles all client-side interactivity:
+ * Professional scoreboard controller (Nevco / Daktronics style):
+ * - Working game clock with start/stop/reset
+ * - Real-time penalty countdown timers
+ * - Goal light flash animation
  * - Goal / shot / penalty tracking via AJAX
- * - Game clock management
+ * - Period management
  * - Buzzer / horn triggering
  * - Video board source switching
  * - Music integration (Spotify / Subsonic)
@@ -28,12 +31,212 @@ function sbFetch(action, data) {
     }).then(function(r) { return r.json(); });
 }
 
+// ══════════════════════════════════════════════════════════
+// GAME CLOCK – Countdown timer (20:00 per period)
+// ══════════════════════════════════════════════════════════
+var REGULATION_PERIOD_SECS = 20 * 60; // 1200 seconds = 20 min
+var OVERTIME_PERIOD_SECS = 5 * 60;    // 300 seconds = 5 min OT
+var sbClockSeconds = REGULATION_PERIOD_SECS;
+var sbClockRunning = false;
+var sbClockInterval = null;
+
+function sbGetPeriodDuration(period) {
+    return (period <= 3) ? REGULATION_PERIOD_SECS : OVERTIME_PERIOD_SECS;
+}
+
+function sbFormatClock(totalSeconds) {
+    var m = Math.floor(totalSeconds / 60);
+    var s = totalSeconds % 60;
+    return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+}
+
+function sbUpdateClockDisplay() {
+    var el = document.getElementById('sbGameClock');
+    if (el) el.textContent = sbFormatClock(sbClockSeconds);
+}
+
+function sbClockTick() {
+    if (sbClockSeconds > 0) {
+        sbClockSeconds--;
+        sbUpdateClockDisplay();
+        // Also tick penalty timers
+        sbTickPenaltyTimers();
+    } else {
+        // Period ended
+        sbClockStop();
+        sbBuzzer(); // Auto-buzzer at end of period
+    }
+}
+
+function sbClockStart() {
+    if (sbClockRunning) return;
+    sbClockRunning = true;
+    sbClockInterval = setInterval(sbClockTick, 1000);
+    var btn = document.getElementById('sbClockStart');
+    if (btn) {
+        btn.innerHTML = '<i class="fas fa-pause"></i> Stop';
+        btn.classList.add('running');
+    }
+    // Update game status
+    var statusEl = document.getElementById('sbStatus');
+    if (statusEl) statusEl.textContent = 'IN PROGRESS';
+}
+
+function sbClockStop() {
+    sbClockRunning = false;
+    if (sbClockInterval) {
+        clearInterval(sbClockInterval);
+        sbClockInterval = null;
+    }
+    var btn = document.getElementById('sbClockStart');
+    if (btn) {
+        btn.innerHTML = '<i class="fas fa-play"></i> Start';
+        btn.classList.remove('running');
+    }
+}
+
+function sbClockToggle() {
+    if (sbClockRunning) {
+        sbClockStop();
+    } else {
+        sbClockStart();
+    }
+}
+
+function sbClockReset() {
+    sbClockStop();
+    sbClockSeconds = sbGetPeriodDuration(sbCurrentPeriod);
+    sbUpdateClockDisplay();
+}
+
+// ══════════════════════════════════════════════════════════
+// PENALTY COUNTDOWN TIMERS
+// ══════════════════════════════════════════════════════════
+var sbPenaltyTimers = {
+    home: [null, null], // [{seconds, element}, ...]
+    away: [null, null]
+};
+
+function sbInitPenaltyTimers() {
+    // Initialize from DOM if penalty boxes have times
+    ['home', 'away'].forEach(function(team) {
+        for (var i = 0; i < 2; i++) {
+            var el = document.getElementById('sb' + (team === 'home' ? 'Home' : 'Away') + 'PenTime' + i);
+            if (el && el.textContent !== '--:--') {
+                var parts = el.textContent.split(':');
+                if (parts.length === 2) {
+                    var secs = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+                    if (secs > 0) {
+                        sbPenaltyTimers[team][i] = { seconds: secs, element: el };
+                    }
+                }
+            }
+        }
+    });
+}
+
+function sbTickPenaltyTimers() {
+    ['home', 'away'].forEach(function(team) {
+        for (var i = 0; i < 2; i++) {
+            var timer = sbPenaltyTimers[team][i];
+            if (timer && timer.seconds > 0) {
+                timer.seconds--;
+                timer.element.textContent = sbFormatClock(timer.seconds);
+                if (timer.seconds === 0) {
+                    // Penalty expired
+                    var box = document.getElementById('sb' + (team === 'home' ? 'Home' : 'Away') + 'Pen' + i);
+                    if (box) box.classList.remove('active');
+                    sbPenaltyTimers[team][i] = null;
+                }
+            }
+        }
+    });
+}
+
+// Init penalty timers on load
+if (document.getElementById('sbHomePenTime0')) {
+    sbInitPenaltyTimers();
+}
+
+// ══════════════════════════════════════════════════════════
+// PERIOD MANAGEMENT
+// ══════════════════════════════════════════════════════════
+var sbCurrentPeriod = 1;
+
+function sbInitPeriod() {
+    var el = document.querySelector('.sb-period-value');
+    if (el) sbCurrentPeriod = parseInt(el.textContent, 10) || 1;
+}
+
+function sbUpdatePeriodDisplay() {
+    var el = document.querySelector('.sb-period-value');
+    if (el) {
+        if (sbCurrentPeriod <= 3) {
+            el.textContent = sbCurrentPeriod;
+        } else if (sbCurrentPeriod === 4) {
+            el.textContent = 'OT';
+        } else {
+            el.textContent = 'SO';
+        }
+    }
+}
+
+function sbPeriodNext() {
+    sbClockStop();
+    if (sbCurrentPeriod < 5) {
+        sbCurrentPeriod++;
+        sbUpdatePeriodDisplay();
+        sbClockSeconds = sbGetPeriodDuration(sbCurrentPeriod);
+        sbUpdateClockDisplay();
+        sbFetch('update_period', { period: sbCurrentPeriod });
+    }
+}
+
+function sbPeriodPrev() {
+    sbClockStop();
+    if (sbCurrentPeriod > 1) {
+        sbCurrentPeriod--;
+        sbUpdatePeriodDisplay();
+        sbClockSeconds = sbGetPeriodDuration(sbCurrentPeriod);
+        sbUpdateClockDisplay();
+        sbFetch('update_period', { period: sbCurrentPeriod });
+    }
+}
+
+function sbSetStatus(status) {
+    var statusEl = document.getElementById('sbStatus');
+    if (statusEl) {
+        statusEl.textContent = status.toUpperCase();
+        statusEl.className = 'sb-board-status' + (status === 'intermission' ? ' intermission' : '');
+    }
+    sbClockStop();
+    sbFetch('update_status', { status: status });
+}
+
+// Init period on load
+sbInitPeriod();
+
+// ══════════════════════════════════════════════════════════
+// GOAL LIGHT FLASH
+// ══════════════════════════════════════════════════════════
+function sbFlashGoalLight() {
+    var light = document.getElementById('sbGoalLight');
+    if (!light) return;
+    light.classList.remove('flash');
+    // Force reflow to restart animation
+    void light.offsetWidth;
+    light.classList.add('flash');
+    setTimeout(function() { light.classList.remove('flash'); }, 1600);
+}
+
 // ── Goal tracking ─────────────────────────────────────────
 function sbAddGoal(team) {
     sbFetch('add_goal', { team: team }).then(function(d) {
         if (d.success) {
             document.getElementById('sbHomeScore').textContent = d.home_score;
             document.getElementById('sbAwayScore').textContent = d.away_score;
+            sbFlashGoalLight();
+            sbBuzzer(); // Horn on goal
         }
     });
 }
