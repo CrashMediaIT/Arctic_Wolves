@@ -473,3 +473,224 @@ test.describe('Marketing View - Development Notifications', () => {
     expect(content).toContain('UPDATE development_notification_templates');
   });
 });
+
+// =====================================================
+// 11. New Feature Tests - Drill Details, Videos, Appointments
+// =====================================================
+
+test.describe('Database Schema - Development Videos & Appointments', () => {
+
+  test('development_program_videos table exists with correct structure', () => {
+    const schema = readFile('database_schema.sql');
+    expect(schema).toContain('CREATE TABLE IF NOT EXISTS `development_program_videos`');
+    expect(schema).toContain('enrollment_id');
+    expect(schema).toContain('athlete_id');
+    expect(schema).toContain('drill_assignment_id');
+    expect(schema).toContain('video_url');
+    expect(schema).toContain('video_upload_path');
+    expect(schema).toContain("'pending_review', 'reviewed', 'feedback_given'");
+    expect(schema).toContain('coach_feedback');
+    expect(schema).toContain('reviewed_by');
+  });
+
+  test('development_appointments table exists with correct structure', () => {
+    const schema = readFile('database_schema.sql');
+    expect(schema).toContain('CREATE TABLE IF NOT EXISTS `development_appointments`');
+    expect(schema).toContain('enrollment_id');
+    expect(schema).toContain('coach_id');
+    expect(schema).toContain('athlete_id');
+    expect(schema).toContain("'call', 'video_call', 'in_person'");
+    expect(schema).toContain('appointment_date');
+    expect(schema).toContain('appointment_time');
+    expect(schema).toContain('duration_minutes');
+    expect(schema).toContain('location');
+    expect(schema).toContain('meeting_url');
+    expect(schema).toContain('phone_number');
+    expect(schema).toContain("'scheduled', 'completed', 'cancelled'");
+  });
+});
+
+test.describe('Athlete Drill Detail View', () => {
+
+  test('my program view has clickable drill cards with detail modal', () => {
+    const content = readFile('views/personal_development_my_program.php');
+    expect(content).toContain('drill-card');
+    expect(content).toContain('openDrillDetail');
+    expect(content).toContain('drill-detail-overlay');
+    expect(content).toContain('drill-detail-modal');
+    expect(content).toContain('drill-detail-content');
+    expect(content).toContain('View Details');
+  });
+
+  test('my program view drill detail shows full drill information', () => {
+    const content = readFile('views/personal_development_my_program.php');
+    expect(content).toContain('get_drill_details');
+    expect(content).toContain('drill_coaching_points');
+    expect(content).toContain('drill_setup');
+    expect(content).toContain('coach_notes');
+    expect(content).toContain('closeDrillDetail');
+  });
+
+  test('my program view drill detail has record video action', () => {
+    const content = readFile('views/personal_development_my_program.php');
+    expect(content).toContain('recordDrillVideo');
+    expect(content).toContain('Record Video');
+    expect(content).toContain('Mark In Progress');
+    expect(content).toContain('Mark Completed');
+  });
+});
+
+test.describe('Athlete Development Video Upload', () => {
+
+  test('my program view has video upload/record options', () => {
+    const content = readFile('views/personal_development_my_program.php');
+    expect(content).toContain('Upload Development Video');
+    expect(content).toContain('dev-upload-section');
+    expect(content).toContain('dev-upload-options');
+    expect(content).toContain('Record Video');
+    expect(content).toContain('Upload Video');
+    expect(content).toContain('submitDevVideo');
+  });
+
+  test('my program view shows previously submitted videos', () => {
+    const content = readFile('views/personal_development_my_program.php');
+    expect(content).toContain('development_program_videos');
+    expect(content).toContain('Your Submitted Videos');
+    expect(content).toContain('video-status');
+    expect(content).toContain('pending_review');
+    expect(content).toContain('coach_feedback');
+  });
+
+  test('process handler supports upload_dev_video action', () => {
+    const content = readFile('process_development_programs.php');
+    expect(content).toContain("case 'upload_dev_video'");
+    expect(content).toContain('handleUploadDevVideo');
+    expect(content).toContain('development_program_videos');
+    expect(content).toContain('dev_video_upload');
+    expect(content).toContain('notifications');
+  });
+});
+
+test.describe('Coach Appointment Scheduling', () => {
+
+  test('development programs view has appointment scheduling form', () => {
+    const content = readFile('views/development_programs.php');
+    expect(content).toContain('Schedule Appointment');
+    expect(content).toContain('appt-type');
+    expect(content).toContain('appt-title');
+    expect(content).toContain('appt-date');
+    expect(content).toContain('appt-time');
+    expect(content).toContain('appt-duration');
+    expect(content).toContain('appt-location');
+    expect(content).toContain('appt-meeting-url');
+    expect(content).toContain('appt-phone');
+    expect(content).toContain('createAppointment');
+  });
+
+  test('development programs view shows athlete uploaded videos', () => {
+    const content = readFile('views/development_programs.php');
+    expect(content).toContain('Athlete Videos');
+    expect(content).toContain('development_program_videos');
+    expect(content).toContain('pending_video_count');
+    expect(content).toContain('dev-video-review-list');
+    expect(content).toContain('coach-video-status');
+  });
+
+  test('development programs view shows existing appointments', () => {
+    const content = readFile('views/development_programs.php');
+    expect(content).toContain('development_appointments');
+    expect(content).toContain('appt-type-badge');
+    expect(content).toContain('cancelAppointment');
+    expect(content).toContain('cancel_appointment');
+  });
+
+  test('process handler supports create_appointment action', () => {
+    const content = readFile('process_development_programs.php');
+    expect(content).toContain("case 'create_appointment'");
+    expect(content).toContain('handleCreateAppointment');
+    expect(content).toContain('development_appointments');
+    expect(content).toContain('dev_appointment');
+    expect(content).toContain('notifications');
+  });
+
+  test('process handler supports cancel_appointment action', () => {
+    const content = readFile('process_development_programs.php');
+    expect(content).toContain("case 'cancel_appointment'");
+    expect(content).toContain('handleCancelAppointment');
+  });
+
+  test('process handler supports get_drill_details action', () => {
+    const content = readFile('process_development_programs.php');
+    expect(content).toContain("case 'get_drill_details'");
+    expect(content).toContain('handleGetDrillDetails');
+    expect(content).toContain('coaching_points');
+    expect(content).toContain('setup');
+  });
+});
+
+test.describe('Development Appointments in Upcoming Sessions', () => {
+
+  test('sessions_upcoming.php fetches development appointments', () => {
+    const content = readFile('views/sessions_upcoming.php');
+    expect(content).toContain('development_appointments');
+    expect(content).toContain('dev_appointments');
+    expect(content).toContain('Development Appointments');
+  });
+
+  test('sessions_upcoming.php displays appointment type badges', () => {
+    const content = readFile('views/sessions_upcoming.php');
+    expect(content).toContain('appointment_type');
+    expect(content).toContain('program_type');
+    expect(content).toContain('Goalie Dev');
+    expect(content).toContain('Player Dev');
+  });
+});
+
+test.describe('Development Appointments in Coach Calendar', () => {
+
+  test('coach calendar fetches development appointments', () => {
+    const content = readFile('views/pwa/coach_calendar.php');
+    expect(content).toContain('development_appointments');
+    expect(content).toContain('is_dev_appointment');
+    expect(content).toContain('program_type');
+  });
+
+  test('coach calendar shows DEV badge for development appointments', () => {
+    const content = readFile('views/pwa/coach_calendar.php');
+    expect(content).toContain('DEV');
+    expect(content).toContain('appointment_type');
+    expect(content).toContain('athlete_first');
+  });
+});
+
+test.describe('Auto-create Development Program Products', () => {
+
+  test('sessions_booking.php auto-creates Goalie Development Program template', () => {
+    const content = readFile('views/sessions_booking.php');
+    expect(content).toContain('Goalie Development Program');
+    expect(content).toContain("'Player Development Program'");
+    expect(content).toContain('training_session_templates');
+    expect(content).toContain('show_on_landing');
+  });
+
+  test('sessions_booking.php displays development programs as first card section', () => {
+    const content = readFile('views/sessions_booking.php');
+    expect(content).toContain('Development Programs');
+    expect(content).toContain('dev-programs-section');
+    expect(content).toContain('Long Term Goalie Development');
+    expect(content).toContain('Long Term Player Development');
+    expect(content).toContain('personal_development_programs');
+    // Verify it appears before Individual Sessions section
+    const devSectionIdx = content.indexOf('dev-programs-section');
+    const sessionsSectionIdx = content.indexOf('sessions-section');
+    expect(devSectionIdx).toBeLessThan(sessionsSectionIdx);
+  });
+
+  test('my program view shows upcoming appointments', () => {
+    const content = readFile('views/personal_development_my_program.php');
+    expect(content).toContain('development_appointments');
+    expect(content).toContain('Upcoming Sessions');
+    expect(content).toContain('appt-date-box');
+    expect(content).toContain('appointment_type');
+  });
+});
