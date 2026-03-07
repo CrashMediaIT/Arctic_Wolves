@@ -326,11 +326,15 @@ test.describe('PWA View Override and Feature Parity', () => {
 
   test('pwa/admin_wishlist.php all fetch calls include X-Requested-With header', () => {
     const content = readFileSync(join(ROOT, 'views', 'pwa', 'admin_wishlist.php'), 'utf-8');
-    // All fetch calls to process_wishlist.php should include X-Requested-With header
-    // to ensure the backend returns JSON instead of redirecting
-    const fetchCalls = content.split('process_wishlist.php').length - 1;
-    const xhrHeaders = (content.match(/X-Requested-With/g) || []).length;
-    expect(fetchCalls, 'All fetch calls should have X-Requested-With header').toBe(xhrHeaders);
+    // Extract each fetch('process_wishlist.php', { ... }) call block and verify it contains the header.
+    // Split on 'fetch(' and check each segment that contains 'process_wishlist.php'.
+    const fetchBlocks = content.split(/fetch\s*\(/);
+    const wishlistFetches = fetchBlocks.filter(b => b.startsWith("'process_wishlist.php'"));
+    expect(wishlistFetches.length).toBeGreaterThanOrEqual(3); // create/update, toggle, delete
+    for (const block of wishlistFetches) {
+      // Each fetch options block should contain the X-Requested-With header
+      expect(block, 'fetch to process_wishlist.php missing X-Requested-With header').toContain('X-Requested-With');
+    }
   });
 
 });
