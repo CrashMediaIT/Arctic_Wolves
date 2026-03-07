@@ -19,8 +19,8 @@ $stmt = $pdo->prepare("
     SELECT dpd.*, d.title as drill_title, d.description as drill_description,
            d.video_url as drill_video_url, d.custom_image as drill_image,
            d.setup as drill_setup, d.coaching_points as drill_coaching_points,
-           d.progression as drill_progression, d.notes as drill_notes,
-           d.diagram_data, d.equipment_needed,
+           d.progression as drill_progression,
+           d.diagram_data,
            u.first_name as coach_first, u.last_name as coach_last,
            dpe.athlete_id, dpe.program_type
     FROM development_program_drills dpd
