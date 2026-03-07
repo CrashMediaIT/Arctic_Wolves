@@ -200,3 +200,141 @@ test.describe('PWA Navigation Label Parity with Desktop', () => {
   });
 
 });
+
+test.describe('PWA View Override and Feature Parity', () => {
+
+  test('pwa_tablet.php has PWA view override logic like pwa.php', () => {
+    const tabletContent = readFileSync(join(ROOT, 'pwa_tablet.php'), 'utf-8');
+    // Must have the PWA view override logic
+    expect(tabletContent).toContain("views/pwa/' . $page . '.php'");
+    expect(tabletContent).toContain('$pwa_view_file');
+    expect(tabletContent).toContain('$skipPwaOverride');
+    expect(tabletContent).toContain('file_exists');
+  });
+
+  test('pwa.php and pwa_tablet.php both skip PWA override for system_tools with tab param', () => {
+    const pwaContent = readFileSync(join(ROOT, 'pwa.php'), 'utf-8');
+    const tabletContent = readFileSync(join(ROOT, 'pwa_tablet.php'), 'utf-8');
+
+    // Both should skip PWA override when system_tools has a tab parameter
+    expect(pwaContent).toContain("$page === 'system_tools' && isset($_GET['tab'])");
+    expect(tabletContent).toContain("$page === 'system_tools' && isset($_GET['tab'])");
+  });
+
+  test('pwa/system_tools.php does not reference deprecated audit_log page', () => {
+    const content = readFileSync(join(ROOT, 'views', 'pwa', 'system_tools.php'), 'utf-8');
+    expect(content).not.toContain("'audit_log'");
+    expect(content).not.toContain('page=audit_log');
+  });
+
+  test('pwa/system_tools.php includes all desktop system_tools tabs', () => {
+    const content = readFileSync(join(ROOT, 'views', 'pwa', 'system_tools.php'), 'utf-8');
+    const desktopTabs = [
+      'settings', 'mileage', 'smtp', 'rustfs', 'docuseal', 'payments',
+      'stallion', 'paperless', 'encryption', 'landing', 'updates',
+      'api_keys', 'ndi_cameras', 'gameplan'
+    ];
+    for (const tab of desktopTabs) {
+      // Check the PHP array values: 'tab' => 'tabname'
+      expect(content, `Missing system_tools tab: ${tab}`).toContain(`'tab' => '${tab}'`);
+    }
+  });
+
+  test('pwa/system_tools.php includes separate-page tools', () => {
+    const content = readFileSync(join(ROOT, 'views', 'pwa', 'system_tools.php'), 'utf-8');
+    const pages = [
+      'admin_database_tools', 'admin_system_check', 'admin_database_backup',
+      'admin_database_restore', 'admin_security', 'cron_jobs',
+      'admin_feature_import', 'admin_theme_settings'
+    ];
+    for (const page of pages) {
+      expect(content, `Missing tool page: ${page}`).toContain(page);
+    }
+  });
+
+  test('pwa_tablet.php sidebar includes Parent Camp Check-in section', () => {
+    const content = readFileSync(join(ROOT, 'pwa_tablet.php'), 'utf-8');
+    expect(content).toContain('$isParent');
+    expect(content).toContain('page=camp_checkin');
+    expect(content).toContain('Camp Check-in');
+  });
+
+  test('pwa_tablet.php and pwa_more_menu.php both have Parent section matching', () => {
+    const tabletContent = readFileSync(join(ROOT, 'pwa_tablet.php'), 'utf-8');
+    const mobileContent = readFileSync(join(ROOT, 'pwa_more_menu.php'), 'utf-8');
+
+    // Both should have parent check and camp_checkin link
+    expect(tabletContent).toContain('$isParent');
+    expect(tabletContent).toContain('page=camp_checkin');
+    expect(mobileContent).toContain('$isParent');
+    expect(mobileContent).toContain('page=camp_checkin');
+  });
+
+  test('pwa/video.php links to video_review_detail not video&id', () => {
+    const content = readFileSync(join(ROOT, 'views', 'pwa', 'video.php'), 'utf-8');
+    // Video cards should link to the detail page, not back to the video list
+    expect(content).toContain('page=video_review_detail&video_id=');
+    expect(content).not.toContain('page=video&id=');
+  });
+
+  test('pwa/admin_wishlist.php exists and has full CRUD', () => {
+    const content = readFileSync(join(ROOT, 'views', 'pwa', 'admin_wishlist.php'), 'utf-8');
+    // Should have admin-only check
+    expect(content).toContain('$isAdmin');
+    // Should have CRUD operations
+    expect(content).toContain('create_item');
+    expect(content).toContain('update_item');
+    expect(content).toContain('delete_item');
+    expect(content).toContain('toggle_purchased');
+    // Should reference the backend process file
+    expect(content).toContain('process_wishlist.php');
+    // Should have mobile-native bottom sheet UI
+    expect(content).toContain('m-bs-sheet');
+  });
+
+  test('orphaned audit_log.php PWA view is removed', () => {
+    const { existsSync } = require('fs');
+    const auditLogPath = join(ROOT, 'views', 'pwa', 'audit_log.php');
+    expect(existsSync(auditLogPath)).toBe(false);
+  });
+
+  test('dashboard.php has Parent Camp Check-in section matching pwa_tablet.php and pwa_more_menu.php', () => {
+    const desktopContent = readFileSync(join(ROOT, 'dashboard.php'), 'utf-8');
+    const tabletContent = readFileSync(join(ROOT, 'pwa_tablet.php'), 'utf-8');
+    const mobileContent = readFileSync(join(ROOT, 'pwa_more_menu.php'), 'utf-8');
+
+    // All three should have parent check and camp_checkin link
+    expect(desktopContent).toContain('$isParent');
+    expect(desktopContent).toContain('page=camp_checkin');
+    expect(desktopContent).toContain('Camp Check-in');
+    expect(tabletContent).toContain('$isParent');
+    expect(tabletContent).toContain('page=camp_checkin');
+    expect(mobileContent).toContain('$isParent');
+    expect(mobileContent).toContain('page=camp_checkin');
+  });
+
+  test('admin_wishlist link URLs are protocol-validated for safety', () => {
+    const pwaContent = readFileSync(join(ROOT, 'views', 'pwa', 'admin_wishlist.php'), 'utf-8');
+    const desktopContent = readFileSync(join(ROOT, 'views', 'admin_wishlist.php'), 'utf-8');
+
+    // Both should validate link scheme before rendering href
+    expect(pwaContent).toContain("['http', 'https', '']");
+    expect(pwaContent).toContain('$isSafeLink');
+    expect(desktopContent).toContain("['http', 'https', '']");
+    expect(desktopContent).toContain('$isSafeLink');
+  });
+
+  test('pwa/admin_wishlist.php all fetch calls include X-Requested-With header', () => {
+    const content = readFileSync(join(ROOT, 'views', 'pwa', 'admin_wishlist.php'), 'utf-8');
+    // Extract each fetch('process_wishlist.php', { ... }) call block and verify it contains the header.
+    // Split on 'fetch(' and check each segment that contains 'process_wishlist.php'.
+    const fetchBlocks = content.split(/fetch\s*\(/);
+    const wishlistFetches = fetchBlocks.filter(b => b.startsWith("'process_wishlist.php'"));
+    expect(wishlistFetches.length).toBeGreaterThanOrEqual(3); // create/update, toggle, delete
+    for (const block of wishlistFetches) {
+      // Each fetch options block should contain the X-Requested-With header
+      expect(block, 'fetch to process_wishlist.php missing X-Requested-With header').toContain('X-Requested-With');
+    }
+  });
+
+});

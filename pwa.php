@@ -280,10 +280,13 @@ $allowed_pages = [
 $view_file = $allowed_pages[$page] ?? 'views/home.php';
 
 // Prefer mobile-native PWA views when available
-// Skip PWA override for profile page when edit or change_password params are set
-// so the full desktop profile form is used instead
+// Skip PWA override for profile page when tab params are set
+// so the full desktop profile form is used instead.
+// Also skip for system_tools when a tab param targets a specific tab within the
+// desktop admin_system_tools.php view (settings, smtp, etc.).
 $pwa_view_file = 'views/pwa/' . $page . '.php';
-$skipPwaOverride = ($page === 'profile' && isset($_GET['tab']));
+$skipPwaOverride = ($page === 'profile' && isset($_GET['tab']))
+                || ($page === 'system_tools' && isset($_GET['tab']));
 if (!$skipPwaOverride && file_exists(__DIR__ . '/' . $pwa_view_file)) {
     $view_file = $pwa_view_file;
 }

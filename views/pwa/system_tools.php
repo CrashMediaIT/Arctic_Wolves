@@ -10,15 +10,28 @@ if (!$isAdmin) {
 }
 
 $tools = [
+    ['icon' => 'fa-cog', 'label' => 'Settings', 'page' => 'system_tools', 'tab' => 'settings', 'color' => '#6B46C1'],
     ['icon' => 'fa-database', 'label' => 'Database Tools', 'page' => 'admin_database_tools', 'color' => '#3B82F6'],
     ['icon' => 'fa-heartbeat', 'label' => 'System Check', 'page' => 'admin_system_check', 'color' => '#10B981'],
     ['icon' => 'fa-download', 'label' => 'Database Backup', 'page' => 'admin_database_backup', 'color' => '#8B5CF6'],
     ['icon' => 'fa-upload', 'label' => 'Database Restore', 'page' => 'admin_database_restore', 'color' => '#F59E0B'],
     ['icon' => 'fa-shield-alt', 'label' => 'Security', 'page' => 'admin_security', 'color' => '#EF4444'],
-    ['icon' => 'fa-clipboard-list', 'label' => 'Audit Log', 'page' => 'audit_log', 'color' => '#6B6B7B'],
     ['icon' => 'fa-clock', 'label' => 'Cron Jobs', 'page' => 'cron_jobs', 'color' => '#3B82F6'],
     ['icon' => 'fa-file-import', 'label' => 'Feature Import', 'page' => 'admin_feature_import', 'color' => '#10B981'],
     ['icon' => 'fa-palette', 'label' => 'Theme Settings', 'page' => 'admin_theme_settings', 'color' => '#8B5CF6'],
+    ['icon' => 'fa-car', 'label' => 'Mileage', 'page' => 'system_tools', 'tab' => 'mileage', 'color' => '#10B981'],
+    ['icon' => 'fa-envelope', 'label' => 'SMTP', 'page' => 'system_tools', 'tab' => 'smtp', 'color' => '#3B82F6'],
+    ['icon' => 'fa-server', 'label' => 'RustFS Storage', 'page' => 'system_tools', 'tab' => 'rustfs', 'color' => '#F59E0B'],
+    ['icon' => 'fa-file-contract', 'label' => 'DocuSeal', 'page' => 'system_tools', 'tab' => 'docuseal', 'color' => '#6B46C1'],
+    ['icon' => 'fa-credit-card', 'label' => 'Payments', 'page' => 'system_tools', 'tab' => 'payments', 'color' => '#10B981'],
+    ['icon' => 'fa-truck', 'label' => 'Stallion Express', 'page' => 'system_tools', 'tab' => 'stallion', 'color' => '#EF4444'],
+    ['icon' => 'fa-file-alt', 'label' => 'Paperless-NGX', 'page' => 'system_tools', 'tab' => 'paperless', 'color' => '#3B82F6'],
+    ['icon' => 'fa-lock', 'label' => 'Encryption', 'page' => 'system_tools', 'tab' => 'encryption', 'color' => '#F59E0B'],
+    ['icon' => 'fa-globe', 'label' => 'Landing Page', 'page' => 'system_tools', 'tab' => 'landing', 'color' => '#8B5CF6'],
+    ['icon' => 'fa-sync-alt', 'label' => 'Updates', 'page' => 'system_tools', 'tab' => 'updates', 'color' => '#6B46C1'],
+    ['icon' => 'fa-key', 'label' => 'API Keys', 'page' => 'system_tools', 'tab' => 'api_keys', 'color' => '#10B981'],
+    ['icon' => 'fa-video', 'label' => 'NDI Cameras', 'page' => 'system_tools', 'tab' => 'ndi_cameras', 'color' => '#3B82F6'],
+    ['icon' => 'fa-chess-board', 'label' => 'Game Plan', 'page' => 'system_tools', 'tab' => 'gameplan', 'color' => '#EF4444'],
 ];
 ?>
 <style>
@@ -49,8 +62,12 @@ $tools = [
     </div>
 
     <div class="m-systools-grid">
-        <?php foreach ($tools as $t): ?>
-        <a href="?page=<?= htmlspecialchars($t['page']) ?>" class="m-systool-card">
+        <?php foreach ($tools as $t):
+            $href = isset($t['tab'])
+                ? '?page=' . htmlspecialchars($t['page']) . '&tab=' . htmlspecialchars($t['tab'])
+                : '?page=' . htmlspecialchars($t['page']);
+        ?>
+        <a href="<?= $href ?>" class="m-systool-card">
             <div class="m-systool-icon" style="background:<?= $t['color'] ?>20;color:<?= $t['color'] ?>;">
                 <i class="fas <?= $t['icon'] ?>"></i>
             </div>

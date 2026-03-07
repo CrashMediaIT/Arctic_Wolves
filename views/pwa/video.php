@@ -233,7 +233,7 @@ try {
                 $canDelete = $isAdmin || ((int)($v['athlete_id'] ?? 0) === (int)$user_id) || $isAnyCoach;
             ?>
             <div class="m-video-card">
-                <a href="?page=video&id=<?= (int)$v['id'] ?>" style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;text-decoration:none;color:inherit;">
+                <a href="?page=video_review_detail&video_id=<?= (int)$v['id'] ?>&from=video" style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;text-decoration:none;color:inherit;">
                     <div class="m-video-thumb"><i class="fas fa-play"></i></div>
                     <div class="m-video-body">
                         <div class="m-video-title"><?= htmlspecialchars($v['title'] ?? 'Untitled Video') ?></div>
@@ -266,7 +266,7 @@ try {
                 $athleteName = trim(($v['first_name'] ?? '') . ' ' . ($v['last_name'] ?? ''));
             ?>
             <div class="m-video-card">
-                <a href="?page=video&id=<?= (int)$v['id'] ?>" style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;text-decoration:none;color:inherit;">
+                <a href="?page=video_review_detail&video_id=<?= (int)$v['id'] ?>&from=video" style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;text-decoration:none;color:inherit;">
                     <div class="m-video-thumb"><i class="fas fa-play"></i></div>
                     <div class="m-video-body">
                         <div class="m-video-title"><?= htmlspecialchars($v['title'] ?? 'Untitled Video') ?></div>
