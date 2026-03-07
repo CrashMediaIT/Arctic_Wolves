@@ -143,125 +143,538 @@ $away_pp = ($home_active_pens > 0 && $home_active_pens > $away_active_pens);
 
     </div><!-- /.sb-board -->
 
-    <!-- ── Operator Control Panels ─────────────────────── -->
-    <div class="sb-controls">
+    <!-- ── Operator Controls – 4-Column Layout ─────────── -->
+    <style>
+        .sb-controls-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 16px;
+            padding: 16px;
+        }
+        @media (max-width: 1200px) {
+            .sb-controls-grid { grid-template-columns: 1fr 1fr; }
+        }
+        @media (max-width: 640px) {
+            .sb-controls-grid { grid-template-columns: 1fr; }
+        }
+        .sb-ctrl-panel {
+            background: #111118;
+            border: 1px solid #2D2D3F;
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .sb-ctrl-panel-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #E2E8F0;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #2D2D3F;
+        }
+        .sb-ctrl-section-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #8B8BA3;
+            margin: 0;
+        }
+        .sb-ctrl-btn-primary {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            min-height: 52px;
+            padding: 12px 16px;
+            font-size: 16px;
+            font-weight: 700;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.15s, transform 0.1s;
+            color: #fff;
+            background: #6B46C1;
+        }
+        .sb-ctrl-btn-primary:hover { background: #7C5DD4; }
+        .sb-ctrl-btn-primary:active { transform: scale(0.97); }
+        .sb-ctrl-btn-primary.home-accent { background: #2563EB; }
+        .sb-ctrl-btn-primary.home-accent:hover { background: #3B82F6; }
+        .sb-ctrl-btn-primary.away-accent { background: #DC2626; }
+        .sb-ctrl-btn-primary.away-accent:hover { background: #EF4444; }
+        .sb-ctrl-btn-primary.goal-btn { min-height: 56px; font-size: 18px; }
+        .sb-ctrl-btn-primary.buzzer-btn {
+            background: #B91C1C;
+            min-height: 56px;
+            font-size: 18px;
+            letter-spacing: 0.04em;
+        }
+        .sb-ctrl-btn-primary.buzzer-btn:hover { background: #DC2626; }
+        .sb-ctrl-btn-primary.announce-btn {
+            background: #0D9488;
+            min-height: 56px;
+            font-size: 18px;
+        }
+        .sb-ctrl-btn-primary.announce-btn:hover { background: #14B8A6; }
+        .sb-ctrl-btn-primary.announce-btn.active {
+            background: #DC2626;
+            animation: sb-announce-pulse 1.5s ease-in-out infinite;
+        }
+        @keyframes sb-announce-pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.4); }
+            50% { box-shadow: 0 0 0 10px rgba(220,38,38,0); }
+        }
+        .sb-ctrl-btn-secondary {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            min-height: 48px;
+            padding: 10px 14px;
+            font-size: 14px;
+            font-weight: 600;
+            border: 1px solid #2D2D3F;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+            color: #C4C4D4;
+            background: #1A1A24;
+        }
+        .sb-ctrl-btn-secondary:hover {
+            background: #222233;
+            border-color: #6B46C1;
+            color: #E2E8F0;
+        }
+        .sb-ctrl-btn-secondary:active { transform: scale(0.97); }
+        .sb-ctrl-btn-row {
+            display: flex;
+            gap: 8px;
+        }
+        .sb-ctrl-btn-row > * { flex: 1; }
+        .sb-ctrl-config-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .sb-ctrl-config-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .sb-ctrl-config-row label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #8B8BA3;
+            white-space: nowrap;
+            min-width: 50px;
+        }
+        .sb-ctrl-config-row select,
+        .sb-ctrl-config-row input[type="number"] {
+            flex: 1;
+            min-height: 40px;
+            padding: 6px 10px;
+            font-size: 14px;
+            color: #E2E8F0;
+            background: #0A0A0F;
+            border: 1px solid #2D2D3F;
+            border-radius: 6px;
+        }
+        .sb-ctrl-config-row select:focus,
+        .sb-ctrl-config-row input[type="number"]:focus {
+            outline: none;
+            border-color: #6B46C1;
+        }
+        .sb-ctrl-penalty-list {
+            max-height: 120px;
+            overflow-y: auto;
+            border: 1px solid #2D2D3F;
+            border-radius: 6px;
+            background: #0A0A0F;
+        }
+        .sb-ctrl-penalty-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 10px;
+            font-size: 12px;
+            color: #C4C4D4;
+            border-bottom: 1px solid #1A1A24;
+        }
+        .sb-ctrl-penalty-item:last-child { border-bottom: none; }
+        .sb-ctrl-penalty-empty {
+            text-align: center;
+            padding: 12px;
+            font-size: 12px;
+            color: #555;
+        }
+        .sb-ctrl-music-library {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .sb-ctrl-now-playing {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            background: #0A0A0F;
+            border: 1px solid #2D2D3F;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #8B8BA3;
+        }
+        .sb-ctrl-now-playing i { color: #6B46C1; }
+        .sb-ctrl-now-playing strong { color: #E2E8F0; }
+        .sb-ctrl-divider {
+            border: none;
+            border-top: 1px solid #2D2D3F;
+            margin: 4px 0;
+        }
+        .sb-ctrl-recurring-info {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #8B8BA3;
+            padding: 4px 0;
+        }
+        .sb-ctrl-period-nav {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        .sb-ctrl-period-nav .sb-ctrl-intermission-btn {
+            grid-column: span 2;
+        }
+    </style>
 
-        <!-- Clock Controls -->
-        <div class="sb-panel sb-panel-clock">
-            <div class="sb-panel-title"><i class="fas fa-clock"></i> Clock &amp; Period</div>
-            <div class="sb-clock-controls">
-                <button class="sb-clock-btn sb-clock-start" id="sbClockStart" onclick="sbClockToggle()"><i class="fas fa-play"></i> Start</button>
-                <button class="sb-clock-btn sb-clock-reset" onclick="sbClockReset()"><i class="fas fa-redo"></i> Reset 20:00</button>
-            </div>
-            <div class="sb-period-time-config">
-                <label class="sb-config-label">Period Length</label>
-                <select id="sbPeriodTimeSelect" onchange="sbSetPeriodTime(this.value)" class="sb-config-select">
-                    <option value="1">1:00 (U5)</option>
-                    <option value="2">2:00</option>
-                    <option value="3">3:00</option>
-                    <option value="5">5:00</option>
-                    <option value="8">8:00</option>
-                    <option value="10">10:00</option>
-                    <option value="12">12:00</option>
-                    <option value="15">15:00</option>
-                    <option value="20" selected>20:00 (Default)</option>
-                    <option value="25">25:00</option>
-                </select>
-                <label class="sb-config-label">OT Length</label>
-                <select id="sbOTTimeSelect" onchange="sbSetOvertimeTime(this.value)" class="sb-config-select">
-                    <option value="3">3:00</option>
-                    <option value="5" selected>5:00 (Default)</option>
-                    <option value="10">10:00</option>
-                </select>
-            </div>
-            <div class="sb-period-controls">
-                <button class="sb-action-btn" onclick="sbPeriodPrev()"><i class="fas fa-chevron-left"></i> Prev Period</button>
-                <button class="sb-action-btn" onclick="sbPeriodNext()"><i class="fas fa-chevron-right"></i> Next Period</button>
-                <button class="sb-action-btn" onclick="sbSetStatus('intermission')" style="grid-column:span 2;"><i class="fas fa-pause-circle"></i> Intermission</button>
-            </div>
-            <div class="sb-recurring-buzzer">
-                <div class="sb-panel-subtitle"><i class="fas fa-bell"></i> Recurring Buzzer</div>
-                <div class="sb-recurring-controls">
-                    <select id="sbRecurringSelect" onchange="sbSetRecurringBuzzer(this.value)" class="sb-config-select">
-                        <option value="0">Off</option>
-                        <option value="60">1:00</option>
-                        <option value="90">1:30 (U7)</option>
-                        <option value="120">2:00 (U7/U9)</option>
-                        <option value="150">2:30</option>
-                        <option value="180">3:00</option>
-                        <option value="240">4:00</option>
-                        <option value="300">5:00</option>
-                    </select>
-                    <button class="sb-action-btn sb-recurring-toggle" id="sbRecurringToggle" onclick="sbToggleRecurringBuzzer()"><i class="fas fa-play"></i> Resume</button>
-                </div>
-                <div class="sb-recurring-info">
-                    <span class="sb-recurring-status" id="sbRecurringStatus">Off</span>
-                    <span class="sb-recurring-countdown" id="sbRecurringCountdown" style="display:none;">--:--</span>
-                </div>
-            </div>
-        </div>
+    <div class="sb-controls-grid">
 
-        <!-- Goals & Shots Panel -->
-        <div class="sb-panel">
-            <div class="sb-panel-title"><i class="fas fa-hockey-puck"></i> Goals &amp; Shots</div>
-            <div class="sb-action-grid">
-                <button class="sb-action-btn home-btn" onclick="sbAddGoal('home')"><i class="fas fa-plus-circle"></i> Home Goal</button>
-                <button class="sb-action-btn away-btn" onclick="sbAddGoal('away')"><i class="fas fa-plus-circle"></i> Away Goal</button>
-                <button class="sb-action-btn home-btn" onclick="sbAddShot('home')"><i class="fas fa-bullseye"></i> Home Shot</button>
-                <button class="sb-action-btn away-btn" onclick="sbAddShot('away')"><i class="fas fa-bullseye"></i> Away Shot</button>
-                <button class="sb-action-btn home-btn" onclick="sbUndoGoal('home')"><i class="fas fa-minus-circle"></i> Undo Goal</button>
-                <button class="sb-action-btn away-btn" onclick="sbUndoGoal('away')"><i class="fas fa-minus-circle"></i> Undo Goal</button>
-                <button class="sb-buzzer-btn" id="sbBuzzerBtn" onclick="sbBuzzer()"><i class="fas fa-bullhorn"></i> BUZZER / HORN</button>
-            </div>
-        </div>
+        <!-- ════════ COLUMN 1: HOME TEAM ════════ -->
+        <div class="sb-ctrl-panel">
+            <div class="sb-ctrl-panel-title">🏠 Home — <?= htmlspecialchars($active_game['home_team_name'] ?? 'Home') ?></div>
 
-        <!-- Penalties Panel -->
-        <div class="sb-panel">
-            <div class="sb-panel-title"><i class="fas fa-gavel"></i> Penalties</div>
-            <div class="sb-penalty-display-toggle">
-                <button class="sb-action-btn sb-penalty-toggle-btn" id="sbPenaltyDisplayToggle" onclick="sbTogglePenaltyDisplay()">
-                    <i class="fas fa-eye"></i> Penalties Shown on Board
+            <span class="sb-ctrl-section-label">Goals</span>
+            <button class="sb-ctrl-btn-primary home-accent goal-btn" onclick="sbAddGoal('home')">
+                <i class="fas fa-plus-circle"></i> +1 Goal
+            </button>
+            <div class="sb-ctrl-btn-row">
+                <button class="sb-ctrl-btn-secondary" onclick="sbShowScoreEdit('home')">
+                    <i class="fas fa-edit"></i> Edit Score
                 </button>
             </div>
-            <div class="sb-action-grid" style="margin-bottom:12px;">
-                <button class="sb-action-btn home-btn" onclick="sbShowPenaltyModal('home')"><i class="fas fa-user-slash"></i> Home Penalty</button>
-                <button class="sb-action-btn away-btn" onclick="sbShowPenaltyModal('away')"><i class="fas fa-user-slash"></i> Away Penalty</button>
+
+            <hr class="sb-ctrl-divider">
+
+            <span class="sb-ctrl-section-label">Shots on Goal</span>
+            <button class="sb-ctrl-btn-primary home-accent" onclick="sbAddShot('home')">
+                <i class="fas fa-bullseye"></i> +1 Shot
+            </button>
+            <div class="sb-ctrl-btn-row">
+                <button class="sb-ctrl-btn-secondary" onclick="sbShowShotEdit('home')">
+                    <i class="fas fa-edit"></i> Edit Shots
+                </button>
             </div>
-            <div class="sb-penalty-list" id="sbPenaltyList">
-                <?php if (empty($game_penalties)): ?>
-                <div style="text-align:center;padding:16px;color:#555;font-size:12px;">No penalties</div>
+
+            <hr class="sb-ctrl-divider">
+
+            <span class="sb-ctrl-section-label">Penalties</span>
+            <button class="sb-ctrl-btn-primary home-accent" onclick="sbShowPenaltyModal('home')">
+                <i class="fas fa-user-slash"></i> Add Home Penalty
+            </button>
+            <button class="sb-ctrl-btn-secondary" id="sbHomePenaltyDisplayToggle" onclick="sbTogglePenaltyDisplay()">
+                <i class="fas fa-eye"></i> Penalties Shown on Board
+            </button>
+
+            <div class="sb-ctrl-penalty-list">
+                <?php if (empty($home_penalties)): ?>
+                <div class="sb-ctrl-penalty-empty">No home penalties</div>
                 <?php else: ?>
-                <?php foreach ($game_penalties as $pen): ?>
-                <div class="sb-penalty-item">
-                    <span class="sb-penalty-player">#<?= htmlspecialchars($pen['player_number'] ?? '?') ?> <?= htmlspecialchars($pen['player_name'] ?? '') ?></span>
-                    <span class="sb-penalty-info"><?= htmlspecialchars($pen['infraction'] ?? '') ?> (<?= htmlspecialchars($pen['duration_minutes'] ?? '2') ?>min)</span>
-                    <span class="sb-penalty-time">P<?= htmlspecialchars($pen['period'] ?? '') ?> <?= htmlspecialchars($pen['game_time'] ?? '') ?></span>
+                <?php foreach ($home_penalties as $pen): ?>
+                <div class="sb-ctrl-penalty-item">
+                    <span>#<?= htmlspecialchars($pen['player_number'] ?? '?') ?> <?= htmlspecialchars($pen['player_name'] ?? '') ?></span>
+                    <span><?= htmlspecialchars($pen['infraction'] ?? '') ?> (<?= htmlspecialchars($pen['duration_minutes'] ?? '2') ?>min)</span>
                 </div>
                 <?php endforeach; ?>
                 <?php endif; ?>
             </div>
         </div>
 
-        <!-- Music & Audio Panel -->
-        <div class="sb-panel">
-            <div class="sb-panel-title"><i class="fas fa-music"></i> Music &amp; Audio</div>
-            <div class="sb-music-controls">
+        <!-- ════════ COLUMN 2: CLOCK & PERIOD ════════ -->
+        <div class="sb-ctrl-panel sb-panel-clock">
+            <div class="sb-ctrl-panel-title"><i class="fas fa-clock"></i> Clock &amp; Period</div>
+
+            <div class="sb-ctrl-btn-row">
+                <button class="sb-ctrl-btn-primary" id="sbClockStart" onclick="sbClockToggle()">
+                    <i class="fas fa-play"></i> Start
+                </button>
+                <button class="sb-ctrl-btn-secondary" onclick="sbClockReset()">
+                    <i class="fas fa-redo"></i> Reset
+                </button>
+            </div>
+
+            <hr class="sb-ctrl-divider">
+
+            <div class="sb-ctrl-config-group">
+                <span class="sb-ctrl-section-label">Period Length</span>
+                <div class="sb-ctrl-config-row">
+                    <select id="sbPeriodTimeSelect" onchange="sbSetPeriodTime(this.value)">
+                        <option value="1">1:00 (U5)</option>
+                        <option value="2">2:00</option>
+                        <option value="3">3:00</option>
+                        <option value="5">5:00</option>
+                        <option value="8">8:00</option>
+                        <option value="10">10:00</option>
+                        <option value="12">12:00</option>
+                        <option value="15">15:00</option>
+                        <option value="20" selected>20:00 (Default)</option>
+                        <option value="25">25:00</option>
+                    </select>
+                </div>
+                <div class="sb-ctrl-config-row">
+                    <label for="sbPeriodCustomMin">Custom</label>
+                    <input type="number" id="sbPeriodCustomMin" min="1" max="60" placeholder="min" onchange="if(this.value)sbSetPeriodTime(this.value)">
+                </div>
+            </div>
+
+            <div class="sb-ctrl-config-group">
+                <span class="sb-ctrl-section-label">OT Length</span>
+                <div class="sb-ctrl-config-row">
+                    <select id="sbOTTimeSelect" onchange="sbSetOvertimeTime(this.value)">
+                        <option value="3">3:00</option>
+                        <option value="5" selected>5:00 (Default)</option>
+                        <option value="10">10:00</option>
+                    </select>
+                </div>
+            </div>
+
+            <hr class="sb-ctrl-divider">
+
+            <span class="sb-ctrl-section-label">Period Navigation</span>
+            <div class="sb-ctrl-period-nav">
+                <button class="sb-ctrl-btn-secondary" onclick="sbPeriodPrev()">
+                    <i class="fas fa-chevron-left"></i> Prev Period
+                </button>
+                <button class="sb-ctrl-btn-secondary" onclick="sbPeriodNext()">
+                    <i class="fas fa-chevron-right"></i> Next Period
+                </button>
+                <button class="sb-ctrl-btn-secondary sb-ctrl-intermission-btn" onclick="sbSetStatus('intermission')">
+                    <i class="fas fa-pause-circle"></i> Intermission
+                </button>
+            </div>
+
+            <hr class="sb-ctrl-divider">
+
+            <span class="sb-ctrl-section-label"><i class="fas fa-bell"></i> Recurring Buzzer</span>
+            <div class="sb-ctrl-config-row">
+                <select id="sbRecurringSelect" onchange="sbSetRecurringBuzzer(this.value)">
+                    <option value="0">Off</option>
+                    <option value="60">1:00</option>
+                    <option value="90">1:30 (U7)</option>
+                    <option value="120">2:00 (U7/U9)</option>
+                    <option value="150">2:30</option>
+                    <option value="180">3:00</option>
+                    <option value="240">4:00</option>
+                    <option value="300">5:00</option>
+                </select>
+                <button class="sb-ctrl-btn-secondary" id="sbRecurringToggle" onclick="sbToggleRecurringBuzzer()" style="flex:0 0 auto;min-width:100px;">
+                    <i class="fas fa-play"></i> Resume
+                </button>
+            </div>
+            <div class="sb-ctrl-recurring-info">
+                <span id="sbRecurringStatus">Off</span>
+                <span id="sbRecurringCountdown" style="display:none;">--:--</span>
+            </div>
+
+            <hr class="sb-ctrl-divider">
+
+            <button class="sb-ctrl-btn-primary buzzer-btn" id="sbBuzzerBtn" onclick="sbBuzzer()">
+                <i class="fas fa-bullhorn"></i> BUZZER / HORN
+            </button>
+        </div>
+
+        <!-- ════════ COLUMN 3: MUSIC & AUDIO ════════ -->
+        <div class="sb-ctrl-panel">
+            <div class="sb-ctrl-panel-title"><i class="fas fa-music"></i> Music &amp; Audio</div>
+
+            <button class="sb-ctrl-btn-secondary" onclick="sbShowAudioSettings()">
+                <i class="fas fa-volume-up"></i> Audio Settings
+            </button>
+
+            <hr class="sb-ctrl-divider">
+
+            <span class="sb-ctrl-section-label">Music Library</span>
+            <div class="sb-ctrl-music-library">
                 <?php if ($spotify_configured): ?>
-                <button class="sb-music-btn spotify" onclick="sbSpotifyConnect()"><i class="fab fa-spotify"></i> Spotify Connect</button>
+                <button class="sb-ctrl-btn-secondary" onclick="sbSpotifyConnect()" style="color:#1DB954;border-color:#1DB954;">
+                    <i class="fab fa-spotify"></i> Spotify Connect
+                </button>
                 <?php endif; ?>
                 <?php if ($subsonic_configured): ?>
-                <button class="sb-music-btn subsonic" onclick="sbSubsonicBrowse()"><i class="fas fa-server"></i> Subsonic Library</button>
+                <button class="sb-ctrl-btn-secondary" onclick="sbSubsonicBrowse()">
+                    <i class="fas fa-server"></i> Subsonic Library
+                </button>
                 <?php endif; ?>
-                <button class="sb-music-btn mic" onclick="sbToggleMic()"><i class="fas fa-microphone"></i> Arena Mic</button>
-                <button class="sb-music-btn speaker" onclick="sbSpeakerSettings()"><i class="fas fa-volume-up"></i> Wireless Speakers</button>
-                <div class="sb-music-now-playing" id="sbNowPlaying">
-                    <i class="fas fa-music"></i> <strong>No music playing</strong>
+                <?php if (!$spotify_configured && !$subsonic_configured): ?>
+                <div style="text-align:center;padding:12px;color:#555;font-size:12px;">No music sources configured</div>
+                <?php endif; ?>
+            </div>
+
+            <hr class="sb-ctrl-divider">
+
+            <span class="sb-ctrl-section-label">Now Playing</span>
+            <div class="sb-ctrl-now-playing" id="sbNowPlaying">
+                <i class="fas fa-music"></i> <strong>No music playing</strong>
+            </div>
+
+            <hr class="sb-ctrl-divider">
+
+            <button class="sb-ctrl-btn-primary announce-btn" id="sbAnnounceBtn" onclick="sbToggleAnnounce()">
+                📢 Announce
+            </button>
+        </div>
+
+        <!-- ════════ COLUMN 4: AWAY TEAM ════════ -->
+        <div class="sb-ctrl-panel">
+            <div class="sb-ctrl-panel-title">🏒 Away — <?= htmlspecialchars($active_game['away_team_name'] ?? 'Away') ?></div>
+
+            <span class="sb-ctrl-section-label">Goals</span>
+            <button class="sb-ctrl-btn-primary away-accent goal-btn" onclick="sbAddGoal('away')">
+                <i class="fas fa-plus-circle"></i> +1 Goal
+            </button>
+            <div class="sb-ctrl-btn-row">
+                <button class="sb-ctrl-btn-secondary" onclick="sbShowScoreEdit('away')">
+                    <i class="fas fa-edit"></i> Edit Score
+                </button>
+            </div>
+
+            <hr class="sb-ctrl-divider">
+
+            <span class="sb-ctrl-section-label">Shots on Goal</span>
+            <button class="sb-ctrl-btn-primary away-accent" onclick="sbAddShot('away')">
+                <i class="fas fa-bullseye"></i> +1 Shot
+            </button>
+            <div class="sb-ctrl-btn-row">
+                <button class="sb-ctrl-btn-secondary" onclick="sbShowShotEdit('away')">
+                    <i class="fas fa-edit"></i> Edit Shots
+                </button>
+            </div>
+
+            <hr class="sb-ctrl-divider">
+
+            <span class="sb-ctrl-section-label">Penalties</span>
+            <button class="sb-ctrl-btn-primary away-accent" onclick="sbShowPenaltyModal('away')">
+                <i class="fas fa-user-slash"></i> Add Away Penalty
+            </button>
+            <button class="sb-ctrl-btn-secondary" id="sbAwayPenaltyDisplayToggle" onclick="sbTogglePenaltyDisplay()">
+                <i class="fas fa-eye"></i> Penalties Shown on Board
+            </button>
+
+            <div class="sb-ctrl-penalty-list">
+                <?php if (empty($away_penalties)): ?>
+                <div class="sb-ctrl-penalty-empty">No away penalties</div>
+                <?php else: ?>
+                <?php foreach ($away_penalties as $pen): ?>
+                <div class="sb-ctrl-penalty-item">
+                    <span>#<?= htmlspecialchars($pen['player_number'] ?? '?') ?> <?= htmlspecialchars($pen['player_name'] ?? '') ?></span>
+                    <span><?= htmlspecialchars($pen['infraction'] ?? '') ?> (<?= htmlspecialchars($pen['duration_minutes'] ?? '2') ?>min)</span>
                 </div>
+                <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+        </div>
+
+    </div><!-- /.sb-controls-grid -->
+
+</div>
+<?php endif; ?>
+
+<!-- Score Edit Modal -->
+<div class="sb-modal-overlay" id="sb-score-edit-modal">
+    <div class="sb-modal" style="max-width:380px;">
+        <h2><i class="fas fa-hockey-puck"></i> Edit Score — <span id="sbScoreEditTeamLabel">Home</span></h2>
+        <input type="hidden" id="sbScoreEditTeam" value="">
+        <div style="display:flex;flex-direction:column;gap:12px;">
+            <label style="font-size:13px;font-weight:600;color:#8B8BA3;">Set Score Directly</label>
+            <input type="number" id="sbScoreEditValue" min="0" max="99" value="0"
+                   style="width:100%;min-height:48px;padding:10px;font-size:24px;font-weight:700;text-align:center;color:#E2E8F0;background:#0A0A0F;border:1px solid #2D2D3F;border-radius:8px;">
+            <div style="display:flex;gap:8px;">
+                <button class="sb-ctrl-btn-secondary" onclick="sbScoreEditAdjust(-1)" style="flex:1;">
+                    <i class="fas fa-minus"></i> −1
+                </button>
+                <button class="sb-ctrl-btn-secondary" onclick="document.getElementById('sbScoreEditValue').value=0" style="flex:1;">
+                    <i class="fas fa-undo"></i> Reset to 0
+                </button>
+            </div>
+            <div class="sb-modal-actions" style="margin-top:8px;">
+                <button type="button" class="sb-btn" onclick="document.getElementById('sb-score-edit-modal').classList.remove('active')">Cancel</button>
+                <button type="button" class="sb-btn sb-btn-primary" onclick="sbApplyScoreEdit()"><i class="fas fa-check"></i> Apply</button>
             </div>
         </div>
     </div>
 </div>
-<?php endif; ?>
+
+<!-- Shot Edit Modal -->
+<div class="sb-modal-overlay" id="sb-shot-edit-modal">
+    <div class="sb-modal" style="max-width:380px;">
+        <h2><i class="fas fa-bullseye"></i> Edit Shots — <span id="sbShotEditTeamLabel">Home</span></h2>
+        <input type="hidden" id="sbShotEditTeam" value="">
+        <div style="display:flex;flex-direction:column;gap:12px;">
+            <label style="font-size:13px;font-weight:600;color:#8B8BA3;">Set Shots Directly</label>
+            <input type="number" id="sbShotEditValue" min="0" max="999" value="0"
+                   style="width:100%;min-height:48px;padding:10px;font-size:24px;font-weight:700;text-align:center;color:#E2E8F0;background:#0A0A0F;border:1px solid #2D2D3F;border-radius:8px;">
+            <div style="display:flex;gap:8px;">
+                <button class="sb-ctrl-btn-secondary" onclick="sbShotEditAdjust(-1)" style="flex:1;">
+                    <i class="fas fa-minus"></i> −1
+                </button>
+                <button class="sb-ctrl-btn-secondary" onclick="document.getElementById('sbShotEditValue').value=0" style="flex:1;">
+                    <i class="fas fa-undo"></i> Reset to 0
+                </button>
+            </div>
+            <div class="sb-modal-actions" style="margin-top:8px;">
+                <button type="button" class="sb-btn" onclick="document.getElementById('sb-shot-edit-modal').classList.remove('active')">Cancel</button>
+                <button type="button" class="sb-btn sb-btn-primary" onclick="sbApplyShotEdit()"><i class="fas fa-check"></i> Apply</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Audio Settings Modal -->
+<div class="sb-modal-overlay" id="sb-audio-settings-modal">
+    <div class="sb-modal" style="max-width:440px;">
+        <h2><i class="fas fa-volume-up"></i> Audio Settings</h2>
+        <div style="display:flex;flex-direction:column;gap:16px;">
+            <div style="display:flex;flex-direction:column;gap:6px;">
+                <label style="font-size:13px;font-weight:600;color:#8B8BA3;">Microphone Input</label>
+                <select id="sbAudioMicSelect"
+                        style="width:100%;min-height:44px;padding:8px 10px;font-size:14px;color:#E2E8F0;background:#0A0A0F;border:1px solid #2D2D3F;border-radius:8px;">
+                    <option value="">— Select Mic —</option>
+                </select>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+                <label style="font-size:13px;font-weight:600;color:#8B8BA3;">Speaker Output</label>
+                <select id="sbAudioSpeakerSelect"
+                        style="width:100%;min-height:44px;padding:8px 10px;font-size:14px;color:#E2E8F0;background:#0A0A0F;border:1px solid #2D2D3F;border-radius:8px;">
+                    <option value="">— Select Speaker —</option>
+                </select>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+                <label style="font-size:13px;font-weight:600;color:#8B8BA3;">Music Volume</label>
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <input type="range" id="sbAudioMusicVolume" min="0" max="100" value="80"
+                           style="flex:1;accent-color:#6B46C1;">
+                    <span id="sbAudioVolumeLabel" style="font-size:14px;font-weight:700;color:#E2E8F0;min-width:40px;text-align:right;">80%</span>
+                </div>
+            </div>
+            <div class="sb-modal-actions" style="margin-top:8px;">
+                <button type="button" class="sb-btn" onclick="document.getElementById('sb-audio-settings-modal').classList.remove('active')">Cancel</button>
+                <button type="button" class="sb-btn sb-btn-primary" onclick="sbApplyAudioSettings()"><i class="fas fa-check"></i> Save</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- New Game Modal -->
 <div class="sb-modal-overlay" id="sb-new-game-modal">
@@ -345,3 +758,107 @@ $away_pp = ($home_active_pens > 0 && $home_active_pens > $away_active_pens);
         </form>
     </div>
 </div>
+
+<script>
+function sbShowScoreEdit(team) {
+    var label = team === 'home' ? 'Home' : 'Away';
+    document.getElementById('sbScoreEditTeamLabel').textContent = label;
+    document.getElementById('sbScoreEditTeam').value = team;
+    var currentScore = parseInt(document.getElementById(team === 'home' ? 'sbHomeScore' : 'sbAwayScore').textContent) || 0;
+    document.getElementById('sbScoreEditValue').value = currentScore;
+    document.getElementById('sb-score-edit-modal').classList.add('active');
+}
+
+function sbScoreEditAdjust(delta) {
+    var input = document.getElementById('sbScoreEditValue');
+    var val = parseInt(input.value) || 0;
+    val = Math.max(0, val + delta);
+    input.value = val;
+}
+
+function sbApplyScoreEdit() {
+    var team = document.getElementById('sbScoreEditTeam').value;
+    var newScore = parseInt(document.getElementById('sbScoreEditValue').value) || 0;
+    if (newScore < 0) newScore = 0;
+    if (typeof sbSetScore === 'function') {
+        sbSetScore(team, newScore);
+    }
+    document.getElementById('sb-score-edit-modal').classList.remove('active');
+}
+
+function sbShowShotEdit(team) {
+    var label = team === 'home' ? 'Home' : 'Away';
+    document.getElementById('sbShotEditTeamLabel').textContent = label;
+    document.getElementById('sbShotEditTeam').value = team;
+    var currentShots = parseInt(document.getElementById(team === 'home' ? 'sbHomeShots' : 'sbAwayShots').textContent) || 0;
+    document.getElementById('sbShotEditValue').value = currentShots;
+    document.getElementById('sb-shot-edit-modal').classList.add('active');
+}
+
+function sbShotEditAdjust(delta) {
+    var input = document.getElementById('sbShotEditValue');
+    var val = parseInt(input.value) || 0;
+    val = Math.max(0, val + delta);
+    input.value = val;
+}
+
+function sbApplyShotEdit() {
+    var team = document.getElementById('sbShotEditTeam').value;
+    var newShots = parseInt(document.getElementById('sbShotEditValue').value) || 0;
+    if (newShots < 0) newShots = 0;
+    if (typeof sbSetShots === 'function') {
+        sbSetShots(team, newShots);
+    }
+    document.getElementById('sb-shot-edit-modal').classList.remove('active');
+}
+
+function sbShowAudioSettings() {
+    document.getElementById('sb-audio-settings-modal').classList.add('active');
+    if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+        navigator.mediaDevices.enumerateDevices().then(function(devices) {
+            var micSelect = document.getElementById('sbAudioMicSelect');
+            var spkSelect = document.getElementById('sbAudioSpeakerSelect');
+            micSelect.innerHTML = '<option value="">— Select Mic —</option>';
+            spkSelect.innerHTML = '<option value="">— Select Speaker —</option>';
+            devices.forEach(function(device) {
+                if (device.kind === 'audioinput') {
+                    var opt = document.createElement('option');
+                    opt.value = device.deviceId;
+                    opt.textContent = device.label || ('Mic ' + device.deviceId.substring(0, 8));
+                    micSelect.appendChild(opt);
+                }
+                if (device.kind === 'audiooutput') {
+                    var opt = document.createElement('option');
+                    opt.value = device.deviceId;
+                    opt.textContent = device.label || ('Speaker ' + device.deviceId.substring(0, 8));
+                    spkSelect.appendChild(opt);
+                }
+            });
+        });
+    }
+    var volumeSlider = document.getElementById('sbAudioMusicVolume');
+    var volumeLabel = document.getElementById('sbAudioVolumeLabel');
+    volumeSlider.oninput = function() {
+        volumeLabel.textContent = this.value + '%';
+    };
+}
+
+function sbApplyAudioSettings() {
+    var mic = document.getElementById('sbAudioMicSelect').value;
+    var speaker = document.getElementById('sbAudioSpeakerSelect').value;
+    var volume = document.getElementById('sbAudioMusicVolume').value;
+    if (typeof sbSetAudioConfig === 'function') {
+        sbSetAudioConfig({ mic: mic, speaker: speaker, volume: volume });
+    }
+    document.getElementById('sb-audio-settings-modal').classList.remove('active');
+}
+
+function sbToggleAnnounce() {
+    var btn = document.getElementById('sbAnnounceBtn');
+    var isActive = btn.classList.toggle('active');
+    if (typeof sbToggleMic === 'function') {
+        sbToggleMic();
+    }
+    btn.innerHTML = isActive ? '🔴 LIVE — Tap to End' : '📢 Announce';
+}
+</script>
