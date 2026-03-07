@@ -298,4 +298,30 @@ test.describe('PWA View Override and Feature Parity', () => {
     expect(existsSync(auditLogPath)).toBe(false);
   });
 
+  test('dashboard.php has Parent Camp Check-in section matching pwa_tablet.php and pwa_more_menu.php', () => {
+    const desktopContent = readFileSync(join(ROOT, 'dashboard.php'), 'utf-8');
+    const tabletContent = readFileSync(join(ROOT, 'pwa_tablet.php'), 'utf-8');
+    const mobileContent = readFileSync(join(ROOT, 'pwa_more_menu.php'), 'utf-8');
+
+    // All three should have parent check and camp_checkin link
+    expect(desktopContent).toContain('$isParent');
+    expect(desktopContent).toContain('page=camp_checkin');
+    expect(desktopContent).toContain('Camp Check-in');
+    expect(tabletContent).toContain('$isParent');
+    expect(tabletContent).toContain('page=camp_checkin');
+    expect(mobileContent).toContain('$isParent');
+    expect(mobileContent).toContain('page=camp_checkin');
+  });
+
+  test('admin_wishlist link URLs are protocol-validated for safety', () => {
+    const pwaContent = readFileSync(join(ROOT, 'views', 'pwa', 'admin_wishlist.php'), 'utf-8');
+    const desktopContent = readFileSync(join(ROOT, 'views', 'admin_wishlist.php'), 'utf-8');
+
+    // Both should validate link scheme before rendering href
+    expect(pwaContent).toContain("['http', 'https', '']");
+    expect(pwaContent).toContain('$isSafeLink');
+    expect(desktopContent).toContain("['http', 'https', '']");
+    expect(desktopContent).toContain('$isSafeLink');
+  });
+
 });

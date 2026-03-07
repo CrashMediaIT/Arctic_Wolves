@@ -999,6 +999,18 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
     </div>
     <?php endif; ?>
 
+    <!-- PARENT FEATURES -->
+    <?php if($isParent): ?>
+    <div class="nav-group">
+        <span class="nav-label">Parent</span>
+        <nav class="nav-menu">
+            <a href="?page=camp_checkin" class="nav-link <?= $page=='camp_checkin'?'active':'' ?>">
+                <i class="fa-solid fa-check-circle icon"></i> Camp Check-in
+            </a>
+        </nav>
+    </div>
+    <?php endif; ?>
+
     <div class="sidebar-footer">
         <?php if($isStaff): ?>
         <a href="?page=sip_settings" class="nav-link <?= $page=='sip_settings'?'active':'' ?>">

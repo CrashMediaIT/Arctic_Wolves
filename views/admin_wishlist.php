@@ -94,10 +94,16 @@ try {
                         <?php if (!empty($item['description'])): ?>
                         <p class="wishlist-item-desc"><?= htmlspecialchars($item['description']) ?></p>
                         <?php endif; ?>
-                        <?php if (!empty($item['link'])): ?>
-                        <a href="<?= htmlspecialchars($item['link']) ?>" target="_blank" rel="noopener noreferrer" class="wishlist-item-link">
-                            <i class="fas fa-external-link-alt"></i> <?= htmlspecialchars(parse_url($item['link'], PHP_URL_HOST) ?: $item['link']) ?>
+                        <?php if (!empty($item['link'])):
+                            $linkUrl = $item['link'];
+                            $linkScheme = strtolower(parse_url($linkUrl, PHP_URL_SCHEME) ?: '');
+                            $isSafeLink = in_array($linkScheme, ['http', 'https', ''], true);
+                        ?>
+                        <?php if ($isSafeLink): ?>
+                        <a href="<?= htmlspecialchars($linkUrl) ?>" target="_blank" rel="noopener noreferrer" class="wishlist-item-link">
+                            <i class="fas fa-external-link-alt"></i> <?= htmlspecialchars(parse_url($linkUrl, PHP_URL_HOST) ?: $linkUrl) ?>
                         </a>
+                        <?php endif; ?>
                         <?php endif; ?>
                     </div>
                     <div class="wishlist-item-actions">
