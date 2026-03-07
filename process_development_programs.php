@@ -66,6 +66,10 @@ try {
             if (!$isAnyCoach && !$canManageDevPrograms) { echo json_encode(['success' => false, 'error' => 'Access denied']); exit; }
             handleCreatePersonalDrill($pdo, $user_id, $input);
             break;
+        case 'update_notification_template':
+            if (!$isAdmin) { echo json_encode(['success' => false, 'error' => 'Access denied']); exit; }
+            handleUpdateNotificationTemplate($pdo, $user_id, $input);
+            break;
         default:
             echo json_encode(['success' => false, 'error' => 'Invalid action']);
     }
@@ -262,4 +266,23 @@ function handleCreatePersonalDrill($pdo, $user_id, $input) {
         $pdo->rollBack();
         throw $e;
     }
+}
+
+/**
+ * Update a development notification template (admin only)
+ */
+function handleUpdateNotificationTemplate($pdo, $user_id, $input) {
+    $template_id = (int)($input['template_id'] ?? 0);
+    $subject = trim($input['subject'] ?? '');
+    $body = trim($input['body'] ?? '');
+    
+    if (!$template_id || !$subject || !$body) {
+        echo json_encode(['success' => false, 'error' => 'Missing required fields']);
+        return;
+    }
+    
+    $stmt = $pdo->prepare("UPDATE development_notification_templates SET subject = ?, body = ?, updated_by = ? WHERE id = ?");
+    $stmt->execute([$subject, $body, $user_id, $template_id]);
+    
+    echo json_encode(['success' => true]);
 }
