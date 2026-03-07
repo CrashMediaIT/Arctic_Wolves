@@ -126,6 +126,9 @@ $canAccessHealthManagement = ($isHealthCoach || $isAdmin);
 $canAccessHR   = ($isHR || $isAdmin);
 $canAccessAccounting = ($isAccounting || $isAdmin);
 $isStaff       = ($isAdmin || $isCoach || $isHealthCoach || $isFrontDesk || $isHR || $isAccounting);
+$isGoalieDev   = in_array('goalie_dev', $user_roles_list);
+$isPlayerDev   = in_array('player_dev', $user_roles_list);
+$canAccessDevPrograms = ($isGoalieDev || $isPlayerDev || $isAdmin);
 
 // Persona mode
 $isActualAdmin = (($user_role === 'admin') || (isset($_SESSION['persona_original_role']) && $_SESSION['persona_original_role'] === 'admin'));
@@ -278,6 +281,11 @@ $allowed_pages = [
     'library_workouts'        => 'views/library_workouts.php',
     'library_nutrition'       => 'views/library_nutrition.php',
     'health_coach_roster'     => 'views/health_coach_roster.php',
+    'personal_development'              => 'views/personal_development.php',
+    'personal_development_programs'     => 'views/personal_development.php',
+    'personal_development_my_program'   => 'views/personal_development.php',
+    'development_programs'    => 'views/development_programs.php',
+    'personal_drills'         => 'views/drills.php',
     'shop'                    => 'views/shop.php',
     'profile'                 => 'views/profile.php',
     'settings'                => 'views/settings.php',
@@ -407,6 +415,7 @@ try {
             <a href="?page=sessions" class="nav-link <?= in_array($page, ['sessions','upcoming_sessions','booking'])?'active':'' ?>"><i class="fa-solid fa-calendar-check"></i> Sessions</a>
             <a href="?page=video" class="nav-link <?= in_array($page, ['video','drill_review','coaches_reviews','record_video','video_review_detail'])?'active':'' ?>"><i class="fa-solid fa-video"></i> Video</a>
             <a href="?page=health" class="nav-link <?= in_array($page, ['health','strength_conditioning','nutrition'])?'active':'' ?>"><i class="fa-solid fa-heart-pulse"></i> Health</a>
+            <a href="?page=personal_development" class="nav-link <?= in_array($page, ['personal_development','personal_development_programs','personal_development_my_program'])?'active':'' ?>"><i class="fa-solid fa-hockey-puck"></i> Personal Development</a>
             <a href="?page=shop" class="nav-link <?= $page=='shop'?'active':'' ?>"><i class="fa-solid fa-store"></i> Shop</a>
             <a href="?page=payment_history" class="nav-link <?= $page=='payment_history'?'active':'' ?>"><i class="fa-solid fa-receipt"></i> Purchase History</a>
         </nav>
@@ -428,7 +437,7 @@ try {
         <span class="nav-label">Coaches Corner</span>
         <nav class="nav-menu">
             <a href="?page=coach_calendar" class="nav-link <?= $page=='coach_calendar'?'active':'' ?>"><i class="fa-solid fa-calendar"></i> Calendar</a>
-            <a href="?page=drills" class="nav-link <?= in_array($page, ['drills','drill_library','create_drill','import_drill','export_import_drills'])?'active':'' ?>"><i class="fa-solid fa-clipboard-list"></i> Drills</a>
+            <a href="?page=drills" class="nav-link <?= in_array($page, ['drills','drill_library','create_drill','import_drill','export_import_drills','personal_drills'])?'active':'' ?>"><i class="fa-solid fa-clipboard-list"></i> Drills</a>
             <a href="?page=practice" class="nav-link <?= in_array($page, ['practice','practice_library','create_practice','practice_create','practice_import','export_import_plans'])?'active':'' ?>"><i class="fa-solid fa-file-lines"></i> Practice Plans</a>
             <a href="?page=roster" class="nav-link <?= $page=='roster'?'active':'' ?>"><i class="fa-solid fa-users-gear"></i> Roster</a>
             <a href="?page=coach_stopwatch" class="nav-link <?= $page=='coach_stopwatch'?'active':'' ?>"><i class="fa-solid fa-stopwatch"></i> Stopwatch</a>
@@ -438,6 +447,9 @@ try {
             <a href="?page=travel" class="nav-link <?= in_array($page, ['travel','mileage'])?'active':'' ?>"><i class="fa-solid fa-plane"></i> Travel</a>
             <a href="?page=record_drill_video" class="nav-link <?= $page=='record_drill_video'?'active':'' ?>"><i class="fa-solid fa-video"></i> Video Recording</a>
             <a href="/gameplan.php" class="nav-link"><i class="fa-solid fa-chess-board"></i> Game Plan</a>
+            <?php if($canAccessDevPrograms): ?>
+            <a href="?page=development_programs" class="nav-link <?= $page=='development_programs'?'active':'' ?>"><i class="fa-solid fa-hockey-puck"></i> Development Programs</a>
+            <?php endif; ?>
         </nav>
     </div>
     <?php endif; ?>

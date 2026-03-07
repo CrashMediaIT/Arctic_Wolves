@@ -254,6 +254,8 @@ foreach ($users as $u) {
                             <option value="front_desk_staff" <?php echo $role_filter === 'front_desk_staff' ? 'selected' : ''; ?>>Front Desk</option>
                             <option value="hr" <?php echo $role_filter === 'hr' ? 'selected' : ''; ?>>HR</option>
                             <option value="accounting" <?php echo $role_filter === 'accounting' ? 'selected' : ''; ?>>Accounting</option>
+                            <option value="goalie_dev" <?php echo $role_filter === 'goalie_dev' ? 'selected' : ''; ?>>Goalie Dev</option>
+                            <option value="player_dev" <?php echo $role_filter === 'player_dev' ? 'selected' : ''; ?>>Player Dev</option>
                         </select>
                     </div>
                     <div class="filter-field">
@@ -746,7 +748,7 @@ function closeModal(modalId) {
     border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
-.role-badge.coach, .role-badge.team_coach, .role-badge.health_coach {
+.role-badge.coach, .role-badge.team_coach, .role-badge.health_coach, .role-badge.goalie_dev, .role-badge.player_dev {
     background: rgba(59, 130, 246, 0.15);
     color: #3B82F6;
     border: 1px solid rgba(59, 130, 246, 0.3);
@@ -1172,6 +1174,8 @@ function closeModal(modalId) {
                             <option value="front_desk_staff">Front Desk Staff</option>
                             <option value="hr">HR</option>
                             <option value="accounting">Accounting</option>
+                            <option value="goalie_dev">Goalie Dev</option>
+                            <option value="player_dev">Player Dev</option>
                         </select>
                     </div>
                     
@@ -1330,6 +1334,8 @@ document.getElementById('add-user-role').addEventListener('change', function() {
                                 <option value="front_desk_staff">Front Desk Staff</option>
                                 <option value="hr">HR</option>
                                 <option value="accounting">Accounting</option>
+                                <option value="goalie_dev">Goalie Dev</option>
+                                <option value="player_dev">Player Dev</option>
                             </select>
                         </div>
                         
@@ -1417,6 +1423,20 @@ document.getElementById('add-user-role').addEventListener('change', function() {
                             <div>
                                 <div class="role-label">Accounting</div>
                                 <div class="role-desc">Finance, reports, expenses</div>
+                            </div>
+                        </label>
+                        <label class="role-checkbox-item">
+                            <input type="checkbox" name="extra_roles[]" value="goalie_dev" id="edit-role-goalie_dev">
+                            <div>
+                                <div class="role-label">Goalie Dev</div>
+                                <div class="role-desc">Goalie development programs</div>
+                            </div>
+                        </label>
+                        <label class="role-checkbox-item">
+                            <input type="checkbox" name="extra_roles[]" value="player_dev" id="edit-role-player_dev">
+                            <div>
+                                <div class="role-label">Player Dev</div>
+                                <div class="role-desc">Player development programs</div>
                             </div>
                         </label>
                     </div>
@@ -1717,7 +1737,7 @@ document.querySelectorAll('[data-action="edit"][data-modal="edit-user-modal"]').
         
         // Pre-populate roles checkboxes
         var userRolesMap = <?php echo json_encode($user_roles_map); ?>;
-        var allRoleCheckboxes = ['admin', 'coach', 'health_coach', 'team_coach', 'athlete', 'parent', 'front_desk_staff'];
+        var allRoleCheckboxes = ['admin', 'coach', 'health_coach', 'team_coach', 'athlete', 'parent', 'front_desk_staff', 'goalie_dev', 'player_dev'];
         allRoleCheckboxes.forEach(function(r) {
             var cb = document.getElementById('edit-role-' + r);
             if (cb) cb.checked = false;
@@ -2315,6 +2335,8 @@ window._coachNamesMap = <?php
             case 'health_coach': $roleLabel = 'Health Coach'; break;
             case 'team_coach': $roleLabel = 'Team Coach'; break;
             case 'coach': $roleLabel = 'Coach'; break;
+            case 'goalie_dev': $roleLabel = 'Goalie Dev'; break;
+            case 'player_dev': $roleLabel = 'Player Dev'; break;
         }
         $coachMap[$c['id']] = ['name' => $c['first_name'] . ' ' . $c['last_name'], 'role' => $roleLabel];
     }

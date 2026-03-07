@@ -119,6 +119,9 @@ $canAccessHealthManagement = ($isHealthCoach || $isAdmin);
 $canAccessHR   = ($isHR || $isAdmin);
 $canAccessAccounting = ($isAccounting || $isAdmin);
 $isStaff       = ($isAdmin || $isCoach || $isHealthCoach || $isFrontDesk || $isHR || $isAccounting);
+$isGoalieDev   = in_array('goalie_dev', $user_roles_list);
+$isPlayerDev   = in_array('player_dev', $user_roles_list);
+$canAccessDevPrograms = ($isGoalieDev || $isPlayerDev || $isAdmin);
 
 // Persona mode
 $isActualAdmin = (($user_role === 'admin') || (isset($_SESSION['persona_original_role']) && $_SESSION['persona_original_role'] === 'admin'));
@@ -271,6 +274,11 @@ $allowed_pages = [
     'library_workouts'        => 'views/library_workouts.php',
     'library_nutrition'       => 'views/library_nutrition.php',
     'health_coach_roster'     => 'views/health_coach_roster.php',
+    'personal_development'              => 'views/personal_development.php',
+    'personal_development_programs'     => 'views/personal_development.php',
+    'personal_development_my_program'   => 'views/personal_development.php',
+    'development_programs'    => 'views/development_programs.php',
+    'personal_drills'         => 'views/drills.php',
     'shop'                    => 'views/shop.php',
     'profile'                 => 'views/profile.php',
     'settings'                => 'views/settings.php',
