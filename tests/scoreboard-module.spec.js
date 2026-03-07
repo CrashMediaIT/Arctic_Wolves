@@ -811,3 +811,181 @@ test.describe('Adjustable period times', () => {
     expect(content).toContain('.sb-config-select');
   });
 });
+
+// =====================================================
+// 15. Reorganized 4-Column Operator Layout
+// =====================================================
+
+test.describe('Reorganized operator controls layout', () => {
+  test('display view uses 4-column operator grid', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sb-controls-grid');
+    expect(content).toContain('grid-template-columns: 1fr 1fr 1fr 1fr');
+  });
+
+  test('display view has Home team panel with team name', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('Home —');
+    expect(content).toContain('+1 Home Goal');
+    expect(content).toContain('+1 Shot');
+    expect(content).toContain('Add Home Penalty');
+  });
+
+  test('display view has Away team panel with team name', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('Away —');
+    expect(content).toContain('+1 Away Goal');
+    expect(content).toContain('Add Away Penalty');
+  });
+
+  test('display view has Clock & Period panel', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('Clock &amp; Period');
+    expect(content).toContain('Period Navigation');
+    expect(content).toContain('Recurring Buzzer');
+    expect(content).toContain('BUZZER / HORN');
+  });
+
+  test('display view has Music & Audio panel', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('Music &amp; Audio');
+    expect(content).toContain('Music Library');
+    expect(content).toContain('Now Playing');
+    expect(content).toContain('Announce');
+  });
+
+  test('display view has responsive breakpoints for tablet/mobile', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('max-width: 1200px');
+    expect(content).toContain('max-width: 640px');
+  });
+});
+
+// =====================================================
+// 16. Score & Shot Edit Modals
+// =====================================================
+
+test.describe('Score and shot edit modals', () => {
+  test('display view has Score Edit modal', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sb-score-edit-modal');
+    expect(content).toContain('Edit Score');
+    expect(content).toContain('sbScoreEditTeam');
+    expect(content).toContain('sbScoreEditValue');
+  });
+
+  test('display view has Shot Edit modal', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sb-shot-edit-modal');
+    expect(content).toContain('Edit Shots');
+    expect(content).toContain('sbShotEditTeam');
+    expect(content).toContain('sbShotEditValue');
+  });
+
+  test('display view has Edit Score buttons for both teams', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain("sbShowScoreEdit('home')");
+    expect(content).toContain("sbShowScoreEdit('away')");
+  });
+
+  test('display view has Edit Shot buttons for both teams', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain("sbShowShotEdit('home')");
+    expect(content).toContain("sbShowShotEdit('away')");
+  });
+
+  test('display view has score adjust helpers (-1 and reset)', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sbScoreEditAdjust(-1)');
+    expect(content).toContain('Reset to 0');
+  });
+
+  test('JS has sbSetScore function for direct score setting', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbSetScore(');
+    expect(content).toContain('set_score');
+  });
+
+  test('JS has sbSetShots function for direct shot setting', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbSetShots(');
+    expect(content).toContain('set_shots');
+  });
+});
+
+// =====================================================
+// 17. Audio Settings Modal & Announce
+// =====================================================
+
+test.describe('Audio settings and announce', () => {
+  test('display view has Audio Settings modal with mic/speaker selects', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sb-audio-settings-modal');
+    expect(content).toContain('Audio Settings');
+    expect(content).toContain('sbAudioMicSelect');
+    expect(content).toContain('sbAudioSpeakerSelect');
+    expect(content).toContain('Microphone Input');
+    expect(content).toContain('Speaker Output');
+  });
+
+  test('display view has music volume slider', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sbAudioMusicVolume');
+    expect(content).toContain('Music Volume');
+  });
+
+  test('display view has Announce button', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sbAnnounceBtn');
+    expect(content).toContain('sbToggleAnnounce');
+    expect(content).toContain('Announce');
+  });
+
+  test('display view audio settings enumerates devices', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('enumerateDevices');
+    expect(content).toContain('audioinput');
+    expect(content).toContain('audiooutput');
+  });
+
+  test('JS has sbSetAudioConfig function', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbSetAudioConfig(');
+    expect(content).toContain('setSinkId');
+  });
+});
+
+// =====================================================
+// 18. Custom Period Time Input
+// =====================================================
+
+test.describe('Custom period time input', () => {
+  test('display view has custom period minutes input', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sbPeriodCustomMin');
+    expect(content).toContain('type="number"');
+    expect(content).toContain('Custom');
+  });
+});
+
+// =====================================================
+// 19. Tablet-Friendly Button Sizing
+// =====================================================
+
+test.describe('Tablet-friendly button sizing', () => {
+  test('display view has large primary buttons with min-height 52px', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('min-height: 52px');
+  });
+
+  test('display view has secondary buttons with min-height 48px', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('min-height: 48px');
+  });
+
+  test('display view has goal buttons with 18px font', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('goal-btn');
+    expect(content).toContain('font-size: 18px');
+  });
+});

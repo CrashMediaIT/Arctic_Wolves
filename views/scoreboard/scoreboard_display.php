@@ -358,7 +358,7 @@ $away_pp = ($home_active_pens > 0 && $home_active_pens > $away_active_pens);
 
             <span class="sb-ctrl-section-label">Goals</span>
             <button class="sb-ctrl-btn-primary home-accent goal-btn" onclick="sbAddGoal('home')">
-                <i class="fas fa-plus-circle"></i> +1 Goal
+                <i class="fas fa-plus-circle"></i> +1 Home Goal
             </button>
             <div class="sb-ctrl-btn-row">
                 <button class="sb-ctrl-btn-secondary" onclick="sbShowScoreEdit('home')">
@@ -384,7 +384,7 @@ $away_pp = ($home_active_pens > 0 && $home_active_pens > $away_active_pens);
             <button class="sb-ctrl-btn-primary home-accent" onclick="sbShowPenaltyModal('home')">
                 <i class="fas fa-user-slash"></i> Add Home Penalty
             </button>
-            <button class="sb-ctrl-btn-secondary" id="sbHomePenaltyDisplayToggle" onclick="sbTogglePenaltyDisplay()">
+            <button class="sb-ctrl-btn-secondary" id="sbPenaltyDisplayToggle" onclick="sbTogglePenaltyDisplay()">
                 <i class="fas fa-eye"></i> Penalties Shown on Board
             </button>
 
@@ -435,7 +435,7 @@ $away_pp = ($home_active_pens > 0 && $home_active_pens > $away_active_pens);
                 </div>
                 <div class="sb-ctrl-config-row">
                     <label for="sbPeriodCustomMin">Custom</label>
-                    <input type="number" id="sbPeriodCustomMin" min="1" max="60" placeholder="min" onchange="if(this.value)sbSetPeriodTime(this.value)">
+                    <input type="number" id="sbPeriodCustomMin" min="1" max="60" placeholder="min" onchange="sbApplyCustomPeriod(this.value)">
                 </div>
             </div>
 
@@ -502,6 +502,9 @@ $away_pp = ($home_active_pens > 0 && $home_active_pens > $away_active_pens);
             <button class="sb-ctrl-btn-secondary" onclick="sbShowAudioSettings()">
                 <i class="fas fa-volume-up"></i> Audio Settings
             </button>
+            <button class="sb-ctrl-btn-secondary" onclick="sbSpeakerSettings()">
+                <i class="fas fa-broadcast-tower"></i> Wireless Speakers
+            </button>
 
             <hr class="sb-ctrl-divider">
 
@@ -542,7 +545,7 @@ $away_pp = ($home_active_pens > 0 && $home_active_pens > $away_active_pens);
 
             <span class="sb-ctrl-section-label">Goals</span>
             <button class="sb-ctrl-btn-primary away-accent goal-btn" onclick="sbAddGoal('away')">
-                <i class="fas fa-plus-circle"></i> +1 Goal
+                <i class="fas fa-plus-circle"></i> +1 Away Goal
             </button>
             <div class="sb-ctrl-btn-row">
                 <button class="sb-ctrl-btn-secondary" onclick="sbShowScoreEdit('away')">
@@ -820,17 +823,21 @@ function sbShowAudioSettings() {
             var spkSelect = document.getElementById('sbAudioSpeakerSelect');
             micSelect.innerHTML = '<option value="">— Select Mic —</option>';
             spkSelect.innerHTML = '<option value="">— Select Speaker —</option>';
+            var micCount = 0;
+            var spkCount = 0;
             devices.forEach(function(device) {
                 if (device.kind === 'audioinput') {
+                    micCount++;
                     var opt = document.createElement('option');
                     opt.value = device.deviceId;
-                    opt.textContent = device.label || ('Mic ' + device.deviceId.substring(0, 8));
+                    opt.textContent = device.label || ('Mic ' + micCount);
                     micSelect.appendChild(opt);
                 }
                 if (device.kind === 'audiooutput') {
+                    spkCount++;
                     var opt = document.createElement('option');
                     opt.value = device.deviceId;
-                    opt.textContent = device.label || ('Speaker ' + device.deviceId.substring(0, 8));
+                    opt.textContent = device.label || ('Speaker ' + spkCount);
                     spkSelect.appendChild(opt);
                 }
             });
@@ -853,12 +860,21 @@ function sbApplyAudioSettings() {
     document.getElementById('sb-audio-settings-modal').classList.remove('active');
 }
 
+function sbApplyCustomPeriod(value) {
+    var mins = parseInt(value, 10);
+    if (!isNaN(mins) && mins >= 1 && mins <= 60) {
+        sbSetPeriodTime(mins);
+    }
+}
+
 function sbToggleAnnounce() {
     var btn = document.getElementById('sbAnnounceBtn');
-    var isActive = btn.classList.toggle('active');
     if (typeof sbToggleMic === 'function') {
         sbToggleMic();
     }
-    btn.innerHTML = isActive ? '🔴 LIVE — Tap to End' : '📢 Announce';
+    // Update button state after mic toggle attempt
+    var micActive = window._sbMicStream ? true : false;
+    btn.classList.toggle('active', micActive);
+    btn.innerHTML = micActive ? '🔴 LIVE — Tap to End' : '📢 Announce';
 }
 </script>

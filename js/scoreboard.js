@@ -277,9 +277,29 @@ function sbUndoGoal(team) {
     });
 }
 
+function sbSetScore(team, score) {
+    score = Math.max(0, parseInt(score, 10) || 0);
+    sbFetch('set_score', { team: team, score: score }).then(function(d) {
+        if (d.success) {
+            document.getElementById('sbHomeScore').textContent = d.home_score;
+            document.getElementById('sbAwayScore').textContent = d.away_score;
+        }
+    });
+}
+
 // ── Shot tracking ─────────────────────────────────────────
 function sbAddShot(team) {
     sbFetch('add_shot', { team: team }).then(function(d) {
+        if (d.success) {
+            document.getElementById('sbHomeShots').textContent = d.home_shots;
+            document.getElementById('sbAwayShots').textContent = d.away_shots;
+        }
+    });
+}
+
+function sbSetShots(team, shots) {
+    shots = Math.max(0, parseInt(shots, 10) || 0);
+    sbFetch('set_shots', { team: team, shots: shots }).then(function(d) {
         if (d.success) {
             document.getElementById('sbHomeShots').textContent = d.home_shots;
             document.getElementById('sbAwayShots').textContent = d.away_shots;
@@ -628,4 +648,20 @@ function sbToggleMic() {
 function sbSpeakerSettings() {
     // Wireless speaker configuration placeholder
     alert('Wireless Speaker Setup: Connect Bluetooth or network speakers through your system audio settings. The scoreboard audio output (buzzer, music, mic) will route to the default audio device.');
+}
+
+function sbSetAudioConfig(config) {
+    // Apply audio configuration from the Audio Settings modal
+    if (config.speaker && typeof HTMLMediaElement !== 'undefined' && HTMLMediaElement.prototype.setSinkId) {
+        // Set output device for all media elements
+        document.querySelectorAll('audio, video').forEach(function(el) {
+            if (typeof el.setSinkId === 'function') {
+                el.setSinkId(config.speaker).catch(function() { /* ignore */ });
+            }
+        });
+    }
+    // Store volume preference
+    window._sbMusicVolume = parseInt(config.volume, 10) / 100;
+    // Store mic device preference for announce mode
+    window._sbMicDeviceId = config.mic || '';
 }
