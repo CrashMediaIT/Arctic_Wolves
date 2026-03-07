@@ -4881,7 +4881,6 @@ CREATE TABLE IF NOT EXISTS `development_notification_templates` (
 INSERT IGNORE INTO `development_notification_templates` (`program_type`, `subject`, `body`) VALUES
 ('goalie_dev', 'New Goalie Development Program Registration', 'A new athlete has registered for the Long Term Goalie Development program. Please review and arrange communication with the enrollee.'),
 ('player_dev', 'New Player Development Program Registration', 'A new athlete has registered for the Long Term Player Development program. Please review and arrange communication with the enrollee.');
-
 -- =========================================================
 -- Scoreboard Module Tables
 -- scoreboard.arcticwolves.ca – In-arena scoreboard display
