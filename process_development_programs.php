@@ -467,6 +467,9 @@ function handleUploadDevVideo($pdo, $user_id, $input) {
  * Create a development appointment (coach schedules with athlete)
  */
 function handleCreateAppointment($pdo, $user_id, $input) {
+    $min_duration = 5;    // Minimum appointment duration in minutes
+    $max_duration = 480;  // Maximum appointment duration in minutes (8 hours)
+
     $enrollment_id = (int)($input['enrollment_id'] ?? 0);
     $athlete_id = (int)($input['athlete_id'] ?? 0);
     $appointment_type = $input['appointment_type'] ?? '';
@@ -487,8 +490,8 @@ function handleCreateAppointment($pdo, $user_id, $input) {
         echo json_encode(['success' => false, 'error' => 'Title, date and time are required']);
         return;
     }
-    if ($duration_minutes < 5 || $duration_minutes > 480) {
-        echo json_encode(['success' => false, 'error' => 'Duration must be between 5 and 480 minutes']);
+    if ($duration_minutes < $min_duration || $duration_minutes > $max_duration) {
+        echo json_encode(['success' => false, 'error' => "Duration must be between $min_duration and $max_duration minutes"]);
         return;
     }
     

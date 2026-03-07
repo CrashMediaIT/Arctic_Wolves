@@ -392,7 +392,7 @@ $locations = $pdo->query("SELECT id, name FROM locations WHERE is_active = 1 ORD
                 <h4 class="detail-section-title"><i class="fas fa-calendar-plus"></i> Schedule Appointment</h4>
                 <div class="appt-form-grid" id="appointment-form">
                     <div>
-                        <label>Type *</label>
+                        <label for="appt-type">Type *</label>
                         <select id="appt-type" onchange="toggleApptFields()">
                             <option value="call">Phone Call</option>
                             <option value="video_call">Video Call</option>
@@ -400,35 +400,35 @@ $locations = $pdo->query("SELECT id, name FROM locations WHERE is_active = 1 ORD
                         </select>
                     </div>
                     <div>
-                        <label>Title *</label>
+                        <label for="appt-title">Title *</label>
                         <input type="text" id="appt-title" placeholder="e.g. Progress Review">
                     </div>
                     <div>
-                        <label>Date *</label>
+                        <label for="appt-date">Date *</label>
                         <input type="date" id="appt-date" min="<?= date('Y-m-d') ?>">
                     </div>
                     <div>
-                        <label>Time *</label>
+                        <label for="appt-time">Time *</label>
                         <input type="time" id="appt-time">
                     </div>
                     <div>
-                        <label>Duration (min)</label>
+                        <label for="appt-duration">Duration (min)</label>
                         <input type="number" id="appt-duration" value="30" min="5" max="480">
                     </div>
                     <div id="appt-location-wrap">
-                        <label>Location</label>
+                        <label for="appt-location">Location</label>
                         <input type="text" id="appt-location" placeholder="Meeting location">
                     </div>
                     <div id="appt-url-wrap" style="display:none;">
-                        <label>Meeting URL</label>
+                        <label for="appt-meeting-url">Meeting URL</label>
                         <input type="url" id="appt-meeting-url" placeholder="https://zoom.us/...">
                     </div>
                     <div id="appt-phone-wrap" style="display:none;">
-                        <label>Phone Number</label>
+                        <label for="appt-phone">Phone Number</label>
                         <input type="text" id="appt-phone" placeholder="Phone number">
                     </div>
                     <div class="full-width">
-                        <label>Notes</label>
+                        <label for="appt-notes">Notes</label>
                         <textarea id="appt-notes" placeholder="Optional notes..."></textarea>
                     </div>
                     <div class="full-width">

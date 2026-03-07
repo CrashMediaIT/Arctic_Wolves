@@ -358,11 +358,11 @@ unset($enrollment);
                     </div>
                 </div>
                 <div class="dev-upload-form" id="dev-upload-form-<?= (int)$enrollment['id'] ?>">
-                    <label>Title *</label>
+                    <label for="dev-video-title-<?= (int)$enrollment['id'] ?>">Title *</label>
                     <input type="text" id="dev-video-title-<?= (int)$enrollment['id'] ?>" placeholder="e.g. Skating drill practice">
-                    <label>Description</label>
+                    <label for="dev-video-desc-<?= (int)$enrollment['id'] ?>">Description</label>
                     <textarea id="dev-video-desc-<?= (int)$enrollment['id'] ?>" placeholder="Optional notes for your coach..."></textarea>
-                    <label>Drill (optional)</label>
+                    <label for="dev-video-drill-<?= (int)$enrollment['id'] ?>">Drill (optional)</label>
                     <select id="dev-video-drill-<?= (int)$enrollment['id'] ?>">
                         <option value="">General Development Video</option>
                         <?php foreach ($enrollment['drills'] as $d): ?>
@@ -370,7 +370,7 @@ unset($enrollment);
                         <?php endforeach; ?>
                     </select>
                     <div id="dev-video-file-wrap-<?= (int)$enrollment['id'] ?>">
-                        <label>Video File</label>
+                        <label for="dev-video-file-<?= (int)$enrollment['id'] ?>">Video File</label>
                         <input type="file" id="dev-video-file-<?= (int)$enrollment['id'] ?>" accept="video/*" capture="environment" style="margin-bottom:10px;">
                     </div>
                     <button class="btn-upload" onclick="submitDevVideo(<?= (int)$enrollment['id'] ?>)">
