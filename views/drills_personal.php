@@ -119,7 +119,7 @@ if ($is_admin) {
 <!-- Create Personal Drill Form -->
 <div class="create-personal-drill-form">
     <h3><i class="fas fa-plus-circle"></i> Create Personal Drill</h3>
-    <form id="personal-drill-form">
+    <form id="personal-drill-form" enctype="multipart/form-data">
         <div class="form-row">
             <label for="pd-title">Title *</label>
             <input type="text" id="pd-title" name="title" required placeholder="Enter drill title">
@@ -129,8 +129,15 @@ if ($is_admin) {
             <textarea id="pd-description" name="description" placeholder="Describe the drill, key points, and objectives"></textarea>
         </div>
         <div class="form-row">
-            <label for="pd-video">Video URL</label>
-            <input type="text" id="pd-video" name="video_url" placeholder="Paste a video URL (YouTube, Vimeo, etc.)">
+            <label for="pd-video">Upload Video</label>
+            <input type="file" id="pd-video" name="video_file" accept="video/mp4,video/webm,video/ogg,video/x-matroska,video/quicktime,video/x-msvideo">
+            <p style="font-size:11px;color:var(--text-dim,#94a3b8);margin-top:4px;"><i class="fas fa-info-circle"></i> Supported: MP4, WebM, MOV, AVI, MKV. Max 10GB.</p>
+        </div>
+        <div id="pd-upload-progress" style="display:none;margin-bottom:14px;">
+            <div style="background:var(--bg-main,#0d1117);border-radius:8px;overflow:hidden;height:8px;">
+                <div id="pd-progress-bar" style="height:100%;background:var(--primary,#6B46C1);width:0%;transition:width 0.3s;"></div>
+            </div>
+            <p id="pd-progress-text" style="font-size:11px;color:var(--text-dim,#94a3b8);margin-top:4px;">Uploading...</p>
         </div>
         <button type="submit" class="btn-create-drill"><i class="fas fa-save"></i> Create Drill & Add to Library</button>
     </form>
@@ -153,8 +160,21 @@ if ($is_admin) {
         <?php if ($pd['description']): ?>
             <p><?= htmlspecialchars(substr($pd['description'], 0, 200)) ?><?= strlen($pd['description']) > 200 ? '...' : '' ?></p>
         <?php endif; ?>
-        <?php if ($pd['video_url']): ?>
-            <a href="<?= htmlspecialchars($pd['video_url']) ?>" target="_blank" style="color:var(--primary);font-size:13px;display:block;margin-bottom:10px;"><i class="fas fa-play-circle"></i> Watch Video</a>
+        <?php if (!empty($pd['video_upload_path'])): 
+            $videoPath = $pd['video_upload_path'];
+            $videoExt = strtolower(pathinfo($videoPath, PATHINFO_EXTENSION));
+            $videoMimeTypes = [
+                'mp4' => 'video/mp4',
+                'webm' => 'video/webm',
+                'ogg' => 'video/ogg',
+                'ogv' => 'video/ogg'
+            ];
+            $videoMimeType = $videoMimeTypes[$videoExt] ?? 'video/mp4';
+        ?>
+            <video controls style="width:100%;border-radius:8px;background:var(--bg-main);margin-bottom:10px;">
+                <source src="<?= htmlspecialchars($videoPath) ?>" type="<?= $videoMimeType ?>">
+                Your browser does not support the video tag.
+            </video>
         <?php endif; ?>
         <div class="drill-meta">
             Created by <?= htmlspecialchars($pd['first_name'] . ' ' . $pd['last_name']) ?> &bull; <?= date('M j, Y', strtotime($pd['created_at'])) ?>
@@ -171,30 +191,75 @@ document.getElementById('personal-drill-form').addEventListener('submit', functi
     const title = document.getElementById('pd-title').value.trim();
     if (!title) { alert('Title is required.'); return; }
     
+    const videoInput = document.getElementById('pd-video');
+    const videoFile = videoInput.files ? videoInput.files[0] : null;
+    
+    // Validate video file size (10GB max)
+    if (videoFile && videoFile.size > 10 * 1024 * 1024 * 1024) {
+        alert('Video file is too large. Maximum size is 10GB.');
+        return;
+    }
+    
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
     
-    fetch('process_development_programs.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRF-Token': csrfToken
-        },
-        body: JSON.stringify({
-            action: 'create_personal_drill',
-            title: title,
-            description: document.getElementById('pd-description').value.trim(),
-            video_url: document.getElementById('pd-video').value.trim()
-        })
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            location.reload();
-        } else {
-            alert(data.error || 'Failed to create drill.');
+    const formData = new FormData();
+    formData.append('action', 'create_personal_drill');
+    formData.append('title', title);
+    formData.append('description', document.getElementById('pd-description').value.trim());
+    if (videoFile) {
+        formData.append('video_file', videoFile);
+    }
+    
+    const submitBtn = this.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+    
+    const progressDiv = document.getElementById('pd-upload-progress');
+    const progressBar = document.getElementById('pd-progress-bar');
+    const progressText = document.getElementById('pd-progress-text');
+    
+    if (videoFile) {
+        progressDiv.style.display = 'block';
+    }
+    
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', 'process_development_programs.php', true);
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+    xhr.setRequestHeader('X-CSRF-Token', csrfToken);
+    
+    xhr.upload.addEventListener('progress', function(e) {
+        if (e.lengthComputable) {
+            const pct = Math.round((e.loaded / e.total) * 100);
+            progressBar.style.width = pct + '%';
+            progressText.textContent = pct < 100 ? 'Uploading... ' + pct + '%' : 'Processing...';
         }
-    })
-    .catch(() => alert('An error occurred.'));
+    });
+    
+    xhr.onload = function() {
+        try {
+            const data = JSON.parse(xhr.responseText);
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.error || 'Failed to create drill.');
+            }
+        } catch (err) {
+            alert('An error occurred.');
+        }
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-save"></i> Create Drill & Add to Library';
+        progressDiv.style.display = 'none';
+        progressBar.style.width = '0%';
+    };
+    
+    xhr.onerror = function() {
+        alert('An error occurred.');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-save"></i> Create Drill & Add to Library';
+        progressDiv.style.display = 'none';
+        progressBar.style.width = '0%';
+    };
+    
+    xhr.send(formData);
 });
 </script>

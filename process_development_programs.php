@@ -8,6 +8,8 @@ session_start();
 
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/security.php';
+require_once __DIR__ . '/cloud_config.php';
+require_once __DIR__ . '/lib/file_upload_validator.php';
 
 // Check AJAX request
 if (empty($_SERVER['HTTP_X_REQUESTED_WITH']) || strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) !== 'xmlhttprequest') {
@@ -42,6 +44,12 @@ $canManageDevPrograms = ($isGoalieDev || $isPlayerDev || $isAdmin);
 
 $input = json_decode(file_get_contents('php://input'), true);
 $action = $input['action'] ?? '';
+
+// Support FormData (multipart) requests for file uploads
+if (empty($action) && !empty($_POST['action'])) {
+    $action = $_POST['action'];
+    $input = $_POST;
+}
 
 try {
     switch ($action) {
@@ -243,23 +251,45 @@ function handleSendMessage($pdo, $user_id, $input) {
 function handleCreatePersonalDrill($pdo, $user_id, $input) {
     $title = trim($input['title'] ?? '');
     $description = trim($input['description'] ?? '');
-    $video_url = trim($input['video_url'] ?? '');
+    $video_upload_path = null;
     
     if (!$title) {
         echo json_encode(['success' => false, 'error' => 'Title is required']);
         return;
     }
     
+    // Handle video file upload
+    if (isset($_FILES['video_file']) && $_FILES['video_file']['error'] === UPLOAD_ERR_OK) {
+        $file = $_FILES['video_file'];
+        
+        $validator = new FileUploadValidator();
+        $validation = $validator->validateVideo($file);
+        if (!$validation['valid']) {
+            echo json_encode(['success' => false, 'error' => $validation['error']]);
+            return;
+        }
+        
+        $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        $filename = 'personal_drill_' . bin2hex(random_bytes(16)) . '.' . $extension;
+        
+        $persist = persistUploadedFile($pdo, $file['tmp_name'], 'drills/videos', $filename, '', true);
+        if (!$persist['success']) {
+            echo json_encode(['success' => false, 'error' => 'Video upload failed. Please try again.']);
+            return;
+        }
+        $video_upload_path = $persist['rustfs_url'] ?? null;
+    }
+    
     $pdo->beginTransaction();
     try {
         // Add to the main drill library first
-        $drill_stmt = $pdo->prepare("INSERT INTO drills (title, description, video_url, created_by) VALUES (?, ?, ?, ?)");
-        $drill_stmt->execute([$title, $description ?: null, $video_url ?: null, $user_id]);
+        $drill_stmt = $pdo->prepare("INSERT INTO drills (title, description, video_upload_path, created_by) VALUES (?, ?, ?, ?)");
+        $drill_stmt->execute([$title, $description ?: null, $video_upload_path, $user_id]);
         $drill_id = (int)$pdo->lastInsertId();
         
         // Create personal drill record referencing the library drill
-        $pd_stmt = $pdo->prepare("INSERT INTO personal_drills (title, description, video_url, created_by) VALUES (?, ?, ?, ?)");
-        $pd_stmt->execute([$title, $description ?: null, $video_url ?: null, $user_id]);
+        $pd_stmt = $pdo->prepare("INSERT INTO personal_drills (title, description, video_upload_path, created_by) VALUES (?, ?, ?, ?)");
+        $pd_stmt->execute([$title, $description ?: null, $video_upload_path, $user_id]);
         
         $pdo->commit();
         echo json_encode(['success' => true, 'drill_id' => $drill_id]);
