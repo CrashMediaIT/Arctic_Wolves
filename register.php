@@ -25,6 +25,16 @@ if ($isPosSubdomain) {
     exit();
 }
 
+// Detect Scoreboard subdomain - redirect to scoreboard (no registration)
+$isScoreboardSubdomain = (
+    strpos($host, 'scoreboard.') === 0 &&
+    (preg_match('/^scoreboard\.arcticwolves\.ca$/i', $host) || preg_match('/^scoreboard\..*\.arcticwolves\.ca$/i', $host))
+);
+if ($isScoreboardSubdomain) {
+    header("Location: scoreboard.php");
+    exit();
+}
+
 // Generate CSRF token
 generateCSRFToken();
 
