@@ -270,4 +270,32 @@ test.describe('PWA View Override and Feature Parity', () => {
     expect(mobileContent).toContain('page=camp_checkin');
   });
 
+  test('pwa/video.php links to video_review_detail not video&id', () => {
+    const content = readFileSync(join(ROOT, 'views', 'pwa', 'video.php'), 'utf-8');
+    // Video cards should link to the detail page, not back to the video list
+    expect(content).toContain('page=video_review_detail&video_id=');
+    expect(content).not.toContain('page=video&id=');
+  });
+
+  test('pwa/admin_wishlist.php exists and has full CRUD', () => {
+    const content = readFileSync(join(ROOT, 'views', 'pwa', 'admin_wishlist.php'), 'utf-8');
+    // Should have admin-only check
+    expect(content).toContain('$isAdmin');
+    // Should have CRUD operations
+    expect(content).toContain('create_item');
+    expect(content).toContain('update_item');
+    expect(content).toContain('delete_item');
+    expect(content).toContain('toggle_purchased');
+    // Should reference the backend process file
+    expect(content).toContain('process_wishlist.php');
+    // Should have mobile-native bottom sheet UI
+    expect(content).toContain('m-bs-sheet');
+  });
+
+  test('orphaned audit_log.php PWA view is removed', () => {
+    const { existsSync } = require('fs');
+    const auditLogPath = join(ROOT, 'views', 'pwa', 'audit_log.php');
+    expect(existsSync(auditLogPath)).toBe(false);
+  });
+
 });
