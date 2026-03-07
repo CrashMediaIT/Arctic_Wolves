@@ -138,7 +138,8 @@ test.describe('Personal Development View Files', () => {
     const content = readFile('views/drills_personal.php');
     expect(content).toContain('Personal Drill');
     expect(content).toContain('personal_drills');
-    expect(content).toContain('video_url');
+    expect(content).toContain('video_file');
+    expect(content).toContain('video_upload_path');
     expect(content).toContain('create_personal_drill');
     expect(content).toContain('process_development_programs.php');
   });

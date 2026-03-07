@@ -3753,6 +3753,9 @@ CREATE TABLE IF NOT EXISTS `hr_complaint_documents` (
 -- Add video upload support to drills table
 ALTER TABLE `drills` ADD COLUMN IF NOT EXISTS `video_upload_path` VARCHAR(500) DEFAULT NULL COMMENT 'Path to uploaded video file' AFTER `video_url`;
 
+-- Add video upload support to personal_drills table
+ALTER TABLE `personal_drills` ADD COLUMN IF NOT EXISTS `video_upload_path` VARCHAR(500) DEFAULT NULL COMMENT 'Path to uploaded video file' AFTER `video_url`;
+
 -- =========================================================
 -- Evaluation Templates - Saved evaluation configurations
 -- =========================================================
@@ -4857,6 +4860,7 @@ CREATE TABLE IF NOT EXISTS `personal_drills` (
     `title` VARCHAR(255) NOT NULL,
     `description` TEXT DEFAULT NULL,
     `video_url` VARCHAR(512) DEFAULT NULL,
+    `video_upload_path` VARCHAR(500) DEFAULT NULL COMMENT 'Path to uploaded video file',
     `created_by` INT NOT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
