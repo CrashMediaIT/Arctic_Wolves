@@ -282,6 +282,7 @@ test.describe('Scoreboard Game Plan integration', () => {
     const content = readFile('process_scoreboard.php');
     expect(content).toContain('goals = goals + 1');
     expect(content).toContain('assists = assists + 1');
+    expect(content).toContain('points = points + 1');
     expect(content).toContain('penalty_minutes = penalty_minutes');
   });
 

@@ -313,7 +313,7 @@ try {
                     if (!empty($g['scorer_number'])) {
                         try {
                             $pdo->prepare("
-                                UPDATE athlete_stats SET goals = goals + 1, points = goals + assists + 1
+                                UPDATE athlete_stats SET goals = goals + 1, points = points + 1
                                 WHERE team_id = ? AND user_id IN (
                                     SELECT id FROM users WHERE jersey_number = ? AND id IN (
                                         SELECT user_id FROM athlete_stats WHERE team_id = ?
@@ -328,7 +328,7 @@ try {
                     if (!empty($g['assist1_number'])) {
                         try {
                             $pdo->prepare("
-                                UPDATE athlete_stats SET assists = assists + 1, points = goals + assists + 1
+                                UPDATE athlete_stats SET assists = assists + 1, points = points + 1
                                 WHERE team_id = ? AND user_id IN (
                                     SELECT id FROM users WHERE jersey_number = ? AND id IN (
                                         SELECT user_id FROM athlete_stats WHERE team_id = ?
@@ -343,7 +343,7 @@ try {
                     if (!empty($g['assist2_number'])) {
                         try {
                             $pdo->prepare("
-                                UPDATE athlete_stats SET assists = assists + 1, points = goals + assists + 1
+                                UPDATE athlete_stats SET assists = assists + 1, points = points + 1
                                 WHERE team_id = ? AND user_id IN (
                                     SELECT id FROM users WHERE jersey_number = ? AND id IN (
                                         SELECT user_id FROM athlete_stats WHERE team_id = ?
