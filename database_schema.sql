@@ -4881,3 +4881,80 @@ CREATE TABLE IF NOT EXISTS `development_notification_templates` (
 INSERT IGNORE INTO `development_notification_templates` (`program_type`, `subject`, `body`) VALUES
 ('goalie_dev', 'New Goalie Development Program Registration', 'A new athlete has registered for the Long Term Goalie Development program. Please review and arrange communication with the enrollee.'),
 ('player_dev', 'New Player Development Program Registration', 'A new athlete has registered for the Long Term Player Development program. Please review and arrange communication with the enrollee.');
+
+-- =========================================================
+-- Scoreboard Module Tables
+-- scoreboard.arcticwolves.ca – In-arena scoreboard display
+-- =========================================================
+
+-- Scoreboard games – tracks each game session
+CREATE TABLE IF NOT EXISTS `scoreboard_games` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `home_team_name` VARCHAR(100) NOT NULL,
+    `away_team_name` VARCHAR(100) NOT NULL,
+    `home_team_id` INT DEFAULT NULL COMMENT 'FK to teams table (optional)',
+    `away_team_id` INT DEFAULT NULL COMMENT 'FK to teams table (optional)',
+    `home_score` INT DEFAULT 0,
+    `away_score` INT DEFAULT 0,
+    `home_shots` INT DEFAULT 0,
+    `away_shots` INT DEFAULT 0,
+    `current_period` VARCHAR(5) DEFAULT '1',
+    `status` ENUM('warmup', 'in_progress', 'intermission', 'final') DEFAULT 'warmup',
+    `is_arctic_wolves_game` TINYINT(1) DEFAULT 0 COMMENT 'If 1, sync scoresheet to Game Plan and player stats',
+    `synced_to_gameplan` TINYINT(1) DEFAULT 0,
+    `created_by` INT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `ended_at` TIMESTAMP NULL DEFAULT NULL,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX `idx_status` (`status`),
+    INDEX `idx_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Scoreboard goals – detailed goal records for scoresheet
+CREATE TABLE IF NOT EXISTS `scoreboard_goals` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `game_id` INT NOT NULL,
+    `period` VARCHAR(5) DEFAULT '1',
+    `game_time` VARCHAR(10) DEFAULT NULL COMMENT 'Clock time when goal was scored (e.g. 12:34)',
+    `game_time_seconds` INT DEFAULT NULL COMMENT 'Seconds elapsed for sorting',
+    `team` ENUM('home', 'away') NOT NULL,
+    `scorer_number` VARCHAR(5) DEFAULT NULL,
+    `scorer_name` VARCHAR(100) DEFAULT NULL,
+    `assist1_number` VARCHAR(5) DEFAULT NULL,
+    `assist1_name` VARCHAR(100) DEFAULT NULL,
+    `assist2_number` VARCHAR(5) DEFAULT NULL,
+    `assist2_name` VARCHAR(100) DEFAULT NULL,
+    `goal_type` VARCHAR(50) DEFAULT 'Even Strength',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`game_id`) REFERENCES `scoreboard_games`(`id`) ON DELETE CASCADE,
+    INDEX `idx_game` (`game_id`),
+    INDEX `idx_period` (`period`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Scoreboard penalties – penalty tracking
+CREATE TABLE IF NOT EXISTS `scoreboard_penalties` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `game_id` INT NOT NULL,
+    `period` VARCHAR(5) DEFAULT '1',
+    `game_time` VARCHAR(10) DEFAULT NULL,
+    `game_time_seconds` INT DEFAULT NULL,
+    `team` ENUM('home', 'away') NOT NULL,
+    `player_number` VARCHAR(5) DEFAULT NULL,
+    `player_name` VARCHAR(100) DEFAULT NULL,
+    `infraction` VARCHAR(100) NOT NULL,
+    `duration_minutes` INT DEFAULT 2,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`game_id`) REFERENCES `scoreboard_games`(`id`) ON DELETE CASCADE,
+    INDEX `idx_game` (`game_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Scoreboard shots – per-period shot tracking
+CREATE TABLE IF NOT EXISTS `scoreboard_shots` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `game_id` INT NOT NULL,
+    `period` VARCHAR(5) DEFAULT '1',
+    `team` ENUM('home', 'away') NOT NULL,
+    `count` INT DEFAULT 0,
+    FOREIGN KEY (`game_id`) REFERENCES `scoreboard_games`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `unique_game_period_team` (`game_id`, `period`, `team`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
