@@ -99,7 +99,7 @@ unset($enrollment);
 .enrollment-section .section-label:first-of-type { border-top: none; margin-top: 0; padding-top: 0; }
 .enrollment-section .section-label i { margin-right: 6px; }
 
-/* Drill cards - clickable */
+/* Drill cards - clickable links */
 .drill-list { display: flex; flex-direction: column; gap: 12px; }
 .drill-card {
     background: var(--bg-main, #0d1117); border: 1px solid var(--border, #2d2d44);
@@ -125,48 +125,6 @@ unset($enrollment);
 .drill-status.assigned { background: rgba(59,130,246,0.15); color: #3b82f6; }
 .drill-status.in_progress { background: rgba(245,158,11,0.15); color: #f59e0b; }
 .drill-status.completed { background: rgba(16,185,129,0.15); color: #10b981; }
-
-/* Drill Detail Modal */
-.drill-detail-overlay {
-    display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.7); z-index: 9999;
-    justify-content: center; align-items: flex-start; padding: 40px 16px; overflow-y: auto;
-}
-.drill-detail-overlay.active { display: flex; }
-.drill-detail-modal {
-    background: var(--bg-card, #1a1a2e); border: 1px solid var(--border, #2d2d44);
-    border-radius: 14px; max-width: 640px; width: 100%; padding: 28px;
-    position: relative; max-height: 85vh; overflow-y: auto;
-}
-.drill-detail-modal .modal-close {
-    position: absolute; top: 16px; right: 16px; background: none; border: none;
-    color: var(--text-dim, #94a3b8); font-size: 20px; cursor: pointer;
-}
-.drill-detail-modal .modal-close:hover { color: var(--text-white, #e2e8f0); }
-.drill-detail-modal h2 { font-size: 20px; font-weight: 700; color: var(--text-white, #e2e8f0); margin-bottom: 16px; padding-right: 32px; }
-.drill-detail-section { margin-bottom: 18px; }
-.drill-detail-section h5 {
-    font-size: 13px; font-weight: 600; color: var(--primary, #6B46C1);
-    text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;
-}
-.drill-detail-section p { font-size: 14px; color: var(--text-dim, #94a3b8); line-height: 1.6; margin: 0; }
-.drill-detail-video {
-    margin: 16px 0; padding: 14px; background: var(--bg-main, #0d1117);
-    border-radius: 8px; border: 1px solid var(--border, #2d2d44);
-}
-.drill-detail-video a { color: var(--primary, #6B46C1); font-weight: 600; font-size: 14px; text-decoration: none; }
-.drill-detail-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
-.drill-detail-actions .btn {
-    padding: 10px 18px; border-radius: 8px; font-weight: 600;
-    font-size: 13px; border: none; cursor: pointer; display: inline-flex;
-    align-items: center; gap: 6px; transition: opacity 0.2s;
-}
-.drill-detail-actions .btn:hover { opacity: 0.85; }
-.drill-detail-actions .btn-primary { background: var(--primary, #6B46C1); color: #fff; }
-.drill-detail-actions .btn-secondary {
-    background: rgba(59,130,246,0.12); color: #3b82f6;
-    border: 1px solid rgba(59,130,246,0.25);
-}
 
 /* Upload section */
 .dev-upload-section {
@@ -320,7 +278,7 @@ unset($enrollment);
         <?php else: ?>
             <div class="drill-list">
             <?php foreach ($enrollment['drills'] as $drill): ?>
-                <div class="drill-card" onclick="openDrillDetail(<?= (int)$drill['id'] ?>, <?= (int)$enrollment['id'] ?>)" data-drill-assignment-id="<?= (int)$drill['id'] ?>">
+                <a href="?page=dev_drill_detail&id=<?= (int)$drill['id'] ?>&enrollment_id=<?= (int)$enrollment['id'] ?>" class="drill-card" data-drill-assignment-id="<?= (int)$drill['id'] ?>" style="text-decoration:none;display:block;">
                     <div class="drill-card-header">
                         <h4><?= htmlspecialchars($drill['drill_title']) ?></h4>
                         <span class="drill-status <?= htmlspecialchars($drill['status']) ?>"><?= str_replace('_', ' ', htmlspecialchars($drill['status'])) ?></span>
@@ -332,12 +290,12 @@ unset($enrollment);
                         <p style="color:#f59e0b;font-size:12px;"><i class="fas fa-sticky-note"></i> <?= htmlspecialchars($drill['coach_notes']) ?></p>
                     <?php endif; ?>
                     <div class="drill-card-footer">
-                        <span class="btn-view-drill"><i class="fas fa-eye"></i> View Details</span>
+                        <span class="btn-view-drill"><i class="fas fa-eye"></i> View Full Details</span>
                         <?php if ($drill['drill_video_url']): ?>
                         <span class="btn-view-drill" style="color:#3b82f6;"><i class="fas fa-play-circle"></i> Has Video</span>
                         <?php endif; ?>
                     </div>
-                </div>
+                </a>
             <?php endforeach; ?>
             </div>
         <?php endif; ?>
@@ -428,16 +386,6 @@ unset($enrollment);
     <?php endforeach; ?>
 <?php endif; ?>
 
-<!-- Drill Detail Modal -->
-<div class="drill-detail-overlay" id="drill-detail-overlay">
-    <div class="drill-detail-modal" id="drill-detail-modal">
-        <button class="modal-close" onclick="closeDrillDetail()"><i class="fas fa-times"></i></button>
-        <div id="drill-detail-content">
-            <p style="color:var(--text-dim);text-align:center;padding:40px;"><i class="fas fa-spinner fa-spin"></i> Loading...</p>
-        </div>
-    </div>
-</div>
-
 <script>
 const devCsrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
@@ -460,127 +408,125 @@ function sendDevMessage(enrollmentId) {
     }).catch(() => alert('An error occurred.'));
 }
 
-function openDrillDetail(drillAssignmentId, enrollmentId) {
-    const overlay = document.getElementById('drill-detail-overlay');
-    const content = document.getElementById('drill-detail-content');
-    overlay.classList.add('active');
-    content.innerHTML = '<p style="color:var(--text-dim);text-align:center;padding:40px;"><i class="fas fa-spinner fa-spin"></i> Loading...</p>';
-    
-    devFetch({ action: 'get_drill_details', drill_assignment_id: drillAssignmentId })
-    .then(data => {
-        if (!data.success) { content.innerHTML = '<p style="color:#ef4444;padding:20px;">Error: ' + (data.error || 'Could not load drill') + '</p>'; return; }
-        const d = data.drill;
-        let html = '<h2>' + escHtml(d.title) + '</h2>';
-        html += '<span class="drill-status ' + escHtml(d.status) + '">' + escHtml(d.status.replace('_', ' ')) + '</span>';
-        html += '<span style="margin-left:8px;font-size:12px;color:var(--text-dim);">Assigned by ' + escHtml(d.coach_first + ' ' + d.coach_last) + '</span>';
-        
-        if (d.description) html += '<div class="drill-detail-section"><h5>Description</h5><p>' + escHtml(d.description) + '</p></div>';
-        if (d.setup) html += '<div class="drill-detail-section"><h5>Setup</h5><p>' + escHtml(d.setup) + '</p></div>';
-        if (d.coaching_points) html += '<div class="drill-detail-section"><h5>Coaching Points</h5><p>' + escHtml(d.coaching_points) + '</p></div>';
-        if (d.coach_notes) html += '<div class="drill-detail-section"><h5>Coach Notes</h5><p style="color:#f59e0b;">' + escHtml(d.coach_notes) + '</p></div>';
-        
-        if (d.video_url) {
-            html += '<div class="drill-detail-video"><a href="' + escHtml(d.video_url) + '" target="_blank"><i class="fas fa-play-circle"></i> Watch Drill Video</a></div>';
-        }
-        if (d.custom_image) {
-            html += '<div class="drill-detail-section"><img src="' + escHtml(d.custom_image) + '" style="max-width:100%;border-radius:8px;" alt="Drill diagram"></div>';
-        }
-        
-        // Submitted videos for this drill
-        if (d.videos && d.videos.length > 0) {
-            html += '<div class="drill-detail-section"><h5>Your Submitted Videos</h5>';
-            d.videos.forEach(function(v) {
-                html += '<div style="padding:8px;background:var(--bg-main);border:1px solid var(--border);border-radius:6px;margin-bottom:6px;font-size:13px;">';
-                html += '<strong>' + escHtml(v.title) + '</strong> <span class="video-status ' + escHtml(v.status) + '">' + escHtml(v.status.replace('_', ' ')) + '</span>';
-                if (v.coach_feedback) html += '<p style="color:#10b981;margin:4px 0 0;font-size:12px;"><i class="fas fa-comment-dots"></i> ' + escHtml(v.coach_feedback) + '</p>';
-                html += '</div>';
-            });
-            html += '</div>';
-        }
-        
-        html += '<div class="drill-detail-actions">';
-        html += '<button class="btn btn-primary" onclick="recordDrillVideo(' + d.assignment_id + ', ' + enrollmentId + ')"><i class="fas fa-circle-dot"></i> Record Video</button>';
-        if (d.status === 'assigned') {
-            html += '<button class="btn btn-secondary" onclick="updateMyDrillStatus(' + d.assignment_id + ', \'in_progress\')"><i class="fas fa-play"></i> Mark In Progress</button>';
-        } else if (d.status === 'in_progress') {
-            html += '<button class="btn btn-secondary" onclick="updateMyDrillStatus(' + d.assignment_id + ', \'completed\')"><i class="fas fa-check"></i> Mark Completed</button>';
-        }
-        html += '</div>';
-        
-        content.innerHTML = html;
-    }).catch(() => { content.innerHTML = '<p style="color:#ef4444;padding:20px;">Failed to load drill details.</p>'; });
-}
-
-function closeDrillDetail() {
-    document.getElementById('drill-detail-overlay').classList.remove('active');
-}
-document.getElementById('drill-detail-overlay')?.addEventListener('click', function(e) {
-    if (e.target === this) closeDrillDetail();
-});
-
-function recordDrillVideo(drillAssignmentId, enrollmentId) {
-    closeDrillDetail();
-    showDevUploadForm(enrollmentId, 'record');
-    const drillSelect = document.getElementById('dev-video-drill-' + enrollmentId);
-    if (drillSelect) drillSelect.value = drillAssignmentId;
-}
-
-function updateMyDrillStatus(drillAssignmentId, status) {
-    devFetch({ action: 'update_drill_status', drill_assignment_id: drillAssignmentId, status: status })
-    .then(data => {
-        if (data.success) location.reload();
-        else alert(data.error || 'Failed to update status.');
-    }).catch(() => alert('An error occurred.'));
-}
-
 function showDevUploadForm(enrollmentId, mode) {
     const form = document.getElementById('dev-upload-form-' + enrollmentId);
     if (form) {
         form.classList.add('active');
         form.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        const fileWrap = document.getElementById('dev-video-file-wrap-' + enrollmentId);
-        if (fileWrap) {
-            const fileInput = document.getElementById('dev-video-file-' + enrollmentId);
-            if (mode === 'record' && fileInput) {
-                fileInput.setAttribute('capture', 'environment');
-            } else if (fileInput) {
-                fileInput.removeAttribute('capture');
-            }
+        const fileInput = document.getElementById('dev-video-file-' + enrollmentId);
+        if (mode === 'record' && fileInput) {
+            fileInput.setAttribute('capture', 'environment');
+        } else if (fileInput) {
+            fileInput.removeAttribute('capture');
         }
     }
 }
 
+/**
+ * Submit development video using the application's standard presigned URL upload flow:
+ * 1. POST to process_video.php with action=get_video_upload_url → presigned URL
+ * 2. PUT file directly to RustFS/S3 via presigned URL with XHR progress
+ * 3. POST to process_development_programs.php with action=confirm_dev_video_upload → DB insert
+ * Falls back to legacy upload if presigned URL flow is unavailable.
+ */
 function submitDevVideo(enrollmentId) {
-    const title = document.getElementById('dev-video-title-' + enrollmentId)?.value?.trim();
-    const desc = document.getElementById('dev-video-desc-' + enrollmentId)?.value?.trim();
-    const drillId = document.getElementById('dev-video-drill-' + enrollmentId)?.value || '';
-    const fileInput = document.getElementById('dev-video-file-' + enrollmentId);
-    
+    var title = document.getElementById('dev-video-title-' + enrollmentId)?.value?.trim();
+    var desc = document.getElementById('dev-video-desc-' + enrollmentId)?.value?.trim();
+    var drillId = document.getElementById('dev-video-drill-' + enrollmentId)?.value || '';
+    var fileInput = document.getElementById('dev-video-file-' + enrollmentId);
+    var uploadBtn = fileInput?.closest('.dev-upload-card')?.querySelector('.btn-upload');
+
     if (!title) { alert('Please enter a title for your video.'); return; }
     if (!fileInput?.files?.length) { alert('Please select or record a video file.'); return; }
-    
-    const formData = new FormData();
-    formData.append('action', 'upload_dev_video');
-    formData.append('enrollment_id', enrollmentId);
-    formData.append('title', title);
-    formData.append('description', desc);
-    if (drillId) formData.append('drill_assignment_id', drillId);
-    formData.append('video_file', fileInput.files[0]);
-    
-    fetch('process_development_programs.php', {
-        method: 'POST',
-        headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-Token': devCsrfToken },
-        body: formData
-    }).then(r => r.json()).then(data => {
-        if (data.success) { alert('Video submitted successfully! Your coach will be notified.'); location.reload(); }
-        else { alert(data.error || 'Upload failed.'); }
-    }).catch(() => alert('Upload failed. Please try again.'));
-}
 
-function escHtml(str) {
-    if (!str) return '';
-    const div = document.createElement('div');
-    div.appendChild(document.createTextNode(str));
-    return div.innerHTML;
+    var videoFile = fileInput.files[0];
+    if (uploadBtn) { uploadBtn.disabled = true; uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...'; }
+
+    // Phase 1: Get presigned URL from process_video.php
+    var formMeta = new FormData();
+    formMeta.append('action', 'get_video_upload_url');
+    formMeta.append('upload_type', 'dev_video');
+    formMeta.append('csrf_token', devCsrfToken);
+    formMeta.append('title', title);
+    formMeta.append('file_name', videoFile.name);
+    formMeta.append('file_size', videoFile.size);
+    formMeta.append('file_type', videoFile.type || 'video/mp4');
+
+    var uploadNonce = null;
+    var contentType = null;
+
+    fetch('process_video.php', { method: 'POST', body: formMeta })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data.success) throw new Error(data.error || 'Failed to get upload URL');
+            uploadNonce = data.upload_nonce;
+            contentType = data.content_type || videoFile.type || 'application/octet-stream';
+            var presignedUrl = data.presigned_url;
+            if (!presignedUrl) throw new Error('No presigned URL — falling back to legacy upload');
+
+            // Phase 2: PUT directly to RustFS
+            return new Promise(function(resolve, reject) {
+                var xhr = new XMLHttpRequest();
+                xhr.open('PUT', presignedUrl, true);
+                xhr.setRequestHeader('Content-Type', contentType);
+                var uploadStarted = false;
+                var connTimer = setTimeout(function() {
+                    if (!uploadStarted) { xhr.abort(); reject(new Error('Upload connection timed out')); }
+                }, 30000);
+                xhr.upload.onprogress = function(ev) {
+                    if (!uploadStarted && ev.loaded > 0) { uploadStarted = true; clearTimeout(connTimer); }
+                };
+                xhr.onload = function() {
+                    clearTimeout(connTimer);
+                    if (xhr.status >= 200 && xhr.status < 300) resolve();
+                    else reject(new Error('Upload failed (HTTP ' + xhr.status + ')'));
+                };
+                xhr.onerror = function() { clearTimeout(connTimer); reject(new Error('Network error')); };
+                xhr.send(videoFile);
+            });
+        })
+        .then(function() {
+            // Phase 3: Confirm upload in DB
+            var confirmForm = new FormData();
+            confirmForm.append('action', 'confirm_dev_video_upload');
+            confirmForm.append('csrf_token', devCsrfToken);
+            confirmForm.append('upload_nonce', uploadNonce);
+            confirmForm.append('enrollment_id', enrollmentId);
+            if (drillId) confirmForm.append('drill_assignment_id', drillId);
+            confirmForm.append('title', title);
+            confirmForm.append('description', desc || '');
+            return fetch('process_development_programs.php', {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: confirmForm
+            }).then(function(r) { return r.json(); });
+        })
+        .then(function(data) {
+            if (data.success) { alert('Video submitted successfully! Your coach will be notified.'); location.reload(); }
+            else { throw new Error(data.error || 'Failed to confirm upload'); }
+        })
+        .catch(function(err) {
+            console.warn('[Dev Upload] Presigned URL flow failed:', err.message, '— falling back to legacy upload');
+            // Legacy fallback: direct file upload
+            var formData = new FormData();
+            formData.append('action', 'upload_dev_video');
+            formData.append('enrollment_id', enrollmentId);
+            formData.append('title', title);
+            formData.append('description', desc || '');
+            if (drillId) formData.append('drill_assignment_id', drillId);
+            formData.append('video_file', videoFile);
+            fetch('process_development_programs.php', {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-Token': devCsrfToken },
+                body: formData
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (data.success) { alert('Video submitted successfully! Your coach will be notified.'); location.reload(); }
+                else { alert(data.error || 'Upload failed.'); }
+                if (uploadBtn) { uploadBtn.disabled = false; uploadBtn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Submit Video'; }
+            }).catch(function() {
+                alert('Upload failed. Please try again.');
+                if (uploadBtn) { uploadBtn.disabled = false; uploadBtn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Submit Video'; }
+            });
+        });
 }
 </script>

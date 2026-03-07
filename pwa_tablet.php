@@ -284,6 +284,7 @@ $allowed_pages = [
     'personal_development'              => 'views/personal_development.php',
     'personal_development_programs'     => 'views/personal_development.php',
     'personal_development_my_program'   => 'views/personal_development.php',
+    'dev_drill_detail'        => 'views/dev_drill_detail.php',
     'development_programs'    => 'views/development_programs.php',
     'personal_drills'         => 'views/drills.php',
     'shop'                    => 'views/shop.php',
@@ -415,7 +416,7 @@ try {
             <a href="?page=sessions" class="nav-link <?= in_array($page, ['sessions','upcoming_sessions','booking'])?'active':'' ?>"><i class="fa-solid fa-calendar-check"></i> Sessions</a>
             <a href="?page=video" class="nav-link <?= in_array($page, ['video','drill_review','coaches_reviews','record_video','video_review_detail'])?'active':'' ?>"><i class="fa-solid fa-video"></i> Video</a>
             <a href="?page=health" class="nav-link <?= in_array($page, ['health','strength_conditioning','nutrition'])?'active':'' ?>"><i class="fa-solid fa-heart-pulse"></i> Health</a>
-            <a href="?page=personal_development" class="nav-link <?= in_array($page, ['personal_development','personal_development_programs','personal_development_my_program'])?'active':'' ?>"><i class="fa-solid fa-hockey-puck"></i> Personal Development</a>
+            <a href="?page=personal_development" class="nav-link <?= in_array($page, ['personal_development','personal_development_programs','personal_development_my_program','dev_drill_detail'])?'active':'' ?>"><i class="fa-solid fa-hockey-puck"></i> Personal Development</a>
             <a href="?page=shop" class="nav-link <?= $page=='shop'?'active':'' ?>"><i class="fa-solid fa-store"></i> Shop</a>
             <a href="?page=payment_history" class="nav-link <?= $page=='payment_history'?'active':'' ?>"><i class="fa-solid fa-receipt"></i> Purchase History</a>
         </nav>

@@ -349,6 +349,7 @@ $allowed_pages = [
     'personal_development'              => 'views/personal_development.php',
     'personal_development_programs'     => 'views/personal_development.php',
     'personal_development_my_program'   => 'views/personal_development.php',
+    'dev_drill_detail'        => 'views/dev_drill_detail.php',
     
     // Development Programs (Coaches Corner - goalie_dev/player_dev)
     'development_programs'    => 'views/development_programs.php',
@@ -814,7 +815,7 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="?page=health" class="nav-link <?= in_array($page, ['health','strength_conditioning','nutrition'])?'active':'' ?>">
                 <i class="fa-solid fa-heart-pulse icon"></i> Health
             </a>
-            <a href="?page=personal_development" class="nav-link <?= in_array($page, ['personal_development','personal_development_programs','personal_development_my_program'])?'active':'' ?>">
+            <a href="?page=personal_development" class="nav-link <?= in_array($page, ['personal_development','personal_development_programs','personal_development_my_program','dev_drill_detail'])?'active':'' ?>">
                 <i class="fa-solid fa-hockey-puck icon"></i> Personal Development
             </a>
             <a href="?page=shop" class="nav-link <?= $page=='shop'?'active':'' ?>">

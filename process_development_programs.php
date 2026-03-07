@@ -91,6 +91,9 @@ try {
         case 'cancel_appointment':
             handleCancelAppointment($pdo, $user_id, $input, $canManageDevPrograms);
             break;
+        case 'confirm_dev_video_upload':
+            handleConfirmDevVideoUpload($pdo, $user_id, $input);
+            break;
         default:
             echo json_encode(['success' => false, 'error' => 'Invalid action']);
     }
@@ -433,6 +436,78 @@ function handleUploadDevVideo($pdo, $user_id, $input) {
     
     $stmt = $pdo->prepare("INSERT INTO development_program_videos (enrollment_id, athlete_id, drill_assignment_id, title, description, video_url, video_upload_path) VALUES (?, ?, ?, ?, ?, ?, ?)");
     $stmt->execute([$enrollment_id, $user_id, $drill_assignment_id, $title, $description ?: null, $final_url, $video_upload_path]);
+    
+    // If this is for a specific drill, update its status to in_progress
+    if ($drill_assignment_id) {
+        $pdo->prepare("UPDATE development_program_drills SET status = 'in_progress' WHERE id = ? AND status = 'assigned'")->execute([$drill_assignment_id]);
+    }
+    
+    // Notify coaches about the new video
+    $role_to_notify = $enrollment['program_type'];
+    $coaches_stmt = $pdo->prepare("SELECT DISTINCT ur.user_id FROM user_roles ur WHERE ur.role IN (?, 'admin')");
+    $coaches_stmt->execute([$role_to_notify]);
+    $notify_ids = $coaches_stmt->fetchAll(PDO::FETCH_COLUMN);
+    
+    $athlete_stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
+    $athlete_stmt->execute([$user_id]);
+    $athlete = $athlete_stmt->fetch(PDO::FETCH_ASSOC);
+    if (function_exists('decryptUserRows')) {
+        $athlete = decryptUserRows([$athlete])[0];
+    }
+    $athlete_name = trim(($athlete['first_name'] ?? '') . ' ' . ($athlete['last_name'] ?? ''));
+    
+    $notif_stmt = $pdo->prepare("INSERT INTO notifications (user_id, type, title, message, link_url) VALUES (?, 'dev_video_upload', ?, ?, '?page=development_programs')");
+    foreach ($notify_ids as $nid) {
+        if ((int)$nid !== $user_id) {
+            $notif_stmt->execute([$nid, 'New Development Video', htmlspecialchars($athlete_name, ENT_QUOTES, 'UTF-8') . ' has uploaded a new development video: ' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8')]);
+        }
+    }
+    
+    echo json_encode(['success' => true]);
+}
+
+/**
+ * Confirm a development video upload after presigned URL direct upload to RustFS.
+ * This matches the application's standard video upload confirmation pattern.
+ * Validates the upload nonce stored in session, creates the DB record, and notifies coaches.
+ */
+function handleConfirmDevVideoUpload($pdo, $user_id, $input) {
+    $upload_nonce = trim($input['upload_nonce'] ?? $_POST['upload_nonce'] ?? '');
+    $enrollment_id = (int)($input['enrollment_id'] ?? $_POST['enrollment_id'] ?? 0);
+    $drill_assignment_id = !empty($input['drill_assignment_id'] ?? $_POST['drill_assignment_id'] ?? '') ? (int)($input['drill_assignment_id'] ?? $_POST['drill_assignment_id'] ?? 0) : null;
+    $title = trim($input['title'] ?? $_POST['title'] ?? '');
+    $description = trim($input['description'] ?? $_POST['description'] ?? '');
+    
+    if (!$upload_nonce || !$enrollment_id || !$title) {
+        echo json_encode(['success' => false, 'error' => 'Missing required fields']);
+        return;
+    }
+    
+    // Validate nonce from session
+    $pending = $_SESSION['pending_video_upload'] ?? null;
+    if (!$pending || !hash_equals($pending['nonce'] ?? '', $upload_nonce)) {
+        echo json_encode(['success' => false, 'error' => 'Invalid or expired upload session']);
+        return;
+    }
+    
+    // Verify enrollment belongs to this athlete
+    $check = $pdo->prepare("SELECT id, program_type FROM development_program_enrollments WHERE id = ? AND athlete_id = ?");
+    $check->execute([$enrollment_id, $user_id]);
+    $enrollment = $check->fetch(PDO::FETCH_ASSOC);
+    if (!$enrollment) {
+        echo json_encode(['success' => false, 'error' => 'Enrollment not found']);
+        return;
+    }
+    
+    // Build video URL from pending upload metadata
+    $video_url = $pending['rustfs_url'] ?? $pending['public_url'] ?? null;
+    $video_upload_path = $pending['object_key'] ?? null;
+    
+    // Clean up session
+    unset($_SESSION['pending_video_upload']);
+    
+    $stmt = $pdo->prepare("INSERT INTO development_program_videos (enrollment_id, athlete_id, drill_assignment_id, title, description, video_url, video_upload_path) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$enrollment_id, $user_id, $drill_assignment_id, $title, $description ?: null, $video_url, $video_upload_path]);
     
     // If this is for a specific drill, update its status to in_progress
     if ($drill_assignment_id) {

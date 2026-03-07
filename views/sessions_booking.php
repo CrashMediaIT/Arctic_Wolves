@@ -286,7 +286,7 @@ $user_booked_template_dates = $tpl_booked_stmt->fetchAll(PDO::FETCH_COLUMN);
         <div class="section-header-bar">
             <div class="section-title-group">
                 <h2 class="section-title"><i class="fas fa-hockey-puck"></i> Development Programs</h2>
-                <p class="section-subtitle">Long-term personalized development programs with dedicated coaching</p>
+                <p class="section-subtitle">Long-term personalized development programs with dedicated coaching — specially tailored to each athlete, no fixed schedule dates</p>
             </div>
         </div>
         <div class="programs-cards-grid">
@@ -296,14 +296,18 @@ $user_booked_template_dates = $tpl_booked_stmt->fetchAll(PDO::FETCH_COLUMN);
                 </div>
                 <div class="program-card-header">
                     <h3 class="program-name">Long Term Goalie Development</h3>
+                    <span class="program-dates" style="color:#3b82f6;">
+                        <i class="fas fa-user-cog"></i> Individually tailored — no fixed dates
+                    </span>
                 </div>
                 <div class="program-card-body">
-                    <p class="program-description">Comprehensive goalie development program — technique, positioning, movement, and game sense. Work directly with our goalie development coaches through personalized drill programs and video feedback.</p>
+                    <p class="program-description">Comprehensive goalie development program — technique, positioning, movement, and game sense. Work directly with our goalie development coaches through personalized drill programs and video feedback. Each program is specially tailored to the individual athlete.</p>
                     <ul class="program-details-list">
                         <li><i class="fas fa-clipboard-list"></i> Personalized drill programs</li>
                         <li><i class="fas fa-video"></i> Video analysis & feedback</li>
                         <li><i class="fas fa-comments"></i> Direct coach communication</li>
                         <li><i class="fas fa-calendar-check"></i> Scheduled coaching sessions</li>
+                        <li><i class="fas fa-user-cog"></i> Tailored to each athlete</li>
                     </ul>
                 </div>
                 <div class="program-card-footer">
@@ -321,14 +325,18 @@ $user_booked_template_dates = $tpl_booked_stmt->fetchAll(PDO::FETCH_COLUMN);
                 </div>
                 <div class="program-card-header">
                     <h3 class="program-name">Long Term Player Development</h3>
+                    <span class="program-dates" style="color:#10b981;">
+                        <i class="fas fa-user-cog"></i> Individually tailored — no fixed dates
+                    </span>
                 </div>
                 <div class="program-card-body">
-                    <p class="program-description">Structured long-term development for skaters — skating technique, shooting, puck handling, hockey IQ, and on-ice decision making. Receive personalized coaching through drill programs and video analysis.</p>
+                    <p class="program-description">Structured long-term development for skaters — skating technique, shooting, puck handling, hockey IQ, and on-ice decision making. Receive personalized coaching through drill programs and video analysis. Each program is specially tailored to the individual athlete.</p>
                     <ul class="program-details-list">
                         <li><i class="fas fa-clipboard-list"></i> Personalized drill programs</li>
                         <li><i class="fas fa-video"></i> Video analysis & feedback</li>
                         <li><i class="fas fa-comments"></i> Direct coach communication</li>
                         <li><i class="fas fa-calendar-check"></i> Scheduled coaching sessions</li>
+                        <li><i class="fas fa-user-cog"></i> Tailored to each athlete</li>
                     </ul>
                 </div>
                 <div class="program-card-footer">

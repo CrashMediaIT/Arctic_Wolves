@@ -512,31 +512,41 @@ test.describe('Database Schema - Development Videos & Appointments', () => {
 
 test.describe('Athlete Drill Detail View', () => {
 
-  test('my program view has clickable drill cards with detail modal', () => {
+  test('my program view has clickable drill cards linking to full detail page', () => {
     const content = readFile('views/personal_development_my_program.php');
     expect(content).toContain('drill-card');
-    expect(content).toContain('openDrillDetail');
-    expect(content).toContain('drill-detail-overlay');
-    expect(content).toContain('drill-detail-modal');
-    expect(content).toContain('drill-detail-content');
-    expect(content).toContain('View Details');
+    expect(content).toContain('dev_drill_detail');
+    expect(content).toContain('enrollment_id');
+    expect(content).toContain('View Full Details');
   });
 
-  test('my program view drill detail shows full drill information', () => {
-    const content = readFile('views/personal_development_my_program.php');
-    expect(content).toContain('get_drill_details');
+  test('full drill detail page exists with complete drill information', () => {
+    const content = readFile('views/dev_drill_detail.php');
+    expect(content).toContain('dev-drill-page');
     expect(content).toContain('drill_coaching_points');
     expect(content).toContain('drill_setup');
+    expect(content).toContain('drill_progression');
     expect(content).toContain('coach_notes');
-    expect(content).toContain('closeDrillDetail');
+    expect(content).toContain('Back to My Program');
+    expect(content).toContain('personal_development_my_program');
   });
 
-  test('my program view drill detail has record video action', () => {
-    const content = readFile('views/personal_development_my_program.php');
-    expect(content).toContain('recordDrillVideo');
-    expect(content).toContain('Record Video');
+  test('full drill detail page has video upload and status actions', () => {
+    const content = readFile('views/dev_drill_detail.php');
+    expect(content).toContain('Upload Video');
     expect(content).toContain('Mark In Progress');
     expect(content).toContain('Mark Completed');
+    expect(content).toContain('submitDrillVideo');
+    expect(content).toContain('updateDrillStatus');
+  });
+
+  test('dev_drill_detail route is registered in all routing files', () => {
+    const dashboard = readFile('dashboard.php');
+    const pwa = readFile('pwa.php');
+    const pwaTablet = readFile('pwa_tablet.php');
+    expect(dashboard).toContain("'dev_drill_detail'");
+    expect(pwa).toContain("'dev_drill_detail'");
+    expect(pwaTablet).toContain("'dev_drill_detail'");
   });
 });
 
@@ -692,5 +702,61 @@ test.describe('Auto-create Development Program Products', () => {
     expect(content).toContain('Upcoming Sessions');
     expect(content).toContain('appt-date-box');
     expect(content).toContain('appointment_type');
+  });
+
+  test('sessions_booking.php states dev programs have no fixed dates and are tailored to each athlete', () => {
+    const content = readFile('views/sessions_booking.php');
+    expect(content).toContain('no fixed');
+    expect(content).toContain('tailored to each athlete');
+    expect(content).toContain('Individually tailored');
+  });
+});
+
+test.describe('Presigned URL Video Upload Flow', () => {
+
+  test('dev_drill_detail.php uses presigned URL upload flow via process_video.php', () => {
+    const content = readFile('views/dev_drill_detail.php');
+    expect(content).toContain('get_video_upload_url');
+    expect(content).toContain('presigned_url');
+    expect(content).toContain('upload_nonce');
+    expect(content).toContain("xhr.open('PUT'");
+    expect(content).toContain('confirm_dev_video_upload');
+    expect(content).toContain('falling back to legacy upload');
+  });
+
+  test('my program view uses presigned URL upload flow', () => {
+    const content = readFile('views/personal_development_my_program.php');
+    expect(content).toContain('get_video_upload_url');
+    expect(content).toContain('process_video.php');
+    expect(content).toContain('presigned_url');
+    expect(content).toContain('confirm_dev_video_upload');
+    expect(content).toContain('falling back to legacy upload');
+  });
+
+  test('process handler supports confirm_dev_video_upload action', () => {
+    const content = readFile('process_development_programs.php');
+    expect(content).toContain("case 'confirm_dev_video_upload'");
+    expect(content).toContain('handleConfirmDevVideoUpload');
+    expect(content).toContain('hash_equals');
+    expect(content).toContain('upload_nonce');
+    expect(content).toContain('pending_video_upload');
+    expect(content).toContain('development_program_videos');
+  });
+
+  test('dev_drill_detail.php falls back to legacy upload on presigned URL failure', () => {
+    const content = readFile('views/dev_drill_detail.php');
+    // Legacy fallback should use upload_dev_video action
+    expect(content).toContain("'action', 'upload_dev_video'");
+    expect(content).toContain('process_development_programs.php');
+    expect(content).toContain('video_file');
+  });
+
+  test('dev_drill_detail.php has drill navigation between drills', () => {
+    const content = readFile('views/dev_drill_detail.php');
+    expect(content).toContain('dev-drill-nav');
+    expect(content).toContain('prev_drill');
+    expect(content).toContain('next_drill');
+    expect(content).toContain('fa-arrow-left');
+    expect(content).toContain('fa-arrow-right');
   });
 });
