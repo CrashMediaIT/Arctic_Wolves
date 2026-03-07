@@ -989,3 +989,80 @@ test.describe('Tablet-friendly button sizing', () => {
     expect(content).toContain('font-size: 18px');
   });
 });
+
+// =====================================================
+// NGINX Configuration for Scoreboard Subdomain
+// =====================================================
+
+test.describe('NGINX scoreboard subdomain server block', () => {
+  function getScoreboardServerBlock() {
+    const content = readFile('deployment/arctic_wolves.conf');
+    const sbStart = content.indexOf('server_name scoreboard.arcticwolves.ca;');
+    expect(sbStart).toBeGreaterThan(0);
+    // Find the end of this server block (next section separator or EOF)
+    const sbEnd = content.indexOf('# =====', sbStart);
+    return content.substring(sbStart, sbEnd > -1 ? sbEnd : undefined);
+  }
+
+  test('nginx config has a dedicated scoreboard server block', () => {
+    const content = readFile('deployment/arctic_wolves.conf');
+    expect(content).toContain('server_name scoreboard.arcticwolves.ca;');
+  });
+
+  test('scoreboard server block uses correct document root', () => {
+    const block = getScoreboardServerBlock();
+    expect(block).toContain('root /config/www/Arctic_Wolves');
+  });
+
+  test('scoreboard server block sets scoreboard.php as default index', () => {
+    const block = getScoreboardServerBlock();
+    expect(block).toContain('index scoreboard.php');
+  });
+
+  test('scoreboard server block redirects / to scoreboard.php', () => {
+    const block = getScoreboardServerBlock();
+    expect(block).toContain('return 302 /scoreboard.php');
+  });
+
+  test('scoreboard server block has PHP-FPM location', () => {
+    const block = getScoreboardServerBlock();
+    expect(block).toContain('location ~ \\.php$');
+    expect(block).toContain('fastcgi_pass');
+  });
+
+  test('scoreboard server block has security headers', () => {
+    const block = getScoreboardServerBlock();
+    expect(block).toContain('X-Frame-Options');
+    expect(block).toContain('X-Content-Type-Options');
+    expect(block).toContain('Referrer-Policy');
+  });
+
+  test('scoreboard server block has dedicated log files', () => {
+    const block = getScoreboardServerBlock();
+    expect(block).toContain('scoreboard_access.log');
+    expect(block).toContain('scoreboard_error.log');
+  });
+
+  test('scoreboard server block denies sensitive files', () => {
+    const block = getScoreboardServerBlock();
+    expect(block).toContain('deny all');
+    expect(block).toContain('(env|sql)');
+  });
+
+  test('scoreboard server block hides nginx version', () => {
+    const block = getScoreboardServerBlock();
+    expect(block).toContain('server_tokens off');
+  });
+
+  test('scoreboard server block passes SSL offload headers', () => {
+    const block = getScoreboardServerBlock();
+    expect(block).toContain('fastcgi_param HTTPS');
+    expect(block).toContain('http_x_forwarded_proto');
+  });
+
+  test('scoreboard included in HTTP-to-HTTPS redirect comment', () => {
+    const content = readFile('deployment/arctic_wolves.conf');
+    // The commented-out redirect block should include scoreboard
+    expect(content).toContain('scoreboard.arcticwolves.ca');
+  });
+});
