@@ -603,3 +603,211 @@ test.describe('Video board mode', () => {
     expect(content).toContain('audio: true');
   });
 });
+
+// =====================================================
+// 12. Recurring Timed Buzzer
+// =====================================================
+
+test.describe('Recurring timed buzzer', () => {
+  test('JS has recurring buzzer state variables', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('sbRecurringBuzzerInterval');
+    expect(content).toContain('sbRecurringBuzzerCountdown');
+    expect(content).toContain('sbRecurringBuzzerActive');
+  });
+
+  test('JS has sbSetRecurringBuzzer function', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbSetRecurringBuzzer(');
+  });
+
+  test('JS has sbToggleRecurringBuzzer function', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbToggleRecurringBuzzer(');
+  });
+
+  test('JS has sbTickRecurringBuzzer function that fires buzzer', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbTickRecurringBuzzer(');
+    // When countdown reaches 0, should fire sbBuzzer()
+    const fn = content.substring(
+      content.indexOf('function sbTickRecurringBuzzer()'),
+      content.indexOf('function sbTickRecurringBuzzer()') + 400
+    );
+    expect(fn).toContain('sbBuzzer()');
+  });
+
+  test('JS recurring buzzer ticks with game clock', () => {
+    const content = readFile('js/scoreboard.js');
+    const clockTickFn = content.substring(
+      content.indexOf('function sbClockTick()'),
+      content.indexOf('function sbClockTick()') + 500
+    );
+    expect(clockTickFn).toContain('sbTickRecurringBuzzer()');
+  });
+
+  test('JS has sbUpdateRecurringBuzzerDisplay function', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbUpdateRecurringBuzzerDisplay(');
+    expect(content).toContain('sbRecurringStatus');
+    expect(content).toContain('sbRecurringCountdown');
+    expect(content).toContain('sbRecurringToggle');
+  });
+
+  test('display view has recurring buzzer controls with interval presets', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sbRecurringSelect');
+    expect(content).toContain('sbSetRecurringBuzzer');
+    expect(content).toContain('sbToggleRecurringBuzzer');
+    expect(content).toContain('Recurring Buzzer');
+  });
+
+  test('display view has U7 and U9 preset intervals', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('1:30 (U7)');
+    expect(content).toContain('2:00 (U7/U9)');
+    expect(content).toContain('value="90"');
+    expect(content).toContain('value="120"');
+  });
+
+  test('display view has recurring buzzer status and countdown display', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sbRecurringStatus');
+    expect(content).toContain('sbRecurringCountdown');
+    expect(content).toContain('sbRecurringToggle');
+  });
+
+  test('CSS has recurring buzzer styles', () => {
+    const content = readFile('css/scoreboard.css');
+    expect(content).toContain('.sb-recurring-buzzer');
+    expect(content).toContain('.sb-recurring-controls');
+    expect(content).toContain('.sb-recurring-status');
+    expect(content).toContain('.sb-recurring-countdown');
+    expect(content).toContain('.sb-recurring-toggle');
+  });
+});
+
+// =====================================================
+// 13. Penalty Display Visibility Toggle
+// =====================================================
+
+test.describe('Penalty display visibility toggle', () => {
+  test('JS has sbPenaltiesHidden state and sbTogglePenaltyDisplay function', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('sbPenaltiesHidden');
+    expect(content).toContain('function sbTogglePenaltyDisplay(');
+  });
+
+  test('JS toggle adds sb-hidden-from-display class to penalty stacks', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('sb-hidden-from-display');
+    expect(content).toContain('sb-board-penalty-stack');
+    expect(content).toContain('sb-pp-indicator');
+  });
+
+  test('JS toggle updates button text and state', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('sbPenaltyDisplayToggle');
+    expect(content).toContain('sb-toggle-hidden');
+    expect(content).toContain('Penalties Hidden from Board');
+    expect(content).toContain('Penalties Shown on Board');
+  });
+
+  test('display view has penalty display toggle button', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sbPenaltyDisplayToggle');
+    expect(content).toContain('sbTogglePenaltyDisplay');
+    expect(content).toContain('Penalties Shown on Board');
+  });
+
+  test('CSS has sb-hidden-from-display class', () => {
+    const content = readFile('css/scoreboard.css');
+    expect(content).toContain('.sb-hidden-from-display');
+    expect(content).toContain('opacity');
+  });
+
+  test('CSS has penalty toggle button styling', () => {
+    const content = readFile('css/scoreboard.css');
+    expect(content).toContain('.sb-penalty-display-toggle');
+    expect(content).toContain('.sb-penalty-toggle-btn');
+    expect(content).toContain('.sb-toggle-hidden');
+  });
+});
+
+// =====================================================
+// 14. Adjustable Period Times
+// =====================================================
+
+test.describe('Adjustable period times', () => {
+  test('JS has sbSetPeriodTime function', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbSetPeriodTime(');
+  });
+
+  test('JS has sbSetOvertimeTime function', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbSetOvertimeTime(');
+  });
+
+  test('JS sbSetPeriodTime updates REGULATION_PERIOD_SECS and resets clock', () => {
+    const content = readFile('js/scoreboard.js');
+    const fn = content.substring(
+      content.indexOf('function sbSetPeriodTime('),
+      content.indexOf('function sbSetPeriodTime(') + 500
+    );
+    expect(fn).toContain('REGULATION_PERIOD_SECS');
+    expect(fn).toContain('sbUpdateClockDisplay');
+  });
+
+  test('JS sbSetOvertimeTime updates OVERTIME_PERIOD_SECS', () => {
+    const content = readFile('js/scoreboard.js');
+    const fn = content.substring(
+      content.indexOf('function sbSetOvertimeTime('),
+      content.indexOf('function sbSetOvertimeTime(') + 500
+    );
+    expect(fn).toContain('OVERTIME_PERIOD_SECS');
+  });
+
+  test('JS sbSetPeriodTime updates reset button label', () => {
+    const content = readFile('js/scoreboard.js');
+    const fn = content.substring(
+      content.indexOf('function sbSetPeriodTime('),
+      content.indexOf('function sbSetPeriodTime(') + 500
+    );
+    expect(fn).toContain('sb-clock-reset');
+    expect(fn).toContain('Reset');
+  });
+
+  test('display view has period time select with multiple presets', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sbPeriodTimeSelect');
+    expect(content).toContain('sbSetPeriodTime');
+    expect(content).toContain('Period Length');
+  });
+
+  test('display view period select includes youth and standard options', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    // Youth options
+    expect(content).toContain('1:00 (U5)');
+    expect(content).toContain('value="10"');
+    expect(content).toContain('value="12"');
+    expect(content).toContain('value="15"');
+    // Standard
+    expect(content).toContain('20:00 (Default)');
+    expect(content).toContain('value="25"');
+  });
+
+  test('display view has overtime time select', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sbOTTimeSelect');
+    expect(content).toContain('sbSetOvertimeTime');
+    expect(content).toContain('OT Length');
+  });
+
+  test('CSS has period time config styles', () => {
+    const content = readFile('css/scoreboard.css');
+    expect(content).toContain('.sb-period-time-config');
+    expect(content).toContain('.sb-config-label');
+    expect(content).toContain('.sb-config-select');
+  });
+});

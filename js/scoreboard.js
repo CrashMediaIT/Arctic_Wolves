@@ -32,16 +32,41 @@ function sbFetch(action, data) {
 }
 
 // ══════════════════════════════════════════════════════════
-// GAME CLOCK – Countdown timer (20:00 per period)
+// GAME CLOCK – Countdown timer (configurable per period)
 // ══════════════════════════════════════════════════════════
-var REGULATION_PERIOD_SECS = 20 * 60; // 1200 seconds = 20 min
-var OVERTIME_PERIOD_SECS = 5 * 60;    // 300 seconds = 5 min OT
+var REGULATION_PERIOD_SECS = 20 * 60; // 1200 seconds = 20 min (default)
+var OVERTIME_PERIOD_SECS = 5 * 60;    // 300 seconds = 5 min OT (default)
 var sbClockSeconds = REGULATION_PERIOD_SECS;
 var sbClockRunning = false;
 var sbClockInterval = null;
 
 function sbGetPeriodDuration(period) {
     return (period <= 3) ? REGULATION_PERIOD_SECS : OVERTIME_PERIOD_SECS;
+}
+
+// ── Adjustable Period Times ───────────────────────────────
+function sbSetPeriodTime(minutes) {
+    minutes = parseInt(minutes, 10);
+    if (isNaN(minutes) || minutes < 1 || minutes > 30) return;
+    REGULATION_PERIOD_SECS = minutes * 60;
+    // Reset the clock to the new duration if not running
+    if (!sbClockRunning) {
+        sbClockSeconds = sbGetPeriodDuration(sbCurrentPeriod);
+        sbUpdateClockDisplay();
+    }
+    // Update reset button label
+    var resetBtn = document.querySelector('.sb-clock-reset');
+    if (resetBtn) resetBtn.innerHTML = '<i class="fas fa-redo"></i> Reset ' + sbFormatClock(REGULATION_PERIOD_SECS);
+}
+
+function sbSetOvertimeTime(minutes) {
+    minutes = parseInt(minutes, 10);
+    if (isNaN(minutes) || minutes < 1 || minutes > 20) return;
+    OVERTIME_PERIOD_SECS = minutes * 60;
+    if (!sbClockRunning && sbCurrentPeriod > 3) {
+        sbClockSeconds = sbGetPeriodDuration(sbCurrentPeriod);
+        sbUpdateClockDisplay();
+    }
 }
 
 function sbFormatClock(totalSeconds) {
@@ -61,6 +86,8 @@ function sbClockTick() {
         sbUpdateClockDisplay();
         // Also tick penalty timers
         sbTickPenaltyTimers();
+        // Tick recurring buzzer
+        sbTickRecurringBuzzer();
     } else {
         // Period ended
         sbClockStop();
@@ -312,6 +339,100 @@ function sbBuzzer() {
         osc.stop(ctx.currentTime + 2.5);
     } catch (e) {
         // Audio API not available
+    }
+}
+
+// ══════════════════════════════════════════════════════════
+// RECURRING TIMED BUZZER (e.g. U7 shift change every 1:30)
+// ══════════════════════════════════════════════════════════
+var sbRecurringBuzzerInterval = 0;  // seconds between buzzes (0 = off)
+var sbRecurringBuzzerCountdown = 0; // seconds remaining until next buzz
+var sbRecurringBuzzerActive = false;
+
+function sbSetRecurringBuzzer(seconds) {
+    seconds = parseInt(seconds, 10);
+    if (isNaN(seconds) || seconds < 0) seconds = 0;
+    sbRecurringBuzzerInterval = seconds;
+    sbRecurringBuzzerCountdown = seconds;
+    sbRecurringBuzzerActive = (seconds > 0);
+    sbUpdateRecurringBuzzerDisplay();
+}
+
+function sbToggleRecurringBuzzer() {
+    if (sbRecurringBuzzerInterval <= 0) return;
+    sbRecurringBuzzerActive = !sbRecurringBuzzerActive;
+    if (sbRecurringBuzzerActive) {
+        sbRecurringBuzzerCountdown = sbRecurringBuzzerInterval;
+    }
+    sbUpdateRecurringBuzzerDisplay();
+}
+
+function sbTickRecurringBuzzer() {
+    if (!sbRecurringBuzzerActive || sbRecurringBuzzerInterval <= 0) return;
+    sbRecurringBuzzerCountdown--;
+    if (sbRecurringBuzzerCountdown <= 0) {
+        sbBuzzer(); // Fire the buzzer
+        sbRecurringBuzzerCountdown = sbRecurringBuzzerInterval; // Reset for next cycle
+    }
+    sbUpdateRecurringBuzzerDisplay();
+}
+
+function sbUpdateRecurringBuzzerDisplay() {
+    var statusEl = document.getElementById('sbRecurringStatus');
+    var countdownEl = document.getElementById('sbRecurringCountdown');
+    var toggleBtn = document.getElementById('sbRecurringToggle');
+    if (statusEl) {
+        if (sbRecurringBuzzerActive && sbRecurringBuzzerInterval > 0) {
+            statusEl.textContent = 'Every ' + sbFormatClock(sbRecurringBuzzerInterval);
+            statusEl.classList.add('active');
+        } else {
+            statusEl.textContent = 'Off';
+            statusEl.classList.remove('active');
+        }
+    }
+    if (countdownEl) {
+        if (sbRecurringBuzzerActive && sbRecurringBuzzerInterval > 0) {
+            countdownEl.textContent = sbFormatClock(sbRecurringBuzzerCountdown);
+            countdownEl.style.display = '';
+        } else {
+            countdownEl.style.display = 'none';
+        }
+    }
+    if (toggleBtn) {
+        if (sbRecurringBuzzerActive) {
+            toggleBtn.innerHTML = '<i class="fas fa-pause"></i> Pause';
+            toggleBtn.classList.add('active');
+        } else {
+            toggleBtn.innerHTML = '<i class="fas fa-play"></i> Resume';
+            toggleBtn.classList.remove('active');
+        }
+    }
+}
+
+// ══════════════════════════════════════════════════════════
+// PENALTY DISPLAY VISIBILITY TOGGLE
+// ══════════════════════════════════════════════════════════
+var sbPenaltiesHidden = false;
+
+function sbTogglePenaltyDisplay() {
+    sbPenaltiesHidden = !sbPenaltiesHidden;
+    var stacks = document.querySelectorAll('.sb-board-penalty-stack');
+    var ppIndicators = document.querySelectorAll('.sb-pp-indicator');
+    stacks.forEach(function(el) {
+        el.classList.toggle('sb-hidden-from-display', sbPenaltiesHidden);
+    });
+    ppIndicators.forEach(function(el) {
+        el.classList.toggle('sb-hidden-from-display', sbPenaltiesHidden);
+    });
+    var toggleBtn = document.getElementById('sbPenaltyDisplayToggle');
+    if (toggleBtn) {
+        if (sbPenaltiesHidden) {
+            toggleBtn.innerHTML = '<i class="fas fa-eye-slash"></i> Penalties Hidden from Board';
+            toggleBtn.classList.add('sb-toggle-hidden');
+        } else {
+            toggleBtn.innerHTML = '<i class="fas fa-eye"></i> Penalties Shown on Board';
+            toggleBtn.classList.remove('sb-toggle-hidden');
+        }
     }
 }
 

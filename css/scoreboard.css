@@ -490,6 +490,102 @@ body.sb-body {
 }
 .sb-music-now-playing strong { color: #fff; }
 
+/* ── Period Time Configuration ─────────────────────────── */
+.sb-period-time-config {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.sb-config-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.sb-config-select {
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid #2D2D3F;
+  background: #1A1A24;
+  color: #fff;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+}
+.sb-config-select:focus { outline: none; border-color: #6B46C1; }
+
+/* ── Recurring Buzzer Controls ─────────────────────────── */
+.sb-recurring-buzzer {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #1E1E2E;
+}
+.sb-panel-subtitle {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #888;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sb-panel-subtitle i { font-size: 12px; color: #F59E0B; }
+.sb-recurring-controls {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.sb-recurring-controls .sb-config-select { flex: 1; }
+.sb-recurring-toggle { min-width: 90px; }
+.sb-recurring-toggle.active { border-color: #F59E0B; color: #F59E0B; }
+.sb-recurring-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+.sb-recurring-status {
+  color: #555;
+  font-weight: 600;
+}
+.sb-recurring-status.active {
+  color: #F59E0B;
+}
+.sb-recurring-countdown {
+  font-size: 16px;
+  font-weight: 900;
+  color: #F59E0B;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Penalty Display Toggle ────────────────────────────── */
+.sb-penalty-display-toggle {
+  margin-bottom: 10px;
+}
+.sb-penalty-toggle-btn {
+  width: 100%;
+  flex-direction: row !important;
+  gap: 6px !important;
+  font-size: 11px !important;
+  padding: 8px 10px !important;
+}
+.sb-penalty-toggle-btn.sb-toggle-hidden {
+  border-color: #F59E0B;
+  color: #F59E0B;
+  background: rgba(245, 158, 11, 0.08);
+}
+
+/* Hidden from board display (penalty stacks + PP indicators) */
+.sb-hidden-from-display {
+  opacity: 0.15;
+  pointer-events: none;
+}
+
 /* ── Game Setup Modal ──────────────────────────────────── */
 .sb-modal-overlay {
   position: fixed;

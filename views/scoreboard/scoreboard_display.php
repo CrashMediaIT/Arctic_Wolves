@@ -153,10 +153,51 @@ $away_pp = ($home_active_pens > 0 && $home_active_pens > $away_active_pens);
                 <button class="sb-clock-btn sb-clock-start" id="sbClockStart" onclick="sbClockToggle()"><i class="fas fa-play"></i> Start</button>
                 <button class="sb-clock-btn sb-clock-reset" onclick="sbClockReset()"><i class="fas fa-redo"></i> Reset 20:00</button>
             </div>
+            <div class="sb-period-time-config">
+                <label class="sb-config-label">Period Length</label>
+                <select id="sbPeriodTimeSelect" onchange="sbSetPeriodTime(this.value)" class="sb-config-select">
+                    <option value="1">1:00 (U5)</option>
+                    <option value="2">2:00</option>
+                    <option value="3">3:00</option>
+                    <option value="5">5:00</option>
+                    <option value="8">8:00</option>
+                    <option value="10">10:00</option>
+                    <option value="12">12:00</option>
+                    <option value="15">15:00</option>
+                    <option value="20" selected>20:00 (Default)</option>
+                    <option value="25">25:00</option>
+                </select>
+                <label class="sb-config-label">OT Length</label>
+                <select id="sbOTTimeSelect" onchange="sbSetOvertimeTime(this.value)" class="sb-config-select">
+                    <option value="3">3:00</option>
+                    <option value="5" selected>5:00 (Default)</option>
+                    <option value="10">10:00</option>
+                </select>
+            </div>
             <div class="sb-period-controls">
                 <button class="sb-action-btn" onclick="sbPeriodPrev()"><i class="fas fa-chevron-left"></i> Prev Period</button>
                 <button class="sb-action-btn" onclick="sbPeriodNext()"><i class="fas fa-chevron-right"></i> Next Period</button>
                 <button class="sb-action-btn" onclick="sbSetStatus('intermission')" style="grid-column:span 2;"><i class="fas fa-pause-circle"></i> Intermission</button>
+            </div>
+            <div class="sb-recurring-buzzer">
+                <div class="sb-panel-subtitle"><i class="fas fa-bell"></i> Recurring Buzzer</div>
+                <div class="sb-recurring-controls">
+                    <select id="sbRecurringSelect" onchange="sbSetRecurringBuzzer(this.value)" class="sb-config-select">
+                        <option value="0">Off</option>
+                        <option value="60">1:00</option>
+                        <option value="90">1:30 (U7)</option>
+                        <option value="120">2:00 (U7/U9)</option>
+                        <option value="150">2:30</option>
+                        <option value="180">3:00</option>
+                        <option value="240">4:00</option>
+                        <option value="300">5:00</option>
+                    </select>
+                    <button class="sb-action-btn sb-recurring-toggle" id="sbRecurringToggle" onclick="sbToggleRecurringBuzzer()"><i class="fas fa-play"></i> Resume</button>
+                </div>
+                <div class="sb-recurring-info">
+                    <span class="sb-recurring-status" id="sbRecurringStatus">Off</span>
+                    <span class="sb-recurring-countdown" id="sbRecurringCountdown" style="display:none;">--:--</span>
+                </div>
             </div>
         </div>
 
@@ -177,6 +218,11 @@ $away_pp = ($home_active_pens > 0 && $home_active_pens > $away_active_pens);
         <!-- Penalties Panel -->
         <div class="sb-panel">
             <div class="sb-panel-title"><i class="fas fa-gavel"></i> Penalties</div>
+            <div class="sb-penalty-display-toggle">
+                <button class="sb-action-btn sb-penalty-toggle-btn" id="sbPenaltyDisplayToggle" onclick="sbTogglePenaltyDisplay()">
+                    <i class="fas fa-eye"></i> Penalties Shown on Board
+                </button>
+            </div>
             <div class="sb-action-grid" style="margin-bottom:12px;">
                 <button class="sb-action-btn home-btn" onclick="sbShowPenaltyModal('home')"><i class="fas fa-user-slash"></i> Home Penalty</button>
                 <button class="sb-action-btn away-btn" onclick="sbShowPenaltyModal('away')"><i class="fas fa-user-slash"></i> Away Penalty</button>
