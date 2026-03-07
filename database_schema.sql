@@ -4885,6 +4885,60 @@ CREATE TABLE IF NOT EXISTS `development_notification_templates` (
 INSERT IGNORE INTO `development_notification_templates` (`program_type`, `subject`, `body`) VALUES
 ('goalie_dev', 'New Goalie Development Program Registration', 'A new athlete has registered for the Long Term Goalie Development program. Please review and arrange communication with the enrollee.'),
 ('player_dev', 'New Player Development Program Registration', 'A new athlete has registered for the Long Term Player Development program. Please review and arrange communication with the enrollee.');
+
+-- Development program videos (athlete-uploaded videos for coach review)
+CREATE TABLE IF NOT EXISTS `development_program_videos` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `enrollment_id` INT NOT NULL,
+    `athlete_id` INT NOT NULL,
+    `drill_assignment_id` INT DEFAULT NULL COMMENT 'Non-null when video is for a specific drill',
+    `title` VARCHAR(255) NOT NULL,
+    `description` TEXT DEFAULT NULL,
+    `video_url` VARCHAR(512) DEFAULT NULL,
+    `video_upload_path` VARCHAR(500) DEFAULT NULL,
+    `status` ENUM('pending_review', 'reviewed', 'feedback_given') DEFAULT 'pending_review',
+    `coach_feedback` TEXT DEFAULT NULL,
+    `reviewed_by` INT DEFAULT NULL,
+    `reviewed_at` TIMESTAMP NULL DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`enrollment_id`) REFERENCES `development_program_enrollments`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`athlete_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`drill_assignment_id`) REFERENCES `development_program_drills`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`reviewed_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    INDEX `idx_enrollment` (`enrollment_id`),
+    INDEX `idx_athlete` (`athlete_id`),
+    INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Development appointments (coach-scheduled sessions with athletes)
+CREATE TABLE IF NOT EXISTS `development_appointments` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `enrollment_id` INT NOT NULL,
+    `coach_id` INT NOT NULL,
+    `athlete_id` INT NOT NULL,
+    `appointment_type` ENUM('call', 'video_call', 'in_person') NOT NULL,
+    `title` VARCHAR(255) NOT NULL,
+    `description` TEXT DEFAULT NULL,
+    `appointment_date` DATE NOT NULL,
+    `appointment_time` TIME NOT NULL,
+    `duration_minutes` INT DEFAULT 30,
+    `location` VARCHAR(255) DEFAULT NULL COMMENT 'For in-person appointments',
+    `meeting_url` VARCHAR(512) DEFAULT NULL COMMENT 'For video call appointments',
+    `phone_number` VARCHAR(50) DEFAULT NULL COMMENT 'For call appointments',
+    `status` ENUM('scheduled', 'completed', 'cancelled') DEFAULT 'scheduled',
+    `notes` TEXT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`enrollment_id`) REFERENCES `development_program_enrollments`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`coach_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`athlete_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    INDEX `idx_enrollment` (`enrollment_id`),
+    INDEX `idx_coach` (`coach_id`),
+    INDEX `idx_athlete` (`athlete_id`),
+    INDEX `idx_date` (`appointment_date`),
+    INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- =========================================================
 -- Scoreboard Module Tables
 -- scoreboard.arcticwolves.ca – In-arena scoreboard display

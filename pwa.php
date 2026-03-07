@@ -277,6 +277,7 @@ $allowed_pages = [
     'personal_development'              => 'views/personal_development.php',
     'personal_development_programs'     => 'views/personal_development.php',
     'personal_development_my_program'   => 'views/personal_development.php',
+    'dev_drill_detail'        => 'views/dev_drill_detail.php',
     'development_programs'    => 'views/development_programs.php',
     'personal_drills'         => 'views/drills.php',
     'shop'                    => 'views/shop.php',
