@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS `users` (
     `password` VARCHAR(255) NOT NULL,
     `first_name` VARCHAR(512) NOT NULL,
     `last_name` VARCHAR(512) NOT NULL,
-    `role` ENUM('athlete', 'coach', 'admin', 'parent', 'health_coach', 'team_coach', 'front_desk_staff', 'hr', 'accounting') DEFAULT 'athlete',
+    `role` ENUM('athlete', 'coach', 'admin', 'parent', 'health_coach', 'team_coach', 'front_desk_staff', 'hr', 'accounting', 'goalie_dev', 'player_dev') DEFAULT 'athlete',
     `is_active` TINYINT(1) DEFAULT 1,
     `is_verified` TINYINT(1) DEFAULT 0,
     `verification_code` VARCHAR(10) DEFAULT NULL,
@@ -1674,7 +1674,7 @@ CREATE TABLE IF NOT EXISTS `reports` (
 -- Role permissions mapping
 CREATE TABLE IF NOT EXISTS `role_permissions` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `role` ENUM('athlete', 'coach', 'admin', 'parent', 'health_coach', 'team_coach', 'front_desk_staff', 'hr', 'accounting') NOT NULL,
+    `role` ENUM('athlete', 'coach', 'admin', 'parent', 'health_coach', 'team_coach', 'front_desk_staff', 'hr', 'accounting', 'goalie_dev', 'player_dev') NOT NULL,
     `permission_id` INT NOT NULL,
     `granted_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`permission_id`) REFERENCES `permissions`(`id`) ON DELETE CASCADE,
@@ -4265,7 +4265,7 @@ CREATE TABLE IF NOT EXISTS `package_coaches` (
 CREATE TABLE IF NOT EXISTS `user_roles` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `user_id` INT NOT NULL,
-    `role` ENUM('athlete', 'coach', 'admin', 'parent', 'health_coach', 'team_coach', 'front_desk_staff', 'hr', 'accounting') NOT NULL,
+    `role` ENUM('athlete', 'coach', 'admin', 'parent', 'health_coach', 'team_coach', 'front_desk_staff', 'hr', 'accounting', 'goalie_dev', 'player_dev') NOT NULL,
     `assigned_by` INT DEFAULT NULL COMMENT 'Admin who assigned this role',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
@@ -4791,6 +4791,96 @@ CREATE TABLE IF NOT EXISTS `admin_wishlist` (
     INDEX `idx_display_order` (`display_order`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- =====================================================
+-- Personal Development Programs
+-- =====================================================
+
+-- Session types for long-term development programs
+INSERT IGNORE INTO `session_types` (`name`, `description`, `default_price`, `duration_minutes`) VALUES
+('Long Term Goalie Development', 'Structured long-term development program for goalies focusing on technique, positioning, and game sense', 0.00, 60),
+('Long Term Player Development', 'Structured long-term development program for players focusing on skating, shooting, and hockey IQ', 0.00, 60);
+
+-- Development program enrollments
+CREATE TABLE IF NOT EXISTS `development_program_enrollments` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `athlete_id` INT NOT NULL,
+    `program_type` ENUM('goalie_dev', 'player_dev') NOT NULL,
+    `status` ENUM('active', 'completed', 'paused', 'cancelled') DEFAULT 'active',
+    `enrolled_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `completed_at` TIMESTAMP NULL DEFAULT NULL,
+    `notes` TEXT DEFAULT NULL,
+    FOREIGN KEY (`athlete_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `unique_athlete_program` (`athlete_id`, `program_type`),
+    INDEX `idx_athlete` (`athlete_id`),
+    INDEX `idx_program_type` (`program_type`),
+    INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Development program drills (assigned to athletes in a program)
+CREATE TABLE IF NOT EXISTS `development_program_drills` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `enrollment_id` INT NOT NULL,
+    `drill_id` INT NOT NULL,
+    `assigned_by` INT NOT NULL,
+    `sort_order` INT DEFAULT 0,
+    `status` ENUM('assigned', 'in_progress', 'completed') DEFAULT 'assigned',
+    `coach_notes` TEXT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`enrollment_id`) REFERENCES `development_program_enrollments`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`drill_id`) REFERENCES `drills`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`assigned_by`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    INDEX `idx_enrollment` (`enrollment_id`),
+    INDEX `idx_drill` (`drill_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Development program messages (chat between coach and athlete)
+CREATE TABLE IF NOT EXISTS `development_program_messages` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `enrollment_id` INT DEFAULT NULL COMMENT 'NULL for global dev program chat',
+    `drill_assignment_id` INT DEFAULT NULL COMMENT 'Non-null for drill-specific comments',
+    `sender_id` INT NOT NULL,
+    `message` TEXT NOT NULL,
+    `video_url` VARCHAR(512) DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`enrollment_id`) REFERENCES `development_program_enrollments`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`drill_assignment_id`) REFERENCES `development_program_drills`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`sender_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    INDEX `idx_enrollment` (`enrollment_id`),
+    INDEX `idx_drill_assignment` (`drill_assignment_id`),
+    INDEX `idx_sender` (`sender_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Personal drills (coach-created drills with video, title, description)
+CREATE TABLE IF NOT EXISTS `personal_drills` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `title` VARCHAR(255) NOT NULL,
+    `description` TEXT DEFAULT NULL,
+    `video_url` VARCHAR(512) DEFAULT NULL,
+    `created_by` INT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    INDEX `idx_created_by` (`created_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Notification templates for development program registration
+CREATE TABLE IF NOT EXISTS `development_notification_templates` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `program_type` ENUM('goalie_dev', 'player_dev') NOT NULL,
+    `subject` VARCHAR(255) NOT NULL DEFAULT 'New Development Program Registration',
+    `body` TEXT NOT NULL,
+    `updated_by` INT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`updated_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    UNIQUE KEY `unique_program_type` (`program_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Default notification templates
+INSERT IGNORE INTO `development_notification_templates` (`program_type`, `subject`, `body`) VALUES
+('goalie_dev', 'New Goalie Development Program Registration', 'A new athlete has registered for the Long Term Goalie Development program. Please review and arrange communication with the enrollee.'),
+('player_dev', 'New Player Development Program Registration', 'A new athlete has registered for the Long Term Player Development program. Please review and arrange communication with the enrollee.');
 -- =========================================================
 -- Scoreboard Module Tables
 -- scoreboard.arcticwolves.ca – In-arena scoreboard display

@@ -125,6 +125,9 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
     <button class="page-tab" onclick="switchMarketingTab('email-campaigns')" id="tab-email-campaigns">
         <i class="fas fa-paper-plane"></i> Email Campaigns
     </button>
+    <button class="page-tab" onclick="switchMarketingTab('dev-notifications')" id="tab-dev-notifications">
+        <i class="fas fa-hockey-puck"></i> Development Notifications
+    </button>
 </div>
 
 <div class="page-tab-content">
@@ -643,6 +646,59 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
     <div class="card" style="padding: 24px;">
         <h3 style="color: #fff; margin: 0 0 16px;"><i class="fas fa-history"></i> Campaign History</h3>
         <div id="campaignHistory" style="color: #64748b;">Loading...</div>
+    </div>
+</div>
+
+</div>
+
+<!-- Development Notifications Section -->
+<div class="marketing-section" id="section-dev-notifications" style="display: none; flex-direction: column; gap: 20px;">
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-hockey-puck"></i> Development Program Notification Templates</h3>
+            <p style="color: var(--text-dim); font-size: 13px; margin-top: 4px;">Edit the notification messages sent when athletes register for development programs.</p>
+        </div>
+        <div class="card-body">
+            <?php
+            // Fetch notification templates
+            $dev_templates = [];
+            try {
+                $tmpl_query = $pdo->query("SELECT * FROM development_notification_templates ORDER BY program_type");
+                $dev_templates = $tmpl_query->fetchAll(PDO::FETCH_ASSOC);
+            } catch (PDOException $e) {
+                // Table may not exist yet
+            }
+            ?>
+            <?php if (empty($dev_templates)): ?>
+                <p style="color: var(--text-dim);">No notification templates found. Run the database migration to create default templates.</p>
+            <?php else: ?>
+                <?php foreach ($dev_templates as $tmpl): ?>
+                <div style="background: var(--bg-main, #0d1117); border: 1px solid var(--border, #2d2d44); border-radius: 8px; padding: 20px; margin-bottom: 16px;">
+                    <h4 style="font-size: 15px; font-weight: 700; color: var(--text-white, #e2e8f0); margin-bottom: 12px;">
+                        <?= $tmpl['program_type'] === 'goalie_dev' ? '<i class="fas fa-shield-alt" style="color:#3b82f6;"></i> Goalie Development' : '<i class="fas fa-hockey-puck" style="color:#10b981;"></i> Player Development' ?>
+                    </h4>
+                    <form onsubmit="saveDevNotificationTemplate(event, <?= (int)$tmpl['id'] ?>)">
+                        <div style="margin-bottom: 12px;">
+                            <label style="display:block;font-size:13px;font-weight:600;color:var(--text-white);margin-bottom:6px;">Subject</label>
+                            <input type="text" id="dev-tmpl-subject-<?= (int)$tmpl['id'] ?>" value="<?= htmlspecialchars($tmpl['subject']) ?>" 
+                                   style="width:100%;padding:10px 14px;background:var(--bg-card,#1a1a2e);border:1px solid var(--border,#2d2d44);border-radius:8px;color:var(--text-white,#e2e8f0);font-size:13px;">
+                        </div>
+                        <div style="margin-bottom: 12px;">
+                            <label style="display:block;font-size:13px;font-weight:600;color:var(--text-white);margin-bottom:6px;">Message Body</label>
+                            <textarea id="dev-tmpl-body-<?= (int)$tmpl['id'] ?>" rows="4"
+                                      style="width:100%;padding:10px 14px;background:var(--bg-card,#1a1a2e);border:1px solid var(--border,#2d2d44);border-radius:8px;color:var(--text-white,#e2e8f0);font-size:13px;font-family:inherit;resize:vertical;"><?= htmlspecialchars($tmpl['body']) ?></textarea>
+                        </div>
+                        <button type="submit" style="padding:8px 20px;background:var(--primary,#6B46C1);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px;">
+                            <i class="fas fa-save"></i> Save Template
+                        </button>
+                        <?php if ($tmpl['updated_at'] && $tmpl['updated_at'] !== $tmpl['created_at']): ?>
+                        <span style="font-size:11px;color:var(--text-dim);margin-left:12px;">Last updated: <?= date('M j, Y g:ia', strtotime($tmpl['updated_at'])) ?></span>
+                        <?php endif; ?>
+                    </form>
+                </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
     </div>
 </div>
 
@@ -1343,6 +1399,38 @@ function copyEmailSignatureHTML() {
         }
         document.body.removeChild(textArea);
     });
+}
+
+// Save development notification template
+function saveDevNotificationTemplate(event, templateId) {
+    event.preventDefault();
+    const subject = document.getElementById('dev-tmpl-subject-' + templateId).value.trim();
+    const body = document.getElementById('dev-tmpl-body-' + templateId).value.trim();
+    if (!subject || !body) { alert('Subject and body are required.'); return; }
+    
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    fetch('process_development_programs.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-Token': csrfToken
+        },
+        body: JSON.stringify({ action: 'update_notification_template', template_id: templateId, subject: subject, body: body })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            if (typeof showNotification === 'function') {
+                showNotification('Template saved successfully!', 'success');
+            } else {
+                alert('Template saved successfully!');
+            }
+        } else {
+            alert(data.error || 'Failed to save template.');
+        }
+    })
+    .catch(() => alert('An error occurred.'));
 }
 </script>
 

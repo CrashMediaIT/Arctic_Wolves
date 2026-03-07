@@ -145,6 +145,9 @@ $canAccessHealthManagement = ($isHealthCoach || $isAdmin);
 $canAccessHR   = ($isHR || $isAdmin);
 $canAccessAccounting = ($isAccounting || $isAdmin);
 $isStaff       = ($isAdmin || $isCoach || $isHealthCoach || $isFrontDesk || $isHR || $isAccounting);
+$isGoalieDev   = in_array('goalie_dev', $user_roles_list);
+$isPlayerDev   = in_array('player_dev', $user_roles_list);
+$canAccessDevPrograms = ($isGoalieDev || $isPlayerDev || $isAdmin);
 
 $page = $_GET['page'] ?? 'home';
 
@@ -341,6 +344,17 @@ $allowed_pages = [
     'library_workouts'        => 'views/library_workouts.php',
     'library_nutrition'       => 'views/library_nutrition.php',
     'health_coach_roster'     => 'views/health_coach_roster.php',
+    
+    // Personal Development (All Users)
+    'personal_development'              => 'views/personal_development.php',
+    'personal_development_programs'     => 'views/personal_development.php',
+    'personal_development_my_program'   => 'views/personal_development.php',
+    
+    // Development Programs (Coaches Corner - goalie_dev/player_dev)
+    'development_programs'    => 'views/development_programs.php',
+    
+    // Personal Drills (Drill tab)
+    'personal_drills'         => 'views/drills.php',
     
     // Shop
     'shop'                    => 'views/shop.php',
@@ -800,6 +814,9 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="?page=health" class="nav-link <?= in_array($page, ['health','strength_conditioning','nutrition'])?'active':'' ?>">
                 <i class="fa-solid fa-heart-pulse icon"></i> Health
             </a>
+            <a href="?page=personal_development" class="nav-link <?= in_array($page, ['personal_development','personal_development_programs','personal_development_my_program'])?'active':'' ?>">
+                <i class="fa-solid fa-hockey-puck icon"></i> Personal Development
+            </a>
             <a href="?page=shop" class="nav-link <?= $page=='shop'?'active':'' ?>">
                 <i class="fa-solid fa-store icon"></i> Shop
             </a>
@@ -829,7 +846,7 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="?page=coach_calendar" class="nav-link <?= $page=='coach_calendar'?'active':'' ?>">
                 <i class="fa-solid fa-calendar icon"></i> Calendar
             </a>
-            <a href="?page=drills" class="nav-link <?= in_array($page, ['drills','drill_library','create_drill','import_drill','export_import_drills'])?'active':'' ?>">
+            <a href="?page=drills" class="nav-link <?= in_array($page, ['drills','drill_library','create_drill','import_drill','export_import_drills','personal_drills'])?'active':'' ?>">
                 <i class="fa-solid fa-clipboard-list icon"></i> Drills
             </a>
             <a href="?page=practice" class="nav-link <?= in_array($page, ['practice','practice_library','create_practice','practice_create','practice_import','export_import_plans'])?'active':'' ?>">
@@ -859,6 +876,11 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="/gameplan.php" class="nav-link">
                 <i class="fa-solid fa-chess-board icon"></i> Game Plan
             </a>
+            <?php if($canAccessDevPrograms): ?>
+            <a href="?page=development_programs" class="nav-link <?= $page=='development_programs'?'active':'' ?>">
+                <i class="fa-solid fa-hockey-puck icon"></i> Development Programs
+            </a>
+            <?php endif; ?>
         </nav>
     </div>
     <?php endif; ?>
