@@ -30,6 +30,18 @@ if ($isPosSubdomain) {
     exit();
 }
 
+// Detect Scoreboard subdomain (scoreboard.arcticwolves.ca)
+$isScoreboardSubdomain = (
+    strpos($host, 'scoreboard.') === 0 &&
+    (preg_match('/^scoreboard\.arcticwolves\.ca$/i', $host) || preg_match('/^scoreboard\..*\.arcticwolves\.ca$/i', $host))
+);
+
+// If on Scoreboard subdomain, redirect to scoreboard
+if ($isScoreboardSubdomain) {
+    header("Location: scoreboard.php");
+    exit();
+}
+
 // If database is not connected, check if setup is needed
 if (!isset($db_connected) || !$db_connected) {
     // Check if setup has been completed

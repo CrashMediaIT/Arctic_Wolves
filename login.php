@@ -23,6 +23,13 @@ if ($isPosSubdomain) {
     exit();
 }
 
+// Detect Scoreboard subdomain (scoreboard.arcticwolves.ca)
+// Scoreboard uses the main login flow; after login, user is redirected back to scoreboard.php
+$isScoreboardSubdomain = (
+    strpos($host, 'scoreboard.') === 0 &&
+    (preg_match('/^scoreboard\.arcticwolves\.ca$/i', $host) || preg_match('/^scoreboard\..*\.arcticwolves\.ca$/i', $host))
+);
+
 // PWA: redirect mobile phones to PWA login
 redirectToPwaIfMobile('pwa_login.php', 'pwa_login.php');
 
