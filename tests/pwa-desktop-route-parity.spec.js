@@ -324,4 +324,13 @@ test.describe('PWA View Override and Feature Parity', () => {
     expect(desktopContent).toContain('$isSafeLink');
   });
 
+  test('pwa/admin_wishlist.php all fetch calls include X-Requested-With header', () => {
+    const content = readFileSync(join(ROOT, 'views', 'pwa', 'admin_wishlist.php'), 'utf-8');
+    // All fetch calls to process_wishlist.php should include X-Requested-With header
+    // to ensure the backend returns JSON instead of redirecting
+    const fetchCalls = content.split('process_wishlist.php').length - 1;
+    const xhrHeaders = (content.match(/X-Requested-With/g) || []).length;
+    expect(fetchCalls, 'All fetch calls should have X-Requested-With header').toBe(xhrHeaders);
+  });
+
 });

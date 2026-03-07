@@ -281,7 +281,7 @@ try {
         btn.disabled = true;
         btn.textContent = 'Saving…';
         var fd = new FormData(document.getElementById('mWlForm'));
-        fetch('process_wishlist.php', { method: 'POST', body: fd })
+        fetch('process_wishlist.php', { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (data.success) {
