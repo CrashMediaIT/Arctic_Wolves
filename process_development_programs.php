@@ -78,6 +78,19 @@ try {
             if (!$isAdmin) { echo json_encode(['success' => false, 'error' => 'Access denied']); exit; }
             handleUpdateNotificationTemplate($pdo, $user_id, $input);
             break;
+        case 'get_drill_details':
+            handleGetDrillDetails($pdo, $user_id, $input);
+            break;
+        case 'upload_dev_video':
+            handleUploadDevVideo($pdo, $user_id, $input);
+            break;
+        case 'create_appointment':
+            if (!$canManageDevPrograms) { echo json_encode(['success' => false, 'error' => 'Access denied']); exit; }
+            handleCreateAppointment($pdo, $user_id, $input);
+            break;
+        case 'cancel_appointment':
+            handleCancelAppointment($pdo, $user_id, $input, $canManageDevPrograms);
+            break;
         default:
             echo json_encode(['success' => false, 'error' => 'Invalid action']);
     }
@@ -314,6 +327,232 @@ function handleUpdateNotificationTemplate($pdo, $user_id, $input) {
     
     $stmt = $pdo->prepare("UPDATE development_notification_templates SET subject = ?, body = ?, updated_by = ? WHERE id = ?");
     $stmt->execute([$subject, $body, $user_id, $template_id]);
+    
+    echo json_encode(['success' => true]);
+}
+
+/**
+ * Get full drill details for athlete drill detail view
+ */
+function handleGetDrillDetails($pdo, $user_id, $input) {
+    $drill_assignment_id = (int)($input['drill_assignment_id'] ?? 0);
+    if (!$drill_assignment_id) {
+        echo json_encode(['success' => false, 'error' => 'Missing drill assignment ID']);
+        return;
+    }
+    
+    // Get drill details with assignment info
+    $stmt = $pdo->prepare("
+        SELECT dpd.id as assignment_id, dpd.status, dpd.coach_notes, dpd.sort_order,
+               d.id as drill_id, d.title, d.description, d.setup, d.coaching_points, d.progression,
+               d.video_url, d.custom_image, d.diagram_data,
+               u.first_name as coach_first, u.last_name as coach_last,
+               dpe.athlete_id, dpe.program_type
+        FROM development_program_drills dpd
+        JOIN drills d ON dpd.drill_id = d.id
+        JOIN users u ON dpd.assigned_by = u.id
+        JOIN development_program_enrollments dpe ON dpd.enrollment_id = dpe.id
+        WHERE dpd.id = ? AND dpe.athlete_id = ?
+    ");
+    $stmt->execute([$drill_assignment_id, $user_id]);
+    $drill = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$drill) {
+        echo json_encode(['success' => false, 'error' => 'Drill not found or access denied']);
+        return;
+    }
+    
+    if (function_exists('decryptUserRows')) {
+        $coach_row = decryptUserRows([['first_name' => $drill['coach_first'], 'last_name' => $drill['coach_last']]])[0];
+        $drill['coach_first'] = $coach_row['first_name'];
+        $drill['coach_last'] = $coach_row['last_name'];
+    }
+    
+    // Get videos submitted for this drill
+    $videos_stmt = $pdo->prepare("
+        SELECT id, title, video_url, video_upload_path, status, coach_feedback, created_at
+        FROM development_program_videos
+        WHERE drill_assignment_id = ? AND athlete_id = ?
+        ORDER BY created_at DESC
+    ");
+    $videos_stmt->execute([$drill_assignment_id, $user_id]);
+    $drill['videos'] = $videos_stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    echo json_encode(['success' => true, 'drill' => $drill]);
+}
+
+/**
+ * Upload a development video for coach review
+ */
+function handleUploadDevVideo($pdo, $user_id, $input) {
+    $enrollment_id = (int)($input['enrollment_id'] ?? 0);
+    $drill_assignment_id = !empty($input['drill_assignment_id']) ? (int)$input['drill_assignment_id'] : null;
+    $title = trim($input['title'] ?? '');
+    $description = trim($input['description'] ?? '');
+    $video_url = trim($input['video_url'] ?? '');
+    
+    if (!$enrollment_id || !$title) {
+        echo json_encode(['success' => false, 'error' => 'Missing required fields']);
+        return;
+    }
+    
+    // Verify enrollment belongs to this athlete
+    $check = $pdo->prepare("SELECT id, program_type FROM development_program_enrollments WHERE id = ? AND athlete_id = ?");
+    $check->execute([$enrollment_id, $user_id]);
+    $enrollment = $check->fetch(PDO::FETCH_ASSOC);
+    if (!$enrollment) {
+        echo json_encode(['success' => false, 'error' => 'Enrollment not found']);
+        return;
+    }
+    
+    $video_upload_path = null;
+    
+    // Handle video file upload if provided
+    if (isset($_FILES['video_file']) && $_FILES['video_file']['error'] === UPLOAD_ERR_OK) {
+        $file = $_FILES['video_file'];
+        
+        $validator = new FileUploadValidator();
+        $validation = $validator->validateVideo($file);
+        if (!$validation['valid']) {
+            echo json_encode(['success' => false, 'error' => $validation['error']]);
+            return;
+        }
+        
+        $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        $filename = 'dev_video_' . bin2hex(random_bytes(16)) . '.' . $extension;
+        
+        $persist = persistUploadedFile($pdo, $file['tmp_name'], 'development/videos', $filename, '', true);
+        if (!$persist['success']) {
+            echo json_encode(['success' => false, 'error' => 'Video upload failed']);
+            return;
+        }
+        $video_upload_path = $persist['rustfs_url'] ?? null;
+    }
+    
+    $final_url = $video_upload_path ?: ($video_url ?: null);
+    
+    $stmt = $pdo->prepare("INSERT INTO development_program_videos (enrollment_id, athlete_id, drill_assignment_id, title, description, video_url, video_upload_path) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$enrollment_id, $user_id, $drill_assignment_id, $title, $description ?: null, $final_url, $video_upload_path]);
+    
+    // If this is for a specific drill, update its status to in_progress
+    if ($drill_assignment_id) {
+        $pdo->prepare("UPDATE development_program_drills SET status = 'in_progress' WHERE id = ? AND status = 'assigned'")->execute([$drill_assignment_id]);
+    }
+    
+    // Notify coaches about the new video
+    $role_to_notify = $enrollment['program_type'];
+    $coaches_stmt = $pdo->prepare("SELECT DISTINCT ur.user_id FROM user_roles ur WHERE ur.role IN (?, 'admin')");
+    $coaches_stmt->execute([$role_to_notify]);
+    $notify_ids = $coaches_stmt->fetchAll(PDO::FETCH_COLUMN);
+    
+    $athlete_stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
+    $athlete_stmt->execute([$user_id]);
+    $athlete = $athlete_stmt->fetch(PDO::FETCH_ASSOC);
+    if (function_exists('decryptUserRows')) {
+        $athlete = decryptUserRows([$athlete])[0];
+    }
+    $athlete_name = trim(($athlete['first_name'] ?? '') . ' ' . ($athlete['last_name'] ?? ''));
+    
+    $notif_stmt = $pdo->prepare("INSERT INTO notifications (user_id, type, title, message, link_url) VALUES (?, 'dev_video_upload', ?, ?, '?page=development_programs')");
+    foreach ($notify_ids as $nid) {
+        if ((int)$nid !== $user_id) {
+            $notif_stmt->execute([$nid, 'New Development Video', htmlspecialchars($athlete_name, ENT_QUOTES, 'UTF-8') . ' has uploaded a new development video: ' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8')]);
+        }
+    }
+    
+    echo json_encode(['success' => true]);
+}
+
+/**
+ * Create a development appointment (coach schedules with athlete)
+ */
+function handleCreateAppointment($pdo, $user_id, $input) {
+    $enrollment_id = (int)($input['enrollment_id'] ?? 0);
+    $athlete_id = (int)($input['athlete_id'] ?? 0);
+    $appointment_type = $input['appointment_type'] ?? '';
+    $title = trim($input['title'] ?? '');
+    $appointment_date = $input['appointment_date'] ?? '';
+    $appointment_time = $input['appointment_time'] ?? '';
+    $duration_minutes = (int)($input['duration_minutes'] ?? 30);
+    $location = trim($input['location'] ?? '');
+    $meeting_url = trim($input['meeting_url'] ?? '');
+    $phone_number = trim($input['phone_number'] ?? '');
+    $description = trim($input['description'] ?? '');
+    
+    if (!$enrollment_id || !$athlete_id || !in_array($appointment_type, ['call', 'video_call', 'in_person'])) {
+        echo json_encode(['success' => false, 'error' => 'Missing required fields']);
+        return;
+    }
+    if (!$title || !$appointment_date || !$appointment_time) {
+        echo json_encode(['success' => false, 'error' => 'Title, date and time are required']);
+        return;
+    }
+    if ($duration_minutes < 5 || $duration_minutes > 480) {
+        echo json_encode(['success' => false, 'error' => 'Duration must be between 5 and 480 minutes']);
+        return;
+    }
+    
+    // Verify enrollment
+    $check = $pdo->prepare("SELECT id FROM development_program_enrollments WHERE id = ? AND athlete_id = ?");
+    $check->execute([$enrollment_id, $athlete_id]);
+    if (!$check->fetch()) {
+        echo json_encode(['success' => false, 'error' => 'Enrollment not found']);
+        return;
+    }
+    
+    $stmt = $pdo->prepare("INSERT INTO development_appointments (enrollment_id, coach_id, athlete_id, appointment_type, title, description, appointment_date, appointment_time, duration_minutes, location, meeting_url, phone_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([
+        $enrollment_id, $user_id, $athlete_id, $appointment_type,
+        $title, $description ?: null, $appointment_date, $appointment_time,
+        $duration_minutes, $location ?: null, $meeting_url ?: null, $phone_number ?: null
+    ]);
+    
+    // Notify the athlete
+    $coach_stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
+    $coach_stmt->execute([$user_id]);
+    $coach = $coach_stmt->fetch(PDO::FETCH_ASSOC);
+    if (function_exists('decryptUserRows')) {
+        $coach = decryptUserRows([$coach])[0];
+    }
+    $coach_name = trim(($coach['first_name'] ?? '') . ' ' . ($coach['last_name'] ?? ''));
+    
+    $type_label = str_replace('_', ' ', $appointment_type);
+    $notif_stmt = $pdo->prepare("INSERT INTO notifications (user_id, type, title, message, link_url) VALUES (?, 'dev_appointment', ?, ?, '?page=personal_development_my_program')");
+    $notif_stmt->execute([
+        $athlete_id,
+        'New Development Appointment',
+        htmlspecialchars($coach_name, ENT_QUOTES, 'UTF-8') . ' has scheduled a ' . $type_label . ': ' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . ' on ' . date('M j, Y', strtotime($appointment_date)) . ' at ' . date('g:i A', strtotime($appointment_time))
+    ]);
+    
+    echo json_encode(['success' => true]);
+}
+
+/**
+ * Cancel a development appointment
+ */
+function handleCancelAppointment($pdo, $user_id, $input, $canManageDevPrograms) {
+    $appointment_id = (int)($input['appointment_id'] ?? 0);
+    if (!$appointment_id) {
+        echo json_encode(['success' => false, 'error' => 'Missing appointment ID']);
+        return;
+    }
+    
+    // Verify user has access (coach who created it, the athlete, or admin)
+    $check = $pdo->prepare("SELECT id, coach_id, athlete_id FROM development_appointments WHERE id = ?");
+    $check->execute([$appointment_id]);
+    $appt = $check->fetch(PDO::FETCH_ASSOC);
+    if (!$appt) {
+        echo json_encode(['success' => false, 'error' => 'Appointment not found']);
+        return;
+    }
+    
+    if ((int)$appt['coach_id'] !== $user_id && (int)$appt['athlete_id'] !== $user_id && !$canManageDevPrograms) {
+        echo json_encode(['success' => false, 'error' => 'Access denied']);
+        return;
+    }
+    
+    $stmt = $pdo->prepare("UPDATE development_appointments SET status = 'cancelled' WHERE id = ?");
+    $stmt->execute([$appointment_id]);
     
     echo json_encode(['success' => true]);
 }

@@ -113,6 +113,39 @@ try {
     // training_session_templates/dates tables may not exist yet
 }
 
+// Fetch development appointments for this coach
+try {
+    $devApptQuery = "
+        SELECT da.id, da.title, da.appointment_date as session_date,
+               da.appointment_time as session_time, da.duration_minutes,
+               da.appointment_type, da.location as arena, da.status,
+               da.athlete_id,
+               u.first_name as athlete_first, u.last_name as athlete_last,
+               dpe.program_type,
+               0 as athlete_count,
+               1 as is_dev_appointment
+        FROM development_appointments da
+        JOIN users u ON da.athlete_id = u.id
+        JOIN development_program_enrollments dpe ON da.enrollment_id = dpe.id
+        WHERE da.coach_id = ? AND da.status = 'scheduled'
+          AND da.appointment_date >= CURDATE()
+        ORDER BY da.appointment_date, da.appointment_time
+        LIMIT 20
+    ";
+    $devApptStmt = $pdo->prepare($devApptQuery);
+    $devApptStmt->execute([$user_id]);
+    $devAppointments = $devApptStmt->fetchAll(PDO::FETCH_ASSOC);
+    if (function_exists('decryptUserRows') && !empty($devAppointments)) {
+        $devAppointments = decryptUserRows($devAppointments);
+    }
+    $sessions = array_merge($sessions, $devAppointments);
+    usort($sessions, function ($a, $b) {
+        return strtotime($a['session_date']) - strtotime($b['session_date']);
+    });
+} catch (PDOException $e) {
+    // development_appointments table may not exist yet
+}
+
 // Group sessions by date
 $grouped = [];
 foreach ($sessions as $s) {
@@ -276,6 +309,27 @@ foreach ($sessions as $s) {
                 };
             ?>
             <div class="m-cal-card" id="m-cal-card-<?= (int)$sess['id'] ?>">
+                <?php if (!empty($sess['is_dev_appointment'])): ?>
+                <div class="m-cal-card-top" style="border-left:3px solid <?= ($sess['appointment_type'] ?? '') === 'call' ? '#10b981' : (($sess['appointment_type'] ?? '') === 'video_call' ? '#3b82f6' : '#f59e0b') ?>;">
+                    <div class="m-cal-time">
+                        <span class="m-cal-time-value"><?= $sTime ?></span>
+                        <span class="m-cal-time-period"><?= $sPeriod ?></span>
+                    </div>
+                    <div class="m-cal-info">
+                        <div class="m-cal-title">
+                            <?= htmlspecialchars($sess['title']) ?>
+                            <span class="m-cal-tpl-badge" style="background:rgba(107,70,193,0.2);color:#a855f7;">DEV</span>
+                        </div>
+                        <div class="m-cal-meta">
+                            <span><i class="fas fa-<?= ($sess['appointment_type'] ?? '') === 'call' ? 'phone' : (($sess['appointment_type'] ?? '') === 'video_call' ? 'video' : 'map-marker-alt') ?>"></i> <?= str_replace('_', ' ', ucfirst($sess['appointment_type'] ?? '')) ?></span>
+                            <span><i class="fas fa-user"></i> <?= htmlspecialchars(trim(($sess['athlete_first'] ?? '') . ' ' . ($sess['athlete_last'] ?? ''))) ?></span>
+                            <?php if ($sess['arena']): ?><span><i class="fas fa-location-dot"></i> <?= htmlspecialchars($sess['arena']) ?></span><?php endif; ?>
+                            <?php if ($sess['duration_minutes']): ?><span><?= (int)$sess['duration_minutes'] ?>min</span><?php endif; ?>
+                        </div>
+                    </div>
+                    <span class="m-cal-badge m-cal-badge-scheduled"><?= $sess['program_type'] === 'goalie_dev' ? 'Goalie' : 'Player' ?></span>
+                </div>
+                <?php else: ?>
                 <a href="?page=session_detail&id=<?= (int)$sess['id'] ?>" class="m-cal-card-top" style="text-decoration:none;">
                     <div class="m-cal-time">
                         <span class="m-cal-time-value"><?= $sTime ?></span>
@@ -294,7 +348,8 @@ foreach ($sessions as $s) {
                     </div>
                     <span class="m-cal-badge m-cal-badge-<?= $badgeClass ?>"><?= htmlspecialchars(ucfirst($status)) ?></span>
                 </a>
-                <?php if ($status === 'scheduled' && empty($sess['is_template_session'])): ?>
+                <?php endif; ?>
+                <?php if ($status === 'scheduled' && empty($sess['is_template_session']) && empty($sess['is_dev_appointment'])): ?>
                 <div class="m-cal-actions">
                     <a href="?page=create_session&edit_id=<?= (int)$sess['id'] ?>" class="m-cal-act-btn m-cal-act-edit" style="text-decoration:none;">
                         <i class="fas fa-pen"></i> Edit

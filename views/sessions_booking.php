@@ -58,6 +58,21 @@ try {
     }
 } catch (PDOException $e) { /* Templates may already exist */ }
 
+// Auto-create Development Program session templates in Sessions tab if they don't exist
+$default_goalie_dev_price = 0.00;
+$default_player_dev_price = 0.00;
+try {
+    $existing_dev = $pdo->query("SELECT name FROM training_session_templates WHERE name IN ('Goalie Development Program', 'Player Development Program')")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array('Goalie Development Program', $existing_dev)) {
+        $pdo->prepare("INSERT INTO training_session_templates (name, description, price, duration_minutes, max_participants, session_type, is_active, show_on_landing, created_by) VALUES (?, ?, ?, 60, 1, 'on_ice', 1, 1, ?)")
+            ->execute(['Goalie Development Program', 'Long-term goalie development program — personalized drill programs, video feedback, and 1-on-1 coaching', $default_goalie_dev_price, $admin_id]);
+    }
+    if (!in_array('Player Development Program', $existing_dev)) {
+        $pdo->prepare("INSERT INTO training_session_templates (name, description, price, duration_minutes, max_participants, session_type, is_active, show_on_landing, created_by) VALUES (?, ?, ?, 60, 1, 'on_ice', 1, 1, ?)")
+            ->execute(['Player Development Program', 'Long-term player development program — personalized skating, shooting, and skills coaching with video analysis', $default_player_dev_price, $admin_id]);
+    }
+} catch (PDOException $e) { /* Templates may already exist */ }
+
 // Get hourly pricing from session templates for private/semi-private sessions
 $private_tpl = $pdo->query("SELECT price FROM training_session_templates WHERE name = 'Private Session' AND is_active = 1 LIMIT 1")->fetch(PDO::FETCH_ASSOC);
 $semi_private_tpl = $pdo->query("SELECT price FROM training_session_templates WHERE name = 'Semi-Private Session' AND is_active = 1 LIMIT 1")->fetch(PDO::FETCH_ASSOC);
@@ -264,6 +279,70 @@ $user_booked_template_dates = $tpl_booked_stmt->fetchAll(PDO::FETCH_COLUMN);
 <?php endif; ?>
 
 <div class="booking-content">
+    <!-- ============================================
+         DEVELOPMENT PROGRAMS (First Card Section)
+         ============================================ -->
+    <div class="booking-section dev-programs-section">
+        <div class="section-header-bar">
+            <div class="section-title-group">
+                <h2 class="section-title"><i class="fas fa-hockey-puck"></i> Development Programs</h2>
+                <p class="section-subtitle">Long-term personalized development programs with dedicated coaching</p>
+            </div>
+        </div>
+        <div class="programs-cards-grid">
+            <div class="program-card" style="border-color:rgba(59,130,246,0.3);">
+                <div class="program-type-badge" style="background:rgba(59,130,246,0.15);color:#3b82f6;">
+                    <i class="fas fa-shield-alt"></i> Goalie Development
+                </div>
+                <div class="program-card-header">
+                    <h3 class="program-name">Long Term Goalie Development</h3>
+                </div>
+                <div class="program-card-body">
+                    <p class="program-description">Comprehensive goalie development program — technique, positioning, movement, and game sense. Work directly with our goalie development coaches through personalized drill programs and video feedback.</p>
+                    <ul class="program-details-list">
+                        <li><i class="fas fa-clipboard-list"></i> Personalized drill programs</li>
+                        <li><i class="fas fa-video"></i> Video analysis & feedback</li>
+                        <li><i class="fas fa-comments"></i> Direct coach communication</li>
+                        <li><i class="fas fa-calendar-check"></i> Scheduled coaching sessions</li>
+                    </ul>
+                </div>
+                <div class="program-card-footer">
+                    <div class="program-pricing">
+                        <div class="program-price">Enroll</div>
+                    </div>
+                    <a href="?page=personal_development_programs" class="btn btn-primary" style="padding:10px 20px;background:var(--primary,#6B46C1);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+                        <i class="fas fa-arrow-right"></i> View Program
+                    </a>
+                </div>
+            </div>
+            <div class="program-card" style="border-color:rgba(16,185,129,0.3);">
+                <div class="program-type-badge" style="background:rgba(16,185,129,0.15);color:#10b981;">
+                    <i class="fas fa-hockey-puck"></i> Player Development
+                </div>
+                <div class="program-card-header">
+                    <h3 class="program-name">Long Term Player Development</h3>
+                </div>
+                <div class="program-card-body">
+                    <p class="program-description">Structured long-term development for skaters — skating technique, shooting, puck handling, hockey IQ, and on-ice decision making. Receive personalized coaching through drill programs and video analysis.</p>
+                    <ul class="program-details-list">
+                        <li><i class="fas fa-clipboard-list"></i> Personalized drill programs</li>
+                        <li><i class="fas fa-video"></i> Video analysis & feedback</li>
+                        <li><i class="fas fa-comments"></i> Direct coach communication</li>
+                        <li><i class="fas fa-calendar-check"></i> Scheduled coaching sessions</li>
+                    </ul>
+                </div>
+                <div class="program-card-footer">
+                    <div class="program-pricing">
+                        <div class="program-price">Enroll</div>
+                    </div>
+                    <a href="?page=personal_development_programs" class="btn btn-primary" style="padding:10px 20px;background:var(--primary,#6B46C1);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+                        <i class="fas fa-arrow-right"></i> View Program
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ============================================
          SECTION 1: INDIVIDUAL SESSIONS (Upper Section)
          ============================================ -->

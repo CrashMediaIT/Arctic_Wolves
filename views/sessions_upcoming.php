@@ -450,6 +450,34 @@ $view_mode = $_GET['view'] ?? 'list';
 // No demo data for sessions - show empty state when no real data exists
 $is_demo_data = false;
 
+// Get upcoming development appointments for this user
+$dev_appointments = [];
+if (!$show_history) {
+    $dev_appt_query = "
+        SELECT da.*, u.first_name as coach_first, u.last_name as coach_last,
+               dpe.program_type
+        FROM development_appointments da
+        JOIN users u ON da.coach_id = u.id
+        JOIN development_program_enrollments dpe ON da.enrollment_id = dpe.id
+        WHERE da.status = 'scheduled'
+          AND (da.appointment_date > CURDATE() OR (da.appointment_date = CURDATE() AND da.appointment_time >= CURTIME()))
+    ";
+    if ($user_role === 'athlete') {
+        $dev_appt_query .= " AND da.athlete_id = ?";
+        $dev_appt_params = [$user_id];
+    } else {
+        $dev_appt_query .= " AND da.coach_id = ?";
+        $dev_appt_params = [$user_id];
+    }
+    $dev_appt_query .= " ORDER BY da.appointment_date, da.appointment_time LIMIT 10";
+    $dev_appt_stmt = $pdo->prepare($dev_appt_query);
+    $dev_appt_stmt->execute($dev_appt_params);
+    $dev_appointments = $dev_appt_stmt->fetchAll(PDO::FETCH_ASSOC);
+    if (function_exists('decryptUserRows') && !empty($dev_appointments)) {
+        $dev_appointments = decryptUserRows($dev_appointments);
+    }
+}
+
 // Use empty arrays for skills and locations if none exist (no demo data)
 ?>
 
@@ -599,6 +627,41 @@ $is_demo_data = false;
             <?php endforeach; ?>
         </div>
     <?php else: ?>
+        <!-- Development Appointments -->
+        <?php if (!empty($dev_appointments)): ?>
+        <div style="margin-bottom:20px;">
+            <h3 style="font-size:15px;font-weight:600;color:var(--text-white,#e2e8f0);margin-bottom:12px;"><i class="fas fa-hockey-puck" style="margin-right:6px;color:var(--primary,#6B46C1);"></i> Development Appointments</h3>
+            <?php foreach ($dev_appointments as $da):
+                $da_datetime = strtotime($da['appointment_date'] . ' ' . $da['appointment_time']);
+                $da_type_icon = $da['appointment_type'] === 'call' ? 'phone' : ($da['appointment_type'] === 'video_call' ? 'video' : 'map-marker-alt');
+                $da_type_color = $da['appointment_type'] === 'call' ? '#10b981' : ($da['appointment_type'] === 'video_call' ? '#3b82f6' : '#f59e0b');
+            ?>
+            <div class="session-card" style="border-left:3px solid <?= $da_type_color ?>;">
+                <div class="session-date">
+                    <div class="date-box" style="background:linear-gradient(135deg,<?= $da_type_color ?>,var(--primary,#6B46C1));">
+                        <span class="date-day"><?= date('d', $da_datetime) ?></span>
+                        <span class="date-month"><?= strtoupper(date('M', $da_datetime)) ?></span>
+                    </div>
+                </div>
+                <div class="session-details">
+                    <h3 class="session-title"><?= htmlspecialchars($da['title']) ?></h3>
+                    <div class="session-meta">
+                        <span><i class="fas fa-clock"></i> <?= date('g:i A', $da_datetime) ?> (<?= (int)$da['duration_minutes'] ?> min)</span>
+                        <span><i class="fas fa-user-tie"></i> <?= htmlspecialchars(trim(($da['coach_first'] ?? '') . ' ' . ($da['coach_last'] ?? ''))) ?></span>
+                        <?php if ($da['appointment_type'] === 'in_person' && !empty($da['location'])): ?>
+                        <span><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($da['location']) ?></span>
+                        <?php endif; ?>
+                    </div>
+                    <div class="session-tags">
+                        <span class="tag" style="background:rgba(107,70,193,0.15);color:#a855f7;"><i class="fas fa-hockey-puck"></i> <?= $da['program_type'] === 'goalie_dev' ? 'Goalie Dev' : 'Player Dev' ?></span>
+                        <span class="tag" style="background:<?= str_replace('#', 'rgba(', $da_type_color) ?>15);color:<?= $da_type_color ?>;"><i class="fas fa-<?= $da_type_icon ?>"></i> <?= str_replace('_', ' ', ucfirst($da['appointment_type'])) ?></span>
+                    </div>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
+
         <!-- List View -->
         <div class="sessions-list">
         <?php if (count($sessions) > 0): ?>
