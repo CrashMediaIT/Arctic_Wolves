@@ -8,13 +8,6 @@
 $user_id = $_SESSION['user_id'] ?? 0;
 $user_role = $_SESSION['user_role'] ?? 'athlete';
 
-// Get session types for development programs
-$dev_types = $pdo->query("
-    SELECT * FROM session_types 
-    WHERE name IN ('Long Term Goalie Development', 'Long Term Player Development')
-    ORDER BY name
-")->fetchAll(PDO::FETCH_ASSOC);
-
 // Get user's current enrollments
 $enrollments_stmt = $pdo->prepare("
     SELECT dpe.*, 

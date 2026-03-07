@@ -131,8 +131,8 @@ function handleRegister($pdo, $user_id, $input) {
     if (function_exists('decryptUserRows')) {
         $athlete = decryptUserRows([$athlete])[0];
     }
-    $athlete_name = ($athlete['first_name'] ?? '') . ' ' . ($athlete['last_name'] ?? '');
-    $notif_body .= "\n\nAthlete: " . trim($athlete_name);
+    $athlete_name = htmlspecialchars(trim(($athlete['first_name'] ?? '') . ' ' . ($athlete['last_name'] ?? '')), ENT_QUOTES, 'UTF-8');
+    $notif_body .= "\n\nAthlete: " . $athlete_name;
     
     // Create notifications
     $notif_stmt = $pdo->prepare("INSERT INTO notifications (user_id, type, title, message, link_url) VALUES (?, 'dev_program_registration', ?, ?, '?page=development_programs')");
@@ -252,16 +252,17 @@ function handleCreatePersonalDrill($pdo, $user_id, $input) {
     
     $pdo->beginTransaction();
     try {
-        // Create personal drill record
+        // Add to the main drill library first
+        $drill_stmt = $pdo->prepare("INSERT INTO drills (title, description, video_url, created_by) VALUES (?, ?, ?, ?)");
+        $drill_stmt->execute([$title, $description ?: null, $video_url ?: null, $user_id]);
+        $drill_id = (int)$pdo->lastInsertId();
+        
+        // Create personal drill record referencing the library drill
         $pd_stmt = $pdo->prepare("INSERT INTO personal_drills (title, description, video_url, created_by) VALUES (?, ?, ?, ?)");
         $pd_stmt->execute([$title, $description ?: null, $video_url ?: null, $user_id]);
         
-        // Also add to the main drill library
-        $drill_stmt = $pdo->prepare("INSERT INTO drills (title, description, video_url, created_by) VALUES (?, ?, ?, ?)");
-        $drill_stmt->execute([$title, $description ?: null, $video_url ?: null, $user_id]);
-        
         $pdo->commit();
-        echo json_encode(['success' => true]);
+        echo json_encode(['success' => true, 'drill_id' => $drill_id]);
     } catch (Exception $e) {
         $pdo->rollBack();
         throw $e;
