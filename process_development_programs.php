@@ -455,11 +455,13 @@ function handleUploadDevVideo($pdo, $user_id, $input) {
         $athlete = decryptUserRows([$athlete])[0];
     }
     $athlete_name = trim(($athlete['first_name'] ?? '') . ' ' . ($athlete['last_name'] ?? ''));
+    $safe_athlete_name = htmlspecialchars($athlete_name, ENT_QUOTES, 'UTF-8');
+    $safe_title = htmlspecialchars($title, ENT_QUOTES, 'UTF-8');
     
     $notif_stmt = $pdo->prepare("INSERT INTO notifications (user_id, type, title, message, link_url) VALUES (?, 'dev_video_upload', ?, ?, '?page=development_programs')");
     foreach ($notify_ids as $nid) {
         if ((int)$nid !== $user_id) {
-            $notif_stmt->execute([$nid, 'New Development Video', htmlspecialchars($athlete_name, ENT_QUOTES, 'UTF-8') . ' has uploaded a new development video: ' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8')]);
+            $notif_stmt->execute([$nid, 'New Development Video', $safe_athlete_name . ' has uploaded a new development video: ' . $safe_title]);
         }
     }
     
@@ -527,11 +529,13 @@ function handleConfirmDevVideoUpload($pdo, $user_id, $input) {
         $athlete = decryptUserRows([$athlete])[0];
     }
     $athlete_name = trim(($athlete['first_name'] ?? '') . ' ' . ($athlete['last_name'] ?? ''));
+    $safe_athlete_name = htmlspecialchars($athlete_name, ENT_QUOTES, 'UTF-8');
+    $safe_title = htmlspecialchars($title, ENT_QUOTES, 'UTF-8');
     
     $notif_stmt = $pdo->prepare("INSERT INTO notifications (user_id, type, title, message, link_url) VALUES (?, 'dev_video_upload', ?, ?, '?page=development_programs')");
     foreach ($notify_ids as $nid) {
         if ((int)$nid !== $user_id) {
-            $notif_stmt->execute([$nid, 'New Development Video', htmlspecialchars($athlete_name, ENT_QUOTES, 'UTF-8') . ' has uploaded a new development video: ' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8')]);
+            $notif_stmt->execute([$nid, 'New Development Video', $safe_athlete_name . ' has uploaded a new development video: ' . $safe_title]);
         }
     }
     

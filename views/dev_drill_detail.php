@@ -208,6 +208,7 @@ if (!empty($drill['drill_image'])) {
     cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
 }
 .dev-drill-upload .btn-upload:disabled { opacity: 0.5; cursor: not-allowed; }
+.dev-drill-file-input { margin-bottom: 10px; color: var(--text-dim, #94a3b8); }
 
 /* Navigation */
 .dev-drill-nav { display: flex; justify-content: space-between; margin-top: 20px; }
@@ -363,7 +364,7 @@ if (!empty($drill['drill_image'])) {
             <label for="dev-drill-video-desc">Description</label>
             <textarea id="dev-drill-video-desc" placeholder="Notes for your coach about this video..."></textarea>
             <label for="dev-drill-video-file">Video File *</label>
-            <input type="file" id="dev-drill-video-file" accept="video/*" capture="environment" style="margin-bottom:10px;color:var(--text-dim);">
+            <input type="file" id="dev-drill-video-file" accept="video/*" capture="environment" class="dev-drill-file-input">
             <div class="upload-progress-wrap" id="dev-drill-progress-wrap">
                 <div class="upload-progress-bar" id="dev-drill-progress-bar"></div>
             </div>
@@ -411,6 +412,39 @@ function updateDrillStatus(drillAssignmentId, status) {
         if (data.success) location.reload();
         else alert(data.error || 'Failed to update status.');
     }).catch(function() { alert('An error occurred.'); });
+}
+
+/** Shared XHR upload with progress tracking */
+function xhrUploadWithProgress(method, url, headers, body, progressBar, statusEl, prefix) {
+    return new Promise(function(resolve, reject) {
+        var xhr = new XMLHttpRequest();
+        xhr.open(method, url, true);
+        for (var h in headers) { if (headers.hasOwnProperty(h)) xhr.setRequestHeader(h, headers[h]); }
+        var uploadStarted = false;
+        var connTimer = setTimeout(function() {
+            if (!uploadStarted) { xhr.abort(); reject(new Error('Upload connection timed out')); }
+        }, 30000);
+        xhr.upload.onprogress = function(ev) {
+            if (!uploadStarted && ev.loaded > 0) { uploadStarted = true; clearTimeout(connTimer); }
+            if (ev.lengthComputable) {
+                var pct = Math.round((ev.loaded / ev.total) * 100);
+                progressBar.style.width = pct + '%';
+                statusEl.textContent = pct < 100 ? (prefix || 'Uploading... ') + pct + '%' : 'Finalizing...';
+            }
+        };
+        xhr.onload = function() {
+            clearTimeout(connTimer);
+            if (xhr.status >= 200 && xhr.status < 300) resolve(xhr);
+            else reject(new Error('Upload failed (HTTP ' + xhr.status + ')'));
+        };
+        xhr.onerror = function() { clearTimeout(connTimer); reject(new Error('Network error')); };
+        xhr.send(body);
+    });
+}
+
+function resetUploadBtn(btn) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Submit Video';
 }
 
 /**
@@ -464,31 +498,8 @@ function submitDrillVideo() {
 
             statusEl.textContent = 'Uploading to cloud storage...';
 
-            // Phase 2: PUT directly to RustFS
-            return new Promise(function(resolve, reject) {
-                var xhr = new XMLHttpRequest();
-                xhr.open('PUT', presignedUrl, true);
-                xhr.setRequestHeader('Content-Type', contentType);
-                var uploadStarted = false;
-                var connTimer = setTimeout(function() {
-                    if (!uploadStarted) { xhr.abort(); reject(new Error('Upload connection timed out')); }
-                }, 30000);
-                xhr.upload.onprogress = function(ev) {
-                    if (!uploadStarted && ev.loaded > 0) { uploadStarted = true; clearTimeout(connTimer); }
-                    if (ev.lengthComputable) {
-                        var pct = Math.round((ev.loaded / ev.total) * 100);
-                        progressBar.style.width = pct + '%';
-                        statusEl.textContent = pct < 100 ? 'Uploading... ' + pct + '%' : 'Finalizing...';
-                    }
-                };
-                xhr.onload = function() {
-                    clearTimeout(connTimer);
-                    if (xhr.status >= 200 && xhr.status < 300) resolve();
-                    else reject(new Error('Upload failed (HTTP ' + xhr.status + ')'));
-                };
-                xhr.onerror = function() { clearTimeout(connTimer); reject(new Error('Network error')); };
-                xhr.send(videoFile);
-            });
+            // Phase 2: PUT directly to RustFS using shared progress helper
+            return xhrUploadWithProgress('PUT', presignedUrl, { 'Content-Type': contentType }, videoFile, progressBar, statusEl, 'Uploading... ');
         })
         .then(function() {
             // Phase 3: Confirm upload
@@ -531,42 +542,26 @@ function submitDrillVideo() {
             formData.append('drill_assignment_id', '<?= $drill_assignment_id ?>');
             formData.append('video_file', videoFile);
 
-            var xhr = new XMLHttpRequest();
-            xhr.open('POST', 'process_development_programs.php', true);
-            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-            xhr.setRequestHeader('X-CSRF-Token', devDrillCsrf);
-            xhr.upload.onprogress = function(ev) {
-                if (ev.lengthComputable) {
-                    var pct = Math.round((ev.loaded / ev.total) * 100);
-                    progressBar.style.width = pct + '%';
-                    statusEl.textContent = 'Uploading... ' + pct + '%';
+            xhrUploadWithProgress('POST', 'process_development_programs.php', {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-Token': devDrillCsrf
+            }, formData, progressBar, statusEl, 'Uploading... ')
+            .then(function(xhr) {
+                var d = JSON.parse(xhr.responseText);
+                if (d.success) {
+                    statusEl.textContent = 'Upload complete!';
+                    progressBar.style.width = '100%';
+                    alert('Video submitted successfully! Your coach will be notified.');
+                    location.reload();
+                } else {
+                    statusEl.textContent = 'Upload failed: ' + (d.error || 'Unknown error');
+                    resetUploadBtn(btn);
                 }
-            };
-            xhr.onload = function() {
-                try {
-                    var d = JSON.parse(xhr.responseText);
-                    if (d.success) {
-                        statusEl.textContent = 'Upload complete!';
-                        progressBar.style.width = '100%';
-                        alert('Video submitted successfully! Your coach will be notified.');
-                        location.reload();
-                    } else {
-                        statusEl.textContent = 'Upload failed: ' + (d.error || 'Unknown error');
-                        btn.disabled = false;
-                        btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Submit Video';
-                    }
-                } catch (e) {
-                    statusEl.textContent = 'Upload failed. Please try again.';
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Submit Video';
-                }
-            };
-            xhr.onerror = function() {
+            })
+            .catch(function() {
                 statusEl.textContent = 'Upload failed. Please try again.';
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Submit Video';
-            };
-            xhr.send(formData);
+                resetUploadBtn(btn);
+            });
         });
 }
 </script>

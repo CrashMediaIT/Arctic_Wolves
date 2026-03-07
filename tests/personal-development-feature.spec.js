@@ -719,7 +719,7 @@ test.describe('Presigned URL Video Upload Flow', () => {
     expect(content).toContain('get_video_upload_url');
     expect(content).toContain('presigned_url');
     expect(content).toContain('upload_nonce');
-    expect(content).toContain("xhr.open('PUT'");
+    expect(content).toContain('xhrUploadWithProgress');
     expect(content).toContain('confirm_dev_video_upload');
     expect(content).toContain('falling back to legacy upload');
   });
