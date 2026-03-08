@@ -146,10 +146,11 @@ try {
                             $athlete_info = decryptUserRows([$athlete_info])[0];
                         }
                         $athlete_name = trim(($athlete_info['first_name'] ?? '') . ' ' . ($athlete_info['last_name'] ?? ''));
+                        $notif_program_label = $program_type === 'goalie_dev' ? 'Goalie Development Program' : 'Player Development Program';
 
                         $notif_stmt = $pdo->prepare("INSERT INTO notifications (user_id, type, title, message, link_url) VALUES (?, 'dev_program_registration', ?, ?, '?page=development_programs')");
                         foreach ($notify_ids as $nid) {
-                            $notif_stmt->execute([$nid, 'New Development Program Registration', "Athlete: " . htmlspecialchars($athlete_name, ENT_QUOTES, 'UTF-8') . " has enrolled (paid) in the " . $program_type . " program."]);
+                            $notif_stmt->execute([$nid, 'New Development Program Registration', "Athlete: " . htmlspecialchars($athlete_name, ENT_QUOTES, 'UTF-8') . " has enrolled (paid) in the " . $notif_program_label . "."]);
                         }
                     } catch (PDOException $ne) { /* notifications table may not exist */ }
 
