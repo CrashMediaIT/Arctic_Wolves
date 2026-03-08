@@ -2,7 +2,7 @@
 /**
  * Personal Development Programs - Browse & Register
  * Shows available development programs (Goalie Dev, Player Dev)
- * Athletes can register, which triggers notifications to dev coaches
+ * Athletes enroll via session products on the booking page (payment required)
  */
 
 $user_id = $_SESSION['user_id'] ?? 0;
@@ -20,6 +20,12 @@ $enrollments_stmt->execute([$user_id]);
 $enrollments = $enrollments_stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $enrolled_types = array_column($enrollments, 'program_type');
+
+// Get pricing from session templates
+$goalie_dev_tpl = $pdo->query("SELECT price FROM training_session_templates WHERE name = 'Goalie Development Program' AND is_active = 1 LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+$player_dev_tpl = $pdo->query("SELECT price FROM training_session_templates WHERE name = 'Player Development Program' AND is_active = 1 LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+$goalie_dev_price = $goalie_dev_tpl['price'] ?? 0;
+$player_dev_price = $player_dev_tpl['price'] ?? 0;
 ?>
 
 <style>
@@ -94,6 +100,12 @@ $enrolled_types = array_column($enrollments, 'program_type');
 .dev-enrollment-info strong {
     color: #10b981;
 }
+.dev-program-price {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-white, #e2e8f0);
+    margin-bottom: 12px;
+}
 </style>
 
 <div class="dev-programs-grid">
@@ -114,9 +126,12 @@ $enrolled_types = array_column($enrollments, 'program_type');
                 <strong>Since:</strong> <?= date('M j, Y', strtotime($goalie_enrollment['enrolled_at'])) ?>
             </div>
         <?php else: ?>
-            <button class="btn-register available" onclick="registerDevProgram('goalie_dev')">
-                <i class="fas fa-plus"></i> Register for Program
-            </button>
+            <div class="dev-program-price">
+                <?= $goalie_dev_price > 0 ? '$' . number_format($goalie_dev_price, 2) : 'Free' ?>
+            </div>
+            <a href="?page=booking" class="btn-register available">
+                <i class="fas fa-shopping-cart"></i> Enroll<?= $goalie_dev_price > 0 ? ' & Pay' : '' ?> on Booking Page
+            </a>
         <?php endif; ?>
     </div>
 
@@ -137,36 +152,12 @@ $enrolled_types = array_column($enrollments, 'program_type');
                 <strong>Since:</strong> <?= date('M j, Y', strtotime($player_enrollment['enrolled_at'])) ?>
             </div>
         <?php else: ?>
-            <button class="btn-register available" onclick="registerDevProgram('player_dev')">
-                <i class="fas fa-plus"></i> Register for Program
-            </button>
+            <div class="dev-program-price">
+                <?= $player_dev_price > 0 ? '$' . number_format($player_dev_price, 2) : 'Free' ?>
+            </div>
+            <a href="?page=booking" class="btn-register available">
+                <i class="fas fa-shopping-cart"></i> Enroll<?= $player_dev_price > 0 ? ' & Pay' : '' ?> on Booking Page
+            </a>
         <?php endif; ?>
     </div>
 </div>
-
-<script>
-function registerDevProgram(programType) {
-    if (!confirm('Are you sure you want to register for this development program?')) return;
-    
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
-    
-    fetch('process_development_programs.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRF-Token': csrfToken
-        },
-        body: JSON.stringify({ action: 'register', program_type: programType })
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            location.reload();
-        } else {
-            alert(data.error || 'Registration failed. Please try again.');
-        }
-    })
-    .catch(() => alert('An error occurred. Please try again.'));
-}
-</script>
