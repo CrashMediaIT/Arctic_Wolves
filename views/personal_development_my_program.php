@@ -31,6 +31,9 @@ foreach ($enrollments as &$enrollment) {
     ");
     $drills_stmt->execute([$enrollment['id']]);
     $enrollment['drills'] = $drills_stmt->fetchAll(PDO::FETCH_ASSOC);
+    if (function_exists('decryptUserRows')) {
+        $enrollment['drills'] = decryptUserRows($enrollment['drills']);
+    }
     
     // Get recent messages
     $msgs_stmt = $pdo->prepare("
@@ -43,6 +46,9 @@ foreach ($enrollments as &$enrollment) {
     ");
     $msgs_stmt->execute([$enrollment['id']]);
     $enrollment['messages'] = array_reverse($msgs_stmt->fetchAll(PDO::FETCH_ASSOC));
+    if (function_exists('decryptUserRows')) {
+        $enrollment['messages'] = decryptUserRows($enrollment['messages']);
+    }
 
     // Get athlete-uploaded videos
     $videos_stmt = $pdo->prepare("
@@ -68,6 +74,9 @@ foreach ($enrollments as &$enrollment) {
     ");
     $appts_stmt->execute([$enrollment['id'], $user_id]);
     $enrollment['appointments'] = $appts_stmt->fetchAll(PDO::FETCH_ASSOC);
+    if (function_exists('decryptUserRows')) {
+        $enrollment['appointments'] = decryptUserRows($enrollment['appointments']);
+    }
 }
 unset($enrollment);
 ?>

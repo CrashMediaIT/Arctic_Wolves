@@ -83,6 +83,9 @@ if ($selected_enrollment_id) {
         ");
         $drills_stmt->execute([$selected_enrollment_id]);
         $selected_drills = $drills_stmt->fetchAll(PDO::FETCH_ASSOC);
+        if (function_exists('decryptUserRows')) {
+            $selected_drills = decryptUserRows($selected_drills);
+        }
         
         // Get messages
         $msgs_stmt = $pdo->prepare("
@@ -94,6 +97,9 @@ if ($selected_enrollment_id) {
         ");
         $msgs_stmt->execute([$selected_enrollment_id]);
         $selected_messages = $msgs_stmt->fetchAll(PDO::FETCH_ASSOC);
+        if (function_exists('decryptUserRows')) {
+            $selected_messages = decryptUserRows($selected_messages);
+        }
 
         // Get athlete-uploaded videos
         $videos_stmt = $pdo->prepare("
@@ -117,6 +123,9 @@ if ($selected_enrollment_id) {
         ");
         $appts_stmt->execute([$selected_enrollment_id]);
         $selected_appointments = $appts_stmt->fetchAll(PDO::FETCH_ASSOC);
+        if (function_exists('decryptUserRows')) {
+            $selected_appointments = decryptUserRows($selected_appointments);
+        }
     }
 }
 

@@ -315,6 +315,8 @@ if (!function_exists('decryptUserRow')) {
                        'respondent_first', 'respondent_last',
                        'assigned_first', 'assigned_last',
                        'created_first', 'created_last',
+                       'coach_first', 'coach_last',
+                       'sender_first', 'sender_last',
                        'coach_first_name', 'coach_last_name',
                        'asst_first_name', 'asst_last_name',
                        'processor_first', 'processor_last',
