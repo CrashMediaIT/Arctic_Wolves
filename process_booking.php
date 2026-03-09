@@ -173,9 +173,9 @@ if ($action === 'register_dev_program') {
             die("Invalid template ID.");
         }
 
-        // Check if already enrolled
-        $dup_check = $pdo->prepare("SELECT id FROM development_program_enrollments WHERE athlete_id = ? AND program_type = ?");
-        $dup_check->execute([$user_id, $program_type]);
+        // Check if already enrolled in an ACTIVE program of same type and template
+        $dup_check = $pdo->prepare("SELECT id FROM development_program_enrollments WHERE athlete_id = ? AND program_type = ? AND template_id = ? AND status = 'active'");
+        $dup_check->execute([$user_id, $program_type, $template_id]);
         if ($dup_check->fetch()) {
             header("Location: dashboard.php?page=personal_development_programs&error=already_enrolled");
             exit();
@@ -230,9 +230,29 @@ if ($action === 'register_dev_program') {
             header("Location: " . $checkout_session->url);
             exit();
         } else {
-            // Free program — enroll directly
-            $stmt = $pdo->prepare("INSERT INTO development_program_enrollments (athlete_id, program_type) VALUES (?, ?)");
-            $stmt->execute([$user_id, $program_type]);
+            // Free program — enroll directly with auto-calculated dates
+            $duration_weeks = null;
+            try {
+                $dur_stmt = $pdo->prepare("SELECT duration_weeks FROM training_session_templates WHERE id = ? AND is_dev_program = 1");
+                $dur_stmt->execute([$template_id]);
+                $dur_row = $dur_stmt->fetch(PDO::FETCH_ASSOC);
+                $duration_weeks = $dur_row['duration_weeks'] ?? null;
+            } catch (PDOException $e) { /* column may not exist */ }
+            if (!$duration_weeks) {
+                try {
+                    $dur_stmt2 = $pdo->prepare("SELECT program_duration_weeks FROM development_notification_templates WHERE program_type = ?");
+                    $dur_stmt2->execute([$program_type]);
+                    $dur_row2 = $dur_stmt2->fetch(PDO::FETCH_ASSOC);
+                    $duration_weeks = $dur_row2['program_duration_weeks'] ?? null;
+                } catch (PDOException $e) { /* ignore */ }
+            }
+            
+            $start_date = date('Y-m-d');
+            $duration_weeks = $duration_weeks !== null ? max(1, min(52, intval($duration_weeks))) : null;
+            $end_date = $duration_weeks ? date('Y-m-d', strtotime("+{$duration_weeks} weeks")) : null;
+            
+            $stmt = $pdo->prepare("INSERT INTO development_program_enrollments (athlete_id, program_type, program_name, template_id, start_date, end_date) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$user_id, $program_type, $template['name'] ?? null, $template_id, $start_date, $end_date]);
 
             Auditor::log($pdo, $user_id, 'create', 'development_program_enrollments', $pdo->lastInsertId(), [
                 'action' => 'register_dev_program', 'program_type' => $program_type, 'amount' => 0

@@ -126,7 +126,10 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
         <i class="fas fa-paper-plane"></i> Email Campaigns
     </button>
     <button class="page-tab" onclick="switchMarketingTab('dev-notifications')" id="tab-dev-notifications">
-        <i class="fas fa-hockey-puck"></i> Development Notifications
+        <i class="fas fa-hockey-puck"></i> Dev Program Emails
+    </button>
+    <button class="page-tab" onclick="switchMarketingTab('email-templates')" id="tab-email-templates">
+        <i class="fas fa-code"></i> Email Templates
     </button>
 </div>
 
@@ -655,8 +658,8 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
 <div class="marketing-section" id="section-dev-notifications" style="display: none; flex-direction: column; gap: 20px;">
     <div class="card">
         <div class="card-header">
-            <h3><i class="fas fa-hockey-puck"></i> Development Program Notification Templates</h3>
-            <p style="color: var(--text-dim); font-size: 13px; margin-top: 4px;">Edit the notification messages sent when athletes register for development programs.</p>
+            <h3><i class="fas fa-hockey-puck"></i> Development Program Athlete Email Templates</h3>
+            <p style="color: var(--text-dim); font-size: 13px; margin-top: 4px;">Edit the welcome email messages sent <strong>to athletes</strong> when they register for development programs. The notification email field sends a separate alert to the coach/admin.</p>
         </div>
         <div class="card-body">
             <?php
@@ -696,8 +699,8 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
                 try {
                     $pdo->exec("
                         INSERT IGNORE INTO `development_notification_templates` (`program_type`, `subject`, `body`) VALUES
-                        ('goalie_dev', 'New Goalie Development Program Registration', 'A new athlete has registered for the Long Term Goalie Development program. Please review and arrange communication with the enrollee.'),
-                        ('player_dev', 'New Player Development Program Registration', 'A new athlete has registered for the Long Term Player Development program. Please review and arrange communication with the enrollee.')
+                        ('goalie_dev', 'Welcome to the Goalie Development Program!', 'Welcome! You have been enrolled in the Long Term Goalie Development program. Your coach will be in touch shortly to set up your personalized training plan, including drill programs and video analysis sessions.'),
+                        ('player_dev', 'Welcome to the Player Development Program!', 'Welcome! You have been enrolled in the Long Term Player Development program. Your coach will be in touch shortly to set up your personalized training plan, including skating, shooting, and skills coaching with video analysis.')
                     ");
                     $tmpl_query = $pdo->query("SELECT * FROM development_notification_templates ORDER BY program_type");
                     $dev_templates = $tmpl_query->fetchAll(PDO::FETCH_ASSOC);
@@ -718,7 +721,7 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
                                 <label style="display:block;font-size:13px;font-weight:600;color:var(--text-white);margin-bottom:6px;"><i class="fas fa-envelope" style="color:#8B5CF6;margin-right:4px;"></i> Notification Email</label>
                                 <input type="email" id="dev-tmpl-email-<?= (int)$tmpl['id'] ?>" value="<?= htmlspecialchars($tmpl['notification_email'] ?? '') ?>" placeholder="e.g. coach@arcticwolves.ca"
                                        style="width:100%;padding:10px 14px;background:var(--bg-card,#1a1a2e);border:1px solid var(--border,#2d2d44);border-radius:8px;color:var(--text-white,#e2e8f0);font-size:13px;">
-                                <span style="font-size:11px;color:var(--text-dim);">Who gets emailed when an athlete registers</span>
+                                <span style="font-size:11px;color:var(--text-dim);">Coach/admin gets a separate alert at this address</span>
                             </div>
                             <div>
                                 <label style="display:block;font-size:13px;font-weight:600;color:var(--text-white);margin-bottom:6px;"><i class="fas fa-clock" style="color:#f59e0b;margin-right:4px;"></i> Program Duration (weeks)</label>
@@ -728,14 +731,15 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
                             </div>
                         </div>
                         <div style="margin-bottom: 12px;">
-                            <label style="display:block;font-size:13px;font-weight:600;color:var(--text-white);margin-bottom:6px;">Subject</label>
+                            <label style="display:block;font-size:13px;font-weight:600;color:var(--text-white);margin-bottom:6px;"><i class="fas fa-user" style="color:#10b981;margin-right:4px;"></i> Athlete Email Subject</label>
                             <input type="text" id="dev-tmpl-subject-<?= (int)$tmpl['id'] ?>" value="<?= htmlspecialchars($tmpl['subject']) ?>" 
                                    style="width:100%;padding:10px 14px;background:var(--bg-card,#1a1a2e);border:1px solid var(--border,#2d2d44);border-radius:8px;color:var(--text-white,#e2e8f0);font-size:13px;">
                         </div>
                         <div style="margin-bottom: 12px;">
-                            <label style="display:block;font-size:13px;font-weight:600;color:var(--text-white);margin-bottom:6px;">Message Body</label>
+                            <label style="display:block;font-size:13px;font-weight:600;color:var(--text-white);margin-bottom:6px;"><i class="fas fa-user" style="color:#10b981;margin-right:4px;"></i> Athlete Email Body</label>
                             <textarea id="dev-tmpl-body-<?= (int)$tmpl['id'] ?>" rows="4"
                                       style="width:100%;padding:10px 14px;background:var(--bg-card,#1a1a2e);border:1px solid var(--border,#2d2d44);border-radius:8px;color:var(--text-white,#e2e8f0);font-size:13px;font-family:inherit;resize:vertical;"><?= htmlspecialchars($tmpl['body']) ?></textarea>
+                            <span style="font-size:11px;color:var(--text-dim);margin-top:4px;display:block;">This message is sent to the athlete when they enroll</span>
                         </div>
                         <button type="submit" style="padding:8px 20px;background:var(--primary,#6B46C1);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px;">
                             <i class="fas fa-save"></i> Save Template
@@ -747,6 +751,137 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
                 </div>
                 <?php endforeach; ?>
             <?php endif; ?>
+        </div>
+    </div>
+</div>
+
+<!-- Email Templates Section -->
+<div class="marketing-section" id="section-email-templates" style="display: none; flex-direction: column; gap: 20px;">
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-code"></i> System Email Templates</h3>
+            <p style="color: var(--text-dim); font-size: 13px; margin-top: 4px;">Customize all system email templates. Edit the standard text or toggle advanced mode for full HTML/CSS control. Changes preview automatically.</p>
+        </div>
+        <div class="card-body">
+            <?php
+            // Define all email template types with defaults
+            $allEmailTemplateTypes = [
+                ['type' => 'verification', 'label' => 'Email Verification', 'icon' => 'fa-check-circle', 'color' => '#10b981', 'default_subject' => 'Verify Your Account', 'default_body' => 'Welcome, {name}! Please verify your email address to activate your account. Your verification code is: {code}'],
+                ['type' => 'manual_welcome', 'label' => 'Welcome Credentials', 'icon' => 'fa-user-plus', 'color' => '#6B46C1', 'default_subject' => 'Your Account Details', 'default_body' => 'Welcome to the Team, {name}! Your account has been created. Login with your email: {email} and password: {password}. You will be asked to change this password on first login.'],
+                ['type' => 'payment_receipt', 'label' => 'Payment Receipt', 'icon' => 'fa-receipt', 'color' => '#10b981', 'default_subject' => 'Receipt: {session_title}', 'default_body' => 'Payment Confirmed. Thank you, your booking has been secured. Session: {session_title}, Date: {date}, Total Paid: ${amount}. Transaction ID: {trans_id}'],
+                ['type' => 'password_reset', 'label' => 'Password Reset', 'icon' => 'fa-key', 'color' => '#f59e0b', 'default_subject' => 'Reset Password', 'default_body' => 'Use this code to reset your password: {code}'],
+                ['type' => 'notification', 'label' => 'General Notification', 'icon' => 'fa-bell', 'color' => '#6B46C1', 'default_subject' => 'Arctic Wolves: {title}', 'default_body' => 'Hi {name}, {message}'],
+                ['type' => 'system_notification', 'label' => 'System Notification', 'icon' => 'fa-cog', 'color' => '#f59e0b', 'default_subject' => 'Arctic Wolves: {title}', 'default_body' => 'Hi {name}, {message}'],
+                ['type' => 'email_change_confirmation', 'label' => 'Email Change', 'icon' => 'fa-exchange-alt', 'color' => '#6B46C1', 'default_subject' => 'Confirm Email Address Change', 'default_body' => 'Hi {name}, we received a request to change your email from {old_email} to {new_email}. Click the link to confirm.'],
+                ['type' => 'esignature_request', 'label' => 'E-Signature Request', 'icon' => 'fa-file-signature', 'color' => '#6B46C1', 'default_subject' => 'Action Required: Sign Your {contract_title}', 'default_body' => 'Hi {name}, your {contract_title} is ready for your electronic signature. Please review and sign.'],
+                ['type' => 'contract_signed', 'label' => 'Contract Signed', 'icon' => 'fa-check-double', 'color' => '#10b981', 'default_subject' => 'Contract Signed: {contract_title}', 'default_body' => 'Hi {name}, your {contract_title} has been successfully signed on ' . date('F j, Y') . '.'],
+                ['type' => 'extension_request', 'label' => 'Extension Request', 'icon' => 'fa-phone', 'color' => '#3b82f6', 'default_subject' => 'Phone Extension Request — New Staff', 'default_body' => 'A phone extension has been requested for {staff_name} ({email}), Role: {role}, Title: {job_title}, Start: {start_date}.'],
+                ['type' => 'test', 'label' => 'SMTP Test', 'icon' => 'fa-vial', 'color' => '#10b981', 'default_subject' => 'SMTP Connection Test', 'default_body' => 'Your email system is configured correctly.'],
+            ];
+            
+            // Fetch existing custom templates from DB
+            $customTemplates = [];
+            try {
+                $pdo->exec("
+                    CREATE TABLE IF NOT EXISTS `email_templates` (
+                        `id` INT AUTO_INCREMENT PRIMARY KEY,
+                        `template_type` VARCHAR(50) NOT NULL,
+                        `label` VARCHAR(100) NOT NULL,
+                        `subject` VARCHAR(255) NOT NULL,
+                        `body_text` TEXT DEFAULT NULL,
+                        `body_html` TEXT DEFAULT NULL,
+                        `is_custom` TINYINT(1) DEFAULT 0,
+                        `updated_by` INT DEFAULT NULL,
+                        `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                        UNIQUE KEY `unique_template_type` (`template_type`)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                ");
+                $tplStmt = $pdo->query("SELECT * FROM email_templates");
+                $rows = $tplStmt->fetchAll(PDO::FETCH_ASSOC);
+                foreach ($rows as $r) {
+                    $customTemplates[$r['template_type']] = $r;
+                }
+            } catch (PDOException $e) { /* ignore */ }
+            ?>
+
+            <?php foreach ($allEmailTemplateTypes as $idx => $tplDef):
+                $tType = $tplDef['type'];
+                $custom = $customTemplates[$tType] ?? null;
+                $currentSubject = $custom['subject'] ?? $tplDef['default_subject'];
+                $currentBodyText = $custom['body_text'] ?? $tplDef['default_body'];
+                $currentBodyHtml = $custom['body_html'] ?? '';
+                $isCustom = !empty($custom['is_custom']);
+                $lastUpdated = $custom['updated_at'] ?? null;
+            ?>
+            <div class="email-tpl-card" style="background: var(--bg-main, #0d1117); border: 1px solid var(--border, #2d2d44); border-radius: 8px; padding: 20px; margin-bottom: 16px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+                    <h4 style="font-size: 15px; font-weight: 700; color: var(--text-white, #e2e8f0); margin: 0; display:flex;align-items:center;gap:8px;">
+                        <i class="fas <?= $tplDef['icon'] ?>" style="color:<?= $tplDef['color'] ?>;"></i> <?= htmlspecialchars($tplDef['label']) ?>
+                        <?php if ($isCustom): ?>
+                            <span style="font-size:10px;background:rgba(107,70,193,0.15);color:#8B5CF6;padding:2px 8px;border-radius:10px;font-weight:600;">Customized</span>
+                        <?php endif; ?>
+                    </h4>
+                    <span style="font-size:11px;color:var(--text-dim);font-family:monospace;"><?= htmlspecialchars($tType) ?></span>
+                </div>
+
+                <!-- Subject -->
+                <div style="margin-bottom: 12px;">
+                    <label style="display:block;font-size:13px;font-weight:600;color:var(--text-white);margin-bottom:6px;">Subject</label>
+                    <input type="text" id="etpl-subject-<?= $idx ?>" value="<?= htmlspecialchars($currentSubject) ?>"
+                           oninput="updateEmailTemplatePreview(<?= $idx ?>)"
+                           style="width:100%;padding:10px 14px;background:var(--bg-card,#1a1a2e);border:1px solid var(--border,#2d2d44);border-radius:8px;color:var(--text-white,#e2e8f0);font-size:13px;">
+                </div>
+
+                <!-- Standard Body Text -->
+                <div style="margin-bottom: 12px;">
+                    <label style="display:block;font-size:13px;font-weight:600;color:var(--text-white);margin-bottom:6px;">Message Body (Standard)</label>
+                    <textarea id="etpl-body-<?= $idx ?>" rows="3"
+                              oninput="updateEmailTemplatePreview(<?= $idx ?>)"
+                              style="width:100%;padding:10px 14px;background:var(--bg-card,#1a1a2e);border:1px solid var(--border,#2d2d44);border-radius:8px;color:var(--text-white,#e2e8f0);font-size:13px;font-family:inherit;resize:vertical;"><?= htmlspecialchars($currentBodyText) ?></textarea>
+                    <span style="font-size:11px;color:var(--text-dim);margin-top:4px;display:block;">Use placeholders like {name}, {email}, {code}, etc. for dynamic content</span>
+                </div>
+
+                <!-- Advanced HTML/CSS Toggle -->
+                <div style="margin-bottom:12px;">
+                    <button type="button" onclick="toggleAdvancedEditor(<?= $idx ?>)" id="etpl-adv-btn-<?= $idx ?>"
+                            style="padding:6px 14px;background:rgba(107,70,193,0.1);color:#8B5CF6;border:1px solid rgba(107,70,193,0.3);border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">
+                        <i class="fas fa-code"></i> <span id="etpl-adv-label-<?= $idx ?>">Show</span> Advanced HTML/CSS
+                    </button>
+                </div>
+                <div id="etpl-advanced-<?= $idx ?>" style="display:none;margin-bottom:12px;">
+                    <label style="display:block;font-size:13px;font-weight:600;color:var(--text-white);margin-bottom:6px;"><i class="fas fa-code" style="color:#f59e0b;margin-right:4px;"></i> Custom HTML Body</label>
+                    <textarea id="etpl-html-<?= $idx ?>" rows="8"
+                              oninput="updateEmailTemplatePreview(<?= $idx ?>)"
+                              placeholder="<!-- Paste custom HTML/CSS email body here. Leave empty to use the standard body text above. -->"
+                              style="width:100%;padding:10px 14px;background:var(--bg-card,#1a1a2e);border:1px solid var(--border,#2d2d44);border-radius:8px;color:#10b981;font-size:12px;font-family:'Courier New',monospace;resize:vertical;"><?= htmlspecialchars($currentBodyHtml) ?></textarea>
+                    <span style="font-size:11px;color:var(--text-dim);margin-top:4px;display:block;">Full HTML/CSS override. When provided, this replaces the standard body text for this template.</span>
+                </div>
+
+                <!-- Live Preview -->
+                <div style="margin-bottom:12px;">
+                    <label style="display:block;font-size:13px;font-weight:600;color:var(--text-white);margin-bottom:6px;"><i class="fas fa-eye" style="color:#3b82f6;margin-right:4px;"></i> Preview</label>
+                    <div id="etpl-preview-<?= $idx ?>" style="background:#fff;border-radius:8px;padding:20px;border:1px solid var(--border,#2d2d44);max-height:300px;overflow-y:auto;font-family:Arial,sans-serif;color:#333;font-size:14px;"></div>
+                </div>
+
+                <!-- Actions -->
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <button type="button" onclick="saveEmailTemplate('<?= htmlspecialchars($tType) ?>', <?= $idx ?>, '<?= htmlspecialchars($tplDef['label']) ?>')"
+                            style="padding:8px 20px;background:var(--primary,#6B46C1);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px;">
+                        <i class="fas fa-save"></i> Save Template
+                    </button>
+                    <?php if ($isCustom): ?>
+                    <button type="button" onclick="resetEmailTemplate('<?= htmlspecialchars($tType) ?>', <?= $idx ?>)"
+                            style="padding:8px 14px;background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.3);border-radius:8px;cursor:pointer;font-weight:600;font-size:12px;">
+                        <i class="fas fa-undo"></i> Reset to Default
+                    </button>
+                    <?php endif; ?>
+                    <?php if ($lastUpdated): ?>
+                    <span style="font-size:11px;color:var(--text-dim);">Last updated: <?= date('M j, Y g:ia', strtotime($lastUpdated)) ?></span>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <?php endforeach; ?>
         </div>
     </div>
 </div>
@@ -1483,6 +1618,132 @@ function saveDevNotificationTemplate(event, templateId) {
     })
     .catch(() => alert('An error occurred.'));
 }
+
+// =====================================================
+// Email Templates Tab Functions
+// =====================================================
+
+// Toggle advanced HTML/CSS editor visibility
+function toggleAdvancedEditor(idx) {
+    var panel = document.getElementById('etpl-advanced-' + idx);
+    var label = document.getElementById('etpl-adv-label-' + idx);
+    if (panel.style.display === 'none') {
+        panel.style.display = 'block';
+        label.textContent = 'Hide';
+    } else {
+        panel.style.display = 'none';
+        label.textContent = 'Show';
+    }
+}
+
+// Update live preview for an email template
+function updateEmailTemplatePreview(idx) {
+    var subject = document.getElementById('etpl-subject-' + idx).value;
+    var bodyText = document.getElementById('etpl-body-' + idx).value;
+    var bodyHtml = document.getElementById('etpl-html-' + idx).value.trim();
+    var previewEl = document.getElementById('etpl-preview-' + idx);
+    
+    if (bodyHtml) {
+        // Use custom HTML preview in sandboxed iframe (no allow-same-origin for security)
+        previewEl.innerHTML = '<div style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #e2e8f0;"><strong style="color:#6B46C1;">Subject:</strong> ' + escapeHtml(subject) + '</div>' +
+            '<iframe id="etpl-iframe-' + idx + '" style="width:100%;border:none;min-height:200px;" sandbox=""></iframe>';
+        var iframe = document.getElementById('etpl-iframe-' + idx);
+        // Use srcdoc for safer content injection instead of document.write
+        iframe.srcdoc = bodyHtml;
+        iframe.onload = function() {
+            try { iframe.style.height = Math.min(iframe.contentDocument.body.scrollHeight + 20, 400) + 'px'; } catch(e) {}
+        };
+    } else {
+        // Standard text preview styled as an email
+        var textHtml = escapeHtml(bodyText).replace(/\n/g, '<br>');
+        previewEl.innerHTML = 
+            '<div style="max-width:500px;margin:0 auto;font-family:Arial,sans-serif;">' +
+            '<div style="text-align:center;padding-bottom:12px;margin-bottom:12px;border-bottom:1px solid #e2e8f0;">' +
+            '<strong style="color:#6B46C1;font-size:11px;">SUBJECT: </strong><span style="font-size:13px;">' + escapeHtml(subject) + '</span></div>' +
+            '<div style="background:#f8fafc;padding:16px;border-radius:6px;border-left:4px solid #6B46C1;line-height:1.6;color:#333;">' + textHtml + '</div>' +
+            '<div style="margin-top:12px;padding-top:12px;border-top:1px solid #e2e8f0;text-align:center;color:#94a3b8;font-size:10px;">&copy; ' + new Date().getFullYear() + ' Arctic Wolves Performance</div>' +
+            '</div>';
+    }
+}
+
+function escapeHtml(str) {
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(str || ''));
+    return div.innerHTML;
+}
+
+// Save an email template
+function saveEmailTemplate(templateType, idx, label) {
+    var subject = document.getElementById('etpl-subject-' + idx).value.trim();
+    var bodyText = document.getElementById('etpl-body-' + idx).value.trim();
+    var bodyHtml = document.getElementById('etpl-html-' + idx).value.trim();
+    
+    if (!subject) { alert('Subject is required.'); return; }
+    if (!bodyText && !bodyHtml) { alert('Body text or HTML is required.'); return; }
+    
+    var csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    fetch('process_development_programs.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-Token': csrfToken },
+        body: JSON.stringify({
+            action: 'save_email_template',
+            template_type: templateType,
+            label: label,
+            subject: subject,
+            body_text: bodyText,
+            body_html: bodyHtml
+        })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            if (typeof showNotification === 'function') {
+                showNotification('Email template saved!', 'success');
+            } else {
+                alert('Email template saved!');
+            }
+        } else {
+            alert(data.error || 'Failed to save template.');
+        }
+    })
+    .catch(function() { alert('An error occurred.'); });
+}
+
+// Reset an email template to defaults
+function resetEmailTemplate(templateType, idx) {
+    if (!confirm('Reset this template to default? Your customizations will be lost.')) return;
+    
+    var csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    fetch('process_development_programs.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-Token': csrfToken },
+        body: JSON.stringify({
+            action: 'reset_email_template',
+            template_type: templateType
+        })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            if (typeof showNotification === 'function') {
+                showNotification('Template reset to default!', 'success');
+            } else {
+                alert('Template reset to default!');
+            }
+            location.reload();
+        } else {
+            alert(data.error || 'Failed to reset template.');
+        }
+    })
+    .catch(function() { alert('An error occurred.'); });
+}
+
+// Initialize all email template previews on load
+document.addEventListener('DOMContentLoaded', function() {
+    <?php for ($i = 0; $i < count($allEmailTemplateTypes); $i++): ?>
+    updateEmailTemplatePreview(<?= $i ?>);
+    <?php endfor; ?>
+});
 </script>
 
 <style>

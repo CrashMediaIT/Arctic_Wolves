@@ -2976,6 +2976,8 @@ CREATE TABLE IF NOT EXISTS `training_session_templates` (
     `session_type` ENUM('on_ice', 'off_ice', 'nutrition', 'meeting', 'other') DEFAULT 'on_ice',
     `is_active` TINYINT(1) DEFAULT 1,
     `show_on_landing` TINYINT(1) DEFAULT 0,
+    `is_dev_program` TINYINT(1) DEFAULT 0 COMMENT '1 if this is a long-term development program product',
+    `duration_weeks` INT DEFAULT NULL COMMENT 'Duration in weeks for dev programs (e.g. 4 for a 4-week program)',
     `created_by` INT NOT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -2986,7 +2988,8 @@ CREATE TABLE IF NOT EXISTS `training_session_templates` (
     FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     INDEX `idx_active` (`is_active`),
     INDEX `idx_landing` (`show_on_landing`),
-    INDEX `idx_type` (`session_type`)
+    INDEX `idx_type` (`session_type`),
+    INDEX `idx_dev_program` (`is_dev_program`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Training Session Template Skill Types - Link templates to skill categories
@@ -4808,15 +4811,19 @@ CREATE TABLE IF NOT EXISTS `development_program_enrollments` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `athlete_id` INT NOT NULL,
     `program_type` ENUM('goalie_dev', 'player_dev') NOT NULL,
+    `program_name` VARCHAR(255) DEFAULT NULL COMMENT 'Name of the dev program product from training_session_templates',
+    `template_id` INT DEFAULT NULL COMMENT 'Reference to the training_session_templates product',
     `status` ENUM('active', 'completed', 'paused', 'cancelled') DEFAULT 'active',
     `enrolled_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `start_date` DATE DEFAULT NULL COMMENT 'Auto-calculated program start date',
+    `end_date` DATE DEFAULT NULL COMMENT 'Auto-calculated from start_date + duration_weeks',
     `completed_at` TIMESTAMP NULL DEFAULT NULL,
     `notes` TEXT DEFAULT NULL,
     FOREIGN KEY (`athlete_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
-    UNIQUE KEY `unique_athlete_program` (`athlete_id`, `program_type`),
     INDEX `idx_athlete` (`athlete_id`),
     INDEX `idx_program_type` (`program_type`),
-    INDEX `idx_status` (`status`)
+    INDEX `idx_status` (`status`),
+    INDEX `idx_template` (`template_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Development program drills (assigned to athletes in a program)
@@ -4883,10 +4890,27 @@ CREATE TABLE IF NOT EXISTS `development_notification_templates` (
     UNIQUE KEY `unique_program_type` (`program_type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Default notification templates
+-- Default notification templates (sent to ATHLETES on enrollment)
 INSERT IGNORE INTO `development_notification_templates` (`program_type`, `subject`, `body`) VALUES
-('goalie_dev', 'New Goalie Development Program Registration', 'A new athlete has registered for the Long Term Goalie Development program. Please review and arrange communication with the enrollee.'),
-('player_dev', 'New Player Development Program Registration', 'A new athlete has registered for the Long Term Player Development program. Please review and arrange communication with the enrollee.');
+('goalie_dev', 'Welcome to the Goalie Development Program!', 'Welcome! You have been enrolled in the Long Term Goalie Development program. Your coach will be in touch shortly to set up your personalized training plan, including drill programs and video analysis sessions.'),
+('player_dev', 'Welcome to the Player Development Program!', 'Welcome! You have been enrolled in the Long Term Player Development program. Your coach will be in touch shortly to set up your personalized training plan, including skating, shooting, and skills coaching with video analysis.');
+
+-- Email templates - customizable email templates for all system emails
+CREATE TABLE IF NOT EXISTS `email_templates` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `template_type` VARCHAR(50) NOT NULL COMMENT 'Template type key matching mailer.php types',
+    `label` VARCHAR(100) NOT NULL COMMENT 'Human-readable label for the template',
+    `subject` VARCHAR(255) NOT NULL,
+    `body_text` TEXT DEFAULT NULL COMMENT 'Plain text version for standard editing',
+    `body_html` TEXT DEFAULT NULL COMMENT 'Custom HTML version (advanced editing)',
+    `is_custom` TINYINT(1) DEFAULT 0 COMMENT '1 if admin has customized this template',
+    `updated_by` INT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`updated_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    UNIQUE KEY `unique_template_type` (`template_type`),
+    INDEX `idx_template_type` (`template_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Development program videos (athlete-uploaded videos for coach review)
 CREATE TABLE IF NOT EXISTS `development_program_videos` (

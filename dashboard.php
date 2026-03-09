@@ -807,7 +807,7 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
                 <span id="nav-msg-badge" style="display:none; background:var(--primary,#6B46C1); color:#fff; font-size:10px; font-weight:700; padding:1px 6px; border-radius:10px; margin-left:auto;"></span>
             </a>
             <a href="?page=sessions" class="nav-link <?= in_array($page, ['sessions','upcoming_sessions','booking'])?'active':'' ?>">
-                <i class="fa-solid fa-calendar-check icon"></i> Sessions
+                <i class="fa-solid fa-calendar-check icon"></i> Training
             </a>
             <a href="?page=video" class="nav-link <?= in_array($page, ['video','drill_review','coaches_reviews','record_video','video_review_detail'])?'active':'' ?>">
                 <i class="fa-solid fa-video icon"></i> Video

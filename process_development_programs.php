@@ -100,6 +100,14 @@ try {
         case 'confirm_dev_video_upload':
             handleConfirmDevVideoUpload($pdo, $user_id, $input);
             break;
+        case 'save_email_template':
+            if (!$isAdmin) { echo json_encode(['success' => false, 'error' => 'Access denied']); exit; }
+            handleSaveEmailTemplate($pdo, $user_id, $input);
+            break;
+        case 'reset_email_template':
+            if (!$isAdmin) { echo json_encode(['success' => false, 'error' => 'Access denied']); exit; }
+            handleResetEmailTemplate($pdo, $input);
+            break;
         default:
             echo json_encode(['success' => false, 'error' => 'Invalid action']);
     }
@@ -118,17 +126,50 @@ function handleRegister($pdo, $user_id, $input) {
         return;
     }
     
-    // Check if already enrolled
-    $check = $pdo->prepare("SELECT id FROM development_program_enrollments WHERE athlete_id = ? AND program_type = ?");
-    $check->execute([$user_id, $program_type]);
+    $template_id = intval($input['template_id'] ?? 0);
+    
+    // Check if already enrolled in an ACTIVE program of the same type with the same template
+    $check = $pdo->prepare("SELECT id FROM development_program_enrollments WHERE athlete_id = ? AND program_type = ? AND status = 'active'" . ($template_id ? " AND template_id = ?" : ""));
+    $check_params = [$user_id, $program_type];
+    if ($template_id) $check_params[] = $template_id;
+    $check->execute($check_params);
     if ($check->fetch()) {
-        echo json_encode(['success' => false, 'error' => 'Already enrolled in this program']);
+        echo json_encode(['success' => false, 'error' => 'Already enrolled in an active program of this type']);
         return;
     }
     
-    // Create enrollment
-    $stmt = $pdo->prepare("INSERT INTO development_program_enrollments (athlete_id, program_type) VALUES (?, ?)");
-    $stmt->execute([$user_id, $program_type]);
+    // Get program name and duration from template
+    $program_name = null;
+    $duration_weeks = null;
+    if ($template_id) {
+        try {
+            $tpl_stmt = $pdo->prepare("SELECT name, duration_weeks FROM training_session_templates WHERE id = ? AND is_dev_program = 1");
+            $tpl_stmt->execute([$template_id]);
+            $tpl_row = $tpl_stmt->fetch(PDO::FETCH_ASSOC);
+            if ($tpl_row) {
+                $program_name = $tpl_row['name'];
+                $duration_weeks = $tpl_row['duration_weeks'];
+            }
+        } catch (PDOException $e) { /* column may not exist */ }
+    }
+    
+    // Fallback duration from notification templates
+    if (!$duration_weeks) {
+        try {
+            $dur_stmt = $pdo->prepare("SELECT program_duration_weeks FROM development_notification_templates WHERE program_type = ?");
+            $dur_stmt->execute([$program_type]);
+            $dur_row = $dur_stmt->fetch(PDO::FETCH_ASSOC);
+            $duration_weeks = $dur_row['program_duration_weeks'] ?? null;
+        } catch (PDOException $e) { /* table may not exist */ }
+    }
+    
+    // Create enrollment with auto-calculated dates
+    $start_date = date('Y-m-d');
+    $duration_weeks = $duration_weeks !== null ? max(1, min(52, intval($duration_weeks))) : null;
+    $end_date = $duration_weeks ? date('Y-m-d', strtotime("+{$duration_weeks} weeks")) : null;
+    
+    $stmt = $pdo->prepare("INSERT INTO development_program_enrollments (athlete_id, program_type, program_name, template_id, start_date, end_date) VALUES (?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$user_id, $program_type, $program_name, $template_id ?: null, $start_date, $end_date]);
     
     // Send notification to dev coaches with the matching role
     $role_to_notify = $program_type; // goalie_dev or player_dev
@@ -146,43 +187,63 @@ function handleRegister($pdo, $user_id, $input) {
     $admin_ids = $admin_stmt->fetchAll(PDO::FETCH_COLUMN);
     $notify_ids = array_unique(array_merge($coach_ids, $admin_ids));
     
-    // Get notification template
+    // Get notification template (used for ATHLETE welcome email)
     $tmpl_stmt = $pdo->prepare("SELECT subject, body, notification_email FROM development_notification_templates WHERE program_type = ?");
     $tmpl_stmt->execute([$program_type]);
     $template = $tmpl_stmt->fetch(PDO::FETCH_ASSOC);
     
-    $notif_title = $template['subject'] ?? 'New Development Program Registration';
-    $notif_body = $template['body'] ?? 'A new athlete has registered for a development program.';
+    $athlete_email_subject = $template['subject'] ?? 'Welcome to Your Development Program!';
+    $athlete_email_body = $template['body'] ?? 'You have been enrolled in a development program. Your coach will be in touch shortly.';
     $notification_email = $template['notification_email'] ?? null;
     
-    // Get athlete name for the notification
-    $athlete_stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
+    // Get athlete name and email
+    $athlete_stmt = $pdo->prepare("SELECT first_name, last_name, email FROM users WHERE id = ?");
     $athlete_stmt->execute([$user_id]);
     $athlete = $athlete_stmt->fetch(PDO::FETCH_ASSOC);
     if (function_exists('decryptUserRows')) {
         $athlete = decryptUserRows([$athlete])[0];
     }
     $athlete_name = htmlspecialchars(trim(($athlete['first_name'] ?? '') . ' ' . ($athlete['last_name'] ?? '')), ENT_QUOTES, 'UTF-8');
-    $notif_body .= "\n\nAthlete: " . $athlete_name;
+    $athlete_email = $athlete['email'] ?? '';
     
-    // Create notifications
+    // Coach/admin notification (hardcoded text, not the template)
+    $program_label = $program_type === 'goalie_dev' ? 'Goalie Development Program' : 'Player Development Program';
+    $coach_notif_title = 'New Development Program Registration';
+    $coach_notif_body = "Athlete: $athlete_name has registered for the $program_label.";
+    
+    // Create in-app notifications for coaches/admins
     $notif_stmt = $pdo->prepare("INSERT INTO notifications (user_id, type, title, message, link_url) VALUES (?, 'dev_program_registration', ?, ?, '?page=development_programs')");
     foreach ($notify_ids as $nid) {
-        $notif_stmt->execute([$nid, $notif_title, $notif_body]);
+        $notif_stmt->execute([$nid, $coach_notif_title, $coach_notif_body]);
     }
 
-    // Send email to configured notification email address
+    // Send notification email to configured coach email address
     if (!empty($notification_email) && filter_var($notification_email, FILTER_VALIDATE_EMAIL)) {
         try {
             if (function_exists('sendEmail')) {
                 sendEmail($notification_email, 'notification', [
-                    'title' => $notif_title,
-                    'message' => $notif_body,
+                    'title' => $coach_notif_title,
+                    'message' => $coach_notif_body,
                     'name' => 'Development Program Admin'
                 ]);
             }
         } catch (\Throwable $e) {
-            error_log("Dev program notification email error: " . $e->getMessage());
+            error_log("Dev program coach notification email error: " . $e->getMessage());
+        }
+    }
+    
+    // Send welcome email to the ATHLETE using the template
+    if (!empty($athlete_email) && filter_var($athlete_email, FILTER_VALIDATE_EMAIL)) {
+        try {
+            if (function_exists('sendEmail')) {
+                sendEmail($athlete_email, 'notification', [
+                    'title' => $athlete_email_subject,
+                    'message' => $athlete_email_body,
+                    'name' => $athlete_name ?: 'Athlete'
+                ]);
+            }
+        } catch (\Throwable $e) {
+            error_log("Dev program athlete welcome email error: " . $e->getMessage());
         }
     }
     
@@ -665,6 +726,82 @@ function handleCancelAppointment($pdo, $user_id, $input, $canManageDevPrograms) 
     
     $stmt = $pdo->prepare("UPDATE development_appointments SET status = 'cancelled' WHERE id = ?");
     $stmt->execute([$appointment_id]);
+    
+    echo json_encode(['success' => true]);
+}
+
+/**
+ * Save a custom email template
+ */
+function handleSaveEmailTemplate($pdo, $user_id, $input) {
+    $template_type = trim($input['template_type'] ?? '');
+    $label = trim($input['label'] ?? '');
+    $subject = trim($input['subject'] ?? '');
+    $body_text = trim($input['body_text'] ?? '');
+    $body_html = trim($input['body_html'] ?? '');
+    
+    if (!$template_type || !$subject) {
+        echo json_encode(['success' => false, 'error' => 'Template type and subject are required']);
+        return;
+    }
+    if (!$body_text && !$body_html) {
+        echo json_encode(['success' => false, 'error' => 'Body text or HTML is required']);
+        return;
+    }
+    
+    // Whitelist allowed template types
+    $allowed_types = ['verification', 'manual_welcome', 'payment_receipt', 'password_reset', 
+                      'notification', 'system_notification', 'email_change_confirmation', 
+                      'esignature_request', 'contract_signed', 'extension_request', 'test'];
+    if (!in_array($template_type, $allowed_types)) {
+        echo json_encode(['success' => false, 'error' => 'Invalid template type']);
+        return;
+    }
+    
+    // Ensure table exists
+    try {
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS `email_templates` (
+                `id` INT AUTO_INCREMENT PRIMARY KEY,
+                `template_type` VARCHAR(50) NOT NULL,
+                `label` VARCHAR(100) NOT NULL,
+                `subject` VARCHAR(255) NOT NULL,
+                `body_text` TEXT DEFAULT NULL,
+                `body_html` TEXT DEFAULT NULL,
+                `is_custom` TINYINT(1) DEFAULT 0,
+                `updated_by` INT DEFAULT NULL,
+                `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY `unique_template_type` (`template_type`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+    } catch (PDOException $e) { /* ignore */ }
+    
+    // Upsert the template
+    $stmt = $pdo->prepare("
+        INSERT INTO email_templates (template_type, label, subject, body_text, body_html, is_custom, updated_by) 
+        VALUES (?, ?, ?, ?, ?, 1, ?)
+        ON DUPLICATE KEY UPDATE subject = VALUES(subject), body_text = VALUES(body_text), body_html = VALUES(body_html), is_custom = 1, updated_by = VALUES(updated_by)
+    ");
+    $stmt->execute([$template_type, $label, $subject, $body_text, $body_html ?: null, $user_id]);
+    
+    echo json_encode(['success' => true]);
+}
+
+/**
+ * Reset an email template to system defaults
+ */
+function handleResetEmailTemplate($pdo, $input) {
+    $template_type = trim($input['template_type'] ?? '');
+    if (!$template_type) {
+        echo json_encode(['success' => false, 'error' => 'Template type is required']);
+        return;
+    }
+    
+    try {
+        $stmt = $pdo->prepare("DELETE FROM email_templates WHERE template_type = ?");
+        $stmt->execute([$template_type]);
+    } catch (PDOException $e) { /* table may not exist */ }
     
     echo json_encode(['success' => true]);
 }

@@ -451,7 +451,7 @@ try {
     </a>
     <a href="?page=sessions" class="pwa-tab <?= $tab_sessions ? 'active' : '' ?>">
         <i class="fas fa-calendar-check"></i>
-        <span>Sessions</span>
+        <span>Training</span>
     </a>
     <?php if ($isAnyCoach || $isTeamStaff || $canAccessHealthManagement): ?>
     <a href="?page=roster" class="pwa-tab <?= $tab_athletes ? 'active' : '' ?>">

@@ -8,13 +8,24 @@ $user_id = $_SESSION['user_id'] ?? 0;
 
 // Get user's active enrollments with assigned drills
 $enrollments_stmt = $pdo->prepare("
-    SELECT dpe.*
+    SELECT dpe.*, dpe.program_name, dpe.template_id, dpe.start_date, dpe.end_date
     FROM development_program_enrollments dpe
     WHERE dpe.athlete_id = ? AND dpe.status = 'active'
     ORDER BY dpe.enrolled_at DESC
 ");
 $enrollments_stmt->execute([$user_id]);
 $enrollments = $enrollments_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Get COMPLETED programs for history view
+$completed_stmt = $pdo->prepare("
+    SELECT dpe.*, dpe.program_name, dpe.start_date, dpe.end_date,
+           (SELECT COUNT(*) FROM development_program_drills dpd WHERE dpd.enrollment_id = dpe.id) as drill_count
+    FROM development_program_enrollments dpe
+    WHERE dpe.athlete_id = ? AND dpe.status IN ('completed', 'paused', 'cancelled')
+    ORDER BY dpe.completed_at DESC, dpe.enrolled_at DESC
+");
+$completed_stmt->execute([$user_id]);
+$completed_programs = $completed_stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Get drills, messages, videos, and appointments for each enrollment
 foreach ($enrollments as &$enrollment) {
@@ -237,20 +248,34 @@ unset($enrollment);
 }
 </style>
 
-<?php if (empty($enrollments)): ?>
+<?php if (empty($enrollments) && empty($completed_programs)): ?>
 <div class="my-program-empty">
     <i class="fas fa-hockey-puck"></i>
     <h3>No Active Programs</h3>
     <p>You haven't enrolled in any development programs yet. Visit the <a href="?page=personal_development_programs" style="color:var(--primary);">Development Programs</a> tab to register.</p>
 </div>
 <?php else: ?>
-    <?php foreach ($enrollments as $enrollment): ?>
+    <?php foreach ($enrollments as $enrollment):
+        $program_display = $enrollment['program_name'] ?: ($enrollment['program_type'] === 'goalie_dev' ? 'Long Term Goalie Development' : 'Long Term Player Development');
+        $weeks_left = null;
+        if (!empty($enrollment['end_date'])) {
+            $end_ts = strtotime($enrollment['end_date']);
+            $diff_days = ($end_ts - time()) / 86400;
+            $weeks_left = max(0, ceil($diff_days / 7));
+        }
+    ?>
     <div class="enrollment-section">
         <h3>
             <?php if ($enrollment['program_type'] === 'goalie_dev'): ?>
-                <i class="fas fa-shield-alt" style="color:#3b82f6;"></i> Long Term Goalie Development
+                <i class="fas fa-shield-alt" style="color:#3b82f6;"></i>
             <?php else: ?>
-                <i class="fas fa-hockey-puck" style="color:#10b981;"></i> Long Term Player Development
+                <i class="fas fa-hockey-puck" style="color:#10b981;"></i>
+            <?php endif; ?>
+            <?= htmlspecialchars($program_display) ?>
+            <?php if ($weeks_left !== null): ?>
+            <span style="font-size:12px;font-weight:600;padding:2px 10px;border-radius:10px;margin-left:8px;background:<?= $weeks_left > 0 ? 'rgba(245,158,11,0.12)' : 'rgba(239,68,68,0.12)' ?>;color:<?= $weeks_left > 0 ? '#F59E0B' : '#EF4444' ?>;">
+                <?= $weeks_left > 0 ? $weeks_left . ' week' . ($weeks_left !== 1 ? 's' : '') . ' left' : 'Program ended' ?>
+            </span>
             <?php endif; ?>
         </h3>
 
@@ -393,6 +418,41 @@ unset($enrollment);
         </div>
     </div>
     <?php endforeach; ?>
+
+    <!-- Completed Programs History -->
+    <?php if (!empty($completed_programs)): ?>
+    <div style="margin-top: 32px;">
+        <h3 style="font-size:18px;font-weight:700;color:var(--text-white,#e2e8f0);margin-bottom:16px;">
+            <i class="fas fa-history" style="color:var(--text-dim);margin-right:8px;"></i> Previous Programs
+        </h3>
+        <?php foreach ($completed_programs as $cp):
+            $cp_display = $cp['program_name'] ?: ($cp['program_type'] === 'goalie_dev' ? 'Goalie Development' : 'Player Development');
+        ?>
+        <div style="background:var(--bg-card,#1a1a2e);border:1px solid var(--border,#2d2d44);border-radius:12px;padding:16px 20px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+            <div>
+                <div style="font-weight:700;color:var(--text-white,#e2e8f0);font-size:15px;">
+                    <?php if ($cp['program_type'] === 'goalie_dev'): ?>
+                        <i class="fas fa-shield-alt" style="color:#3b82f6;margin-right:6px;"></i>
+                    <?php else: ?>
+                        <i class="fas fa-hockey-puck" style="color:#10b981;margin-right:6px;"></i>
+                    <?php endif; ?>
+                    <?= htmlspecialchars($cp_display) ?>
+                </div>
+                <div style="font-size:12px;color:var(--text-dim);margin-top:4px;">
+                    <?= date('M j, Y', strtotime($cp['enrolled_at'])) ?><?= $cp['completed_at'] ? ' — ' . date('M j, Y', strtotime($cp['completed_at'])) : '' ?>
+                    &bull; <?= (int)$cp['drill_count'] ?> drills
+                </div>
+            </div>
+            <span style="padding:3px 12px;border-radius:10px;font-size:11px;font-weight:600;
+                  background:<?= $cp['status'] === 'completed' ? 'rgba(16,185,129,0.15)' : ($cp['status'] === 'paused' ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)') ?>;
+                  color:<?= $cp['status'] === 'completed' ? '#10b981' : ($cp['status'] === 'paused' ? '#F59E0B' : '#EF4444') ?>;">
+                <?= ucfirst(htmlspecialchars($cp['status'])) ?>
+            </span>
+        </div>
+        <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
+
 <?php endif; ?>
 
 <script>

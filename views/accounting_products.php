@@ -220,6 +220,54 @@ $merchProductCount = count(array_filter($merchProducts, function($p) { return !e
 $avgPackagePrice = $packageCount > 0 ? array_sum(array_column($packages, 'price')) / count($packages) : 0;
 $programCount = count(array_filter($programPackages, function($p) { return !empty($p['is_active']); }));
 
+// Fetch long-term development programs
+$devPrograms = [];
+try {
+    // Auto-add is_dev_program and duration_weeks columns if missing (for existing installations)
+    try {
+        $pdo->exec("ALTER TABLE `training_session_templates` ADD COLUMN IF NOT EXISTS `is_dev_program` TINYINT(1) DEFAULT 0 AFTER `show_on_landing`");
+        $pdo->exec("ALTER TABLE `training_session_templates` ADD COLUMN IF NOT EXISTS `duration_weeks` INT DEFAULT NULL AFTER `is_dev_program`");
+    } catch (PDOException $e) { /* columns may already exist */ }
+    
+    // Mark existing auto-created dev programs if not yet marked
+    try {
+        $pdo->exec("UPDATE training_session_templates SET is_dev_program = 1 WHERE name IN ('Goalie Development Program', 'Player Development Program') AND is_dev_program = 0");
+    } catch (PDOException $e) { /* ignore */ }
+    
+    // Auto-create 1 Goalie + 1 Player dev program if none exist
+    $admin_id_dev = $pdo->query("SELECT id FROM users WHERE role = 'admin' AND is_active = 1 ORDER BY id LIMIT 1")->fetchColumn();
+    if (!$admin_id_dev) $admin_id_dev = $_SESSION['user_id'] ?? 1;
+    
+    $existingDevCount = (int)$pdo->query("SELECT COUNT(*) FROM training_session_templates WHERE is_dev_program = 1")->fetchColumn();
+    if ($existingDevCount === 0) {
+        $checkGoalie = $pdo->query("SELECT COUNT(*) FROM training_session_templates WHERE name = 'Goalie Development Program'")->fetchColumn();
+        if (!$checkGoalie) {
+            $pdo->prepare("INSERT INTO training_session_templates (name, description, price, duration_minutes, max_participants, session_type, is_active, show_on_landing, is_dev_program, duration_weeks, created_by) VALUES (?, ?, ?, 60, 1, 'on_ice', 1, 1, 1, 4, ?)")
+                ->execute(['Goalie Development Program', 'Long-term goalie development program — personalized drill programs, video feedback, and 1-on-1 coaching', 0.00, $admin_id_dev]);
+        }
+        $checkPlayer = $pdo->query("SELECT COUNT(*) FROM training_session_templates WHERE name = 'Player Development Program'")->fetchColumn();
+        if (!$checkPlayer) {
+            $pdo->prepare("INSERT INTO training_session_templates (name, description, price, duration_minutes, max_participants, session_type, is_active, show_on_landing, is_dev_program, duration_weeks, created_by) VALUES (?, ?, ?, 60, 1, 'on_ice', 1, 1, 1, 4, ?)")
+                ->execute(['Player Development Program', 'Long-term player development program — personalized skating, shooting, and skills coaching with video analysis', 0.00, $admin_id_dev]);
+        }
+    }
+    
+    $devStmt = $pdo->query("
+        SELECT tst.*, 
+               (SELECT COUNT(*) FROM development_program_enrollments dpe WHERE 
+                   (tst.name LIKE '%Goalie%' AND dpe.program_type = 'goalie_dev' AND dpe.status = 'active') OR
+                   (tst.name LIKE '%Player%' AND dpe.program_type = 'player_dev' AND dpe.status = 'active')
+               ) as enrolled_count
+        FROM training_session_templates tst
+        WHERE tst.is_dev_program = 1
+        ORDER BY tst.name
+    ");
+    $devPrograms = $devStmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log("Dev programs fetch error: " . $e->getMessage());
+    $devPrograms = [];
+}
+
 // Handle tab from URL
 $activeTab = $_GET['tab'] ?? 'sessions';
 ?>
@@ -359,6 +407,9 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     </button>
     <button type="button" class="page-tab <?= $activeTab === 'programs_camps' ? 'active' : '' ?>" data-tab="programs_camps" data-action="switch-tab">
         <i class="fas fa-campground"></i> Programs & Camps
+    </button>
+    <button type="button" class="page-tab <?= $activeTab === 'long_term_dev' ? 'active' : '' ?>" data-tab="long_term_dev" data-action="switch-tab">
+        <i class="fas fa-chart-line"></i> Long Term Development
     </button>
 </div>
 
@@ -749,6 +800,194 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                 <?php endif; ?>
             </div>
         </div>
+    </div>
+</div>
+
+    <!-- Long Term Development Tab -->
+    <div class="tab-content <?= $activeTab === 'long_term_dev' ? 'active' : '' ?>" id="long_term_dev-tab">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-chart-line"></i> Long Term Development Programs</h3>
+                <button type="button" class="btn btn-primary" onclick="openAddDevProgramModal()"><i class="fas fa-plus"></i> Create Dev Program</button>
+            </div>
+            <div class="card-body">
+                <p style="color: var(--text-dim); font-size: 13px; margin-bottom: 16px;">
+                    <i class="fas fa-info-circle" style="color: var(--primary);"></i>
+                    Long-term development programs use a <strong>time frame</strong> (e.g. 4 weeks) instead of specific dates. Programs are auto-created for Goalie and Player development.
+                </p>
+                <?php if (empty($devPrograms)): ?>
+                <div class="empty-state-card">
+                    <i class="fas fa-chart-line"></i>
+                    <h4>No Development Programs</h4>
+                    <p>Click "Create Dev Program" to add a long-term development program.</p>
+                </div>
+                <?php else: ?>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Program Name</th>
+                                <th>Type</th>
+                                <th>Duration</th>
+                                <th>Price</th>
+                                <th>Enrolled</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($devPrograms as $dp): ?>
+                            <tr>
+                                <td><strong><?= htmlspecialchars($dp['name']) ?></strong></td>
+                                <td>
+                                    <?php
+                                    $dpType = 'General';
+                                    $dpIcon = 'fa-chart-line';
+                                    $dpColor = '#f59e0b';
+                                    if (stripos($dp['name'], 'goalie') !== false) { $dpType = 'Goalie Dev'; $dpIcon = 'fa-shield-alt'; $dpColor = '#3b82f6'; }
+                                    elseif (stripos($dp['name'], 'player') !== false) { $dpType = 'Player Dev'; $dpIcon = 'fa-hockey-puck'; $dpColor = '#10b981'; }
+                                    ?>
+                                    <span class="type-badge" style="background: <?= $dpColor ?>22; color: <?= $dpColor ?>; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;">
+                                        <i class="fas <?= $dpIcon ?>"></i> <?= $dpType ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <?php if (!empty($dp['duration_weeks'])): ?>
+                                        <span style="display:inline-flex;align-items:center;gap:4px;font-size:13px;color:#f59e0b;">
+                                            <i class="fas fa-clock"></i> <?= (int)$dp['duration_weeks'] ?> weeks
+                                        </span>
+                                    <?php else: ?>
+                                        <span style="color: var(--text-dim);">Not set</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>$<?= number_format($dp['price'] ?? 0, 2) ?></td>
+                                <td>
+                                    <?php $enrollCount = (int)($dp['enrolled_count'] ?? 0); ?>
+                                    <?= $enrollCount > 0 ? '<span style="color:var(--primary);font-weight:600;">' . $enrollCount . '</span>' : '<span style="color:var(--text-dim);">0</span>' ?>
+                                </td>
+                                <td><span class="status-badge <?= !empty($dp['is_active']) ? 'active' : 'inactive' ?>"><?= !empty($dp['is_active']) ? 'Active' : 'Inactive' ?></span></td>
+                                <td>
+                                    <div class="table-actions">
+                                        <button class="btn-action" onclick="openEditDevProgramModal(<?= (int)$dp['id'] ?>, <?= htmlspecialchars(json_encode($dp, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT), ENT_QUOTES, 'UTF-8') ?>)" title="Edit"><i class="fas fa-edit"></i></button>
+                                        <button class="btn-action" data-action="toggle-status" data-id="<?= (int)$dp['id'] ?>" data-type="session" title="<?= !empty($dp['is_active']) ? 'Disable' : 'Enable' ?>"><i class="fas fa-toggle-<?= !empty($dp['is_active']) ? 'on' : 'off' ?>"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+
+<!-- Add Dev Program Modal -->
+<div id="add-dev-program-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-chart-line"></i> Create Development Program</h2>
+            <button type="button" class="modal-close" onclick="closeDevProgramModal('add')">&times;</button>
+        </div>
+        <form id="add-dev-program-form" onsubmit="saveDevProgram(event, 'create')">
+            <?php echo csrfTokenInput(); ?>
+            <div class="modal-body">
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label class="form-label">Program Name *</label>
+                    <input type="text" name="dev_name" id="dev-name" class="form-input" required placeholder="e.g., Goalie Development Program">
+                </div>
+                <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+                    <div class="form-group">
+                        <label class="form-label"><i class="fas fa-clock" style="color:#f59e0b;"></i> Duration (weeks) *</label>
+                        <input type="number" name="dev_duration_weeks" id="dev-duration-weeks" class="form-input" required min="1" max="52" placeholder="e.g. 4" value="4">
+                        <span style="font-size:11px;color:var(--text-dim);margin-top:4px;display:block;">Time frame for the program (e.g. 4 weeks)</span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label"><i class="fas fa-dollar-sign" style="color:#10b981;"></i> Price ($)</label>
+                        <input type="number" name="dev_price" id="dev-price" class="form-input" min="0" step="0.01" placeholder="0.00" value="0">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label class="form-label">Description</label>
+                    <textarea name="dev_description" id="dev-description" class="form-input" rows="3" placeholder="Describe the development program..."></textarea>
+                </div>
+                <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+                    <div class="form-group">
+                        <label class="form-label">Status</label>
+                        <select name="dev_is_active" id="dev-is-active" class="form-input">
+                            <option value="1">Active</option>
+                            <option value="0">Inactive</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Show on Booking Page</label>
+                        <select name="dev_show_on_landing" id="dev-show-on-landing" class="form-input">
+                            <option value="1">Yes</option>
+                            <option value="0">No</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeDevProgramModal('add')">Cancel</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Create Program</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Dev Program Modal -->
+<div id="edit-dev-program-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-edit"></i> Edit Development Program</h2>
+            <button type="button" class="modal-close" onclick="closeDevProgramModal('edit')">&times;</button>
+        </div>
+        <form id="edit-dev-program-form" onsubmit="saveDevProgram(event, 'update')">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="dev_id" id="edit-dev-id">
+            <div class="modal-body">
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label class="form-label">Program Name *</label>
+                    <input type="text" name="dev_name" id="edit-dev-name" class="form-input" required>
+                </div>
+                <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+                    <div class="form-group">
+                        <label class="form-label"><i class="fas fa-clock" style="color:#f59e0b;"></i> Duration (weeks) *</label>
+                        <input type="number" name="dev_duration_weeks" id="edit-dev-duration-weeks" class="form-input" required min="1" max="52">
+                        <span style="font-size:11px;color:var(--text-dim);margin-top:4px;display:block;">Time frame for the program (e.g. 4 weeks)</span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label"><i class="fas fa-dollar-sign" style="color:#10b981;"></i> Price ($)</label>
+                        <input type="number" name="dev_price" id="edit-dev-price" class="form-input" min="0" step="0.01">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label class="form-label">Description</label>
+                    <textarea name="dev_description" id="edit-dev-description" class="form-input" rows="3"></textarea>
+                </div>
+                <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+                    <div class="form-group">
+                        <label class="form-label">Status</label>
+                        <select name="dev_is_active" id="edit-dev-is-active" class="form-input">
+                            <option value="1">Active</option>
+                            <option value="0">Inactive</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Show on Booking Page</label>
+                        <select name="dev_show_on_landing" id="edit-dev-show-on-landing" class="form-input">
+                            <option value="1">Yes</option>
+                            <option value="0">No</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeDevProgramModal('edit')">Cancel</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Changes</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -3853,7 +4092,7 @@ function updateBulkBar() {
         bar.classList.remove('visible');
     }
     // Update per-tab delete buttons
-    ['sessions', 'packages', 'discounts', 'merchandise', 'programs_camps'].forEach(function(tab) {
+    ['sessions', 'packages', 'discounts', 'merchandise', 'programs_camps', 'long_term_dev'].forEach(function(tab) {
         var checked = document.querySelectorAll('.bulk-item-checkbox[data-tab="' + tab + '"]:checked').length;
         var allItems = document.querySelectorAll('.bulk-item-checkbox[data-tab="' + tab + '"]').length;
         var btns = document.querySelectorAll('.btn-bulk-delete[data-tab="' + tab + '"]');
@@ -3928,5 +4167,68 @@ function clearAllSelections() {
     document.querySelectorAll('.bulk-item-checkbox:checked').forEach(function(cb) { cb.checked = false; });
     document.querySelectorAll('.bulk-select-all:checked').forEach(function(cb) { cb.checked = false; });
     updateBulkBar();
+}
+
+// =====================================================
+// Long Term Development Program CRUD
+// =====================================================
+
+function openAddDevProgramModal() {
+    document.getElementById('add-dev-program-modal').classList.add('active');
+}
+
+function openEditDevProgramModal(id, data) {
+    document.getElementById('edit-dev-id').value = id;
+    document.getElementById('edit-dev-name').value = data.name || '';
+    document.getElementById('edit-dev-duration-weeks').value = data.duration_weeks || '';
+    document.getElementById('edit-dev-price').value = data.price || 0;
+    document.getElementById('edit-dev-description').value = data.description || '';
+    document.getElementById('edit-dev-is-active').value = data.is_active ? '1' : '0';
+    document.getElementById('edit-dev-show-on-landing').value = data.show_on_landing ? '1' : '0';
+    document.getElementById('edit-dev-program-modal').classList.add('active');
+}
+
+function closeDevProgramModal(type) {
+    document.getElementById(type + '-dev-program-modal').classList.remove('active');
+}
+
+function saveDevProgram(event, mode) {
+    event.preventDefault();
+    var prefix = mode === 'create' ? '' : 'edit-';
+    var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '';
+    
+    var payload = {
+        action: mode === 'create' ? 'create_dev_program' : 'update_dev_program',
+        csrf_token: csrfToken,
+        name: document.getElementById(prefix + 'dev-name').value.trim(),
+        duration_weeks: parseInt(document.getElementById(prefix + 'dev-duration-weeks').value) || 4,
+        price: parseFloat(document.getElementById(prefix + 'dev-price').value) || 0,
+        description: document.getElementById(prefix + 'dev-description').value.trim(),
+        is_active: parseInt(document.getElementById(prefix + 'dev-is-active').value),
+        show_on_landing: parseInt(document.getElementById(prefix + 'dev-show-on-landing').value)
+    };
+    
+    if (mode === 'update') {
+        payload.id = parseInt(document.getElementById('edit-dev-id').value);
+    }
+    
+    if (!payload.name) { alert('Program name is required.'); return; }
+    if (!payload.duration_weeks || payload.duration_weeks < 1) { alert('Duration must be at least 1 week.'); return; }
+    
+    fetch('process_admin_action.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        body: JSON.stringify(payload)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            persistToast(mode === 'create' ? 'Development program created!' : 'Development program updated!', 'success');
+            location.reload();
+        } else {
+            showNotification('Error: ' + (data.message || 'Failed to save'), 'error');
+        }
+    })
+    .catch(function() { showNotification('An error occurred.', 'error'); });
 }
 </script>

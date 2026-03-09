@@ -83,8 +83,8 @@ test.describe('Database Schema - Personal Development', () => {
   test('default notification templates are inserted', () => {
     const schema = readFile('database_schema.sql');
     expect(schema).toContain("INSERT IGNORE INTO `development_notification_templates`");
-    expect(schema).toContain('New Goalie Development Program Registration');
-    expect(schema).toContain('New Player Development Program Registration');
+    expect(schema).toContain('Welcome to the Goalie Development Program!');
+    expect(schema).toContain('Welcome to the Player Development Program!');
   });
 });
 
@@ -104,14 +104,15 @@ test.describe('Personal Development View Files', () => {
     expect(content).toContain('My Program');
   });
 
-  test('views/personal_development_programs.php exists with enrollment via booking page', () => {
+  test('views/personal_development_programs.php shows dynamic dev program products', () => {
     const content = readFile('views/personal_development_programs.php');
-    expect(content).toContain('Long Term Goalie Development');
-    expect(content).toContain('Long Term Player Development');
-    expect(content).toContain('page=booking');
+    expect(content).toContain('is_dev_program');
     expect(content).toContain('training_session_templates');
+    expect(content).toContain('page=booking');
     expect(content).toContain('goalie_dev');
     expect(content).toContain('player_dev');
+    expect(content).toContain('dev_products');
+    expect(content).toContain('Completed Programs');
   });
 
   test('views/personal_development_my_program.php exists with drill and chat features', () => {
@@ -132,7 +133,8 @@ test.describe('Personal Development View Files', () => {
     expect(content).toContain('removeDrill');
     expect(content).toContain('sendCoachMessage');
     expect(content).toContain('sendCoachVideo');
-    expect(content).toContain('Enrolled Athletes');
+    expect(content).toContain('Active Programs');
+    expect(content).toContain('Program History');
     expect(content).toContain('drill-select');
   });
 
@@ -451,10 +453,13 @@ test.describe('Development Programs Access Control', () => {
     expect(content).toContain('Access Denied');
   });
 
-  test('development_programs.php shows enrolled athletes', () => {
+  test('development_programs.php shows active programs and history tabs', () => {
     const content = readFile('views/development_programs.php');
     expect(content).toContain('development_program_enrollments');
-    expect(content).toContain('Enrolled Athletes');
+    expect(content).toContain('Active Programs');
+    expect(content).toContain('Program History');
+    expect(content).toContain('dev-active-cards');
+    expect(content).toContain('dev-history-table');
   });
 
   test('development_programs.php allows drill management from library', () => {
@@ -503,8 +508,8 @@ test.describe('Marketing View - Development Notifications', () => {
   test('marketing view auto-creates default notification templates if empty', () => {
     const content = readFile('views/admin_business_cards.php');
     expect(content).toContain('INSERT IGNORE INTO `development_notification_templates`');
-    expect(content).toContain('New Goalie Development Program Registration');
-    expect(content).toContain('New Player Development Program Registration');
+    expect(content).toContain('Welcome to the Goalie Development Program!');
+    expect(content).toContain('Welcome to the Player Development Program!');
     // Should not reference a non-existent migration process
     expect(content).not.toContain('Run the database migration');
   });
@@ -513,7 +518,7 @@ test.describe('Marketing View - Development Notifications', () => {
     const content = readFile('views/admin_business_cards.php');
     expect(content).toContain('dev-tmpl-email-');
     expect(content).toContain('notification_email');
-    expect(content).toContain('Who gets emailed when an athlete registers');
+    expect(content).toContain('Coach/admin gets a separate alert at this address');
   });
 
   test('marketing view has program duration field for development programs', () => {
@@ -743,16 +748,18 @@ test.describe('Auto-create Development Program Products', () => {
     expect(content).toContain('show_on_landing');
   });
 
-  test('development programs are displayed in programs_camps.php instead of sessions_booking.php', () => {
+  test('development programs are displayed in programs_camps.php and sessions_booking.php', () => {
     const content = readFile('views/programs_camps.php');
     expect(content).toContain('Development Programs');
     expect(content).toContain('dev-programs-section');
     expect(content).toContain('Long Term Goalie Development');
     expect(content).toContain('Long Term Player Development');
     expect(content).toContain('dev_enrolled_types');
-    // Verify dev programs moved out of sessions_booking
+    // Verify dev programs ALSO show on booking page (below Programs & Camps)
     const bookingContent = readFile('views/sessions_booking.php');
-    expect(bookingContent).not.toContain('dev-programs-section');
+    expect(bookingContent).toContain('dev-programs-section');
+    expect(bookingContent).toContain('Long Term Development Programs');
+    expect(bookingContent).toContain('dev_products');
   });
 
   test('programs_camps.php shows program duration when configured', () => {
@@ -878,5 +885,425 @@ test.describe('Presigned URL Video Upload Flow', () => {
     expect(content).toContain('next_drill');
     expect(content).toContain('fa-arrow-left');
     expect(content).toContain('fa-arrow-right');
+  });
+});
+
+// =====================================================
+// Long Term Development Tab in Products
+// =====================================================
+
+test.describe('Long Term Development Tab in Products', () => {
+
+  test('accounting_products.php has Long Term Development tab', () => {
+    const content = readFile('views/accounting_products.php');
+    expect(content).toContain('Long Term Development');
+    expect(content).toContain('long_term_dev');
+    expect(content).toContain('long_term_dev-tab');
+    expect(content).toContain('fa-chart-line');
+  });
+
+  test('Long Term Development tab has create button and table structure', () => {
+    const content = readFile('views/accounting_products.php');
+    expect(content).toContain('Create Dev Program');
+    expect(content).toContain('openAddDevProgramModal');
+    expect(content).toContain('Duration');
+    expect(content).toContain('duration_weeks');
+  });
+
+  test('Long Term Development tab has add and edit modals', () => {
+    const content = readFile('views/accounting_products.php');
+    expect(content).toContain('add-dev-program-modal');
+    expect(content).toContain('edit-dev-program-modal');
+    expect(content).toContain('dev-duration-weeks');
+    expect(content).toContain('saveDevProgram');
+  });
+
+  test('development programs auto-create with is_dev_program flag', () => {
+    const content = readFile('views/accounting_products.php');
+    expect(content).toContain('is_dev_program');
+    expect(content).toContain('Goalie Development Program');
+    expect(content).toContain('Player Development Program');
+    expect(content).toContain('Auto-add is_dev_program');
+  });
+
+  test('development programs use time frame (duration_weeks) not specific dates', () => {
+    const content = readFile('views/accounting_products.php');
+    expect(content).toContain('duration_weeks');
+    expect(content).toContain('Time frame for the program');
+    expect(content).toContain('weeks');
+  });
+
+  test('process_admin_action.php has dev program CRUD handlers', () => {
+    const content = readFile('process_admin_action.php');
+    expect(content).toContain('create_dev_program');
+    expect(content).toContain('update_dev_program');
+    expect(content).toContain('is_dev_program');
+    expect(content).toContain('duration_weeks');
+  });
+});
+
+// =====================================================
+// Database Schema - Dev Program Enhancements
+// =====================================================
+
+test.describe('Database Schema - Dev Program Enhancements', () => {
+
+  test('training_session_templates has is_dev_program and duration_weeks columns', () => {
+    const schema = readFile('database_schema.sql');
+    expect(schema).toContain('is_dev_program');
+    expect(schema).toContain('duration_weeks');
+    expect(schema).toContain('idx_dev_program');
+  });
+
+  test('development_program_enrollments has start_date and end_date columns', () => {
+    const schema = readFile('database_schema.sql');
+    expect(schema).toContain('start_date');
+    expect(schema).toContain('end_date');
+    expect(schema).toContain('Auto-calculated program start date');
+    expect(schema).toContain('Auto-calculated from start_date + duration_weeks');
+  });
+
+  test('email_templates table exists in schema', () => {
+    const schema = readFile('database_schema.sql');
+    expect(schema).toContain('CREATE TABLE IF NOT EXISTS `email_templates`');
+    expect(schema).toContain('template_type');
+    expect(schema).toContain('body_text');
+    expect(schema).toContain('body_html');
+    expect(schema).toContain('is_custom');
+  });
+});
+
+// =====================================================
+// Enrollment Date Tracking
+// =====================================================
+
+test.describe('Enrollment Date Tracking', () => {
+
+  test('process_development_programs.php calculates start_date and end_date on enrollment', () => {
+    const content = readFile('process_development_programs.php');
+    expect(content).toContain('start_date');
+    expect(content).toContain('end_date');
+    expect(content).toContain('duration_weeks');
+  });
+
+  test('process_booking.php calculates dates for free enrollment', () => {
+    const content = readFile('process_booking.php');
+    expect(content).toContain('start_date');
+    expect(content).toContain('end_date');
+    expect(content).toContain('duration_weeks');
+  });
+
+  test('payment_success.php calculates dates for paid enrollment', () => {
+    const content = readFile('payment_success.php');
+    expect(content).toContain('start_date');
+    expect(content).toContain('end_date');
+    expect(content).toContain('duration_weeks');
+  });
+});
+
+// =====================================================
+// Dev Notification Templates → Athlete Emails
+// =====================================================
+
+test.describe('Dev Notification Templates - Athlete Emails', () => {
+
+  test('notification templates are sent to athletes, not coaches', () => {
+    const content = readFile('process_development_programs.php');
+    // Template used for athlete email
+    expect(content).toContain('Send welcome email to the ATHLETE using the template');
+    expect(content).toContain('athlete_email');
+    // Coach gets hardcoded notification, not template
+    expect(content).toContain('Coach/admin notification (hardcoded text');
+  });
+
+  test('marketing labels clarify templates are for athletes', () => {
+    const content = readFile('views/admin_business_cards.php');
+    expect(content).toContain('Athlete Email Subject');
+    expect(content).toContain('Athlete Email Body');
+    expect(content).toContain('sent to the athlete when they enroll');
+    expect(content).toContain('Athlete Email Templates');
+  });
+
+  test('default templates are athlete-facing welcome messages', () => {
+    const schema = readFile('database_schema.sql');
+    expect(schema).toContain('Welcome to the Goalie Development Program!');
+    expect(schema).toContain('Welcome to the Player Development Program!');
+    expect(schema).toContain('Your coach will be in touch shortly');
+  });
+
+  test('payment_success.php sends athlete welcome email from template', () => {
+    const content = readFile('payment_success.php');
+    expect(content).toContain('athlete welcome email');
+    expect(content).toContain('Welcome to Your Development Program!');
+  });
+});
+
+// =====================================================
+// Email Templates Tab in Marketing
+// =====================================================
+
+test.describe('Email Templates Tab in Marketing', () => {
+
+  test('marketing page has Email Templates tab', () => {
+    const content = readFile('views/admin_business_cards.php');
+    expect(content).toContain('email-templates');
+    expect(content).toContain('tab-email-templates');
+    expect(content).toContain('section-email-templates');
+    expect(content).toContain('Email Templates');
+  });
+
+  test('email templates section lists all system template types', () => {
+    const content = readFile('views/admin_business_cards.php');
+    expect(content).toContain('verification');
+    expect(content).toContain('manual_welcome');
+    expect(content).toContain('payment_receipt');
+    expect(content).toContain('password_reset');
+    expect(content).toContain('notification');
+    expect(content).toContain('system_notification');
+    expect(content).toContain('email_change_confirmation');
+    expect(content).toContain('esignature_request');
+    expect(content).toContain('contract_signed');
+  });
+
+  test('email templates have standard text and advanced HTML/CSS editing', () => {
+    const content = readFile('views/admin_business_cards.php');
+    expect(content).toContain('etpl-body-');
+    expect(content).toContain('etpl-html-');
+    expect(content).toContain('Advanced HTML/CSS');
+    expect(content).toContain('toggleAdvancedEditor');
+  });
+
+  test('advanced HTML/CSS editing is hidden by default', () => {
+    const content = readFile('views/admin_business_cards.php');
+    expect(content).toContain("id=\"etpl-advanced-");
+    expect(content).toContain("style=\"display:none;");
+  });
+
+  test('email templates have live auto-updating preview', () => {
+    const content = readFile('views/admin_business_cards.php');
+    expect(content).toContain('etpl-preview-');
+    expect(content).toContain('updateEmailTemplatePreview');
+    expect(content).toContain('oninput="updateEmailTemplatePreview');
+  });
+
+  test('email templates can be saved and reset', () => {
+    const content = readFile('views/admin_business_cards.php');
+    expect(content).toContain('saveEmailTemplate');
+    expect(content).toContain('resetEmailTemplate');
+    expect(content).toContain('save_email_template');
+    expect(content).toContain('reset_email_template');
+  });
+
+  test('process_development_programs.php has email template save/reset handlers', () => {
+    const content = readFile('process_development_programs.php');
+    expect(content).toContain("case 'save_email_template'");
+    expect(content).toContain("case 'reset_email_template'");
+    expect(content).toContain('handleSaveEmailTemplate');
+    expect(content).toContain('handleResetEmailTemplate');
+  });
+
+  test('email template save handler validates and whitelists template types', () => {
+    const content = readFile('process_development_programs.php');
+    expect(content).toContain('allowed_types');
+    expect(content).toContain('ON DUPLICATE KEY UPDATE');
+    expect(content).toContain('is_custom');
+  });
+
+  test('mailer.php checks for custom email templates', () => {
+    const content = readFile('mailer.php');
+    expect(content).toContain('email_templates');
+    expect(content).toContain('is_custom');
+    expect(content).toContain('body_html');
+    expect(content).toContain('body_text');
+    expect(content).toContain('customTemplate');
+  });
+});
+
+// =====================================================
+// Multi-Enrollment & Program Differentiation
+// =====================================================
+
+test.describe('Multi-Enrollment & Program Differentiation', () => {
+
+  test('enrollment table allows multiple enrollments (no UNIQUE constraint on athlete+type)', () => {
+    const schema = readFile('database_schema.sql');
+    expect(schema).toContain('development_program_enrollments');
+    expect(schema).toContain('program_name');
+    expect(schema).toContain('template_id');
+    expect(schema).toContain('idx_template');
+    // The enrollments table should NOT have a unique constraint on athlete_id+program_type
+    const enrollSection = schema.split('development_program_enrollments')[1].split('ENGINE=InnoDB')[0];
+    expect(enrollSection).not.toContain('UNIQUE KEY');
+  });
+
+  test('enrollment stores program_name and template_id', () => {
+    const schema = readFile('database_schema.sql');
+    expect(schema).toContain("program_name");
+    expect(schema).toContain("template_id");
+    expect(schema).toContain('idx_template');
+  });
+
+  test('process_development_programs.php checks only active enrollments for duplicates', () => {
+    const content = readFile('process_development_programs.php');
+    expect(content).toContain("status = 'active'");
+    expect(content).toContain('template_id');
+    expect(content).toContain('program_name');
+  });
+
+  test('process_booking.php checks only active enrollments with template_id', () => {
+    const content = readFile('process_booking.php');
+    expect(content).toContain("status = 'active'");
+    expect(content).toContain('template_id');
+    expect(content).toContain('program_name');
+  });
+
+  test('payment_success.php stores program_name and template_id', () => {
+    const content = readFile('payment_success.php');
+    expect(content).toContain('program_name');
+    expect(content).toContain('template_id');
+    expect(content).toContain("status = 'active'");
+  });
+});
+
+// =====================================================
+// Coach View Redesign - Active Programs & History
+// =====================================================
+
+test.describe('Coach View Redesign', () => {
+
+  test('coach view has Active Programs and Program History tabs', () => {
+    const content = readFile('views/development_programs.php');
+    expect(content).toContain('dev-coach-tabs');
+    expect(content).toContain('Active Programs');
+    expect(content).toContain('Program History');
+    expect(content).toContain('switchCoachTab');
+  });
+
+  test('active programs shown as full-size cards with athlete info', () => {
+    const content = readFile('views/development_programs.php');
+    expect(content).toContain('dev-active-cards');
+    expect(content).toContain('card-athlete-name');
+    expect(content).toContain('card-program-name');
+    expect(content).toContain('weeks-left');
+    expect(content).toContain('program_name');
+  });
+
+  test('detail view has back button to overview', () => {
+    const content = readFile('views/development_programs.php');
+    expect(content).toContain('dev-back-btn');
+    expect(content).toContain('Back to All Programs');
+    expect(content).toContain('fa-arrow-left');
+  });
+
+  test('program history has filterable table', () => {
+    const content = readFile('views/development_programs.php');
+    expect(content).toContain('dev-history-table');
+    expect(content).toContain('history-filter-name');
+    expect(content).toContain('history-filter-position');
+    expect(content).toContain('history-filter-program');
+    expect(content).toContain('filterHistory');
+  });
+
+  test('coach view queries both active and completed enrollments', () => {
+    const content = readFile('views/development_programs.php');
+    expect(content).toContain("dpe.status = 'active'");
+    expect(content).toContain("'completed', 'paused', 'cancelled'");
+    expect(content).toContain('history_athletes');
+  });
+});
+
+// =====================================================
+// Athlete View - Program History & Dynamic Products
+// =====================================================
+
+test.describe('Athlete View Updates', () => {
+
+  test('my_program.php shows program name and weeks left on each enrollment', () => {
+    const content = readFile('views/personal_development_my_program.php');
+    expect(content).toContain('program_name');
+    expect(content).toContain('weeks_left');
+    expect(content).toContain('end_date');
+    expect(content).toContain('program_display');
+  });
+
+  test('my_program.php shows completed programs history', () => {
+    const content = readFile('views/personal_development_my_program.php');
+    expect(content).toContain('completed_programs');
+    expect(content).toContain('Previous Programs');
+    expect(content).toContain('fa-history');
+  });
+
+  test('personal_development_programs.php loads products dynamically from DB', () => {
+    const content = readFile('views/personal_development_programs.php');
+    expect(content).toContain('is_dev_program');
+    expect(content).toContain('dev_products');
+    expect(content).toContain('training_session_templates');
+    expect(content).toContain('duration_weeks');
+  });
+
+  test('personal_development_programs.php shows completed enrollment history', () => {
+    const content = readFile('views/personal_development_programs.php');
+    expect(content).toContain('completed_enrollments');
+    expect(content).toContain('Completed Programs');
+    expect(content).toContain('fa-history');
+  });
+});
+
+// =====================================================
+// Sessions Booking - Dev Program Cards
+// =====================================================
+
+test.describe('Booking Page Dev Program Cards', () => {
+
+  test('sessions_booking.php has Long Term Development Programs section', () => {
+    const content = readFile('views/sessions_booking.php');
+    expect(content).toContain('Long Term Development Programs');
+    expect(content).toContain('dev-programs-section');
+    expect(content).toContain('dev-product-card');
+    expect(content).toContain('fa-chart-line');
+  });
+
+  test('booking page fetches all dev products from training_session_templates', () => {
+    const content = readFile('views/sessions_booking.php');
+    expect(content).toContain('is_dev_program');
+    expect(content).toContain('dev_products');
+    expect(content).toContain('dev_active_template_ids');
+  });
+
+  test('booking page dev cards show enroll form with template_id', () => {
+    const content = readFile('views/sessions_booking.php');
+    expect(content).toContain('register_dev_program');
+    expect(content).toContain('template_id');
+    expect(content).toContain('program_type');
+    expect(content).toContain('Enroll in Program');
+  });
+});
+
+// =====================================================
+// Navigation Rename: Sessions → Training
+// =====================================================
+
+test.describe('Navigation Rename Sessions to Training', () => {
+
+  test('dashboard.php sidebar shows Training instead of Sessions', () => {
+    const content = readFile('dashboard.php');
+    expect(content).toContain('Training');
+    // The link still goes to page=sessions for backward compat
+    expect(content).toContain("page=sessions");
+  });
+
+  test('pwa.php tab shows Training instead of Sessions', () => {
+    const content = readFile('pwa.php');
+    expect(content).toContain('>Training<');
+  });
+
+  test('pwa_tablet.php sidebar shows Training instead of Sessions', () => {
+    const content = readFile('pwa_tablet.php');
+    expect(content).toContain('Training');
+  });
+
+  test('sessions.php page title shows Training', () => {
+    const content = readFile('views/sessions.php');
+    expect(content).toContain('Training');
   });
 });

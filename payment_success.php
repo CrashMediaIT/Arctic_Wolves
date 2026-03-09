@@ -113,15 +113,41 @@ try {
             // HANDLE DEVELOPMENT PROGRAM ENROLLMENT (only after payment confirmed)
             $program_type = $checkout->metadata->program_type ?? '';
             $athlete_id = intval($checkout->metadata->athlete_id ?? 0);
+            $template_id = intval($checkout->metadata->template_id ?? 0);
 
             if (in_array($program_type, ['goalie_dev', 'player_dev']) && $athlete_id > 0) {
-                // Idempotency: check if already enrolled
-                $dup_check = $pdo->prepare("SELECT id FROM development_program_enrollments WHERE athlete_id = ? AND program_type = ?");
-                $dup_check->execute([$athlete_id, $program_type]);
+                // Idempotency: check if already enrolled in active program of same type+template from this payment
+                $dup_check = $pdo->prepare("SELECT id FROM development_program_enrollments WHERE athlete_id = ? AND program_type = ? AND template_id = ? AND status = 'active'");
+                $dup_check->execute([$athlete_id, $program_type, $template_id]);
 
                 if (!$dup_check->fetch()) {
-                    $stmt = $pdo->prepare("INSERT INTO development_program_enrollments (athlete_id, program_type) VALUES (?, ?)");
-                    $stmt->execute([$athlete_id, $program_type]);
+                    // Get duration_weeks and program name for auto-calculated dates
+                    $duration_weeks = null;
+                    $program_name = null;
+                    try {
+                        if ($template_id > 0) {
+                            $dur_stmt = $pdo->prepare("SELECT name, duration_weeks FROM training_session_templates WHERE id = ? AND is_dev_program = 1");
+                            $dur_stmt->execute([$template_id]);
+                            $dur_row = $dur_stmt->fetch(PDO::FETCH_ASSOC);
+                            $duration_weeks = $dur_row['duration_weeks'] ?? null;
+                            $program_name = $dur_row['name'] ?? null;
+                        }
+                    } catch (PDOException $e) { /* column may not exist */ }
+                    if (!$duration_weeks) {
+                        try {
+                            $dur_stmt2 = $pdo->prepare("SELECT program_duration_weeks FROM development_notification_templates WHERE program_type = ?");
+                            $dur_stmt2->execute([$program_type]);
+                            $dur_row2 = $dur_stmt2->fetch(PDO::FETCH_ASSOC);
+                            $duration_weeks = $dur_row2['program_duration_weeks'] ?? null;
+                        } catch (PDOException $e) { /* ignore */ }
+                    }
+                    
+                    $start_date = date('Y-m-d');
+                    $duration_weeks = $duration_weeks !== null ? max(1, min(52, intval($duration_weeks))) : null;
+                    $end_date = $duration_weeks ? date('Y-m-d', strtotime("+{$duration_weeks} weeks")) : null;
+                    
+                    $stmt = $pdo->prepare("INSERT INTO development_program_enrollments (athlete_id, program_type, program_name, template_id, start_date, end_date) VALUES (?, ?, ?, ?, ?, ?)");
+                    $stmt->execute([$athlete_id, $program_type, $program_name, $template_id ?: null, $start_date, $end_date]);
                     $enrollment_id = $pdo->lastInsertId();
 
                     Auditor::log($pdo, $athlete_id, 'create', 'development_program_enrollments', $enrollment_id, [
@@ -148,14 +174,15 @@ try {
                         $athlete_name = trim(($athlete_info['first_name'] ?? '') . ' ' . ($athlete_info['last_name'] ?? ''));
                         $notif_program_label = $program_type === 'goalie_dev' ? 'Goalie Development Program' : 'Player Development Program';
 
+                        // Coach/admin in-app notifications (hardcoded text)
                         $notif_stmt = $pdo->prepare("INSERT INTO notifications (user_id, type, title, message, link_url) VALUES (?, 'dev_program_registration', ?, ?, '?page=development_programs')");
                         foreach ($notify_ids as $nid) {
                             $notif_stmt->execute([$nid, 'New Development Program Registration', "Athlete: " . htmlspecialchars($athlete_name, ENT_QUOTES, 'UTF-8') . " has enrolled (paid) in the " . $notif_program_label . "."]);
                         }
 
-                        // Send email to configured notification email address
+                        // Send email to configured coach notification email address
                         try {
-                            $tmpl_stmt = $pdo->prepare("SELECT notification_email FROM development_notification_templates WHERE program_type = ?");
+                            $tmpl_stmt = $pdo->prepare("SELECT subject, body, notification_email FROM development_notification_templates WHERE program_type = ?");
                             $tmpl_stmt->execute([$program_type]);
                             $tmpl = $tmpl_stmt->fetch(PDO::FETCH_ASSOC);
                             if (!empty($tmpl['notification_email']) && filter_var($tmpl['notification_email'], FILTER_VALIDATE_EMAIL)) {
@@ -172,7 +199,7 @@ try {
                         }
                     } catch (PDOException $ne) { /* notifications table may not exist */ }
 
-                    // Send confirmation email
+                    // Send payment receipt email to athlete
                     $email_stmt = $pdo->prepare("SELECT email, first_name FROM users WHERE id = ?");
                     $email_stmt->execute([$athlete_id]);
                     $user_info = $email_stmt->fetch(PDO::FETCH_ASSOC);
@@ -187,6 +214,22 @@ try {
                             'date'          => date('M j, Y'),
                             'trans_id'      => $stripe_sid
                         ]);
+                        
+                        // Send athlete welcome email using the template
+                        try {
+                            $tmpl_stmt2 = $pdo->prepare("SELECT subject, body FROM development_notification_templates WHERE program_type = ?");
+                            $tmpl_stmt2->execute([$program_type]);
+                            $athlete_tmpl = $tmpl_stmt2->fetch(PDO::FETCH_ASSOC);
+                            if ($athlete_tmpl) {
+                                sendEmail($user_info['email'], 'notification', [
+                                    'title' => $athlete_tmpl['subject'] ?? 'Welcome to Your Development Program!',
+                                    'message' => $athlete_tmpl['body'] ?? 'You have been enrolled. Your coach will be in touch shortly.',
+                                    'name' => $user_info['first_name'] ?? 'Athlete'
+                                ]);
+                            }
+                        } catch (\Throwable $e) {
+                            error_log("Dev program athlete welcome email error: " . $e->getMessage());
+                        }
                     }
                 }
             }

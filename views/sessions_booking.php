@@ -73,7 +73,14 @@ try {
     }
 } catch (PDOException $e) { /* Templates may already exist */ }
 
-// Get development program pricing from session templates
+// Get development program products from session templates (all dev programs)
+$dev_products = [];
+try {
+    $dev_products_stmt = $pdo->query("SELECT id, name, description, price, duration_weeks, is_dev_program FROM training_session_templates WHERE is_dev_program = 1 AND is_active = 1 ORDER BY name");
+    $dev_products = $dev_products_stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) { /* column may not exist */ }
+
+// Backward compat: keep individual pricing for existing code
 $goalie_dev_tpl = $pdo->query("SELECT id, price FROM training_session_templates WHERE name = 'Goalie Development Program' AND is_active = 1 LIMIT 1")->fetch(PDO::FETCH_ASSOC);
 $player_dev_tpl = $pdo->query("SELECT id, price FROM training_session_templates WHERE name = 'Player Development Program' AND is_active = 1 LIMIT 1")->fetch(PDO::FETCH_ASSOC);
 $goalie_dev_price = $goalie_dev_tpl['price'] ?? $default_goalie_dev_price;
@@ -81,12 +88,15 @@ $player_dev_price = $player_dev_tpl['price'] ?? $default_player_dev_price;
 $goalie_dev_template_id = $goalie_dev_tpl['id'] ?? 0;
 $player_dev_template_id = $player_dev_tpl['id'] ?? 0;
 
-// Check current user's development program enrollment status
+// Check current user's development program enrollment status (by template_id for active enrollments)
 $dev_enrolled_types = [];
+$dev_active_template_ids = [];
 try {
-    $dev_enroll_stmt = $pdo->prepare("SELECT program_type FROM development_program_enrollments WHERE athlete_id = ?");
+    $dev_enroll_stmt = $pdo->prepare("SELECT program_type, template_id FROM development_program_enrollments WHERE athlete_id = ? AND status = 'active'");
     $dev_enroll_stmt->execute([intval($_SESSION['user_id'])]);
-    $dev_enrolled_types = $dev_enroll_stmt->fetchAll(PDO::FETCH_COLUMN);
+    $dev_enroll_rows = $dev_enroll_stmt->fetchAll(PDO::FETCH_ASSOC);
+    $dev_enrolled_types = array_column($dev_enroll_rows, 'program_type');
+    $dev_active_template_ids = array_filter(array_column($dev_enroll_rows, 'template_id'));
 } catch (PDOException $e) { /* table may not exist yet */ }
 
 // Get hourly pricing from session templates for private/semi-private sessions
@@ -658,6 +668,74 @@ $user_booked_template_dates = $tpl_booked_stmt->fetchAll(PDO::FETCH_COLUMN);
                         <button type="submit" class="btn-register-program" data-action="register-program" data-program-id="<?= $prog['id'] ?>">
                             <i class="fas fa-<?= $is_camp ? 'campground' : 'calendar-plus' ?>"></i>
                             <?= $is_camp ? 'Register for Camp' : 'Enroll in Program' ?>
+                        </button>
+                    </form>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- ============================================
+         SECTION 4: LONG TERM DEVELOPMENT PROGRAMS
+         ============================================ -->
+    <?php if (count($dev_products) > 0): ?>
+    <div class="booking-section dev-programs-section">
+        <div class="section-header-bar">
+            <div class="section-title-group">
+                <h2 class="section-title"><i class="fas fa-chart-line"></i> Long Term Development Programs</h2>
+                <p class="section-subtitle">Personalized multi-week coaching programs with dedicated development coaches</p>
+            </div>
+        </div>
+        
+        <div class="programs-cards-grid">
+            <?php foreach ($dev_products as $dp):
+                $dp_is_goalie = stripos($dp['name'], 'goalie') !== false;
+                $dp_type = $dp_is_goalie ? 'goalie_dev' : 'player_dev';
+                $dp_enrolled = in_array((int)$dp['id'], $dev_active_template_ids);
+                $dp_icon = $dp_is_goalie ? 'fa-shield-alt' : 'fa-hockey-puck';
+                $dp_color = $dp_is_goalie ? '#3b82f6' : '#10b981';
+            ?>
+            <div class="program-card dev-product-card" data-program-id="dev-<?= (int)$dp['id'] ?>">
+                <div class="program-type-badge" style="background:rgba(107,70,193,0.15);color:#8B5CF6;">
+                    <i class="fas <?= $dp_icon ?>"></i> Long Term Development
+                </div>
+                <div class="program-card-header">
+                    <h3 class="program-name"><?= htmlspecialchars($dp['name']) ?></h3>
+                    <?php if (!empty($dp['duration_weeks'])): ?>
+                    <span class="program-dates">
+                        <i class="fas fa-clock"></i> <?= (int)$dp['duration_weeks'] ?> week program
+                    </span>
+                    <?php endif; ?>
+                </div>
+                <div class="program-card-body">
+                    <?php if (!empty($dp['description'])): ?>
+                    <p class="program-description"><?= htmlspecialchars($dp['description']) ?></p>
+                    <?php endif; ?>
+                    <ul class="program-details-list">
+                        <li><i class="fas fa-clipboard-list"></i> Personalized drill programs</li>
+                        <li><i class="fas fa-video"></i> Video analysis & feedback</li>
+                        <li><i class="fas fa-calendar-check"></i> 1-on-1 coaching sessions</li>
+                    </ul>
+                </div>
+                <div class="program-card-footer">
+                    <div class="program-pricing">
+                        <span class="program-price"><?= $dp['price'] > 0 ? '$' . number_format($dp['price'], 2) : 'Free' ?></span>
+                    </div>
+                    <?php if ($dp_enrolled): ?>
+                    <button type="button" class="btn-register-program" disabled style="background:rgba(0,255,136,0.1);color:#00ff88;cursor:default;opacity:0.8;">
+                        <i class="fas fa-check-circle"></i> Currently Enrolled
+                    </button>
+                    <?php else: ?>
+                    <form method="POST" action="process_booking.php" style="display:inline;">
+                        <?= csrfTokenInput() ?>
+                        <input type="hidden" name="action" value="register_dev_program">
+                        <input type="hidden" name="program_type" value="<?= htmlspecialchars($dp_type) ?>">
+                        <input type="hidden" name="template_id" value="<?= (int)$dp['id'] ?>">
+                        <button type="submit" class="btn-register-program">
+                            <i class="fas fa-chart-line"></i> Enroll in Program
                         </button>
                     </form>
                     <?php endif; ?>

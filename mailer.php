@@ -206,8 +206,53 @@ function sendEmail($to, $type, $data) {
         <a href='https://arcticwolves.ca' style='color: $textMuted; text-decoration: none;'>arcticwolves.ca</a>
     </div>";
 
+    // Check for custom email template in database
+    $customTemplate = null;
+    try {
+        global $pdo;
+        if (isset($pdo) && $pdo) {
+            $ctStmt = $pdo->prepare("SELECT subject, body_text, body_html, is_custom FROM email_templates WHERE template_type = ? AND is_custom = 1 LIMIT 1");
+            $ctStmt->execute([$type]);
+            $customTemplate = $ctStmt->fetch(PDO::FETCH_ASSOC);
+        }
+    } catch (Exception $e) { /* table may not exist yet */ }
+    
+    if ($customTemplate && !empty($customTemplate['is_custom'])) {
+        // Use custom template - replace placeholders with data values
+        $subject = $customTemplate['subject'];
+        $bodyContent = !empty($customTemplate['body_html']) ? $customTemplate['body_html'] : $customTemplate['body_text'];
+        
+        // Replace common placeholders
+        $placeholders = [];
+        if (is_array($data)) {
+            foreach ($data as $key => $val) {
+                if (is_string($val) || is_numeric($val)) {
+                    $placeholders['{' . $key . '}'] = htmlspecialchars((string)$val, ENT_QUOTES, 'UTF-8');
+                }
+            }
+        }
+        $subject = strtr($subject, $placeholders);
+        $bodyContent = strtr($bodyContent, $placeholders);
+        
+        if (!empty($customTemplate['body_html'])) {
+            // Full HTML body - use as-is (already has placeholder values escaped)
+            $body = $bodyContent;
+        } else {
+            // Wrap plain text in standard email layout with proper HTML escaping
+            $bodyHtml = nl2br(htmlspecialchars($bodyContent, ENT_QUOTES, 'UTF-8'));
+            $body = "
+            <div style='font-family: Arial, sans-serif; background: $bg; color: #fff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto;'>
+                $header
+                <h2 style='color: $primary; margin-top: 0;'>$subject</h2>
+                <div style='background: $cardBg; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid $primary;'>
+                    <p style='color: #e2e8f0; margin: 0; line-height: 1.6;'>$bodyHtml</p>
+                </div>
+                $footer
+            </div>";
+        }
+    }
     // 1. VERIFICATION CODE (Self-Registration)
-    if ($type == 'verification') {
+    elseif ($type == 'verification') {
         $subject = "Verify Your Account";
         $code = $data['code'] ?? 'Error';
         $name = htmlspecialchars($data['name'] ?? 'Athlete');

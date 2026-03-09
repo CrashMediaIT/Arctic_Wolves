@@ -796,6 +796,92 @@ if ($action == 'update_training_session') {
     exit();
 }
 
+// =========================================================
+// LONG TERM DEVELOPMENT PROGRAM CRUD
+// =========================================================
+
+if ($action == 'create_dev_program') {
+    header('Content-Type: application/json');
+    try {
+        $jsonInput = json_decode(file_get_contents('php://input'), true);
+        $name = trim($jsonInput['name'] ?? '');
+        $description = trim($jsonInput['description'] ?? '');
+        $price = floatval($jsonInput['price'] ?? 0);
+        $durationWeeks = intval($jsonInput['duration_weeks'] ?? 4);
+        $isActive = intval($jsonInput['is_active'] ?? 1);
+        $showOnLanding = intval($jsonInput['show_on_landing'] ?? 1);
+        
+        if (empty($name)) {
+            echo json_encode(['success' => false, 'message' => 'Program name is required']);
+            exit();
+        }
+        if ($durationWeeks < 1 || $durationWeeks > 52) {
+            echo json_encode(['success' => false, 'message' => 'Duration must be between 1 and 52 weeks']);
+            exit();
+        }
+        
+        $stmt = $pdo->prepare("
+            INSERT INTO training_session_templates 
+            (name, description, price, duration_minutes, max_participants, session_type, is_active, show_on_landing, is_dev_program, duration_weeks, created_by) 
+            VALUES (?, ?, ?, 60, 1, 'on_ice', ?, ?, 1, ?, ?)
+        ");
+        $stmt->execute([$name, $description, $price, $isActive, $showOnLanding, $durationWeeks, $user_id]);
+        $newId = $pdo->lastInsertId();
+        
+        Auditor::log($pdo, $user_id, 'create', 'training_session_templates', $newId, 
+            ['action' => 'create_dev_program', 'name' => $name, 'duration_weeks' => $durationWeeks]);
+        
+        echo json_encode(['success' => true, 'message' => 'Development program created!', 'id' => $newId]);
+    } catch (Exception $e) {
+        ErrorLogger::error("Create dev program error: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+    exit();
+}
+
+if ($action == 'update_dev_program') {
+    header('Content-Type: application/json');
+    try {
+        $jsonInput = json_decode(file_get_contents('php://input'), true);
+        $id = intval($jsonInput['id'] ?? 0);
+        $name = trim($jsonInput['name'] ?? '');
+        $description = trim($jsonInput['description'] ?? '');
+        $price = floatval($jsonInput['price'] ?? 0);
+        $durationWeeks = intval($jsonInput['duration_weeks'] ?? 4);
+        $isActive = intval($jsonInput['is_active'] ?? 1);
+        $showOnLanding = intval($jsonInput['show_on_landing'] ?? 1);
+        
+        if (!$id) {
+            echo json_encode(['success' => false, 'message' => 'Invalid program ID']);
+            exit();
+        }
+        if (empty($name)) {
+            echo json_encode(['success' => false, 'message' => 'Program name is required']);
+            exit();
+        }
+        if ($durationWeeks < 1 || $durationWeeks > 52) {
+            echo json_encode(['success' => false, 'message' => 'Duration must be between 1 and 52 weeks']);
+            exit();
+        }
+        
+        $stmt = $pdo->prepare("
+            UPDATE training_session_templates 
+            SET name = ?, description = ?, price = ?, duration_weeks = ?, is_active = ?, show_on_landing = ?
+            WHERE id = ? AND is_dev_program = 1
+        ");
+        $stmt->execute([$name, $description, $price, $durationWeeks, $isActive, $showOnLanding, $id]);
+        
+        Auditor::log($pdo, $user_id, 'update', 'training_session_templates', $id, 
+            ['action' => 'update_dev_program', 'name' => $name, 'duration_weeks' => $durationWeeks]);
+        
+        echo json_encode(['success' => true, 'message' => 'Development program updated!']);
+    } catch (Exception $e) {
+        ErrorLogger::error("Update dev program error: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+    exit();
+}
+
 // Add session date to existing session template
 if ($action == 'add_session_date') {
     $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
