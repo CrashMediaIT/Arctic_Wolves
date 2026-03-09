@@ -666,11 +666,46 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
                 $tmpl_query = $pdo->query("SELECT * FROM development_notification_templates ORDER BY program_type");
                 $dev_templates = $tmpl_query->fetchAll(PDO::FETCH_ASSOC);
             } catch (PDOException $e) {
-                // Table may not exist yet
+                // Table may not exist yet - try to create it
+                try {
+                    $pdo->exec("
+                        CREATE TABLE IF NOT EXISTS `development_notification_templates` (
+                            `id` INT AUTO_INCREMENT PRIMARY KEY,
+                            `program_type` ENUM('goalie_dev', 'player_dev') NOT NULL,
+                            `subject` VARCHAR(255) NOT NULL DEFAULT 'New Development Program Registration',
+                            `body` TEXT NOT NULL,
+                            `notification_email` VARCHAR(255) DEFAULT NULL,
+                            `program_duration_weeks` INT DEFAULT NULL,
+                            `updated_by` INT DEFAULT NULL,
+                            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                            UNIQUE KEY `unique_program_type` (`program_type`)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                    ");
+                } catch (PDOException $e2) { /* ignore */ }
+            }
+
+            // Ensure new columns exist on older installations
+            try {
+                $pdo->exec("ALTER TABLE `development_notification_templates` ADD COLUMN IF NOT EXISTS `notification_email` VARCHAR(255) DEFAULT NULL AFTER `body`");
+                $pdo->exec("ALTER TABLE `development_notification_templates` ADD COLUMN IF NOT EXISTS `program_duration_weeks` INT DEFAULT NULL AFTER `notification_email`");
+            } catch (PDOException $e) { /* columns may already exist or DB doesn't support IF NOT EXISTS */ }
+
+            // If table exists but is empty, insert default templates
+            if (empty($dev_templates)) {
+                try {
+                    $pdo->exec("
+                        INSERT IGNORE INTO `development_notification_templates` (`program_type`, `subject`, `body`) VALUES
+                        ('goalie_dev', 'New Goalie Development Program Registration', 'A new athlete has registered for the Long Term Goalie Development program. Please review and arrange communication with the enrollee.'),
+                        ('player_dev', 'New Player Development Program Registration', 'A new athlete has registered for the Long Term Player Development program. Please review and arrange communication with the enrollee.')
+                    ");
+                    $tmpl_query = $pdo->query("SELECT * FROM development_notification_templates ORDER BY program_type");
+                    $dev_templates = $tmpl_query->fetchAll(PDO::FETCH_ASSOC);
+                } catch (PDOException $e) { /* ignore */ }
             }
             ?>
             <?php if (empty($dev_templates)): ?>
-                <p style="color: var(--text-dim);">No notification templates found. Run the database migration to create default templates.</p>
+                <p style="color: var(--text-dim);">Unable to load notification templates. Please check the database connection and try refreshing the page.</p>
             <?php else: ?>
                 <?php foreach ($dev_templates as $tmpl): ?>
                 <div style="background: var(--bg-main, #0d1117); border: 1px solid var(--border, #2d2d44); border-radius: 8px; padding: 20px; margin-bottom: 16px;">
@@ -678,6 +713,20 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
                         <?= $tmpl['program_type'] === 'goalie_dev' ? '<i class="fas fa-shield-alt" style="color:#3b82f6;"></i> Goalie Development' : '<i class="fas fa-hockey-puck" style="color:#10b981;"></i> Player Development' ?>
                     </h4>
                     <form onsubmit="saveDevNotificationTemplate(event, <?= (int)$tmpl['id'] ?>)">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                            <div>
+                                <label style="display:block;font-size:13px;font-weight:600;color:var(--text-white);margin-bottom:6px;"><i class="fas fa-envelope" style="color:#8B5CF6;margin-right:4px;"></i> Notification Email</label>
+                                <input type="email" id="dev-tmpl-email-<?= (int)$tmpl['id'] ?>" value="<?= htmlspecialchars($tmpl['notification_email'] ?? '') ?>" placeholder="e.g. coach@arcticwolves.ca"
+                                       style="width:100%;padding:10px 14px;background:var(--bg-card,#1a1a2e);border:1px solid var(--border,#2d2d44);border-radius:8px;color:var(--text-white,#e2e8f0);font-size:13px;">
+                                <span style="font-size:11px;color:var(--text-dim);">Who gets emailed when an athlete registers</span>
+                            </div>
+                            <div>
+                                <label style="display:block;font-size:13px;font-weight:600;color:var(--text-white);margin-bottom:6px;"><i class="fas fa-clock" style="color:#f59e0b;margin-right:4px;"></i> Program Duration (weeks)</label>
+                                <input type="number" id="dev-tmpl-duration-<?= (int)$tmpl['id'] ?>" value="<?= $tmpl['program_duration_weeks'] ?? '' ?>" placeholder="e.g. 4" min="1" max="52"
+                                       style="width:100%;padding:10px 14px;background:var(--bg-card,#1a1a2e);border:1px solid var(--border,#2d2d44);border-radius:8px;color:var(--text-white,#e2e8f0);font-size:13px;">
+                                <span style="font-size:11px;color:var(--text-dim);">How long the program runs (e.g. 4 weeks)</span>
+                            </div>
+                        </div>
                         <div style="margin-bottom: 12px;">
                             <label style="display:block;font-size:13px;font-weight:600;color:var(--text-white);margin-bottom:6px;">Subject</label>
                             <input type="text" id="dev-tmpl-subject-<?= (int)$tmpl['id'] ?>" value="<?= htmlspecialchars($tmpl['subject']) ?>" 
@@ -1406,6 +1455,8 @@ function saveDevNotificationTemplate(event, templateId) {
     event.preventDefault();
     const subject = document.getElementById('dev-tmpl-subject-' + templateId).value.trim();
     const body = document.getElementById('dev-tmpl-body-' + templateId).value.trim();
+    const notificationEmail = document.getElementById('dev-tmpl-email-' + templateId).value.trim();
+    const durationWeeks = document.getElementById('dev-tmpl-duration-' + templateId).value.trim();
     if (!subject || !body) { alert('Subject and body are required.'); return; }
     
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
@@ -1416,7 +1467,7 @@ function saveDevNotificationTemplate(event, templateId) {
             'X-Requested-With': 'XMLHttpRequest',
             'X-CSRF-Token': csrfToken
         },
-        body: JSON.stringify({ action: 'update_notification_template', template_id: templateId, subject: subject, body: body })
+        body: JSON.stringify({ action: 'update_notification_template', template_id: templateId, subject: subject, body: body, notification_email: notificationEmail, program_duration_weeks: durationWeeks ? parseInt(durationWeeks) : null })
     })
     .then(r => r.json())
     .then(data => {

@@ -68,7 +68,9 @@ test.describe('Scoreboard staff-only access', () => {
   test('scoreboard.php requires login session', () => {
     const content = readFile('scoreboard.php');
     expect(content).toContain("if (!isset($_SESSION['logged_in']))");
-    expect(content).toContain('login.php');
+    // Scoreboard has its own inline login (PIN + user login) instead of redirecting to login.php
+    expect(content).toContain('scoreboard_pin_login');
+    expect(content).toContain('scoreboard_user_login');
   });
 
   test('scoreboard.php includes role checks for all staff roles', () => {
@@ -79,6 +81,36 @@ test.describe('Scoreboard staff-only access', () => {
     expect(content).toContain('$isFrontDesk');
     expect(content).toContain('$isHR');
     expect(content).toContain('$isAccounting');
+  });
+
+  test('scoreboard.php has PIN login support', () => {
+    const content = readFile('scoreboard.php');
+    expect(content).toContain('scoreboard_pin_login');
+    expect(content).toContain('staff_pins');
+    expect(content).toContain('pin_hash');
+    expect(content).toContain('password_verify');
+  });
+
+  test('scoreboard.php has user login support', () => {
+    const content = readFile('scoreboard.php');
+    expect(content).toContain('scoreboard_user_login');
+    expect(content).toContain('password_hash');
+    expect(content).toContain("name=\"email\"");
+    expect(content).toContain("name=\"password\"");
+  });
+
+  test('scoreboard.php login validates CSRF token', () => {
+    const content = readFile('scoreboard.php');
+    expect(content).toContain('csrf_token');
+    expect(content).toContain('validateCSRFToken');
+  });
+
+  test('login.php redirects to scoreboard.php when on scoreboard subdomain', () => {
+    const content = readFile('login.php');
+    expect(content).toContain('isScoreboardSubdomain');
+    // After login, scoreboard subdomain should redirect to scoreboard.php
+    const scoreboardRedirectIdx = content.indexOf("header(\"Location: scoreboard.php\")");
+    expect(scoreboardRedirectIdx).toBeGreaterThan(-1);
   });
 });
 

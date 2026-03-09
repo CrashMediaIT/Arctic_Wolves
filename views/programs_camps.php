@@ -87,6 +87,41 @@ $purchased_package_ids = $purchased_stmt->fetchAll(PDO::FETCH_COLUMN);
 
 // Check if user is staff (admin, coach, front_desk_staff)
 $is_staff = in_array($user_role, ['admin', 'coach', 'coach_plus', 'team_coach', 'front_desk_staff']);
+
+// Load development program pricing and enrollment status
+$default_goalie_dev_price = 0;
+$default_player_dev_price = 0;
+$goalie_dev_price = $default_goalie_dev_price;
+$player_dev_price = $default_player_dev_price;
+$goalie_dev_template_id = 0;
+$player_dev_template_id = 0;
+try {
+    $goalie_dev_tpl = $pdo->query("SELECT id, price FROM training_session_templates WHERE name = 'Goalie Development Program' AND is_active = 1 LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+    $player_dev_tpl = $pdo->query("SELECT id, price FROM training_session_templates WHERE name = 'Player Development Program' AND is_active = 1 LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+    $goalie_dev_price = $goalie_dev_tpl['price'] ?? $default_goalie_dev_price;
+    $player_dev_price = $player_dev_tpl['price'] ?? $default_player_dev_price;
+    $goalie_dev_template_id = $goalie_dev_tpl['id'] ?? 0;
+    $player_dev_template_id = $player_dev_tpl['id'] ?? 0;
+} catch (PDOException $e) { /* templates may not exist */ }
+
+$dev_enrolled_types = [];
+try {
+    $dev_enroll_stmt = $pdo->prepare("SELECT program_type FROM development_program_enrollments WHERE athlete_id = ?");
+    $dev_enroll_stmt->execute([intval($_SESSION['user_id'])]);
+    $dev_enrolled_types = $dev_enroll_stmt->fetchAll(PDO::FETCH_COLUMN);
+} catch (PDOException $e) { /* table may not exist yet */ }
+
+// Load program duration settings from notification templates
+$goalie_dev_duration_weeks = null;
+$player_dev_duration_weeks = null;
+try {
+    $dur_stmt = $pdo->query("SELECT program_type, program_duration_weeks FROM development_notification_templates");
+    $dur_rows = $dur_stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($dur_rows as $dr) {
+        if ($dr['program_type'] === 'goalie_dev') $goalie_dev_duration_weeks = $dr['program_duration_weeks'];
+        if ($dr['program_type'] === 'player_dev') $player_dev_duration_weeks = $dr['program_duration_weeks'];
+    }
+} catch (PDOException $e) { /* table/column may not exist */ }
 ?>
 
 <div class="programs-camps-container">
@@ -128,6 +163,74 @@ $is_staff = in_array($user_role, ['admin', 'coach', 'coach_plus', 'team_coach', 
                 <button class="btn-icon" onclick="changeCampMonth(1)"><i class="fas fa-chevron-right"></i></button>
             </div>
             <div class="camp-calendar-grid" id="camp-calendar-grid"></div>
+        </div>
+    </div>
+
+    <!-- Development Programs Section -->
+    <div class="dev-programs-section" style="margin-bottom: 32px;">
+        <h3 style="font-size: 18px; font-weight: 700; color: #e2e8f0; margin-bottom: 16px;"><i class="fas fa-hockey-puck" style="margin-right: 8px;"></i> Development Programs</h3>
+        <p style="color: #94a3b8; font-size: 14px; margin-bottom: 20px;">Long-term personalized development programs with dedicated coaching — specially tailored to each athlete</p>
+        <div class="programs-grid">
+            <div class="program-card" style="border-color: rgba(59,130,246,0.3);">
+                <div class="program-header" style="background: linear-gradient(135deg, rgba(59,130,246,0.2), rgba(59,130,246,0.05)); padding: 24px;">
+                    <span class="type-badge" style="background: rgba(59,130,246,0.15); color: #3b82f6; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700;"><i class="fas fa-shield-alt"></i> Goalie Development</span>
+                    <h3 style="margin-top: 12px;">Long Term Goalie Development</h3>
+                    <?php if ($goalie_dev_duration_weeks): ?>
+                    <span style="display:inline-flex;align-items:center;gap:4px;margin-top:8px;font-size:13px;color:#3b82f6;"><i class="fas fa-clock"></i> <?= (int)$goalie_dev_duration_weeks ?> week program</span>
+                    <?php endif; ?>
+                </div>
+                <div class="program-body" style="padding: 24px;">
+                    <div class="program-description">Comprehensive goalie development program — technique, positioning, movement, and game sense. Work directly with our goalie development coaches through personalized drill programs and video feedback.</div>
+                    <div class="program-details" style="margin-top: 16px;">
+                        <div class="detail-item"><i class="fas fa-clipboard-list"></i> <span>Personalized drill programs</span></div>
+                        <div class="detail-item"><i class="fas fa-video"></i> <span>Video analysis & feedback</span></div>
+                        <div class="detail-item"><i class="fas fa-comments"></i> <span>Direct coach communication</span></div>
+                        <div class="detail-item"><i class="fas fa-user-cog"></i> <span>Tailored to each athlete</span></div>
+                    </div>
+                </div>
+                <div class="program-footer" style="padding: 16px 24px; border-top: 1px solid #1e293b; display: flex; justify-content: space-between; align-items: center;">
+                    <div class="program-price" style="font-size: 20px; font-weight: 700; color: #e2e8f0;"><?= $goalie_dev_price > 0 ? '$' . number_format($goalie_dev_price, 2) : 'Free' ?></div>
+                    <?php if (in_array('goalie_dev', $dev_enrolled_types)): ?>
+                        <span style="padding:10px 20px;background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);border-radius:8px;font-weight:600;font-size:13px;display:inline-flex;align-items:center;gap:6px;cursor:default;">
+                            <i class="fas fa-check"></i> Enrolled
+                        </span>
+                    <?php else: ?>
+                        <button type="button" class="btn-register" data-action="register-dev-program" data-program-type="goalie_dev" data-template-id="<?= (int)$goalie_dev_template_id ?>" style="padding:10px 20px;background:var(--primary,#6B46C1);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+                            <i class="fas fa-shopping-cart"></i> Enroll<?= $goalie_dev_price > 0 ? ' & Pay' : '' ?>
+                        </button>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <div class="program-card" style="border-color: rgba(16,185,129,0.3);">
+                <div class="program-header" style="background: linear-gradient(135deg, rgba(16,185,129,0.2), rgba(16,185,129,0.05)); padding: 24px;">
+                    <span class="type-badge" style="background: rgba(16,185,129,0.15); color: #10b981; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700;"><i class="fas fa-hockey-puck"></i> Player Development</span>
+                    <h3 style="margin-top: 12px;">Long Term Player Development</h3>
+                    <?php if ($player_dev_duration_weeks): ?>
+                    <span style="display:inline-flex;align-items:center;gap:4px;margin-top:8px;font-size:13px;color:#10b981;"><i class="fas fa-clock"></i> <?= (int)$player_dev_duration_weeks ?> week program</span>
+                    <?php endif; ?>
+                </div>
+                <div class="program-body" style="padding: 24px;">
+                    <div class="program-description">Structured long-term development for skaters — skating technique, shooting, puck handling, hockey IQ, and on-ice decision making. Receive personalized coaching through drill programs and video analysis.</div>
+                    <div class="program-details" style="margin-top: 16px;">
+                        <div class="detail-item"><i class="fas fa-clipboard-list"></i> <span>Personalized drill programs</span></div>
+                        <div class="detail-item"><i class="fas fa-video"></i> <span>Video analysis & feedback</span></div>
+                        <div class="detail-item"><i class="fas fa-comments"></i> <span>Direct coach communication</span></div>
+                        <div class="detail-item"><i class="fas fa-user-cog"></i> <span>Tailored to each athlete</span></div>
+                    </div>
+                </div>
+                <div class="program-footer" style="padding: 16px 24px; border-top: 1px solid #1e293b; display: flex; justify-content: space-between; align-items: center;">
+                    <div class="program-price" style="font-size: 20px; font-weight: 700; color: #e2e8f0;"><?= $player_dev_price > 0 ? '$' . number_format($player_dev_price, 2) : 'Free' ?></div>
+                    <?php if (in_array('player_dev', $dev_enrolled_types)): ?>
+                        <span style="padding:10px 20px;background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);border-radius:8px;font-weight:600;font-size:13px;display:inline-flex;align-items:center;gap:6px;cursor:default;">
+                            <i class="fas fa-check"></i> Enrolled
+                        </span>
+                    <?php else: ?>
+                        <button type="button" class="btn-register" data-action="register-dev-program" data-program-type="player_dev" data-template-id="<?= (int)$player_dev_template_id ?>" style="padding:10px 20px;background:var(--primary,#6B46C1);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+                            <i class="fas fa-shopping-cart"></i> Enroll<?= $player_dev_price > 0 ? ' & Pay' : '' ?>
+                        </button>
+                    <?php endif; ?>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1287,6 +1390,38 @@ function escHtml(str) {
     div.appendChild(document.createTextNode(str || ''));
     return div.innerHTML;
 }
+
+// Development program enrollment handler
+document.addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-action="register-dev-program"]');
+    if (!btn) return;
+    var programType = btn.getAttribute('data-program-type');
+    var templateId = btn.getAttribute('data-template-id');
+    if (!programType || !templateId || !/^\d+$/.test(templateId)) {
+        alert('Invalid program. Please refresh and try again.');
+        return;
+    }
+    var csrfInput = document.querySelector('input[name="csrf_token"]');
+    var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    var csrfToken = csrfInput ? csrfInput.value : (csrfMeta ? csrfMeta.content : '');
+    if (!csrfToken) {
+        alert('Security token missing. Please refresh the page.');
+        return;
+    }
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = 'process_booking.php';
+    var fields = {action: 'register_dev_program', program_type: programType, template_id: templateId, csrf_token: csrfToken};
+    for (var key in fields) {
+        var input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = key;
+        input.value = fields[key];
+        form.appendChild(input);
+    }
+    document.body.appendChild(form);
+    form.submit();
+});
 </script>
 
 <?php if ($is_staff): ?>

@@ -140,6 +140,12 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
         }
     }
 
+    // Scoreboard subdomain: redirect to scoreboard.php instead of dashboard
+    if ($isScoreboardSubdomain) {
+        header("Location: scoreboard.php");
+        exit();
+    }
+
     header("Location: dashboard.php");
     exit();
 }

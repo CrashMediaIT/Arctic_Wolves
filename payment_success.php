@@ -152,6 +152,24 @@ try {
                         foreach ($notify_ids as $nid) {
                             $notif_stmt->execute([$nid, 'New Development Program Registration', "Athlete: " . htmlspecialchars($athlete_name, ENT_QUOTES, 'UTF-8') . " has enrolled (paid) in the " . $notif_program_label . "."]);
                         }
+
+                        // Send email to configured notification email address
+                        try {
+                            $tmpl_stmt = $pdo->prepare("SELECT notification_email FROM development_notification_templates WHERE program_type = ?");
+                            $tmpl_stmt->execute([$program_type]);
+                            $tmpl = $tmpl_stmt->fetch(PDO::FETCH_ASSOC);
+                            if (!empty($tmpl['notification_email']) && filter_var($tmpl['notification_email'], FILTER_VALIDATE_EMAIL)) {
+                                if (function_exists('sendEmail')) {
+                                    sendEmail($tmpl['notification_email'], 'notification', [
+                                        'title' => 'New Development Program Registration',
+                                        'message' => "Athlete: " . htmlspecialchars($athlete_name, ENT_QUOTES, 'UTF-8') . " has enrolled (paid) in the " . $notif_program_label . ".",
+                                        'name' => 'Development Program Admin'
+                                    ]);
+                                }
+                            }
+                        } catch (\Throwable $e) {
+                            error_log("Dev program notification email error: " . $e->getMessage());
+                        }
                     } catch (PDOException $ne) { /* notifications table may not exist */ }
 
                     // Send confirmation email

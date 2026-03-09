@@ -147,12 +147,13 @@ function handleRegister($pdo, $user_id, $input) {
     $notify_ids = array_unique(array_merge($coach_ids, $admin_ids));
     
     // Get notification template
-    $tmpl_stmt = $pdo->prepare("SELECT subject, body FROM development_notification_templates WHERE program_type = ?");
+    $tmpl_stmt = $pdo->prepare("SELECT subject, body, notification_email FROM development_notification_templates WHERE program_type = ?");
     $tmpl_stmt->execute([$program_type]);
     $template = $tmpl_stmt->fetch(PDO::FETCH_ASSOC);
     
     $notif_title = $template['subject'] ?? 'New Development Program Registration';
     $notif_body = $template['body'] ?? 'A new athlete has registered for a development program.';
+    $notification_email = $template['notification_email'] ?? null;
     
     // Get athlete name for the notification
     $athlete_stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
@@ -168,6 +169,21 @@ function handleRegister($pdo, $user_id, $input) {
     $notif_stmt = $pdo->prepare("INSERT INTO notifications (user_id, type, title, message, link_url) VALUES (?, 'dev_program_registration', ?, ?, '?page=development_programs')");
     foreach ($notify_ids as $nid) {
         $notif_stmt->execute([$nid, $notif_title, $notif_body]);
+    }
+
+    // Send email to configured notification email address
+    if (!empty($notification_email) && filter_var($notification_email, FILTER_VALIDATE_EMAIL)) {
+        try {
+            if (function_exists('sendEmail')) {
+                sendEmail($notification_email, 'notification', [
+                    'title' => $notif_title,
+                    'message' => $notif_body,
+                    'name' => 'Development Program Admin'
+                ]);
+            }
+        } catch (\Throwable $e) {
+            error_log("Dev program notification email error: " . $e->getMessage());
+        }
     }
     
     echo json_encode(['success' => true]);
@@ -328,14 +344,22 @@ function handleUpdateNotificationTemplate($pdo, $user_id, $input) {
     $template_id = (int)($input['template_id'] ?? 0);
     $subject = trim($input['subject'] ?? '');
     $body = trim($input['body'] ?? '');
+    $notification_email = trim($input['notification_email'] ?? '');
+    $program_duration_weeks = isset($input['program_duration_weeks']) && $input['program_duration_weeks'] !== null && $input['program_duration_weeks'] !== '' ? (int)$input['program_duration_weeks'] : null;
     
     if (!$template_id || !$subject || !$body) {
         echo json_encode(['success' => false, 'error' => 'Missing required fields']);
         return;
     }
+
+    // Validate email if provided
+    if ($notification_email !== '' && !filter_var($notification_email, FILTER_VALIDATE_EMAIL)) {
+        echo json_encode(['success' => false, 'error' => 'Invalid notification email address']);
+        return;
+    }
     
-    $stmt = $pdo->prepare("UPDATE development_notification_templates SET subject = ?, body = ?, updated_by = ? WHERE id = ?");
-    $stmt->execute([$subject, $body, $user_id, $template_id]);
+    $stmt = $pdo->prepare("UPDATE development_notification_templates SET subject = ?, body = ?, notification_email = ?, program_duration_weeks = ?, updated_by = ? WHERE id = ?");
+    $stmt->execute([$subject, $body, $notification_email ?: null, $program_duration_weeks, $user_id, $template_id]);
     
     echo json_encode(['success' => true]);
 }
