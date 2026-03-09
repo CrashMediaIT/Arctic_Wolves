@@ -1242,7 +1242,11 @@ test.describe('Scrollable layout and dynamic sizing', () => {
 
   test('CSS hides button text labels at 480px breakpoint', () => {
     const content = readFile('css/scoreboard.css');
-    expect(content).toContain('.sb-topbar-actions .sb-btn span { display: none; }');
+    // Verify the rule exists within the 480px media query
+    const idx480 = content.indexOf('@media (max-width: 480px)');
+    expect(idx480).toBeGreaterThan(-1);
+    const section480 = content.substring(idx480, idx480 + 500);
+    expect(section480).toContain('.sb-topbar-actions .sb-btn span { display: none; }');
   });
 });
 
