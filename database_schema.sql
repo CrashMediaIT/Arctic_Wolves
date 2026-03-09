@@ -4811,6 +4811,8 @@ CREATE TABLE IF NOT EXISTS `development_program_enrollments` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `athlete_id` INT NOT NULL,
     `program_type` ENUM('goalie_dev', 'player_dev') NOT NULL,
+    `program_name` VARCHAR(255) DEFAULT NULL COMMENT 'Name of the dev program product from training_session_templates',
+    `template_id` INT DEFAULT NULL COMMENT 'Reference to the training_session_templates product',
     `status` ENUM('active', 'completed', 'paused', 'cancelled') DEFAULT 'active',
     `enrolled_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `start_date` DATE DEFAULT NULL COMMENT 'Auto-calculated program start date',
@@ -4818,10 +4820,10 @@ CREATE TABLE IF NOT EXISTS `development_program_enrollments` (
     `completed_at` TIMESTAMP NULL DEFAULT NULL,
     `notes` TEXT DEFAULT NULL,
     FOREIGN KEY (`athlete_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
-    UNIQUE KEY `unique_athlete_program` (`athlete_id`, `program_type`),
     INDEX `idx_athlete` (`athlete_id`),
     INDEX `idx_program_type` (`program_type`),
-    INDEX `idx_status` (`status`)
+    INDEX `idx_status` (`status`),
+    INDEX `idx_template` (`template_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Development program drills (assigned to athletes in a program)

@@ -126,32 +126,41 @@ function handleRegister($pdo, $user_id, $input) {
         return;
     }
     
-    // Check if already enrolled
-    $check = $pdo->prepare("SELECT id FROM development_program_enrollments WHERE athlete_id = ? AND program_type = ?");
-    $check->execute([$user_id, $program_type]);
+    $template_id = intval($input['template_id'] ?? 0);
+    
+    // Check if already enrolled in an ACTIVE program of the same type with the same template
+    $check = $pdo->prepare("SELECT id FROM development_program_enrollments WHERE athlete_id = ? AND program_type = ? AND status = 'active'" . ($template_id ? " AND template_id = ?" : ""));
+    $check_params = [$user_id, $program_type];
+    if ($template_id) $check_params[] = $template_id;
+    $check->execute($check_params);
     if ($check->fetch()) {
-        echo json_encode(['success' => false, 'error' => 'Already enrolled in this program']);
+        echo json_encode(['success' => false, 'error' => 'Already enrolled in an active program of this type']);
         return;
     }
     
-    // Get duration from dev program template to auto-calculate dates
+    // Get program name and duration from template
+    $program_name = null;
     $duration_weeks = null;
-    try {
-        $dur_stmt = $pdo->prepare("SELECT program_duration_weeks FROM development_notification_templates WHERE program_type = ?");
-        $dur_stmt->execute([$program_type]);
-        $dur_row = $dur_stmt->fetch(PDO::FETCH_ASSOC);
-        $duration_weeks = $dur_row['program_duration_weeks'] ?? null;
-    } catch (PDOException $e) { /* table may not exist */ }
+    if ($template_id) {
+        try {
+            $tpl_stmt = $pdo->prepare("SELECT name, duration_weeks FROM training_session_templates WHERE id = ? AND is_dev_program = 1");
+            $tpl_stmt->execute([$template_id]);
+            $tpl_row = $tpl_stmt->fetch(PDO::FETCH_ASSOC);
+            if ($tpl_row) {
+                $program_name = $tpl_row['name'];
+                $duration_weeks = $tpl_row['duration_weeks'];
+            }
+        } catch (PDOException $e) { /* column may not exist */ }
+    }
     
-    // Also check training_session_templates for duration_weeks
+    // Fallback duration from notification templates
     if (!$duration_weeks) {
         try {
-            $tpl_name = $program_type === 'goalie_dev' ? 'Goalie Development Program' : 'Player Development Program';
-            $tpl_dur = $pdo->prepare("SELECT duration_weeks FROM training_session_templates WHERE name = ? AND is_dev_program = 1 LIMIT 1");
-            $tpl_dur->execute([$tpl_name]);
-            $tpl_dur_row = $tpl_dur->fetch(PDO::FETCH_ASSOC);
-            $duration_weeks = $tpl_dur_row['duration_weeks'] ?? null;
-        } catch (PDOException $e) { /* column may not exist */ }
+            $dur_stmt = $pdo->prepare("SELECT program_duration_weeks FROM development_notification_templates WHERE program_type = ?");
+            $dur_stmt->execute([$program_type]);
+            $dur_row = $dur_stmt->fetch(PDO::FETCH_ASSOC);
+            $duration_weeks = $dur_row['program_duration_weeks'] ?? null;
+        } catch (PDOException $e) { /* table may not exist */ }
     }
     
     // Create enrollment with auto-calculated dates
@@ -159,8 +168,8 @@ function handleRegister($pdo, $user_id, $input) {
     $duration_weeks = $duration_weeks !== null ? max(1, min(52, intval($duration_weeks))) : null;
     $end_date = $duration_weeks ? date('Y-m-d', strtotime("+{$duration_weeks} weeks")) : null;
     
-    $stmt = $pdo->prepare("INSERT INTO development_program_enrollments (athlete_id, program_type, start_date, end_date) VALUES (?, ?, ?, ?)");
-    $stmt->execute([$user_id, $program_type, $start_date, $end_date]);
+    $stmt = $pdo->prepare("INSERT INTO development_program_enrollments (athlete_id, program_type, program_name, template_id, start_date, end_date) VALUES (?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$user_id, $program_type, $program_name, $template_id ?: null, $start_date, $end_date]);
     
     // Send notification to dev coaches with the matching role
     $role_to_notify = $program_type; // goalie_dev or player_dev

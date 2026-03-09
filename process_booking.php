@@ -173,9 +173,9 @@ if ($action === 'register_dev_program') {
             die("Invalid template ID.");
         }
 
-        // Check if already enrolled
-        $dup_check = $pdo->prepare("SELECT id FROM development_program_enrollments WHERE athlete_id = ? AND program_type = ?");
-        $dup_check->execute([$user_id, $program_type]);
+        // Check if already enrolled in an ACTIVE program of same type and template
+        $dup_check = $pdo->prepare("SELECT id FROM development_program_enrollments WHERE athlete_id = ? AND program_type = ? AND template_id = ? AND status = 'active'");
+        $dup_check->execute([$user_id, $program_type, $template_id]);
         if ($dup_check->fetch()) {
             header("Location: dashboard.php?page=personal_development_programs&error=already_enrolled");
             exit();
@@ -251,8 +251,8 @@ if ($action === 'register_dev_program') {
             $duration_weeks = $duration_weeks !== null ? max(1, min(52, intval($duration_weeks))) : null;
             $end_date = $duration_weeks ? date('Y-m-d', strtotime("+{$duration_weeks} weeks")) : null;
             
-            $stmt = $pdo->prepare("INSERT INTO development_program_enrollments (athlete_id, program_type, start_date, end_date) VALUES (?, ?, ?, ?)");
-            $stmt->execute([$user_id, $program_type, $start_date, $end_date]);
+            $stmt = $pdo->prepare("INSERT INTO development_program_enrollments (athlete_id, program_type, program_name, template_id, start_date, end_date) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$user_id, $program_type, $template['name'] ?? null, $template_id, $start_date, $end_date]);
 
             Auditor::log($pdo, $user_id, 'create', 'development_program_enrollments', $pdo->lastInsertId(), [
                 'action' => 'register_dev_program', 'program_type' => $program_type, 'amount' => 0
