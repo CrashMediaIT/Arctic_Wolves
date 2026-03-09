@@ -27,9 +27,10 @@ if ($isPlayerDev || $isAdmin) $program_types[] = 'player_dev';
 
 $placeholders = implode(',', array_fill(0, count($program_types), '?'));
 
-// Get enrolled athletes
+// Get enrolled athletes (ACTIVE programs)
 $athletes_stmt = $pdo->prepare("
     SELECT dpe.*, u.first_name, u.last_name, u.email,
+           dpe.program_name, dpe.template_id, dpe.start_date, dpe.end_date,
            (SELECT COUNT(*) FROM development_program_drills dpd WHERE dpd.enrollment_id = dpe.id) as drill_count,
            (SELECT COUNT(*) FROM development_program_messages dpm WHERE dpm.enrollment_id = dpe.id) as message_count,
            (SELECT COUNT(*) FROM development_program_videos dpv WHERE dpv.enrollment_id = dpe.id AND dpv.status = 'pending_review') as pending_video_count
@@ -46,8 +47,26 @@ if (function_exists('decryptUserRows')) {
     $athletes = decryptUserRows($athletes);
 }
 
-// Get selected athlete detail
+// Get COMPLETED/historical programs for the history view
+$history_stmt = $pdo->prepare("
+    SELECT dpe.*, u.first_name, u.last_name, u.email,
+           dpe.program_name, dpe.template_id, dpe.start_date, dpe.end_date,
+           (SELECT COUNT(*) FROM development_program_drills dpd WHERE dpd.enrollment_id = dpe.id) as drill_count
+    FROM development_program_enrollments dpe
+    JOIN users u ON dpe.athlete_id = u.id
+    WHERE dpe.program_type IN ($placeholders) AND dpe.status IN ('completed', 'paused', 'cancelled')
+    ORDER BY dpe.completed_at DESC, dpe.enrolled_at DESC
+");
+$history_stmt->execute($program_types);
+$history_athletes = $history_stmt->fetchAll(PDO::FETCH_ASSOC);
+if (function_exists('decryptUserRows')) {
+    $history_athletes = decryptUserRows($history_athletes);
+}
+
+// Determine the coach view mode
+$coach_view = 'overview'; // overview (cards) or detail (single athlete)
 $selected_enrollment_id = isset($_GET['enrollment_id']) ? (int)$_GET['enrollment_id'] : 0;
+if ($selected_enrollment_id) $coach_view = 'detail';
 $selected = null;
 $selected_drills = [];
 $selected_messages = [];
@@ -847,57 +866,57 @@ $locations = $pdo->query("SELECT id, name FROM locations WHERE is_active = 1 ORD
     .dev-chat-input { flex-direction: column; }
     .video-upload-row { flex-direction: column; }
 }
+/* Active program cards grid */
+.dev-active-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+.dev-active-card { background: var(--bg-card, #16161F); border: 1px solid var(--border, #2D2D3F); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 12px; transition: transform 0.15s, box-shadow 0.15s; cursor: pointer; text-decoration: none; color: inherit; }
+.dev-active-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.25); border-color: var(--primary, #6B46C1); }
+.dev-active-card .card-athlete-name { font-size: 18px; font-weight: 700; color: var(--text-white, #e2e8f0); }
+.dev-active-card .card-program-name { font-size: 13px; color: var(--text-dim, #94a3b8); margin-top: 2px; }
+.dev-active-card .card-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12px; }
+.dev-active-card .card-meta-item { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 12px; font-weight: 600; }
+.card-meta-item.weeks-left { background: rgba(245, 158, 11, 0.12); color: #F59E0B; }
+.card-meta-item.weeks-left.overdue { background: rgba(239, 68, 68, 0.12); color: #EF4444; }
+.dev-active-card .video-badge { background: rgba(239, 68, 68, 0.15); color: #EF4444; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; }
+/* Coach view tabs */
+.dev-coach-tabs { display: flex; gap: 0; margin-bottom: 24px; border-bottom: 2px solid var(--border, #2D2D3F); }
+.dev-coach-tab { padding: 10px 24px; font-weight: 600; font-size: 14px; color: var(--text-dim, #94a3b8); cursor: pointer; border: none; background: none; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+.dev-coach-tab.active { color: var(--primary, #6B46C1); border-bottom-color: var(--primary, #6B46C1); }
+.dev-coach-tab-content { display: none; }
+.dev-coach-tab-content.active { display: block; }
+/* History filters */
+.dev-history-filters { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+.dev-history-filters input, .dev-history-filters select { padding: 8px 14px; background: var(--bg-card, #16161F); border: 1px solid var(--border, #2D2D3F); border-radius: 8px; color: var(--text-white, #e2e8f0); font-size: 13px; min-width: 180px; }
+/* History table */
+.dev-history-table { width: 100%; border-collapse: collapse; }
+.dev-history-table th { text-align: left; padding: 10px 14px; font-size: 12px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border, #2D2D3F); }
+.dev-history-table td { padding: 12px 14px; font-size: 13px; border-bottom: 1px solid var(--border, #2D2D3F); color: var(--text-white, #e2e8f0); }
+.dev-history-table tr:hover td { background: rgba(107, 70, 193, 0.05); }
+.status-badge-sm { padding: 2px 10px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+.status-badge-sm.completed { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+.status-badge-sm.paused { background: rgba(245, 158, 11, 0.15); color: #F59E0B; }
+.status-badge-sm.cancelled { background: rgba(239, 68, 68, 0.15); color: #EF4444; }
+/* Back button */
+.dev-back-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: var(--bg-card, #16161F); border: 1px solid var(--border, #2D2D3F); border-radius: 8px; color: var(--text-white, #e2e8f0); font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; margin-bottom: 16px; transition: border-color 0.2s; }
+.dev-back-btn:hover { border-color: var(--primary, #6B46C1); }
+@media (max-width: 600px) {
+    .dev-active-cards { grid-template-columns: 1fr; }
+    .dev-history-filters { flex-direction: column; }
+    .dev-history-filters input, .dev-history-filters select { width: 100%; }
+}
 </style>
 
-<div class="page-header">
-    <h1 class="page-title"><i class="fas fa-hockey-puck"></i> Development Programs</h1>
-    <p class="page-description">Manage athlete development programs, assign drills, and communicate with athletes</p>
+<?php if ($coach_view === 'detail' && $selected): ?>
+<!-- ==================== DETAIL VIEW (with back button) ==================== -->
+<a href="?page=development_programs" class="dev-back-btn"><i class="fas fa-arrow-left"></i> Back to All Programs</a>
+
+<div class="page-header" style="margin-bottom:12px;">
+    <h1 class="page-title"><i class="fas fa-hockey-puck"></i> <?= htmlspecialchars($selected['first_name'] . ' ' . $selected['last_name']) ?></h1>
+    <p class="page-description"><?= htmlspecialchars($selected['program_name'] ?? ($selected['program_type'] === 'goalie_dev' ? 'Goalie Development' : 'Player Development')) ?></p>
 </div>
 
-<div class="dev-coach-container">
-    <!-- Athlete List -->
-    <div class="dev-athlete-list">
-        <div class="dev-athlete-list-header">
-            <h3><i class="fas fa-users"></i> Enrolled Athletes <span class="count-badge"><?= count($athletes) ?></span></h3>
-        </div>
-        <div class="dev-athlete-list-body">
-        <?php if (empty($athletes)): ?>
-            <div class="dev-empty-state">
-                <i class="fas fa-user-plus"></i>
-                <p>No athletes enrolled yet.</p>
-            </div>
-        <?php else: ?>
-            <?php foreach ($athletes as $a): ?>
-            <a href="?page=development_programs&enrollment_id=<?= (int)$a['id'] ?>" class="dev-athlete-card <?= $selected_enrollment_id == $a['id'] ? 'active' : '' ?>">
-                <div class="athlete-name">
-                    <?= htmlspecialchars($a['first_name'] . ' ' . $a['last_name']) ?>
-                    <?php if ((int)($a['pending_video_count'] ?? 0) > 0): ?>
-                    <span class="video-notify"><?= (int)$a['pending_video_count'] ?></span>
-                    <?php endif; ?>
-                </div>
-                <div class="athlete-meta">
-                    <span class="dev-program-badge <?= htmlspecialchars($a['program_type']) ?>">
-                        <?= $a['program_type'] === 'goalie_dev' ? 'Goalie Dev' : 'Player Dev' ?>
-                    </span>
-                    <span><?= (int)$a['drill_count'] ?> drills</span>
-                    <span><?= (int)$a['message_count'] ?> messages</span>
-                </div>
-            </a>
-            <?php endforeach; ?>
-        <?php endif; ?>
-        </div>
-    </div>
-
+<div class="dev-coach-container" style="display:block;">
     <!-- Detail Panel -->
     <div class="dev-athlete-detail">
-        <?php if (!$selected): ?>
-            <div class="detail-panel">
-                <div class="dev-empty-state dev-empty-state--lg">
-                    <i class="fas fa-user-friends"></i>
-                    <p>Select an athlete from the list to manage their program.</p>
-                </div>
-            </div>
-        <?php else: ?>
             <div class="detail-panel">
                 <!-- Athlete Header -->
                 <div class="detail-athlete-header">
@@ -1144,9 +1163,145 @@ $locations = $pdo->query("SELECT id, name FROM locations WHERE is_active = 1 ORD
                     </div>
                 </div>
             </div>
-        <?php endif; ?>
     </div>
 </div>
+
+<?php else: ?>
+<!-- ==================== OVERVIEW VIEW (cards + history) ==================== -->
+<div class="page-header">
+    <h1 class="page-title"><i class="fas fa-hockey-puck"></i> Development Programs</h1>
+    <p class="page-description">Manage athlete development programs, assign drills, and communicate with athletes</p>
+</div>
+
+<!-- Coach tabs: Active Programs | Program History -->
+<div class="dev-coach-tabs">
+    <button class="dev-coach-tab active" onclick="switchCoachTab('active')" data-coach-tab="active">
+        <i class="fas fa-users"></i> Active Programs <span class="count-badge"><?= count($athletes) ?></span>
+    </button>
+    <button class="dev-coach-tab" onclick="switchCoachTab('history')" data-coach-tab="history">
+        <i class="fas fa-history"></i> Program History <span class="count-badge"><?= count($history_athletes) ?></span>
+    </button>
+</div>
+
+<!-- Active Programs Tab -->
+<div class="dev-coach-tab-content active" id="coach-tab-active">
+    <?php if (empty($athletes)): ?>
+    <div class="dev-empty-state dev-empty-state--lg">
+        <i class="fas fa-user-plus"></i>
+        <p>No athletes currently enrolled in active programs.</p>
+    </div>
+    <?php else: ?>
+    <div class="dev-active-cards">
+        <?php foreach ($athletes as $a):
+            $weeks_left = null;
+            if (!empty($a['end_date'])) {
+                $end_ts = strtotime($a['end_date']);
+                $now_ts = time();
+                $diff_days = ($end_ts - $now_ts) / 86400;
+                $weeks_left = max(0, ceil($diff_days / 7));
+            }
+            $position = $a['program_type'] === 'goalie_dev' ? 'Goalie' : 'Skater';
+            $pos_icon = $a['program_type'] === 'goalie_dev' ? 'fa-shield-alt' : 'fa-hockey-puck';
+            $pos_color = $a['program_type'] === 'goalie_dev' ? '#3b82f6' : '#10b981';
+            $program_display = $a['program_name'] ?: ($a['program_type'] === 'goalie_dev' ? 'Goalie Development' : 'Player Development');
+        ?>
+        <a href="?page=development_programs&enrollment_id=<?= (int)$a['id'] ?>" class="dev-active-card">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                <div>
+                    <div class="card-athlete-name"><?= htmlspecialchars($a['first_name'] . ' ' . $a['last_name']) ?></div>
+                    <div class="card-program-name"><?= htmlspecialchars($program_display) ?></div>
+                </div>
+                <?php if ((int)($a['pending_video_count'] ?? 0) > 0): ?>
+                <span class="video-badge"><i class="fas fa-video"></i> <?= (int)$a['pending_video_count'] ?> pending</span>
+                <?php endif; ?>
+            </div>
+            <div class="card-meta">
+                <span class="dev-program-badge <?= htmlspecialchars($a['program_type']) ?>">
+                    <i class="fas <?= $pos_icon ?>"></i> <?= $position ?>
+                </span>
+                <?php if ($weeks_left !== null): ?>
+                <span class="card-meta-item weeks-left <?= $weeks_left <= 0 ? 'overdue' : '' ?>">
+                    <i class="fas fa-clock"></i> <?= $weeks_left > 0 ? $weeks_left . ' week' . ($weeks_left !== 1 ? 's' : '') . ' left' : 'Program ended' ?>
+                </span>
+                <?php endif; ?>
+                <span class="card-meta-item" style="background:rgba(107,70,193,0.12);color:#8B5CF6;">
+                    <i class="fas fa-clipboard-list"></i> <?= (int)$a['drill_count'] ?> drills
+                </span>
+            </div>
+        </a>
+        <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
+</div>
+
+<!-- Program History Tab -->
+<div class="dev-coach-tab-content" id="coach-tab-history">
+    <div class="dev-history-filters">
+        <input type="text" id="history-filter-name" placeholder="Filter by athlete name..." oninput="filterHistory()">
+        <select id="history-filter-position" onchange="filterHistory()">
+            <option value="">All Positions</option>
+            <option value="goalie_dev">Goalie</option>
+            <option value="player_dev">Skater</option>
+        </select>
+        <select id="history-filter-program" onchange="filterHistory()">
+            <option value="">All Program Types</option>
+            <?php
+            $program_names = array_unique(array_filter(array_column($history_athletes, 'program_name')));
+            foreach ($program_names as $pn): ?>
+            <option value="<?= htmlspecialchars($pn) ?>"><?= htmlspecialchars($pn) ?></option>
+            <?php endforeach; ?>
+        </select>
+    </div>
+
+    <?php if (empty($history_athletes)): ?>
+    <div class="dev-empty-state dev-empty-state--lg">
+        <i class="fas fa-history"></i>
+        <p>No completed programs yet.</p>
+    </div>
+    <?php else: ?>
+    <div style="overflow-x:auto;">
+    <table class="dev-history-table" id="history-table">
+        <thead>
+            <tr>
+                <th>Athlete</th>
+                <th>Program</th>
+                <th>Position</th>
+                <th>Enrolled</th>
+                <th>Completed</th>
+                <th>Drills</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ($history_athletes as $h):
+                $h_position = $h['program_type'] === 'goalie_dev' ? 'Goalie' : 'Skater';
+                $h_program = $h['program_name'] ?: ($h['program_type'] === 'goalie_dev' ? 'Goalie Development' : 'Player Development');
+            ?>
+            <tr data-name="<?= htmlspecialchars(strtolower($h['first_name'] . ' ' . $h['last_name'])) ?>"
+                data-position="<?= htmlspecialchars($h['program_type']) ?>"
+                data-program="<?= htmlspecialchars($h['program_name'] ?? '') ?>">
+                <td><strong><?= htmlspecialchars($h['first_name'] . ' ' . $h['last_name']) ?></strong></td>
+                <td><?= htmlspecialchars($h_program) ?></td>
+                <td>
+                    <span class="dev-program-badge <?= htmlspecialchars($h['program_type']) ?>">
+                        <?= $h_position ?>
+                    </span>
+                </td>
+                <td><?= date('M j, Y', strtotime($h['enrolled_at'])) ?></td>
+                <td><?= $h['completed_at'] ? date('M j, Y', strtotime($h['completed_at'])) : '—' ?></td>
+                <td><?= (int)$h['drill_count'] ?></td>
+                <td><span class="status-badge-sm <?= htmlspecialchars($h['status']) ?>"><?= ucfirst(htmlspecialchars($h['status'])) ?></span></td>
+                <td><a href="?page=development_programs&enrollment_id=<?= (int)$h['id'] ?>" style="color:var(--primary);font-size:12px;font-weight:600;"><i class="fas fa-eye"></i> View</a></td>
+            </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+    </div>
+    <?php endif; ?>
+</div>
+
+<?php endif; ?>
 
 <script>
 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
@@ -1162,7 +1317,35 @@ function devPost(data) {
     }).then(r => r.json());
 }
 
-/* Tab Switching */
+/* Coach view tab switching (Active Programs / History) */
+function switchCoachTab(tabName) {
+    document.querySelectorAll('.dev-coach-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.dev-coach-tab-content').forEach(c => c.classList.remove('active'));
+    var tabBtn = document.querySelector('.dev-coach-tab[data-coach-tab="' + tabName + '"]');
+    var tabContent = document.getElementById('coach-tab-' + tabName);
+    if (tabBtn) tabBtn.classList.add('active');
+    if (tabContent) tabContent.classList.add('active');
+}
+
+/* History filtering */
+function filterHistory() {
+    var nameFilter = (document.getElementById('history-filter-name')?.value || '').toLowerCase();
+    var posFilter = document.getElementById('history-filter-position')?.value || '';
+    var progFilter = document.getElementById('history-filter-program')?.value || '';
+    var rows = document.querySelectorAll('#history-table tbody tr');
+    rows.forEach(function(row) {
+        var name = row.getAttribute('data-name') || '';
+        var pos = row.getAttribute('data-position') || '';
+        var prog = row.getAttribute('data-program') || '';
+        var show = true;
+        if (nameFilter && name.indexOf(nameFilter) === -1) show = false;
+        if (posFilter && pos !== posFilter) show = false;
+        if (progFilter && prog !== progFilter) show = false;
+        row.style.display = show ? '' : 'none';
+    });
+}
+
+/* Detail Tab Switching */
 function switchDetailTab(tabName) {
     document.querySelectorAll('.detail-tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.detail-tab-content').forEach(c => c.classList.remove('active'));
