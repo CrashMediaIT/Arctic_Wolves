@@ -186,7 +186,7 @@ $managedChildren = [];
 $isAssignedAsChild = false;
 try {
     // Check if user is assigned as a child to any parent
-    $childCheck = $pdo->prepare("SELECT id FROM managed_athletes WHERE athlete_id = ? LIMIT 1");
+    $childCheck = $pdo->prepare("SELECT id FROM parent_athlete_relationships WHERE athlete_id = ? LIMIT 1");
     $childCheck->execute([$user_id]);
     $isAssignedAsChild = (bool)$childCheck->fetch();
 
@@ -194,10 +194,10 @@ try {
         $canManageChildren = true;
         // Fetch managed children
         $childrenStmt = $pdo->prepare("
-            SELECT u.id, u.first_name, u.last_name, u.email, u.role, ma.relationship, ma.id as managed_id
-            FROM managed_athletes ma
-            INNER JOIN users u ON ma.athlete_id = u.id
-            WHERE ma.parent_id = ?
+            SELECT u.id, u.first_name, u.last_name, u.email, u.role, par.relationship_type as relationship, par.id as managed_id
+            FROM parent_athlete_relationships par
+            INNER JOIN users u ON par.athlete_id = u.id
+            WHERE par.parent_id = ?
             ORDER BY u.first_name, u.last_name
         ");
         $childrenStmt->execute([$user_id]);

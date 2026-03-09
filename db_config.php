@@ -304,7 +304,7 @@ if (!function_exists('decryptUserRow')) {
      */
     function decryptUserRow($row) {
         if (!$row || !is_array($row)) return $row;
-        $piiFields = ['first_name', 'last_name', 'phone', 'birth_date', 'date_of_birth',
+        $piiFields = ['first_name', 'last_name', 'phone', 'birth_date', 'date_of_birth', 'dob',
                        'street_address', 'city', 'emergency_contact_name', 'emergency_contact_phone',
                        'customer_first_name', 'customer_last_name', 'customer_phone',
                        'billing_address_line1', 'billing_address_line2', 'billing_city',
