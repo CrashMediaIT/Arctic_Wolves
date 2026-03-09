@@ -11,10 +11,12 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 /* Override style-guide.css html overflow to prevent dual scroll container conflict.
-   style-guide.css sets overflow-x:hidden on html, which implicitly sets overflow-y:auto,
-   creating a competing scroll container. !important is needed to override the shared
-   html,body rule in style-guide.css which has equal specificity. */
+   style-guide.css sets overflow-x:hidden on html,body which implicitly sets overflow-y:auto,
+   creating a competing scroll container on BOTH html and body. Fix: make html the sole
+   scroll container by explicitly setting both axes here and resetting body to overflow:visible.
+   !important is needed to override the html,body rule in style-guide.css. */
 html:has(body.sb-body) {
+  overflow-x: hidden !important;
   overflow-y: scroll !important;
   -webkit-overflow-scrolling: touch;
 }
@@ -25,9 +27,7 @@ body.sb-body {
   color: #fff;
   min-height: 100vh;
   min-height: 100dvh;
-  overflow-x: hidden;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  overflow: visible;
   touch-action: pan-y;
   -webkit-font-smoothing: antialiased;
   cursor: default;
@@ -41,8 +41,10 @@ body.sb-body {
   padding: 8px 24px;
   background: #0D0D14;
   border-bottom: 1px solid #2D2D3F;
-  height: 48px;
+  min-height: 48px;
   flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 .sb-topbar-brand {
   display: flex;
@@ -59,7 +61,8 @@ body.sb-body {
 .sb-topbar-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 .sb-topbar-actions .sb-btn {
   padding: 6px 14px;
@@ -75,6 +78,7 @@ body.sb-body {
   gap: 6px;
   transition: background 0.15s;
   text-decoration: none;
+  white-space: nowrap;
 }
 .sb-topbar-actions .sb-btn:hover { background: rgba(255,255,255,0.05); }
 .sb-topbar-actions .sb-btn-primary {
@@ -714,7 +718,7 @@ body.sb-body {
   padding: 8px 24px;
   background: rgba(13,13,20,0.95);
   border-bottom: 1px solid #2D2D3F;
-  height: 48px;
+  min-height: 48px;
   z-index: 10;
   flex-shrink: 0;
 }
@@ -853,10 +857,15 @@ body.sb-body {
   .sb-board-penalty-stack.away { grid-column: 3; grid-row: 2; }
   .sb-board-team { min-width: 100px; }
   .sb-board-team-name { font-size: 12px; max-width: 120px; }
+  .sb-topbar { padding: 6px 16px; }
+  .sb-topbar-actions { gap: 6px; }
+  .sb-topbar-actions .sb-btn { padding: 5px 10px; font-size: 12px; }
 }
 @media (max-width: 480px) {
   .sb-topbar { padding: 6px 12px; }
   .sb-topbar-brand span { display: none; }
+  .sb-topbar-actions .sb-btn span { display: none; }
+  .sb-topbar-actions .sb-btn { padding: 6px 8px; font-size: 12px; }
   .sb-board { padding: 8px; gap: 0; }
   .sb-board-team { min-width: 80px; padding: 8px; }
   .sb-board-center { padding: 6px 10px; min-width: 140px; }

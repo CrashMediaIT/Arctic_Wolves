@@ -1104,9 +1104,9 @@ test.describe('NGINX scoreboard subdomain server block', () => {
 // =====================================================
 
 test.describe('Scrollable layout and dynamic sizing', () => {
-  test('CSS body.sb-body allows vertical scrolling', () => {
+  test('CSS body.sb-body is not a competing scroll container', () => {
     const content = readFile('css/scoreboard.css');
-    expect(content).toContain('overflow-y: auto');
+    expect(content).toMatch(/body\.sb-body\s*\{[^}]*overflow:\s*visible/s);
     expect(content).not.toMatch(/body\.sb-body\s*\{[^}]*overflow:\s*hidden/);
   });
 
@@ -1155,12 +1155,12 @@ test.describe('Scrollable layout and dynamic sizing', () => {
   test('CSS html override prevents dual scroll container conflict with style-guide.css', () => {
     const content = readFile('css/scoreboard.css');
     expect(content).toContain('html:has(body.sb-body)');
+    expect(content).toContain('overflow-x: hidden !important');
     expect(content).toContain('overflow-y: scroll');
   });
 
-  test('CSS body.sb-body has touch scrolling support', () => {
+  test('CSS body.sb-body has touch-action for pan gestures', () => {
     const content = readFile('css/scoreboard.css');
-    expect(content).toMatch(/body\.sb-body\s*\{[^}]*-webkit-overflow-scrolling:\s*touch/s);
     expect(content).toMatch(/body\.sb-body\s*\{[^}]*touch-action:\s*pan-y/s);
   });
 
@@ -1204,6 +1204,49 @@ test.describe('Scrollable layout and dynamic sizing', () => {
       content.indexOf('.sb-ctrl-penalty-list') + 300
     );
     expect(penaltySection).toContain('-webkit-overflow-scrolling: touch');
+  });
+
+  test('CSS topbar uses min-height instead of fixed height', () => {
+    const content = readFile('css/scoreboard.css');
+    const topbarSection = content.substring(
+      content.indexOf('.sb-topbar {'),
+      content.indexOf('.sb-topbar {') + 300
+    );
+    expect(topbarSection).toContain('min-height: 48px');
+    expect(topbarSection).not.toMatch(/[^-]height:\s*48px/);
+  });
+
+  test('CSS topbar supports flex-wrap for button overflow', () => {
+    const content = readFile('css/scoreboard.css');
+    const topbarSection = content.substring(
+      content.indexOf('.sb-topbar {'),
+      content.indexOf('.sb-topbar {') + 300
+    );
+    expect(topbarSection).toContain('flex-wrap: wrap');
+  });
+
+  test('CSS topbar actions support flex-wrap', () => {
+    const content = readFile('css/scoreboard.css');
+    const actionsSection = content.substring(
+      content.indexOf('.sb-topbar-actions {'),
+      content.indexOf('.sb-topbar-actions {') + 200
+    );
+    expect(actionsSection).toContain('flex-wrap: wrap');
+  });
+
+  test('display view topbar buttons use span for responsive text hiding', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toMatch(/<i class="fas fa-flag-checkered"><\/i>\s*<span>End Game<\/span>/);
+    expect(content).toMatch(/<i class="fas fa-clipboard-list"><\/i>\s*<span>Scoresheet<\/span>/);
+  });
+
+  test('CSS hides button text labels at 480px breakpoint', () => {
+    const content = readFile('css/scoreboard.css');
+    // Verify the rule exists within the 480px media query
+    const idx480 = content.indexOf('@media (max-width: 480px)');
+    expect(idx480).toBeGreaterThan(-1);
+    const section480 = content.substring(idx480, idx480 + 500);
+    expect(section480).toContain('.sb-topbar-actions .sb-btn span { display: none; }');
   });
 });
 
