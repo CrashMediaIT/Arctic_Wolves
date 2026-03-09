@@ -1161,7 +1161,7 @@ test.describe('Scrollable layout and dynamic sizing', () => {
   test('CSS body.sb-body has touch scrolling support', () => {
     const content = readFile('css/scoreboard.css');
     expect(content).toMatch(/body\.sb-body\s*\{[^}]*-webkit-overflow-scrolling:\s*touch/s);
-    expect(content).toMatch(/body\.sb-body\s*\{[^}]*touch-action:\s*pan-x pan-y/s);
+    expect(content).toMatch(/body\.sb-body\s*\{[^}]*touch-action:\s*pan-y/s);
   });
 
   test('CSS html override has webkit touch scrolling', () => {

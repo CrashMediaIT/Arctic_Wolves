@@ -10,7 +10,10 @@
 /* ── Base ──────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* Override style-guide.css html overflow to prevent dual scroll container conflict */
+/* Override style-guide.css html overflow to prevent dual scroll container conflict.
+   style-guide.css sets overflow-x:hidden on html, which implicitly sets overflow-y:auto,
+   creating a competing scroll container. !important is needed to override the shared
+   html,body rule in style-guide.css which has equal specificity. */
 html:has(body.sb-body) {
   overflow-y: scroll !important;
   -webkit-overflow-scrolling: touch;
@@ -25,7 +28,7 @@ body.sb-body {
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  touch-action: pan-x pan-y;
+  touch-action: pan-y;
   -webkit-font-smoothing: antialiased;
   cursor: default;
 }
