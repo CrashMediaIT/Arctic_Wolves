@@ -1151,6 +1151,60 @@ test.describe('Scrollable layout and dynamic sizing', () => {
     expect(content).toContain('gap: clamp(');
     expect(content).toContain('padding: clamp(');
   });
+
+  test('CSS html override prevents dual scroll container conflict with style-guide.css', () => {
+    const content = readFile('css/scoreboard.css');
+    expect(content).toContain('html:has(body.sb-body)');
+    expect(content).toContain('overflow-y: scroll');
+  });
+
+  test('CSS body.sb-body has touch scrolling support', () => {
+    const content = readFile('css/scoreboard.css');
+    expect(content).toMatch(/body\.sb-body\s*\{[^}]*-webkit-overflow-scrolling:\s*touch/s);
+    expect(content).toMatch(/body\.sb-body\s*\{[^}]*touch-action:\s*pan-x pan-y/s);
+  });
+
+  test('CSS html override has webkit touch scrolling', () => {
+    const content = readFile('css/scoreboard.css');
+    const htmlRule = content.substring(
+      content.indexOf('html:has(body.sb-body)'),
+      content.indexOf('html:has(body.sb-body)') + 200
+    );
+    expect(htmlRule).toContain('-webkit-overflow-scrolling: touch');
+  });
+
+  test('settings view has overflow-y auto for scrolling', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toMatch(/\.sb-settings\s*\{[^}]*overflow-y:\s*auto/s);
+  });
+
+  test('settings view has touch scrolling support', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toMatch(/\.sb-settings\s*\{[^}]*-webkit-overflow-scrolling:\s*touch/s);
+  });
+
+  test('scoresheet content has touch scrolling support', () => {
+    const content = readFile('css/scoreboard.css');
+    const sheetSection = content.substring(
+      content.indexOf('.sb-scoresheet-content'),
+      content.indexOf('.sb-scoresheet-content') + 200
+    );
+    expect(sheetSection).toContain('-webkit-overflow-scrolling: touch');
+  });
+
+  test('display view sb-main div is properly closed', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('</div><!-- /.sb-main -->');
+  });
+
+  test('operator penalty list has touch scrolling', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    const penaltySection = content.substring(
+      content.indexOf('.sb-ctrl-penalty-list'),
+      content.indexOf('.sb-ctrl-penalty-list') + 300
+    );
+    expect(penaltySection).toContain('-webkit-overflow-scrolling: touch');
+  });
 });
 
 // =====================================================

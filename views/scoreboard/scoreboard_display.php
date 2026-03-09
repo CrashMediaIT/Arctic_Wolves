@@ -353,6 +353,7 @@ foreach ($away_penalties as $p) {
         .sb-ctrl-penalty-list {
             max-height: 200px;
             overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
             border: 1px solid #2D2D3F;
             border-radius: 6px;
             background: #0A0A0F;
@@ -767,7 +768,8 @@ foreach ($away_penalties as $p) {
             </div>
         </div>
 
-</div>
+</div><!-- /.sb-controls-grid -->
+</div><!-- /.sb-main -->
 <?php endif; ?>
 
 <!-- Score Edit Modal -->

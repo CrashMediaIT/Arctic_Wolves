@@ -191,6 +191,8 @@ try {
     min-height: 100vh;
     min-height: 100dvh;
     background: #0A0A0F;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 .sb-settings-content {
     max-width: 800px;
