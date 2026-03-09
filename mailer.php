@@ -235,13 +235,11 @@ function sendEmail($to, $type, $data) {
         $bodyContent = strtr($bodyContent, $placeholders);
         
         if (!empty($customTemplate['body_html'])) {
-            // Full HTML body - use as-is
+            // Full HTML body - use as-is (already has placeholder values escaped)
             $body = $bodyContent;
         } else {
-            // Wrap plain text in standard email layout
+            // Wrap plain text in standard email layout with proper HTML escaping
             $bodyHtml = nl2br(htmlspecialchars($bodyContent, ENT_QUOTES, 'UTF-8'));
-            // Un-escape already-replaced placeholders
-            $bodyHtml = nl2br($bodyContent);
             $body = "
             <div style='font-family: Arial, sans-serif; background: $bg; color: #fff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto;'>
                 $header

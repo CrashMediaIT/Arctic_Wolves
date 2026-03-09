@@ -868,7 +868,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                                 <td><span class="status-badge <?= !empty($dp['is_active']) ? 'active' : 'inactive' ?>"><?= !empty($dp['is_active']) ? 'Active' : 'Inactive' ?></span></td>
                                 <td>
                                     <div class="table-actions">
-                                        <button class="btn-action" onclick="openEditDevProgramModal(<?= (int)$dp['id'] ?>, <?= htmlspecialchars(json_encode($dp), ENT_QUOTES, 'UTF-8') ?>)" title="Edit"><i class="fas fa-edit"></i></button>
+                                        <button class="btn-action" onclick="openEditDevProgramModal(<?= (int)$dp['id'] ?>, <?= htmlspecialchars(json_encode($dp, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT), ENT_QUOTES, 'UTF-8') ?>)" title="Edit"><i class="fas fa-edit"></i></button>
                                         <button class="btn-action" data-action="toggle-status" data-id="<?= (int)$dp['id'] ?>" data-type="session" title="<?= !empty($dp['is_active']) ? 'Disable' : 'Enable' ?>"><i class="fas fa-toggle-<?= !empty($dp['is_active']) ? 'on' : 'off' ?>"></i></button>
                                     </div>
                                 </td>

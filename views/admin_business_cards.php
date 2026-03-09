@@ -1644,20 +1644,15 @@ function updateEmailTemplatePreview(idx) {
     var previewEl = document.getElementById('etpl-preview-' + idx);
     
     if (bodyHtml) {
-        // Use custom HTML preview (sanitized via iframe)
+        // Use custom HTML preview in sandboxed iframe (no allow-same-origin for security)
         previewEl.innerHTML = '<div style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #e2e8f0;"><strong style="color:#6B46C1;">Subject:</strong> ' + escapeHtml(subject) + '</div>' +
-            '<iframe id="etpl-iframe-' + idx + '" style="width:100%;border:none;min-height:200px;" sandbox="allow-same-origin"></iframe>';
+            '<iframe id="etpl-iframe-' + idx + '" style="width:100%;border:none;min-height:200px;" sandbox=""></iframe>';
         var iframe = document.getElementById('etpl-iframe-' + idx);
-        setTimeout(function() {
-            var doc = iframe.contentDocument || iframe.contentWindow.document;
-            doc.open();
-            doc.write(bodyHtml);
-            doc.close();
-            // Auto-resize iframe to content
-            setTimeout(function() {
-                try { iframe.style.height = Math.min(doc.body.scrollHeight + 20, 400) + 'px'; } catch(e) {}
-            }, 100);
-        }, 50);
+        // Use srcdoc for safer content injection instead of document.write
+        iframe.srcdoc = bodyHtml;
+        iframe.onload = function() {
+            try { iframe.style.height = Math.min(iframe.contentDocument.body.scrollHeight + 20, 400) + 'px'; } catch(e) {}
+        };
     } else {
         // Standard text preview styled as an email
         var textHtml = escapeHtml(bodyText).replace(/\n/g, '<br>');

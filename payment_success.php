@@ -141,6 +141,7 @@ try {
                     }
                     
                     $start_date = date('Y-m-d');
+                    $duration_weeks = $duration_weeks !== null ? max(1, min(52, intval($duration_weeks))) : null;
                     $end_date = $duration_weeks ? date('Y-m-d', strtotime("+{$duration_weeks} weeks")) : null;
                     
                     $stmt = $pdo->prepare("INSERT INTO development_program_enrollments (athlete_id, program_type, start_date, end_date) VALUES (?, ?, ?, ?)");
