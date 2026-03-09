@@ -13,8 +13,8 @@
             <span>Video Board</span>
         </div>
         <div class="sb-topbar-actions">
-            <a href="?view=scoreboard" class="sb-btn"><i class="fas fa-tachometer-alt"></i> Back to Scoreboard</a>
-            <a href="?view=scoresheet" class="sb-btn"><i class="fas fa-clipboard-list"></i> Scoresheet</a>
+            <a href="?view=scoreboard" class="sb-btn"><i class="fas fa-tachometer-alt"></i> <span>Back to Scoreboard</span></a>
+            <a href="?view=scoresheet" class="sb-btn"><i class="fas fa-clipboard-list"></i> <span>Scoresheet</span></a>
             <span class="sb-clock" id="sbClock"></span>
         </div>
     </div>

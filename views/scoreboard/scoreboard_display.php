@@ -90,14 +90,14 @@ foreach ($away_penalties as $p) {
     </div>
     <div class="sb-topbar-actions">
         <?php if ($active_game): ?>
-        <a href="?view=scoresheet" class="sb-btn"><i class="fas fa-clipboard-list"></i> Scoresheet</a>
-        <a href="?view=video_board" class="sb-btn"><i class="fas fa-tv"></i> Video Board</a>
-        <button class="sb-btn sb-btn-danger" onclick="sbEndGame()"><i class="fas fa-flag-checkered"></i> End Game</button>
+        <a href="?view=scoresheet" class="sb-btn"><i class="fas fa-clipboard-list"></i> <span>Scoresheet</span></a>
+        <a href="?view=video_board" class="sb-btn"><i class="fas fa-tv"></i> <span>Video Board</span></a>
+        <button class="sb-btn sb-btn-danger" onclick="sbEndGame()"><i class="fas fa-flag-checkered"></i> <span>End Game</span></button>
         <?php else: ?>
-        <button class="sb-btn sb-btn-primary" onclick="document.getElementById('sb-new-game-modal').classList.add('active')"><i class="fas fa-plus"></i> New Game</button>
+        <button class="sb-btn sb-btn-primary" onclick="document.getElementById('sb-new-game-modal').classList.add('active')"><i class="fas fa-plus"></i> <span>New Game</span></button>
         <?php endif; ?>
         <?php if ($isAdmin): ?>
-        <a href="?view=settings" class="sb-btn"><i class="fas fa-cog"></i> Settings</a>
+        <a href="?view=settings" class="sb-btn"><i class="fas fa-cog"></i> <span>Settings</span></a>
         <?php endif; ?>
         <span class="sb-clock" id="sbClock"></span>
     </div>

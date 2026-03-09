@@ -16,10 +16,10 @@ $isAWGame = $game ? (bool)($game['is_arctic_wolves_game'] ?? false) : false;
             <span>Scoresheet</span>
         </div>
         <div class="sb-topbar-actions">
-            <a href="?view=scoreboard" class="sb-btn"><i class="fas fa-tachometer-alt"></i> Scoreboard</a>
-            <a href="?view=video_board" class="sb-btn"><i class="fas fa-tv"></i> Video Board</a>
+            <a href="?view=scoreboard" class="sb-btn"><i class="fas fa-tachometer-alt"></i> <span>Scoreboard</span></a>
+            <a href="?view=video_board" class="sb-btn"><i class="fas fa-tv"></i> <span>Video Board</span></a>
             <?php if ($isAWGame): ?>
-            <button class="sb-btn sb-btn-primary" onclick="sbSyncToGamePlan()"><i class="fas fa-sync"></i> Sync to Game Plan</button>
+            <button class="sb-btn sb-btn-primary" onclick="sbSyncToGamePlan()"><i class="fas fa-sync"></i> <span>Sync to Game Plan</span></button>
             <?php endif; ?>
             <span class="sb-clock" id="sbClock"></span>
         </div>
