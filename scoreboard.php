@@ -292,8 +292,12 @@ if (!checkPOSIPAccess($pdo, $user_role)) {
 
 // ── View mode ─────────────────────────────────────────────
 $view = $_GET['view'] ?? 'scoreboard';
-$allowed_views = ['scoreboard', 'scoresheet', 'video_board'];
+$allowed_views = ['scoreboard', 'scoresheet', 'video_board', 'settings'];
 if (!in_array($view, $allowed_views)) {
+    $view = 'scoreboard';
+}
+// Settings view is admin-only
+if ($view === 'settings' && !$isAdmin) {
     $view = 'scoreboard';
 }
 
@@ -334,15 +338,21 @@ try {
     $teams = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { /* table may not exist */ }
 
-// ── Music settings ────────────────────────────────────────
+// ── Music & audio settings ────────────────────────────────
 $spotify_configured = false;
 $subsonic_configured = false;
+$apple_music_configured = false;
+$custom_buzzer_url = '';
+$network_speakers = [];
 try {
-    $stmt = $pdo->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('spotify_client_id', 'subsonic_url')");
+    $stmt = $pdo->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('spotify_client_id', 'spotify_client_secret', 'subsonic_url', 'subsonic_username', 'subsonic_password', 'apple_music_token', 'scoreboard_buzzer_url', 'scoreboard_network_speakers')");
     $stmt->execute();
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $s) {
         if ($s['setting_key'] === 'spotify_client_id' && !empty($s['setting_value'])) $spotify_configured = true;
         if ($s['setting_key'] === 'subsonic_url' && !empty($s['setting_value'])) $subsonic_configured = true;
+        if ($s['setting_key'] === 'apple_music_token' && !empty($s['setting_value'])) $apple_music_configured = true;
+        if ($s['setting_key'] === 'scoreboard_buzzer_url') $custom_buzzer_url = $s['setting_value'] ?? '';
+        if ($s['setting_key'] === 'scoreboard_network_speakers') $network_speakers = json_decode($s['setting_value'] ?? '[]', true) ?: [];
     }
 } catch (PDOException $e) { /* ignore */ }
 
@@ -385,6 +395,12 @@ if ($active_game) {
      ══════════════════════════════════════════════════════════ -->
 <?php include __DIR__ . '/views/scoreboard/scoresheet.php'; ?>
 
+<?php elseif ($view === 'settings' && $isAdmin): ?>
+<!-- ══════════════════════════════════════════════════════════
+     SETTINGS MODE – Admin-only audio & scoreboard configuration
+     ══════════════════════════════════════════════════════════ -->
+<?php include __DIR__ . '/views/scoreboard/scoreboard_settings.php'; ?>
+
 <?php else: ?>
 <!-- ══════════════════════════════════════════════════════════
      SCOREBOARD MODE – Primary arena display
@@ -398,6 +414,8 @@ if ($active_game) {
 // CSRF token for AJAX requests
 const CSRF_TOKEN = '<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES) ?>';
 const ACTIVE_GAME_ID = <?= $active_game ? (int)$active_game['id'] : 'null' ?>;
+const CUSTOM_BUZZER_URL = '<?= htmlspecialchars($custom_buzzer_url, ENT_QUOTES) ?>';
+const IS_ADMIN = <?= $isAdmin ? 'true' : 'false' ?>;
 
 // Live clock in topbar
 (function() {

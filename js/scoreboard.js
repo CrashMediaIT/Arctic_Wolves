@@ -258,14 +258,55 @@ function sbFlashGoalLight() {
 
 // ── Goal tracking ─────────────────────────────────────────
 function sbAddGoal(team) {
+    // Check if opposing team has active penalties (power play goal)
+    var opposingTeam = (team === 'home') ? 'away' : 'home';
+    var ppgClearable = sbHasClearableMinor(opposingTeam);
+
     sbFetch('add_goal', { team: team }).then(function(d) {
         if (d.success) {
             document.getElementById('sbHomeScore').textContent = d.home_score;
             document.getElementById('sbAwayScore').textContent = d.away_score;
             sbFlashGoalLight();
             sbBuzzer(); // Horn on goal
+
+            // NHL Rule 16.2: Minor penalty expires on PPG
+            if (ppgClearable) {
+                if (confirm('Power play goal! Clear the oldest minor penalty for the ' + opposingTeam + ' team? (NHL Rule 16.2 – minors expire on PPG, majors do not)')) {
+                    sbClearPenaltyOnGoal(opposingTeam);
+                }
+            }
         }
     });
+}
+
+// Check if the given team has a clearable minor penalty (not major/misconduct)
+function sbHasClearableMinor(team) {
+    var items = document.querySelectorAll('.sb-ctrl-penalty-item[data-team="' + team + '"]');
+    for (var i = 0; i < items.length; i++) {
+        var penType = items[i].getAttribute('data-penalty-type') || 'minor';
+        if (penType === 'minor' || penType === 'double_minor' || penType === 'bench') {
+            return true;
+        }
+    }
+    return false;
+}
+
+// NHL Rule 16.2: Clear oldest minor penalty on PPG (majors are NOT cleared)
+function sbClearPenaltyOnGoal(team) {
+    var items = document.querySelectorAll('.sb-ctrl-penalty-item[data-team="' + team + '"]');
+    for (var i = 0; i < items.length; i++) {
+        var penType = items[i].getAttribute('data-penalty-type') || 'minor';
+        // Only clear minor, double_minor, or bench minor – NOT major or misconduct
+        if (penType === 'minor' || penType === 'double_minor' || penType === 'bench') {
+            var penId = items[i].getAttribute('data-penalty-id');
+            if (penId) {
+                sbFetch('clear_penalty', { penalty_id: penId }).then(function(d) {
+                    if (d.success) window.location.reload();
+                });
+                return; // Only clear ONE (the oldest)
+            }
+        }
+    }
 }
 
 function sbUndoGoal(team) {
@@ -308,6 +349,10 @@ function sbSetShots(team, shots) {
 }
 
 // ── Penalty tracking ──────────────────────────────────────
+// NHL Rule: Max 2 penalties running concurrently per team.
+// 3rd+ penalties are queued and start when an earlier one expires or is cleared.
+var SB_MAX_CONCURRENT_PENALTIES = 2;
+
 function sbShowPenaltyModal(team) {
     document.getElementById('sb-penalty-team').value = team;
     document.getElementById('sb-penalty-modal').classList.add('active');
@@ -317,17 +362,25 @@ function sbAddPenalty(e) {
     e.preventDefault();
     var form = document.getElementById('sbPenaltyForm');
     var fd = new FormData(form);
+    // Support custom penalty duration (beer league / minor hockey)
+    var duration = fd.get('duration_minutes');
+    if (duration === 'custom') {
+        var customVal = fd.get('duration_minutes_custom');
+        duration = parseInt(customVal, 10) || 2;
+    }
     sbFetch('add_penalty', {
         team: fd.get('team'),
         player_number: fd.get('player_number'),
         player_name: fd.get('player_name'),
         infraction: fd.get('infraction'),
-        duration_minutes: fd.get('duration_minutes')
+        duration_minutes: duration,
+        served_by: fd.get('served_by') || ''
     }).then(function(d) {
         if (d.success) {
             document.getElementById('sb-penalty-modal').classList.remove('active');
             form.reset();
-            // Reload to show updated penalties
+            var customInput = document.getElementById('sb-pen-duration-custom');
+            if (customInput) customInput.style.display = 'none';
             window.location.reload();
         }
     });
@@ -347,6 +400,49 @@ function sbClearPenalty(penaltyId) {
     });
 }
 
+// ── Individual Penalty Board Visibility ───────────────────
+function sbTogglePenaltyItemVisibility(penaltyId) {
+    var el = document.querySelector('.sb-board-pen-slot[data-penalty-id="' + penaltyId + '"]');
+    if (!el) return;
+    el.classList.toggle('sb-hidden-from-display');
+    var btn = document.querySelector('.sb-ctrl-penalty-vis-btn[data-penalty-id="' + penaltyId + '"]');
+    if (btn) {
+        var hidden = el.classList.contains('sb-hidden-from-display');
+        btn.innerHTML = hidden ? '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-eye"></i>';
+        btn.title = hidden ? 'Show on board' : 'Hide from board';
+    }
+}
+
+// ── Penalty Queue Status Update ───────────────────────────
+// Marks penalties beyond the 2-concurrent cap as "queued" in the UI
+function sbUpdatePenaltyQueueStatus() {
+    ['home', 'away'].forEach(function(team) {
+        var items = document.querySelectorAll('.sb-ctrl-penalty-item[data-team="' + team + '"]');
+        var running = 0;
+        items.forEach(function(item) {
+            var penType = item.getAttribute('data-penalty-type') || 'minor';
+            // Misconducts don't count against shorthanded cap
+            if (penType === 'misconduct' || penType === 'game_misconduct') {
+                item.classList.remove('sb-penalty-queued');
+                return;
+            }
+            running++;
+            if (running > SB_MAX_CONCURRENT_PENALTIES) {
+                item.classList.add('sb-penalty-queued');
+            } else {
+                item.classList.remove('sb-penalty-queued');
+            }
+        });
+    });
+}
+
+// Run on page load
+if (typeof document !== 'undefined') {
+    document.addEventListener('DOMContentLoaded', function() {
+        sbUpdatePenaltyQueueStatus();
+    });
+}
+
 // ── Buzzer / Horn ─────────────────────────────────────────
 function sbBuzzer() {
     var btn = document.getElementById('sbBuzzerBtn');
@@ -355,7 +451,17 @@ function sbBuzzer() {
         setTimeout(function() { btn.classList.remove('buzzing'); }, 500);
     }
 
-    // Play buzzer sound via Web Audio API
+    // Use custom buzzer sound if uploaded (admin configurable via Settings)
+    if (typeof CUSTOM_BUZZER_URL !== 'undefined' && CUSTOM_BUZZER_URL) {
+        try {
+            var audio = new Audio(CUSTOM_BUZZER_URL);
+            audio.volume = 1.0;
+            audio.play().catch(function() {});
+            return;
+        } catch (e) { /* fall through to synthesized */ }
+    }
+
+    // Fallback: synthesized buzzer via Web Audio API
     try {
         var ctx = new (window.AudioContext || window.webkitAudioContext)();
         var osc = ctx.createOscillator();
@@ -373,6 +479,12 @@ function sbBuzzer() {
     } catch (e) {
         // Audio API not available
     }
+}
+
+// ── Clock Mode (stop time vs running time) ────────────────
+var sbClockMode = 'stop_time'; // 'stop_time' (NHL) or 'running_time' (beer league)
+function sbSetClockMode(mode) {
+    sbClockMode = (mode === 'running_time') ? 'running_time' : 'stop_time';
 }
 
 // ══════════════════════════════════════════════════════════
