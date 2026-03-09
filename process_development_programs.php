@@ -100,6 +100,14 @@ try {
         case 'confirm_dev_video_upload':
             handleConfirmDevVideoUpload($pdo, $user_id, $input);
             break;
+        case 'save_email_template':
+            if (!$isAdmin) { echo json_encode(['success' => false, 'error' => 'Access denied']); exit; }
+            handleSaveEmailTemplate($pdo, $user_id, $input);
+            break;
+        case 'reset_email_template':
+            if (!$isAdmin) { echo json_encode(['success' => false, 'error' => 'Access denied']); exit; }
+            handleResetEmailTemplate($pdo, $input);
+            break;
         default:
             echo json_encode(['success' => false, 'error' => 'Invalid action']);
     }
@@ -708,6 +716,82 @@ function handleCancelAppointment($pdo, $user_id, $input, $canManageDevPrograms) 
     
     $stmt = $pdo->prepare("UPDATE development_appointments SET status = 'cancelled' WHERE id = ?");
     $stmt->execute([$appointment_id]);
+    
+    echo json_encode(['success' => true]);
+}
+
+/**
+ * Save a custom email template
+ */
+function handleSaveEmailTemplate($pdo, $user_id, $input) {
+    $template_type = trim($input['template_type'] ?? '');
+    $label = trim($input['label'] ?? '');
+    $subject = trim($input['subject'] ?? '');
+    $body_text = trim($input['body_text'] ?? '');
+    $body_html = trim($input['body_html'] ?? '');
+    
+    if (!$template_type || !$subject) {
+        echo json_encode(['success' => false, 'error' => 'Template type and subject are required']);
+        return;
+    }
+    if (!$body_text && !$body_html) {
+        echo json_encode(['success' => false, 'error' => 'Body text or HTML is required']);
+        return;
+    }
+    
+    // Whitelist allowed template types
+    $allowed_types = ['verification', 'manual_welcome', 'payment_receipt', 'password_reset', 
+                      'notification', 'system_notification', 'email_change_confirmation', 
+                      'esignature_request', 'contract_signed', 'extension_request', 'test'];
+    if (!in_array($template_type, $allowed_types)) {
+        echo json_encode(['success' => false, 'error' => 'Invalid template type']);
+        return;
+    }
+    
+    // Ensure table exists
+    try {
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS `email_templates` (
+                `id` INT AUTO_INCREMENT PRIMARY KEY,
+                `template_type` VARCHAR(50) NOT NULL,
+                `label` VARCHAR(100) NOT NULL,
+                `subject` VARCHAR(255) NOT NULL,
+                `body_text` TEXT DEFAULT NULL,
+                `body_html` TEXT DEFAULT NULL,
+                `is_custom` TINYINT(1) DEFAULT 0,
+                `updated_by` INT DEFAULT NULL,
+                `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY `unique_template_type` (`template_type`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+    } catch (PDOException $e) { /* ignore */ }
+    
+    // Upsert the template
+    $stmt = $pdo->prepare("
+        INSERT INTO email_templates (template_type, label, subject, body_text, body_html, is_custom, updated_by) 
+        VALUES (?, ?, ?, ?, ?, 1, ?)
+        ON DUPLICATE KEY UPDATE subject = VALUES(subject), body_text = VALUES(body_text), body_html = VALUES(body_html), is_custom = 1, updated_by = VALUES(updated_by)
+    ");
+    $stmt->execute([$template_type, $label, $subject, $body_text, $body_html ?: null, $user_id]);
+    
+    echo json_encode(['success' => true]);
+}
+
+/**
+ * Reset an email template to system defaults
+ */
+function handleResetEmailTemplate($pdo, $input) {
+    $template_type = trim($input['template_type'] ?? '');
+    if (!$template_type) {
+        echo json_encode(['success' => false, 'error' => 'Template type is required']);
+        return;
+    }
+    
+    try {
+        $stmt = $pdo->prepare("DELETE FROM email_templates WHERE template_type = ?");
+        $stmt->execute([$template_type]);
+    } catch (PDOException $e) { /* table may not exist */ }
     
     echo json_encode(['success' => true]);
 }
