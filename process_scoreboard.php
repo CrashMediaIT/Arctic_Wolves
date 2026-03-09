@@ -215,6 +215,20 @@ try {
             echo json_encode(['success' => true, 'penalty_id' => (int)$pdo->lastInsertId()]);
             break;
 
+        // ── Clear / delete penalty ────────────────────────
+        case 'clear_penalty':
+            $penalty_id = (int)($_POST['penalty_id'] ?? 0);
+            $game_id = (int)($_POST['game_id'] ?? 0);
+            if ($penalty_id <= 0) {
+                echo json_encode(['success' => false, 'message' => 'Invalid penalty ID']);
+                exit();
+            }
+            $stmt = $pdo->prepare("DELETE FROM scoreboard_penalties WHERE id = ? AND game_id = ?");
+            $stmt->execute([$penalty_id, $game_id]);
+            Auditor::log($pdo, $user_id, 'delete', 'scoreboard_penalties', $penalty_id, ['action' => 'Penalty cleared']);
+            echo json_encode(['success' => true]);
+            break;
+
         // ── Add goal detail (scoresheet) ──────────────────
         case 'add_goal_detail':
             $game_id = (int)($_POST['game_id'] ?? 0);
@@ -394,6 +408,181 @@ try {
                 exit();
             }
             echo json_encode(['success' => true, 'game' => $game]);
+            break;
+
+        // ── Save settings (admin-only) ────────────────────
+        case 'save_settings':
+            if (!$isAdmin) {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Admin access required']);
+                exit();
+            }
+            $section = $_POST['section'] ?? '';
+            $settingsToSave = [];
+
+            switch ($section) {
+                case 'spotify':
+                    $settingsToSave['spotify_client_id'] = trim($_POST['spotify_client_id'] ?? '');
+                    $settingsToSave['spotify_client_secret'] = trim($_POST['spotify_client_secret'] ?? '');
+                    break;
+                case 'apple_music':
+                    $settingsToSave['apple_music_token'] = trim($_POST['apple_music_token'] ?? '');
+                    $settingsToSave['apple_music_team_id'] = trim($_POST['apple_music_team_id'] ?? '');
+                    break;
+                case 'subsonic':
+                    $settingsToSave['subsonic_url'] = trim($_POST['subsonic_url'] ?? '');
+                    $settingsToSave['subsonic_username'] = trim($_POST['subsonic_username'] ?? '');
+                    $settingsToSave['subsonic_password'] = trim($_POST['subsonic_password'] ?? '');
+                    break;
+                case 'network_speakers':
+                    $names = $_POST['speaker_name'] ?? [];
+                    $types = $_POST['speaker_type'] ?? [];
+                    $hosts = $_POST['speaker_host'] ?? [];
+                    $ports = $_POST['speaker_port'] ?? [];
+                    $speakers = [];
+                    for ($i = 0; $i < count($names); $i++) {
+                        if (!empty(trim($names[$i]))) {
+                            $speakers[] = [
+                                'name' => trim($names[$i]),
+                                'type' => $types[$i] ?? 'browser',
+                                'host' => trim($hosts[$i] ?? ''),
+                                'port' => (int)($ports[$i] ?? 11000)
+                            ];
+                        }
+                    }
+                    $settingsToSave['scoreboard_network_speakers'] = json_encode($speakers);
+                    break;
+                default:
+                    echo json_encode(['success' => false, 'message' => 'Unknown settings section']);
+                    exit();
+            }
+
+            foreach ($settingsToSave as $key => $value) {
+                $stmt = $pdo->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?");
+                $stmt->execute([$key, $value, $value]);
+            }
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', 0, ['action' => 'Scoreboard settings updated', 'section' => $section]);
+            echo json_encode(['success' => true]);
+            break;
+
+        // ── Upload custom buzzer sound (admin-only) ────────
+        case 'upload_buzzer':
+            if (!$isAdmin) {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Admin access required']);
+                exit();
+            }
+            if (!isset($_FILES['buzzer_file']) || $_FILES['buzzer_file']['error'] !== UPLOAD_ERR_OK) {
+                echo json_encode(['success' => false, 'message' => 'No file uploaded or upload error']);
+                exit();
+            }
+            $file = $_FILES['buzzer_file'];
+            $allowedMimes = ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp3', 'audio/x-wav'];
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $mime = finfo_file($finfo, $file['tmp_name']);
+            finfo_close($finfo);
+            if (!in_array($mime, $allowedMimes)) {
+                echo json_encode(['success' => false, 'message' => 'Invalid file type. Allowed: MP3, WAV, OGG']);
+                exit();
+            }
+            if ($file['size'] > 10 * 1024 * 1024) {
+                echo json_encode(['success' => false, 'message' => 'File too large (max 10MB)']);
+                exit();
+            }
+            $uploadDir = __DIR__ . '/uploads/scoreboard/';
+            if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+            $ext = pathinfo($file['name'], PATHINFO_EXTENSION) ?: 'mp3';
+            $ext = preg_replace('/[^a-z0-9]/i', '', $ext);
+            $filename = 'buzzer_' . time() . '.' . $ext;
+            $dest = $uploadDir . $filename;
+            if (!move_uploaded_file($file['tmp_name'], $dest)) {
+                echo json_encode(['success' => false, 'message' => 'Failed to save file']);
+                exit();
+            }
+            $buzzerUrl = '/uploads/scoreboard/' . $filename;
+            $stmt = $pdo->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES ('scoreboard_buzzer_url', ?) ON DUPLICATE KEY UPDATE setting_value = ?");
+            $stmt->execute([$buzzerUrl, $buzzerUrl]);
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', 0, ['action' => 'Buzzer sound uploaded', 'file' => $filename]);
+            echo json_encode(['success' => true, 'url' => $buzzerUrl]);
+            break;
+
+        // ── Remove custom buzzer sound (admin-only) ────────
+        case 'remove_buzzer':
+            if (!$isAdmin) {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Admin access required']);
+                exit();
+            }
+            $stmt = $pdo->prepare("DELETE FROM system_settings WHERE setting_key = 'scoreboard_buzzer_url'");
+            $stmt->execute();
+            Auditor::log($pdo, $user_id, 'delete', 'system_settings', 0, ['action' => 'Buzzer sound removed']);
+            echo json_encode(['success' => true]);
+            break;
+
+        // ── Upload team logo (admin-only) ──────────────────
+        case 'upload_team_logo':
+            if (!$isAdmin) {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Admin access required']);
+                exit();
+            }
+            if (!isset($_FILES['logo_file']) || $_FILES['logo_file']['error'] !== UPLOAD_ERR_OK) {
+                echo json_encode(['success' => false, 'message' => 'No file uploaded or upload error']);
+                exit();
+            }
+            $file = $_FILES['logo_file'];
+            $allowedMimes = ['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp'];
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $mime = finfo_file($finfo, $file['tmp_name']);
+            finfo_close($finfo);
+            if (!in_array($mime, $allowedMimes)) {
+                echo json_encode(['success' => false, 'message' => 'Invalid file type. Allowed: PNG, JPG, SVG, WebP']);
+                exit();
+            }
+            if ($file['size'] > 5 * 1024 * 1024) {
+                echo json_encode(['success' => false, 'message' => 'File too large (max 5MB)']);
+                exit();
+            }
+            $uploadDir = __DIR__ . '/uploads/team_logos/';
+            if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+            $ext = pathinfo($file['name'], PATHINFO_EXTENSION) ?: 'png';
+            $ext = preg_replace('/[^a-z0-9]/i', '', $ext);
+            $teamId = $_POST['team_id'] ?? '';
+            // Create new team if requested
+            if ($teamId === 'new') {
+                $newName = trim($_POST['new_team_name'] ?? '');
+                if (empty($newName)) {
+                    echo json_encode(['success' => false, 'message' => 'Team name required']);
+                    exit();
+                }
+                $stmt = $pdo->prepare("INSERT INTO teams (team_name, status, created_at) VALUES (?, 'active', NOW())");
+                $stmt->execute([$newName]);
+                $teamId = (int)$pdo->lastInsertId();
+                // Link to Game Plan if table exists
+                try {
+                    $checkTable = $pdo->query("SHOW TABLES LIKE 'vr_game_plans'");
+                    if ($checkTable->rowCount() > 0) {
+                        $pdo->prepare("INSERT INTO vr_game_plans (coach_id, plan_type, game_date, opponent, notes, created_at) VALUES (?, 'roster', NOW(), ?, ?, NOW())")
+                            ->execute([$user_id, $newName, "Team created from Scoreboard settings. Auto-linked to Game Plan."]);
+                    }
+                } catch (PDOException $e) { error_log('Team gameplan link: ' . $e->getMessage()); }
+            } else {
+                $teamId = (int)$teamId;
+            }
+            if ($teamId <= 0) {
+                echo json_encode(['success' => false, 'message' => 'Invalid team']);
+                exit();
+            }
+            $filename = 'team_' . $teamId . '_' . time() . '.' . $ext;
+            $dest = $uploadDir . $filename;
+            if (!move_uploaded_file($file['tmp_name'], $dest)) {
+                echo json_encode(['success' => false, 'message' => 'Failed to save file']);
+                exit();
+            }
+            $logoUrl = '/uploads/team_logos/' . $filename;
+            $pdo->prepare("UPDATE teams SET logo_url = ? WHERE id = ?")->execute([$logoUrl, $teamId]);
+            Auditor::log($pdo, $user_id, 'update', 'teams', $teamId, ['action' => 'Logo uploaded', 'file' => $filename]);
+            echo json_encode(['success' => true, 'url' => $logoUrl, 'team_id' => $teamId]);
             break;
 
         default:

@@ -14,8 +14,10 @@ body.sb-body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   background: #0A0A0F;
   color: #fff;
-  height: 100vh;
-  overflow: hidden;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
   -webkit-font-smoothing: antialiased;
   cursor: default;
 }
@@ -101,7 +103,8 @@ body.sb-body {
 .sb-main {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 48px);
+  min-height: calc(100vh - 48px);
+  min-height: calc(100dvh - 48px);
 }
 
 /* ── Professional Scoreboard Panel (Nevco/Daktronics) ── */
@@ -157,7 +160,7 @@ body.sb-body {
   max-width: 180px;
 }
 .sb-board-score {
-  font-size: 80px;
+  font-size: clamp(48px, 6vw, 80px);
   font-weight: 900;
   line-height: 1;
   letter-spacing: -2px;
@@ -294,7 +297,7 @@ body.sb-body {
   line-height: 1;
 }
 .sb-board-clock {
-  font-size: 64px;
+  font-size: clamp(36px, 5vw, 64px);
   font-weight: 900;
   font-variant-numeric: tabular-nums;
   letter-spacing: 3px;
@@ -313,14 +316,41 @@ body.sb-body {
 .sb-board-status.intermission { color: #F59E0B; }
 .sb-board-status.final { color: #EF4444; }
 
+/* Strength indicator (5v4, 4v4, 5v3 etc.) */
+.sb-board-strength {
+  font-size: 16px;
+  font-weight: 900;
+  color: #F59E0B;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-top: 2px;
+  padding: 2px 10px;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 4px;
+}
+
+/* Board indicator badges (DEL = delayed penalty, EN = empty net) */
+.sb-board-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  color: #fff;
+  animation: ppPulse 1.5s ease-in-out infinite;
+}
+
 /* ── Control Panel (bottom section) ────────────────────── */
 .sb-controls {
-  flex: 1;
+  flex: 1 0 auto;
   display: grid;
   grid-template-columns: 1fr 1fr 1fr 1fr;
   gap: 12px;
-  padding: 12px 24px;
-  overflow-y: auto;
+  padding: 12px 24px 24px;
 }
 
 .sb-panel {
@@ -328,7 +358,6 @@ body.sb-body {
   border: 1px solid #2D2D3F;
   border-radius: 10px;
   padding: 14px;
-  overflow-y: auto;
 }
 .sb-panel-title {
   font-size: 12px;
@@ -787,28 +816,37 @@ body.sb-body {
 @media (max-width: 1280px) {
   .sb-controls { grid-template-columns: 1fr 1fr; }
   .sb-board { grid-template-columns: 1fr auto auto 1fr auto auto 1fr; }
-  .sb-board-score { font-size: 64px; }
-  .sb-board-clock { font-size: 52px; }
+  .sb-board-team { min-width: 140px; }
 }
 @media (max-width: 1024px) {
   .sb-controls { grid-template-columns: 1fr 1fr; }
   .sb-board { padding: 12px 16px; }
-  .sb-board-score { font-size: 56px; }
-  .sb-board-clock { font-size: 44px; }
-  .sb-board-team { min-width: 140px; }
+  .sb-board-team { min-width: 120px; padding: 10px 12px; }
   .sb-pen-countdown { font-size: 16px; }
+  .sb-board-center { padding: 8px 20px; min-width: 200px; }
 }
 @media (max-width: 768px) {
   .sb-controls { grid-template-columns: 1fr; }
   .sb-board {
     grid-template-columns: 1fr 1fr 1fr;
     grid-template-rows: auto auto;
+    padding: 10px 12px;
   }
   .sb-board-team.home { grid-column: 1; grid-row: 1; }
   .sb-board-center { grid-column: 2; grid-row: 1 / 3; }
   .sb-board-team.away { grid-column: 3; grid-row: 1; }
   .sb-board-penalty-stack.home { grid-column: 1; grid-row: 2; }
   .sb-board-penalty-stack.away { grid-column: 3; grid-row: 2; }
-  .sb-board-score { font-size: 48px; }
-  .sb-board-clock { font-size: 36px; }
+  .sb-board-team { min-width: 100px; }
+  .sb-board-team-name { font-size: 12px; max-width: 120px; }
+}
+@media (max-width: 480px) {
+  .sb-topbar { padding: 6px 12px; }
+  .sb-topbar-brand span { display: none; }
+  .sb-board { padding: 8px; gap: 0; }
+  .sb-board-team { min-width: 80px; padding: 8px; }
+  .sb-board-center { padding: 6px 10px; min-width: 140px; }
+  .sb-penalty-timer-box { min-width: 70px; padding: 4px 6px; }
+  .sb-pen-player { font-size: 11px; min-width: 24px; }
+  .sb-pen-countdown { font-size: 14px; }
 }

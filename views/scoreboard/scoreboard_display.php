@@ -10,21 +10,74 @@
  *   - Timeout indicators
  *   - Goal light flash animation
  *   - Working game clock with operator controls
+ *
+ * NHL Penalty Rules:
+ *   - Max 2 concurrent minor/major penalties per team (5-on-3 max)
+ *   - 3rd+ penalties queued until earlier one expires or cleared by PPG
+ *   - Minor (2 min) cleared on PPG; Major (5 min) NOT cleared on goals
+ *   - Misconduct (10 min) – player sits, team NOT shorthanded
+ *   - Coincidental/offsetting – equal penalties cancel, 4-on-4, only unmatched create PP
  */
 
-// Separate home/away penalties for the penalty box display (most recent 2 per team)
+// Helper: classify penalty type from duration
+function sbGetPenaltyType($duration) {
+    $d = (int)$duration;
+    if ($d <= 2) return 'minor';
+    if ($d === 4) return 'double_minor';
+    if ($d === 5) return 'major';
+    if ($d >= 10) return 'misconduct';
+    return 'minor';
+}
+
+// Separate home/away penalties for the penalty box display
 $home_penalties = array_filter($game_penalties, function($p) { return ($p['team'] ?? '') === 'home'; });
 $away_penalties = array_filter($game_penalties, function($p) { return ($p['team'] ?? '') === 'away'; });
 $home_penalties = array_values($home_penalties);
 $away_penalties = array_values($away_penalties);
-// Most recent 2 for display
-$home_pen_display = array_slice($home_penalties, -2);
-$away_pen_display = array_slice($away_penalties, -2);
-// Power play status
-$home_active_pens = count($home_penalties);
-$away_active_pens = count($away_penalties);
-$home_pp = ($away_active_pens > 0 && $away_active_pens > $home_active_pens);
-$away_pp = ($home_active_pens > 0 && $home_active_pens > $away_active_pens);
+
+// NHL: Only count shorthanded penalties (minors/majors), NOT misconducts
+$home_shorthanded = 0;
+$away_shorthanded = 0;
+foreach ($home_penalties as $p) {
+    $pt = sbGetPenaltyType($p['duration_minutes'] ?? 2);
+    if ($pt !== 'misconduct') $home_shorthanded++;
+}
+foreach ($away_penalties as $p) {
+    $pt = sbGetPenaltyType($p['duration_minutes'] ?? 2);
+    if ($pt !== 'misconduct') $away_shorthanded++;
+}
+
+// NHL: Coincidental penalties offset – only unmatched penalties create PP
+$offset_count = min($home_shorthanded, $away_shorthanded);
+$home_net_penalties = $home_shorthanded - $offset_count;
+$away_net_penalties = $away_shorthanded - $offset_count;
+
+// Power play: only when opposing team has MORE net penalties
+$home_pp = ($away_net_penalties > 0 && $away_net_penalties > $home_net_penalties);
+$away_pp = ($home_net_penalties > 0 && $home_net_penalties > $away_net_penalties);
+
+// Strength display (5v5, 5v4, 5v3, 4v4, etc.)
+$home_skaters = max(3, 5 - $home_net_penalties);
+$away_skaters = max(3, 5 - $away_net_penalties);
+// If coincidental (both have penalties), it's 4v4 or 3v3
+if ($offset_count > 0 && $home_net_penalties === 0 && $away_net_penalties === 0) {
+    $home_skaters = max(3, 5 - min($offset_count, 2));
+    $away_skaters = $home_skaters;
+}
+$strength_display = $home_skaters . 'v' . $away_skaters;
+$is_even_strength = ($home_skaters === $away_skaters && $home_skaters === 5);
+
+// Most recent 2 shorthanded penalties per team for display on the board
+$home_pen_display = [];
+$away_pen_display = [];
+foreach ($home_penalties as $p) {
+    $pt = sbGetPenaltyType($p['duration_minutes'] ?? 2);
+    if ($pt !== 'misconduct' && count($home_pen_display) < 2) $home_pen_display[] = $p;
+}
+foreach ($away_penalties as $p) {
+    $pt = sbGetPenaltyType($p['duration_minutes'] ?? 2);
+    if ($pt !== 'misconduct' && count($away_pen_display) < 2) $away_pen_display[] = $p;
+}
 ?>
 
 <!-- Goal light overlay -->
@@ -42,6 +95,9 @@ $away_pp = ($home_active_pens > 0 && $home_active_pens > $away_active_pens);
         <button class="sb-btn sb-btn-danger" onclick="sbEndGame()"><i class="fas fa-flag-checkered"></i> End Game</button>
         <?php else: ?>
         <button class="sb-btn sb-btn-primary" onclick="document.getElementById('sb-new-game-modal').classList.add('active')"><i class="fas fa-plus"></i> New Game</button>
+        <?php endif; ?>
+        <?php if ($isAdmin): ?>
+        <a href="?view=settings" class="sb-btn"><i class="fas fa-cog"></i> Settings</a>
         <?php endif; ?>
         <span class="sb-clock" id="sbClock"></span>
     </div>
@@ -72,6 +128,8 @@ $away_pp = ($home_active_pens > 0 && $home_active_pens > $away_active_pens);
             <div class="sb-board-team-header">
                 <span class="sb-board-label">HOME</span>
                 <?php if ($home_pp): ?><span class="sb-pp-indicator">PP</span><?php endif; ?>
+                <span class="sb-board-indicator" id="sbDelayedHome" style="display:none;background:#F59E0B;color:#000;">DEL</span>
+                <span class="sb-board-indicator" id="sbEmptyNetHome" style="display:none;background:#EF4444;">EN</span>
             </div>
             <div class="sb-board-team-name"><?= htmlspecialchars($active_game['home_team_name'] ?? 'Home') ?></div>
             <div class="sb-board-score" id="sbHomeScore"><?= $home_score ?></div>
@@ -105,6 +163,9 @@ $away_pp = ($home_active_pens > 0 && $home_active_pens > $away_active_pens);
                 <span class="sb-period-value"><?= htmlspecialchars($active_game['current_period'] ?? '1') ?></span>
             </div>
             <div class="sb-board-clock" id="sbGameClock">20:00</div>
+            <?php if (!$is_even_strength): ?>
+            <div class="sb-board-strength" id="sbStrength"><?= $strength_display ?></div>
+            <?php endif; ?>
             <div class="sb-board-status <?= ($active_game['status'] === 'intermission') ? 'intermission' : '' ?>" id="sbStatus">
                 <?= htmlspecialchars(strtoupper($active_game['status'] ?? 'WARMUP')) ?>
             </div>
@@ -125,6 +186,8 @@ $away_pp = ($home_active_pens > 0 && $home_active_pens > $away_active_pens);
         <div class="sb-board-team away">
             <div class="sb-board-team-header">
                 <?php if ($away_pp): ?><span class="sb-pp-indicator">PP</span><?php endif; ?>
+                <span class="sb-board-indicator" id="sbDelayedAway" style="display:none;background:#F59E0B;color:#000;">DEL</span>
+                <span class="sb-board-indicator" id="sbEmptyNetAway" style="display:none;background:#EF4444;">EN</span>
                 <span class="sb-board-label">GUEST</span>
             </div>
             <div class="sb-board-team-name"><?= htmlspecialchars($active_game['away_team_name'] ?? 'Away') ?></div>
@@ -148,8 +211,9 @@ $away_pp = ($home_active_pens > 0 && $home_active_pens > $away_active_pens);
         .sb-controls-grid {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr 1fr;
-            gap: 16px;
-            padding: 16px;
+            gap: clamp(8px, 1.2vw, 16px);
+            padding: clamp(8px, 1.2vw, 16px);
+            padding-bottom: 24px;
         }
         @media (max-width: 1200px) {
             .sb-controls-grid { grid-template-columns: 1fr 1fr; }
@@ -188,8 +252,8 @@ $away_pp = ($home_active_pens > 0 && $home_active_pens > $away_active_pens);
             gap: 8px;
             width: 100%;
             min-height: 52px;
-            padding: 12px 16px;
-            font-size: 16px;
+            padding: clamp(8px, 1vw, 12px) clamp(10px, 1.2vw, 16px);
+            font-size: clamp(14px, 1.2vw, 16px);
             font-weight: 700;
             border: none;
             border-radius: 8px;
@@ -232,8 +296,8 @@ $away_pp = ($home_active_pens > 0 && $home_active_pens > $away_active_pens);
             justify-content: center;
             gap: 6px;
             min-height: 48px;
-            padding: 10px 14px;
-            font-size: 14px;
+            padding: clamp(6px, 0.8vw, 10px) clamp(8px, 1vw, 14px);
+            font-size: clamp(12px, 1.1vw, 14px);
             font-weight: 600;
             border: 1px solid #2D2D3F;
             border-radius: 8px;
@@ -287,7 +351,7 @@ $away_pp = ($home_active_pens > 0 && $home_active_pens > $away_active_pens);
             border-color: #6B46C1;
         }
         .sb-ctrl-penalty-list {
-            max-height: 120px;
+            max-height: 200px;
             overflow-y: auto;
             border: 1px solid #2D2D3F;
             border-radius: 6px;
@@ -301,8 +365,54 @@ $away_pp = ($home_active_pens > 0 && $home_active_pens > $away_active_pens);
             font-size: 12px;
             color: #C4C4D4;
             border-bottom: 1px solid #1A1A24;
+            gap: 6px;
         }
         .sb-ctrl-penalty-item:last-child { border-bottom: none; }
+        /* NHL: Queued penalties (3rd+) shown dimmed with QUEUED badge */
+        .sb-ctrl-penalty-item.sb-penalty-queued {
+            opacity: 0.55;
+            border-left: 3px solid #F59E0B;
+        }
+        .sb-ctrl-penalty-info { color: #8B8BA3; white-space: nowrap; font-size: 11px; }
+        .sb-ctrl-penalty-actions {
+            display: flex;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+        .sb-ctrl-penalty-vis-btn {
+            width: 26px;
+            height: 26px;
+            border: 1px solid #4B5563;
+            border-radius: 5px;
+            background: rgba(75, 85, 99, 0.1);
+            color: #9CA3AF;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            transition: background 0.15s;
+        }
+        .sb-ctrl-penalty-vis-btn:hover { background: rgba(75, 85, 99, 0.25); color: #E2E8F0; }
+        .sb-ctrl-penalty-clear-btn {
+            flex-shrink: 0;
+            width: 26px;
+            height: 26px;
+            border: 1px solid #DC2626;
+            border-radius: 5px;
+            background: rgba(220, 38, 38, 0.1);
+            color: #DC2626;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            transition: background 0.15s, transform 0.1s;
+        }
+        .sb-ctrl-penalty-clear-btn:hover {
+            background: rgba(220, 38, 38, 0.25);
+        }
+        .sb-ctrl-penalty-clear-btn:active { transform: scale(0.9); }
         .sb-ctrl-penalty-empty {
             text-align: center;
             padding: 12px;
@@ -392,17 +502,42 @@ $away_pp = ($home_active_pens > 0 && $home_active_pens > $away_active_pens);
                 <?php if (empty($home_penalties)): ?>
                 <div class="sb-ctrl-penalty-empty">No home penalties</div>
                 <?php else: ?>
-                <?php foreach ($home_penalties as $pen): ?>
-                <div class="sb-ctrl-penalty-item">
+                <?php $home_pen_idx = 0; foreach ($home_penalties as $pen):
+                    $home_pen_idx++;
+                    $pen_type = sbGetPenaltyType((int)($pen['duration_minutes'] ?? 2));
+                    $is_queued = ($pen_type !== 'misconduct' && $pen_type !== 'game_misconduct' && $home_pen_idx > 2);
+                ?>
+                <div class="sb-ctrl-penalty-item <?= $is_queued ? 'sb-penalty-queued' : '' ?>"
+                     data-team="home" data-penalty-id="<?= (int)($pen['id'] ?? 0) ?>"
+                     data-penalty-type="<?= htmlspecialchars($pen_type) ?>"
+                     data-duration="<?= (int)($pen['duration_minutes'] ?? 2) ?>">
                     <span>#<?= htmlspecialchars($pen['player_number'] ?? '?') ?> <?= htmlspecialchars($pen['player_name'] ?? '') ?></span>
-                    <span><?= htmlspecialchars($pen['infraction'] ?? '') ?> (<?= htmlspecialchars($pen['duration_minutes'] ?? '2') ?>min)</span>
+                    <span class="sb-ctrl-penalty-info"><?= htmlspecialchars($pen['infraction'] ?? '') ?> (<?= htmlspecialchars($pen['duration_minutes'] ?? '2') ?>min<?= ($pen_type === 'major') ? ' MAJ' : '' ?><?= $is_queued ? ' QUEUED' : '' ?>)</span>
+                    <span class="sb-ctrl-penalty-actions">
+                        <button class="sb-ctrl-penalty-vis-btn" data-penalty-id="<?= (int)($pen['id'] ?? 0) ?>" onclick="sbTogglePenaltyItemVisibility(<?= (int)($pen['id'] ?? 0) ?>)" title="Toggle board visibility">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="sb-ctrl-penalty-clear-btn" onclick="sbClearPenalty(<?= (int)($pen['id'] ?? 0) ?>)" title="Clear penalty">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </span>
                 </div>
                 <?php endforeach; ?>
                 <?php endif; ?>
             </div>
-        </div>
 
-        <!-- ════════ COLUMN 2: CLOCK & PERIOD ════════ -->
+            <hr class="sb-ctrl-divider">
+
+            <span class="sb-ctrl-section-label">Game Situation</span>
+            <div class="sb-ctrl-btn-row">
+                <button class="sb-ctrl-btn-secondary" onclick="sbToggleDelayedPenalty('home')">
+                    <i class="fas fa-hand-paper"></i> Delayed Pen
+                </button>
+                <button class="sb-ctrl-btn-secondary" onclick="sbToggleEmptyNet('home')">
+                    <i class="fas fa-door-open"></i> Empty Net
+                </button>
+            </div>
+        </div>
         <div class="sb-ctrl-panel sb-panel-clock">
             <div class="sb-ctrl-panel-title"><i class="fas fa-clock"></i> Clock &amp; Period</div>
 
@@ -446,6 +581,17 @@ $away_pp = ($home_active_pens > 0 && $home_active_pens > $away_active_pens);
                         <option value="3">3:00</option>
                         <option value="5" selected>5:00 (Default)</option>
                         <option value="10">10:00</option>
+                        <option value="20">20:00 (Playoff)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="sb-ctrl-config-group">
+                <span class="sb-ctrl-section-label">Clock Mode</span>
+                <div class="sb-ctrl-config-row">
+                    <select id="sbClockModeSelect" onchange="sbSetClockMode(this.value)">
+                        <option value="stop_time">Stop Time (NHL)</option>
+                        <option value="running_time">Running Time (Beer/Minor League)</option>
                     </select>
                 </div>
             </div>
@@ -515,13 +661,18 @@ $away_pp = ($home_active_pens > 0 && $home_active_pens > $away_active_pens);
                     <i class="fab fa-spotify"></i> Spotify Connect
                 </button>
                 <?php endif; ?>
+                <?php if ($apple_music_configured): ?>
+                <button class="sb-ctrl-btn-secondary" onclick="sbAppleMusicConnect()" style="color:#FC3C44;border-color:#FC3C44;">
+                    <i class="fab fa-apple"></i> Apple Music
+                </button>
+                <?php endif; ?>
                 <?php if ($subsonic_configured): ?>
                 <button class="sb-ctrl-btn-secondary" onclick="sbSubsonicBrowse()">
                     <i class="fas fa-server"></i> Subsonic Library
                 </button>
                 <?php endif; ?>
-                <?php if (!$spotify_configured && !$subsonic_configured): ?>
-                <div style="text-align:center;padding:12px;color:#555;font-size:12px;">No music sources configured</div>
+                <?php if (!$spotify_configured && !$subsonic_configured && !$apple_music_configured): ?>
+                <div style="text-align:center;padding:12px;color:#555;font-size:12px;">No music sources configured<?php if ($isAdmin): ?> — <a href="?view=settings" style="color:#6B46C1;">Configure in Settings</a><?php endif; ?></div>
                 <?php endif; ?>
             </div>
 
@@ -579,17 +730,42 @@ $away_pp = ($home_active_pens > 0 && $home_active_pens > $away_active_pens);
                 <?php if (empty($away_penalties)): ?>
                 <div class="sb-ctrl-penalty-empty">No away penalties</div>
                 <?php else: ?>
-                <?php foreach ($away_penalties as $pen): ?>
-                <div class="sb-ctrl-penalty-item">
+                <?php $away_pen_idx = 0; foreach ($away_penalties as $pen):
+                    $away_pen_idx++;
+                    $pen_type = sbGetPenaltyType((int)($pen['duration_minutes'] ?? 2));
+                    $is_queued = ($pen_type !== 'misconduct' && $pen_type !== 'game_misconduct' && $away_pen_idx > 2);
+                ?>
+                <div class="sb-ctrl-penalty-item <?= $is_queued ? 'sb-penalty-queued' : '' ?>"
+                     data-team="away" data-penalty-id="<?= (int)($pen['id'] ?? 0) ?>"
+                     data-penalty-type="<?= htmlspecialchars($pen_type) ?>"
+                     data-duration="<?= (int)($pen['duration_minutes'] ?? 2) ?>">
                     <span>#<?= htmlspecialchars($pen['player_number'] ?? '?') ?> <?= htmlspecialchars($pen['player_name'] ?? '') ?></span>
-                    <span><?= htmlspecialchars($pen['infraction'] ?? '') ?> (<?= htmlspecialchars($pen['duration_minutes'] ?? '2') ?>min)</span>
+                    <span class="sb-ctrl-penalty-info"><?= htmlspecialchars($pen['infraction'] ?? '') ?> (<?= htmlspecialchars($pen['duration_minutes'] ?? '2') ?>min<?= ($pen_type === 'major') ? ' MAJ' : '' ?><?= $is_queued ? ' QUEUED' : '' ?>)</span>
+                    <span class="sb-ctrl-penalty-actions">
+                        <button class="sb-ctrl-penalty-vis-btn" data-penalty-id="<?= (int)($pen['id'] ?? 0) ?>" onclick="sbTogglePenaltyItemVisibility(<?= (int)($pen['id'] ?? 0) ?>)" title="Toggle board visibility">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="sb-ctrl-penalty-clear-btn" onclick="sbClearPenalty(<?= (int)($pen['id'] ?? 0) ?>)" title="Clear penalty">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </span>
                 </div>
                 <?php endforeach; ?>
                 <?php endif; ?>
             </div>
-        </div>
 
-    </div><!-- /.sb-controls-grid -->
+            <hr class="sb-ctrl-divider">
+
+            <span class="sb-ctrl-section-label">Game Situation</span>
+            <div class="sb-ctrl-btn-row">
+                <button class="sb-ctrl-btn-secondary" onclick="sbToggleDelayedPenalty('away')">
+                    <i class="fas fa-hand-paper"></i> Delayed Pen
+                </button>
+                <button class="sb-ctrl-btn-secondary" onclick="sbToggleEmptyNet('away')">
+                    <i class="fas fa-door-open"></i> Empty Net
+                </button>
+            </div>
+        </div>
 
 </div>
 <?php endif; ?>
@@ -743,17 +919,36 @@ $away_pp = ($home_active_pens > 0 && $home_active_pens > $away_active_pens);
                 <option value="Delay of Game">Delay of Game</option>
                 <option value="Too Many Men">Too Many Men</option>
                 <option value="Unsportsmanlike">Unsportsmanlike Conduct</option>
+                <option value="Charging">Charging</option>
+                <option value="Elbowing">Elbowing</option>
+                <option value="Kneeing">Kneeing</option>
+                <option value="Spearing">Spearing</option>
+                <option value="Butt-Ending">Butt-Ending</option>
+                <option value="Head Contact">Head Contact</option>
+                <option value="Clipping">Clipping</option>
                 <option value="Fighting">Fighting</option>
                 <option value="Misconduct">Misconduct</option>
                 <option value="Game Misconduct">Game Misconduct</option>
+                <option value="Match Penalty">Match Penalty</option>
+                <option value="Bench Minor">Bench Minor</option>
             </select>
-            <label for="sb-pen-duration">Duration (minutes)</label>
-            <select id="sb-pen-duration" name="duration_minutes">
-                <option value="2">2 min (Minor)</option>
-                <option value="4">4 min (Double Minor)</option>
-                <option value="5">5 min (Major)</option>
-                <option value="10">10 min (Misconduct)</option>
-            </select>
+            <label for="sb-pen-duration">Duration</label>
+            <div style="display:flex;gap:8px;align-items:stretch;margin-bottom:12px;">
+                <select id="sb-pen-duration" name="duration_minutes" onchange="sbPenDurationPresetChanged(this)" style="flex:1;margin-bottom:0;">
+                    <option value="2">2 min (Minor – NHL)</option>
+                    <option value="3">3 min (Minor – Beer/Minor League)</option>
+                    <option value="4">4 min (Double Minor – NHL)</option>
+                    <option value="5">5 min (Major)</option>
+                    <option value="6">6 min (Double Minor – Beer League)</option>
+                    <option value="7">7 min (Major – Beer League)</option>
+                    <option value="10">10 min (Misconduct)</option>
+                    <option value="custom">Custom&hellip;</option>
+                </select>
+                <input type="number" id="sb-pen-duration-custom" name="duration_minutes_custom"
+                       min="1" max="60" placeholder="min" style="display:none;width:80px;margin-bottom:0;text-align:center;">
+            </div>
+            <label for="sb-pen-served-by">Served By (optional – for bench/goalie penalties)</label>
+            <input type="text" id="sb-pen-served-by" name="served_by" placeholder="Player serving penalty">
             <div class="sb-modal-actions">
                 <button type="button" class="sb-btn" onclick="document.getElementById('sb-penalty-modal').classList.remove('active')">Cancel</button>
                 <button type="submit" class="sb-btn sb-btn-primary"><i class="fas fa-gavel"></i> Add Penalty</button>
@@ -876,5 +1071,33 @@ function sbToggleAnnounce() {
     var micActive = window._sbMicStream ? true : false;
     btn.classList.toggle('active', micActive);
     btn.innerHTML = micActive ? '🔴 LIVE — Tap to End' : '📢 Announce';
+}
+
+// ── Custom penalty duration toggle ────────────────────────
+function sbPenDurationPresetChanged(select) {
+    var customInput = document.getElementById('sb-pen-duration-custom');
+    if (select.value === 'custom') {
+        customInput.style.display = '';
+        customInput.focus();
+    } else {
+        customInput.style.display = 'none';
+        customInput.value = '';
+    }
+}
+
+// ── Delayed penalty indicator toggle ──────────────────────
+function sbToggleDelayedPenalty(team) {
+    var el = document.getElementById('sbDelayed' + (team === 'home' ? 'Home' : 'Away'));
+    if (!el) return;
+    var isActive = el.style.display !== 'none';
+    el.style.display = isActive ? 'none' : 'inline-flex';
+}
+
+// ── Empty net indicator toggle ────────────────────────────
+function sbToggleEmptyNet(team) {
+    var el = document.getElementById('sbEmptyNet' + (team === 'home' ? 'Home' : 'Away'));
+    if (!el) return;
+    var isActive = el.style.display !== 'none';
+    el.style.display = isActive ? 'none' : 'inline-flex';
 }
 </script>
