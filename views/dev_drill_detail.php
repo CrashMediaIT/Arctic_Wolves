@@ -10,7 +10,7 @@ $drill_assignment_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $enrollment_id = isset($_GET['enrollment_id']) ? (int)$_GET['enrollment_id'] : 0;
 
 if (!$drill_assignment_id) {
-    echo '<div style="text-align:center;padding:60px 20px;color:var(--text-dim,#94a3b8);"><i class="fas fa-exclamation-triangle" style="font-size:48px;display:block;margin-bottom:16px;opacity:0.5;"></i><h3 style="color:var(--text-white,#e2e8f0);">Drill Not Found</h3><p>The drill you are looking for could not be found.</p><a href="?page=personal_development_my_program" style="color:var(--primary,#6B46C1);">← Back to My Program</a></div>';
+    echo '<div style="text-align:center;padding:60px 20px;color:var(--text-dim);"><i class="fas fa-exclamation-triangle" style="font-size:48px;display:block;margin-bottom:16px;opacity:0.5;"></i><h3 style="color:var(--text-white);">Drill Not Found</h3><p>The drill you are looking for could not be found.</p><a href="?page=personal_development_my_program" style="color:var(--primary);">← Back to My Program</a></div>';
     return;
 }
 
@@ -33,7 +33,7 @@ $stmt->execute([$drill_assignment_id, $user_id]);
 $drill = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$drill) {
-    echo '<div style="text-align:center;padding:60px 20px;color:var(--text-dim,#94a3b8);"><i class="fas fa-lock" style="font-size:48px;display:block;margin-bottom:16px;opacity:0.5;"></i><h3 style="color:var(--text-white,#e2e8f0);">Access Denied</h3><p>You do not have access to this drill.</p><a href="?page=personal_development_my_program" style="color:var(--primary,#6B46C1);">← Back to My Program</a></div>';
+    echo '<div style="text-align:center;padding:60px 20px;color:var(--text-dim);"><i class="fas fa-lock" style="font-size:48px;display:block;margin-bottom:16px;opacity:0.5;"></i><h3 style="color:var(--text-white);">Access Denied</h3><p>You do not have access to this drill.</p><a href="?page=personal_development_my_program" style="color:var(--primary);">← Back to My Program</a></div>';
     return;
 }
 

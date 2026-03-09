@@ -94,9 +94,25 @@ test.describe('Scoreboard staff-only access', () => {
   test('scoreboard.php has user login support', () => {
     const content = readFile('scoreboard.php');
     expect(content).toContain('scoreboard_user_login');
-    expect(content).toContain('password_hash');
+    expect(content).toContain('password_verify');
     expect(content).toContain("name=\"email\"");
     expect(content).toContain("name=\"password\"");
+  });
+
+  test('scoreboard.php user login uses correct password column name from users table', () => {
+    const content = readFile('scoreboard.php');
+    // The users table column is `password`, not `password_hash`
+    // The SQL query must select the correct column
+    expect(content).toMatch(/SELECT.*\bpassword\b.*FROM users/);
+    // password_verify must use the correct column key
+    expect(content).toContain("matchedUser['password']");
+  });
+
+  test('scoreboard.php user login checks is_verified status', () => {
+    const content = readFile('scoreboard.php');
+    // Should check is_verified like the main login flow
+    expect(content).toContain('is_verified');
+    expect(content).toContain('Account pending verification');
   });
 
   test('scoreboard.php login validates CSRF token', () => {

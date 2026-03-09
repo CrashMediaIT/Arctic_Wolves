@@ -16,7 +16,7 @@
   "author": "Arctic Wolves Team",
   "license": "ISC",
   "devDependencies": {
-    "@playwright/test": "^1.40.0",
+    "@playwright/test": "^1.58.2",
     "stylelint": "^17.0.0",
     "stylelint-config-standard": "^40.0.0"
   }

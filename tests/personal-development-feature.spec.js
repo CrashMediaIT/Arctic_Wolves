@@ -1307,3 +1307,122 @@ test.describe('Navigation Rename Sessions to Training', () => {
     expect(content).toContain('Training');
   });
 });
+
+// =====================================================
+// Design Style Consistency Tests
+// =====================================================
+
+test.describe('Development Programs Design Style Consistency', () => {
+
+  test('personal_development_programs.php uses CSS variables instead of hardcoded colors', () => {
+    const content = readFile('views/personal_development_programs.php');
+    // Should use CSS variables for semantic colors
+    expect(content).toContain('var(--info)');
+    expect(content).toContain('var(--success)');
+    // Should not use hardcoded hex colors for semantic colors in CSS
+    expect(content).not.toMatch(/color:\s*#3b82f6/);
+    expect(content).not.toMatch(/color:\s*#10b981/);
+  });
+
+  test('personal_development_programs.php uses CSS classes instead of inline styles for completed programs', () => {
+    const content = readFile('views/personal_development_programs.php');
+    // Should use class-based approach for completed program cards
+    expect(content).toContain('dev-completed-card');
+    expect(content).toContain('dev-completed-section');
+    // Should use standard badge classes (generated dynamically via PHP ternary)
+    expect(content).toContain("class=\"badge badge-");
+    expect(content).toContain("'success'");
+    expect(content).toContain("'warning'");
+    expect(content).toContain("'danger'");
+  });
+
+  test('personal_development_programs.php uses correct CSS variable fallbacks', () => {
+    const content = readFile('views/personal_development_programs.php');
+    // Should use correct fallback for --bg-card (#16161F not #1a1a2e)
+    expect(content).not.toContain('#1a1a2e');
+    expect(content).not.toContain('#2d2d44');
+    expect(content).not.toContain('#e2e8f0');
+    expect(content).not.toContain('#94a3b8');
+  });
+
+  test('personal_development_my_program.php uses CSS variables for colors', () => {
+    const content = readFile('views/personal_development_my_program.php');
+    // Should use CSS variables for semantic colors
+    expect(content).toContain('var(--info)');
+    expect(content).toContain('var(--success)');
+    expect(content).toContain('var(--warning)');
+    // Should not have hardcoded colors in style blocks
+    expect(content).not.toMatch(/color:\s*#3b82f6/);
+    expect(content).not.toMatch(/color:\s*#10b981/);
+    expect(content).not.toMatch(/color:\s*#f59e0b/);
+  });
+
+  test('personal_development_my_program.php uses CSS classes for enrollment header icons', () => {
+    const content = readFile('views/personal_development_my_program.php');
+    // Should use CSS classes for icon coloring
+    expect(content).toContain('icon-goalie');
+    expect(content).toContain('icon-player');
+    // Should use CSS class for weeks badge
+    expect(content).toContain('weeks-badge');
+  });
+
+  test('personal_development_my_program.php uses correct CSS variable fallbacks', () => {
+    const content = readFile('views/personal_development_my_program.php');
+    expect(content).not.toContain('#1a1a2e');
+    expect(content).not.toContain('#2d2d44');
+    expect(content).not.toContain('#0d1117');
+  });
+
+  test('development_programs.php uses CSS variables for badge colors', () => {
+    const content = readFile('views/development_programs.php');
+    // Program badges should use CSS variables
+    expect(content).toContain('var(--info)');
+    expect(content).toContain('var(--success)');
+    expect(content).toContain('var(--warning)');
+    expect(content).toContain('var(--error)');
+  });
+
+  test('development_programs.php uses standard badge sizing matching style guide', () => {
+    const content = readFile('views/development_programs.php');
+    // Badge styling should use CSS variables for sizing
+    expect(content).toContain('var(--radius-2xl)');
+    expect(content).toContain('var(--font-size-sm)');
+    expect(content).toContain('var(--font-weight-semibold)');
+  });
+
+  test('development_programs.php coach tabs match style guide pattern', () => {
+    const content = readFile('views/development_programs.php');
+    // Coach tabs should use border-bottom: 3px (style guide standard)
+    expect(content).toContain('border-bottom: 3px solid transparent');
+    // Tabs should have hover state
+    expect(content).toContain('.dev-coach-tab:hover');
+  });
+
+  test('dev_drill_detail.php uses CSS variables for colors', () => {
+    const content = readFile('views/dev_drill_detail.php');
+    expect(content).toContain('var(--info)');
+    expect(content).toContain('var(--success)');
+    expect(content).toContain('var(--warning)');
+    // Should not have hardcoded color values
+    expect(content).not.toMatch(/color:\s*#3b82f6/);
+    expect(content).not.toMatch(/color:\s*#10b981/);
+    expect(content).not.toMatch(/color:\s*#f59e0b/);
+  });
+
+  test('dev_drill_detail.php uses correct CSS variable fallbacks', () => {
+    const content = readFile('views/dev_drill_detail.php');
+    expect(content).not.toContain('#1a1a2e');
+    expect(content).not.toContain('#2d2d44');
+    expect(content).not.toContain('#0d1117');
+    expect(content).not.toContain('#e2e8f0');
+    expect(content).not.toContain('#94a3b8');
+  });
+
+  test('dev_drill_detail.php uses style guide spacing and radius variables', () => {
+    const content = readFile('views/dev_drill_detail.php');
+    expect(content).toContain('var(--radius-2xl)');
+    expect(content).toContain('var(--space-6)');
+    expect(content).toContain('var(--font-weight-semibold)');
+    expect(content).toContain('var(--transition-normal)');
+  });
+});
