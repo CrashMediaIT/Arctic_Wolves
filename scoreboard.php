@@ -101,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $scoreboard_login_error = "Email and password are required.";
         } else {
             try {
-                $stmt = $pdo->prepare("SELECT id, first_name, password_hash, role, is_active, email FROM users");
+                $stmt = $pdo->prepare("SELECT id, first_name, password, role, is_active, is_verified, email FROM users");
                 $stmt->execute();
                 $allUsers = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 $matchedUser = null;
@@ -112,14 +112,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         break;
                     }
                 }
-                if ($matchedUser && $matchedUser['is_active'] && password_verify($password, $matchedUser['password_hash'])) {
-                    $_SESSION['logged_in'] = true;
-                    $_SESSION['user_id'] = $matchedUser['id'];
-                    $_SESSION['user_role'] = $matchedUser['role'];
-                    $_SESSION['user_name'] = FieldEncryption::decrypt($matchedUser['first_name']);
-                    $_SESSION['scoreboard_mode'] = true;
-                    header("Location: scoreboard.php");
-                    exit();
+                if ($matchedUser && $matchedUser['is_active'] && password_verify($password, $matchedUser['password'])) {
+                    if (isset($matchedUser['is_verified']) && $matchedUser['is_verified'] === 0) {
+                        $scoreboard_login_error = "Account pending verification.";
+                    } else {
+                        $_SESSION['logged_in'] = true;
+                        $_SESSION['user_id'] = $matchedUser['id'];
+                        $_SESSION['user_role'] = $matchedUser['role'];
+                        $_SESSION['user_name'] = FieldEncryption::decrypt($matchedUser['first_name']);
+                        $_SESSION['scoreboard_mode'] = true;
+                        header("Location: scoreboard.php");
+                        exit();
+                    }
                 } else {
                     $scoreboard_login_error = "Invalid email or password.";
                 }
