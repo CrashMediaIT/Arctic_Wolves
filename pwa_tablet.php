@@ -413,7 +413,7 @@ try {
                 <i class="fa-solid fa-comments"></i> Messages
                 <span id="nav-msg-badge" style="display:none;background:var(--primary);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto;"></span>
             </a>
-            <a href="?page=sessions" class="nav-link <?= in_array($page, ['sessions','upcoming_sessions','booking'])?'active':'' ?>"><i class="fa-solid fa-calendar-check"></i> Sessions</a>
+            <a href="?page=sessions" class="nav-link <?= in_array($page, ['sessions','upcoming_sessions','booking'])?'active':'' ?>"><i class="fa-solid fa-calendar-check"></i> Training</a>
             <a href="?page=video" class="nav-link <?= in_array($page, ['video','drill_review','coaches_reviews','record_video','video_review_detail'])?'active':'' ?>"><i class="fa-solid fa-video"></i> Video</a>
             <a href="?page=health" class="nav-link <?= in_array($page, ['health','strength_conditioning','nutrition'])?'active':'' ?>"><i class="fa-solid fa-heart-pulse"></i> Health</a>
             <?php if ($canAccessDevPrograms): ?>

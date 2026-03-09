@@ -5,7 +5,7 @@ if ($tab === 'sessions') $tab = 'upcoming_sessions'; // Default tab
 ?>
 
 <div class="page-header">
-    <h1 class="page-title"><i class="fas fa-calendar-check"></i> Sessions</h1>
+    <h1 class="page-title"><i class="fas fa-calendar-check"></i> Training</h1>
     <p class="page-description">Manage your training sessions, view upcoming schedules, and book new sessions</p>
 </div>
 
