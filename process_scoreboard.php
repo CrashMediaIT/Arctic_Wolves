@@ -558,10 +558,13 @@ try {
                 $stmt = $pdo->prepare("INSERT INTO teams (team_name, status, created_at) VALUES (?, 'active', NOW())");
                 $stmt->execute([$newName]);
                 $teamId = (int)$pdo->lastInsertId();
-                // Link to Game Plan by creating a game_plan entry
+                // Link to Game Plan if table exists
                 try {
-                    $pdo->prepare("INSERT INTO vr_game_plans (coach_id, plan_type, game_date, opponent, notes, created_at) VALUES (?, 'roster', NOW(), ?, ?, NOW())")
-                        ->execute([$user_id, $newName, "Team created from Scoreboard settings. Auto-linked to Game Plan."]);
+                    $checkTable = $pdo->query("SHOW TABLES LIKE 'vr_game_plans'");
+                    if ($checkTable->rowCount() > 0) {
+                        $pdo->prepare("INSERT INTO vr_game_plans (coach_id, plan_type, game_date, opponent, notes, created_at) VALUES (?, 'roster', NOW(), ?, ?, NOW())")
+                            ->execute([$user_id, $newName, "Team created from Scoreboard settings. Auto-linked to Game Plan."]);
+                    }
                 } catch (PDOException $e) { error_log('Team gameplan link: ' . $e->getMessage()); }
             } else {
                 $teamId = (int)$teamId;

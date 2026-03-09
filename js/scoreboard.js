@@ -271,7 +271,10 @@ function sbAddGoal(team) {
 
             // NHL Rule 16.2: Minor penalty expires on PPG
             if (ppgClearable) {
-                if (confirm('Power play goal! Clear the oldest minor penalty for the ' + opposingTeam + ' team? (NHL Rule 16.2 – minors expire on PPG, majors do not)')) {
+                var opposingLabel = (opposingTeam === 'home')
+                    ? (document.querySelector('.sb-board-team.home .sb-board-team-name') || {}).textContent || 'Home'
+                    : (document.querySelector('.sb-board-team.away .sb-board-team-name') || {}).textContent || 'Away';
+                if (confirm('Power play goal! Clear the oldest minor penalty for ' + opposingLabel + '? (NHL Rule 16.2 – minors expire on PPG, majors do not)')) {
                     sbClearPenaltyOnGoal(opposingTeam);
                 }
             }
@@ -366,7 +369,11 @@ function sbAddPenalty(e) {
     var duration = fd.get('duration_minutes');
     if (duration === 'custom') {
         var customVal = fd.get('duration_minutes_custom');
-        duration = parseInt(customVal, 10) || 2;
+        duration = parseInt(customVal, 10);
+        if (isNaN(duration) || duration < 1 || duration > 60) {
+            alert('Please enter a valid penalty duration (1-60 minutes).');
+            return false;
+        }
     }
     sbFetch('add_penalty', {
         team: fd.get('team'),

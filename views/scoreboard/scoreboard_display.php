@@ -942,7 +942,7 @@ foreach ($away_penalties as $p) {
                     <option value="6">6 min (Double Minor – Beer League)</option>
                     <option value="7">7 min (Major – Beer League)</option>
                     <option value="10">10 min (Misconduct)</option>
-                    <option value="custom">Custom…</option>
+                    <option value="custom">Custom&hellip;</option>
                 </select>
                 <input type="number" id="sb-pen-duration-custom" name="duration_minutes_custom"
                        min="1" max="60" placeholder="min" style="display:none;width:80px;margin-bottom:0;text-align:center;">
