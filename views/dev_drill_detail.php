@@ -85,144 +85,147 @@ if (!empty($drill['drill_image'])) {
 .dev-drill-page { max-width: 900px; }
 .dev-drill-back {
     display: inline-flex; align-items: center; gap: 6px;
-    font-size: 13px; font-weight: 600; color: var(--primary, #6B46C1);
-    text-decoration: none; margin-bottom: 16px;
+    font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); color: var(--primary);
+    text-decoration: none; margin-bottom: var(--space-4);
 }
 .dev-drill-back:hover { opacity: 0.8; }
 .dev-drill-header {
-    background: var(--bg-card, #1a1a2e); border: 1px solid var(--border, #2d2d44);
-    border-radius: 12px; padding: 24px; margin-bottom: 20px;
+    background: var(--bg-card, #16161F); border: 1px solid var(--border, #2D2D3F);
+    border-radius: var(--radius-2xl); padding: var(--space-6); margin-bottom: var(--space-5);
 }
 .dev-drill-header h1 {
-    font-size: 24px; font-weight: 800; color: var(--text-white, #e2e8f0); margin: 0 0 12px;
+    font-size: var(--font-size-3xl); font-weight: var(--font-weight-black); color: var(--text-white); margin: 0 0 var(--space-3);
 }
-.dev-drill-header-meta { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.dev-drill-header-meta { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
 .dev-drill-status {
-    display: inline-block; padding: 4px 12px; border-radius: 14px;
-    font-size: 12px; font-weight: 600; text-transform: uppercase;
+    display: inline-flex; align-items: center; padding: 4px var(--space-3); border-radius: var(--radius-2xl);
+    font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); text-transform: uppercase;
 }
-.dev-drill-status.assigned { background: rgba(59,130,246,0.15); color: #3b82f6; }
-.dev-drill-status.in_progress { background: rgba(245,158,11,0.15); color: #f59e0b; }
-.dev-drill-status.completed { background: rgba(16,185,129,0.15); color: #10b981; }
-.dev-drill-coach { font-size: 13px; color: var(--text-dim, #94a3b8); }
+.dev-drill-status.assigned { background: rgba(59, 130, 246, 0.15); color: var(--info); }
+.dev-drill-status.in_progress { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+.dev-drill-status.completed { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+.dev-drill-coach { font-size: var(--font-size-sm); color: var(--text-dim); }
 .dev-drill-coach i { margin-right: 4px; }
-.dev-drill-actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+.dev-drill-actions { display: flex; gap: 10px; margin-top: var(--space-4); flex-wrap: wrap; }
 .dev-drill-actions .btn {
-    padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 13px;
+    padding: 0 var(--space-5); height: 40px; border-radius: var(--radius-lg); font-weight: var(--font-weight-semibold); font-size: var(--font-size-sm);
     border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
-    transition: opacity 0.2s;
+    transition: all var(--transition-normal);
 }
-.dev-drill-actions .btn:hover { opacity: 0.85; }
-.dev-drill-actions .btn-primary { background: var(--primary, #6B46C1); color: #fff; }
-.dev-drill-actions .btn-secondary { background: rgba(59,130,246,0.12); color: #3b82f6; border: 1px solid rgba(59,130,246,0.25); }
-.dev-drill-actions .btn-success { background: rgba(16,185,129,0.12); color: #10b981; border: 1px solid rgba(16,185,129,0.25); }
+.dev-drill-actions .btn:hover { transform: translateY(-1px); }
+.dev-drill-actions .btn-primary { background: var(--primary); color: var(--text-white); }
+.dev-drill-actions .btn-primary:hover { background: var(--primary-hover); box-shadow: var(--shadow-primary); }
+.dev-drill-actions .btn-secondary { background: rgba(59, 130, 246, 0.12); color: var(--info); border: 1px solid rgba(59, 130, 246, 0.25); }
+.dev-drill-actions .btn-success { background: rgba(16, 185, 129, 0.12); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.25); }
 
 .dev-drill-card {
-    background: var(--bg-card, #1a1a2e); border: 1px solid var(--border, #2d2d44);
-    border-radius: 12px; padding: 24px; margin-bottom: 20px;
+    background: var(--bg-card, #16161F); border: 1px solid var(--border, #2D2D3F);
+    border-radius: var(--radius-2xl); padding: var(--space-6); margin-bottom: var(--space-5);
 }
 .dev-drill-card h3 {
-    font-size: 16px; font-weight: 700; color: var(--text-white, #e2e8f0);
-    margin: 0 0 16px; display: flex; align-items: center; gap: 8px;
+    font-size: var(--font-size-md); font-weight: var(--font-weight-bold); color: var(--text-white);
+    margin: 0 0 var(--space-4); display: flex; align-items: center; gap: var(--space-2);
 }
-.dev-drill-card h3 i { color: var(--primary, #6B46C1); font-size: 14px; }
-.dev-drill-section { margin-bottom: 20px; }
+.dev-drill-card h3 i { color: var(--primary); font-size: var(--font-size-base); }
+.dev-drill-section { margin-bottom: var(--space-5); }
 .dev-drill-section:last-child { margin-bottom: 0; }
 .dev-drill-section h4 {
-    font-size: 13px; font-weight: 600; color: var(--primary, #6B46C1);
-    text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;
+    font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); color: var(--primary);
+    text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: var(--space-2);
 }
 .dev-drill-section p {
-    font-size: 14px; color: var(--text-dim, #94a3b8); line-height: 1.7; margin: 0;
+    font-size: var(--font-size-base); color: var(--text-dim); line-height: 1.7; margin: 0;
     white-space: pre-wrap;
 }
 .dev-drill-section .coach-note {
-    color: #f59e0b; padding: 12px 16px; background: rgba(245,158,11,0.06);
-    border: 1px solid rgba(245,158,11,0.15); border-radius: 8px;
+    color: var(--warning); padding: var(--space-3) var(--space-4); background: rgba(245, 158, 11, 0.06);
+    border: 1px solid rgba(245, 158, 11, 0.15); border-radius: var(--radius-lg);
 }
 
 /* Video section */
 .dev-drill-video-embed {
-    margin: 12px 0; border-radius: 10px; overflow: hidden;
+    margin: var(--space-3) 0; border-radius: var(--radius-xl); overflow: hidden;
     background: #000; aspect-ratio: 16/9;
 }
 .dev-drill-video-embed iframe { width: 100%; height: 100%; border: none; }
 .dev-drill-video-link {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 12px 18px; background: var(--bg-main, #0d1117);
-    border: 1px solid var(--border, #2d2d44); border-radius: 8px;
-    color: var(--primary, #6B46C1); font-weight: 600; font-size: 14px;
-    text-decoration: none; transition: border-color 0.2s;
+    display: inline-flex; align-items: center; gap: var(--space-2);
+    padding: var(--space-3) var(--space-5); background: var(--bg-main, #0A0A0F);
+    border: 1px solid var(--border, #2D2D3F); border-radius: var(--radius-lg);
+    color: var(--primary); font-weight: var(--font-weight-semibold); font-size: var(--font-size-base);
+    text-decoration: none; transition: border-color var(--transition-normal);
 }
-.dev-drill-video-link:hover { border-color: rgba(107,70,193,0.4); }
+.dev-drill-video-link:hover { border-color: rgba(107, 70, 193, 0.4); }
 
 /* Drill image */
-.dev-drill-image { max-width: 100%; border-radius: 8px; margin: 8px 0; }
+.dev-drill-image { max-width: 100%; border-radius: var(--radius-lg); margin: var(--space-2) 0; }
 
 /* Submitted videos list */
 .dev-drill-video-list { display: flex; flex-direction: column; gap: 10px; }
 .dev-drill-video-item {
-    background: var(--bg-main, #0d1117); border: 1px solid var(--border, #2d2d44);
-    border-radius: 8px; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center;
+    background: var(--bg-main, #0A0A0F); border: 1px solid var(--border, #2D2D3F);
+    border-radius: var(--radius-lg); padding: 14px 18px; display: flex; justify-content: space-between; align-items: center;
 }
-.dev-drill-video-item .video-info h5 { font-size: 14px; font-weight: 600; color: var(--text-white, #e2e8f0); margin: 0 0 4px; }
-.dev-drill-video-item .video-info span { font-size: 12px; color: var(--text-dim, #94a3b8); }
+.dev-drill-video-item .video-info h5 { font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); color: var(--text-white); margin: 0 0 4px; }
+.dev-drill-video-item .video-info span { font-size: var(--font-size-sm); color: var(--text-dim); }
 .dev-drill-video-item .video-status {
-    padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; text-transform: uppercase;
+    padding: 4px var(--space-3); border-radius: var(--radius-2xl); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); text-transform: uppercase;
 }
-.dev-drill-video-item .video-status.pending_review { background: rgba(245,158,11,0.15); color: #f59e0b; }
-.dev-drill-video-item .video-status.reviewed { background: rgba(59,130,246,0.15); color: #3b82f6; }
-.dev-drill-video-item .video-status.feedback_given { background: rgba(16,185,129,0.15); color: #10b981; }
-.dev-drill-video-item .video-feedback { margin-top: 6px; font-size: 12px; color: #10b981; }
+.dev-drill-video-item .video-status.pending_review { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+.dev-drill-video-item .video-status.reviewed { background: rgba(59, 130, 246, 0.15); color: var(--info); }
+.dev-drill-video-item .video-status.feedback_given { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+.dev-drill-video-item .video-feedback { margin-top: 6px; font-size: var(--font-size-sm); color: var(--success); }
 
 /* Upload section */
 .dev-drill-upload {
-    background: var(--bg-main, #0d1117); border: 1px solid var(--border, #2d2d44);
-    border-radius: 10px; padding: 20px;
+    background: var(--bg-main, #0A0A0F); border: 1px solid var(--border, #2D2D3F);
+    border-radius: var(--radius-xl); padding: var(--space-5);
 }
-.dev-drill-upload h4 { font-size: 14px; font-weight: 600; color: var(--text-white, #e2e8f0); margin: 0 0 12px; }
+.dev-drill-upload h4 { font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); color: var(--text-white); margin: 0 0 var(--space-3); }
 .dev-drill-upload label {
-    display: block; font-size: 13px; font-weight: 600; color: var(--text-dim, #94a3b8); margin-bottom: 4px;
+    display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); color: var(--text-dim); margin-bottom: var(--space-1);
 }
 .dev-drill-upload input[type="text"],
 .dev-drill-upload textarea {
-    width: 100%; padding: 10px 12px; background: var(--bg-card, #1a1a2e);
-    border: 1px solid var(--border, #2d2d44); border-radius: 8px;
-    color: var(--text-white, #e2e8f0); font-size: 13px; margin-bottom: 10px;
+    width: 100%; padding: 10px var(--space-3); background: var(--bg-card, #16161F);
+    border: 1px solid var(--border, #2D2D3F); border-radius: var(--radius-lg);
+    color: var(--text-white); font-size: var(--font-size-sm); margin-bottom: 10px;
 }
 .dev-drill-upload textarea { min-height: 60px; resize: vertical; }
 .dev-drill-upload .upload-progress-wrap {
-    display: none; width: 100%; height: 8px; background: #2D2D3F;
-    border-radius: 4px; margin: 10px 0; overflow: hidden;
+    display: none; width: 100%; height: 8px; background: var(--border);
+    border-radius: var(--radius-sm); margin: 10px 0; overflow: hidden;
 }
 .dev-drill-upload .upload-progress-bar {
-    width: 0%; height: 100%; background: linear-gradient(135deg, #6B46C1, #8B5CF6);
-    border-radius: 4px; transition: width 0.2s;
+    width: 0%; height: 100%; background: linear-gradient(135deg, var(--primary), var(--accent));
+    border-radius: var(--radius-sm); transition: width 0.2s;
 }
 .dev-drill-upload .upload-status {
-    font-size: 12px; color: var(--text-dim, #94a3b8); margin: 6px 0;
+    font-size: var(--font-size-sm); color: var(--text-dim); margin: 6px 0;
 }
 .dev-drill-upload .btn-upload {
-    padding: 10px 20px; background: var(--primary, #6B46C1); color: #fff;
-    border: none; border-radius: 8px; font-weight: 600; font-size: 13px;
+    padding: 0 var(--space-5); height: 40px; background: var(--primary); color: var(--text-white);
+    border: none; border-radius: var(--radius-lg); font-weight: var(--font-weight-semibold); font-size: var(--font-size-sm);
     cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+    transition: all var(--transition-normal);
 }
+.dev-drill-upload .btn-upload:hover { background: var(--primary-hover); }
 .dev-drill-upload .btn-upload:disabled { opacity: 0.5; cursor: not-allowed; }
-.dev-drill-file-input { margin-bottom: 10px; color: var(--text-dim, #94a3b8); }
+.dev-drill-file-input { margin-bottom: 10px; color: var(--text-dim); }
 
 /* Navigation */
-.dev-drill-nav { display: flex; justify-content: space-between; margin-top: 20px; }
+.dev-drill-nav { display: flex; justify-content: space-between; margin-top: var(--space-5); }
 .dev-drill-nav a {
     display: inline-flex; align-items: center; gap: 6px;
-    font-size: 13px; font-weight: 600; color: var(--primary, #6B46C1);
-    text-decoration: none; padding: 8px 14px;
-    background: var(--bg-card, #1a1a2e); border: 1px solid var(--border, #2d2d44);
-    border-radius: 8px; transition: border-color 0.2s;
+    font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); color: var(--primary);
+    text-decoration: none; padding: var(--space-2) 14px;
+    background: var(--bg-card, #16161F); border: 1px solid var(--border, #2D2D3F);
+    border-radius: var(--radius-lg); transition: border-color var(--transition-normal);
 }
-.dev-drill-nav a:hover { border-color: rgba(107,70,193,0.4); }
+.dev-drill-nav a:hover { border-color: rgba(107, 70, 193, 0.4); }
 
 @media (max-width: 600px) {
-    .dev-drill-header h1 { font-size: 20px; }
+    .dev-drill-header h1 { font-size: var(--font-size-xl); }
     .dev-drill-actions { flex-direction: column; }
     .dev-drill-actions .btn { width: 100%; justify-content: center; }
 }
