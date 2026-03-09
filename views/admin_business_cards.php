@@ -655,8 +655,8 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
 <div class="marketing-section" id="section-dev-notifications" style="display: none; flex-direction: column; gap: 20px;">
     <div class="card">
         <div class="card-header">
-            <h3><i class="fas fa-hockey-puck"></i> Development Program Notification Templates</h3>
-            <p style="color: var(--text-dim); font-size: 13px; margin-top: 4px;">Edit the notification messages sent when athletes register for development programs.</p>
+            <h3><i class="fas fa-hockey-puck"></i> Development Program Athlete Email Templates</h3>
+            <p style="color: var(--text-dim); font-size: 13px; margin-top: 4px;">Edit the welcome email messages sent <strong>to athletes</strong> when they register for development programs. The notification email field sends a separate alert to the coach/admin.</p>
         </div>
         <div class="card-body">
             <?php
@@ -696,8 +696,8 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
                 try {
                     $pdo->exec("
                         INSERT IGNORE INTO `development_notification_templates` (`program_type`, `subject`, `body`) VALUES
-                        ('goalie_dev', 'New Goalie Development Program Registration', 'A new athlete has registered for the Long Term Goalie Development program. Please review and arrange communication with the enrollee.'),
-                        ('player_dev', 'New Player Development Program Registration', 'A new athlete has registered for the Long Term Player Development program. Please review and arrange communication with the enrollee.')
+                        ('goalie_dev', 'Welcome to the Goalie Development Program!', 'Welcome! You have been enrolled in the Long Term Goalie Development program. Your coach will be in touch shortly to set up your personalized training plan, including drill programs and video analysis sessions.'),
+                        ('player_dev', 'Welcome to the Player Development Program!', 'Welcome! You have been enrolled in the Long Term Player Development program. Your coach will be in touch shortly to set up your personalized training plan, including skating, shooting, and skills coaching with video analysis.')
                     ");
                     $tmpl_query = $pdo->query("SELECT * FROM development_notification_templates ORDER BY program_type");
                     $dev_templates = $tmpl_query->fetchAll(PDO::FETCH_ASSOC);
@@ -718,7 +718,7 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
                                 <label style="display:block;font-size:13px;font-weight:600;color:var(--text-white);margin-bottom:6px;"><i class="fas fa-envelope" style="color:#8B5CF6;margin-right:4px;"></i> Notification Email</label>
                                 <input type="email" id="dev-tmpl-email-<?= (int)$tmpl['id'] ?>" value="<?= htmlspecialchars($tmpl['notification_email'] ?? '') ?>" placeholder="e.g. coach@arcticwolves.ca"
                                        style="width:100%;padding:10px 14px;background:var(--bg-card,#1a1a2e);border:1px solid var(--border,#2d2d44);border-radius:8px;color:var(--text-white,#e2e8f0);font-size:13px;">
-                                <span style="font-size:11px;color:var(--text-dim);">Who gets emailed when an athlete registers</span>
+                                <span style="font-size:11px;color:var(--text-dim);">Coach/admin gets a separate alert at this address</span>
                             </div>
                             <div>
                                 <label style="display:block;font-size:13px;font-weight:600;color:var(--text-white);margin-bottom:6px;"><i class="fas fa-clock" style="color:#f59e0b;margin-right:4px;"></i> Program Duration (weeks)</label>
@@ -728,14 +728,15 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
                             </div>
                         </div>
                         <div style="margin-bottom: 12px;">
-                            <label style="display:block;font-size:13px;font-weight:600;color:var(--text-white);margin-bottom:6px;">Subject</label>
+                            <label style="display:block;font-size:13px;font-weight:600;color:var(--text-white);margin-bottom:6px;"><i class="fas fa-user" style="color:#10b981;margin-right:4px;"></i> Athlete Email Subject</label>
                             <input type="text" id="dev-tmpl-subject-<?= (int)$tmpl['id'] ?>" value="<?= htmlspecialchars($tmpl['subject']) ?>" 
                                    style="width:100%;padding:10px 14px;background:var(--bg-card,#1a1a2e);border:1px solid var(--border,#2d2d44);border-radius:8px;color:var(--text-white,#e2e8f0);font-size:13px;">
                         </div>
                         <div style="margin-bottom: 12px;">
-                            <label style="display:block;font-size:13px;font-weight:600;color:var(--text-white);margin-bottom:6px;">Message Body</label>
+                            <label style="display:block;font-size:13px;font-weight:600;color:var(--text-white);margin-bottom:6px;"><i class="fas fa-user" style="color:#10b981;margin-right:4px;"></i> Athlete Email Body</label>
                             <textarea id="dev-tmpl-body-<?= (int)$tmpl['id'] ?>" rows="4"
                                       style="width:100%;padding:10px 14px;background:var(--bg-card,#1a1a2e);border:1px solid var(--border,#2d2d44);border-radius:8px;color:var(--text-white,#e2e8f0);font-size:13px;font-family:inherit;resize:vertical;"><?= htmlspecialchars($tmpl['body']) ?></textarea>
+                            <span style="font-size:11px;color:var(--text-dim);margin-top:4px;display:block;">This message is sent to the athlete when they enroll</span>
                         </div>
                         <button type="submit" style="padding:8px 20px;background:var(--primary,#6B46C1);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px;">
                             <i class="fas fa-save"></i> Save Template
