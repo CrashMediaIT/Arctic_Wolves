@@ -1098,3 +1098,555 @@ test.describe('NGINX scoreboard subdomain server block', () => {
     expect(content).toContain('scoreboard.arcticwolves.ca');
   });
 });
+
+// =====================================================
+// 20. Scrollable Layout & Dynamic Responsive Sizing
+// =====================================================
+
+test.describe('Scrollable layout and dynamic sizing', () => {
+  test('CSS body.sb-body allows vertical scrolling', () => {
+    const content = readFile('css/scoreboard.css');
+    expect(content).toContain('overflow-y: auto');
+    expect(content).not.toMatch(/body\.sb-body\s*\{[^}]*overflow:\s*hidden/);
+  });
+
+  test('CSS body.sb-body uses min-height with dvh units', () => {
+    const content = readFile('css/scoreboard.css');
+    expect(content).toContain('min-height: 100dvh');
+  });
+
+  test('CSS sb-main uses min-height instead of fixed height', () => {
+    const content = readFile('css/scoreboard.css');
+    expect(content).toContain('.sb-main');
+    expect(content).toContain('min-height: calc(100vh');
+    expect(content).toContain('min-height: calc(100dvh');
+  });
+
+  test('CSS board scores use clamp() for dynamic sizing', () => {
+    const content = readFile('css/scoreboard.css');
+    expect(content).toContain('font-size: clamp(');
+    const scoreSection = content.substring(
+      content.indexOf('.sb-board-score'),
+      content.indexOf('.sb-board-score') + 200
+    );
+    expect(scoreSection).toContain('clamp(');
+  });
+
+  test('CSS board clock uses clamp() for dynamic sizing', () => {
+    const content = readFile('css/scoreboard.css');
+    const clockSection = content.substring(
+      content.indexOf('.sb-board-clock'),
+      content.indexOf('.sb-board-clock') + 200
+    );
+    expect(clockSection).toContain('clamp(');
+  });
+
+  test('CSS has responsive breakpoint at 480px for small tablets', () => {
+    const content = readFile('css/scoreboard.css');
+    expect(content).toContain('max-width: 480px');
+  });
+
+  test('display view controls grid uses clamp() for gap and padding', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('gap: clamp(');
+    expect(content).toContain('padding: clamp(');
+  });
+});
+
+// =====================================================
+// 21. Clear Penalty Feature
+// =====================================================
+
+test.describe('Clear penalty feature', () => {
+  test('JS has sbClearPenalty function', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbClearPenalty(');
+  });
+
+  test('JS sbClearPenalty sends clear_penalty action', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain("'clear_penalty'");
+    expect(content).toContain('penalty_id');
+  });
+
+  test('display view has clear penalty buttons for home penalties', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sb-ctrl-penalty-clear-btn');
+    expect(content).toContain('sbClearPenalty');
+    expect(content).toContain('Clear penalty');
+  });
+
+  test('display view has clear penalty buttons for away penalties', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    const awaySection = content.substring(content.indexOf('COLUMN 4: AWAY TEAM'));
+    expect(awaySection).toContain('sb-ctrl-penalty-clear-btn');
+    expect(awaySection).toContain('sbClearPenalty');
+  });
+
+  test('process_scoreboard.php has clear_penalty action', () => {
+    const content = readFile('process_scoreboard.php');
+    expect(content).toContain("case 'clear_penalty':");
+    expect(content).toContain('DELETE FROM scoreboard_penalties');
+  });
+});
+
+// =====================================================
+// 22. NHL Penalty Rules: Queue, PPG Clear, Types
+// =====================================================
+
+test.describe('NHL penalty rules implementation', () => {
+  test('JS has SB_MAX_CONCURRENT_PENALTIES constant set to 2', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('SB_MAX_CONCURRENT_PENALTIES');
+    expect(content).toContain('= 2');
+  });
+
+  test('JS has sbHasClearableMinor function for PPG detection', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbHasClearableMinor(');
+    expect(content).toContain('data-penalty-type');
+  });
+
+  test('JS sbHasClearableMinor checks for minor/double_minor/bench but not major', () => {
+    const content = readFile('js/scoreboard.js');
+    const fn = content.substring(
+      content.indexOf('function sbHasClearableMinor('),
+      content.indexOf('function sbHasClearableMinor(') + 500
+    );
+    expect(fn).toContain("'minor'");
+    expect(fn).toContain("'double_minor'");
+    expect(fn).toContain("'bench'");
+  });
+
+  test('JS has sbClearPenaltyOnGoal function (NHL Rule 16.2)', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbClearPenaltyOnGoal(');
+    expect(content).toContain('NHL Rule 16.2');
+  });
+
+  test('JS sbClearPenaltyOnGoal skips major penalties', () => {
+    const content = readFile('js/scoreboard.js');
+    const fnStart = content.indexOf('function sbClearPenaltyOnGoal(');
+    const fn = content.substring(fnStart, fnStart + 800);
+    expect(fn).toContain("'minor'");
+    expect(fn).toContain("'double_minor'");
+    // Only clear ONE (the oldest)
+    expect(fn).toContain('return');
+  });
+
+  test('JS sbAddGoal prompts for PPG penalty clear', () => {
+    const content = readFile('js/scoreboard.js');
+    const fnStart = content.indexOf('function sbAddGoal(');
+    const goalFn = content.substring(fnStart, fnStart + 1000);
+    expect(goalFn).toContain('sbHasClearableMinor');
+    expect(goalFn).toContain('sbClearPenaltyOnGoal');
+    expect(goalFn).toContain('Power play goal');
+  });
+
+  test('JS has sbUpdatePenaltyQueueStatus function', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbUpdatePenaltyQueueStatus(');
+    expect(content).toContain('sb-penalty-queued');
+  });
+
+  test('JS queue status skips misconducts from shorthanded count', () => {
+    const content = readFile('js/scoreboard.js');
+    const fnStart = content.indexOf('function sbUpdatePenaltyQueueStatus(');
+    const fn = content.substring(fnStart, fnStart + 800);
+    expect(fn).toContain('misconduct');
+    expect(fn).toContain('SB_MAX_CONCURRENT_PENALTIES');
+  });
+
+  test('display view penalty items have data-team and data-penalty-type attributes', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('data-team="home"');
+    expect(content).toContain('data-penalty-type');
+    expect(content).toContain('data-duration');
+  });
+
+  test('display view has individual penalty visibility toggle buttons', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sb-ctrl-penalty-vis-btn');
+    expect(content).toContain('sbTogglePenaltyItemVisibility');
+    expect(content).toContain('Toggle board visibility');
+  });
+
+  test('JS has sbTogglePenaltyItemVisibility function', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbTogglePenaltyItemVisibility(');
+    expect(content).toContain('sb-hidden-from-display');
+  });
+
+  test('display view shows MAJ label for major penalties', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain("'major'");
+    expect(content).toContain('MAJ');
+  });
+
+  test('display view shows QUEUED label for 3rd+ penalties', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sb-penalty-queued');
+    expect(content).toContain('QUEUED');
+  });
+
+  test('PHP has sbGetPenaltyType helper function', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('function sbGetPenaltyType(');
+    expect(content).toContain("'minor'");
+    expect(content).toContain("'double_minor'");
+    expect(content).toContain("'major'");
+    expect(content).toContain("'misconduct'");
+  });
+
+  test('PHP calculates coincidental/offsetting penalties correctly', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('offset_count');
+    expect(content).toContain('home_net_penalties');
+    expect(content).toContain('away_net_penalties');
+    expect(content).toContain('Coincidental');
+  });
+
+  test('PHP calculates strength display (5v4, 4v4, 5v3)', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('strength_display');
+    expect(content).toContain('home_skaters');
+    expect(content).toContain('away_skaters');
+  });
+
+  test('display view shows strength indicator when not even strength', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sb-board-strength');
+    expect(content).toContain('sbStrength');
+    expect(content).toContain('is_even_strength');
+  });
+
+  test('CSS has strength indicator styles', () => {
+    const content = readFile('css/scoreboard.css');
+    expect(content).toContain('.sb-board-strength');
+  });
+});
+
+// =====================================================
+// 23. Custom Penalty Durations (Beer League / Minor Hockey)
+// =====================================================
+
+test.describe('Custom penalty durations', () => {
+  test('display view penalty modal has beer league duration presets', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('3 min (Minor – Beer/Minor League)');
+    expect(content).toContain('6 min (Double Minor – Beer League)');
+    expect(content).toContain('7 min (Major – Beer League)');
+  });
+
+  test('display view penalty modal has custom duration option', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sb-pen-duration-custom');
+    expect(content).toContain("value=\"custom\"");
+    expect(content).toContain('Custom…');
+  });
+
+  test('display view has sbPenDurationPresetChanged handler', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('function sbPenDurationPresetChanged(');
+    expect(content).toContain('sb-pen-duration-custom');
+  });
+
+  test('JS sbAddPenalty supports custom duration_minutes_custom', () => {
+    const content = readFile('js/scoreboard.js');
+    const fn = content.substring(
+      content.indexOf('function sbAddPenalty('),
+      content.indexOf('function sbAddPenalty(') + 600
+    );
+    expect(fn).toContain("'custom'");
+    expect(fn).toContain('duration_minutes_custom');
+  });
+
+  test('display view penalty modal has comprehensive infractions list', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('Charging');
+    expect(content).toContain('Elbowing');
+    expect(content).toContain('Kneeing');
+    expect(content).toContain('Spearing');
+    expect(content).toContain('Head Contact');
+    expect(content).toContain('Match Penalty');
+    expect(content).toContain('Bench Minor');
+  });
+
+  test('display view penalty modal has served-by field for bench/goalie penalties', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('served_by');
+    expect(content).toContain('Served By');
+    expect(content).toContain('bench/goalie penalties');
+  });
+});
+
+// =====================================================
+// 24. Game Situation Indicators (Delayed Penalty, Empty Net)
+// =====================================================
+
+test.describe('Game situation indicators', () => {
+  test('display view has delayed penalty indicators for both teams', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sbDelayedHome');
+    expect(content).toContain('sbDelayedAway');
+    expect(content).toContain('DEL');
+  });
+
+  test('display view has empty net indicators for both teams', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sbEmptyNetHome');
+    expect(content).toContain('sbEmptyNetAway');
+    expect(content).toContain('EN');
+  });
+
+  test('display view has delayed penalty toggle buttons', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain("sbToggleDelayedPenalty('home')");
+    expect(content).toContain("sbToggleDelayedPenalty('away')");
+    expect(content).toContain('Delayed Pen');
+  });
+
+  test('display view has empty net toggle buttons', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain("sbToggleEmptyNet('home')");
+    expect(content).toContain("sbToggleEmptyNet('away')");
+    expect(content).toContain('Empty Net');
+  });
+
+  test('display view has sbToggleDelayedPenalty JS function', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('function sbToggleDelayedPenalty(');
+    expect(content).toContain('sbDelayed');
+  });
+
+  test('display view has sbToggleEmptyNet JS function', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('function sbToggleEmptyNet(');
+    expect(content).toContain('sbEmptyNet');
+  });
+
+  test('CSS has board indicator badge styles', () => {
+    const content = readFile('css/scoreboard.css');
+    expect(content).toContain('.sb-board-indicator');
+  });
+});
+
+// =====================================================
+// 25. Clock Mode (Stop Time vs Running Time)
+// =====================================================
+
+test.describe('Clock mode - stop time vs running time', () => {
+  test('display view has clock mode select', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sbClockModeSelect');
+    expect(content).toContain('sbSetClockMode');
+    expect(content).toContain('Clock Mode');
+  });
+
+  test('display view has stop time and running time options', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('stop_time');
+    expect(content).toContain('running_time');
+    expect(content).toContain('Stop Time (NHL)');
+    expect(content).toContain('Running Time (Beer/Minor League)');
+  });
+
+  test('JS has sbSetClockMode function', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbSetClockMode(');
+    expect(content).toContain('sbClockMode');
+  });
+
+  test('JS has sbClockMode state variable', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain("var sbClockMode = 'stop_time'");
+  });
+
+  test('display view OT select includes playoff 20min option', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('20:00 (Playoff)');
+  });
+});
+
+// =====================================================
+// 26. Custom Buzzer Sound Upload
+// =====================================================
+
+test.describe('Custom buzzer sound upload', () => {
+  test('JS buzzer uses CUSTOM_BUZZER_URL when available', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('CUSTOM_BUZZER_URL');
+    const buzzerFn = content.substring(
+      content.indexOf('function sbBuzzer()'),
+      content.indexOf('function sbBuzzer()') + 600
+    );
+    expect(buzzerFn).toContain('CUSTOM_BUZZER_URL');
+    expect(buzzerFn).toContain('new Audio(');
+  });
+
+  test('JS buzzer falls back to synthesized tone when no custom sound', () => {
+    const content = readFile('js/scoreboard.js');
+    const fnStart = content.indexOf('function sbBuzzer()');
+    const buzzerFn = content.substring(fnStart, fnStart + 1000);
+    expect(buzzerFn).toContain('AudioContext');
+    expect(buzzerFn).toContain('sawtooth');
+  });
+
+  test('scoreboard.php passes CUSTOM_BUZZER_URL to JS', () => {
+    const content = readFile('scoreboard.php');
+    expect(content).toContain('CUSTOM_BUZZER_URL');
+    expect(content).toContain('scoreboard_buzzer_url');
+  });
+
+  test('process_scoreboard.php has upload_buzzer action (admin-only)', () => {
+    const content = readFile('process_scoreboard.php');
+    expect(content).toContain("case 'upload_buzzer':");
+    expect(content).toContain('!$isAdmin');
+    expect(content).toContain('buzzer_file');
+    expect(content).toContain("audio/mpeg");
+    expect(content).toContain("audio/wav");
+    expect(content).toContain("audio/ogg");
+  });
+
+  test('process_scoreboard.php has remove_buzzer action (admin-only)', () => {
+    const content = readFile('process_scoreboard.php');
+    expect(content).toContain("case 'remove_buzzer':");
+    expect(content).toContain('!$isAdmin');
+  });
+});
+
+// =====================================================
+// 27. Settings Page (Admin-Only)
+// =====================================================
+
+test.describe('Settings page - admin only', () => {
+  test('scoreboard.php allows settings view', () => {
+    const content = readFile('scoreboard.php');
+    expect(content).toContain("'settings'");
+    expect(content).toContain('allowed_views');
+  });
+
+  test('scoreboard.php restricts settings view to admins', () => {
+    const content = readFile('scoreboard.php');
+    expect(content).toContain("$view === 'settings' && !$isAdmin");
+  });
+
+  test('scoreboard.php includes settings view file', () => {
+    const content = readFile('scoreboard.php');
+    expect(content).toContain('scoreboard_settings.php');
+  });
+
+  test('scoreboard.php passes IS_ADMIN to JS', () => {
+    const content = readFile('scoreboard.php');
+    expect(content).toContain('IS_ADMIN');
+  });
+
+  test('settings view exists', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content.length).toBeGreaterThan(100);
+  });
+
+  test('settings view has Spotify configuration section', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toContain('Spotify');
+    expect(content).toContain('spotify_client_id');
+    expect(content).toContain('spotify_client_secret');
+  });
+
+  test('settings view has Apple Music configuration section', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toContain('Apple Music');
+    expect(content).toContain('apple_music_token');
+    expect(content).toContain('apple_music_team_id');
+  });
+
+  test('settings view has Subsonic configuration section', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toContain('Subsonic');
+    expect(content).toContain('subsonic_url');
+    expect(content).toContain('subsonic_username');
+    expect(content).toContain('subsonic_password');
+  });
+
+  test('settings view has custom buzzer sound upload section', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toContain('Custom Buzzer');
+    expect(content).toContain('sbBuzzerFile');
+    expect(content).toContain('sbUploadBuzzerSound');
+    expect(content).toContain('sbRemoveBuzzerSound');
+  });
+
+  test('settings view has network speakers section with Bluesound BSP1000', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toContain('Network Speakers');
+    expect(content).toContain('Bluesound Professional BSP1000');
+    expect(content).toContain('speaker_type');
+    expect(content).toContain('speaker_host');
+    expect(content).toContain('speaker_port');
+  });
+
+  test('settings view has team logo upload and browse section', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toContain('Team Logos');
+    expect(content).toContain('sbLogoFile');
+    expect(content).toContain('sbUploadTeamLogo');
+    expect(content).toContain('sb-settings-logos-grid');
+  });
+
+  test('display view has Settings link visible to admins only', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain("view=settings");
+    expect(content).toContain('$isAdmin');
+    expect(content).toContain('fa-cog');
+  });
+
+  test('process_scoreboard.php has save_settings action (admin-only)', () => {
+    const content = readFile('process_scoreboard.php');
+    expect(content).toContain("case 'save_settings':");
+    expect(content).toContain('!$isAdmin');
+    expect(content).toContain("'spotify'");
+    expect(content).toContain("'apple_music'");
+    expect(content).toContain("'subsonic'");
+    expect(content).toContain("'network_speakers'");
+  });
+
+  test('process_scoreboard.php has upload_team_logo action (admin-only)', () => {
+    const content = readFile('process_scoreboard.php');
+    expect(content).toContain("case 'upload_team_logo':");
+    expect(content).toContain('!$isAdmin');
+    expect(content).toContain('logo_file');
+    expect(content).toContain("image/png");
+    expect(content).toContain("image/svg+xml");
+  });
+});
+
+// =====================================================
+// 28. Apple Music & Multiple Audio Outputs
+// =====================================================
+
+test.describe('Apple Music and multiple audio outputs', () => {
+  test('scoreboard.php loads apple_music_configured flag', () => {
+    const content = readFile('scoreboard.php');
+    expect(content).toContain('apple_music_configured');
+    expect(content).toContain('apple_music_token');
+  });
+
+  test('display view shows Apple Music button when configured', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('apple_music_configured');
+    expect(content).toContain('Apple Music');
+    expect(content).toContain('sbAppleMusicConnect');
+  });
+
+  test('scoreboard.php loads network_speakers config', () => {
+    const content = readFile('scoreboard.php');
+    expect(content).toContain('scoreboard_network_speakers');
+    expect(content).toContain('network_speakers');
+  });
+
+  test('display view links to settings when no music sources configured', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('No music sources configured');
+    expect(content).toContain('Configure in Settings');
+  });
+});
