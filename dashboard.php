@@ -815,9 +815,11 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="?page=health" class="nav-link <?= in_array($page, ['health','strength_conditioning','nutrition'])?'active':'' ?>">
                 <i class="fa-solid fa-heart-pulse icon"></i> Health
             </a>
+            <?php if ($canAccessDevPrograms): ?>
             <a href="?page=personal_development" class="nav-link <?= in_array($page, ['personal_development','personal_development_programs','personal_development_my_program','dev_drill_detail'])?'active':'' ?>">
                 <i class="fa-solid fa-hockey-puck icon"></i> Personal Development
             </a>
+            <?php endif; ?>
             <a href="?page=shop" class="nav-link <?= $page=='shop'?'active':'' ?>">
                 <i class="fa-solid fa-store icon"></i> Shop
             </a>

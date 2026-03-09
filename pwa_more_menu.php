@@ -41,10 +41,12 @@
             <i class="fas fa-heart-pulse"></i> Health
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
+        <?php if (isset($canAccessDevPrograms) && $canAccessDevPrograms): ?>
         <a href="?page=personal_development" class="pwa-menu-item">
             <i class="fas fa-hockey-puck"></i> Personal Development
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
+        <?php endif; ?>
         <a href="?page=shop" class="pwa-menu-item">
             <i class="fas fa-store"></i> Shop
             <i class="fas fa-chevron-right menu-chevron"></i>

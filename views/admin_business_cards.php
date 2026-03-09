@@ -666,11 +666,38 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
                 $tmpl_query = $pdo->query("SELECT * FROM development_notification_templates ORDER BY program_type");
                 $dev_templates = $tmpl_query->fetchAll(PDO::FETCH_ASSOC);
             } catch (PDOException $e) {
-                // Table may not exist yet
+                // Table may not exist yet - try to create it
+                try {
+                    $pdo->exec("
+                        CREATE TABLE IF NOT EXISTS `development_notification_templates` (
+                            `id` INT AUTO_INCREMENT PRIMARY KEY,
+                            `program_type` ENUM('goalie_dev', 'player_dev') NOT NULL,
+                            `subject` VARCHAR(255) NOT NULL DEFAULT 'New Development Program Registration',
+                            `body` TEXT NOT NULL,
+                            `updated_by` INT DEFAULT NULL,
+                            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                            UNIQUE KEY `unique_program_type` (`program_type`)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                    ");
+                } catch (PDOException $e2) { /* ignore */ }
+            }
+
+            // If table exists but is empty, insert default templates
+            if (empty($dev_templates)) {
+                try {
+                    $pdo->exec("
+                        INSERT IGNORE INTO `development_notification_templates` (`program_type`, `subject`, `body`) VALUES
+                        ('goalie_dev', 'New Goalie Development Program Registration', 'A new athlete has registered for the Long Term Goalie Development program. Please review and arrange communication with the enrollee.'),
+                        ('player_dev', 'New Player Development Program Registration', 'A new athlete has registered for the Long Term Player Development program. Please review and arrange communication with the enrollee.')
+                    ");
+                    $tmpl_query = $pdo->query("SELECT * FROM development_notification_templates ORDER BY program_type");
+                    $dev_templates = $tmpl_query->fetchAll(PDO::FETCH_ASSOC);
+                } catch (PDOException $e) { /* ignore */ }
             }
             ?>
             <?php if (empty($dev_templates)): ?>
-                <p style="color: var(--text-dim);">No notification templates found. Run the database migration to create default templates.</p>
+                <p style="color: var(--text-dim);">Unable to load notification templates. Please check the database connection and try refreshing the page.</p>
             <?php else: ?>
                 <?php foreach ($dev_templates as $tmpl): ?>
                 <div style="background: var(--bg-main, #0d1117); border: 1px solid var(--border, #2d2d44); border-radius: 8px; padding: 20px; margin-bottom: 16px;">

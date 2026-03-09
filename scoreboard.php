@@ -39,10 +39,215 @@ if (!$db_connected || $pdo === null) {
     die("Database connection failed.");
 }
 
-// Auth check – redirect to main site login if not logged in
+// Handle PIN login for scoreboard
+$scoreboard_login_error = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'scoreboard_pin_login') {
+    if (!isset($_POST['csrf_token']) || !validateCSRFToken($_POST['csrf_token'])) {
+        $scoreboard_login_error = "Invalid request. Please refresh and try again.";
+    } else {
+        $pin = $_POST['pin'] ?? '';
+        if (strlen($pin) !== 4 || !ctype_digit($pin)) {
+            $scoreboard_login_error = "Please enter a valid 4-digit PIN.";
+        } else {
+            try {
+                $stmt = $pdo->prepare("
+                    SELECT u.id, u.first_name, u.last_name, u.role, sp.pin_hash
+                    FROM users u
+                    INNER JOIN staff_pins sp ON u.id = sp.user_id
+                    WHERE u.role IN ('admin', 'coach', 'health_coach', 'front_desk_staff', 'hr', 'accounting')
+                    AND u.is_active = 1
+                    AND sp.is_active = 1
+                ");
+                $stmt->execute();
+                $staffMembers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                $matchedStaff = null;
+                foreach ($staffMembers as $staff) {
+                    if (password_verify($pin, $staff['pin_hash'])) {
+                        $matchedStaff = $staff;
+                        break;
+                    }
+                }
+
+                if ($matchedStaff) {
+                    require_once __DIR__ . '/lib/encryption.php';
+                    $_SESSION['logged_in'] = true;
+                    $_SESSION['user_id'] = $matchedStaff['id'];
+                    $_SESSION['user_role'] = $matchedStaff['role'];
+                    $_SESSION['user_name'] = FieldEncryption::decrypt($matchedStaff['first_name']);
+                    $_SESSION['scoreboard_mode'] = true;
+                    header("Location: scoreboard.php");
+                    exit();
+                } else {
+                    $scoreboard_login_error = "Invalid PIN. Please try again.";
+                }
+            } catch (PDOException $e) {
+                error_log("Scoreboard PIN login error: " . $e->getMessage());
+                $scoreboard_login_error = "Login error. Please try again.";
+            }
+        }
+    }
+}
+
+// Handle regular login for scoreboard
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'scoreboard_user_login') {
+    if (!isset($_POST['csrf_token']) || !validateCSRFToken($_POST['csrf_token'])) {
+        $scoreboard_login_error = "Invalid request. Please refresh and try again.";
+    } else {
+        require_once __DIR__ . '/lib/encryption.php';
+        $email = trim($_POST['email'] ?? '');
+        $password = $_POST['password'] ?? '';
+        if (empty($email) || empty($password)) {
+            $scoreboard_login_error = "Email and password are required.";
+        } else {
+            try {
+                $stmt = $pdo->prepare("SELECT id, first_name, password_hash, role, is_active, email FROM users");
+                $stmt->execute();
+                $allUsers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                $matchedUser = null;
+                foreach ($allUsers as $u) {
+                    $decryptedEmail = FieldEncryption::decrypt($u['email']);
+                    if (strcasecmp($decryptedEmail, $email) === 0) {
+                        $matchedUser = $u;
+                        break;
+                    }
+                }
+                if ($matchedUser && $matchedUser['is_active'] && password_verify($password, $matchedUser['password_hash'])) {
+                    $_SESSION['logged_in'] = true;
+                    $_SESSION['user_id'] = $matchedUser['id'];
+                    $_SESSION['user_role'] = $matchedUser['role'];
+                    $_SESSION['user_name'] = FieldEncryption::decrypt($matchedUser['first_name']);
+                    $_SESSION['scoreboard_mode'] = true;
+                    header("Location: scoreboard.php");
+                    exit();
+                } else {
+                    $scoreboard_login_error = "Invalid email or password.";
+                }
+            } catch (PDOException $e) {
+                error_log("Scoreboard user login error: " . $e->getMessage());
+                $scoreboard_login_error = "Login error. Please try again.";
+            }
+        }
+    }
+}
+
+// Auth check – show scoreboard login page if not logged in
 if (!isset($_SESSION['logged_in'])) {
-    $redirect = 'https://scoreboard.arcticwolves.ca/scoreboard.php';
-    header("Location: /login.php?redirect=" . urlencode($redirect));
+    echo '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Scoreboard Login</title>';
+    echo '<link rel="icon" type="image/x-icon" href="' . htmlspecialchars($site_favicon_url) . '">';
+    echo '<style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0A0A0F; color: #fff; font-family: Inter, -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+        .login-container { width: 100%; max-width: 420px; padding: 40px; }
+        .login-logo { text-align: center; margin-bottom: 32px; }
+        .login-logo img { max-height: 60px; }
+        .login-logo h1 { font-size: 24px; margin-top: 16px; color: #e2e8f0; }
+        .login-logo p { color: #64748b; font-size: 14px; margin-top: 8px; }
+        .login-tabs { display: flex; gap: 0; margin-bottom: 24px; border-radius: 8px; overflow: hidden; border: 1px solid #2d2d44; }
+        .login-tab { flex: 1; padding: 12px; text-align: center; cursor: pointer; background: #1a1a2e; color: #64748b; font-weight: 600; font-size: 14px; border: none; transition: all 0.2s; }
+        .login-tab.active { background: #6B46C1; color: #fff; }
+        .login-panel { display: none; }
+        .login-panel.active { display: block; }
+        .pin-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; max-width: 280px; margin: 0 auto; }
+        .pin-btn { background: #1a1a2e; border: 1px solid #2d2d44; color: #e2e8f0; font-size: 24px; font-weight: 700; padding: 20px; border-radius: 12px; cursor: pointer; transition: all 0.15s; }
+        .pin-btn:hover { background: #2d2d44; border-color: #6B46C1; }
+        .pin-btn:active { transform: scale(0.95); }
+        .pin-btn.clear { font-size: 14px; color: #ef4444; }
+        .pin-btn.enter { font-size: 14px; background: #6B46C1; border-color: #6B46C1; color: #fff; }
+        .pin-display { display: flex; justify-content: center; gap: 16px; margin-bottom: 24px; }
+        .pin-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #2d2d44; transition: all 0.2s; }
+        .pin-dot.filled { background: #6B46C1; border-color: #6B46C1; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 13px; font-weight: 600; color: #94a3b8; margin-bottom: 6px; }
+        .form-group input { width: 100%; padding: 12px 16px; background: #1a1a2e; border: 1px solid #2d2d44; border-radius: 8px; color: #e2e8f0; font-size: 14px; }
+        .form-group input:focus { outline: none; border-color: #6B46C1; }
+        .btn-login { width: 100%; padding: 14px; background: #6B46C1; color: #fff; border: none; border-radius: 8px; font-weight: 700; font-size: 14px; cursor: pointer; margin-top: 8px; }
+        .btn-login:hover { background: #5a37a8; }
+        .error-msg { background: rgba(239,68,68,0.15); color: #ef4444; padding: 10px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; text-align: center; }
+    </style></head><body>
+    <div class="login-container">
+        <div class="login-logo">';
+    if (!empty($site_logo_url)) {
+        echo '<img src="' . htmlspecialchars($site_logo_url) . '" alt="Logo">';
+    }
+    echo '<h1>Scoreboard Login</h1><p>Sign in to access the arena scoreboard</p></div>';
+    if (!empty($scoreboard_login_error)) {
+        echo '<div class="error-msg"><i class="fas fa-exclamation-circle"></i> ' . htmlspecialchars($scoreboard_login_error) . '</div>';
+    }
+    echo '<div class="login-tabs">
+            <button class="login-tab active" onclick="switchTab(\'pin\')"><i class="fas fa-key"></i> PIN Login</button>
+            <button class="login-tab" onclick="switchTab(\'user\')"><i class="fas fa-user"></i> User Login</button>
+        </div>
+        <div class="login-panel active" id="panel-pin">
+            <form method="POST" id="pin-form">
+                <input type="hidden" name="action" value="scoreboard_pin_login">
+                <input type="hidden" name="csrf_token" value="' . htmlspecialchars($_SESSION['csrf_token'] ?? '') . '">
+                <input type="hidden" name="pin" id="pin-input" value="">
+                <div class="pin-display">
+                    <div class="pin-dot" id="dot-0"></div>
+                    <div class="pin-dot" id="dot-1"></div>
+                    <div class="pin-dot" id="dot-2"></div>
+                    <div class="pin-dot" id="dot-3"></div>
+                </div>
+                <div class="pin-grid">
+                    <button type="button" class="pin-btn" onclick="addPin(1)">1</button>
+                    <button type="button" class="pin-btn" onclick="addPin(2)">2</button>
+                    <button type="button" class="pin-btn" onclick="addPin(3)">3</button>
+                    <button type="button" class="pin-btn" onclick="addPin(4)">4</button>
+                    <button type="button" class="pin-btn" onclick="addPin(5)">5</button>
+                    <button type="button" class="pin-btn" onclick="addPin(6)">6</button>
+                    <button type="button" class="pin-btn" onclick="addPin(7)">7</button>
+                    <button type="button" class="pin-btn" onclick="addPin(8)">8</button>
+                    <button type="button" class="pin-btn" onclick="addPin(9)">9</button>
+                    <button type="button" class="pin-btn clear" onclick="clearPin()">Clear</button>
+                    <button type="button" class="pin-btn" onclick="addPin(0)">0</button>
+                    <button type="button" class="pin-btn enter" onclick="submitPin()">Enter</button>
+                </div>
+            </form>
+        </div>
+        <div class="login-panel" id="panel-user">
+            <form method="POST">
+                <input type="hidden" name="action" value="scoreboard_user_login">
+                <input type="hidden" name="csrf_token" value="' . htmlspecialchars($_SESSION['csrf_token'] ?? '') . '">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" placeholder="Enter your email" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" placeholder="Enter your password" required>
+                </div>
+                <button type="submit" class="btn-login">Sign In</button>
+            </form>
+        </div>
+    </div>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script>
+        let pin = "";
+        function addPin(n) {
+            if (pin.length >= 4) return;
+            pin += n;
+            updateDots();
+            if (pin.length === 4) setTimeout(submitPin, 200);
+        }
+        function clearPin() { pin = ""; updateDots(); }
+        function updateDots() {
+            for (let i = 0; i < 4; i++) {
+                document.getElementById("dot-" + i).classList.toggle("filled", i < pin.length);
+            }
+        }
+        function submitPin() {
+            if (pin.length !== 4) return;
+            document.getElementById("pin-input").value = pin;
+            document.getElementById("pin-form").submit();
+        }
+        function switchTab(tab) {
+            document.querySelectorAll(".login-tab").forEach(t => t.classList.remove("active"));
+            document.querySelectorAll(".login-panel").forEach(p => p.classList.remove("active"));
+            document.querySelector(".login-tab:nth-child(" + (tab === "pin" ? "1" : "2") + ")").classList.add("active");
+            document.getElementById("panel-" + tab).classList.add("active");
+        }
+    </script></body></html>';
     exit();
 }
 
