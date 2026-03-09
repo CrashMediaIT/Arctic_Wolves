@@ -70,6 +70,8 @@ test.describe('Database Schema - Personal Development', () => {
     expect(schema).toContain('program_type');
     expect(schema).toContain('subject');
     expect(schema).toContain('body');
+    expect(schema).toContain('notification_email');
+    expect(schema).toContain('program_duration_weeks');
   });
 
   test('session types for Long Term Goalie and Player Development are inserted', () => {
@@ -506,6 +508,30 @@ test.describe('Marketing View - Development Notifications', () => {
     // Should not reference a non-existent migration process
     expect(content).not.toContain('Run the database migration');
   });
+
+  test('marketing view has notification email field for development programs', () => {
+    const content = readFile('views/admin_business_cards.php');
+    expect(content).toContain('dev-tmpl-email-');
+    expect(content).toContain('notification_email');
+    expect(content).toContain('Who gets emailed when an athlete registers');
+  });
+
+  test('marketing view has program duration field for development programs', () => {
+    const content = readFile('views/admin_business_cards.php');
+    expect(content).toContain('dev-tmpl-duration-');
+    expect(content).toContain('program_duration_weeks');
+    expect(content).toContain('How long the program runs');
+  });
+
+  test('notification template save includes email and duration', () => {
+    const content = readFile('views/admin_business_cards.php');
+    expect(content).toContain('notification_email');
+    expect(content).toContain('program_duration_weeks');
+    // JS send function includes new fields
+    const jsContent = content.substring(content.indexOf('saveDevNotificationTemplate'));
+    expect(jsContent).toContain('dev-tmpl-email-');
+    expect(jsContent).toContain('dev-tmpl-duration-');
+  });
 });
 
 // =====================================================
@@ -727,6 +753,35 @@ test.describe('Auto-create Development Program Products', () => {
     // Verify dev programs moved out of sessions_booking
     const bookingContent = readFile('views/sessions_booking.php');
     expect(bookingContent).not.toContain('dev-programs-section');
+  });
+
+  test('programs_camps.php shows program duration when configured', () => {
+    const content = readFile('views/programs_camps.php');
+    expect(content).toContain('program_duration_weeks');
+    expect(content).toContain('week program');
+    expect(content).toContain('goalie_dev_duration_weeks');
+    expect(content).toContain('player_dev_duration_weeks');
+  });
+
+  test('process_development_programs.php sends email to configured notification_email on enrollment', () => {
+    const content = readFile('process_development_programs.php');
+    expect(content).toContain('notification_email');
+    expect(content).toContain('sendEmail');
+    expect(content).toContain('filter_var');
+    expect(content).toContain('FILTER_VALIDATE_EMAIL');
+  });
+
+  test('payment_success.php sends email to configured notification_email on paid enrollment', () => {
+    const content = readFile('payment_success.php');
+    expect(content).toContain('notification_email');
+    expect(content).toContain('development_notification_templates');
+  });
+
+  test('process_development_programs.php handles notification_email and duration in update', () => {
+    const content = readFile('process_development_programs.php');
+    expect(content).toContain('notification_email');
+    expect(content).toContain('program_duration_weeks');
+    expect(content).toContain("FILTER_VALIDATE_EMAIL");
   });
 
   test('my program view shows upcoming appointments', () => {

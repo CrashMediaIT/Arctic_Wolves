@@ -4874,6 +4874,8 @@ CREATE TABLE IF NOT EXISTS `development_notification_templates` (
     `program_type` ENUM('goalie_dev', 'player_dev') NOT NULL,
     `subject` VARCHAR(255) NOT NULL DEFAULT 'New Development Program Registration',
     `body` TEXT NOT NULL,
+    `notification_email` VARCHAR(255) DEFAULT NULL COMMENT 'Email address to notify on new registrations (in addition to role-based notifications)',
+    `program_duration_weeks` INT DEFAULT NULL COMMENT 'Duration of the program in weeks (e.g. 4 for a 4-week program)',
     `updated_by` INT DEFAULT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

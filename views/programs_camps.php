@@ -110,6 +110,18 @@ try {
     $dev_enroll_stmt->execute([intval($_SESSION['user_id'])]);
     $dev_enrolled_types = $dev_enroll_stmt->fetchAll(PDO::FETCH_COLUMN);
 } catch (PDOException $e) { /* table may not exist yet */ }
+
+// Load program duration settings from notification templates
+$goalie_dev_duration_weeks = null;
+$player_dev_duration_weeks = null;
+try {
+    $dur_stmt = $pdo->query("SELECT program_type, program_duration_weeks FROM development_notification_templates");
+    $dur_rows = $dur_stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($dur_rows as $dr) {
+        if ($dr['program_type'] === 'goalie_dev') $goalie_dev_duration_weeks = $dr['program_duration_weeks'];
+        if ($dr['program_type'] === 'player_dev') $player_dev_duration_weeks = $dr['program_duration_weeks'];
+    }
+} catch (PDOException $e) { /* table/column may not exist */ }
 ?>
 
 <div class="programs-camps-container">
@@ -163,6 +175,9 @@ try {
                 <div class="program-header" style="background: linear-gradient(135deg, rgba(59,130,246,0.2), rgba(59,130,246,0.05)); padding: 24px;">
                     <span class="type-badge" style="background: rgba(59,130,246,0.15); color: #3b82f6; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700;"><i class="fas fa-shield-alt"></i> Goalie Development</span>
                     <h3 style="margin-top: 12px;">Long Term Goalie Development</h3>
+                    <?php if ($goalie_dev_duration_weeks): ?>
+                    <span style="display:inline-flex;align-items:center;gap:4px;margin-top:8px;font-size:13px;color:#3b82f6;"><i class="fas fa-clock"></i> <?= (int)$goalie_dev_duration_weeks ?> week program</span>
+                    <?php endif; ?>
                 </div>
                 <div class="program-body" style="padding: 24px;">
                     <div class="program-description">Comprehensive goalie development program — technique, positioning, movement, and game sense. Work directly with our goalie development coaches through personalized drill programs and video feedback.</div>
@@ -190,6 +205,9 @@ try {
                 <div class="program-header" style="background: linear-gradient(135deg, rgba(16,185,129,0.2), rgba(16,185,129,0.05)); padding: 24px;">
                     <span class="type-badge" style="background: rgba(16,185,129,0.15); color: #10b981; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700;"><i class="fas fa-hockey-puck"></i> Player Development</span>
                     <h3 style="margin-top: 12px;">Long Term Player Development</h3>
+                    <?php if ($player_dev_duration_weeks): ?>
+                    <span style="display:inline-flex;align-items:center;gap:4px;margin-top:8px;font-size:13px;color:#10b981;"><i class="fas fa-clock"></i> <?= (int)$player_dev_duration_weeks ?> week program</span>
+                    <?php endif; ?>
                 </div>
                 <div class="program-body" style="padding: 24px;">
                     <div class="program-description">Structured long-term development for skaters — skating technique, shooting, puck handling, hockey IQ, and on-ice decision making. Receive personalized coaching through drill programs and video analysis.</div>
