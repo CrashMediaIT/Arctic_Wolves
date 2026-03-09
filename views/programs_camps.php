@@ -195,9 +195,9 @@ try {
                             <i class="fas fa-check"></i> Enrolled
                         </span>
                     <?php else: ?>
-                        <a href="?page=booking" class="btn-register" style="padding:10px 20px;background:var(--primary,#6B46C1);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;text-decoration:none;">
+                        <button type="button" class="btn-register" data-action="register-dev-program" data-program-type="goalie_dev" data-template-id="<?= (int)$goalie_dev_template_id ?>" style="padding:10px 20px;background:var(--primary,#6B46C1);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
                             <i class="fas fa-shopping-cart"></i> Enroll<?= $goalie_dev_price > 0 ? ' & Pay' : '' ?>
-                        </a>
+                        </button>
                     <?php endif; ?>
                 </div>
             </div>
@@ -225,9 +225,9 @@ try {
                             <i class="fas fa-check"></i> Enrolled
                         </span>
                     <?php else: ?>
-                        <a href="?page=booking" class="btn-register" style="padding:10px 20px;background:var(--primary,#6B46C1);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;text-decoration:none;">
+                        <button type="button" class="btn-register" data-action="register-dev-program" data-program-type="player_dev" data-template-id="<?= (int)$player_dev_template_id ?>" style="padding:10px 20px;background:var(--primary,#6B46C1);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
                             <i class="fas fa-shopping-cart"></i> Enroll<?= $player_dev_price > 0 ? ' & Pay' : '' ?>
-                        </a>
+                        </button>
                     <?php endif; ?>
                 </div>
             </div>
@@ -1390,6 +1390,38 @@ function escHtml(str) {
     div.appendChild(document.createTextNode(str || ''));
     return div.innerHTML;
 }
+
+// Development program enrollment handler
+document.addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-action="register-dev-program"]');
+    if (!btn) return;
+    var programType = btn.getAttribute('data-program-type');
+    var templateId = btn.getAttribute('data-template-id');
+    if (!programType || !templateId || !/^\d+$/.test(templateId)) {
+        alert('Invalid program. Please refresh and try again.');
+        return;
+    }
+    var csrfInput = document.querySelector('input[name="csrf_token"]');
+    var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    var csrfToken = csrfInput ? csrfInput.value : (csrfMeta ? csrfMeta.content : '');
+    if (!csrfToken) {
+        alert('Security token missing. Please refresh the page.');
+        return;
+    }
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = 'process_booking.php';
+    var fields = {action: 'register_dev_program', program_type: programType, template_id: templateId, csrf_token: csrfToken};
+    for (var key in fields) {
+        var input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = key;
+        input.value = fields[key];
+        form.appendChild(input);
+    }
+    document.body.appendChild(form);
+    form.submit();
+});
 </script>
 
 <?php if ($is_staff): ?>

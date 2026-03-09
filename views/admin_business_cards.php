@@ -722,7 +722,7 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
                             </div>
                             <div>
                                 <label style="display:block;font-size:13px;font-weight:600;color:var(--text-white);margin-bottom:6px;"><i class="fas fa-clock" style="color:#f59e0b;margin-right:4px;"></i> Program Duration (weeks)</label>
-                                <input type="number" id="dev-tmpl-duration-<?= (int)$tmpl['id'] ?>" value="<?= (int)($tmpl['program_duration_weeks'] ?? 0) ?: '' ?>" placeholder="e.g. 4" min="1" max="52"
+                                <input type="number" id="dev-tmpl-duration-<?= (int)$tmpl['id'] ?>" value="<?= $tmpl['program_duration_weeks'] ?? '' ?>" placeholder="e.g. 4" min="1" max="52"
                                        style="width:100%;padding:10px 14px;background:var(--bg-card,#1a1a2e);border:1px solid var(--border,#2d2d44);border-radius:8px;color:var(--text-white,#e2e8f0);font-size:13px;">
                                 <span style="font-size:11px;color:var(--text-dim);">How long the program runs (e.g. 4 weeks)</span>
                             </div>
