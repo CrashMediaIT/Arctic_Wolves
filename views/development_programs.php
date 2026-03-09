@@ -192,12 +192,12 @@ $locations = $pdo->query("SELECT id, name FROM locations WHERE is_active = 1 ORD
     gap: 8px;
 }
 .dev-athlete-list-header h3 .count-badge {
-    background: var(--primary, #6B46C1);
-    color: #fff;
-    font-size: 11px;
-    padding: 2px 8px;
-    border-radius: 10px;
-    font-weight: 600;
+    background: var(--primary);
+    color: var(--text-white);
+    font-size: var(--font-size-xs);
+    padding: 4px var(--space-3);
+    border-radius: var(--radius-2xl);
+    font-weight: var(--font-weight-semibold);
 }
 .dev-athlete-list-body {
     padding: 8px;
@@ -242,12 +242,12 @@ $locations = $pdo->query("SELECT id, name FROM locations WHERE is_active = 1 ORD
     flex-wrap: wrap;
 }
 .dev-athlete-card .video-notify {
-    background: var(--error, #EF4444);
-    color: #fff;
-    border-radius: 10px;
-    font-size: 11px;
+    background: var(--error);
+    color: var(--text-white);
+    border-radius: var(--radius-2xl);
+    font-size: var(--font-size-xs);
     padding: 1px 7px;
-    font-weight: 700;
+    font-weight: var(--font-weight-bold);
     margin-left: 6px;
     animation: pulse-notify 2s ease-in-out infinite;
 }
@@ -258,14 +258,15 @@ $locations = $pdo->query("SELECT id, name FROM locations WHERE is_active = 1 ORD
 
 /* Program Badges */
 .dev-program-badge {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 10px;
-    font-size: 11px;
-    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    padding: 4px var(--space-3);
+    border-radius: var(--radius-2xl);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
 }
-.dev-program-badge.goalie_dev { background: rgba(59,130,246,0.15); color: #3b82f6; }
-.dev-program-badge.player_dev { background: rgba(16,185,129,0.15); color: #10b981; }
+.dev-program-badge.goalie_dev { background: rgba(59, 130, 246, 0.15); color: var(--info); }
+.dev-program-badge.player_dev { background: rgba(16, 185, 129, 0.15); color: var(--success); }
 
 /* --- Detail Panel --- */
 .dev-athlete-detail { flex: 1; min-width: 0; }
@@ -479,16 +480,17 @@ $locations = $pdo->query("SELECT id, name FROM locations WHERE is_active = 1 ORD
     gap: 8px;
 }
 .drill-status {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 10px;
-    font-size: 10px;
-    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    padding: 4px var(--space-3);
+    border-radius: var(--radius-2xl);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-bold);
     text-transform: uppercase;
 }
-.drill-status.assigned { background: rgba(59,130,246,0.15); color: #3b82f6; }
-.drill-status.in_progress { background: rgba(245,158,11,0.15); color: #f59e0b; }
-.drill-status.completed { background: rgba(16,185,129,0.15); color: #10b981; }
+.drill-status.assigned { background: rgba(59, 130, 246, 0.15); color: var(--info); }
+.drill-status.in_progress { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+.drill-status.completed { background: rgba(16, 185, 129, 0.15); color: var(--success); }
 .drill-mgmt-actions { display: flex; gap: 8px; align-items: center; }
 .drill-mgmt-actions button {
     padding: 7px 14px;
@@ -500,22 +502,22 @@ $locations = $pdo->query("SELECT id, name FROM locations WHERE is_active = 1 ORD
     transition: all var(--transition-normal, 0.2s ease);
 }
 .btn-sm-primary {
-    background: var(--primary, #6B46C1);
-    color: #fff;
+    background: var(--primary);
+    color: var(--text-white);
 }
 .btn-sm-primary:hover {
-    background: var(--primary-hover, #7C3AED);
+    background: var(--primary-hover);
     transform: translateY(-1px);
 }
 .btn-sm-danger {
     background: transparent;
     border: 1px solid rgba(239, 68, 68, 0.4) !important;
-    color: #ef4444;
+    color: var(--error);
 }
 .btn-sm-danger:hover {
-    background: #ef4444;
-    color: #fff;
-    border-color: #ef4444 !important;
+    background: var(--error);
+    color: var(--text-white);
+    border-color: var(--error) !important;
 }
 
 /* --- Video Review --- */
@@ -571,17 +573,18 @@ $locations = $pdo->query("SELECT id, name FROM locations WHERE is_active = 1 ORD
     background: rgba(107, 70, 193, 0.2);
 }
 .coach-video-status {
-    display: inline-block;
-    padding: 3px 10px;
-    border-radius: 10px;
-    font-size: 10px;
-    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    padding: 4px var(--space-3);
+    border-radius: var(--radius-2xl);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-bold);
     text-transform: uppercase;
     letter-spacing: 0.3px;
 }
-.coach-video-status.pending_review { background: rgba(245,158,11,0.15); color: #f59e0b; }
-.coach-video-status.reviewed { background: rgba(59,130,246,0.15); color: #3b82f6; }
-.coach-video-status.feedback_given { background: rgba(16,185,129,0.15); color: #10b981; }
+.coach-video-status.pending_review { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+.coach-video-status.reviewed { background: rgba(59, 130, 246, 0.15); color: var(--info); }
+.coach-video-status.feedback_given { background: rgba(16, 185, 129, 0.15); color: var(--success); }
 
 /* --- Appointment Section --- */
 .appt-form-card {
@@ -701,24 +704,25 @@ $locations = $pdo->query("SELECT id, name FROM locations WHERE is_active = 1 ORD
     flex-wrap: wrap;
 }
 .appt-type-badge {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 6px;
-    font-size: 10px;
-    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    padding: 4px var(--space-2);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-bold);
     text-transform: uppercase;
     letter-spacing: 0.3px;
 }
-.appt-type-badge.call { background: rgba(16,185,129,0.15); color: #10b981; }
-.appt-type-badge.video_call { background: rgba(59,130,246,0.15); color: #3b82f6; }
-.appt-type-badge.in_person { background: rgba(245,158,11,0.15); color: #f59e0b; }
+.appt-type-badge.call { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+.appt-type-badge.video_call { background: rgba(59, 130, 246, 0.15); color: var(--info); }
+.appt-type-badge.in_person { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
 .appt-status-badge {
-    font-size: 11px;
-    font-weight: 600;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
 }
-.appt-status-badge.scheduled { color: #3b82f6; }
-.appt-status-badge.completed { color: #10b981; }
-.appt-status-badge.cancelled { color: #ef4444; }
+.appt-status-badge.scheduled { color: var(--info); }
+.appt-status-badge.completed { color: var(--success); }
+.appt-status-badge.cancelled { color: var(--error); }
 
 /* --- Chat / Communication --- */
 .dev-chat-section { padding: 0; }
@@ -742,8 +746,8 @@ $locations = $pdo->query("SELECT id, name FROM locations WHERE is_active = 1 ORD
     border-left: 3px solid var(--primary, #6B46C1);
 }
 .dev-chat-msg.from-athlete {
-    background: rgba(59,130,246,0.08);
-    border-left: 3px solid #3b82f6;
+    background: rgba(59, 130, 246, 0.08);
+    border-left: 3px solid var(--info);
 }
 .dev-chat-msg .msg-meta {
     font-size: 11px;
@@ -772,12 +776,12 @@ $locations = $pdo->query("SELECT id, name FROM locations WHERE is_active = 1 ORD
 }
 .dev-chat-input button {
     padding: 11px 18px;
-    background: var(--primary, #6B46C1);
-    color: #fff;
+    background: var(--primary);
+    color: var(--text-white);
     border: none;
     border-radius: var(--radius-lg, 8px);
     cursor: pointer;
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     font-size: var(--font-size-sm, 13px);
     display: inline-flex;
     align-items: center;
@@ -785,7 +789,7 @@ $locations = $pdo->query("SELECT id, name FROM locations WHERE is_active = 1 ORD
     transition: all var(--transition-normal, 0.2s ease);
 }
 .dev-chat-input button:hover {
-    background: var(--primary-hover, #7C3AED);
+    background: var(--primary-hover);
 }
 .video-upload-row {
     display: flex;
@@ -811,13 +815,13 @@ $locations = $pdo->query("SELECT id, name FROM locations WHERE is_active = 1 ORD
 }
 .video-upload-row button {
     padding: 10px 16px;
-    background: var(--info, #3b82f6);
-    color: #fff;
+    background: var(--info);
+    color: var(--text-white);
     border: none;
     border-radius: var(--radius-lg, 8px);
     cursor: pointer;
     font-size: var(--font-size-sm, 12px);
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     display: inline-flex;
     align-items: center;
     gap: 5px;
@@ -831,12 +835,12 @@ $locations = $pdo->query("SELECT id, name FROM locations WHERE is_active = 1 ORD
 .dev-empty-state {
     text-align: center;
     padding: 40px 20px;
-    color: var(--text-dim, #A8A8B8);
+    color: var(--text-dim);
 }
 .dev-empty-state i {
     font-size: 36px;
     display: block;
-    margin-bottom: 12px;
+    margin-bottom: var(--space-3);
     opacity: 0.4;
 }
 .dev-empty-state--lg { padding: 60px 20px; }
@@ -867,37 +871,39 @@ $locations = $pdo->query("SELECT id, name FROM locations WHERE is_active = 1 ORD
     .video-upload-row { flex-direction: column; }
 }
 /* Active program cards grid */
-.dev-active-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
-.dev-active-card { background: var(--bg-card, #16161F); border: 1px solid var(--border, #2D2D3F); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 12px; transition: transform 0.15s, box-shadow 0.15s; cursor: pointer; text-decoration: none; color: inherit; }
-.dev-active-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.25); border-color: var(--primary, #6B46C1); }
-.dev-active-card .card-athlete-name { font-size: 18px; font-weight: 700; color: var(--text-white, #e2e8f0); }
-.dev-active-card .card-program-name { font-size: 13px; color: var(--text-dim, #94a3b8); margin-top: 2px; }
-.dev-active-card .card-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12px; }
-.dev-active-card .card-meta-item { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 12px; font-weight: 600; }
-.card-meta-item.weeks-left { background: rgba(245, 158, 11, 0.12); color: #F59E0B; }
-.card-meta-item.weeks-left.overdue { background: rgba(239, 68, 68, 0.12); color: #EF4444; }
-.dev-active-card .video-badge { background: rgba(239, 68, 68, 0.15); color: #EF4444; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; }
+.dev-active-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--space-5); }
+.dev-active-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-2xl); padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-3); transition: transform var(--transition-fast), box-shadow var(--transition-fast); cursor: pointer; text-decoration: none; color: inherit; }
+.dev-active-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); border-color: var(--primary); }
+.dev-active-card .card-athlete-name { font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); color: var(--text-white); }
+.dev-active-card .card-program-name { font-size: var(--font-size-sm); color: var(--text-dim); margin-top: 2px; }
+.dev-active-card .card-meta { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; font-size: var(--font-size-sm); }
+.dev-active-card .card-meta-item { display: inline-flex; align-items: center; gap: 4px; padding: 4px var(--space-3); border-radius: var(--radius-2xl); font-weight: var(--font-weight-semibold); }
+.card-meta-item.weeks-left { background: rgba(245, 158, 11, 0.12); color: var(--warning); }
+.card-meta-item.weeks-left.overdue { background: rgba(239, 68, 68, 0.12); color: var(--error); }
+.dev-active-card .video-badge { background: rgba(239, 68, 68, 0.15); color: var(--error); padding: 4px var(--space-2); border-radius: var(--radius-2xl); font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); }
 /* Coach view tabs */
-.dev-coach-tabs { display: flex; gap: 0; margin-bottom: 24px; border-bottom: 2px solid var(--border, #2D2D3F); }
-.dev-coach-tab { padding: 10px 24px; font-weight: 600; font-size: 14px; color: var(--text-dim, #94a3b8); cursor: pointer; border: none; background: none; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
-.dev-coach-tab.active { color: var(--primary, #6B46C1); border-bottom-color: var(--primary, #6B46C1); }
+.dev-coach-tabs { display: flex; gap: 0; margin-bottom: var(--space-6); border-bottom: 2px solid var(--border); }
+.dev-coach-tab { padding: var(--space-3) var(--space-6); font-weight: var(--font-weight-semibold); font-size: var(--font-size-base); color: var(--text-dim); cursor: pointer; border: none; background: none; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all var(--transition-slow); white-space: nowrap; }
+.dev-coach-tab:hover { color: var(--text-white); background: rgba(107, 70, 193, 0.05); }
+.dev-coach-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+.dev-coach-tab .count-badge { background: var(--primary); color: var(--text-white); font-size: var(--font-size-xs); padding: 4px var(--space-3); border-radius: var(--radius-2xl); font-weight: var(--font-weight-semibold); margin-left: var(--space-2); }
 .dev-coach-tab-content { display: none; }
 .dev-coach-tab-content.active { display: block; }
 /* History filters */
-.dev-history-filters { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
-.dev-history-filters input, .dev-history-filters select { padding: 8px 14px; background: var(--bg-card, #16161F); border: 1px solid var(--border, #2D2D3F); border-radius: 8px; color: var(--text-white, #e2e8f0); font-size: 13px; min-width: 180px; }
+.dev-history-filters { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-bottom: var(--space-5); }
+.dev-history-filters input, .dev-history-filters select { padding: var(--space-2) 14px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); color: var(--text-white); font-size: var(--font-size-sm); min-width: 180px; }
 /* History table */
 .dev-history-table { width: 100%; border-collapse: collapse; }
-.dev-history-table th { text-align: left; padding: 10px 14px; font-size: 12px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border, #2D2D3F); }
-.dev-history-table td { padding: 12px 14px; font-size: 13px; border-bottom: 1px solid var(--border, #2D2D3F); color: var(--text-white, #e2e8f0); }
+.dev-history-table th { text-align: left; padding: var(--space-3) 14px; font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid var(--border); }
+.dev-history-table td { padding: var(--space-3) 14px; font-size: var(--font-size-sm); border-bottom: 1px solid var(--border); color: var(--text-white); }
 .dev-history-table tr:hover td { background: rgba(107, 70, 193, 0.05); }
-.status-badge-sm { padding: 2px 10px; border-radius: 10px; font-size: 11px; font-weight: 600; }
-.status-badge-sm.completed { background: rgba(16, 185, 129, 0.15); color: #10b981; }
-.status-badge-sm.paused { background: rgba(245, 158, 11, 0.15); color: #F59E0B; }
-.status-badge-sm.cancelled { background: rgba(239, 68, 68, 0.15); color: #EF4444; }
+.status-badge-sm { padding: 4px var(--space-3); border-radius: var(--radius-2xl); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); }
+.status-badge-sm.completed { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+.status-badge-sm.paused { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+.status-badge-sm.cancelled { background: rgba(239, 68, 68, 0.15); color: var(--error); }
 /* Back button */
-.dev-back-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: var(--bg-card, #16161F); border: 1px solid var(--border, #2D2D3F); border-radius: 8px; color: var(--text-white, #e2e8f0); font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; margin-bottom: 16px; transition: border-color 0.2s; }
-.dev-back-btn:hover { border-color: var(--primary, #6B46C1); }
+.dev-back-btn { display: inline-flex; align-items: center; gap: 6px; padding: var(--space-2) var(--space-4); background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); color: var(--text-white); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); cursor: pointer; text-decoration: none; margin-bottom: var(--space-4); transition: border-color var(--transition-normal); }
+.dev-back-btn:hover { border-color: var(--primary); }
 @media (max-width: 600px) {
     .dev-active-cards { grid-template-columns: 1fr; }
     .dev-history-filters { flex-direction: column; }
@@ -922,9 +928,9 @@ $locations = $pdo->query("SELECT id, name FROM locations WHERE is_active = 1 ORD
                 <div class="detail-athlete-header">
                     <h3>
                         <?php if ($selected['program_type'] === 'goalie_dev'): ?>
-                            <i class="fas fa-shield-alt" style="color:#3b82f6;"></i>
+                            <i class="fas fa-shield-alt" style="color:var(--info);"></i>
                         <?php else: ?>
-                            <i class="fas fa-hockey-puck" style="color:#10b981;"></i>
+                            <i class="fas fa-hockey-puck" style="color:var(--success);"></i>
                         <?php endif; ?>
                         <?= htmlspecialchars($selected['first_name'] . ' ' . $selected['last_name']) ?>
                         <span class="dev-program-badge <?= htmlspecialchars($selected['program_type']) ?>">
@@ -1146,7 +1152,7 @@ $locations = $pdo->query("SELECT id, name FROM locations WHERE is_active = 1 ORD
                                     <div class="msg-meta"><?= htmlspecialchars($m['sender_first'] . ' ' . $m['sender_last']) ?> &bull; <?= date('M j, g:ia', strtotime($m['created_at'])) ?></div>
                                     <?= htmlspecialchars($m['message']) ?>
                                     <?php if ($m['video_url']): ?>
-                                        <div style="margin-top:6px;"><a href="<?= htmlspecialchars($m['video_url']) ?>" target="_blank" style="color:var(--primary);font-size:12px;display:inline-flex;align-items:center;gap:4px;"><i class="fas fa-video"></i> Watch Video</a></div>
+                                        <div style="margin-top:6px;"><a href="<?= htmlspecialchars($m['video_url']) ?>" target="_blank" style="color:var(--primary);font-size:var(--font-size-sm);display:inline-flex;align-items:center;gap:4px;"><i class="fas fa-video"></i> Watch Video</a></div>
                                     <?php endif; ?>
                                 </div>
                                 <?php endforeach; ?>
@@ -1224,7 +1230,7 @@ $locations = $pdo->query("SELECT id, name FROM locations WHERE is_active = 1 ORD
                     <i class="fas fa-clock"></i> <?= $weeks_left > 0 ? $weeks_left . ' week' . ($weeks_left !== 1 ? 's' : '') . ' left' : 'Program ended' ?>
                 </span>
                 <?php endif; ?>
-                <span class="card-meta-item" style="background:rgba(107,70,193,0.12);color:#8B5CF6;">
+                <span class="card-meta-item" style="background:rgba(107,70,193,0.12);color:var(--accent);">
                     <i class="fas fa-clipboard-list"></i> <?= (int)$a['drill_count'] ?> drills
                 </span>
             </div>

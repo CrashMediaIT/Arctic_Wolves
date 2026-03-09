@@ -53,91 +53,151 @@ function getDevProgramType($name) {
 .dev-programs-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-    gap: 24px;
-    margin-top: 20px;
+    gap: var(--space-6);
+    margin-top: var(--space-5);
 }
 .dev-program-card {
-    background: var(--bg-card, #1a1a2e);
-    border: 1px solid var(--border, #2d2d44);
-    border-radius: 12px;
-    padding: 28px;
-    transition: transform 0.2s, box-shadow 0.2s;
+    background: var(--bg-card, #16161F);
+    border: 1px solid var(--border, #2D2D3F);
+    border-radius: var(--radius-2xl);
+    padding: var(--space-6);
+    transition: transform var(--transition-normal), box-shadow var(--transition-normal);
 }
 .dev-program-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+    box-shadow: var(--shadow-lg);
 }
 .dev-program-card h3 {
-    font-size: 20px;
-    font-weight: 700;
-    color: var(--text-white, #e2e8f0);
-    margin-bottom: 12px;
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--text-white);
+    margin-bottom: var(--space-3);
 }
 .dev-program-card .program-icon {
     font-size: 48px;
-    margin-bottom: 16px;
+    margin-bottom: var(--space-4);
     display: block;
 }
-.dev-program-card .program-icon.goalie { color: #3b82f6; }
-.dev-program-card .program-icon.player { color: #10b981; }
+.dev-program-card .program-icon.goalie { color: var(--info); }
+.dev-program-card .program-icon.player { color: var(--success); }
 .dev-program-card p {
-    color: var(--text-dim, #94a3b8);
-    font-size: 14px;
+    color: var(--text-dim);
+    font-size: var(--font-size-base);
     line-height: 1.6;
-    margin-bottom: 20px;
+    margin-bottom: var(--space-5);
 }
 .dev-program-card .btn-register {
-    display: inline-block;
-    padding: 10px 24px;
-    border-radius: 8px;
-    font-weight: 600;
-    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 0 var(--space-6);
+    height: 45px;
+    border-radius: var(--radius-lg);
+    font-weight: var(--font-weight-bold);
+    font-size: var(--font-size-base);
     text-decoration: none;
     cursor: pointer;
     border: none;
-    transition: all 0.2s;
+    transition: all var(--transition-normal);
 }
 .dev-program-card .btn-register.available {
-    background: var(--primary, #6B46C1);
-    color: #fff;
+    background: var(--primary);
+    color: var(--text-white);
 }
 .dev-program-card .btn-register.available:hover {
-    opacity: 0.9;
+    background: var(--primary-hover);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-primary-hover);
 }
 .dev-program-card .btn-register.enrolled {
     background: rgba(16, 185, 129, 0.15);
-    color: #10b981;
+    color: var(--success);
     border: 1px solid rgba(16, 185, 129, 0.3);
     cursor: default;
 }
 .dev-enrollment-info {
-    margin-top: 12px;
-    padding: 12px 16px;
+    margin-top: var(--space-3);
+    padding: var(--space-3) var(--space-4);
     background: rgba(16, 185, 129, 0.08);
-    border-radius: 8px;
-    font-size: 13px;
-    color: var(--text-dim, #94a3b8);
+    border-radius: var(--radius-lg);
+    font-size: var(--font-size-sm);
+    color: var(--text-dim);
 }
 .dev-enrollment-info strong {
-    color: #10b981;
+    color: var(--success);
 }
 .dev-program-price {
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--text-white, #e2e8f0);
-    margin-bottom: 12px;
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-bold);
+    color: var(--text-white);
+    margin-bottom: var(--space-3);
 }
 .dev-program-duration {
-    font-size: 13px;
+    font-size: var(--font-size-sm);
     color: var(--text-dim);
-    margin-bottom: 8px;
+    margin-bottom: var(--space-2);
+}
+/* Empty state */
+.dev-programs-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: var(--space-10);
+    color: var(--text-dim);
+}
+.dev-programs-empty i {
+    font-size: 48px;
+    display: block;
+    margin-bottom: var(--space-4);
+    opacity: 0.5;
+}
+/* Completed programs section */
+.dev-completed-section {
+    margin-top: var(--space-8);
+}
+.dev-completed-section h3 {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-bold);
+    color: var(--text-white);
+    margin-bottom: var(--space-4);
+}
+.dev-completed-section h3 i {
+    color: var(--text-dim);
+    margin-right: var(--space-2);
+}
+.dev-completed-card {
+    background: var(--bg-card, #16161F);
+    border: 1px solid var(--border, #2D2D3F);
+    border-radius: var(--radius-2xl);
+    padding: var(--space-4) var(--space-5);
+    margin-bottom: var(--space-3);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+}
+.dev-completed-card .completed-name {
+    font-weight: var(--font-weight-bold);
+    color: var(--text-white);
+    font-size: 15px;
+}
+.dev-completed-card .completed-meta {
+    font-size: var(--font-size-sm);
+    color: var(--text-dim);
+    margin-top: var(--space-1);
+}
+.dev-completed-card .badge {
+    padding: 4px var(--space-3);
+    border-radius: var(--radius-2xl);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
 }
 </style>
 
 <div class="dev-programs-grid">
     <?php if (empty($dev_products)): ?>
-    <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-dim);">
-        <i class="fas fa-hockey-puck" style="font-size:48px;display:block;margin-bottom:16px;opacity:0.5;"></i>
+    <div class="dev-programs-empty">
+        <i class="fas fa-hockey-puck"></i>
         <p>No development programs available at this time.</p>
     </div>
     <?php else: ?>
@@ -184,26 +244,24 @@ function getDevProgramType($name) {
 </div>
 
 <?php if (!empty($completed_enrollments)): ?>
-<div style="margin-top: 32px;">
-    <h3 style="font-size:18px;font-weight:700;color:var(--text-white,#e2e8f0);margin-bottom:16px;">
-        <i class="fas fa-history" style="color:var(--text-dim);margin-right:8px;"></i> Completed Programs
+<div class="dev-completed-section">
+    <h3>
+        <i class="fas fa-history"></i> Completed Programs
     </h3>
     <?php foreach ($completed_enrollments as $ce):
         $ce_display = $ce['program_name'] ?: ($ce['program_type'] === 'goalie_dev' ? 'Goalie Development' : 'Player Development');
     ?>
-    <div style="background:var(--bg-card,#1a1a2e);border:1px solid var(--border,#2d2d44);border-radius:12px;padding:16px 20px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+    <div class="dev-completed-card">
         <div>
-            <div style="font-weight:700;color:var(--text-white,#e2e8f0);font-size:15px;">
+            <div class="completed-name">
                 <?= htmlspecialchars($ce_display) ?>
             </div>
-            <div style="font-size:12px;color:var(--text-dim);margin-top:4px;">
+            <div class="completed-meta">
                 <?= date('M j, Y', strtotime($ce['enrolled_at'])) ?><?= $ce['completed_at'] ? ' — ' . date('M j, Y', strtotime($ce['completed_at'])) : '' ?>
                 &bull; <?= (int)$ce['drill_count'] ?> drills
             </div>
         </div>
-        <span style="padding:3px 12px;border-radius:10px;font-size:11px;font-weight:600;
-              background:<?= $ce['status'] === 'completed' ? 'rgba(16,185,129,0.15)' : ($ce['status'] === 'paused' ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)') ?>;
-              color:<?= $ce['status'] === 'completed' ? '#10b981' : ($ce['status'] === 'paused' ? '#F59E0B' : '#EF4444') ?>;">
+        <span class="badge badge-<?= $ce['status'] === 'completed' ? 'success' : ($ce['status'] === 'paused' ? 'warning' : 'danger') ?>">
             <?= ucfirst(htmlspecialchars($ce['status'])) ?>
         </span>
     </div>

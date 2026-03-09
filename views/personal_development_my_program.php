@@ -95,152 +95,223 @@ unset($enrollment);
 <style>
 .my-program-empty {
     text-align: center;
-    padding: 60px 20px;
-    color: var(--text-dim, #94a3b8);
+    padding: 60px var(--space-5);
+    color: var(--text-dim);
 }
-.my-program-empty i { font-size: 48px; margin-bottom: 16px; display: block; opacity: 0.5; }
+.my-program-empty i { font-size: 48px; margin-bottom: var(--space-4); display: block; opacity: 0.5; }
 .enrollment-section {
-    background: var(--bg-card, #1a1a2e);
-    border: 1px solid var(--border, #2d2d44);
-    border-radius: 12px;
-    padding: 24px;
-    margin-bottom: 24px;
+    background: var(--bg-card, #16161F);
+    border: 1px solid var(--border, #2D2D3F);
+    border-radius: var(--radius-2xl);
+    padding: var(--space-6);
+    margin-bottom: var(--space-6);
 }
 .enrollment-section h3 {
-    font-size: 18px; font-weight: 700;
-    color: var(--text-white, #e2e8f0); margin-bottom: 16px;
+    font-size: var(--font-size-lg); font-weight: var(--font-weight-bold);
+    color: var(--text-white); margin-bottom: var(--space-4);
 }
-.enrollment-section h3 i { margin-right: 8px; }
+.enrollment-section h3 i { margin-right: var(--space-2); }
+.enrollment-section h3 .icon-goalie { color: var(--info); }
+.enrollment-section h3 .icon-player { color: var(--success); }
+.enrollment-section h3 .weeks-badge {
+    font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold);
+    padding: 4px var(--space-3); border-radius: var(--radius-2xl);
+    margin-left: var(--space-2);
+}
+.enrollment-section h3 .weeks-badge.active { background: rgba(245, 158, 11, 0.12); color: var(--warning); }
+.enrollment-section h3 .weeks-badge.ended { background: rgba(239, 68, 68, 0.12); color: var(--error); }
 .enrollment-section .section-label {
-    font-size: 14px; font-weight: 600; color: var(--text-white, #e2e8f0);
-    margin: 20px 0 12px; padding-top: 16px;
-    border-top: 1px solid var(--border, #2d2d44);
+    font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); color: var(--text-white);
+    margin: var(--space-5) 0 var(--space-3); padding-top: var(--space-4);
+    border-top: 1px solid var(--border, #2D2D3F);
 }
 .enrollment-section .section-label:first-of-type { border-top: none; margin-top: 0; padding-top: 0; }
 .enrollment-section .section-label i { margin-right: 6px; }
 
 /* Drill cards - clickable links */
-.drill-list { display: flex; flex-direction: column; gap: 12px; }
+.drill-list { display: flex; flex-direction: column; gap: var(--space-3); }
 .drill-card {
-    background: var(--bg-main, #0d1117); border: 1px solid var(--border, #2d2d44);
-    border-radius: 10px; padding: 16px; cursor: pointer;
-    transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+    background: var(--bg-main, #0A0A0F); border: 1px solid var(--border, #2D2D3F);
+    border-radius: var(--radius-xl); padding: var(--space-4); cursor: pointer;
+    transition: border-color var(--transition-normal), transform var(--transition-fast), box-shadow var(--transition-normal);
 }
 .drill-card:hover {
     border-color: rgba(107, 70, 193, 0.4); transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    box-shadow: var(--shadow-md);
 }
-.drill-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.drill-card-header h4 { font-size: 15px; font-weight: 600; color: var(--text-white, #e2e8f0); margin: 0; }
-.drill-card p { font-size: 13px; color: var(--text-dim, #94a3b8); line-height: 1.5; margin: 0 0 6px; }
-.drill-card-footer { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+.drill-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2); }
+.drill-card-header h4 { font-size: 15px; font-weight: var(--font-weight-semibold); color: var(--text-white); margin: 0; }
+.drill-card p { font-size: var(--font-size-sm); color: var(--text-dim); line-height: 1.5; margin: 0 0 6px; }
+.drill-card .coach-note-text { color: var(--warning); font-size: var(--font-size-sm); }
+.drill-card .coach-note-text i { margin-right: 2px; }
+.drill-card-footer { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-2); }
 .drill-card-footer .btn-view-drill {
-    font-size: 12px; color: var(--primary, #6B46C1); font-weight: 600;
+    font-size: var(--font-size-sm); color: var(--primary); font-weight: var(--font-weight-semibold);
     text-decoration: none; display: inline-flex; align-items: center; gap: 4px;
 }
+.drill-card-footer .btn-view-drill.has-video { color: var(--info); }
 .drill-status {
-    display: inline-block; padding: 3px 10px; border-radius: 12px;
-    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    display: inline-flex; align-items: center; padding: 4px var(--space-3); border-radius: var(--radius-2xl);
+    font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); text-transform: uppercase;
 }
-.drill-status.assigned { background: rgba(59,130,246,0.15); color: #3b82f6; }
-.drill-status.in_progress { background: rgba(245,158,11,0.15); color: #f59e0b; }
-.drill-status.completed { background: rgba(16,185,129,0.15); color: #10b981; }
+.drill-status.assigned { background: rgba(59, 130, 246, 0.15); color: var(--info); }
+.drill-status.in_progress { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+.drill-status.completed { background: rgba(16, 185, 129, 0.15); color: var(--success); }
 
 /* Upload section */
 .dev-upload-section {
-    margin-top: 20px; padding-top: 16px;
-    border-top: 1px solid var(--border, #2d2d44);
+    margin-top: var(--space-5); padding-top: var(--space-4);
+    border-top: 1px solid var(--border, #2D2D3F);
 }
 .dev-upload-card {
-    background: var(--bg-main, #0d1117); border: 1px solid var(--border, #2d2d44);
-    border-radius: 10px; padding: 20px;
+    background: var(--bg-main, #0A0A0F); border: 1px solid var(--border, #2D2D3F);
+    border-radius: var(--radius-xl); padding: var(--space-5);
 }
-.dev-upload-card h4 { font-size: 15px; font-weight: 600; color: var(--text-white, #e2e8f0); margin-bottom: 12px; }
+.dev-upload-card h4 { font-size: 15px; font-weight: var(--font-weight-semibold); color: var(--text-white); margin-bottom: var(--space-3); }
 .dev-upload-card h4 i { margin-right: 6px; }
-.dev-upload-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+.dev-upload-card .upload-description { font-size: var(--font-size-sm); color: var(--text-dim); margin-bottom: var(--space-3); }
+.dev-upload-options { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); margin-bottom: 14px; }
 .dev-upload-option {
-    background: var(--bg-card, #1a1a2e); border: 1px solid var(--border, #2d2d44);
-    border-radius: 8px; padding: 16px; text-align: center; cursor: pointer;
-    transition: border-color 0.2s, transform 0.15s;
+    background: var(--bg-card, #16161F); border: 1px solid var(--border, #2D2D3F);
+    border-radius: var(--radius-lg); padding: var(--space-4); text-align: center; cursor: pointer;
+    transition: border-color var(--transition-normal), transform var(--transition-fast);
 }
-.dev-upload-option:hover { border-color: rgba(107,70,193,0.4); transform: translateY(-1px); }
-.dev-upload-option i { font-size: 28px; color: var(--primary, #6B46C1); display: block; margin-bottom: 8px; }
-.dev-upload-option span { font-size: 13px; font-weight: 600; color: var(--text-white, #e2e8f0); }
+.dev-upload-option:hover { border-color: rgba(107, 70, 193, 0.4); transform: translateY(-1px); }
+.dev-upload-option i { font-size: 28px; color: var(--primary); display: block; margin-bottom: var(--space-2); }
+.dev-upload-option span { font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); color: var(--text-white); }
 .dev-upload-form { display: none; }
 .dev-upload-form.active { display: block; }
-.dev-upload-form label { display: block; font-size: 13px; font-weight: 600; color: var(--text-dim, #94a3b8); margin-bottom: 4px; }
+.dev-upload-form label { display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); color: var(--text-dim); margin-bottom: var(--space-1); }
 .dev-upload-form input[type="text"],
 .dev-upload-form input[type="url"],
 .dev-upload-form textarea,
 .dev-upload-form select {
-    width: 100%; padding: 10px 12px; background: var(--bg-card, #1a1a2e);
-    border: 1px solid var(--border, #2d2d44); border-radius: 8px;
-    color: var(--text-white, #e2e8f0); font-size: 13px; margin-bottom: 10px;
+    width: 100%; padding: 10px var(--space-3); background: var(--bg-card, #16161F);
+    border: 1px solid var(--border, #2D2D3F); border-radius: var(--radius-lg);
+    color: var(--text-white); font-size: var(--font-size-sm); margin-bottom: 10px;
 }
 .dev-upload-form textarea { min-height: 60px; resize: vertical; }
 .dev-upload-form .btn-upload {
-    padding: 10px 20px; background: var(--primary, #6B46C1); color: #fff;
-    border: none; border-radius: 8px; font-weight: 600; font-size: 13px;
+    padding: 0 var(--space-5); height: 40px; background: var(--primary); color: var(--text-white);
+    border: none; border-radius: var(--radius-lg); font-weight: var(--font-weight-semibold); font-size: var(--font-size-sm);
     cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+    transition: all var(--transition-normal);
 }
+.dev-upload-form .btn-upload:hover { background: var(--primary-hover); }
 
 /* Uploaded videos list */
 .dev-video-list { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
 .dev-video-item {
-    background: var(--bg-main, #0d1117); border: 1px solid var(--border, #2d2d44);
-    border-radius: 8px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;
+    background: var(--bg-main, #0A0A0F); border: 1px solid var(--border, #2D2D3F);
+    border-radius: var(--radius-lg); padding: var(--space-3) var(--space-4); display: flex; justify-content: space-between; align-items: center;
 }
-.dev-video-item .video-info h5 { font-size: 14px; font-weight: 600; color: var(--text-white, #e2e8f0); margin: 0 0 4px; }
-.dev-video-item .video-info span { font-size: 12px; color: var(--text-dim, #94a3b8); }
+.dev-video-item .video-info h5 { font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); color: var(--text-white); margin: 0 0 4px; }
+.dev-video-item .video-info span { font-size: var(--font-size-sm); color: var(--text-dim); }
+.dev-video-item .video-info .coach-feedback { margin: 4px 0 0; font-size: var(--font-size-sm); color: var(--success); }
+.dev-video-item .video-info .coach-feedback i { margin-right: 2px; }
 .dev-video-item .video-status {
-    padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; text-transform: uppercase;
+    padding: 4px var(--space-3); border-radius: var(--radius-2xl); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); text-transform: uppercase;
 }
-.dev-video-item .video-status.pending_review { background: rgba(245,158,11,0.15); color: #f59e0b; }
-.dev-video-item .video-status.reviewed { background: rgba(59,130,246,0.15); color: #3b82f6; }
-.dev-video-item .video-status.feedback_given { background: rgba(16,185,129,0.15); color: #10b981; }
+.dev-video-item .video-status.pending_review { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+.dev-video-item .video-status.reviewed { background: rgba(59, 130, 246, 0.15); color: var(--info); }
+.dev-video-item .video-status.feedback_given { background: rgba(16, 185, 129, 0.15); color: var(--success); }
 
 /* Upcoming appointments */
 .dev-appointments { display: flex; flex-direction: column; gap: 10px; }
 .dev-appointment-card {
-    background: var(--bg-main, #0d1117); border: 1px solid var(--border, #2d2d44);
-    border-radius: 10px; padding: 16px; display: flex; gap: 16px; align-items: center;
+    background: var(--bg-main, #0A0A0F); border: 1px solid var(--border, #2D2D3F);
+    border-radius: var(--radius-xl); padding: var(--space-4); display: flex; gap: var(--space-4); align-items: center;
 }
 .dev-appointment-card .appt-date-box {
-    min-width: 56px; text-align: center; padding: 8px 10px;
-    background: linear-gradient(135deg, var(--primary, #6B46C1), #8b5cf6);
-    border-radius: 8px; color: #fff;
+    min-width: 56px; text-align: center; padding: var(--space-2) 10px;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    border-radius: var(--radius-lg); color: var(--text-white);
 }
-.dev-appointment-card .appt-date-box .appt-day { font-size: 20px; font-weight: 700; display: block; }
-.dev-appointment-card .appt-date-box .appt-month { font-size: 11px; text-transform: uppercase; }
+.dev-appointment-card .appt-date-box .appt-day { font-size: var(--font-size-xl); font-weight: var(--font-weight-bold); display: block; }
+.dev-appointment-card .appt-date-box .appt-month { font-size: var(--font-size-xs); text-transform: uppercase; }
 .dev-appointment-card .appt-details { flex: 1; }
-.dev-appointment-card .appt-details h5 { font-size: 14px; font-weight: 600; color: var(--text-white, #e2e8f0); margin: 0 0 4px; }
-.dev-appointment-card .appt-meta { font-size: 12px; color: var(--text-dim, #94a3b8); display: flex; gap: 12px; flex-wrap: wrap; }
+.dev-appointment-card .appt-details h5 { font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); color: var(--text-white); margin: 0 0 4px; }
+.dev-appointment-card .appt-meta { font-size: var(--font-size-sm); color: var(--text-dim); display: flex; gap: var(--space-3); flex-wrap: wrap; }
 .dev-appointment-card .appt-meta i { margin-right: 3px; }
 .dev-appointment-type {
-    display: inline-block; padding: 2px 8px; border-radius: 6px;
-    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    display: inline-flex; align-items: center; padding: 4px var(--space-2); border-radius: var(--radius-md);
+    font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); text-transform: uppercase;
 }
-.dev-appointment-type.call { background: rgba(16,185,129,0.15); color: #10b981; }
-.dev-appointment-type.video_call { background: rgba(59,130,246,0.15); color: #3b82f6; }
-.dev-appointment-type.in_person { background: rgba(245,158,11,0.15); color: #f59e0b; }
+.dev-appointment-type.call { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+.dev-appointment-type.video_call { background: rgba(59, 130, 246, 0.15); color: var(--info); }
+.dev-appointment-type.in_person { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
 
 /* Chat */
-.program-chat { margin-top: 20px; border-top: 1px solid var(--border, #2d2d44); padding-top: 16px; }
-.chat-messages { max-height: 300px; overflow-y: auto; margin-bottom: 12px; }
-.chat-msg { padding: 8px 12px; margin-bottom: 8px; border-radius: 8px; font-size: 13px; }
-.chat-msg.from-coach { background: rgba(107,70,193,0.1); border-left: 3px solid var(--primary, #6B46C1); }
-.chat-msg.from-me { background: rgba(59,130,246,0.1); border-left: 3px solid #3b82f6; }
-.chat-msg .msg-meta { font-size: 11px; color: var(--text-dim, #94a3b8); margin-bottom: 4px; }
-.chat-input-row { display: flex; gap: 8px; }
+.program-chat { margin-top: var(--space-5); border-top: 1px solid var(--border, #2D2D3F); padding-top: var(--space-4); }
+.program-chat .chat-title { font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); color: var(--text-white); margin-bottom: var(--space-3); }
+.program-chat .chat-title i { margin-right: 6px; }
+.chat-messages { max-height: 300px; overflow-y: auto; margin-bottom: var(--space-3); }
+.chat-empty { color: var(--text-dim); font-size: var(--font-size-sm); text-align: center; padding: var(--space-5); }
+.chat-msg { padding: var(--space-2) var(--space-3); margin-bottom: var(--space-2); border-radius: var(--radius-lg); font-size: var(--font-size-sm); }
+.chat-msg.from-coach { background: rgba(107, 70, 193, 0.1); border-left: 3px solid var(--primary); }
+.chat-msg.from-me { background: rgba(59, 130, 246, 0.1); border-left: 3px solid var(--info); }
+.chat-msg .msg-meta { font-size: var(--font-size-xs); color: var(--text-dim); margin-bottom: 4px; }
+.chat-msg .msg-video-link { color: var(--primary); font-size: var(--font-size-sm); margin-top: 6px; display: inline-flex; align-items: center; gap: 4px; }
+.chat-input-row { display: flex; gap: var(--space-2); }
 .chat-input-row input {
-    flex: 1; padding: 10px 14px; background: var(--bg-main, #0d1117);
-    border: 1px solid var(--border, #2d2d44); border-radius: 8px;
-    color: var(--text-white, #e2e8f0); font-size: 13px;
+    flex: 1; padding: 10px 14px; background: var(--bg-main, #0A0A0F);
+    border: 1px solid var(--border, #2D2D3F); border-radius: var(--radius-lg);
+    color: var(--text-white); font-size: var(--font-size-sm);
 }
 .chat-input-row button {
-    padding: 10px 16px; background: var(--primary, #6B46C1); color: #fff;
-    border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px;
+    padding: 10px var(--space-4); background: var(--primary); color: var(--text-white);
+    border: none; border-radius: var(--radius-lg); cursor: pointer; font-weight: var(--font-weight-semibold); font-size: var(--font-size-sm);
+    transition: all var(--transition-normal);
 }
+.chat-input-row button:hover { background: var(--primary-hover); }
+
+/* Previously uploaded videos section */
+.dev-submitted-videos { margin-top: var(--space-4); }
+.dev-submitted-videos h4 { font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); color: var(--text-white); margin-bottom: 10px; }
+.dev-submitted-videos h4 i { margin-right: 6px; }
+
+/* Completed programs history */
+.dev-completed-section {
+    margin-top: var(--space-8);
+}
+.dev-completed-section h3 {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-bold);
+    color: var(--text-white);
+    margin-bottom: var(--space-4);
+}
+.dev-completed-section h3 i {
+    color: var(--text-dim);
+    margin-right: var(--space-2);
+}
+.dev-completed-card {
+    background: var(--bg-card, #16161F);
+    border: 1px solid var(--border, #2D2D3F);
+    border-radius: var(--radius-2xl);
+    padding: var(--space-4) var(--space-5);
+    margin-bottom: var(--space-3);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+}
+.dev-completed-card .completed-icon-goalie { color: var(--info); margin-right: 6px; }
+.dev-completed-card .completed-icon-player { color: var(--success); margin-right: 6px; }
+.dev-completed-card .completed-name {
+    font-weight: var(--font-weight-bold);
+    color: var(--text-white);
+    font-size: 15px;
+}
+.dev-completed-card .completed-meta {
+    font-size: var(--font-size-sm);
+    color: var(--text-dim);
+    margin-top: var(--space-1);
+}
+
+/* No drills message */
+.no-drills-msg { color: var(--text-dim); font-size: var(--font-size-base); }
+
 @media (max-width: 600px) {
     .dev-upload-options { grid-template-columns: 1fr; }
     .dev-appointment-card { flex-direction: column; text-align: center; }
@@ -267,13 +338,13 @@ unset($enrollment);
     <div class="enrollment-section">
         <h3>
             <?php if ($enrollment['program_type'] === 'goalie_dev'): ?>
-                <i class="fas fa-shield-alt" style="color:#3b82f6;"></i>
+                <i class="fas fa-shield-alt icon-goalie"></i>
             <?php else: ?>
-                <i class="fas fa-hockey-puck" style="color:#10b981;"></i>
+                <i class="fas fa-hockey-puck icon-player"></i>
             <?php endif; ?>
             <?= htmlspecialchars($program_display) ?>
             <?php if ($weeks_left !== null): ?>
-            <span style="font-size:12px;font-weight:600;padding:2px 10px;border-radius:10px;margin-left:8px;background:<?= $weeks_left > 0 ? 'rgba(245,158,11,0.12)' : 'rgba(239,68,68,0.12)' ?>;color:<?= $weeks_left > 0 ? '#F59E0B' : '#EF4444' ?>;">
+            <span class="weeks-badge <?= $weeks_left > 0 ? 'active' : 'ended' ?>">
                 <?= $weeks_left > 0 ? $weeks_left . ' week' . ($weeks_left !== 1 ? 's' : '') . ' left' : 'Program ended' ?>
             </span>
             <?php endif; ?>
@@ -308,7 +379,7 @@ unset($enrollment);
         <!-- Assigned Drills -->
         <div class="section-label"><i class="fas fa-clipboard-list"></i> Assigned Drills</div>
         <?php if (empty($enrollment['drills'])): ?>
-            <p style="color:var(--text-dim);font-size:14px;">No drills assigned yet. Your coach will add drills to your program soon.</p>
+            <p class="no-drills-msg">No drills assigned yet. Your coach will add drills to your program soon.</p>
         <?php else: ?>
             <div class="drill-list">
             <?php foreach ($enrollment['drills'] as $drill): ?>
@@ -321,12 +392,12 @@ unset($enrollment);
                         <p><?= htmlspecialchars(substr($drill['drill_description'], 0, 150)) ?><?= strlen($drill['drill_description']) > 150 ? '...' : '' ?></p>
                     <?php endif; ?>
                     <?php if ($drill['coach_notes']): ?>
-                        <p style="color:#f59e0b;font-size:12px;"><i class="fas fa-sticky-note"></i> <?= htmlspecialchars($drill['coach_notes']) ?></p>
+                        <p class="coach-note-text"><i class="fas fa-sticky-note"></i> <?= htmlspecialchars($drill['coach_notes']) ?></p>
                     <?php endif; ?>
                     <div class="drill-card-footer">
                         <span class="btn-view-drill"><i class="fas fa-eye"></i> View Full Details</span>
                         <?php if ($drill['drill_video_url']): ?>
-                        <span class="btn-view-drill" style="color:#3b82f6;"><i class="fas fa-play-circle"></i> Has Video</span>
+                        <span class="btn-view-drill has-video"><i class="fas fa-play-circle"></i> Has Video</span>
                         <?php endif; ?>
                     </div>
                 </a>
@@ -338,7 +409,7 @@ unset($enrollment);
         <div class="dev-upload-section">
             <div class="dev-upload-card">
                 <h4><i class="fas fa-video"></i> Upload Development Video</h4>
-                <p style="font-size:13px;color:var(--text-dim);margin-bottom:14px;">Record or upload a video for your coach to review. You can submit general development videos or videos specific to an assigned drill.</p>
+                <p class="upload-description">Record or upload a video for your coach to review. You can submit general development videos or videos specific to an assigned drill.</p>
                 <div class="dev-upload-options">
                     <div class="dev-upload-option" onclick="showDevUploadForm(<?= (int)$enrollment['id'] ?>, 'record')">
                         <i class="fas fa-circle-dot"></i>
@@ -373,8 +444,8 @@ unset($enrollment);
 
             <!-- Previously Uploaded Videos -->
             <?php if (!empty($enrollment['videos'])): ?>
-            <div style="margin-top:16px;">
-                <h4 style="font-size:14px;font-weight:600;color:var(--text-white);margin-bottom:10px;"><i class="fas fa-film"></i> Your Submitted Videos</h4>
+            <div class="dev-submitted-videos">
+                <h4><i class="fas fa-film"></i> Your Submitted Videos</h4>
                 <div class="dev-video-list">
                     <?php foreach ($enrollment['videos'] as $vid): ?>
                     <div class="dev-video-item">
@@ -382,7 +453,7 @@ unset($enrollment);
                             <h5><?= htmlspecialchars($vid['title']) ?></h5>
                             <span><?= date('M j, Y g:ia', strtotime($vid['created_at'])) ?><?= $vid['drill_title'] ? ' &bull; ' . htmlspecialchars($vid['drill_title']) : '' ?></span>
                             <?php if ($vid['coach_feedback']): ?>
-                            <p style="margin:4px 0 0;font-size:12px;color:#10b981;"><i class="fas fa-comment-dots"></i> <?= htmlspecialchars($vid['coach_feedback']) ?></p>
+                            <p class="coach-feedback"><i class="fas fa-comment-dots"></i> <?= htmlspecialchars($vid['coach_feedback']) ?></p>
                             <?php endif; ?>
                         </div>
                         <span class="video-status <?= htmlspecialchars($vid['status']) ?>"><?= str_replace('_', ' ', htmlspecialchars($vid['status'])) ?></span>
@@ -395,17 +466,17 @@ unset($enrollment);
 
         <!-- Chat Section -->
         <div class="program-chat">
-            <h4 style="font-size:14px;font-weight:600;color:var(--text-white);margin-bottom:12px;"><i class="fas fa-comments"></i> Program Chat</h4>
+            <h4 class="chat-title"><i class="fas fa-comments"></i> Program Chat</h4>
             <div class="chat-messages" id="chat-<?= (int)$enrollment['id'] ?>">
                 <?php if (empty($enrollment['messages'])): ?>
-                    <p style="color:var(--text-dim);font-size:13px;text-align:center;padding:20px;">No messages yet. Start a conversation with your coach.</p>
+                    <p class="chat-empty">No messages yet. Start a conversation with your coach.</p>
                 <?php else: ?>
                     <?php foreach ($enrollment['messages'] as $msg): ?>
                     <div class="chat-msg <?= $msg['sender_id'] == $user_id ? 'from-me' : 'from-coach' ?>">
                         <div class="msg-meta"><?= htmlspecialchars($msg['sender_first'] . ' ' . $msg['sender_last']) ?> &bull; <?= date('M j, g:ia', strtotime($msg['created_at'])) ?></div>
                         <?= htmlspecialchars($msg['message']) ?>
                         <?php if ($msg['video_url']): ?>
-                            <div style="margin-top:6px;"><a href="<?= htmlspecialchars($msg['video_url']) ?>" target="_blank" style="color:var(--primary);font-size:12px;"><i class="fas fa-video"></i> Video</a></div>
+                            <div><a href="<?= htmlspecialchars($msg['video_url']) ?>" target="_blank" class="msg-video-link"><i class="fas fa-video"></i> Video</a></div>
                         <?php endif; ?>
                     </div>
                     <?php endforeach; ?>
@@ -421,31 +492,29 @@ unset($enrollment);
 
     <!-- Completed Programs History -->
     <?php if (!empty($completed_programs)): ?>
-    <div style="margin-top: 32px;">
-        <h3 style="font-size:18px;font-weight:700;color:var(--text-white,#e2e8f0);margin-bottom:16px;">
-            <i class="fas fa-history" style="color:var(--text-dim);margin-right:8px;"></i> Previous Programs
+    <div class="dev-completed-section">
+        <h3>
+            <i class="fas fa-history"></i> Previous Programs
         </h3>
         <?php foreach ($completed_programs as $cp):
             $cp_display = $cp['program_name'] ?: ($cp['program_type'] === 'goalie_dev' ? 'Goalie Development' : 'Player Development');
         ?>
-        <div style="background:var(--bg-card,#1a1a2e);border:1px solid var(--border,#2d2d44);border-radius:12px;padding:16px 20px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+        <div class="dev-completed-card">
             <div>
-                <div style="font-weight:700;color:var(--text-white,#e2e8f0);font-size:15px;">
+                <div class="completed-name">
                     <?php if ($cp['program_type'] === 'goalie_dev'): ?>
-                        <i class="fas fa-shield-alt" style="color:#3b82f6;margin-right:6px;"></i>
+                        <i class="fas fa-shield-alt completed-icon-goalie"></i>
                     <?php else: ?>
-                        <i class="fas fa-hockey-puck" style="color:#10b981;margin-right:6px;"></i>
+                        <i class="fas fa-hockey-puck completed-icon-player"></i>
                     <?php endif; ?>
                     <?= htmlspecialchars($cp_display) ?>
                 </div>
-                <div style="font-size:12px;color:var(--text-dim);margin-top:4px;">
+                <div class="completed-meta">
                     <?= date('M j, Y', strtotime($cp['enrolled_at'])) ?><?= $cp['completed_at'] ? ' — ' . date('M j, Y', strtotime($cp['completed_at'])) : '' ?>
                     &bull; <?= (int)$cp['drill_count'] ?> drills
                 </div>
             </div>
-            <span style="padding:3px 12px;border-radius:10px;font-size:11px;font-weight:600;
-                  background:<?= $cp['status'] === 'completed' ? 'rgba(16,185,129,0.15)' : ($cp['status'] === 'paused' ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)') ?>;
-                  color:<?= $cp['status'] === 'completed' ? '#10b981' : ($cp['status'] === 'paused' ? '#F59E0B' : '#EF4444') ?>;">
+            <span class="badge badge-<?= $cp['status'] === 'completed' ? 'success' : ($cp['status'] === 'paused' ? 'warning' : 'danger') ?>">
                 <?= ucfirst(htmlspecialchars($cp['status'])) ?>
             </span>
         </div>
