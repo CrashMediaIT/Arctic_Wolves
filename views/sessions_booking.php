@@ -73,6 +73,22 @@ try {
     }
 } catch (PDOException $e) { /* Templates may already exist */ }
 
+// Get development program pricing from session templates
+$goalie_dev_tpl = $pdo->query("SELECT id, price FROM training_session_templates WHERE name = 'Goalie Development Program' AND is_active = 1 LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+$player_dev_tpl = $pdo->query("SELECT id, price FROM training_session_templates WHERE name = 'Player Development Program' AND is_active = 1 LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+$goalie_dev_price = $goalie_dev_tpl['price'] ?? $default_goalie_dev_price;
+$player_dev_price = $player_dev_tpl['price'] ?? $default_player_dev_price;
+$goalie_dev_template_id = $goalie_dev_tpl['id'] ?? 0;
+$player_dev_template_id = $player_dev_tpl['id'] ?? 0;
+
+// Check current user's development program enrollment status
+$dev_enrolled_types = [];
+try {
+    $dev_enroll_stmt = $pdo->prepare("SELECT program_type FROM development_program_enrollments WHERE athlete_id = ?");
+    $dev_enroll_stmt->execute([intval($_SESSION['user_id'])]);
+    $dev_enrolled_types = $dev_enroll_stmt->fetchAll(PDO::FETCH_COLUMN);
+} catch (PDOException $e) { /* table may not exist yet */ }
+
 // Get hourly pricing from session templates for private/semi-private sessions
 $private_tpl = $pdo->query("SELECT price FROM training_session_templates WHERE name = 'Private Session' AND is_active = 1 LIMIT 1")->fetch(PDO::FETCH_ASSOC);
 $semi_private_tpl = $pdo->query("SELECT price FROM training_session_templates WHERE name = 'Semi-Private Session' AND is_active = 1 LIMIT 1")->fetch(PDO::FETCH_ASSOC);
@@ -312,11 +328,17 @@ $user_booked_template_dates = $tpl_booked_stmt->fetchAll(PDO::FETCH_COLUMN);
                 </div>
                 <div class="program-card-footer">
                     <div class="program-pricing">
-                        <div class="program-price">Enroll</div>
+                        <div class="program-price"><?= $goalie_dev_price > 0 ? '$' . number_format($goalie_dev_price, 2) : 'Free' ?></div>
                     </div>
-                    <a href="?page=personal_development_programs" class="btn btn-primary" style="padding:10px 20px;background:var(--primary,#6B46C1);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
-                        <i class="fas fa-arrow-right"></i> View Program
-                    </a>
+                    <?php if (in_array('goalie_dev', $dev_enrolled_types)): ?>
+                        <span class="btn btn-primary" style="padding:10px 20px;background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);border-radius:8px;font-weight:600;font-size:13px;display:inline-flex;align-items:center;gap:6px;cursor:default;">
+                            <i class="fas fa-check"></i> Enrolled
+                        </span>
+                    <?php else: ?>
+                        <button type="button" class="btn btn-primary" data-action="register-dev-program" data-program-type="goalie_dev" data-template-id="<?= (int)$goalie_dev_template_id ?>" style="padding:10px 20px;background:var(--primary,#6B46C1);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+                            <i class="fas fa-shopping-cart"></i> Enroll<?= $goalie_dev_price > 0 ? ' & Pay' : '' ?>
+                        </button>
+                    <?php endif; ?>
                 </div>
             </div>
             <div class="program-card" style="border-color:rgba(16,185,129,0.3);">
@@ -341,11 +363,17 @@ $user_booked_template_dates = $tpl_booked_stmt->fetchAll(PDO::FETCH_COLUMN);
                 </div>
                 <div class="program-card-footer">
                     <div class="program-pricing">
-                        <div class="program-price">Enroll</div>
+                        <div class="program-price"><?= $player_dev_price > 0 ? '$' . number_format($player_dev_price, 2) : 'Free' ?></div>
                     </div>
-                    <a href="?page=personal_development_programs" class="btn btn-primary" style="padding:10px 20px;background:var(--primary,#6B46C1);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
-                        <i class="fas fa-arrow-right"></i> View Program
-                    </a>
+                    <?php if (in_array('player_dev', $dev_enrolled_types)): ?>
+                        <span class="btn btn-primary" style="padding:10px 20px;background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);border-radius:8px;font-weight:600;font-size:13px;display:inline-flex;align-items:center;gap:6px;cursor:default;">
+                            <i class="fas fa-check"></i> Enrolled
+                        </span>
+                    <?php else: ?>
+                        <button type="button" class="btn btn-primary" data-action="register-dev-program" data-program-type="player_dev" data-template-id="<?= (int)$player_dev_template_id ?>" style="padding:10px 20px;background:var(--primary,#6B46C1);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+                            <i class="fas fa-shopping-cart"></i> Enroll<?= $player_dev_price > 0 ? ' & Pay' : '' ?>
+                        </button>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -2204,6 +2232,59 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
+    // ============================================
+    // DEVELOPMENT PROGRAM ENROLLMENT (via payment)
+    // ============================================
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('[data-action="register-dev-program"]');
+        if (!btn) return;
+
+        const programType = btn.dataset.programType;
+        const templateId = btn.dataset.templateId;
+
+        if (!programType || !templateId || !/^\d+$/.test(templateId)) {
+            showBookingNotification('Invalid program. Please refresh and try again.', 'error');
+            return;
+        }
+
+        const csrfToken = document.querySelector('input[name="csrf_token"]')?.value;
+        if (!csrfToken) {
+            showBookingNotification('Security token missing. Please refresh the page and try again.', 'error');
+            return;
+        }
+
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = 'process_booking.php';
+
+        const actionInput = document.createElement('input');
+        actionInput.type = 'hidden';
+        actionInput.name = 'action';
+        actionInput.value = 'register_dev_program';
+        form.appendChild(actionInput);
+
+        const typeInput = document.createElement('input');
+        typeInput.type = 'hidden';
+        typeInput.name = 'program_type';
+        typeInput.value = programType;
+        form.appendChild(typeInput);
+
+        const tplInput = document.createElement('input');
+        tplInput.type = 'hidden';
+        tplInput.name = 'template_id';
+        tplInput.value = templateId;
+        form.appendChild(tplInput);
+
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrf_token';
+        csrfInput.value = csrfToken;
+        form.appendChild(csrfInput);
+
+        document.body.appendChild(form);
+        form.submit();
+    });
+
     // ============================================
     // WAITLIST FUNCTIONALITY
     // ============================================

@@ -102,12 +102,12 @@ test.describe('Personal Development View Files', () => {
     expect(content).toContain('My Program');
   });
 
-  test('views/personal_development_programs.php exists with registration functionality', () => {
+  test('views/personal_development_programs.php exists with enrollment via booking page', () => {
     const content = readFile('views/personal_development_programs.php');
     expect(content).toContain('Long Term Goalie Development');
     expect(content).toContain('Long Term Player Development');
-    expect(content).toContain('registerDevProgram');
-    expect(content).toContain('process_development_programs.php');
+    expect(content).toContain('page=booking');
+    expect(content).toContain('training_session_templates');
     expect(content).toContain('goalie_dev');
     expect(content).toContain('player_dev');
   });
@@ -683,13 +683,15 @@ test.describe('Auto-create Development Program Products', () => {
     expect(content).toContain('show_on_landing');
   });
 
-  test('sessions_booking.php displays development programs as first card section', () => {
+  test('sessions_booking.php displays development programs as first card section with payment', () => {
     const content = readFile('views/sessions_booking.php');
     expect(content).toContain('Development Programs');
     expect(content).toContain('dev-programs-section');
     expect(content).toContain('Long Term Goalie Development');
     expect(content).toContain('Long Term Player Development');
-    expect(content).toContain('personal_development_programs');
+    expect(content).toContain('register-dev-program');
+    expect(content).toContain('process_booking.php');
+    expect(content).toContain('dev_enrolled_types');
     // Verify it appears before Individual Sessions section
     const devSectionIdx = content.indexOf('dev-programs-section');
     const sessionsSectionIdx = content.indexOf('sessions-section');
@@ -709,6 +711,39 @@ test.describe('Auto-create Development Program Products', () => {
     expect(content).toContain('no fixed');
     expect(content).toContain('tailored to each athlete');
     expect(content).toContain('Individually tailored');
+  });
+
+  test('process_booking.php handles register_dev_program action with Stripe payment', () => {
+    const content = readFile('process_booking.php');
+    expect(content).toContain('register_dev_program');
+    expect(content).toContain('development_program_enrollments');
+    expect(content).toContain('dev_program');
+    expect(content).toContain('program_type');
+    expect(content).toContain('template_id');
+  });
+
+  test('payment_success.php handles dev_program enrollment after payment', () => {
+    const content = readFile('payment_success.php');
+    expect(content).toContain('dev_program');
+    expect(content).toContain('development_program_enrollments');
+    expect(content).toContain('register_dev_program');
+    expect(content).toContain('program_type');
+  });
+
+  test('process_development_programs.php restricts direct registration to admins/coaches only', () => {
+    const content = readFile('process_development_programs.php');
+    expect(content).toContain('Registration requires payment');
+    expect(content).toContain('canManageDevPrograms');
+  });
+
+  test('personal_development_programs.php no longer allows direct free enrollment', () => {
+    const content = readFile('views/personal_development_programs.php');
+    // Should NOT contain the old direct registration function
+    expect(content).not.toContain('registerDevProgram');
+    expect(content).not.toContain('process_development_programs.php');
+    // Should link to booking page instead
+    expect(content).toContain('page=booking');
+    expect(content).toContain('Enroll');
   });
 });
 

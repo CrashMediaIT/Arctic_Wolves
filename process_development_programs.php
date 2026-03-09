@@ -54,6 +54,12 @@ if (empty($action) && !empty($_POST['action'])) {
 try {
     switch ($action) {
         case 'register':
+            // Registration now requires payment through process_booking.php
+            // Only admins/coaches can directly register athletes (for manual overrides)
+            if (!$canManageDevPrograms) {
+                echo json_encode(['success' => false, 'error' => 'Registration requires payment. Please use the Booking page to enroll.']);
+                exit;
+            }
             handleRegister($pdo, $user_id, $input);
             break;
         case 'add_drill':

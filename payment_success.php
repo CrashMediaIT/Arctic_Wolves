@@ -109,6 +109,69 @@ try {
             }
 
             unset($_SESSION['package_purchase']);
+        } elseif (isset($checkout->metadata->type) && $checkout->metadata->type === 'dev_program') {
+            // HANDLE DEVELOPMENT PROGRAM ENROLLMENT (only after payment confirmed)
+            $program_type = $checkout->metadata->program_type ?? '';
+            $athlete_id = intval($checkout->metadata->athlete_id ?? 0);
+
+            if (in_array($program_type, ['goalie_dev', 'player_dev']) && $athlete_id > 0) {
+                // Idempotency: check if already enrolled
+                $dup_check = $pdo->prepare("SELECT id FROM development_program_enrollments WHERE athlete_id = ? AND program_type = ?");
+                $dup_check->execute([$athlete_id, $program_type]);
+
+                if (!$dup_check->fetch()) {
+                    $stmt = $pdo->prepare("INSERT INTO development_program_enrollments (athlete_id, program_type) VALUES (?, ?)");
+                    $stmt->execute([$athlete_id, $program_type]);
+                    $enrollment_id = $pdo->lastInsertId();
+
+                    Auditor::log($pdo, $athlete_id, 'create', 'development_program_enrollments', $enrollment_id, [
+                        'action' => 'register_dev_program', 'program_type' => $program_type, 'amount' => ($checkout->amount_total / 100)
+                    ]);
+
+                    // Notify dev coaches
+                    try {
+                        $coaches_stmt = $pdo->prepare("SELECT DISTINCT ur.user_id FROM user_roles ur WHERE ur.role = ?");
+                        $coaches_stmt->execute([$program_type]);
+                        $coach_ids = $coaches_stmt->fetchAll(PDO::FETCH_COLUMN);
+
+                        $admin_stmt = $pdo->prepare("SELECT DISTINCT ur.user_id FROM user_roles ur WHERE ur.role = 'admin'");
+                        $admin_stmt->execute();
+                        $admin_ids = $admin_stmt->fetchAll(PDO::FETCH_COLUMN);
+                        $notify_ids = array_unique(array_merge($coach_ids, $admin_ids));
+
+                        $athlete_stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
+                        $athlete_stmt->execute([$athlete_id]);
+                        $athlete_info = $athlete_stmt->fetch(PDO::FETCH_ASSOC);
+                        if (function_exists('decryptUserRows')) {
+                            $athlete_info = decryptUserRows([$athlete_info])[0];
+                        }
+                        $athlete_name = trim(($athlete_info['first_name'] ?? '') . ' ' . ($athlete_info['last_name'] ?? ''));
+                        $notif_program_label = $program_type === 'goalie_dev' ? 'Goalie Development Program' : 'Player Development Program';
+
+                        $notif_stmt = $pdo->prepare("INSERT INTO notifications (user_id, type, title, message, link_url) VALUES (?, 'dev_program_registration', ?, ?, '?page=development_programs')");
+                        foreach ($notify_ids as $nid) {
+                            $notif_stmt->execute([$nid, 'New Development Program Registration', "Athlete: " . htmlspecialchars($athlete_name, ENT_QUOTES, 'UTF-8') . " has enrolled (paid) in the " . $notif_program_label . "."]);
+                        }
+                    } catch (PDOException $ne) { /* notifications table may not exist */ }
+
+                    // Send confirmation email
+                    $email_stmt = $pdo->prepare("SELECT email, first_name FROM users WHERE id = ?");
+                    $email_stmt->execute([$athlete_id]);
+                    $user_info = $email_stmt->fetch(PDO::FETCH_ASSOC);
+                    $user_info = decryptUserRow($user_info);
+
+                    $program_label = $program_type === 'goalie_dev' ? 'Goalie Development Program' : 'Player Development Program';
+
+                    if ($user_info && !empty($user_info['email'])) {
+                        sendEmail($user_info['email'], 'payment_receipt', [
+                            'session_title' => $program_label,
+                            'amount'        => number_format($checkout->amount_total / 100, 2),
+                            'date'          => date('M j, Y'),
+                            'trans_id'      => $stripe_sid
+                        ]);
+                    }
+                }
+            }
         } elseif (isset($checkout->metadata->type) && $checkout->metadata->type === 'template_session') {
             // HANDLE TEMPLATE SESSION REGISTRATION (only after payment confirmed)
             $session_date_id = intval($checkout->metadata->session_date_id ?? 0);

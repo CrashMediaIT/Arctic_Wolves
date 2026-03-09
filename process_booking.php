@@ -160,6 +160,93 @@ if ($action === 'cancel_booking' || $action === 'cancel') {
     }
 }
 
+// REGISTER FOR DEVELOPMENT PROGRAM (goalie_dev or player_dev — payment required)
+if ($action === 'register_dev_program') {
+    try {
+        $program_type = $_POST['program_type'] ?? '';
+        $template_id = intval($_POST['template_id'] ?? 0);
+
+        if (!in_array($program_type, ['goalie_dev', 'player_dev'])) {
+            die("Invalid program type.");
+        }
+        if ($template_id <= 0) {
+            die("Invalid template ID.");
+        }
+
+        // Check if already enrolled
+        $dup_check = $pdo->prepare("SELECT id FROM development_program_enrollments WHERE athlete_id = ? AND program_type = ?");
+        $dup_check->execute([$user_id, $program_type]);
+        if ($dup_check->fetch()) {
+            header("Location: dashboard.php?page=personal_development_programs&error=already_enrolled");
+            exit();
+        }
+
+        // Get template price
+        $tpl_stmt = $pdo->prepare("SELECT id, name, price FROM training_session_templates WHERE id = ? AND is_active = 1");
+        $tpl_stmt->execute([$template_id]);
+        $template = $tpl_stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$template) {
+            die("Development program session product not found.");
+        }
+
+        $final_price = floatval($template['price'] ?? 0);
+
+        if ($final_price > 0) {
+            // Create Stripe checkout session for paid development program
+            $email_stmt = $pdo->prepare("SELECT email FROM users WHERE id = ?");
+            $email_stmt->execute([$user_id]);
+            $customer_email = $email_stmt->fetchColumn();
+
+            $stripe_params = [
+                'payment_method_types' => ['card'],
+                'line_items' => [[
+                    'price_data' => [
+                        'currency' => $currency,
+                        'unit_amount' => round($final_price * 100),
+                        'product_data' => [
+                            'name' => $template['name'],
+                            'description' => 'Long-term development program enrollment',
+                        ],
+                    ],
+                    'quantity' => 1,
+                ]],
+                'mode' => 'payment',
+                'success_url' => $domain . '/payment_success.php?session_id={CHECKOUT_SESSION_ID}',
+                'cancel_url'  => $domain . '/dashboard.php?page=booking&error=cancelled',
+                'client_reference_id' => $user_id,
+                'metadata' => [
+                    'type' => 'dev_program',
+                    'program_type' => $program_type,
+                    'template_id' => $template_id,
+                    'athlete_id' => $user_id,
+                ],
+            ];
+            if (!empty($customer_email)) {
+                $stripe_params['customer_email'] = $customer_email;
+            }
+            $checkout_session = \Stripe\Checkout\Session::create($stripe_params);
+
+            header("Location: " . $checkout_session->url);
+            exit();
+        } else {
+            // Free program — enroll directly
+            $stmt = $pdo->prepare("INSERT INTO development_program_enrollments (athlete_id, program_type) VALUES (?, ?)");
+            $stmt->execute([$user_id, $program_type]);
+
+            Auditor::log($pdo, $user_id, 'create', 'development_program_enrollments', $pdo->lastInsertId(), [
+                'action' => 'register_dev_program', 'program_type' => $program_type, 'amount' => 0
+            ]);
+
+            header("Location: dashboard.php?page=personal_development_programs&status=enrolled");
+            exit();
+        }
+    } catch (Exception $e) {
+        ErrorLogger::error("Dev program registration error: " . $e->getMessage(), ['program_type' => $program_type ?? '', 'user_id' => $user_id]);
+        die("Registration error: " . $e->getMessage());
+    }
+}
+
 // REGISTER FOR TEMPLATE SESSION (from training_session_templates)
 if ($action === 'register_template_session') {
     try {
