@@ -1263,6 +1263,27 @@ test.describe('Booking Page Dev Program Cards', () => {
     expect(content).toContain('fa-chart-line');
   });
 
+  test('booking page Long Term Development section always shows with empty state', () => {
+    const content = readFile('views/sessions_booking.php');
+    // Section should not be wrapped in a conditional that hides it entirely
+    // The section div should always render (not inside an if count > 0)
+    const sectionIdx = content.indexOf('dev-programs-section');
+    expect(sectionIdx).toBeGreaterThan(-1);
+    // Should have an empty state when no products
+    expect(content).toContain('No Development Programs Available');
+    expect(content).toContain('empty-state-card');
+  });
+
+  test('booking page dev cards use CSS classes instead of inline styles', () => {
+    const content = readFile('views/sessions_booking.php');
+    // Badge should use CSS class not inline style
+    expect(content).toContain('dev-type-badge');
+    // Enrolled button should use CSS class not inline style
+    expect(content).toContain('btn-enrolled-program');
+    // Form should use CSS class not inline style
+    expect(content).toContain('dev-enroll-form');
+  });
+
   test('booking page fetches all dev products from training_session_templates', () => {
     const content = readFile('views/sessions_booking.php');
     expect(content).toContain('is_dev_program');

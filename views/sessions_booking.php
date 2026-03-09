@@ -681,7 +681,6 @@ $user_booked_template_dates = $tpl_booked_stmt->fetchAll(PDO::FETCH_COLUMN);
     <!-- ============================================
          SECTION 4: LONG TERM DEVELOPMENT PROGRAMS
          ============================================ -->
-    <?php if (count($dev_products) > 0): ?>
     <div class="booking-section dev-programs-section">
         <div class="section-header-bar">
             <div class="section-title-group">
@@ -690,16 +689,16 @@ $user_booked_template_dates = $tpl_booked_stmt->fetchAll(PDO::FETCH_COLUMN);
             </div>
         </div>
         
+        <?php if (count($dev_products) > 0): ?>
         <div class="programs-cards-grid">
             <?php foreach ($dev_products as $dp):
                 $dp_is_goalie = stripos($dp['name'], 'goalie') !== false;
                 $dp_type = $dp_is_goalie ? 'goalie_dev' : 'player_dev';
                 $dp_enrolled = in_array((int)$dp['id'], $dev_active_template_ids);
                 $dp_icon = $dp_is_goalie ? 'fa-shield-alt' : 'fa-hockey-puck';
-                $dp_color = $dp_is_goalie ? '#3b82f6' : '#10b981';
             ?>
             <div class="program-card dev-product-card" data-program-id="dev-<?= (int)$dp['id'] ?>">
-                <div class="program-type-badge" style="background:rgba(107,70,193,0.15);color:#8B5CF6;">
+                <div class="program-type-badge dev-type-badge">
                     <i class="fas <?= $dp_icon ?>"></i> Long Term Development
                 </div>
                 <div class="program-card-header">
@@ -725,11 +724,11 @@ $user_booked_template_dates = $tpl_booked_stmt->fetchAll(PDO::FETCH_COLUMN);
                         <span class="program-price"><?= $dp['price'] > 0 ? '$' . number_format($dp['price'], 2) : 'Free' ?></span>
                     </div>
                     <?php if ($dp_enrolled): ?>
-                    <button type="button" class="btn-register-program" disabled style="background:rgba(0,255,136,0.1);color:#00ff88;cursor:default;opacity:0.8;">
+                    <button type="button" class="btn-register-program btn-enrolled-program" disabled>
                         <i class="fas fa-check-circle"></i> Currently Enrolled
                     </button>
                     <?php else: ?>
-                    <form method="POST" action="process_booking.php" style="display:inline;">
+                    <form method="POST" action="process_booking.php" class="dev-enroll-form">
                         <?= csrfTokenInput() ?>
                         <input type="hidden" name="action" value="register_dev_program">
                         <input type="hidden" name="program_type" value="<?= htmlspecialchars($dp_type) ?>">
@@ -743,8 +742,14 @@ $user_booked_template_dates = $tpl_booked_stmt->fetchAll(PDO::FETCH_COLUMN);
             </div>
             <?php endforeach; ?>
         </div>
+        <?php else: ?>
+        <div class="empty-state-card">
+            <i class="fas fa-chart-line"></i>
+            <h4>No Development Programs Available</h4>
+            <p>Long term development programs will appear here when available. Check back soon!</p>
+        </div>
+        <?php endif; ?>
     </div>
-    <?php endif; ?>
 </div>
 
 <style>
@@ -1698,6 +1703,11 @@ $user_booked_template_dates = $tpl_booked_stmt->fetchAll(PDO::FETCH_COLUMN);
     color: #3B82F6;
 }
 
+.program-type-badge.dev-type-badge {
+    background: rgba(107, 70, 193, 0.15);
+    color: var(--accent);
+}
+
 .program-card-header {
     padding: 20px 20px 0;
 }
@@ -1829,6 +1839,17 @@ $user_booked_template_dates = $tpl_booked_stmt->fetchAll(PDO::FETCH_COLUMN);
     background: var(--primary-dark, #553C9A);
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(107, 70, 193, 0.3);
+}
+
+.btn-register-program.btn-enrolled-program {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success);
+    cursor: default;
+    opacity: 0.8;
+}
+
+.dev-enroll-form {
+    display: inline;
 }
 
 @media (max-width: 768px) {
