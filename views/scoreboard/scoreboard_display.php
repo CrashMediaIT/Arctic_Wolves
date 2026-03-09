@@ -148,8 +148,9 @@ $away_pp = ($home_active_pens > 0 && $home_active_pens > $away_active_pens);
         .sb-controls-grid {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr 1fr;
-            gap: 16px;
-            padding: 16px;
+            gap: clamp(8px, 1.2vw, 16px);
+            padding: clamp(8px, 1.2vw, 16px);
+            padding-bottom: 24px;
         }
         @media (max-width: 1200px) {
             .sb-controls-grid { grid-template-columns: 1fr 1fr; }
@@ -188,8 +189,8 @@ $away_pp = ($home_active_pens > 0 && $home_active_pens > $away_active_pens);
             gap: 8px;
             width: 100%;
             min-height: 52px;
-            padding: 12px 16px;
-            font-size: 16px;
+            padding: clamp(8px, 1vw, 12px) clamp(10px, 1.2vw, 16px);
+            font-size: clamp(14px, 1.2vw, 16px);
             font-weight: 700;
             border: none;
             border-radius: 8px;
@@ -232,8 +233,8 @@ $away_pp = ($home_active_pens > 0 && $home_active_pens > $away_active_pens);
             justify-content: center;
             gap: 6px;
             min-height: 48px;
-            padding: 10px 14px;
-            font-size: 14px;
+            padding: clamp(6px, 0.8vw, 10px) clamp(8px, 1vw, 14px);
+            font-size: clamp(12px, 1.1vw, 14px);
             font-weight: 600;
             border: 1px solid #2D2D3F;
             border-radius: 8px;
@@ -303,6 +304,25 @@ $away_pp = ($home_active_pens > 0 && $home_active_pens > $away_active_pens);
             border-bottom: 1px solid #1A1A24;
         }
         .sb-ctrl-penalty-item:last-child { border-bottom: none; }
+        .sb-ctrl-penalty-clear-btn {
+            flex-shrink: 0;
+            width: 28px;
+            height: 28px;
+            border: 1px solid #DC2626;
+            border-radius: 6px;
+            background: rgba(220, 38, 38, 0.1);
+            color: #DC2626;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            transition: background 0.15s, transform 0.1s;
+        }
+        .sb-ctrl-penalty-clear-btn:hover {
+            background: rgba(220, 38, 38, 0.25);
+        }
+        .sb-ctrl-penalty-clear-btn:active { transform: scale(0.9); }
         .sb-ctrl-penalty-empty {
             text-align: center;
             padding: 12px;
@@ -396,13 +416,13 @@ $away_pp = ($home_active_pens > 0 && $home_active_pens > $away_active_pens);
                 <div class="sb-ctrl-penalty-item">
                     <span>#<?= htmlspecialchars($pen['player_number'] ?? '?') ?> <?= htmlspecialchars($pen['player_name'] ?? '') ?></span>
                     <span><?= htmlspecialchars($pen['infraction'] ?? '') ?> (<?= htmlspecialchars($pen['duration_minutes'] ?? '2') ?>min)</span>
+                    <button class="sb-ctrl-penalty-clear-btn" onclick="sbClearPenalty(<?= (int)($pen['id'] ?? 0) ?>)" title="Clear penalty">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
                 <?php endforeach; ?>
                 <?php endif; ?>
             </div>
-        </div>
-
-        <!-- ════════ COLUMN 2: CLOCK & PERIOD ════════ -->
         <div class="sb-ctrl-panel sb-panel-clock">
             <div class="sb-ctrl-panel-title"><i class="fas fa-clock"></i> Clock &amp; Period</div>
 
@@ -583,13 +603,13 @@ $away_pp = ($home_active_pens > 0 && $home_active_pens > $away_active_pens);
                 <div class="sb-ctrl-penalty-item">
                     <span>#<?= htmlspecialchars($pen['player_number'] ?? '?') ?> <?= htmlspecialchars($pen['player_name'] ?? '') ?></span>
                     <span><?= htmlspecialchars($pen['infraction'] ?? '') ?> (<?= htmlspecialchars($pen['duration_minutes'] ?? '2') ?>min)</span>
+                    <button class="sb-ctrl-penalty-clear-btn" onclick="sbClearPenalty(<?= (int)($pen['id'] ?? 0) ?>)" title="Clear penalty">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
                 <?php endforeach; ?>
                 <?php endif; ?>
             </div>
-        </div>
-
-    </div><!-- /.sb-controls-grid -->
 
 </div>
 <?php endif; ?>

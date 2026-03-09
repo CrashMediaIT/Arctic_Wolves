@@ -334,6 +334,19 @@ function sbAddPenalty(e) {
     return false;
 }
 
+// ── Clear / Delete Penalty ────────────────────────────────
+function sbClearPenalty(penaltyId) {
+    if (!penaltyId) return;
+    if (!confirm('Clear this penalty?')) return;
+    sbFetch('clear_penalty', { penalty_id: penaltyId }).then(function(d) {
+        if (d.success) {
+            window.location.reload();
+        } else {
+            alert(d.message || 'Failed to clear penalty');
+        }
+    });
+}
+
 // ── Buzzer / Horn ─────────────────────────────────────────
 function sbBuzzer() {
     var btn = document.getElementById('sbBuzzerBtn');

@@ -215,6 +215,20 @@ try {
             echo json_encode(['success' => true, 'penalty_id' => (int)$pdo->lastInsertId()]);
             break;
 
+        // ── Clear / delete penalty ────────────────────────
+        case 'clear_penalty':
+            $penalty_id = (int)($_POST['penalty_id'] ?? 0);
+            $game_id = (int)($_POST['game_id'] ?? 0);
+            if ($penalty_id <= 0) {
+                echo json_encode(['success' => false, 'message' => 'Invalid penalty ID']);
+                exit();
+            }
+            $stmt = $pdo->prepare("DELETE FROM scoreboard_penalties WHERE id = ? AND game_id = ?");
+            $stmt->execute([$penalty_id, $game_id]);
+            Auditor::log($pdo, $user_id, 'delete', 'scoreboard_penalties', $penalty_id, ['action' => 'Penalty cleared']);
+            echo json_encode(['success' => true]);
+            break;
+
         // ── Add goal detail (scoresheet) ──────────────────
         case 'add_goal_detail':
             $game_id = (int)($_POST['game_id'] ?? 0);
