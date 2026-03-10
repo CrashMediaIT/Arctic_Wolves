@@ -284,84 +284,95 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 }
 
 // Validate CSRF token for POST requests
+$_jsonAction = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Handle JSON bulk_delete before checkCsrfToken (which reads $_POST)
+    // Handle JSON requests before checkCsrfToken (which reads $_POST)
     $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+    $jsonCsrfValidated = false;
     if (strpos($contentType, 'application/json') !== false) {
         $jsonInput = json_decode(file_get_contents('php://input'), true);
-        if ($jsonInput && ($jsonInput['action'] ?? '') === 'bulk_delete') {
-            header('Content-Type: application/json');
-            $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
-            
-            // Verify CSRF token from JSON
+        if ($jsonInput) {
+            // Verify CSRF token from JSON body
             $token = $jsonInput['csrf_token'] ?? '';
             if (empty($token) || !hash_equals($_SESSION['csrf_token'] ?? '', $token)) {
-                echo json_encode(['success' => false, 'message' => 'Invalid CSRF token']);
+                header('Content-Type: application/json');
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Invalid CSRF token. Please refresh and try again.']);
                 exit();
             }
+            $jsonCsrfValidated = true;
+            $_jsonAction = $jsonInput['action'] ?? '';
+
+            if ($_jsonAction === 'bulk_delete') {
+                header('Content-Type: application/json');
+                $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
             
-            $items = $jsonInput['items'] ?? [];
-            if (empty($items) || !is_array($items)) {
-                echo json_encode(['success' => false, 'message' => 'No items provided']);
-                exit();
-            }
-            
-            $user_id = $_SESSION['user_id'] ?? 0;
-            $deletedCount = 0;
-            $errors = [];
-            
-            foreach ($items as $item) {
-                $itemId = intval($item['id'] ?? 0);
-                $itemType = $item['type'] ?? '';
-                if ($itemId <= 0 || empty($itemType)) continue;
-                
-                try {
-                    switch ($itemType) {
-                        case 'session':
-                            $pdo->prepare("DELETE FROM training_session_templates WHERE id = ?")->execute([$itemId]);
-                            Auditor::log($pdo, $user_id, 'delete', 'training_session_templates', $itemId, ['action' => 'bulk_delete_session']);
-                            $deletedCount++;
-                            break;
-                        case 'package':
-                            $pdo->prepare("DELETE FROM packages WHERE id = ?")->execute([$itemId]);
-                            Auditor::log($pdo, $user_id, 'delete', 'packages', $itemId, ['action' => 'bulk_delete_package']);
-                            $deletedCount++;
-                            break;
-                        case 'discount':
-                            $pdo->prepare("DELETE FROM discount_codes WHERE id = ?")->execute([$itemId]);
-                            Auditor::log($pdo, $user_id, 'delete', 'discount_codes', $itemId, ['action' => 'bulk_delete_discount']);
-                            $deletedCount++;
-                            break;
-                        case 'merch-product':
-                            $pdo->prepare("DELETE FROM merchandise_product_sizes WHERE product_id = ?")->execute([$itemId]);
-                            $pdo->prepare("DELETE FROM merchandise_product_images WHERE product_id = ?")->execute([$itemId]);
-                            $pdo->prepare("DELETE FROM merchandise_products WHERE id = ?")->execute([$itemId]);
-                            Auditor::log($pdo, $user_id, 'delete', 'merchandise_products', $itemId, ['action' => 'bulk_delete_merch_product']);
-                            $deletedCount++;
-                            break;
-                        default:
-                            $errors[] = "Unknown type: $itemType for ID $itemId";
-                            break;
-                    }
-                } catch (PDOException $e) {
-                    ErrorLogger::error("Bulk delete error for $itemType ID $itemId: " . $e->getMessage());
-                    $errors[] = "Failed to delete $itemType ID $itemId";
+                $items = $jsonInput['items'] ?? [];
+                if (empty($items) || !is_array($items)) {
+                    echo json_encode(['success' => false, 'message' => 'No items provided']);
+                    exit();
                 }
-            }
             
-            echo json_encode([
-                'success' => $deletedCount > 0,
-                'deleted_count' => $deletedCount,
-                'errors' => $errors,
-                'message' => $deletedCount > 0 ? "$deletedCount item(s) deleted" : 'No items were deleted'
-            ]);
-            exit();
+                $user_id = $_SESSION['user_id'] ?? 0;
+                $deletedCount = 0;
+                $errors = [];
+            
+                foreach ($items as $item) {
+                    $itemId = intval($item['id'] ?? 0);
+                    $itemType = $item['type'] ?? '';
+                    if ($itemId <= 0 || empty($itemType)) continue;
+                
+                    try {
+                        switch ($itemType) {
+                            case 'session':
+                                $pdo->prepare("DELETE FROM training_session_templates WHERE id = ?")->execute([$itemId]);
+                                Auditor::log($pdo, $user_id, 'delete', 'training_session_templates', $itemId, ['action' => 'bulk_delete_session']);
+                                $deletedCount++;
+                                break;
+                            case 'package':
+                                $pdo->prepare("DELETE FROM packages WHERE id = ?")->execute([$itemId]);
+                                Auditor::log($pdo, $user_id, 'delete', 'packages', $itemId, ['action' => 'bulk_delete_package']);
+                                $deletedCount++;
+                                break;
+                            case 'discount':
+                                $pdo->prepare("DELETE FROM discount_codes WHERE id = ?")->execute([$itemId]);
+                                Auditor::log($pdo, $user_id, 'delete', 'discount_codes', $itemId, ['action' => 'bulk_delete_discount']);
+                                $deletedCount++;
+                                break;
+                            case 'merch-product':
+                                $pdo->prepare("DELETE FROM merchandise_product_sizes WHERE product_id = ?")->execute([$itemId]);
+                                $pdo->prepare("DELETE FROM merchandise_product_images WHERE product_id = ?")->execute([$itemId]);
+                                $pdo->prepare("DELETE FROM merchandise_products WHERE id = ?")->execute([$itemId]);
+                                Auditor::log($pdo, $user_id, 'delete', 'merchandise_products', $itemId, ['action' => 'bulk_delete_merch_product']);
+                                $deletedCount++;
+                                break;
+                            default:
+                                $errors[] = "Unknown type: $itemType for ID $itemId";
+                                break;
+                        }
+                    } catch (PDOException $e) {
+                        ErrorLogger::error("Bulk delete error for $itemType ID $itemId: " . $e->getMessage());
+                        $errors[] = "Failed to delete $itemType ID $itemId";
+                    }
+                }
+            
+                echo json_encode([
+                    'success' => $deletedCount > 0,
+                    'deleted_count' => $deletedCount,
+                    'errors' => $errors,
+                    'message' => $deletedCount > 0 ? "$deletedCount item(s) deleted" : 'No items were deleted'
+                ]);
+                exit();
+            }
         }
     }
-    checkCsrfToken();
+    if (!$jsonCsrfValidated) {
+        checkCsrfToken();
+    }
 }
 
-$action = $_POST['action'] ?? '';
+// For JSON requests, reuse action from CSRF validation phase; otherwise from $_POST
+$action = $_jsonAction !== null ? $_jsonAction : ($_POST['action'] ?? '');
 $user_id = $_SESSION['user_id'] ?? 0;
 
 // =========================================================
