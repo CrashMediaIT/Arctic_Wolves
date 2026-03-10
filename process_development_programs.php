@@ -51,6 +51,14 @@ if (empty($action) && !empty($_POST['action'])) {
     $input = $_POST;
 }
 
+// Validate CSRF token
+$csrfToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $input['csrf_token'] ?? $_POST['csrf_token'] ?? '';
+if (!validateCSRFToken($csrfToken)) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'Invalid CSRF token. Please refresh and try again.']);
+    exit;
+}
+
 try {
     switch ($action) {
         case 'register':

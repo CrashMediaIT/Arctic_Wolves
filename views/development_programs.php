@@ -28,6 +28,7 @@ if ($isPlayerDev || $isAdmin) $program_types[] = 'player_dev';
 $placeholders = implode(',', array_fill(0, count($program_types), '?'));
 
 // Get enrolled athletes (ACTIVE programs)
+try {
 $athletes_stmt = $pdo->prepare("
     SELECT dpe.*, u.first_name, u.last_name, u.email,
            dpe.program_name, dpe.template_id, dpe.start_date, dpe.end_date,
@@ -125,6 +126,9 @@ if ($selected_enrollment_id) {
         if (function_exists('decryptUserRows')) {
             $selected_messages = decryptUserRows($selected_messages);
         }
+        if (class_exists('FieldEncryption')) {
+            $selected_messages = FieldEncryption::decryptRows($selected_messages, FieldEncryption::MESSAGE_ENCRYPTED_FIELDS);
+        }
 
         // Get athlete-uploaded videos
         $videos_stmt = $pdo->prepare("
@@ -155,10 +159,26 @@ if ($selected_enrollment_id) {
 }
 
 // Get drill library for adding drills
-$all_drills = $pdo->query("SELECT id, title, category_id FROM drills ORDER BY title")->fetchAll(PDO::FETCH_ASSOC);
+$all_drills_stmt = $pdo->prepare("SELECT id, title, category_id FROM drills ORDER BY title");
+$all_drills_stmt->execute();
+$all_drills = $all_drills_stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Get locations for appointment form
-$locations = $pdo->query("SELECT id, name FROM locations WHERE is_active = 1 ORDER BY name")->fetchAll(PDO::FETCH_ASSOC);
+$locations_stmt = $pdo->prepare("SELECT id, name FROM locations WHERE is_active = 1 ORDER BY name");
+$locations_stmt->execute();
+$locations = $locations_stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log("Development Programs view error: " . $e->getMessage());
+    $athletes = $athletes ?? [];
+    $history_athletes = $history_athletes ?? [];
+    $selected = $selected ?? null;
+    $selected_drills = $selected_drills ?? [];
+    $selected_messages = $selected_messages ?? [];
+    $selected_videos = $selected_videos ?? [];
+    $selected_appointments = $selected_appointments ?? [];
+    $all_drills = $all_drills ?? [];
+    $locations = $locations ?? [];
+}
 ?>
 
 <style>
@@ -732,35 +752,53 @@ $locations = $pdo->query("SELECT id, name FROM locations WHERE is_active = 1 ORD
 
 /* --- Chat / Communication --- */
 .dev-chat-section { padding: 0; }
+.dev-chat-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.dev-chat-header h4 { font-size: var(--font-size-base, 14px); font-weight: var(--font-weight-semibold); color: var(--text-white); margin: 0; }
+.dev-chat-e2e-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text-dim); background: rgba(107, 70, 193, 0.1); padding: 3px 8px; border-radius: var(--radius-md, 6px); }
+.dev-chat-e2e-badge i { font-size: 9px; }
 .dev-chat-messages {
     max-height: 380px;
     overflow-y: auto;
     margin-bottom: 16px;
     padding: 4px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 .dev-chat-messages::-webkit-scrollbar { width: 4px; }
 .dev-chat-messages::-webkit-scrollbar-thumb { background: var(--border, #2D2D3F); border-radius: 4px; }
-.dev-chat-msg {
+.dev-chat-bubble-row { display: flex; max-width: 75%; }
+.dev-chat-bubble-row.from-coach { align-self: flex-end; }
+.dev-chat-bubble-row.from-athlete { align-self: flex-start; }
+.dev-chat-bubble {
     padding: 10px 14px;
-    margin-bottom: 8px;
-    border-radius: var(--radius-lg, 8px);
+    border-radius: 16px;
     font-size: var(--font-size-sm, 13px);
     line-height: 1.5;
+    word-wrap: break-word;
 }
-.dev-chat-msg.from-coach {
-    background: rgba(107,70,193,0.08);
-    border-left: 3px solid var(--primary, #6B46C1);
+.dev-chat-bubble-row.from-coach .dev-chat-bubble {
+    background: linear-gradient(135deg, var(--primary, #6B46C1), var(--accent, #8B5CF6));
+    color: #fff;
+    border-bottom-right-radius: 4px;
 }
-.dev-chat-msg.from-athlete {
-    background: rgba(59, 130, 246, 0.08);
-    border-left: 3px solid var(--info);
+.dev-chat-bubble-row.from-athlete .dev-chat-bubble {
+    background: var(--bg-main, #0a0a0f);
+    color: var(--text-white, #e2e8f0);
+    border: 1px solid var(--border, #2D2D3F);
+    border-bottom-left-radius: 4px;
 }
-.dev-chat-msg .msg-meta {
-    font-size: 11px;
+.dev-chat-bubble-meta {
+    font-size: 10px;
     color: var(--text-dim, #A8A8B8);
-    margin-bottom: 4px;
-    font-weight: 500;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
 }
+.dev-chat-bubble-row.from-coach .dev-chat-bubble-meta { justify-content: flex-end; }
+.dev-chat-bubble .msg-video-link { color: inherit; font-size: var(--font-size-sm, 13px); margin-top: 6px; display: inline-flex; align-items: center; gap: 4px; opacity: 0.9; }
+.dev-chat-bubble-row.from-athlete .dev-chat-bubble .msg-video-link { color: var(--primary); }
 .dev-chat-input {
     display: flex;
     gap: 8px;
@@ -887,12 +925,8 @@ $locations = $pdo->query("SELECT id, name FROM locations WHERE is_active = 1 ORD
 .card-meta-item.weeks-left { background: rgba(245, 158, 11, 0.12); color: var(--warning); }
 .card-meta-item.weeks-left.overdue { background: rgba(239, 68, 68, 0.12); color: var(--error); }
 .dev-active-card .video-badge { background: rgba(239, 68, 68, 0.15); color: var(--error); padding: 4px var(--space-2); border-radius: var(--radius-2xl); font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); }
-/* Coach view tabs */
-.dev-coach-tabs { display: flex; gap: 0; margin-bottom: var(--space-6); border-bottom: 2px solid var(--border); }
-.dev-coach-tab { padding: var(--space-3) var(--space-6); font-weight: var(--font-weight-semibold); font-size: var(--font-size-base); color: var(--text-dim); cursor: pointer; border: none; background: none; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all var(--transition-slow); white-space: nowrap; }
-.dev-coach-tab:hover { color: var(--text-white); background: rgba(107, 70, 193, 0.05); }
-.dev-coach-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
-.dev-coach-tab .count-badge { background: var(--primary); color: var(--text-white); font-size: var(--font-size-xs); padding: 4px var(--space-3); border-radius: var(--radius-2xl); font-weight: var(--font-weight-semibold); margin-left: var(--space-2); }
+/* Coach view tabs - count badge */
+.page-tab .count-badge { background: var(--primary); color: var(--text-white); font-size: var(--font-size-xs); padding: 4px var(--space-3); border-radius: var(--radius-2xl); font-weight: var(--font-weight-semibold); margin-left: var(--space-2); }
 .dev-coach-tab-content { display: none; }
 .dev-coach-tab-content.active { display: block; }
 /* History filters */
@@ -942,7 +976,7 @@ $locations = $pdo->query("SELECT id, name FROM locations WHERE is_active = 1 ORD
 <!-- ==================== DETAIL VIEW (with back button) ==================== -->
 <a href="?page=development_programs" class="dev-back-btn"><i class="fas fa-arrow-left"></i> Back to All Programs</a>
 
-<div class="page-header" style="margin-bottom:12px;">
+<div class="page-header">
     <h1 class="page-title"><i class="fas fa-hockey-puck"></i> <?= htmlspecialchars($selected['first_name'] . ' ' . $selected['last_name']) ?>
         <?php if (!empty($selected['athlete_coach_first']) || !empty($selected['athlete_coach_last'])): ?>
         <span style="font-size:var(--font-size-base);font-weight:var(--font-weight-semibold);color:var(--text-dim);margin-left:var(--space-3);"><i class="fas fa-user-tie"></i> Coach: <?= htmlspecialchars(trim(($selected['athlete_coach_first'] ?? '') . ' ' . ($selected['athlete_coach_last'] ?? ''))) ?></span>
@@ -1191,6 +1225,10 @@ $locations = $pdo->query("SELECT id, name FROM locations WHERE is_active = 1 ORD
                 <!-- ======== COMMUNICATION TAB ======== -->
                 <div class="detail-tab-content" id="tab-communication">
                     <div class="dev-chat-section">
+                        <div class="dev-chat-header">
+                            <h4><i class="fas fa-comments"></i> Messages</h4>
+                            <span class="dev-chat-e2e-badge" title="Messages are end-to-end encrypted"><i class="fas fa-lock"></i> Encrypted</span>
+                        </div>
                         <div class="dev-chat-messages">
                             <?php if (empty($selected_messages)): ?>
                                 <div class="dev-empty-state">
@@ -1199,12 +1237,19 @@ $locations = $pdo->query("SELECT id, name FROM locations WHERE is_active = 1 ORD
                                 </div>
                             <?php else: ?>
                                 <?php foreach ($selected_messages as $m): ?>
-                                <div class="dev-chat-msg <?= $m['sender_id'] == $user_id ? 'from-coach' : 'from-athlete' ?>">
-                                    <div class="msg-meta"><?= htmlspecialchars($m['sender_first'] . ' ' . $m['sender_last']) ?> &bull; <?= date('M j, g:ia', strtotime($m['created_at'])) ?></div>
-                                    <?= htmlspecialchars($m['message']) ?>
-                                    <?php if ($m['video_url']): ?>
-                                        <div style="margin-top:6px;"><a href="<?= htmlspecialchars($m['video_url']) ?>" target="_blank" style="color:var(--primary);font-size:var(--font-size-sm);display:inline-flex;align-items:center;gap:4px;"><i class="fas fa-video"></i> Watch Video</a></div>
-                                    <?php endif; ?>
+                                <div class="dev-chat-bubble-row <?= $m['sender_id'] == $user_id ? 'from-coach' : 'from-athlete' ?>">
+                                    <div>
+                                        <div class="dev-chat-bubble">
+                                            <?= htmlspecialchars($m['message']) ?>
+                                            <?php if (!empty($m['video_url'])): ?>
+                                                <div><a href="<?= htmlspecialchars($m['video_url']) ?>" target="_blank" class="msg-video-link"><i class="fas fa-video"></i> Watch Video</a></div>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div class="dev-chat-bubble-meta">
+                                            <?= htmlspecialchars($m['sender_first'] . ' ' . $m['sender_last']) ?> &bull; <?= date('M j, g:ia', strtotime($m['created_at'])) ?>
+                                            <i class="fas fa-lock" style="font-size:10px;" title="Encrypted"></i>
+                                        </div>
+                                    </div>
                                 </div>
                                 <?php endforeach; ?>
                             <?php endif; ?>
@@ -1231,15 +1276,18 @@ $locations = $pdo->query("SELECT id, name FROM locations WHERE is_active = 1 ORD
 </div>
 
 <!-- Coach tabs: Active Programs | Program History -->
-<div class="dev-coach-tabs">
-    <button class="dev-coach-tab active" onclick="switchCoachTab('active')" data-coach-tab="active">
-        <i class="fas fa-users"></i> Active Programs <span class="count-badge"><?= count($athletes) ?></span>
-    </button>
-    <button class="dev-coach-tab" onclick="switchCoachTab('history')" data-coach-tab="history">
-        <i class="fas fa-history"></i> Program History <span class="count-badge"><?= count($history_athletes) ?></span>
-    </button>
+<div class="page-tabs-wrapper">
+    <div class="page-tabs">
+        <button class="page-tab active" onclick="switchCoachTab('active')" data-coach-tab="active">
+            <i class="fas fa-users"></i> Active Programs <span class="count-badge"><?= count($athletes) ?></span>
+        </button>
+        <button class="page-tab" onclick="switchCoachTab('history')" data-coach-tab="history">
+            <i class="fas fa-history"></i> Program History <span class="count-badge"><?= count($history_athletes) ?></span>
+        </button>
+    </div>
 </div>
 
+<div class="page-tab-content">
 <!-- Active Programs Tab -->
 <div class="dev-coach-tab-content active" id="coach-tab-active">
     <?php if (empty($athletes)): ?>
@@ -1362,6 +1410,7 @@ $locations = $pdo->query("SELECT id, name FROM locations WHERE is_active = 1 ORD
     </div>
     <?php endif; ?>
 </div>
+</div><!-- /.page-tab-content -->
 
 <?php endif; ?>
 
@@ -1374,6 +1423,7 @@ const devHeaders = {
 };
 
 function devPost(data) {
+    data.csrf_token = csrfToken;
     return fetch('process_development_programs.php', {
         method: 'POST', headers: devHeaders, body: JSON.stringify(data)
     }).then(r => r.json());
@@ -1381,9 +1431,9 @@ function devPost(data) {
 
 /* Coach view tab switching (Active Programs / History) */
 function switchCoachTab(tabName) {
-    document.querySelectorAll('.dev-coach-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.page-tabs-wrapper .page-tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.dev-coach-tab-content').forEach(c => c.classList.remove('active'));
-    var tabBtn = document.querySelector('.dev-coach-tab[data-coach-tab="' + tabName + '"]');
+    var tabBtn = document.querySelector('.page-tab[data-coach-tab="' + tabName + '"]');
     var tabContent = document.getElementById('coach-tab-' + tabName);
     if (tabBtn) tabBtn.classList.add('active');
     if (tabContent) tabContent.classList.add('active');

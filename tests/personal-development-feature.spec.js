@@ -1173,7 +1173,7 @@ test.describe('Coach View Redesign', () => {
 
   test('coach view has Active Programs and Program History tabs', () => {
     const content = readFile('views/development_programs.php');
-    expect(content).toContain('dev-coach-tabs');
+    expect(content).toContain('page-tabs-wrapper');
     expect(content).toContain('Active Programs');
     expect(content).toContain('Program History');
     expect(content).toContain('switchCoachTab');
@@ -1413,10 +1413,11 @@ test.describe('Development Programs Design Style Consistency', () => {
 
   test('development_programs.php coach tabs match style guide pattern', () => {
     const content = readFile('views/development_programs.php');
-    // Coach tabs should use border-bottom: 3px (style guide standard)
-    expect(content).toContain('border-bottom: 3px solid transparent');
-    // Tabs should have hover state
-    expect(content).toContain('.dev-coach-tab:hover');
+    // Coach tabs should use standard page-tabs-wrapper pattern
+    expect(content).toContain('page-tabs-wrapper');
+    expect(content).toContain('page-tab');
+    // Tab switching function should target standard classes
+    expect(content).toContain('switchCoachTab');
   });
 
   test('dev_drill_detail.php uses CSS variables for colors', () => {

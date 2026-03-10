@@ -12,6 +12,7 @@ require_once __DIR__ . '/../lib/image_helper.php';
 $active_tab = $_GET['tab'] ?? 'pending';
 if (!in_array($active_tab, ['pending', 'reviewed'])) $active_tab = 'pending';
 
+try {
 // ── Athletes assigned to this coach ──────────────────────────────
 $athletes = [];
 $athletes_query = "
@@ -95,6 +96,14 @@ foreach ($reviewed_videos as $v) {
 }
 
 $selected_athlete = $_GET['athlete_id'] ?? null;
+} catch (PDOException $e) {
+    error_log("Coach Video Reviews error: " . $e->getMessage());
+    $athletes = $athletes ?? [];
+    $pending_videos = $pending_videos ?? [];
+    $reviewed_videos = $reviewed_videos ?? [];
+    $reviewed_by_athlete = $reviewed_by_athlete ?? [];
+    $selected_athlete = $selected_athlete ?? null;
+}
 ?>
 
 <div class="page-header">
@@ -122,7 +131,7 @@ $selected_athlete = $_GET['athlete_id'] ?? null;
     </div>
 </div>
 
-<div class="page-tab-content" style="max-width:1400px; margin:0 auto; padding:0 16px;">
+<div class="page-tab-content">
 
 <?php if ($active_tab === 'pending'): ?>
 <!-- ═══════════════ PENDING REVIEWS TAB ═══════════════ -->
