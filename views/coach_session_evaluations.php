@@ -986,7 +986,8 @@ function initCalendar() {
 }
 
 // Initialize calendar on page load if calendar view is active
-if (document.getElementById('calendar-view')?.classList.contains('active')) {
+var calView = document.getElementById('calendar-view');
+if (calView && calView.classList.contains('active')) {
     initCalendar();
 }
 
