@@ -329,3 +329,105 @@ test.describe('Personal Drill Card CSS Collision Fixes', () => {
     expect(selectElement).not.toContain('style=');
   });
 });
+
+// =====================================================
+// 8. Personal drill edit/delete functionality
+// =====================================================
+
+test.describe('Personal Drill Edit and Delete', () => {
+
+  test('personal drill cards have edit and delete buttons', () => {
+    const content = readFile('views/drills_personal.php');
+    expect(content).toContain('editPersonalDrill(');
+    expect(content).toContain('deletePersonalDrill(');
+    expect(content).toContain('personal-drill-card-actions');
+  });
+
+  test('edit modal exists with all editable fields', () => {
+    const content = readFile('views/drills_personal.php');
+    expect(content).toContain('edit-personal-drill-modal');
+    expect(content).toContain('edit-pd-title');
+    expect(content).toContain('edit-pd-description');
+    expect(content).toContain('edit-pd-position');
+    expect(content).toContain('edit-pd-video');
+  });
+
+  test('edit form submits update_personal_drill action', () => {
+    const content = readFile('views/drills_personal.php');
+    expect(content).toContain("formData.append('action', 'update_personal_drill')");
+    expect(content).toContain("formData.append('drill_id'");
+  });
+
+  test('delete function sends delete_personal_drill action', () => {
+    const content = readFile('views/drills_personal.php');
+    expect(content).toContain("formData.append('action', 'delete_personal_drill')");
+  });
+
+  test('process handler has update_personal_drill case', () => {
+    const content = readFile('process_development_programs.php');
+    expect(content).toContain("case 'update_personal_drill':");
+    expect(content).toContain('handleUpdatePersonalDrill');
+  });
+
+  test('process handler has delete_personal_drill case', () => {
+    const content = readFile('process_development_programs.php');
+    expect(content).toContain("case 'delete_personal_drill':");
+    expect(content).toContain('handleDeletePersonalDrill');
+  });
+
+  test('update handler validates ownership before update', () => {
+    const content = readFile('process_development_programs.php');
+    const fnStart = content.indexOf('function handleUpdatePersonalDrill');
+    const fnEnd = content.indexOf('\nfunction ', fnStart + 10);
+    const fnBody = content.substring(fnStart, fnEnd > -1 ? fnEnd : fnStart + 3000);
+    expect(fnBody).toContain('created_by');
+    expect(fnBody).toContain('Access denied');
+    expect(fnBody).toContain('UPDATE personal_drills');
+  });
+
+  test('delete handler validates ownership before delete', () => {
+    const content = readFile('process_development_programs.php');
+    const fnStart = content.indexOf('function handleDeletePersonalDrill');
+    const fnEnd = content.indexOf('\nfunction ', fnStart + 10);
+    const fnBody = content.substring(fnStart, fnEnd > -1 ? fnEnd : fnStart + 2000);
+    expect(fnBody).toContain('created_by');
+    expect(fnBody).toContain('Access denied');
+    expect(fnBody).toContain('DELETE FROM personal_drills');
+  });
+
+  test('update handler allows updating title, description, and position', () => {
+    const content = readFile('process_development_programs.php');
+    const fnStart = content.indexOf('function handleUpdatePersonalDrill');
+    const fnEnd = content.indexOf('\nfunction ', fnStart + 10);
+    const fnBody = content.substring(fnStart, fnEnd > -1 ? fnEnd : fnStart + 3000);
+    expect(fnBody).toContain("title = ?");
+    expect(fnBody).toContain("description = ?");
+    expect(fnBody).toContain("position = ?");
+  });
+
+  test('position badge SVG icon always shows in position label on all cards', () => {
+    const content = readFile('views/drills_personal.php');
+    // The position-label should contain the SVG icon class for ALL cards (not just ones without video)
+    expect(content).toContain('position-badge-icon');
+    // Verify the icon is inside the position-label span (always visible)
+    const labelSpan = content.indexOf('position-label');
+    const labelEnd = content.indexOf('</span>', labelSpan + 50);
+    const labelContent = content.substring(labelSpan, labelEnd);
+    expect(labelContent).toContain('icon-hockey-');
+    expect(labelContent).toContain('position-badge-icon');
+  });
+
+  test('edit button uses json_encode for safe JS output', () => {
+    const content = readFile('views/drills_personal.php');
+    expect(content).toContain("json_encode($pd['title'])");
+    expect(content).toContain("json_encode($pd['description']");
+    expect(content).toContain("json_encode($pdPosition)");
+  });
+
+  test('edit stays on personal drills page not ice canvas', () => {
+    const content = readFile('views/drills_personal.php');
+    // Edit should use modal, not redirect to create_drill page
+    expect(content).toContain('edit-personal-drill-modal');
+    expect(content).not.toContain('page=create_drill&edit=');
+  });
+});
