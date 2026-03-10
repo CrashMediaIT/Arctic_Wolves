@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="currentColor">
+  <!-- Hockey Goalie Ready Stance Silhouette -->
+  <!-- Head/Goalie mask -->
+  <circle cx="50" cy="11" r="9"/>
+  <!-- Neck + Shoulders + Chest protector (single merged shape) -->
+  <path d="M42,19 L58,19 L60,22 L76,22 L76,30 L72,52 L28,52 L24,30 L24,22 L40,22 Z"/>
+  <!-- Left arm (blocker side) -->
+  <path d="M24,26 L12,40 L12,50 L28,42 L28,30 Z"/>
+  <!-- Blocker -->
+  <rect x="4" y="34" width="12" height="16" rx="2"/>
+  <!-- Right arm (glove side) -->
+  <path d="M76,26 L88,38 L88,50 L72,42 L72,30 Z"/>
+  <!-- Glove/Catcher -->
+  <ellipse cx="90" cy="36" rx="8" ry="10"/>
+  <!-- Left leg pad -->
+  <path d="M28,52 L44,52 L42,88 L24,88 Z"/>
+  <!-- Right leg pad -->
+  <path d="M56,52 L72,52 L76,88 L52,88 Z"/>
+  <!-- Skate blades -->
+  <rect x="20" y="88" width="26" height="4" rx="1"/>
+  <rect x="48" y="88" width="32" height="4" rx="1"/>
+  <!-- Goalie stick shaft -->
+  <rect x="6" y="50" width="4" height="30" rx="1"/>
+  <!-- Stick paddle -->
+  <rect x="2" y="76" width="12" height="16" rx="2"/>
+</svg>

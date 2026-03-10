@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>SVG Preview</title>
+<style>
+body { background: #1a1a2e; color: #fff; font-family: Arial; padding: 40px; display: flex; gap: 60px; flex-wrap: wrap; }
+.preview { text-align: center; }
+.preview h3 { margin-bottom: 16px; }
+.svg-container { background: #0d1117; border: 2px solid #2d2d44; border-radius: 12px; padding: 20px; display: flex; align-items: center; justify-content: center; }
+.svg-container img { display: block; }
+.small img { width: 24px; height: 24px; filter: brightness(0) invert(1); }
+.medium img { width: 48px; height: 48px; }
+.large img { width: 120px; height: 120px; }
+.green img { filter: brightness(0) saturate(100%) invert(56%) sepia(76%) saturate(416%) hue-rotate(110deg) brightness(100%) contrast(87%); }
+.blue img { filter: brightness(0) saturate(100%) invert(44%) sepia(57%) saturate(1734%) hue-rotate(194deg) brightness(101%) contrast(91%); }
+</style>
+</head>
+<body>
+<div class="preview">
+    <h3>Player - Small (24px, white)</h3>
+    <div class="svg-container small">
+        <img src="assets/svg/hockey-player.svg">
+    </div>
+</div>
+<div class="preview">
+    <h3>Player - Medium (48px, green)</h3>
+    <div class="svg-container medium green">
+        <img src="assets/svg/hockey-player.svg">
+    </div>
+</div>
+<div class="preview">
+    <h3>Player - Large (120px, green)</h3>
+    <div class="svg-container large green">
+        <img src="assets/svg/hockey-player.svg">
+    </div>
+</div>
+<div class="preview">
+    <h3>Goalie - Small (24px, white)</h3>
+    <div class="svg-container small">
+        <img src="assets/svg/hockey-goalie.svg">
+    </div>
+</div>
+<div class="preview">
+    <h3>Goalie - Medium (48px, blue)</h3>
+    <div class="svg-container medium blue">
+        <img src="assets/svg/hockey-goalie.svg">
+    </div>
+</div>
+<div class="preview">
+    <h3>Goalie - Large (120px, blue)</h3>
+    <div class="svg-container large blue">
+        <img src="assets/svg/hockey-goalie.svg">
+    </div>
+</div>
+</body>
+</html>
