@@ -296,7 +296,7 @@ test.describe('Process scoreboard security', () => {
 
   test('process_scoreboard.php validates CSRF token', () => {
     const content = readFile('process_scoreboard.php');
-    expect(content).toContain('CSRFProtection::validateToken');
+    expect(content).toContain('validateCSRFToken');
     expect(content).toContain('HTTP_X_CSRF_TOKEN');
   });
 
@@ -1205,13 +1205,13 @@ test.describe('Scrollable layout and dynamic sizing', () => {
     expect(settingsRule).not.toContain('overflow-y: auto');
   });
 
-  test('scoresheet content has touch scrolling support', () => {
+  test('scoresheet uses overflow visible for proper scrolling', () => {
     const content = readFile('css/scoreboard.css');
     const sheetSection = content.substring(
-      content.indexOf('.sb-scoresheet-content'),
-      content.indexOf('.sb-scoresheet-content') + 200
+      content.indexOf('.sb-scoresheet {'),
+      content.indexOf('.sb-scoresheet {') + 300
     );
-    expect(sheetSection).toContain('-webkit-overflow-scrolling: touch');
+    expect(sheetSection).toContain('overflow: visible');
   });
 
   test('display view sb-main div is properly closed', () => {
@@ -1958,5 +1958,243 @@ test.describe('Scoreboard credential encryption', () => {
   test('process_scoreboard.php uses FieldEncryption for credential encryption', () => {
     const content = readFile('process_scoreboard.php');
     expect(content).toContain('FieldEncryption::isConfigured');
+  });
+});
+
+// =====================================================
+// 32. Set Score / Set Shots Backend Actions
+// =====================================================
+
+test.describe('Set score and shots backend actions', () => {
+  test('process_scoreboard.php has set_score action', () => {
+    const content = readFile('process_scoreboard.php');
+    expect(content).toContain("case 'set_score':");
+    expect(content).toContain('home_score');
+    expect(content).toContain('away_score');
+  });
+
+  test('process_scoreboard.php has set_shots action', () => {
+    const content = readFile('process_scoreboard.php');
+    expect(content).toContain("case 'set_shots':");
+    expect(content).toContain('home_shots');
+    expect(content).toContain('away_shots');
+  });
+});
+
+// =====================================================
+// 33. RustFS Upload Integration
+// =====================================================
+
+test.describe('RustFS upload integration', () => {
+  test('process_scoreboard.php includes RustFS storage library', () => {
+    const content = readFile('process_scoreboard.php');
+    expect(content).toContain('rustfs_storage.php');
+    expect(content).toContain('cloud_config.php');
+  });
+
+  test('upload_buzzer uses persistUploadedFile for RustFS', () => {
+    const content = readFile('process_scoreboard.php');
+    const buzzerSection = content.substring(
+      content.indexOf("case 'upload_buzzer':"),
+      content.indexOf("case 'remove_buzzer':")
+    );
+    expect(buzzerSection).toContain('persistUploadedFile');
+    expect(buzzerSection).toContain('scoreboard/buzzer');
+  });
+
+  test('upload_horn uses persistUploadedFile for RustFS', () => {
+    const content = readFile('process_scoreboard.php');
+    const hornSection = content.substring(
+      content.indexOf("case 'upload_horn':"),
+      content.indexOf("case 'remove_horn':")
+    );
+    expect(hornSection).toContain('persistUploadedFile');
+    expect(hornSection).toContain('scoreboard/horn');
+  });
+
+  test('upload_team_logo uses persistUploadedFile for RustFS', () => {
+    const content = readFile('process_scoreboard.php');
+    const logoSection = content.substring(
+      content.indexOf("case 'upload_team_logo':"),
+      content.indexOf("case 'delete_team_logo':")
+    );
+    expect(logoSection).toContain('persistUploadedFile');
+    expect(logoSection).toContain('team_logos');
+  });
+});
+
+// =====================================================
+// 34. Multiselect Buzzer/Horn Upload
+// =====================================================
+
+test.describe('Multiselect buzzer and horn uploads', () => {
+  test('buzzer file input supports multiple file selection', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toContain('id="sbBuzzerFile"');
+    const buzzerInput = content.substring(
+      content.indexOf('id="sbBuzzerFile"') - 100,
+      content.indexOf('id="sbBuzzerFile"') + 200
+    );
+    expect(buzzerInput).toContain('multiple');
+  });
+
+  test('horn file input supports multiple file selection', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toContain('id="sbHornFile"');
+    const hornInput = content.substring(
+      content.indexOf('id="sbHornFile"') - 100,
+      content.indexOf('id="sbHornFile"') + 200
+    );
+    expect(hornInput).toContain('multiple');
+  });
+
+  test('upload_buzzer backend handles multiple files', () => {
+    const content = readFile('process_scoreboard.php');
+    const buzzerSection = content.substring(
+      content.indexOf("case 'upload_buzzer':"),
+      content.indexOf("case 'remove_buzzer':")
+    );
+    expect(buzzerSection).toContain("is_array($_FILES['buzzer_file']['name'])");
+    expect(buzzerSection).toContain('uploadedCount');
+  });
+
+  test('upload_horn backend handles multiple files', () => {
+    const content = readFile('process_scoreboard.php');
+    const hornSection = content.substring(
+      content.indexOf("case 'upload_horn':"),
+      content.indexOf("case 'remove_horn':")
+    );
+    expect(hornSection).toContain("is_array($_FILES['horn_file']['name'])");
+    expect(hornSection).toContain('uploadedCount');
+  });
+
+  test('JS upload functions send multiple files', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toContain("fd.append('buzzer_file[]', fileInput.files[i])");
+    expect(content).toContain("fd.append('horn_file[]', fileInput.files[i])");
+  });
+});
+
+// =====================================================
+// 35. CSRF Token in Settings AJAX Requests
+// =====================================================
+
+test.describe('CSRF token in all settings AJAX requests', () => {
+  test('save_settings includes csrf_token in body', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    const saveSection = content.substring(
+      content.indexOf('function sbSaveSettings'),
+      content.indexOf('function sbUploadBuzzerSound')
+    );
+    expect(saveSection).toContain("params.append('csrf_token', CSRF_TOKEN)");
+  });
+
+  test('upload functions include csrf_token in FormData', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    // Both upload functions should add csrf_token
+    const buzzerUpload = content.substring(
+      content.indexOf('function sbUploadBuzzerSound'),
+      content.indexOf('function sbRemoveBuzzerSound')
+    );
+    expect(buzzerUpload).toContain("fd.append('csrf_token', CSRF_TOKEN)");
+
+    const hornUpload = content.substring(
+      content.indexOf('function sbUploadHornSound'),
+      content.indexOf('function sbRemoveHornSound')
+    );
+    expect(hornUpload).toContain("fd.append('csrf_token', CSRF_TOKEN)");
+  });
+
+  test('remove and select actions include csrf_token in body', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toContain("'action=remove_buzzer&csrf_token=' + encodeURIComponent(CSRF_TOKEN)");
+    expect(content).toContain("'action=remove_horn&csrf_token=' + encodeURIComponent(CSRF_TOKEN)");
+  });
+});
+
+// =====================================================
+// 36. Penalty Countdown Clocks in Operator Controls
+// =====================================================
+
+test.describe('Penalty countdown clocks in operator controls', () => {
+  test('display view has penalty clock elements in penalty items', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sb-ctrl-penalty-clock');
+    expect(content).toContain('data-penalty-clock');
+    expect(content).toContain('data-penalty-seconds');
+  });
+
+  test('display view has CSS for penalty clock badges', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('.sb-ctrl-penalty-clock');
+    expect(content).toContain('.sb-ctrl-penalty-clock.expired');
+  });
+
+  test('JS has sbInitPenaltyItemClocks function', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbInitPenaltyItemClocks');
+    expect(content).toContain('data-penalty-clock');
+    expect(content).toContain('data-penalty-seconds');
+  });
+
+  test('JS has sbTickPenaltyItemClocks function', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbTickPenaltyItemClocks');
+    expect(content).toContain('sbFormatClock');
+  });
+
+  test('JS sbTickPenaltyTimers calls sbTickPenaltyItemClocks', () => {
+    const content = readFile('js/scoreboard.js');
+    const tickSection = content.substring(
+      content.indexOf('function sbTickPenaltyTimers'),
+      content.indexOf('function sbTickPenaltyItemClocks') || content.indexOf('var sbPenaltyItemClocks')
+    );
+    expect(tickSection).toContain('sbTickPenaltyItemClocks()');
+  });
+
+  test('JS initializes penalty item clocks on load', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('sbInitPenaltyItemClocks()');
+  });
+});
+
+// =====================================================
+// 37. Apple Music Connect Function
+// =====================================================
+
+test.describe('Apple Music connect function', () => {
+  test('JS has sbAppleMusicConnect function', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbAppleMusicConnect');
+  });
+});
+
+// =====================================================
+// 38. Team Logo Management
+// =====================================================
+
+test.describe('Team logo management', () => {
+  test('settings view has logo delete buttons', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toContain('sb-settings-logo-delete');
+    expect(content).toContain('sbDeleteTeamLogo');
+  });
+
+  test('settings view has sbDeleteTeamLogo JS function', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toContain('function sbDeleteTeamLogo');
+    expect(content).toContain("action=delete_team_logo");
+  });
+
+  test('process_scoreboard.php has delete_team_logo action', () => {
+    const content = readFile('process_scoreboard.php');
+    expect(content).toContain("case 'delete_team_logo':");
+    expect(content).toContain("logo_url = NULL");
+  });
+
+  test('settings CSS has logo delete button hover styles', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toContain('.sb-settings-logo-delete');
+    expect(content).toContain('.sb-settings-logo-card:hover .sb-settings-logo-delete');
   });
 });

@@ -231,6 +231,9 @@ try {
                 <div class="sb-settings-logo-card">
                     <img src="<?= htmlspecialchars($tl['logo_url']) ?>" alt="<?= htmlspecialchars($tl['team_name']) ?>">
                     <span><?= htmlspecialchars($tl['team_name']) ?></span>
+                    <button type="button" class="sb-settings-logo-delete" onclick="sbDeleteTeamLogo(<?= (int)$tl['id'] ?>, '<?= htmlspecialchars($tl['team_name'], ENT_QUOTES) ?>')" title="Remove logo">
+                        <i class="fas fa-trash"></i>
+                    </button>
                 </div>
                 <?php endforeach; ?>
             </div>
@@ -309,10 +312,52 @@ try {
 .sb-settings-field select:focus {
     outline: none;
     border-color: #6B46C1;
+    box-shadow: 0 0 0 3px rgba(107, 70, 193, 0.15);
 }
 .sb-settings-field input[type="file"] {
     padding: 8px;
     font-size: 13px;
+}
+/* ── Settings Buttons (match display controls) ───────── */
+.sb-settings .sb-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    border-radius: 8px;
+    border: 1px solid #2D2D3F;
+    background: #1A1A24;
+    color: #C4C4D4;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    text-decoration: none;
+}
+.sb-settings .sb-btn:hover {
+    background: #222233;
+    border-color: #6B46C1;
+    color: #E2E8F0;
+}
+.sb-settings .sb-btn:active { transform: scale(0.97); }
+.sb-settings .sb-btn-primary {
+    background: #6B46C1;
+    border-color: #6B46C1;
+    color: #fff;
+}
+.sb-settings .sb-btn-primary:hover {
+    background: #7C5DD4;
+    border-color: #7C5DD4;
+}
+.sb-settings .sb-btn-danger {
+    background: rgba(220, 38, 38, 0.1);
+    border-color: #DC2626;
+    color: #DC2626;
+}
+.sb-settings .sb-btn-danger:hover {
+    background: rgba(220, 38, 38, 0.25);
 }
 .sb-settings-current {
     display: flex;
@@ -362,6 +407,7 @@ try {
     border: 1px solid #2D2D3F;
     border-radius: 8px;
     text-align: center;
+    position: relative;
 }
 .sb-settings-logo-card img {
     width: 64px;
@@ -373,6 +419,28 @@ try {
     font-size: 11px;
     color: #A8A8B8;
     font-weight: 600;
+}
+.sb-settings-logo-delete {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 1px solid #DC2626;
+    background: rgba(220, 38, 38, 0.15);
+    color: #DC2626;
+    font-size: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+.sb-settings-logo-card:hover .sb-settings-logo-delete { opacity: 1; }
+.sb-settings-logo-delete:hover {
+    background: rgba(220, 38, 38, 0.35);
 }
 .sb-settings-library {
     margin-bottom: 14px;
@@ -627,4 +695,24 @@ function sbAddSpeakerRow() {
 document.getElementById('sbLogoTeamSelect').addEventListener('change', function() {
     document.getElementById('sbLogoNewTeamFields').style.display = this.value === 'new' ? '' : 'none';
 });
+
+function sbDeleteTeamLogo(teamId, teamName) {
+    if (!confirm('Remove the logo for ' + teamName + '?')) return;
+    fetch('process_scoreboard.php', {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-Token': CSRF_TOKEN,
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: 'action=delete_team_logo&team_id=' + encodeURIComponent(teamId) + '&csrf_token=' + encodeURIComponent(CSRF_TOKEN)
+    }).then(function(r) { return r.json(); })
+    .then(function(d) {
+        if (d.success) {
+            window.location.reload();
+        } else {
+            alert(d.message || 'Failed to remove logo');
+        }
+    });
+}
 </script>

@@ -840,6 +840,23 @@ try {
             echo json_encode(['success' => true, 'url' => $logoUrl, 'team_id' => $teamId]);
             break;
 
+        // ── Delete team logo (admin-only) ──────────────────
+        case 'delete_team_logo':
+            if (!$isAdmin) {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Admin access required']);
+                exit();
+            }
+            $teamId = (int)($_POST['team_id'] ?? 0);
+            if ($teamId <= 0) {
+                echo json_encode(['success' => false, 'message' => 'Invalid team']);
+                exit();
+            }
+            $pdo->prepare("UPDATE teams SET logo_url = NULL WHERE id = ?")->execute([$teamId]);
+            Auditor::log($pdo, $user_id, 'update', 'teams', $teamId, ['action' => 'Team logo removed']);
+            echo json_encode(['success' => true]);
+            break;
+
         default:
             echo json_encode(['success' => false, 'message' => 'Unknown action']);
     }
