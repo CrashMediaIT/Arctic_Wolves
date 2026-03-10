@@ -249,7 +249,7 @@ try {
         <div class="m-pos-cat-filters" id="mPosCatFilters">
             <button class="m-pos-cat-btn m-active" onclick="mFilterPosCat(this,'')" type="button">All</button>
             <?php foreach ($posCategories as $cat): ?>
-            <button class="m-pos-cat-btn" onclick="mFilterPosCat(this,'<?= htmlspecialchars(addslashes($cat)) ?>')" type="button"><?= htmlspecialchars($cat) ?></button>
+            <button class="m-pos-cat-btn" onclick="mFilterPosCat(this,<?= json_encode($cat) ?>)" type="button"><?= htmlspecialchars($cat) ?></button>
             <?php endforeach; ?>
         </div>
 

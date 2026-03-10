@@ -136,6 +136,11 @@ class SchemaValidator {
         // This would require parsing SQL statements more deeply
         // For now, we'll just check basic table structure
         foreach ($this->tables_in_schema as $table) {
+            // Sanitize table name to prevent SQL injection
+            if (!preg_match('/^[a-zA-Z0-9_]+$/', $table)) {
+                $this->errors[] = "Invalid table name detected: contains disallowed characters";
+                continue;
+            }
             try {
                 $stmt = $this->pdo->query("DESCRIBE `$table`");
                 $columns = $stmt->fetchAll(PDO::FETCH_COLUMN);

@@ -530,7 +530,7 @@ try {
 
                 <?php if ($is_staff): ?>
                 <div class="staff-registration-info" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border, #1e293b);">
-                    <button type="button" class="btn-view-registrations" onclick="viewRegistrations(<?php echo $pkg['id']; ?>, '<?php echo htmlspecialchars(addslashes($pkg['name'])); ?>', '<?php echo $pkg['package_type']; ?>')" style="width:100%;background:rgba(99,102,241,0.15);color:#818cf8;border:1px solid rgba(99,102,241,0.3);padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px;">
+                    <button type="button" class="btn-view-registrations" onclick="viewRegistrations(<?php echo $pkg['id']; ?>, <?php echo json_encode($pkg['name']); ?>, <?php echo json_encode($pkg['package_type']); ?>)" style="width:100%;background:rgba(99,102,241,0.15);color:#818cf8;border:1px solid rgba(99,102,241,0.3);padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px;">
                         <i class="fas fa-users"></i> View Registrations (<?php echo $registered_count; ?>)
                     </button>
                 </div>

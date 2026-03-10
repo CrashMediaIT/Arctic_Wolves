@@ -128,8 +128,9 @@ function extractApiKey() {
         return trim($x_api_key);
     }
 
-    // 3. Query parameter (least preferred)
+    // 3. Query parameter (deprecated — keys in URLs are logged by proxies/browsers)
     if (isset($_GET['api_key']) && !empty($_GET['api_key'])) {
+        error_log('[API AUTH WARNING] API key passed via query parameter is deprecated. Use Authorization or X-API-Key header instead.');
         return trim($_GET['api_key']);
     }
 

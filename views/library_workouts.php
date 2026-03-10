@@ -932,7 +932,7 @@ $allAthletes = decryptUserRows($allAthletes);
                 <div class="exercise-selector-item" 
                      data-id="<?= $exercise['id'] ?>"
                      data-name="<?= htmlspecialchars($exercise['name']) ?>"
-                     onclick="selectExerciseForPlan(<?= $exercise['id'] ?>, '<?= htmlspecialchars(addslashes($exercise['name'])) ?>')">
+                     onclick="selectExerciseForPlan(<?= $exercise['id'] ?>, <?= json_encode($exercise['name']) ?>)">
                     <div class="exercise-selector-icon">
                         <i class="fas fa-dumbbell"></i>
                     </div>

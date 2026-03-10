@@ -144,7 +144,7 @@ $sessions = $pdo->query("
                                 <i class="fas fa-list"></i>
                             </button>
                         <?php endif; ?>
-                        <button onclick="deletePackage(<?php echo $pkg['id']; ?>, '<?php echo addslashes($pkg['name']); ?>')" 
+                        <button onclick="deletePackage(<?php echo $pkg['id']; ?>, <?php echo json_encode($pkg['name']); ?>)" 
                                 class="btn-icon btn-danger" title="Delete">
                             <i class="fas fa-trash"></i>
                         </button>

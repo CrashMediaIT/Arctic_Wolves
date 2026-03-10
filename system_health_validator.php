@@ -186,7 +186,9 @@ class SystemHealthValidator {
             $sample_tables = ['users', 'sessions', 'drills'];
             foreach ($sample_tables as $table) {
                 if (in_array($table, $tables)) {
-                    $columns = $this->pdo->query("SHOW COLUMNS FROM `$table` LIKE 'is_demo'")->fetchAll();
+                    $stmt = $this->pdo->prepare("SHOW COLUMNS FROM `$table` LIKE ?");
+                    $stmt->execute(['is_demo']);
+                    $columns = $stmt->fetchAll();
                     if (count($columns) > 0) {
                         $checks[] = $this->pass("Demo column exists in $table");
                     } else {
