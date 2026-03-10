@@ -425,14 +425,30 @@ const CUSTOM_BUZZER_URL = '<?= htmlspecialchars($custom_buzzer_url, ENT_QUOTES) 
 const CUSTOM_HORN_URL = '<?= htmlspecialchars($custom_horn_url, ENT_QUOTES) ?>';
 const IS_ADMIN = <?= $isAdmin ? 'true' : 'false' ?>;
 
-// Live clock in topbar
+// Live clock in topbar – anchored to server time & configured timezone
 (function() {
+    var sbTimezone = '<?= htmlspecialchars(date_default_timezone_get(), ENT_QUOTES) ?>';
+    var sbServerTs = <?= (int)appTime() ?>;
+    var sbPageLoad = Date.now();
+
     function updateClock() {
-        var d = new Date();
-        var h = d.getHours(), m = d.getMinutes(), s = d.getSeconds();
-        var ampm = h >= 12 ? 'PM' : 'AM';
-        h = h % 12 || 12;
-        var str = h + ':' + (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s + ' ' + ampm;
+        var elapsedMs = Date.now() - sbPageLoad;
+        var corrected = new Date(sbServerTs * 1000 + elapsedMs);
+        var str;
+        try {
+            str = corrected.toLocaleTimeString('en-US', {
+                hour: 'numeric', minute: '2-digit', second: '2-digit',
+                hour12: true, timeZone: sbTimezone
+            });
+        } catch (e) {
+            // Fallback: apply server TZ offset manually
+            var tzOff = <?= (int)date('Z') ?>;
+            var adj = new Date(corrected.getTime() + tzOff * 1000);
+            var h = adj.getUTCHours(), m = adj.getUTCMinutes(), s = adj.getUTCSeconds();
+            var ampm = h >= 12 ? 'PM' : 'AM';
+            h = h % 12 || 12;
+            str = h + ':' + (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s + ' ' + ampm;
+        }
         var el = document.getElementById('sbClock');
         if (el) el.textContent = str;
     }

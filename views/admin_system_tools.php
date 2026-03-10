@@ -297,12 +297,18 @@ foreach ($url_keys as $uk) {
                                 $timezones = [
                                     'America/St_Johns' => 'Newfoundland (NST)',
                                     'America/Halifax' => 'Atlantic (AST)',
-                                    'America/New_York' => 'Eastern (EST)',
+                                    'America/Toronto' => 'Eastern – Toronto (EST)',
+                                    'America/New_York' => 'Eastern – New York (EST)',
                                     'America/Chicago' => 'Central (CST)',
                                     'America/Denver' => 'Mountain (MST)',
                                     'America/Los_Angeles' => 'Pacific (PST)'
                                 ];
                                 $selected_tz = $settings['timezone'] ?? 'America/New_York';
+                                // Ensure the current DB/system timezone appears even
+                                // if it is not in the preset list above.
+                                if (!empty($selected_tz) && !isset($timezones[$selected_tz])) {
+                                    $timezones[$selected_tz] = $selected_tz;
+                                }
                                 foreach ($timezones as $tz_val => $tz_label):
                                 ?>
                                 <option value="<?php echo $tz_val; ?>" <?php echo $selected_tz === $tz_val ? 'selected' : ''; ?>><?php echo $tz_label; ?></option>
@@ -450,11 +456,11 @@ foreach ($url_keys as $uk) {
                     var csrfToken = csrfInput ? csrfInput.value : '';
                     var offsetSeconds = <?php echo $app_offset; ?>;
 
-                    // Server-anchored clock: use server UTC timestamp + server TZ offset
-                    // so the display always matches the server's configured timezone,
-                    // regardless of the browser's local timezone.
+                    // Server-anchored clock using the IANA timezone name so the
+                    // display always matches the configured timezone, regardless
+                    // of the browser's local timezone or date('Z') edge cases.
                     var serverTimestamp = <?php echo time(); ?>;
-                    var serverTzOffset = <?php echo date('Z'); ?>;
+                    var appTimezone = '<?php echo htmlspecialchars($configured_tz, ENT_QUOTES); ?>';
                     var pageLoadClient = Date.now();
 
                     function formatUtcDate(d) {
@@ -467,24 +473,41 @@ foreach ($url_keys as $uk) {
                         return y + '-' + mo + '-' + dy + ' ' + h + ':' + mi + ':' + s;
                     }
 
-                    // Live clock tick
-                    function tickClock() {
-                        var elapsedSec = (Date.now() - pageLoadClient) / 1000;
-
-                        // Application time: server UTC + app offset + elapsed, in server TZ
-                        var appUtcSec = serverTimestamp + offsetSeconds + elapsedSec;
-                        var appEl = document.getElementById('app-clock');
-                        if (appEl) {
-                            appEl.textContent = formatUtcDate(new Date((appUtcSec + serverTzOffset) * 1000));
-                        }
-
-                        // System clock: server UTC + elapsed, displayed in UTC (raw system time)
-                        var sysUtcSec = serverTimestamp + elapsedSec;
-                        var sysEl = document.getElementById('sys-clock');
-                        if (sysEl) {
-                            sysEl.textContent = formatUtcDate(new Date(sysUtcSec * 1000));
+                    function formatInTimezone(d, tz) {
+                        try {
+                            // Use sv-SE locale for YYYY-MM-DD HH:MM:SS format
+                            return d.toLocaleString('sv-SE', {
+                                timeZone: tz,
+                                year: 'numeric', month: '2-digit', day: '2-digit',
+                                hour: '2-digit', minute: '2-digit', second: '2-digit',
+                                hour12: false
+                            }).replace(/,\s*/g, ' ');
+                        } catch (e) {
+                            // Fallback: use the old UTC-offset approach
+                            return formatUtcDate(d);
                         }
                     }
+
+                    // Live clock tick
+                    function tickClock() {
+                        var elapsedMs = Date.now() - pageLoadClient;
+
+                        // Application time: server epoch + app offset, displayed
+                        // in the configured IANA timezone via toLocaleString.
+                        var appMs = (serverTimestamp + offsetSeconds) * 1000 + elapsedMs;
+                        var appEl = document.getElementById('app-clock');
+                        if (appEl) {
+                            appEl.textContent = formatInTimezone(new Date(appMs), appTimezone);
+                        }
+
+                        // System clock: server epoch + elapsed, displayed in UTC
+                        var sysMs = serverTimestamp * 1000 + elapsedMs;
+                        var sysEl = document.getElementById('sys-clock');
+                        if (sysEl) {
+                            sysEl.textContent = formatUtcDate(new Date(sysMs));
+                        }
+                    }
+                    tickClock();
                     setInterval(tickClock, 1000);
 
                     function showResult(msg, ok) {
