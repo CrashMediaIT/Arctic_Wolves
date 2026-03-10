@@ -49,6 +49,9 @@ $athletes = $athletes_stmt->fetchAll(PDO::FETCH_ASSOC);
 if (function_exists('decryptUserRows')) {
     $athletes = decryptUserRows($athletes);
 }
+if (class_exists('FieldEncryption')) {
+    $athletes = FieldEncryption::decryptRows($athletes, ['first_name', 'last_name', 'athlete_coach_first', 'athlete_coach_last']);
+}
 
 // Get COMPLETED/historical programs for the history view
 $history_stmt = $pdo->prepare("
@@ -66,6 +69,9 @@ $history_stmt->execute($program_types);
 $history_athletes = $history_stmt->fetchAll(PDO::FETCH_ASSOC);
 if (function_exists('decryptUserRows')) {
     $history_athletes = decryptUserRows($history_athletes);
+}
+if (class_exists('FieldEncryption')) {
+    $history_athletes = FieldEncryption::decryptRows($history_athletes, ['first_name', 'last_name', 'athlete_coach_first', 'athlete_coach_last']);
 }
 
 // Determine the coach view mode
@@ -95,6 +101,9 @@ if ($selected_enrollment_id) {
         if (function_exists('decryptUserRows')) {
             $selected = decryptUserRows([$selected])[0];
         }
+        if (class_exists('FieldEncryption')) {
+            $selected = FieldEncryption::decryptFields($selected, ['first_name', 'last_name', 'athlete_coach_first', 'athlete_coach_last']);
+        }
         
         // Get assigned drills
         $drills_stmt = $pdo->prepare("
@@ -112,6 +121,9 @@ if ($selected_enrollment_id) {
         if (function_exists('decryptUserRows')) {
             $selected_drills = decryptUserRows($selected_drills);
         }
+        if (class_exists('FieldEncryption')) {
+            $selected_drills = FieldEncryption::decryptRows($selected_drills, ['coach_first', 'coach_last']);
+        }
         
         // Get messages
         $msgs_stmt = $pdo->prepare("
@@ -127,7 +139,10 @@ if ($selected_enrollment_id) {
             $selected_messages = decryptUserRows($selected_messages);
         }
         if (class_exists('FieldEncryption')) {
-            $selected_messages = FieldEncryption::decryptRows($selected_messages, FieldEncryption::MESSAGE_ENCRYPTED_FIELDS);
+            $selected_messages = FieldEncryption::decryptRows($selected_messages, array_merge(
+                FieldEncryption::MESSAGE_ENCRYPTED_FIELDS,
+                ['sender_first', 'sender_last']
+            ));
         }
 
         // Get athlete-uploaded videos
@@ -154,6 +169,9 @@ if ($selected_enrollment_id) {
         $selected_appointments = $appts_stmt->fetchAll(PDO::FETCH_ASSOC);
         if (function_exists('decryptUserRows')) {
             $selected_appointments = decryptUserRows($selected_appointments);
+        }
+        if (class_exists('FieldEncryption')) {
+            $selected_appointments = FieldEncryption::decryptRows($selected_appointments, ['coach_first', 'coach_last']);
         }
     }
 }

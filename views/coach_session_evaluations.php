@@ -551,6 +551,7 @@ $activeView = $_GET['view'] ?? 'list';
 .calendar-header {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
     background: rgba(107, 70, 193, 0.1);
 }
 
@@ -566,7 +567,7 @@ $activeView = $_GET['view'] ?? 'list';
 .calendar-body {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    overflow: hidden;
+    gap: 4px;
     max-width: 100%;
     box-sizing: border-box;
 }
@@ -574,19 +575,32 @@ $activeView = $_GET['view'] ?? 'list';
 .calendar-day {
     min-height: 100px;
     padding: 8px;
+    background: var(--bg-main, #0A0A0F);
     border: 1px solid var(--border, #2D2D3F);
+    border-radius: 8px;
     position: relative;
     min-width: 0;
     overflow: hidden;
     box-sizing: border-box;
+    transition: all 0.3s;
 }
 
 .calendar-day.other-month {
     background: rgba(0, 0, 0, 0.2);
+    opacity: 0.4;
+}
+
+.calendar-day:hover {
+    border-color: var(--primary, #6B46C1);
 }
 
 .calendar-day.today {
+    border-color: var(--primary, #6B46C1);
     background: rgba(107, 70, 193, 0.1);
+}
+
+.calendar-day.has-sessions {
+    background: rgba(107, 70, 193, 0.08);
 }
 
 .calendar-day-number {
@@ -603,9 +617,10 @@ $activeView = $_GET['view'] ?? 'list';
 .calendar-event {
     padding: 4px 8px;
     margin-bottom: 4px;
-    background: var(--primary, #6B46C1);
+    background: linear-gradient(135deg, var(--primary, #6B46C1), var(--primary-light, #8B5CF6));
     border-radius: 4px;
     font-size: 11px;
+    font-weight: 600;
     color: #fff;
     cursor: pointer;
     white-space: nowrap;
@@ -615,6 +630,11 @@ $activeView = $_GET['view'] ?? 'list';
 
 .calendar-event:hover {
     background: var(--primary-hover, #7C3AED);
+}
+
+.calendar-event.more-indicator {
+    background: var(--bg-card, #16161F);
+    color: var(--text-dim, #6B6B7B);
 }
 
 /* Modal Styles */
@@ -1035,14 +1055,17 @@ function renderCalendar() {
         const isToday = dateStr === todayStr;
         const daySessions = sessionsByDate[dateStr] || [];
         
-        html += `<div class="calendar-day ${isToday ? 'today' : ''}">
+        html += `<div class="calendar-day ${isToday ? 'today' : ''} ${daySessions.length > 0 ? 'has-sessions' : ''}">
             <span class="calendar-day-number">${day}</span>`;
         
-        daySessions.forEach(session => {
+        daySessions.slice(0, 3).forEach(session => {
             html += `<div class="calendar-event" onclick="window.location='?page=session_evaluation_form&evaluation_id=${session.evaluation_id}'">
                 ${session.title}
             </div>`;
         });
+        if (daySessions.length > 3) {
+            html += `<div class="calendar-event more-indicator">+${daySessions.length - 3} more</div>`;
+        }
         
         html += '</div>';
     }
