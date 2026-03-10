@@ -808,6 +808,19 @@ function sbDeleteTeamLogo(teamId, teamName) {
 }
 
 // ── Drag-and-drop upload zone helpers ──
+function sbFilterDroppedFiles(fileList, acceptAttr) {
+    var types = acceptAttr.split(',').map(function(t) { return t.trim().toLowerCase(); });
+    var dt = new DataTransfer();
+    for (var i = 0; i < fileList.length; i++) {
+        var f = fileList[i];
+        var ext = '.' + f.name.split('.').pop().toLowerCase();
+        var mime = f.type.toLowerCase();
+        var ok = types.some(function(t) { return t === mime || t === ext; });
+        if (ok) dt.items.add(f);
+    }
+    return dt.files;
+}
+
 function sbInitUploadZone(zoneId, inputId, selectedId, iconClass) {
     var zone = document.getElementById(zoneId);
     var input = document.getElementById(inputId);
@@ -828,8 +841,12 @@ function sbInitUploadZone(zoneId, inputId, selectedId, iconClass) {
         e.preventDefault();
         zone.classList.remove('sb-drag-over');
         if (e.dataTransfer.files.length) {
-            input.files = e.dataTransfer.files;
-            sbShowSelectedFiles(zone, input, selectedContainer, iconClass);
+            var accept = input.getAttribute('accept') || '';
+            var validFiles = sbFilterDroppedFiles(e.dataTransfer.files, accept);
+            if (validFiles.length) {
+                input.files = validFiles;
+                sbShowSelectedFiles(zone, input, selectedContainer, iconClass);
+            }
         }
     });
     input.addEventListener('change', function() {
