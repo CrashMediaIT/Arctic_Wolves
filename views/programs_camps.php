@@ -173,7 +173,7 @@ try {
         <div class="programs-grid">
             <div class="program-card" style="border-color: rgba(59,130,246,0.3);">
                 <div class="program-header" style="background: linear-gradient(135deg, rgba(59,130,246,0.2), rgba(59,130,246,0.05)); padding: 24px;">
-                    <span class="type-badge" style="background: rgba(59,130,246,0.15); color: #3b82f6; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700;"><i class="fas fa-shield-alt"></i> Goalie Development</span>
+                    <span class="type-badge" style="background: rgba(59,130,246,0.15); color: #3b82f6; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700;"><span class="icon-hockey-goalie"></span> Goalie Development</span>
                     <h3 style="margin-top: 12px;">Long Term Goalie Development</h3>
                     <?php if ($goalie_dev_duration_weeks): ?>
                     <span style="display:inline-flex;align-items:center;gap:4px;margin-top:8px;font-size:13px;color:#3b82f6;"><i class="fas fa-clock"></i> <?= (int)$goalie_dev_duration_weeks ?> week program</span>
@@ -203,7 +203,7 @@ try {
             </div>
             <div class="program-card" style="border-color: rgba(16,185,129,0.3);">
                 <div class="program-header" style="background: linear-gradient(135deg, rgba(16,185,129,0.2), rgba(16,185,129,0.05)); padding: 24px;">
-                    <span class="type-badge" style="background: rgba(16,185,129,0.15); color: #10b981; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700;"><i class="fas fa-hockey-puck"></i> Player Development</span>
+                    <span class="type-badge" style="background: rgba(16,185,129,0.15); color: #10b981; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700;"><span class="icon-hockey-player"></span> Player Development</span>
                     <h3 style="margin-top: 12px;">Long Term Player Development</h3>
                     <?php if ($player_dev_duration_weeks): ?>
                     <span style="display:inline-flex;align-items:center;gap:4px;margin-top:8px;font-size:13px;color:#10b981;"><i class="fas fa-clock"></i> <?= (int)$player_dev_duration_weeks ?> week program</span>

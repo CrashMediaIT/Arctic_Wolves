@@ -218,9 +218,9 @@ if (function_exists('decryptUserRows')) {
                 </video>
             <?php else: ?>
                 <?php if ($pdPosition === 'goalie'): ?>
-                    <i class="fas fa-shield-alt position-icon goalie"></i>
+                    <span class="icon-hockey-goalie position-icon goalie"></span>
                 <?php else: ?>
-                    <i class="fas fa-hockey-puck position-icon player"></i>
+                    <span class="icon-hockey-player position-icon player"></span>
                 <?php endif; ?>
             <?php endif; ?>
             <span class="position-label <?= htmlspecialchars($pdPosition) ?>"><?= $pdPosition === 'goalie' ? 'Goalie' : 'Player' ?></span>

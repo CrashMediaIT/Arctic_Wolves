@@ -695,11 +695,11 @@ $user_booked_template_dates = $tpl_booked_stmt->fetchAll(PDO::FETCH_COLUMN);
                 $dp_is_goalie = stripos($dp['name'], 'goalie') !== false;
                 $dp_type = $dp_is_goalie ? 'goalie_dev' : 'player_dev';
                 $dp_enrolled = in_array((int)$dp['id'], $dev_active_template_ids);
-                $dp_icon = $dp_is_goalie ? 'fa-shield-alt' : 'fa-hockey-puck';
+                $dp_icon_class = $dp_is_goalie ? 'icon-hockey-goalie' : 'icon-hockey-player';
             ?>
             <div class="program-card dev-product-card" data-program-id="dev-<?= (int)$dp['id'] ?>">
                 <div class="program-type-badge dev-type-badge">
-                    <i class="fas <?= $dp_icon ?>"></i> Long Term Development
+                    <span class="<?= $dp_icon_class ?>"></span> Long Term Development
                 </div>
                 <div class="program-card-header">
                     <h3 class="program-name"><?= htmlspecialchars($dp['name']) ?></h3>

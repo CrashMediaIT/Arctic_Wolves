@@ -291,7 +291,7 @@ if (!empty($drill['drill_image'])) {
         <div class="dev-drill-header-meta">
             <span class="dev-drill-status <?= htmlspecialchars($drill['status']) ?>"><?= str_replace('_', ' ', htmlspecialchars($drill['status'])) ?></span>
             <span class="dev-drill-coach"><i class="fas fa-user-tie"></i> Assigned by <?= htmlspecialchars(trim(($drill['coach_first'] ?? '') . ' ' . ($drill['coach_last'] ?? ''))) ?></span>
-            <span class="dev-drill-coach"><i class="fas fa-hockey-puck"></i> <?= $drill['program_type'] === 'goalie_dev' ? 'Goalie Development' : 'Player Development' ?></span>
+            <span class="dev-drill-coach"><span class="<?= $drill['program_type'] === 'goalie_dev' ? 'icon-hockey-goalie' : 'icon-hockey-player' ?>"></span> <?= $drill['program_type'] === 'goalie_dev' ? 'Goalie Development' : 'Player Development' ?></span>
             <?php if ($is_coach_view && (!empty($drill['athlete_first_name']) || !empty($drill['athlete_last_name']))): ?>
             <span class="dev-drill-coach"><i class="fas fa-user"></i> Athlete: <?= htmlspecialchars(trim(($drill['athlete_first_name'] ?? '') . ' ' . ($drill['athlete_last_name'] ?? ''))) ?></span>
             <?php endif; ?>

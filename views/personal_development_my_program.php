@@ -367,9 +367,9 @@ unset($enrollment);
     <div class="enrollment-section">
         <h3>
             <?php if ($enrollment['program_type'] === 'goalie_dev'): ?>
-                <i class="fas fa-shield-alt icon-goalie"></i>
+                <span class="icon-hockey-goalie icon-goalie"></span>
             <?php else: ?>
-                <i class="fas fa-hockey-puck icon-player"></i>
+                <span class="icon-hockey-player icon-player"></span>
             <?php endif; ?>
             <?= htmlspecialchars($program_display) ?>
             <?php if ($weeks_left !== null): ?>
@@ -542,9 +542,9 @@ unset($enrollment);
             <div>
                 <div class="completed-name">
                     <?php if ($cp['program_type'] === 'goalie_dev'): ?>
-                        <i class="fas fa-shield-alt completed-icon-goalie"></i>
+                        <span class="icon-hockey-goalie completed-icon-goalie"></span>
                     <?php else: ?>
-                        <i class="fas fa-hockey-puck completed-icon-player"></i>
+                        <span class="icon-hockey-player completed-icon-player"></span>
                     <?php endif; ?>
                     <?= htmlspecialchars($cp_display) ?>
                 </div>
