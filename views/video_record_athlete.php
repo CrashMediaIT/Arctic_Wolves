@@ -739,6 +739,7 @@ try {
 </style>
 
 <script src="js/offline-upload-queue.js"></script>
+<script src="js/video-thumbnail.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const startCameraBtn = document.getElementById('start-camera-btn');
@@ -1248,13 +1249,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 // even if the user closes the browser or navigates away.
                 status.textContent = 'Confirming upload...';
                 uploadLog('Confirming upload with server…');
-                var confirmData = new FormData();
-                confirmData.append('action', 'confirm_video_upload');
-                confirmData.append('csrf_token', csrfToken);
-                confirmData.append('upload_nonce', uploadNonce);
+                return (window.extractVideoThumbnail ? extractVideoThumbnail(videoFile).catch(function(){ return null; }) : Promise.resolve(null))
+                    .then(function(thumbBase64) {
+                        var confirmData = new FormData();
+                        confirmData.append('action', 'confirm_video_upload');
+                        confirmData.append('csrf_token', csrfToken);
+                        confirmData.append('upload_nonce', uploadNonce);
+                        if (thumbBase64) confirmData.append('thumbnail_data', thumbBase64);
 
-                return fetch('process_video.php', { method: 'POST', body: confirmData, keepalive: true })
-                    .then(function(r) { return r.json(); });
+                        return fetch('process_video.php', { method: 'POST', body: confirmData, keepalive: true })
+                            .then(function(r) { return r.json(); });
+                    });
             })
             .then(function(result) {
                 if (result.success) {

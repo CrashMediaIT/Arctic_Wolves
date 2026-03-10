@@ -885,6 +885,7 @@ $reviewed_videos = array_filter($videos, function($v) {
 </style>
 
 <script src="js/offline-upload-queue.js"></script>
+<script src="js/video-thumbnail.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Make entire video-list-item cards clickable to navigate to detail view.
@@ -1341,11 +1342,15 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(function() {
                 status.textContent = 'Confirming upload...';
                 crLog('Confirming upload with server…');
-                var confirmData = new FormData();
-                confirmData.append('action', 'confirm_video_upload');
-                confirmData.append('csrf_token', csrfToken);
-                confirmData.append('upload_nonce', uploadNonce);
-                return fetch('process_video.php', { method: 'POST', body: confirmData, keepalive: true }).then(function(r) { return r.json(); });
+                return (window.extractVideoThumbnail ? extractVideoThumbnail(file).catch(function(){ return null; }) : Promise.resolve(null))
+                    .then(function(thumbBase64) {
+                        var confirmData = new FormData();
+                        confirmData.append('action', 'confirm_video_upload');
+                        confirmData.append('csrf_token', csrfToken);
+                        confirmData.append('upload_nonce', uploadNonce);
+                        if (thumbBase64) confirmData.append('thumbnail_data', thumbBase64);
+                        return fetch('process_video.php', { method: 'POST', body: confirmData, keepalive: true }).then(function(r) { return r.json(); });
+                    });
             })
             .then(function(result) {
                 if (result.success) {

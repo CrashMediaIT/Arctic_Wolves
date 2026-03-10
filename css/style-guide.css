@@ -2088,3 +2088,27 @@ table tbody tr:last-child td {
         font-size: 36px;
     }
 }
+
+/* Hockey Player/Goalie Silhouette Icons (SVG mask-image) */
+.icon-hockey-player,
+.icon-hockey-goalie {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    background-color: currentColor;
+    -webkit-mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-size: contain;
+    mask-repeat: no-repeat;
+    mask-position: center;
+    vertical-align: -0.125em;
+}
+.icon-hockey-player {
+    -webkit-mask-image: url('../assets/svg/hockey-player.svg');
+    mask-image: url('../assets/svg/hockey-player.svg');
+}
+.icon-hockey-goalie {
+    -webkit-mask-image: url('../assets/svg/hockey-goalie.svg');
+    mask-image: url('../assets/svg/hockey-goalie.svg');
+}

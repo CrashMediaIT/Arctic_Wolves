@@ -126,12 +126,12 @@ test.describe('Personal Drill Thumbnails and Position', () => {
 
   test('personal drill cards show goalie icon for goalie position', () => {
     const content = readFile('views/drills_personal.php');
-    expect(content).toContain('fa-shield-alt position-icon goalie');
+    expect(content).toContain('icon-hockey-goalie position-icon goalie');
   });
 
   test('personal drill cards show player icon for player position', () => {
     const content = readFile('views/drills_personal.php');
-    expect(content).toContain('fa-hockey-puck position-icon player');
+    expect(content).toContain('icon-hockey-player position-icon player');
   });
 
   test('personal drill cards show position label badge', () => {

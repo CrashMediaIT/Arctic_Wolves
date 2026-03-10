@@ -1137,6 +1137,11 @@ $locations = $locations_stmt->fetchAll(PDO::FETCH_ASSOC);
                         <div class="dev-video-review-list">
                         <?php foreach ($selected_videos as $vid): ?>
                             <div class="dev-video-review-item">
+                                <?php if (!empty($vid['thumbnail_path'])): ?>
+                                <div class="video-thumb" style="width:100px;height:64px;flex-shrink:0;border-radius:6px;overflow:hidden;background:var(--bg-main,#0d1117);margin-bottom:8px;">
+                                    <img src="<?= htmlspecialchars($vid['thumbnail_path']) ?>" alt="Video thumbnail" loading="lazy" style="width:100%;height:100%;object-fit:cover;">
+                                </div>
+                                <?php endif; ?>
                                 <div class="video-header">
                                     <h5><?= htmlspecialchars($vid['title']) ?></h5>
                                     <span class="coach-video-status <?= htmlspecialchars($vid['status']) ?>"><?= str_replace('_', ' ', htmlspecialchars($vid['status'])) ?></span>

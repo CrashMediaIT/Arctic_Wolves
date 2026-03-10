@@ -14,6 +14,7 @@ require_once 'mailer.php';
 require_once __DIR__ . '/cloud_config.php';
 require_once __DIR__ . '/lib/auditor.php';
 require_once __DIR__ . '/error_logger.php';
+require_once __DIR__ . '/lib/video_thumbnail.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -430,6 +431,21 @@ function handleConfirmVideoUpload() {
     $video_id = null;
     $source_id = null;
     $redirect = '';
+    
+    // Handle client-side generated thumbnail (base64 JPEG)
+    $thumbnail_url = null;
+    $thumbnail_data = $_POST['thumbnail_data'] ?? '';
+    if (!empty($thumbnail_data)) {
+        $thumb_binary = base64_decode($thumbnail_data, true);
+        if ($thumb_binary !== false && strlen($thumb_binary) > 0 && strlen($thumb_binary) < 2 * 1024 * 1024) {
+            $thumbSubfolder = 'videos/thumbnails';
+            $thumbKey = 'Images/' . $thumbSubfolder . '/video_' . bin2hex(random_bytes(8)) . '_thumb.jpg';
+            $upload_thumb = uploadContentToRustFS($rustfs, $thumb_binary, $thumbKey, 'image/jpeg');
+            if ($upload_thumb['success']) {
+                $thumbnail_url = 'api/media.php?key=' . rawurlencode($thumbKey);
+            }
+        }
+    }
 
     if ($upload_type === 'video_source') {
         // Game Plan video source
@@ -484,18 +500,18 @@ function handleConfirmVideoUpload() {
                 athlete_id, coach_id, title, description, video_url,
                 video_type, video_category, drill_id, session_id, rep_number,
                 nextcloud_path, local_path, is_uploaded_to_cloud,
-                status, upload_date
+                status, upload_date, thumbnail_url
             ) VALUES (
                 ?, ?, ?, ?, ?,
                 'drill_review', 'drill', ?, ?, ?,
                 ?, ?, 1,
-                'reviewed', NOW()
+                'reviewed', NOW(), ?
             )
         ");
         $stmt->execute([
             $athlete_id, $user_id, $title, $description, $proxy_url,
             $drill_id, $session_id, $rep_number,
-            $proxy_url, $proxy_url
+            $proxy_url, $proxy_url, $thumbnail_url
         ]);
         $video_id = $pdo->lastInsertId();
         Auditor::log($pdo, $user_id, 'create', 'videos', $video_id, ['action' => 'Drill video uploaded (direct)']);
@@ -516,13 +532,13 @@ function handleConfirmVideoUpload() {
         $stmt = $pdo->prepare("
             INSERT INTO videos (
                 athlete_id, coach_id, title, description, video_url,
-                video_type, video_category, status, coach_notes, upload_date
+                video_type, video_category, status, coach_notes, upload_date, thumbnail_url
             ) VALUES (
                 ?, ?, ?, ?, ?,
-                'coach_review', 'drill', 'pending_review', ?, NOW()
+                'coach_review', 'drill', 'pending_review', ?, NOW(), ?
             )
         ");
-        $stmt->execute([$athlete_id, $user_id, $title, $description, $proxy_url, $comments]);
+        $stmt->execute([$athlete_id, $user_id, $title, $description, $proxy_url, $comments, $thumbnail_url]);
         $video_id = $pdo->lastInsertId();
         Auditor::log($pdo, $user_id, 'create', 'videos', $video_id, ['action' => 'Coach video uploaded (direct)']);
         $pdo->prepare("UPDATE videos SET nextcloud_path = ? WHERE id = ?")->execute([$proxy_url, $video_id]);
@@ -545,16 +561,16 @@ function handleConfirmVideoUpload() {
             INSERT INTO videos (
                 athlete_id, coach_id, title, description, video_url,
                 video_type, video_category, game_date, team_played_on, opponent_team,
-                status, upload_date
+                status, upload_date, thumbnail_url
             ) VALUES (
                 ?, ?, ?, ?, ?,
                 'uploaded_by_athlete', ?, ?, ?, ?,
-                'pending_review', NOW()
+                'pending_review', NOW(), ?
             )
         ");
         $stmt->execute([
             $athlete_id, $coach_id, $title, $description, $proxy_url,
-            $video_category, $game_date, $team_played_on, $opponent_team,
+            $video_category, $game_date, $team_played_on, $opponent_team, $thumbnail_url
         ]);
         $video_id = $pdo->lastInsertId();
         Auditor::log($pdo, $user_id, 'create', 'videos', $video_id, ['action' => 'Athlete video uploaded (direct)']);

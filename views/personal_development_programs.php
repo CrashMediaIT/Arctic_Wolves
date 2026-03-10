@@ -214,7 +214,7 @@ function getDevProgramType($name) {
         }
     ?>
     <div class="dev-program-card">
-        <i class="fas <?= $is_goalie ? 'fa-shield-alt' : 'fa-hockey-puck' ?> program-icon <?= $is_goalie ? 'goalie' : 'player' ?>"></i>
+        <span class="<?= $is_goalie ? 'icon-hockey-goalie' : 'icon-hockey-player' ?> program-icon <?= $is_goalie ? 'goalie' : 'player' ?>"></span>
         <h3><?= htmlspecialchars($dp['name']) ?></h3>
         <?php if (!empty($dp['description'])): ?>
         <p><?= htmlspecialchars($dp['description']) ?></p>
