@@ -158,139 +158,47 @@ if ($db_config_valid) {
     }
 }
 
-// 5. APPLY TIMEZONE AND TIME OFFSET FROM SYSTEM SETTINGS
-// Load the configured timezone early so ALL PHP date/time functions use it,
-// not just the Logger / ErrorLogger classes.
-// Also sync the MySQL session timezone so NOW(), CURDATE(), CURRENT_TIMESTAMP
-// return local time instead of the server default (often UTC in Docker).
-// An optional app_time_offset (seconds) corrects clock drift when the system
-// clock cannot be changed directly (e.g. inside Docker containers).
-
-// Cache the valid timezone list once (avoids repeated calls to timezone_identifiers_list()).
-$_aw_valid_tz = timezone_identifiers_list();
-
-// Resolve a fallback timezone when the database has no value.
-// PHP-FPM often runs with clear_env=yes (the default), which strips
-// environment variables from worker processes.  We therefore check
-// multiple sources in priority order:
-//   1. getenv('TZ')          – works when clear_env=no or CLI
-//   2. $_ENV['TZ']           – populated by some SAPI configurations
-//   3. $_SERVER['TZ']        – populated by some web-server pass-through
-//   4. ini_get('date.timezone') – from php.ini / php-config.ini
-//   5. /etc/timezone file    – written by Docker s6-overlay / container init
-//   6. Hardcoded default     – America/New_York
-if (!function_exists('_awFallbackTimezone')) {
-    function _awFallbackTimezone(array $valid) {
-        // 1. Standard getenv
-        $env_tz = getenv('TZ');
-        if (!empty($env_tz) && in_array($env_tz, $valid)) {
-            return $env_tz;
-        }
-        // 2-3. Superglobal arrays (useful when PHP-FPM clear_env strips getenv)
-        foreach (['_ENV', '_SERVER'] as $sg) {
-            $val = $GLOBALS[$sg]['TZ'] ?? '';
-            if (!empty($val) && in_array($val, $valid)) {
-                return $val;
-            }
-        }
-        // 4. php.ini date.timezone directive
-        $ini_tz = ini_get('date.timezone');
-        if (!empty($ini_tz) && in_array($ini_tz, $valid)) {
-            return $ini_tz;
-        }
-        // 5. /etc/timezone file (written by Docker container init, e.g. s6-overlay)
-        if (is_readable('/etc/timezone')) {
-            $file_tz = trim(@file_get_contents('/etc/timezone'));
-            if (!empty($file_tz) && in_array($file_tz, $valid)) {
-                return $file_tz;
-            }
-        }
-        // 6. Hardcoded default
-        return 'America/New_York';
-    }
-}
-
-$_aw_tz_applied = false;
+// 5. SYNC MYSQL SESSION TIMEZONE
+// The PHP timezone is set externally (php.ini / Docker TZ env var).
+// No application-level override is needed — the system timezone is the
+// single source of truth.
+//
+// We only sync the MySQL session timezone so NOW(), CURDATE(), and
+// CURRENT_TIMESTAMP return local time matching PHP's date().
 
 if ($db_connected && $pdo) {
     try {
-        $tz_stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('timezone', 'app_time_offset')");
-        $_aw_settings = [];
-        while ($r = $tz_stmt->fetch(PDO::FETCH_ASSOC)) {
-            $_aw_settings[$r['setting_key']] = $r['setting_value'];
-        }
-        $tz_value = $_aw_settings['timezone'] ?? '';
-        $_app_time_offset = (int)($_aw_settings['app_time_offset'] ?? 0);
-
-        // Discard invalid timezone values (e.g. "America/New_York (EST)" from
-        // a form that lacked proper value attributes).
-        if (!empty($tz_value) && !in_array($tz_value, $_aw_valid_tz)) {
-            $tz_value = '';
-        }
-
-        // Fallback chain when no valid timezone stored in DB:
-        // 1. TZ environment variable (often set in Docker Compose)
-        // 2. Application default (matches admin_system_tools.php defaults)
-        if (empty($tz_value)) {
-            $tz_value = _awFallbackTimezone($_aw_valid_tz);
-        }
-
-        date_default_timezone_set($tz_value);
-        $_aw_tz_applied = true;
-
-        // Sync the database session timezone to match PHP.
-        // DateTimeZone::getOffset() returns seconds; convert to ±HH:MM for MySQL.
-        // Only use the actual timezone offset for MySQL — app_time_offset is a
-        // PHP-side correction only.  Combining them previously caused out-of-range
-        // failures (MySQL only accepts ±13:59) which silently zeroed the offset.
-        try {
-            $tz_obj    = new DateTimeZone($tz_value);
-            $offset_s  = $tz_obj->getOffset(new DateTime('now', $tz_obj));
-            $sign      = $offset_s >= 0 ? '+' : '-';
-            $abs       = abs($offset_s);
-            $hours     = str_pad((int)($abs / 3600), 2, '0', STR_PAD_LEFT);
-            $minutes   = str_pad((int)(($abs % 3600) / 60), 2, '0', STR_PAD_LEFT);
-            $mysql_tz  = $sign . $hours . ':' . $minutes;
-            $pdo->exec("SET time_zone = " . $pdo->quote($mysql_tz));
-        } catch (Exception $e2) {
-            // MySQL SET time_zone can fail if the named timezone is not loaded
-            // in MySQL's timezone tables.  This is non-fatal: PHP date/time
-            // functions still use the correct timezone, and app_time_offset is
-            // preserved.  Only MySQL NOW()/CURDATE() may return server-default
-            // time instead of the configured timezone.
-        }
+        $tz_value = date_default_timezone_get();
+        $tz_obj    = new DateTimeZone($tz_value);
+        $offset_s  = $tz_obj->getOffset(new DateTime('now', $tz_obj));
+        $sign      = $offset_s >= 0 ? '+' : '-';
+        $abs       = abs($offset_s);
+        $hours     = str_pad((int)($abs / 3600), 2, '0', STR_PAD_LEFT);
+        $minutes   = str_pad((int)(($abs % 3600) / 60), 2, '0', STR_PAD_LEFT);
+        $mysql_tz  = $sign . $hours . ':' . $minutes;
+        $pdo->exec("SET time_zone = " . $pdo->quote($mysql_tz));
     } catch (Exception $e) {
-        // Silently fail — table may not exist yet (pre-setup)
-        $_app_time_offset = 0;
-        if (!$_aw_tz_applied) {
-            date_default_timezone_set(_awFallbackTimezone($_aw_valid_tz));
-            $_aw_tz_applied = true;
-        }
+        // Non-fatal: PHP date/time functions still use the correct timezone.
     }
 }
 
-// Guarantee timezone is always set even if DB was not connected.
-if (!$_aw_tz_applied) {
-    date_default_timezone_set(_awFallbackTimezone($_aw_valid_tz));
-}
-
-// Define the time offset constant so it is available application-wide.
+// No time offset — the system clock is the single source of truth.
 if (!defined('APP_TIME_OFFSET')) {
-    define('APP_TIME_OFFSET', $_app_time_offset ?? 0);
+    define('APP_TIME_OFFSET', 0);
 }
 
-// Helper: return the corrected current Unix timestamp.
+// Helper: return the current Unix timestamp (no offset applied).
 if (!function_exists('appTime')) {
     function appTime() {
-        return time() + APP_TIME_OFFSET;
+        return time();
     }
 }
 
-// Helper: corrected date() — applies APP_TIME_OFFSET when no timestamp given.
+// Helper: date() wrapper — kept for API compatibility.
 if (!function_exists('appDate')) {
     function appDate($format, $timestamp = null) {
         if ($timestamp === null) {
-            $timestamp = appTime();
+            $timestamp = time();
         }
         return date($format, $timestamp);
     }

@@ -167,10 +167,9 @@ try {
                     <span class="m-settings-item-icon"><i class="fas fa-globe"></i></span>
                     <div>
                         <div class="m-settings-item-label">Timezone</div>
-                        <div class="m-settings-item-desc"><?= htmlspecialchars($currentSettings['timezone'] ?? 'America/New_York') ?></div>
+                        <div class="m-settings-item-desc"><?= htmlspecialchars(date_default_timezone_get()) ?> (Docker ENV)</div>
                     </div>
                 </div>
-                <i class="fas fa-chevron-right m-settings-chevron"></i>
             </div>
             <div class="m-settings-item">
                 <div class="m-settings-item-left">
@@ -238,27 +237,10 @@ try {
                 <textarea name="org_address" class="m-settings-form-input m-settings-form-textarea" placeholder="Full address"><?= htmlspecialchars($currentSettings['org_address'] ?? '') ?></textarea>
             </div>
             <div class="m-settings-form-group">
-                <label class="m-settings-form-label">Timezone *</label>
-                <select name="timezone" class="m-settings-form-input" required>
-                    <?php
-                    $tzOptions = [
-                        'America/St_Johns' => 'Newfoundland (NST)',
-                        'America/Halifax' => 'Atlantic (AST)',
-                        'America/Toronto' => 'Eastern – Toronto (EST)',
-                        'America/New_York' => 'Eastern – New York (EST)',
-                        'America/Chicago' => 'Central (CST)',
-                        'America/Denver' => 'Mountain (MST)',
-                        'America/Los_Angeles' => 'Pacific (PST)',
-                    ];
-                    $curTz = $currentSettings['timezone'] ?? 'America/New_York';
-                    if (!empty($curTz) && !isset($tzOptions[$curTz])) {
-                        $tzOptions[$curTz] = $curTz;
-                    }
-                    foreach ($tzOptions as $tzVal => $tzLabel):
-                    ?>
-                    <option value="<?= htmlspecialchars($tzVal) ?>" <?= $curTz === $tzVal ? 'selected' : '' ?>><?= htmlspecialchars($tzLabel) ?></option>
-                    <?php endforeach; ?>
-                </select>
+                <label class="m-settings-form-label">Timezone</label>
+                <span class="m-settings-form-input" style="background: var(--bg-secondary); cursor: default;">
+                    <?= htmlspecialchars(date_default_timezone_get()) ?> (Docker ENV)
+                </span>
             </div>
             <div class="m-settings-form-group">
                 <label class="m-settings-form-label">Currency</label>

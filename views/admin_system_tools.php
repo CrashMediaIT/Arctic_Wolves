@@ -17,7 +17,6 @@ try {
         'site_email' => 'info@arcticwolves.ca',
         'contact_phone' => '',
         'org_address' => '',
-        'timezone' => 'America/New_York',
         'date_format' => 'MM/DD/YYYY',
         'session_duration' => 60,
         'notifications_enabled' => '1',
@@ -290,30 +289,11 @@ foreach ($url_keys as $uk) {
                         <div class="setting-item">
                             <div class="setting-info">
                                 <h4>Timezone</h4>
-                                <p>Default timezone for scheduling</p>
+                                <p>Set via Docker TZ environment variable</p>
                             </div>
-                            <select name="timezone" class="form-input" style="width: auto; min-width: 200px;">
-                                <?php
-                                $timezones = [
-                                    'America/St_Johns' => 'Newfoundland (NST)',
-                                    'America/Halifax' => 'Atlantic (AST)',
-                                    'America/Toronto' => 'Eastern – Toronto (EST)',
-                                    'America/New_York' => 'Eastern – New York (EST)',
-                                    'America/Chicago' => 'Central (CST)',
-                                    'America/Denver' => 'Mountain (MST)',
-                                    'America/Los_Angeles' => 'Pacific (PST)'
-                                ];
-                                $selected_tz = $settings['timezone'] ?? 'America/New_York';
-                                // Ensure the current DB/system timezone appears even
-                                // if it is not in the preset list above.
-                                if (!empty($selected_tz) && !isset($timezones[$selected_tz])) {
-                                    $timezones[$selected_tz] = $selected_tz;
-                                }
-                                foreach ($timezones as $tz_val => $tz_label):
-                                ?>
-                                <option value="<?php echo $tz_val; ?>" <?php echo $selected_tz === $tz_val ? 'selected' : ''; ?>><?php echo $tz_label; ?></option>
-                                <?php endforeach; ?>
-                            </select>
+                            <span class="form-input" style="width: auto; min-width: 200px; background: var(--bg-secondary); cursor: default;">
+                                <?php echo htmlspecialchars(date_default_timezone_get()); ?>
+                            </span>
                         </div>
                         <div class="setting-item">
                             <div class="setting-info">
@@ -380,102 +360,42 @@ foreach ($url_keys as $uk) {
             </div>
         </div>
 
-        <!-- Date & Time Management -->
+        <!-- Date & Time -->
         <div class="card" style="margin-top: 24px;">
             <div class="card-header">
                 <h3><i class="fas fa-clock"></i> Date &amp; Time</h3>
             </div>
             <div class="card-body">
-                <?php
-                    $app_offset = (int)($settings['app_time_offset'] ?? 0);
-                    $app_now = time() + $app_offset;
-                    $configured_tz = date_default_timezone_get();
-                ?>
+                <?php $configured_tz = date_default_timezone_get(); ?>
                 <div class="settings-list">
                     <div class="setting-item">
                         <div class="setting-info">
                             <h4>Application Time</h4>
-                            <p>Current date &amp; time the application is using (<?php echo htmlspecialchars($configured_tz); ?>)</p>
+                            <p>Current date &amp; time (<?php echo htmlspecialchars($configured_tz); ?>)</p>
                         </div>
                         <span id="app-clock" style="font-size: 16px; font-weight: 600; font-family: monospace; color: var(--text-color);">
-                            <?php echo date('Y-m-d H:i:s', $app_now); ?>
+                            <?php echo date('Y-m-d H:i:s'); ?>
                         </span>
                     </div>
                     <div class="setting-item">
                         <div class="setting-info">
-                            <h4>Server System Clock (UTC)</h4>
-                            <p>Raw system time in UTC (may differ from real time in Docker)</p>
+                            <h4>Timezone Source</h4>
+                            <p>Pulled from Docker TZ environment variable</p>
                         </div>
-                        <span id="sys-clock" style="font-size: 14px; font-family: monospace; color: var(--text-dim);">
-                            <?php echo gmdate('Y-m-d H:i:s'); ?>
-                        </span>
-                    </div>
-                    <div class="setting-item">
-                        <div class="setting-info">
-                            <h4>Active Offset</h4>
-                            <p>Seconds added to system clock (0 = no correction)</p>
-                        </div>
-                        <span id="time-offset-display" style="font-size: 14px; font-family: monospace; color: <?php echo $app_offset !== 0 ? '#F59E0B' : 'var(--text-dim)'; ?>;">
-                            <?php echo ($app_offset >= 0 ? '+' : '') . $app_offset; ?>s
-                            <?php if ($app_offset !== 0): ?>
-                                (<?php echo ($app_offset >= 0 ? '+' : '-') . gmdate('H:i:s', abs($app_offset)); ?>)
-                            <?php endif; ?>
+                        <span style="font-size: 14px; font-family: monospace; color: var(--text-dim);">
+                            <?php echo htmlspecialchars($configured_tz); ?>
                         </span>
                     </div>
                 </div>
-
-                <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">
-                    <!-- NTP Sync -->
-                    <button type="button" id="btn-ntp-sync" class="btn btn-primary" onclick="awNtpSync()">
-                        <i class="fas fa-sync-alt"></i> Sync with Time Server
-                    </button>
-
-                    <!-- Manual Time Set -->
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <input type="datetime-local" id="manual-datetime" class="form-input"
-                               style="width: auto; min-width: 220px;"
-                               value="<?php echo date('Y-m-d\TH:i', $app_now); ?>">
-                        <button type="button" id="btn-set-time" class="btn btn-secondary" onclick="awSetManualTime()">
-                            <i class="fas fa-pen"></i> Set Time
-                        </button>
-                    </div>
-
-                    <!-- Reset Offset -->
-                    <?php if ($app_offset !== 0): ?>
-                    <button type="button" id="btn-reset-offset" class="btn btn-outline" onclick="awResetTimeOffset()" style="border-color: var(--border);">
-                        <i class="fas fa-undo"></i> Reset Offset
-                    </button>
-                    <?php endif; ?>
-                </div>
-
-                <div id="time-sync-result" style="margin-top: 12px; display: none; padding: 12px; border-radius: 8px; font-size: 13px;"></div>
 
                 <script>
                 (function() {
-                    var csrfInput = document.querySelector('input[name="csrf_token"]');
-                    var csrfToken = csrfInput ? csrfInput.value : '';
-                    var offsetSeconds = <?php echo $app_offset; ?>;
-
-                    // Server-anchored clock using the IANA timezone name so the
-                    // display always matches the configured timezone, regardless
-                    // of the browser's local timezone or date('Z') edge cases.
-                    var serverTimestamp = <?php echo time(); ?>;
                     var appTimezone = '<?php echo htmlspecialchars($configured_tz, ENT_QUOTES); ?>';
+                    var serverTimestamp = <?php echo time(); ?>;
                     var pageLoadClient = Date.now();
-
-                    function formatUtcDate(d) {
-                        var y  = d.getUTCFullYear();
-                        var mo = String(d.getUTCMonth() + 1).padStart(2, '0');
-                        var dy = String(d.getUTCDate()).padStart(2, '0');
-                        var h  = String(d.getUTCHours()).padStart(2, '0');
-                        var mi = String(d.getUTCMinutes()).padStart(2, '0');
-                        var s  = String(d.getUTCSeconds()).padStart(2, '0');
-                        return y + '-' + mo + '-' + dy + ' ' + h + ':' + mi + ':' + s;
-                    }
 
                     function formatInTimezone(d, tz) {
                         try {
-                            // Use sv-SE locale for YYYY-MM-DD HH:MM:SS format
                             return d.toLocaleString('sv-SE', {
                                 timeZone: tz,
                                 year: 'numeric', month: '2-digit', day: '2-digit',
@@ -483,117 +403,26 @@ foreach ($url_keys as $uk) {
                                 hour12: false
                             }).replace(/,\s*/g, ' ');
                         } catch (e) {
-                            // Fallback: use the old UTC-offset approach
-                            return formatUtcDate(d);
+                            var y  = d.getUTCFullYear();
+                            var mo = String(d.getUTCMonth() + 1).padStart(2, '0');
+                            var dy = String(d.getUTCDate()).padStart(2, '0');
+                            var h  = String(d.getUTCHours()).padStart(2, '0');
+                            var mi = String(d.getUTCMinutes()).padStart(2, '0');
+                            var s  = String(d.getUTCSeconds()).padStart(2, '0');
+                            return y + '-' + mo + '-' + dy + ' ' + h + ':' + mi + ':' + s;
                         }
                     }
 
-                    // Live clock tick
                     function tickClock() {
                         var elapsedMs = Date.now() - pageLoadClient;
-
-                        // Application time: server epoch + app offset, displayed
-                        // in the configured IANA timezone via toLocaleString.
-                        var appMs = (serverTimestamp + offsetSeconds) * 1000 + elapsedMs;
+                        var appMs = serverTimestamp * 1000 + elapsedMs;
                         var appEl = document.getElementById('app-clock');
                         if (appEl) {
                             appEl.textContent = formatInTimezone(new Date(appMs), appTimezone);
                         }
-
-                        // System clock: server epoch + elapsed, displayed in UTC
-                        var sysMs = serverTimestamp * 1000 + elapsedMs;
-                        var sysEl = document.getElementById('sys-clock');
-                        if (sysEl) {
-                            sysEl.textContent = formatUtcDate(new Date(sysMs));
-                        }
                     }
                     tickClock();
                     setInterval(tickClock, 1000);
-
-                    function showResult(msg, ok) {
-                        var el = document.getElementById('time-sync-result');
-                        el.style.display = 'block';
-                        el.style.background = ok ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)';
-                        el.style.color = ok ? '#10B981' : '#EF4444';
-                        el.textContent = msg;
-                    }
-
-                    window.awNtpSync = function() {
-                        var btn = document.getElementById('btn-ntp-sync');
-                        btn.disabled = true;
-                        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Syncing…';
-                        fetch('process_settings.php', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                            body: 'action=ntp_sync&csrf_token=' + encodeURIComponent(csrfToken)
-                        })
-                        .then(function(r) { return r.json(); })
-                        .then(function(data) {
-                            btn.disabled = false;
-                            btn.innerHTML = '<i class="fas fa-sync-alt"></i> Sync with Time Server';
-                            if (data.success) {
-                                offsetSeconds = data.offset;
-                                showResult('Synced. Offset: ' + data.offset + 's (Source: ' + data.source + ')', true);
-                                tickClock();
-                                setTimeout(function() { location.reload(); }, 2000);
-                            } else {
-                                showResult(data.message, false);
-                            }
-                        })
-                        .catch(function(e) {
-                            btn.disabled = false;
-                            btn.innerHTML = '<i class="fas fa-sync-alt"></i> Sync with Time Server';
-                            showResult('Network error: ' + e.message, false);
-                        });
-                    };
-
-                    window.awSetManualTime = function() {
-                        var dt = document.getElementById('manual-datetime').value;
-                        if (!dt) { showResult('Please enter a date and time.', false); return; }
-                        var btn = document.getElementById('btn-set-time');
-                        btn.disabled = true;
-                        fetch('process_settings.php', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                            body: 'action=set_manual_time&csrf_token=' + encodeURIComponent(csrfToken) + '&manual_datetime=' + encodeURIComponent(dt)
-                        })
-                        .then(function(r) { return r.json(); })
-                        .then(function(data) {
-                            btn.disabled = false;
-                            if (data.success) {
-                                offsetSeconds = data.offset;
-                                showResult(data.message, true);
-                                tickClock();
-                                setTimeout(function() { location.reload(); }, 2000);
-                            } else {
-                                showResult(data.message, false);
-                            }
-                        })
-                        .catch(function(e) {
-                            btn.disabled = false;
-                            showResult('Network error: ' + e.message, false);
-                        });
-                    };
-
-                    window.awResetTimeOffset = function() {
-                        fetch('process_settings.php', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                            body: 'action=reset_time_offset&csrf_token=' + encodeURIComponent(csrfToken)
-                        })
-                        .then(function(r) { return r.json(); })
-                        .then(function(data) {
-                            if (data.success) {
-                                offsetSeconds = 0;
-                                showResult(data.message, true);
-                                tickClock();
-                                setTimeout(function() { location.reload(); }, 1500);
-                            } else {
-                                showResult(data.message, false);
-                            }
-                        })
-                        .catch(function(e) { showResult(e.message, false); });
-                    };
                 })();
                 </script>
             </div>

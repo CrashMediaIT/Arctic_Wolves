@@ -53,27 +53,10 @@ $_gs = function($key, $default = '') use ($_gs_settings) {
                 </div>
 
                 <div class="form-group">
-                    <label>Timezone *</label>
-                    <select name="timezone" class="form-input" required>
-                        <?php
-                        $tzOptions = [
-                            'America/St_Johns' => 'Newfoundland (NST)',
-                            'America/Halifax' => 'Atlantic (AST)',
-                            'America/Toronto' => 'Eastern – Toronto (EST)',
-                            'America/New_York' => 'Eastern – New York (EST)',
-                            'America/Chicago' => 'Central (CST)',
-                            'America/Denver' => 'Mountain (MST)',
-                            'America/Los_Angeles' => 'Pacific (PST)',
-                        ];
-                        $curTz = $_gs('timezone', 'America/New_York');
-                        if (!empty($curTz) && !isset($tzOptions[$curTz])) {
-                            $tzOptions[$curTz] = $curTz;
-                        }
-                        foreach ($tzOptions as $tzVal => $tzLabel):
-                        ?>
-                        <option value="<?= htmlspecialchars($tzVal) ?>" <?= $curTz === $tzVal ? 'selected' : '' ?>><?= htmlspecialchars($tzLabel) ?></option>
-                        <?php endforeach; ?>
-                    </select>
+                    <label>Timezone</label>
+                    <span class="form-input" style="background: var(--bg-secondary); cursor: default;">
+                        <?= htmlspecialchars(date_default_timezone_get()) ?> (from Docker ENV)
+                    </span>
                 </div>
 
                 <div class="form-row">
