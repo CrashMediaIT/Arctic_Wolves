@@ -285,8 +285,9 @@ if (function_exists('decryptUserRows')) {
             </div>
         </div>
         <div class="personal-drill-card-actions">
-            <button type="button" onclick="editPersonalDrill(<?= (int)$pd['id'] ?>, <?= htmlspecialchars(json_encode($pd['title']), ENT_QUOTES, 'UTF-8') ?>, <?= htmlspecialchars(json_encode($pd['description'] ?? ''), ENT_QUOTES, 'UTF-8') ?>, <?= htmlspecialchars(json_encode($pdPosition), ENT_QUOTES, 'UTF-8') ?>)"><i class="fas fa-edit"></i> Edit</button>
-            <button type="button" class="btn-delete-drill" onclick="deletePersonalDrill(<?= (int)$pd['id'] ?>, <?= htmlspecialchars(json_encode($pd['title']), ENT_QUOTES, 'UTF-8') ?>)"><i class="fas fa-trash"></i> Delete</button>
+            <?php $jsonFlags = JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT; ?>
+            <button type="button" onclick="editPersonalDrill(<?= (int)$pd['id'] ?>, <?= json_encode($pd['title'], $jsonFlags) ?>, <?= json_encode($pd['description'] ?? '', $jsonFlags) ?>, <?= json_encode($pdPosition, $jsonFlags) ?>)"><i class="fas fa-edit"></i> Edit</button>
+            <button type="button" class="btn-delete-drill" onclick="deletePersonalDrill(<?= (int)$pd['id'] ?>, <?= json_encode($pd['title'], $jsonFlags) ?>)"><i class="fas fa-trash"></i> Delete</button>
         </div>
     </div>
     <?php endforeach; ?>

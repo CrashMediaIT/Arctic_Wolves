@@ -417,11 +417,13 @@ test.describe('Personal Drill Edit and Delete', () => {
     expect(labelContent).toContain('position-badge-icon');
   });
 
-  test('edit button uses json_encode for safe JS output', () => {
+  test('edit button uses json_encode with safe HTML flags for JS output', () => {
     const content = readFile('views/drills_personal.php');
-    expect(content).toContain("json_encode($pd['title'])");
+    expect(content).toContain('JSON_HEX_TAG');
+    expect(content).toContain('JSON_HEX_AMP');
+    expect(content).toContain("json_encode($pd['title']");
     expect(content).toContain("json_encode($pd['description']");
-    expect(content).toContain("json_encode($pdPosition)");
+    expect(content).toContain("json_encode($pdPosition");
   });
 
   test('edit stays on personal drills page not ice canvas', () => {

@@ -491,18 +491,14 @@ function handleUpdatePersonalDrill($pdo, $user_id, $input) {
         }
     }
 
-    try {
-        if ($video_upload_path) {
-            $stmt = $pdo->prepare("UPDATE personal_drills SET title = ?, description = ?, position = ?, video_upload_path = ?, thumbnail_path = ? WHERE id = ?");
-            $stmt->execute([$title, $description ?: null, $position, $video_upload_path, $thumbnail_path, $drill_id]);
-        } else {
-            $stmt = $pdo->prepare("UPDATE personal_drills SET title = ?, description = ?, position = ? WHERE id = ?");
-            $stmt->execute([$title, $description ?: null, $position, $drill_id]);
-        }
-        echo json_encode(['success' => true]);
-    } catch (Exception $e) {
-        throw $e;
+    if ($video_upload_path) {
+        $stmt = $pdo->prepare("UPDATE personal_drills SET title = ?, description = ?, position = ?, video_upload_path = ?, thumbnail_path = ? WHERE id = ?");
+        $stmt->execute([$title, $description ?: null, $position, $video_upload_path, $thumbnail_path, $drill_id]);
+    } else {
+        $stmt = $pdo->prepare("UPDATE personal_drills SET title = ?, description = ?, position = ? WHERE id = ?");
+        $stmt->execute([$title, $description ?: null, $position, $drill_id]);
     }
+    echo json_encode(['success' => true]);
 }
 
 /**
