@@ -169,13 +169,43 @@ if ($db_config_valid) {
 // Cache the valid timezone list once (avoids repeated calls to timezone_identifiers_list()).
 $_aw_valid_tz = timezone_identifiers_list();
 
-// Resolve a fallback timezone from the TZ env var or default to America/New_York.
+// Resolve a fallback timezone when the database has no value.
+// PHP-FPM often runs with clear_env=yes (the default), which strips
+// environment variables from worker processes.  We therefore check
+// multiple sources in priority order:
+//   1. getenv('TZ')          – works when clear_env=no or CLI
+//   2. $_ENV['TZ']           – populated by some SAPI configurations
+//   3. $_SERVER['TZ']        – populated by some web-server pass-through
+//   4. ini_get('date.timezone') – from php.ini / php-config.ini
+//   5. /etc/timezone file    – written by Docker s6-overlay / container init
+//   6. Hardcoded default     – America/New_York
 if (!function_exists('_awFallbackTimezone')) {
     function _awFallbackTimezone(array $valid) {
+        // 1. Standard getenv
         $env_tz = getenv('TZ');
         if (!empty($env_tz) && in_array($env_tz, $valid)) {
             return $env_tz;
         }
+        // 2-3. Superglobal arrays (useful when PHP-FPM clear_env strips getenv)
+        foreach (['_ENV', '_SERVER'] as $sg) {
+            $val = $GLOBALS[$sg]['TZ'] ?? '';
+            if (!empty($val) && in_array($val, $valid)) {
+                return $val;
+            }
+        }
+        // 4. php.ini date.timezone directive
+        $ini_tz = ini_get('date.timezone');
+        if (!empty($ini_tz) && in_array($ini_tz, $valid)) {
+            return $ini_tz;
+        }
+        // 5. /etc/timezone file (written by Docker container init, e.g. s6-overlay)
+        if (is_readable('/etc/timezone')) {
+            $file_tz = trim(@file_get_contents('/etc/timezone'));
+            if (!empty($file_tz) && in_array($file_tz, $valid)) {
+                return $file_tz;
+            }
+        }
+        // 6. Hardcoded default
         return 'America/New_York';
     }
 }

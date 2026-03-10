@@ -40,8 +40,7 @@ try {
             $date_format = trim($_POST['date_format'] ?? 'MM/DD/YYYY');
             
             // Validate timezone against supported list
-            $valid_timezones = ['America/St_Johns','America/Halifax','America/New_York','America/Chicago','America/Denver','America/Los_Angeles'];
-            if (!in_array($timezone, $valid_timezones)) {
+            if (!in_array($timezone, timezone_identifiers_list())) {
                 $timezone = 'America/New_York';
             }
             
@@ -579,8 +578,7 @@ try {
             }
             
             // Validate timezone
-            $valid_timezones = ['America/St_Johns','America/Halifax','America/New_York','America/Chicago','America/Denver','America/Los_Angeles'];
-            if (!in_array($timezone, $valid_timezones)) {
+            if (!in_array($timezone, timezone_identifiers_list())) {
                 $timezone = 'America/New_York';
             }
             

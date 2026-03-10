@@ -244,12 +244,16 @@ try {
                     $tzOptions = [
                         'America/St_Johns' => 'Newfoundland (NST)',
                         'America/Halifax' => 'Atlantic (AST)',
-                        'America/New_York' => 'Eastern (EST)',
+                        'America/Toronto' => 'Eastern – Toronto (EST)',
+                        'America/New_York' => 'Eastern – New York (EST)',
                         'America/Chicago' => 'Central (CST)',
                         'America/Denver' => 'Mountain (MST)',
                         'America/Los_Angeles' => 'Pacific (PST)',
                     ];
                     $curTz = $currentSettings['timezone'] ?? 'America/New_York';
+                    if (!empty($curTz) && !isset($tzOptions[$curTz])) {
+                        $tzOptions[$curTz] = $curTz;
+                    }
                     foreach ($tzOptions as $tzVal => $tzLabel):
                     ?>
                     <option value="<?= htmlspecialchars($tzVal) ?>" <?= $curTz === $tzVal ? 'selected' : '' ?>><?= htmlspecialchars($tzLabel) ?></option>

@@ -313,7 +313,7 @@ test.describe('Time synchronisation handlers in process_settings.php', () => {
     const generalIdx = c.indexOf("case 'update_general':");
     expect(generalIdx).toBeGreaterThan(-1);
     const handler = c.substring(generalIdx, generalIdx + 800);
-    expect(handler).toContain('$valid_timezones');
+    expect(handler).toContain('timezone_identifiers_list()');
   });
 });
 

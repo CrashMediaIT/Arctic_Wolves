@@ -297,12 +297,18 @@ foreach ($url_keys as $uk) {
                                 $timezones = [
                                     'America/St_Johns' => 'Newfoundland (NST)',
                                     'America/Halifax' => 'Atlantic (AST)',
-                                    'America/New_York' => 'Eastern (EST)',
+                                    'America/Toronto' => 'Eastern – Toronto (EST)',
+                                    'America/New_York' => 'Eastern – New York (EST)',
                                     'America/Chicago' => 'Central (CST)',
                                     'America/Denver' => 'Mountain (MST)',
                                     'America/Los_Angeles' => 'Pacific (PST)'
                                 ];
                                 $selected_tz = $settings['timezone'] ?? 'America/New_York';
+                                // Ensure the current DB/system timezone appears even
+                                // if it is not in the preset list above.
+                                if (!empty($selected_tz) && !isset($timezones[$selected_tz])) {
+                                    $timezones[$selected_tz] = $selected_tz;
+                                }
                                 foreach ($timezones as $tz_val => $tz_label):
                                 ?>
                                 <option value="<?php echo $tz_val; ?>" <?php echo $selected_tz === $tz_val ? 'selected' : ''; ?>><?php echo $tz_label; ?></option>
