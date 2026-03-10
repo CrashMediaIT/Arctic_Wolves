@@ -948,7 +948,9 @@ class GitHubUpdater {
                     $results[] = "Ensured column: " . $mig[1];
                 } catch (\PDOException $e) {
                     // Ignore "Duplicate column" errors — column already exists
-                    if ($e->getCode() !== '42S21' && strpos($e->getMessage(), 'Duplicate column') === false) {
+                    // Ignore "Table doesn't exist" errors — table will be created on next full schema load
+                    if ($e->getCode() !== '42S21' && strpos($e->getMessage(), 'Duplicate column') === false
+                        && $e->getCode() !== '42S02' && strpos($e->getMessage(), "doesn't exist") === false && strpos($e->getMessage(), 'does not exist') === false) {
                         $errors[] = "Could not add " . $mig[1] . ": " . $e->getMessage();
                     }
                 }
