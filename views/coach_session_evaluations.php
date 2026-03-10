@@ -139,8 +139,8 @@ $activeView = $_GET['view'] ?? 'list';
     </div>
 
     <!-- Calendar View -->
-    <div id="calendar-view" class="view-container">
-        <div class="content-card">
+    <div id="calendar-view" class="view-container <?= $activeView === 'calendar' ? 'active' : '' ?>">
+        <div class="card">
             <div class="card-header">
                 <h3><i class="fas fa-calendar"></i> Calendar View</h3>
                 <div class="calendar-nav">
@@ -978,11 +978,16 @@ document.querySelectorAll('.athlete-tab').forEach(tab => {
 });
 
 // Calendar data
-const calendarSessions = <?= json_encode(array_values($calendar_sessions)) ?>;
+const calendarSessions = <?= json_encode(array_values($calendar_sessions), JSON_HEX_TAG) ?>;
 let currentDate = new Date();
 
 function initCalendar() {
     renderCalendar();
+}
+
+// Initialize calendar on page load if calendar view is active
+if (document.getElementById('calendar-view')?.classList.contains('active')) {
+    initCalendar();
 }
 
 function changeMonth(delta) {
@@ -1004,7 +1009,15 @@ function renderCalendar() {
     
     let html = '';
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+    
+    // Index sessions by date for fast lookup
+    const sessionsByDate = {};
+    calendarSessions.forEach(s => {
+        const d = (s.session_date || '').substring(0, 10);
+        if (!sessionsByDate[d]) sessionsByDate[d] = [];
+        sessionsByDate[d].push(s);
+    });
     
     // Previous month days
     const prevMonth = new Date(year, month, 0);
@@ -1017,15 +1030,9 @@ function renderCalendar() {
     
     // Current month days
     for (let day = 1; day <= daysInMonth; day++) {
-        const date = new Date(year, month, day);
-        const isToday = date.getTime() === today.getTime();
-        const dateStr = date.toISOString().split('T')[0];
-        
-        // Find sessions for this day
-        const daySessions = calendarSessions.filter(s => {
-            const sessionDate = new Date(s.session_date).toISOString().split('T')[0];
-            return sessionDate === dateStr;
-        });
+        const dateStr = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+        const isToday = dateStr === todayStr;
+        const daySessions = sessionsByDate[dateStr] || [];
         
         html += `<div class="calendar-day ${isToday ? 'today' : ''}">
             <span class="calendar-day-number">${day}</span>`;
