@@ -1123,7 +1123,7 @@ test.describe('NGINX scoreboard subdomain server block', () => {
 test.describe('Scrollable layout and dynamic sizing', () => {
   test('CSS body.sb-body is not a competing scroll container', () => {
     const content = readFile('css/scoreboard.css');
-    expect(content).toMatch(/body\.sb-body\s*\{[^}]*overflow:\s*visible/s);
+    expect(content).toMatch(/body\.sb-body\s*\{[^}]*overflow:\s*visible\s*!important/s);
     expect(content).not.toMatch(/body\.sb-body\s*\{[^}]*overflow:\s*hidden/);
   });
 
@@ -1172,6 +1172,7 @@ test.describe('Scrollable layout and dynamic sizing', () => {
   test('CSS html override prevents dual scroll container conflict with style-guide.css', () => {
     const content = readFile('css/scoreboard.css');
     expect(content).toContain('html:has(body.sb-body)');
+    expect(content).toContain('html.sb-html');
     expect(content).toContain('overflow-x: hidden !important');
     expect(content).toContain('overflow-y: scroll');
   });
@@ -1192,7 +1193,7 @@ test.describe('Scrollable layout and dynamic sizing', () => {
 
   test('settings view uses overflow visible to let html handle scrolling', () => {
     const content = readFile('views/scoreboard/scoreboard_settings.php');
-    expect(content).toMatch(/\.sb-settings\s*\{[^}]*overflow:\s*visible/s);
+    expect(content).toMatch(/\.sb-settings\s*\{[^}]*overflow:\s*visible\s*!important/s);
   });
 
   test('settings view does not create competing scroll container', () => {
@@ -1211,7 +1212,7 @@ test.describe('Scrollable layout and dynamic sizing', () => {
       content.indexOf('.sb-scoresheet {'),
       content.indexOf('.sb-scoresheet {') + 300
     );
-    expect(sheetSection).toContain('overflow: visible');
+    expect(sheetSection).toContain('overflow: visible !important');
   });
 
   test('display view sb-main div is properly closed', () => {
@@ -1269,6 +1270,80 @@ test.describe('Scrollable layout and dynamic sizing', () => {
     expect(idx480).toBeGreaterThan(-1);
     const section480 = content.substring(idx480, idx480 + 500);
     expect(section480).toContain('.sb-topbar-actions .sb-btn span { display: none; }');
+  });
+
+  test('JS adds sb-html class to html element as :has() fallback', () => {
+    const content = readFile('scoreboard.php');
+    expect(content).toContain("document.documentElement.classList.add('sb-html')");
+  });
+
+  test('CSS html.sb-html fallback selector matches html:has selector', () => {
+    const content = readFile('css/scoreboard.css');
+    // Both selectors must be present in the same rule block
+    expect(content).toContain('html:has(body.sb-body)');
+    expect(content).toContain('html.sb-html');
+    // The fallback should be right after the :has() selector
+    expect(content).toMatch(/html:has\(body\.sb-body\),\s*\nhtml\.sb-html\s*\{/);
+  });
+
+  test('CSS body.sb-body uses !important on overflow to prevent cascade issues', () => {
+    const content = readFile('css/scoreboard.css');
+    expect(content).toMatch(/body\.sb-body\s*\{[^}]*overflow:\s*visible\s*!important/s);
+  });
+
+  test('CSS body.sb-body has height auto to allow content expansion', () => {
+    const content = readFile('css/scoreboard.css');
+    expect(content).toMatch(/body\.sb-body\s*\{[^}]*height:\s*auto\s*!important/s);
+  });
+
+  test('CSS html scroll container has explicit height auto', () => {
+    const content = readFile('css/scoreboard.css');
+    const htmlRule = content.substring(
+      content.indexOf('html:has(body.sb-body)'),
+      content.indexOf('html:has(body.sb-body)') + 300
+    );
+    expect(htmlRule).toContain('height: auto !important');
+  });
+
+  test('CSS sb-main has overflow visible to prevent content clipping', () => {
+    const content = readFile('css/scoreboard.css');
+    const mainSection = content.substring(
+      content.indexOf('.sb-main {'),
+      content.indexOf('.sb-main {') + 300
+    );
+    expect(mainSection).toContain('overflow: visible');
+  });
+
+  test('display view controls grid has overflow visible', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    const gridSection = content.substring(
+      content.indexOf('.sb-controls-grid'),
+      content.indexOf('.sb-controls-grid') + 300
+    );
+    expect(gridSection).toContain('overflow: visible');
+  });
+
+  test('CSS body.sb-body has webkit overflow scrolling for iOS momentum', () => {
+    const content = readFile('css/scoreboard.css');
+    expect(content).toMatch(/body\.sb-body\s*\{[^}]*-webkit-overflow-scrolling:\s*touch/s);
+  });
+
+  test('settings view overflow uses !important', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    const settingsRule = content.substring(
+      content.indexOf('.sb-settings {'),
+      content.indexOf('.sb-settings {') + 500
+    );
+    expect(settingsRule).toContain('overflow: visible !important');
+  });
+
+  test('scoresheet overflow uses !important', () => {
+    const content = readFile('css/scoreboard.css');
+    const sheetSection = content.substring(
+      content.indexOf('.sb-scoresheet {'),
+      content.indexOf('.sb-scoresheet {') + 300
+    );
+    expect(sheetSection).toContain('overflow: visible !important');
   });
 });
 

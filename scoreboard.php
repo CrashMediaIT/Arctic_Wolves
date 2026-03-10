@@ -388,6 +388,7 @@ if ($active_game) {
     <link rel="stylesheet" href="css/scoreboard.css">
 </head>
 <body class="sb-body">
+<script>document.documentElement.classList.add('sb-html');</script>
 
 <?php if ($view === 'video_board'): ?>
 <!-- ══════════════════════════════════════════════════════════
