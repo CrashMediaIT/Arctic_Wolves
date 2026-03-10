@@ -128,10 +128,10 @@ try {
             <?php endif; ?>
             <form id="sbBuzzerUploadForm" onsubmit="return sbUploadBuzzerSound(event)">
                 <div class="sb-settings-field">
-                    <label>Upload Sound File</label>
-                    <input type="file" id="sbBuzzerFile" name="buzzer_file" accept="audio/mpeg,audio/wav,audio/ogg,audio/mp3,.mp3,.wav,.ogg">
+                    <label>Upload Sound Files (select multiple)</label>
+                    <input type="file" id="sbBuzzerFile" name="buzzer_file" accept="audio/mpeg,audio/wav,audio/ogg,audio/mp3,.mp3,.wav,.ogg" multiple>
                 </div>
-                <button type="submit" class="sb-btn sb-btn-primary"><i class="fas fa-upload"></i> Upload Buzzer Sound</button>
+                <button type="submit" class="sb-btn sb-btn-primary"><i class="fas fa-upload"></i> Upload Buzzer Sound(s)</button>
             </form>
         </div>
 
@@ -161,10 +161,10 @@ try {
             <?php endif; ?>
             <form id="sbHornUploadForm" onsubmit="return sbUploadHornSound(event)">
                 <div class="sb-settings-field">
-                    <label>Upload Horn Sound File</label>
-                    <input type="file" id="sbHornFile" name="horn_file" accept="audio/mpeg,audio/wav,audio/ogg,audio/mp3,.mp3,.wav,.ogg">
+                    <label>Upload Horn Sound Files (select multiple)</label>
+                    <input type="file" id="sbHornFile" name="horn_file" accept="audio/mpeg,audio/wav,audio/ogg,audio/mp3,.mp3,.wav,.ogg" multiple>
                 </div>
-                <button type="submit" class="sb-btn sb-btn-primary"><i class="fas fa-upload"></i> Upload Horn Sound</button>
+                <button type="submit" class="sb-btn sb-btn-primary"><i class="fas fa-upload"></i> Upload Horn Sound(s)</button>
             </form>
         </div>
 
@@ -231,6 +231,9 @@ try {
                 <div class="sb-settings-logo-card">
                     <img src="<?= htmlspecialchars($tl['logo_url']) ?>" alt="<?= htmlspecialchars($tl['team_name']) ?>">
                     <span><?= htmlspecialchars($tl['team_name']) ?></span>
+                    <button type="button" class="sb-settings-logo-delete" data-team-id="<?= (int)$tl['id'] ?>" data-team-name="<?= htmlspecialchars($tl['team_name'], ENT_QUOTES) ?>" onclick="sbDeleteTeamLogo(this.dataset.teamId, this.dataset.teamName)" title="Remove logo">
+                        <i class="fas fa-trash"></i>
+                    </button>
                 </div>
                 <?php endforeach; ?>
             </div>
@@ -309,10 +312,52 @@ try {
 .sb-settings-field select:focus {
     outline: none;
     border-color: #6B46C1;
+    box-shadow: 0 0 0 3px rgba(107, 70, 193, 0.3);
 }
 .sb-settings-field input[type="file"] {
     padding: 8px;
     font-size: 13px;
+}
+/* ── Settings Buttons (match display controls) ───────── */
+.sb-settings .sb-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    border-radius: 8px;
+    border: 1px solid #2D2D3F;
+    background: #1A1A24;
+    color: #C4C4D4;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    text-decoration: none;
+}
+.sb-settings .sb-btn:hover {
+    background: #222233;
+    border-color: #6B46C1;
+    color: #E2E8F0;
+}
+.sb-settings .sb-btn:active { transform: scale(0.97); }
+.sb-settings .sb-btn-primary {
+    background: #6B46C1;
+    border-color: #6B46C1;
+    color: #fff;
+}
+.sb-settings .sb-btn-primary:hover {
+    background: #7C5DD4;
+    border-color: #7C5DD4;
+}
+.sb-settings .sb-btn-danger {
+    background: rgba(220, 38, 38, 0.1);
+    border-color: #DC2626;
+    color: #DC2626;
+}
+.sb-settings .sb-btn-danger:hover {
+    background: rgba(220, 38, 38, 0.25);
 }
 .sb-settings-current {
     display: flex;
@@ -362,6 +407,7 @@ try {
     border: 1px solid #2D2D3F;
     border-radius: 8px;
     text-align: center;
+    position: relative;
 }
 .sb-settings-logo-card img {
     width: 64px;
@@ -373,6 +419,28 @@ try {
     font-size: 11px;
     color: #A8A8B8;
     font-weight: 600;
+}
+.sb-settings-logo-delete {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 1px solid #DC2626;
+    background: rgba(220, 38, 38, 0.15);
+    color: #DC2626;
+    font-size: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+.sb-settings-logo-card:hover .sb-settings-logo-delete { opacity: 1; }
+.sb-settings-logo-delete:hover {
+    background: rgba(220, 38, 38, 0.35);
 }
 .sb-settings-library {
     margin-bottom: 14px;
@@ -425,6 +493,7 @@ function sbSaveSettings(e, section) {
         body: (function() {
             var params = new URLSearchParams();
             params.append('action', 'save_settings');
+            params.append('csrf_token', CSRF_TOKEN);
             params.append('section', section);
             for (var pair of fd.entries()) {
                 params.append(pair[0], pair[1]);
@@ -445,11 +514,14 @@ function sbSaveSettings(e, section) {
 function sbUploadBuzzerSound(e) {
     e.preventDefault();
     var fileInput = document.getElementById('sbBuzzerFile');
-    if (!fileInput.files.length) { alert('Please select a sound file.'); return false; }
+    if (!fileInput.files.length) { alert('Please select one or more sound files.'); return false; }
 
     var fd = new FormData();
     fd.append('action', 'upload_buzzer');
-    fd.append('buzzer_file', fileInput.files[0]);
+    fd.append('csrf_token', CSRF_TOKEN);
+    for (var i = 0; i < fileInput.files.length; i++) {
+        fd.append('buzzer_file[]', fileInput.files[i]);
+    }
 
     fetch('process_scoreboard.php', {
         method: 'POST',
@@ -461,7 +533,8 @@ function sbUploadBuzzerSound(e) {
     }).then(function(r) { return r.json(); })
     .then(function(d) {
         if (d.success) {
-            alert('Buzzer sound uploaded!');
+            var msg = (d.count && d.count > 1) ? d.count + ' buzzer sounds uploaded!' : 'Buzzer sound uploaded!';
+            alert(msg);
             window.location.reload();
         } else {
             alert(d.message || 'Upload failed');
@@ -479,7 +552,7 @@ function sbRemoveBuzzerSound() {
             'X-CSRF-Token': CSRF_TOKEN,
             'Content-Type': 'application/x-www-form-urlencoded'
         },
-        body: 'action=remove_buzzer'
+        body: 'action=remove_buzzer&csrf_token=' + encodeURIComponent(CSRF_TOKEN)
     }).then(function(r) { return r.json(); })
     .then(function(d) {
         if (d.success) window.location.reload();
@@ -489,11 +562,14 @@ function sbRemoveBuzzerSound() {
 function sbUploadHornSound(e) {
     e.preventDefault();
     var fileInput = document.getElementById('sbHornFile');
-    if (!fileInput.files.length) { alert('Please select a horn sound file.'); return false; }
+    if (!fileInput.files.length) { alert('Please select one or more horn sound files.'); return false; }
 
     var fd = new FormData();
     fd.append('action', 'upload_horn');
-    fd.append('horn_file', fileInput.files[0]);
+    fd.append('csrf_token', CSRF_TOKEN);
+    for (var i = 0; i < fileInput.files.length; i++) {
+        fd.append('horn_file[]', fileInput.files[i]);
+    }
 
     fetch('process_scoreboard.php', {
         method: 'POST',
@@ -505,7 +581,8 @@ function sbUploadHornSound(e) {
     }).then(function(r) { return r.json(); })
     .then(function(d) {
         if (d.success) {
-            alert('Goal horn sound uploaded!');
+            var msg = (d.count && d.count > 1) ? d.count + ' goal horn sounds uploaded!' : 'Goal horn sound uploaded!';
+            alert(msg);
             window.location.reload();
         } else {
             alert(d.message || 'Upload failed');
@@ -523,7 +600,7 @@ function sbRemoveHornSound() {
             'X-CSRF-Token': CSRF_TOKEN,
             'Content-Type': 'application/x-www-form-urlencoded'
         },
-        body: 'action=remove_horn'
+        body: 'action=remove_horn&csrf_token=' + encodeURIComponent(CSRF_TOKEN)
     }).then(function(r) { return r.json(); })
     .then(function(d) {
         if (d.success) window.location.reload();
@@ -539,7 +616,7 @@ function sbSelectLibraryItem(type, url) {
             'X-CSRF-Token': CSRF_TOKEN,
             'Content-Type': 'application/x-www-form-urlencoded'
         },
-        body: 'action=' + encodeURIComponent(action) + '&url=' + encodeURIComponent(url)
+        body: 'action=' + encodeURIComponent(action) + '&url=' + encodeURIComponent(url) + '&csrf_token=' + encodeURIComponent(CSRF_TOKEN)
     }).then(function(r) { return r.json(); })
     .then(function(d) {
         if (d.success) window.location.reload();
@@ -557,7 +634,7 @@ function sbRemoveLibraryItem(type, url) {
             'X-CSRF-Token': CSRF_TOKEN,
             'Content-Type': 'application/x-www-form-urlencoded'
         },
-        body: 'action=' + encodeURIComponent(action) + '&url=' + encodeURIComponent(url)
+        body: 'action=' + encodeURIComponent(action) + '&url=' + encodeURIComponent(url) + '&csrf_token=' + encodeURIComponent(CSRF_TOKEN)
     }).then(function(r) { return r.json(); })
     .then(function(d) {
         if (d.success) window.location.reload();
@@ -572,6 +649,7 @@ function sbUploadTeamLogo(e) {
 
     var fd = new FormData();
     fd.append('action', 'upload_team_logo');
+    fd.append('csrf_token', CSRF_TOKEN);
     fd.append('logo_file', fileInput.files[0]);
     fd.append('team_id', document.getElementById('sbLogoTeamSelect').value);
     var newName = document.querySelector('[name="new_team_name"]');
@@ -617,4 +695,24 @@ function sbAddSpeakerRow() {
 document.getElementById('sbLogoTeamSelect').addEventListener('change', function() {
     document.getElementById('sbLogoNewTeamFields').style.display = this.value === 'new' ? '' : 'none';
 });
+
+function sbDeleteTeamLogo(teamId, teamName) {
+    if (!confirm('Remove the logo for ' + teamName + '?')) return;
+    fetch('process_scoreboard.php', {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-Token': CSRF_TOKEN,
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: 'action=delete_team_logo&team_id=' + encodeURIComponent(teamId) + '&csrf_token=' + encodeURIComponent(CSRF_TOKEN)
+    }).then(function(r) { return r.json(); })
+    .then(function(d) {
+        if (d.success) {
+            window.location.reload();
+        } else {
+            alert(d.message || 'Failed to remove logo');
+        }
+    });
+}
 </script>

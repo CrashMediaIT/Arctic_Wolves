@@ -178,12 +178,47 @@ function sbTickPenaltyTimers() {
             }
         }
     });
+    // Also tick individual penalty item clocks in operator controls
+    sbTickPenaltyItemClocks();
+}
+
+// ── Individual Penalty Item Clocks (in operator control list) ──
+var sbPenaltyItemClocks = [];
+
+function sbInitPenaltyItemClocks() {
+    sbPenaltyItemClocks = [];
+    var clocks = document.querySelectorAll('[data-penalty-clock]');
+    clocks.forEach(function(el) {
+        var secs = parseInt(el.getAttribute('data-penalty-seconds'), 10);
+        if (isNaN(secs) || secs < 0) secs = 0;
+        if (secs === 0) {
+            el.textContent = '0:00';
+            el.classList.add('expired');
+        }
+        sbPenaltyItemClocks.push({ seconds: secs, element: el });
+    });
+}
+
+function sbTickPenaltyItemClocks() {
+    sbPenaltyItemClocks.forEach(function(clock) {
+        if (clock.seconds > 0) {
+            clock.seconds--;
+            clock.element.textContent = sbFormatClock(clock.seconds);
+            clock.element.setAttribute('data-penalty-seconds', clock.seconds);
+            if (clock.seconds === 0) {
+                clock.element.textContent = '0:00';
+                clock.element.classList.add('expired');
+            }
+        }
+    });
 }
 
 // Init penalty timers on load
 if (document.getElementById('sbHomePenTime0')) {
     sbInitPenaltyTimers();
 }
+// Init individual penalty item clocks on load
+sbInitPenaltyItemClocks();
 
 // ══════════════════════════════════════════════════════════
 // PERIOD MANAGEMENT
@@ -762,6 +797,11 @@ function sbSyncToGamePlan() {
 function sbSpotifyConnect() {
     // Open Spotify Web Playback SDK integration
     alert('Spotify integration: Configure your Spotify client credentials in System Tools → Scoreboard Settings to enable Web Playback.');
+}
+
+function sbAppleMusicConnect() {
+    // Open Apple MusicKit JS integration
+    alert('Apple Music integration: Configure your Apple Developer Token and Team ID in System Tools → Scoreboard Settings to enable Apple Music streaming.');
 }
 
 function sbSubsonicBrowse() {

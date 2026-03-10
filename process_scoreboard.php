@@ -13,6 +13,8 @@ require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/lib/auditor.php';
 require_once __DIR__ . '/error_logger.php';
 require_once __DIR__ . '/csrf_protection.php';
+require_once __DIR__ . '/cloud_config.php';
+require_once __DIR__ . '/lib/rustfs_storage.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -70,9 +72,9 @@ if (!isAjaxRequest()) {
     exit();
 }
 
-// Validate CSRF
+// Validate CSRF – check header first, then POST body
 $csrfToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_POST['csrf_token'] ?? '';
-if (!CSRFProtection::validateToken($csrfToken)) {
+if (!validateCSRFToken($csrfToken)) {
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'Invalid CSRF token']);
     exit();
@@ -393,6 +395,44 @@ try {
             echo json_encode(['success' => true, 'result_created' => $resultCreated, 'stats_updated' => $statsUpdated]);
             break;
 
+        // ── Set score directly ────────────────────────────
+        case 'set_score':
+            $game_id = (int)($_POST['game_id'] ?? 0);
+            $team = $_POST['team'] ?? '';
+            $score = (int)($_POST['score'] ?? 0);
+            if (!in_array($team, ['home', 'away']) || $game_id <= 0) {
+                echo json_encode(['success' => false, 'message' => 'Invalid team or game']);
+                exit();
+            }
+            $score = max(0, $score);
+            $colMap = ['home' => 'home_score', 'away' => 'away_score'];
+            $col = $colMap[$team];
+            $pdo->prepare("UPDATE scoreboard_games SET {$col} = ? WHERE id = ?")->execute([$score, $game_id]);
+            $stmt = $pdo->prepare("SELECT home_score, away_score FROM scoreboard_games WHERE id = ?");
+            $stmt->execute([$game_id]);
+            $scores = $stmt->fetch(PDO::FETCH_ASSOC);
+            echo json_encode(['success' => true, 'home_score' => (int)$scores['home_score'], 'away_score' => (int)$scores['away_score']]);
+            break;
+
+        // ── Set shots directly ────────────────────────────
+        case 'set_shots':
+            $game_id = (int)($_POST['game_id'] ?? 0);
+            $team = $_POST['team'] ?? '';
+            $shots = (int)($_POST['shots'] ?? 0);
+            if (!in_array($team, ['home', 'away']) || $game_id <= 0) {
+                echo json_encode(['success' => false, 'message' => 'Invalid team or game']);
+                exit();
+            }
+            $shots = max(0, $shots);
+            $colMap = ['home' => 'home_shots', 'away' => 'away_shots'];
+            $col = $colMap[$team];
+            $pdo->prepare("UPDATE scoreboard_games SET {$col} = ? WHERE id = ?")->execute([$shots, $game_id]);
+            $stmt = $pdo->prepare("SELECT home_shots, away_shots FROM scoreboard_games WHERE id = ?");
+            $stmt->execute([$game_id]);
+            $shotsData = $stmt->fetch(PDO::FETCH_ASSOC);
+            echo json_encode(['success' => true, 'home_shots' => (int)$shotsData['home_shots'], 'away_shots' => (int)$shotsData['away_shots']]);
+            break;
+
         // ── Get game state (for polling) ──────────────────
         case 'get_state':
             $game_id = (int)($_POST['game_id'] ?? 0);
@@ -473,53 +513,76 @@ try {
             echo json_encode(['success' => true]);
             break;
 
-        // ── Upload custom buzzer sound (admin-only) ────────
+        // ── Upload custom buzzer sound (admin-only, multiselect) ────────
         case 'upload_buzzer':
             if (!$isAdmin) {
                 http_response_code(403);
                 echo json_encode(['success' => false, 'message' => 'Admin access required']);
                 exit();
             }
-            if (!isset($_FILES['buzzer_file']) || $_FILES['buzzer_file']['error'] !== UPLOAD_ERR_OK) {
+            // Support multiselect: buzzer_file may be an array of files
+            $files = [];
+            if (isset($_FILES['buzzer_file'])) {
+                if (is_array($_FILES['buzzer_file']['name'])) {
+                    for ($fi = 0; $fi < count($_FILES['buzzer_file']['name']); $fi++) {
+                        if ($_FILES['buzzer_file']['error'][$fi] === UPLOAD_ERR_OK) {
+                            $files[] = [
+                                'name' => $_FILES['buzzer_file']['name'][$fi],
+                                'tmp_name' => $_FILES['buzzer_file']['tmp_name'][$fi],
+                                'size' => $_FILES['buzzer_file']['size'][$fi],
+                            ];
+                        }
+                    }
+                } elseif ($_FILES['buzzer_file']['error'] === UPLOAD_ERR_OK) {
+                    $files[] = $_FILES['buzzer_file'];
+                }
+            }
+            if (empty($files)) {
                 echo json_encode(['success' => false, 'message' => 'No file uploaded or upload error']);
                 exit();
             }
-            $file = $_FILES['buzzer_file'];
             $allowedMimes = ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp3', 'audio/x-wav'];
-            $finfo = finfo_open(FILEINFO_MIME_TYPE);
-            $mime = finfo_file($finfo, $file['tmp_name']);
-            finfo_close($finfo);
-            if (!in_array($mime, $allowedMimes)) {
-                echo json_encode(['success' => false, 'message' => 'Invalid file type. Allowed: MP3, WAV, OGG']);
-                exit();
-            }
-            if ($file['size'] > 10 * 1024 * 1024) {
-                echo json_encode(['success' => false, 'message' => 'File too large (max 10MB)']);
-                exit();
-            }
-            $uploadDir = __DIR__ . '/uploads/scoreboard/';
-            if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
-            $ext = pathinfo($file['name'], PATHINFO_EXTENSION) ?: 'mp3';
-            $ext = preg_replace('/[^a-z0-9]/i', '', $ext);
-            $filename = 'buzzer_' . time() . '.' . $ext;
-            $dest = $uploadDir . $filename;
-            if (!move_uploaded_file($file['tmp_name'], $dest)) {
-                echo json_encode(['success' => false, 'message' => 'Failed to save file']);
-                exit();
-            }
-            $buzzerUrl = '/uploads/scoreboard/' . $filename;
-            // Add to buzzer library
             $libStmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'scoreboard_buzzer_library'");
             $libStmt->execute();
             $buzzerLibrary = json_decode($libStmt->fetchColumn() ?: '[]', true) ?: [];
-            $buzzerLibrary[] = ['name' => basename($file['name'], '.' . $ext), 'url' => $buzzerUrl];
+            $lastUrl = '';
+            $uploadedCount = 0;
+            foreach ($files as $file) {
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mime = finfo_file($finfo, $file['tmp_name']);
+                finfo_close($finfo);
+                if (!in_array($mime, $allowedMimes)) continue;
+                if ($file['size'] > 10 * 1024 * 1024) continue;
+                $ext = pathinfo($file['name'], PATHINFO_EXTENSION) ?: 'mp3';
+                $ext = preg_replace('/[^a-z0-9]/i', '', $ext);
+                $filename = 'buzzer_' . uniqid('', true) . '.' . $ext;
+                // Upload to RustFS
+                $persist = persistUploadedFile($pdo, $file['tmp_name'], 'scoreboard/buzzer', $filename);
+                if ($persist['success'] && !empty($persist['rustfs_url'])) {
+                    $buzzerUrl = $persist['rustfs_url'];
+                } else {
+                    // Fallback to local storage
+                    $uploadDir = __DIR__ . '/uploads/scoreboard/';
+                    if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+                    $dest = $uploadDir . $filename;
+                    if (!move_uploaded_file($file['tmp_name'], $dest)) continue;
+                    $buzzerUrl = '/uploads/scoreboard/' . $filename;
+                }
+                $buzzerLibrary[] = ['name' => basename($file['name'], '.' . $ext), 'url' => $buzzerUrl];
+                $lastUrl = $buzzerUrl;
+                $uploadedCount++;
+            }
+            if ($uploadedCount === 0) {
+                echo json_encode(['success' => false, 'message' => 'No valid audio files uploaded']);
+                exit();
+            }
             $pdo->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES ('scoreboard_buzzer_library', ?) ON DUPLICATE KEY UPDATE setting_value = ?")
                 ->execute([json_encode($buzzerLibrary), json_encode($buzzerLibrary)]);
-            // Set as active buzzer
+            // Set most recent upload as active buzzer
             $stmt = $pdo->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES ('scoreboard_buzzer_url', ?) ON DUPLICATE KEY UPDATE setting_value = ?");
-            $stmt->execute([$buzzerUrl, $buzzerUrl]);
-            Auditor::log($pdo, $user_id, 'update', 'system_settings', 0, ['action' => 'Buzzer sound uploaded', 'file' => $filename]);
-            echo json_encode(['success' => true, 'url' => $buzzerUrl]);
+            $stmt->execute([$lastUrl, $lastUrl]);
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', 0, ['action' => 'Buzzer sound uploaded', 'count' => $uploadedCount]);
+            echo json_encode(['success' => true, 'url' => $lastUrl, 'count' => $uploadedCount]);
             break;
 
         // ── Remove custom buzzer sound (admin-only) ────────
@@ -535,53 +598,76 @@ try {
             echo json_encode(['success' => true]);
             break;
 
-        // ── Upload custom goal horn sound (admin-only) ────────
+        // ── Upload custom goal horn sound (admin-only, multiselect) ────────
         case 'upload_horn':
             if (!$isAdmin) {
                 http_response_code(403);
                 echo json_encode(['success' => false, 'message' => 'Admin access required']);
                 exit();
             }
-            if (!isset($_FILES['horn_file']) || $_FILES['horn_file']['error'] !== UPLOAD_ERR_OK) {
+            // Support multiselect: horn_file may be an array of files
+            $files = [];
+            if (isset($_FILES['horn_file'])) {
+                if (is_array($_FILES['horn_file']['name'])) {
+                    for ($fi = 0; $fi < count($_FILES['horn_file']['name']); $fi++) {
+                        if ($_FILES['horn_file']['error'][$fi] === UPLOAD_ERR_OK) {
+                            $files[] = [
+                                'name' => $_FILES['horn_file']['name'][$fi],
+                                'tmp_name' => $_FILES['horn_file']['tmp_name'][$fi],
+                                'size' => $_FILES['horn_file']['size'][$fi],
+                            ];
+                        }
+                    }
+                } elseif ($_FILES['horn_file']['error'] === UPLOAD_ERR_OK) {
+                    $files[] = $_FILES['horn_file'];
+                }
+            }
+            if (empty($files)) {
                 echo json_encode(['success' => false, 'message' => 'No file uploaded or upload error']);
                 exit();
             }
-            $file = $_FILES['horn_file'];
             $allowedMimes = ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp3', 'audio/x-wav'];
-            $finfo = finfo_open(FILEINFO_MIME_TYPE);
-            $mime = finfo_file($finfo, $file['tmp_name']);
-            finfo_close($finfo);
-            if (!in_array($mime, $allowedMimes)) {
-                echo json_encode(['success' => false, 'message' => 'Invalid file type. Allowed: MP3, WAV, OGG']);
-                exit();
-            }
-            if ($file['size'] > 10 * 1024 * 1024) {
-                echo json_encode(['success' => false, 'message' => 'File too large (max 10MB)']);
-                exit();
-            }
-            $uploadDir = __DIR__ . '/uploads/scoreboard/';
-            if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
-            $ext = pathinfo($file['name'], PATHINFO_EXTENSION) ?: 'mp3';
-            $ext = preg_replace('/[^a-z0-9]/i', '', $ext);
-            $filename = 'horn_' . time() . '.' . $ext;
-            $dest = $uploadDir . $filename;
-            if (!move_uploaded_file($file['tmp_name'], $dest)) {
-                echo json_encode(['success' => false, 'message' => 'Failed to save file']);
-                exit();
-            }
-            $hornUrl = '/uploads/scoreboard/' . $filename;
-            // Add to horn library
             $libStmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'scoreboard_horn_library'");
             $libStmt->execute();
             $hornLibrary = json_decode($libStmt->fetchColumn() ?: '[]', true) ?: [];
-            $hornLibrary[] = ['name' => basename($file['name'], '.' . $ext), 'url' => $hornUrl];
+            $lastUrl = '';
+            $uploadedCount = 0;
+            foreach ($files as $file) {
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mime = finfo_file($finfo, $file['tmp_name']);
+                finfo_close($finfo);
+                if (!in_array($mime, $allowedMimes)) continue;
+                if ($file['size'] > 10 * 1024 * 1024) continue;
+                $ext = pathinfo($file['name'], PATHINFO_EXTENSION) ?: 'mp3';
+                $ext = preg_replace('/[^a-z0-9]/i', '', $ext);
+                $filename = 'horn_' . uniqid('', true) . '.' . $ext;
+                // Upload to RustFS
+                $persist = persistUploadedFile($pdo, $file['tmp_name'], 'scoreboard/horn', $filename);
+                if ($persist['success'] && !empty($persist['rustfs_url'])) {
+                    $hornUrl = $persist['rustfs_url'];
+                } else {
+                    // Fallback to local storage
+                    $uploadDir = __DIR__ . '/uploads/scoreboard/';
+                    if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+                    $dest = $uploadDir . $filename;
+                    if (!move_uploaded_file($file['tmp_name'], $dest)) continue;
+                    $hornUrl = '/uploads/scoreboard/' . $filename;
+                }
+                $hornLibrary[] = ['name' => basename($file['name'], '.' . $ext), 'url' => $hornUrl];
+                $lastUrl = $hornUrl;
+                $uploadedCount++;
+            }
+            if ($uploadedCount === 0) {
+                echo json_encode(['success' => false, 'message' => 'No valid audio files uploaded']);
+                exit();
+            }
             $pdo->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES ('scoreboard_horn_library', ?) ON DUPLICATE KEY UPDATE setting_value = ?")
                 ->execute([json_encode($hornLibrary), json_encode($hornLibrary)]);
-            // Set as active horn
+            // Set most recent upload as active horn
             $stmt = $pdo->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES ('scoreboard_horn_url', ?) ON DUPLICATE KEY UPDATE setting_value = ?");
-            $stmt->execute([$hornUrl, $hornUrl]);
-            Auditor::log($pdo, $user_id, 'update', 'system_settings', 0, ['action' => 'Goal horn sound uploaded', 'file' => $filename]);
-            echo json_encode(['success' => true, 'url' => $hornUrl]);
+            $stmt->execute([$lastUrl, $lastUrl]);
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', 0, ['action' => 'Goal horn sound uploaded', 'count' => $uploadedCount]);
+            echo json_encode(['success' => true, 'url' => $lastUrl, 'count' => $uploadedCount]);
             break;
 
         // ── Remove custom goal horn sound (admin-only) ────────
@@ -736,15 +822,41 @@ try {
                 exit();
             }
             $filename = 'team_' . $teamId . '_' . time() . '.' . $ext;
-            $dest = $uploadDir . $filename;
-            if (!move_uploaded_file($file['tmp_name'], $dest)) {
-                echo json_encode(['success' => false, 'message' => 'Failed to save file']);
-                exit();
+            // Upload to RustFS
+            $persist = persistUploadedFile($pdo, $file['tmp_name'], 'team_logos', $filename);
+            if ($persist['success'] && !empty($persist['rustfs_url'])) {
+                $logoUrl = $persist['rustfs_url'];
+            } else {
+                // Fallback to local storage
+                $uploadDir = __DIR__ . '/uploads/team_logos/';
+                if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+                $dest = $uploadDir . $filename;
+                if (!move_uploaded_file($file['tmp_name'], $dest)) {
+                    echo json_encode(['success' => false, 'message' => 'Failed to save file']);
+                    exit();
+                }
+                $logoUrl = '/uploads/team_logos/' . $filename;
             }
-            $logoUrl = '/uploads/team_logos/' . $filename;
             $pdo->prepare("UPDATE teams SET logo_url = ? WHERE id = ?")->execute([$logoUrl, $teamId]);
             Auditor::log($pdo, $user_id, 'update', 'teams', $teamId, ['action' => 'Logo uploaded', 'file' => $filename]);
             echo json_encode(['success' => true, 'url' => $logoUrl, 'team_id' => $teamId]);
+            break;
+
+        // ── Delete team logo (admin-only) ──────────────────
+        case 'delete_team_logo':
+            if (!$isAdmin) {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Admin access required']);
+                exit();
+            }
+            $teamId = (int)($_POST['team_id'] ?? 0);
+            if ($teamId <= 0) {
+                echo json_encode(['success' => false, 'message' => 'Invalid team']);
+                exit();
+            }
+            $pdo->prepare("UPDATE teams SET logo_url = NULL WHERE id = ?")->execute([$teamId]);
+            Auditor::log($pdo, $user_id, 'update', 'teams', $teamId, ['action' => 'Team logo removed']);
+            echo json_encode(['success' => true]);
             break;
 
         default:
