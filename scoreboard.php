@@ -441,8 +441,10 @@ const IS_ADMIN = <?= $isAdmin ? 'true' : 'false' ?>;
                 hour12: true, timeZone: sbTimezone
             });
         } catch (e) {
-            // Fallback if timezone string is unsupported by the browser
-            var h = corrected.getUTCHours(), m = corrected.getUTCMinutes(), s = corrected.getUTCSeconds();
+            // Fallback: apply server TZ offset manually
+            var tzOff = <?= (int)date('Z') ?>;
+            var adj = new Date(corrected.getTime() + tzOff * 1000);
+            var h = adj.getUTCHours(), m = adj.getUTCMinutes(), s = adj.getUTCSeconds();
             var ampm = h >= 12 ? 'PM' : 'AM';
             h = h % 12 || 12;
             str = h + ':' + (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s + ' ' + ampm;

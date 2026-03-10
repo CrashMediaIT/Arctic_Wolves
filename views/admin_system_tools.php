@@ -475,7 +475,7 @@ foreach ($url_keys as $uk) {
                                 year: 'numeric', month: '2-digit', day: '2-digit',
                                 hour: '2-digit', minute: '2-digit', second: '2-digit',
                                 hour12: false
-                            }).replace(',', '');
+                            }).replace(/,\s*/g, ' ');
                         } catch (e) {
                             // Fallback: use the old UTC-offset approach
                             return formatUtcDate(d);

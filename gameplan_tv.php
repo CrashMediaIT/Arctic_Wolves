@@ -342,7 +342,10 @@ $current_label = $page_labels[$page] ?? 'Game Plan';
                 hour12: true, timeZone: tvTimezone
             });
         } catch (e) {
-            var h = corrected.getUTCHours(), m = corrected.getUTCMinutes();
+            // Fallback: apply server TZ offset manually
+            var tzOff = <?= (int)date('Z') ?>;
+            var adj = new Date(corrected.getTime() + tzOff * 1000);
+            var h = adj.getUTCHours(), m = adj.getUTCMinutes();
             var ampm = h >= 12 ? 'PM' : 'AM';
             h = h % 12 || 12;
             str = h + ':' + (m < 10 ? '0' : '') + m + ' ' + ampm;
