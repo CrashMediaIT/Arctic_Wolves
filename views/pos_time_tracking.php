@@ -455,7 +455,7 @@ const shiftData = <?= $activeShift ? json_encode(['id' => $activeShift['id']]) :
 <?php if ($activeShift): ?>
 // Raw shift data for debugging
 console.log('POS Time Tracking: Active shift detected');
-console.log('clock_in raw:', '<?= addslashes($activeShift['clock_in'] ?? '') ?>');
+console.log('clock_in raw:', <?= json_encode($activeShift['clock_in'] ?? '') ?>);
 <?php endif; ?>
 
 // Store clock_in time as a timestamp from PHP for reliable parsing

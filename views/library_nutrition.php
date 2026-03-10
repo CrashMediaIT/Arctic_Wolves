@@ -930,7 +930,7 @@ $allAthletes = decryptUserRows($allAthletes);
                      style="padding: 12px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; transition: all 0.2s;"
                      data-id="<?= $meal['id'] ?>"
                      data-name="<?= htmlspecialchars($meal['name']) ?>"
-                     onclick="selectMealForPlan(<?= $meal['id'] ?>, '<?= htmlspecialchars(addslashes($meal['name'])) ?>')">
+                     onclick="selectMealForPlan(<?= $meal['id'] ?>, <?= json_encode($meal['name']) ?>)">
                     <h5 style="color: var(--text-white); font-size: 14px; margin-bottom: 4px;"><?= htmlspecialchars($meal['name']) ?></h5>
                     <span style="font-size: 12px; color: var(--text-muted);"><?= htmlspecialchars($meal['category'] ?? 'No category') ?></span>
                 </div>

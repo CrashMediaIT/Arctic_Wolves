@@ -527,7 +527,7 @@ foreach ($scheduled_reports as $schedule) {
                                 title="<?= $isActive ? 'Pause' : 'Resume' ?>">
                             <i class="fas fa-<?= $isActive ? 'pause' : 'play' ?>"></i>
                         </button>
-                        <button class="btn-icon danger" onclick="deleteSchedule(<?= $schedule['id'] ?>, '<?= htmlspecialchars(addslashes($schedule['report_name'] ?? '')) ?>')" title="Delete">
+                        <button class="btn-icon danger" onclick="deleteSchedule(<?= $schedule['id'] ?>, <?= json_encode($schedule['report_name'] ?? '') ?>)" title="Delete">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>

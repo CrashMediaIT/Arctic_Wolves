@@ -271,7 +271,7 @@ function getCategoryCount($pdo, $table, $column, $category_id) {
                             <td><span class="category-count"><?php echo $count; ?> plans</span></td>
                             <td>
                                 <button class="btn btn-danger btn-sm" 
-                                        onclick="deleteCategory('workout', <?php echo $cat['id']; ?>, '<?php echo addslashes($cat['name']); ?>', <?php echo $count; ?>)">
+                                        onclick="deleteCategory('workout', <?php echo $cat['id']; ?>, <?php echo json_encode($cat['name']); ?>, <?php echo $count; ?>)">
                                     Delete
                                 </button>
                             </td>
@@ -310,7 +310,7 @@ function getCategoryCount($pdo, $table, $column, $category_id) {
                             <td><span class="category-count"><?php echo $count; ?> plans</span></td>
                             <td>
                                 <button class="btn btn-danger btn-sm" 
-                                        onclick="deleteCategory('nutrition', <?php echo $cat['id']; ?>, '<?php echo addslashes($cat['name']); ?>', <?php echo $count; ?>)">
+                                        onclick="deleteCategory('nutrition', <?php echo $cat['id']; ?>, <?php echo json_encode($cat['name']); ?>, <?php echo $count; ?>)">
                                     Delete
                                 </button>
                             </td>
@@ -349,7 +349,7 @@ function getCategoryCount($pdo, $table, $column, $category_id) {
                             <td><span class="category-count"><?php echo $count; ?> plans</span></td>
                             <td>
                                 <button class="btn btn-danger btn-sm" 
-                                        onclick="deleteCategory('practice', <?php echo $cat['id']; ?>, '<?php echo addslashes($cat['name']); ?>', <?php echo $count; ?>)">
+                                        onclick="deleteCategory('practice', <?php echo $cat['id']; ?>, <?php echo json_encode($cat['name']); ?>, <?php echo $count; ?>)">
                                     Delete
                                 </button>
                             </td>

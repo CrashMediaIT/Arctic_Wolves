@@ -15,6 +15,17 @@ class DatabaseMigrator {
     }
     
     /**
+     * Sanitize a SQL identifier (table/column name) to prevent SQL injection.
+     * Only allows alphanumeric characters and underscores.
+     */
+    private function sanitizeIdentifier($name) {
+        if (!preg_match('/^[a-zA-Z0-9_]+$/', $name)) {
+            throw new Exception("Invalid SQL identifier: contains disallowed characters");
+        }
+        return $name;
+    }
+    
+    /**
      * Parse schema.sql file and extract table/column definitions
      */
     public function parseSchemaFile($schema_file_path) {
@@ -109,6 +120,7 @@ class DatabaseMigrator {
      */
     private function getTableColumns($table) {
         $columns = [];
+        $table = $this->sanitizeIdentifier($table);
         $stmt = $this->pdo->query("SHOW COLUMNS FROM `$table`");
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
@@ -131,7 +143,9 @@ class DatabaseMigrator {
      */
     public function tableExists($table_name) {
         try {
-            $stmt = $this->pdo->query("SHOW TABLES LIKE '$table_name'");
+            $table_name = $this->sanitizeIdentifier($table_name);
+            $stmt = $this->pdo->prepare("SHOW TABLES LIKE ?");
+            $stmt->execute([$table_name]);
             return $stmt->rowCount() > 0;
         } catch (PDOException $e) {
             return false;
@@ -143,7 +157,10 @@ class DatabaseMigrator {
      */
     public function columnExists($table_name, $column_name) {
         try {
-            $stmt = $this->pdo->query("SHOW COLUMNS FROM `$table_name` LIKE '$column_name'");
+            $table_name = $this->sanitizeIdentifier($table_name);
+            $column_name = $this->sanitizeIdentifier($column_name);
+            $stmt = $this->pdo->prepare("SHOW COLUMNS FROM `$table_name` LIKE ?");
+            $stmt->execute([$column_name]);
             return $stmt->rowCount() > 0;
         } catch (PDOException $e) {
             return false;
@@ -248,6 +265,9 @@ class DatabaseMigrator {
      * Rename table
      */
     public function renameTable($old_name, $new_name) {
+        $old_name = $this->sanitizeIdentifier($old_name);
+        $new_name = $this->sanitizeIdentifier($new_name);
+        
         if (!$this->tableExists($old_name)) {
             throw new Exception("Table '$old_name' does not exist");
         }
@@ -270,6 +290,10 @@ class DatabaseMigrator {
      * Rename column
      */
     public function renameColumn($table, $old_name, $new_name, $definition = null) {
+        $table = $this->sanitizeIdentifier($table);
+        $old_name = $this->sanitizeIdentifier($old_name);
+        $new_name = $this->sanitizeIdentifier($new_name);
+        
         if (!$this->tableExists($table)) {
             throw new Exception("Table '$table' does not exist");
         }
@@ -284,7 +308,8 @@ class DatabaseMigrator {
         
         // Get current column definition if not provided
         if (!$definition) {
-            $stmt = $this->pdo->query("SHOW COLUMNS FROM `$table` LIKE '$old_name'");
+            $stmt = $this->pdo->prepare("SHOW COLUMNS FROM `$table` LIKE ?");
+            $stmt->execute([$old_name]);
             $col = $stmt->fetch(PDO::FETCH_ASSOC);
             
             $type = $col['Type'];
@@ -309,6 +334,7 @@ class DatabaseMigrator {
      * Add column to table
      */
     public function addColumn($table, $column_definition, $after_column = null) {
+        $table = $this->sanitizeIdentifier($table);
         if (!$this->tableExists($table)) {
             throw new Exception("Table '$table' does not exist");
         }
@@ -331,6 +357,7 @@ class DatabaseMigrator {
         
         $sql = "ALTER TABLE `$table` ADD $column_definition";
         if ($after_column) {
+            $after_column = $this->sanitizeIdentifier($after_column);
             $sql .= " AFTER `$after_column`";
         }
         $this->pdo->exec($sql);
@@ -346,6 +373,8 @@ class DatabaseMigrator {
      * Drop column from table
      */
     public function dropColumn($table, $column_name) {
+        $table = $this->sanitizeIdentifier($table);
+        $column_name = $this->sanitizeIdentifier($column_name);
         if (!$this->tableExists($table)) {
             throw new Exception("Table '$table' does not exist");
         }
@@ -372,6 +401,8 @@ class DatabaseMigrator {
      * Modify column definition
      */
     public function modifyColumn($table, $column_name, $new_definition) {
+        $table = $this->sanitizeIdentifier($table);
+        $column_name = $this->sanitizeIdentifier($column_name);
         if (!$this->tableExists($table)) {
             throw new Exception("Table '$table' does not exist");
         }
@@ -523,6 +554,7 @@ class DatabaseMigrator {
      * @return array Result with success status
      */
     public function createTable($table_name, array $columns, array $indexes = [], array $foreign_keys = []) {
+        $table_name = $this->sanitizeIdentifier($table_name);
         if ($this->tableExists($table_name)) {
             return [
                 'success' => true,
@@ -617,6 +649,7 @@ class DatabaseMigrator {
      * @return array Result with success status
      */
     public function dropTable($table_name) {
+        $table_name = $this->sanitizeIdentifier($table_name);
         if (!$this->tableExists($table_name)) {
             return [
                 'success' => true,
@@ -645,12 +678,15 @@ class DatabaseMigrator {
      * @return array Result with success status
      */
     public function addIndex($table, $index_name, array $columns, $unique = false) {
+        $table = $this->sanitizeIdentifier($table);
+        $index_name = $this->sanitizeIdentifier($index_name);
         if (!$this->tableExists($table)) {
             throw new Exception("Table '$table' does not exist");
         }
         
         // Check if index already exists
-        $stmt = $this->pdo->query("SHOW INDEX FROM `$table` WHERE Key_name = '$index_name'");
+        $stmt = $this->pdo->prepare("SHOW INDEX FROM `$table` WHERE Key_name = ?");
+        $stmt->execute([$index_name]);
         if ($stmt->rowCount() > 0) {
             return [
                 'success' => true,
@@ -660,7 +696,8 @@ class DatabaseMigrator {
         }
         
         $unique_str = $unique ? 'UNIQUE ' : '';
-        $cols = '`' . implode('`, `', $columns) . '`';
+        $sanitized_cols = array_map(function($c) { return $this->sanitizeIdentifier($c); }, $columns);
+        $cols = '`' . implode('`, `', $sanitized_cols) . '`';
         $sql = "CREATE {$unique_str}INDEX `$index_name` ON `$table` ($cols)";
         $this->pdo->exec($sql);
         
@@ -679,12 +716,15 @@ class DatabaseMigrator {
      * @return array Result with success status
      */
     public function dropIndex($table, $index_name) {
+        $table = $this->sanitizeIdentifier($table);
+        $index_name = $this->sanitizeIdentifier($index_name);
         if (!$this->tableExists($table)) {
             throw new Exception("Table '$table' does not exist");
         }
         
         // Check if index exists
-        $stmt = $this->pdo->query("SHOW INDEX FROM `$table` WHERE Key_name = '$index_name'");
+        $stmt = $this->pdo->prepare("SHOW INDEX FROM `$table` WHERE Key_name = ?");
+        $stmt->execute([$index_name]);
         if ($stmt->rowCount() == 0) {
             return [
                 'success' => true,
@@ -716,6 +756,23 @@ class DatabaseMigrator {
      * @return array Result with success status
      */
     public function addForeignKey($table, $constraint_name, $column, $ref_table, $ref_column, $on_delete = 'CASCADE', $on_update = 'CASCADE') {
+        $table = $this->sanitizeIdentifier($table);
+        $constraint_name = $this->sanitizeIdentifier($constraint_name);
+        $column = $this->sanitizeIdentifier($column);
+        $ref_table = $this->sanitizeIdentifier($ref_table);
+        $ref_column = $this->sanitizeIdentifier($ref_column);
+        
+        // Validate ON DELETE/ON UPDATE actions
+        $valid_actions = ['CASCADE', 'SET NULL', 'NO ACTION', 'RESTRICT', 'SET DEFAULT'];
+        $on_delete = strtoupper($on_delete);
+        $on_update = strtoupper($on_update);
+        if (!in_array($on_delete, $valid_actions)) {
+            throw new Exception("Invalid ON DELETE action: $on_delete");
+        }
+        if (!in_array($on_update, $valid_actions)) {
+            throw new Exception("Invalid ON UPDATE action: $on_update");
+        }
+        
         if (!$this->tableExists($table)) {
             throw new Exception("Table '$table' does not exist");
         }
@@ -768,6 +825,8 @@ class DatabaseMigrator {
      * @return array Result with success status
      */
     public function dropForeignKey($table, $constraint_name) {
+        $table = $this->sanitizeIdentifier($table);
+        $constraint_name = $this->sanitizeIdentifier($constraint_name);
         if (!$this->tableExists($table)) {
             throw new Exception("Table '$table' does not exist");
         }
