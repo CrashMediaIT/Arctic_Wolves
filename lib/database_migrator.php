@@ -269,11 +269,19 @@ class DatabaseMigrator {
         $new_name = $this->sanitizeIdentifier($new_name);
         
         if (!$this->tableExists($old_name)) {
-            throw new Exception("Table '$old_name' does not exist");
+            return [
+                'success' => true,
+                'message' => "Table '$old_name' does not exist",
+                'skipped' => true
+            ];
         }
         
         if ($this->tableExists($new_name)) {
-            throw new Exception("Table '$new_name' already exists");
+            return [
+                'success' => true,
+                'message' => "Table '$new_name' already exists",
+                'skipped' => true
+            ];
         }
         
         $sql = "RENAME TABLE `$old_name` TO `$new_name`";
@@ -295,7 +303,11 @@ class DatabaseMigrator {
         $new_name = $this->sanitizeIdentifier($new_name);
         
         if (!$this->tableExists($table)) {
-            throw new Exception("Table '$table' does not exist");
+            return [
+                'success' => true,
+                'message' => "Table '$table' does not exist",
+                'skipped' => true
+            ];
         }
         
         if (!$this->columnExists($table, $old_name)) {
@@ -336,7 +348,11 @@ class DatabaseMigrator {
     public function addColumn($table, $column_definition, $after_column = null) {
         $table = $this->sanitizeIdentifier($table);
         if (!$this->tableExists($table)) {
-            throw new Exception("Table '$table' does not exist");
+            return [
+                'success' => true,
+                'message' => "Table '$table' does not exist",
+                'skipped' => true
+            ];
         }
         
         // Extract column name from definition
@@ -376,7 +392,11 @@ class DatabaseMigrator {
         $table = $this->sanitizeIdentifier($table);
         $column_name = $this->sanitizeIdentifier($column_name);
         if (!$this->tableExists($table)) {
-            throw new Exception("Table '$table' does not exist");
+            return [
+                'success' => true,
+                'message' => "Table '$table' does not exist",
+                'skipped' => true
+            ];
         }
         
         if (!$this->columnExists($table, $column_name)) {
@@ -404,7 +424,11 @@ class DatabaseMigrator {
         $table = $this->sanitizeIdentifier($table);
         $column_name = $this->sanitizeIdentifier($column_name);
         if (!$this->tableExists($table)) {
-            throw new Exception("Table '$table' does not exist");
+            return [
+                'success' => true,
+                'message' => "Table '$table' does not exist",
+                'skipped' => true
+            ];
         }
         
         if (!$this->columnExists($table, $column_name)) {
@@ -681,7 +705,11 @@ class DatabaseMigrator {
         $table = $this->sanitizeIdentifier($table);
         $index_name = $this->sanitizeIdentifier($index_name);
         if (!$this->tableExists($table)) {
-            throw new Exception("Table '$table' does not exist");
+            return [
+                'success' => true,
+                'message' => "Table '$table' does not exist",
+                'skipped' => true
+            ];
         }
         
         // Check if index already exists
@@ -719,7 +747,11 @@ class DatabaseMigrator {
         $table = $this->sanitizeIdentifier($table);
         $index_name = $this->sanitizeIdentifier($index_name);
         if (!$this->tableExists($table)) {
-            throw new Exception("Table '$table' does not exist");
+            return [
+                'success' => true,
+                'message' => "Table '$table' does not exist",
+                'skipped' => true
+            ];
         }
         
         // Check if index exists
@@ -774,11 +806,19 @@ class DatabaseMigrator {
         }
         
         if (!$this->tableExists($table)) {
-            throw new Exception("Table '$table' does not exist");
+            return [
+                'success' => true,
+                'message' => "Table '$table' does not exist",
+                'skipped' => true
+            ];
         }
         
         if (!$this->tableExists($ref_table)) {
-            throw new Exception("Referenced table '$ref_table' does not exist");
+            return [
+                'success' => true,
+                'message' => "Referenced table '$ref_table' does not exist",
+                'skipped' => true
+            ];
         }
         
         // Check if constraint already exists
@@ -828,7 +868,11 @@ class DatabaseMigrator {
         $table = $this->sanitizeIdentifier($table);
         $constraint_name = $this->sanitizeIdentifier($constraint_name);
         if (!$this->tableExists($table)) {
-            throw new Exception("Table '$table' does not exist");
+            return [
+                'success' => true,
+                'message' => "Table '$table' does not exist",
+                'skipped' => true
+            ];
         }
         
         // Check if constraint exists

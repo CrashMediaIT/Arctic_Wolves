@@ -947,9 +947,11 @@ class GitHubUpdater {
                     $this->pdo->exec($mig[0]);
                     $results[] = "Ensured column: " . $mig[1];
                 } catch (\PDOException $e) {
-                    // Ignore "Duplicate column" errors — column already exists
-                    if ($e->getCode() !== '42S21' && strpos($e->getMessage(), 'Duplicate column') === false) {
-                        $errors[] = "Could not add " . $mig[1] . ": " . $e->getMessage();
+                    $msg = $e->getMessage();
+                    $isDuplicateColumn = ($e->getCode() === '42S21' || strpos($msg, 'Duplicate column') !== false);
+                    $isTableNotFound = ($e->getCode() === '42S02' || strpos($msg, "doesn't exist") !== false || strpos($msg, 'does not exist') !== false);
+                    if (!$isDuplicateColumn && !$isTableNotFound) {
+                        $errors[] = "Could not add " . $mig[1] . ": " . $msg;
                     }
                 }
             }
