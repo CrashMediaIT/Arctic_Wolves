@@ -327,7 +327,8 @@ if (!function_exists('decryptUserRow')) {
                        'requested_by_first_name', 'requested_by_last_name',
                        'completed_by_first_name', 'completed_by_last_name',
                        'approved_by_first_name', 'approved_by_last_name',
-                       'user_first_name', 'user_last_name'];
+                       'user_first_name', 'user_last_name',
+                       'athlete_coach_first', 'athlete_coach_last'];
         foreach ($piiFields as $field) {
             if (isset($row[$field]) && $row[$field] !== '') {
                 $row[$field] = FieldEncryption::decrypt($row[$field]);

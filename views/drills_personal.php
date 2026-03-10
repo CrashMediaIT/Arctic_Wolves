@@ -27,6 +27,9 @@ if ($is_admin) {
     $stmt->execute([$user_id]);
     $personal_drills = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
+if (function_exists('decryptUserRows')) {
+    $personal_drills = decryptUserRows($personal_drills);
+}
 ?>
 
 <style>
@@ -40,26 +43,59 @@ if ($is_admin) {
     background: var(--bg-card, #1a1a2e);
     border: 1px solid var(--border, #2d2d44);
     border-radius: 10px;
-    padding: 20px;
+    overflow: hidden;
     transition: transform 0.2s;
 }
 .personal-drill-card:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(0,0,0,0.2);
 }
-.personal-drill-card h4 {
+.personal-drill-card .drill-thumbnail {
+    width: 100%;
+    height: 140px;
+    background: var(--bg-main, #0d1117);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+}
+.personal-drill-card .drill-thumbnail video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.personal-drill-card .drill-thumbnail .position-icon {
+    font-size: 48px;
+    opacity: 0.4;
+}
+.personal-drill-card .drill-thumbnail .position-icon.player { color: var(--success, #10b981); }
+.personal-drill-card .drill-thumbnail .position-icon.goalie { color: var(--info, #3b82f6); }
+.personal-drill-card .drill-thumbnail .position-label {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+}
+.personal-drill-card .drill-thumbnail .position-label.player { background: rgba(16, 185, 129, 0.15); color: var(--success, #10b981); }
+.personal-drill-card .drill-thumbnail .position-label.goalie { background: rgba(59, 130, 246, 0.15); color: var(--info, #3b82f6); }
+.personal-drill-card-body { padding: 16px 20px 20px; }
+.personal-drill-card-body h4 {
     font-size: 16px;
     font-weight: 700;
     color: var(--text-white, #e2e8f0);
     margin-bottom: 8px;
 }
-.personal-drill-card p {
+.personal-drill-card-body p {
     font-size: 13px;
     color: var(--text-dim, #94a3b8);
     line-height: 1.5;
     margin-bottom: 12px;
 }
-.personal-drill-card .drill-meta {
+.personal-drill-card-body .drill-meta {
     font-size: 11px;
     color: var(--text-dim, #94a3b8);
     border-top: 1px solid var(--border, #2d2d44);
@@ -129,6 +165,13 @@ if ($is_admin) {
             <textarea id="pd-description" name="description" placeholder="Describe the drill, key points, and objectives"></textarea>
         </div>
         <div class="form-row">
+            <label for="pd-position">Position</label>
+            <select id="pd-position" name="position" style="width:100%;padding:10px 14px;background:var(--bg-main,#0d1117);border:1px solid var(--border,#2d2d44);border-radius:8px;color:var(--text-white,#e2e8f0);font-size:13px;">
+                <option value="player">Player (Skater)</option>
+                <option value="goalie">Goalie</option>
+            </select>
+        </div>
+        <div class="form-row">
             <label for="pd-video">Upload Video</label>
             <input type="file" id="pd-video" name="video_file" accept="video/mp4,video/webm,video/ogg,video/x-matroska,video/quicktime,video/x-msvideo">
             <p style="font-size:11px;color:var(--text-dim,#94a3b8);margin-top:4px;"><i class="fas fa-info-circle"></i> Supported: MP4, WebM, MOV, AVI, MKV. Max 10GB.</p>
@@ -154,30 +197,42 @@ if ($is_admin) {
 </div>
 <?php else: ?>
 <div class="personal-drills-grid">
-    <?php foreach ($personal_drills as $pd): ?>
+    <?php foreach ($personal_drills as $pd):
+        $pdPosition = $pd['position'] ?? 'player';
+    ?>
     <div class="personal-drill-card">
-        <h4><?= htmlspecialchars($pd['title']) ?></h4>
-        <?php if ($pd['description']): ?>
-            <p><?= htmlspecialchars(substr($pd['description'], 0, 200)) ?><?= strlen($pd['description']) > 200 ? '...' : '' ?></p>
-        <?php endif; ?>
-        <?php if (!empty($pd['video_upload_path'])): 
-            $videoPath = $pd['video_upload_path'];
-            $videoExt = strtolower(pathinfo($videoPath, PATHINFO_EXTENSION));
-            $videoMimeTypes = [
-                'mp4' => 'video/mp4',
-                'webm' => 'video/webm',
-                'ogg' => 'video/ogg',
-                'ogv' => 'video/ogg'
-            ];
-            $videoMimeType = $videoMimeTypes[$videoExt] ?? 'video/mp4';
-        ?>
-            <video controls style="width:100%;border-radius:8px;background:var(--bg-main);margin-bottom:10px;">
-                <source src="<?= htmlspecialchars($videoPath) ?>" type="<?= $videoMimeType ?>">
-                Your browser does not support the video tag.
-            </video>
-        <?php endif; ?>
-        <div class="drill-meta">
-            Created by <?= htmlspecialchars($pd['first_name'] . ' ' . $pd['last_name']) ?> &bull; <?= date('M j, Y', strtotime($pd['created_at'])) ?>
+        <div class="drill-thumbnail">
+            <?php if (!empty($pd['video_upload_path'])):
+                $videoPath = $pd['video_upload_path'];
+                $videoExt = strtolower(pathinfo($videoPath, PATHINFO_EXTENSION));
+                $videoMimeTypes = [
+                    'mp4' => 'video/mp4',
+                    'webm' => 'video/webm',
+                    'ogg' => 'video/ogg',
+                    'ogv' => 'video/ogg'
+                ];
+                $videoMimeType = $videoMimeTypes[$videoExt] ?? 'video/mp4';
+            ?>
+                <video preload="metadata" muted>
+                    <source src="<?= htmlspecialchars($videoPath) ?>#t=0.5" type="<?= $videoMimeType ?>">
+                </video>
+            <?php else: ?>
+                <?php if ($pdPosition === 'goalie'): ?>
+                    <i class="fas fa-shield-alt position-icon goalie"></i>
+                <?php else: ?>
+                    <i class="fas fa-hockey-puck position-icon player"></i>
+                <?php endif; ?>
+            <?php endif; ?>
+            <span class="position-label <?= htmlspecialchars($pdPosition) ?>"><?= $pdPosition === 'goalie' ? 'Goalie' : 'Player' ?></span>
+        </div>
+        <div class="personal-drill-card-body">
+            <h4><?= htmlspecialchars($pd['title']) ?></h4>
+            <?php if ($pd['description']): ?>
+                <p><?= htmlspecialchars(substr($pd['description'], 0, 200)) ?><?= strlen($pd['description']) > 200 ? '...' : '' ?></p>
+            <?php endif; ?>
+            <div class="drill-meta">
+                Created by <?= htmlspecialchars($pd['first_name'] . ' ' . $pd['last_name']) ?> &bull; <?= date('M j, Y', strtotime($pd['created_at'])) ?>
+            </div>
         </div>
     </div>
     <?php endforeach; ?>
@@ -206,6 +261,7 @@ document.getElementById('personal-drill-form').addEventListener('submit', functi
     formData.append('action', 'create_personal_drill');
     formData.append('title', title);
     formData.append('description', document.getElementById('pd-description').value.trim());
+    formData.append('position', document.getElementById('pd-position').value);
     if (videoFile) {
         formData.append('video_file', videoFile);
     }
