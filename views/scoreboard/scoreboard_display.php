@@ -382,6 +382,26 @@ foreach ($away_penalties as $p) {
             border-left: 3px solid #F59E0B;
         }
         .sb-ctrl-penalty-info { color: #8B8BA3; white-space: nowrap; font-size: 11px; }
+        .sb-ctrl-penalty-clock {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 48px;
+            padding: 2px 6px;
+            background: rgba(245, 158, 11, 0.15);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            color: #F59E0B;
+            flex-shrink: 0;
+        }
+        .sb-ctrl-penalty-clock.expired {
+            background: rgba(34, 197, 94, 0.15);
+            border-color: rgba(34, 197, 94, 0.3);
+            color: #22C55E;
+        }
         .sb-ctrl-penalty-actions {
             display: flex;
             gap: 4px;
@@ -520,7 +540,8 @@ foreach ($away_penalties as $p) {
                      data-penalty-type="<?= htmlspecialchars($pen_type) ?>"
                      data-duration="<?= (int)($pen['duration_minutes'] ?? 2) ?>">
                     <span>#<?= htmlspecialchars($pen['player_number'] ?? '?') ?> <?= htmlspecialchars($pen['player_name'] ?? '') ?></span>
-                    <span class="sb-ctrl-penalty-info"><?= htmlspecialchars($pen['infraction'] ?? '') ?> (<?= htmlspecialchars($pen['duration_minutes'] ?? '2') ?>min<?= ($pen_type === 'major') ? ' MAJ' : '' ?><?= $is_queued ? ' QUEUED' : '' ?>)</span>
+                    <span class="sb-ctrl-penalty-clock" data-penalty-clock="<?= (int)($pen['id'] ?? 0) ?>" data-penalty-seconds="<?= (int)($pen['duration_minutes'] ?? 2) * 60 ?>"><?= htmlspecialchars($pen['duration_minutes'] ?? '2') ?>:00</span>
+                    <span class="sb-ctrl-penalty-info"><?= htmlspecialchars($pen['infraction'] ?? '') ?><?= ($pen_type === 'major') ? ' MAJ' : '' ?><?= $is_queued ? ' QUEUED' : '' ?></span>
                     <span class="sb-ctrl-penalty-actions">
                         <button class="sb-ctrl-penalty-vis-btn" data-penalty-id="<?= (int)($pen['id'] ?? 0) ?>" onclick="sbTogglePenaltyItemVisibility(<?= (int)($pen['id'] ?? 0) ?>)" title="Toggle board visibility">
                             <i class="fas fa-eye"></i>
@@ -751,7 +772,8 @@ foreach ($away_penalties as $p) {
                      data-penalty-type="<?= htmlspecialchars($pen_type) ?>"
                      data-duration="<?= (int)($pen['duration_minutes'] ?? 2) ?>">
                     <span>#<?= htmlspecialchars($pen['player_number'] ?? '?') ?> <?= htmlspecialchars($pen['player_name'] ?? '') ?></span>
-                    <span class="sb-ctrl-penalty-info"><?= htmlspecialchars($pen['infraction'] ?? '') ?> (<?= htmlspecialchars($pen['duration_minutes'] ?? '2') ?>min<?= ($pen_type === 'major') ? ' MAJ' : '' ?><?= $is_queued ? ' QUEUED' : '' ?>)</span>
+                    <span class="sb-ctrl-penalty-clock" data-penalty-clock="<?= (int)($pen['id'] ?? 0) ?>" data-penalty-seconds="<?= (int)($pen['duration_minutes'] ?? 2) * 60 ?>"><?= htmlspecialchars($pen['duration_minutes'] ?? '2') ?>:00</span>
+                    <span class="sb-ctrl-penalty-info"><?= htmlspecialchars($pen['infraction'] ?? '') ?><?= ($pen_type === 'major') ? ' MAJ' : '' ?><?= $is_queued ? ' QUEUED' : '' ?></span>
                     <span class="sb-ctrl-penalty-actions">
                         <button class="sb-ctrl-penalty-vis-btn" data-penalty-id="<?= (int)($pen['id'] ?? 0) ?>" onclick="sbTogglePenaltyItemVisibility(<?= (int)($pen['id'] ?? 0) ?>)" title="Toggle board visibility">
                             <i class="fas fa-eye"></i>

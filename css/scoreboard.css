@@ -765,15 +765,16 @@ body.sb-body {
 
 /* ── Scoresheet ────────────────────────────────────────── */
 .sb-scoresheet {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
+  min-height: 100vh;
+  min-height: 100dvh;
+  /* Let html element be the sole scroll container, not this div */
+  overflow: visible;
 }
 .sb-scoresheet-content {
-  flex: 1;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  padding: 16px 24px;
+  padding: clamp(12px, 2vw, 24px);
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-bottom: 40px;
 }
 .sb-ss-section {
   background: #111118;
@@ -797,6 +798,9 @@ body.sb-body {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .sb-ss-table th {
   text-align: left;
