@@ -505,7 +505,7 @@ unset($enrollment);
                             </div>
                             <div class="chat-bubble-meta">
                                 <?= htmlspecialchars($msg['sender_first'] . ' ' . $msg['sender_last']) ?> &bull; <?= date('M j, g:ia', strtotime($msg['created_at'])) ?>
-                                <i class="fas fa-lock" style="font-size:8px;" title="Encrypted"></i>
+                                <i class="fas fa-lock" style="font-size:10px;" title="Encrypted"></i>
                             </div>
                         </div>
                     </div>

@@ -1247,7 +1247,7 @@ $locations = $locations_stmt->fetchAll(PDO::FETCH_ASSOC);
                                         </div>
                                         <div class="dev-chat-bubble-meta">
                                             <?= htmlspecialchars($m['sender_first'] . ' ' . $m['sender_last']) ?> &bull; <?= date('M j, g:ia', strtotime($m['created_at'])) ?>
-                                            <i class="fas fa-lock" style="font-size:8px;" title="Encrypted"></i>
+                                            <i class="fas fa-lock" style="font-size:10px;" title="Encrypted"></i>
                                         </div>
                                     </div>
                                 </div>
