@@ -389,12 +389,12 @@ test.describe('Migration Handlers - Post-Migration Verification', () => {
 });
 
 // =====================================================
-// 8. SVG Icon CSS Mask Mode
+// 8. SVG Icon CSS - inline data URLs for cross-browser reliability
 // =====================================================
 
-test.describe('SVG Icon CSS - mask-mode alpha', () => {
+test.describe('SVG Icon CSS - inline data URLs', () => {
 
-  test('style-guide.css sets mask-mode: alpha for hockey icons', () => {
+  test('style-guide.css uses inline SVG data URLs for hockey icons (not external files)', () => {
     const content = readFile('css/style-guide.css');
     // Find the shared hockey icon rule block (the comma-separated selector)
     const ruleStart = content.indexOf('.icon-hockey-player,');
@@ -402,19 +402,68 @@ test.describe('SVG Icon CSS - mask-mode alpha', () => {
     // Get the rule block from selector to closing brace
     const ruleEnd = content.indexOf('}', ruleStart);
     const iconRule = content.substring(ruleStart, ruleEnd);
-    expect(iconRule).toContain('mask-mode: alpha');
-    expect(iconRule).toContain('-webkit-mask-mode: alpha');
+    // Should NOT use mask-mode (was incorrectly added for Firefox; Chrome/Edge ignore it)
+    expect(iconRule).not.toContain('mask-mode');
+    // Should use background-color: currentColor for coloring
+    expect(iconRule).toContain('background-color: currentColor');
   });
 
-  test('hockey SVG files exist and are valid', () => {
+  test('hockey player icon uses inline SVG data URL', () => {
+    const content = readFile('css/style-guide.css');
+    const playerRuleStart = content.indexOf('.icon-hockey-player {');
+    expect(playerRuleStart).toBeGreaterThan(-1);
+    const playerRuleEnd = content.indexOf('}', playerRuleStart);
+    const playerRule = content.substring(playerRuleStart, playerRuleEnd);
+    // Should use data URL, not external file reference
+    expect(playerRule).toContain("mask-image: url(\"data:image/svg+xml,");
+    expect(playerRule).toContain("-webkit-mask-image: url(\"data:image/svg+xml,");
+    // Should NOT reference external SVG file
+    expect(playerRule).not.toContain('hockey-player.svg');
+  });
+
+  test('hockey goalie icon uses inline SVG data URL', () => {
+    const content = readFile('css/style-guide.css');
+    // Find the standalone .icon-hockey-goalie rule (skip the shared comma-separated selector)
+    const playerRuleStart = content.indexOf('.icon-hockey-player {');
+    const goalieRuleStart = content.indexOf('.icon-hockey-goalie {', playerRuleStart);
+    expect(goalieRuleStart).toBeGreaterThan(playerRuleStart);
+    const goalieRuleEnd = content.indexOf('}', goalieRuleStart);
+    const goalieRule = content.substring(goalieRuleStart, goalieRuleEnd);
+    // Should use data URL, not external file reference
+    expect(goalieRule).toContain("mask-image: url(\"data:image/svg+xml,");
+    expect(goalieRule).toContain("-webkit-mask-image: url(\"data:image/svg+xml,");
+    // Should NOT reference external SVG file
+    expect(goalieRule).not.toContain('hockey-goalie.svg');
+  });
+
+  test('SVG data URLs use explicit fill (not currentColor) for reliable mask rendering', () => {
+    const content = readFile('css/style-guide.css');
+    // Find the player and goalie mask-image data URLs
+    const playerStart = content.indexOf('.icon-hockey-player {');
+    const playerEnd = content.indexOf('}', playerStart);
+    const playerBlock = content.substring(playerStart, playerEnd);
+    // The SVG fill should be #000 (encoded as %23000), not currentColor
+    expect(playerBlock).toContain('%23000');
+    expect(playerBlock).not.toContain('currentColor');
+  });
+
+  test('hockey SVG source files exist with explicit fill and no external URLs', () => {
     const playerSvg = readFile('assets/svg/hockey-player.svg');
     expect(playerSvg).toContain('<svg');
     expect(playerSvg).toContain('</svg>');
     expect(playerSvg).toContain('viewBox');
+    // SVG files should use fill="black" for reliable mask rendering
+    expect(playerSvg).toContain('fill="black"');
+    // Should not contain external URL references (comments linking to source websites)
+    expect(playerSvg).not.toContain('freesvg.org');
+    expect(playerSvg).not.toContain('Source:');
     
     const goalieSvg = readFile('assets/svg/hockey-goalie.svg');
     expect(goalieSvg).toContain('<svg');
     expect(goalieSvg).toContain('</svg>');
     expect(goalieSvg).toContain('viewBox');
+    expect(goalieSvg).toContain('fill="black"');
+    expect(goalieSvg).not.toContain('freesvg.org');
+    expect(goalieSvg).not.toContain('Source:');
   });
 });
