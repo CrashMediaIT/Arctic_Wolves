@@ -129,7 +129,13 @@ try {
             <form id="sbBuzzerUploadForm" onsubmit="return sbUploadBuzzerSound(event)">
                 <div class="sb-settings-field">
                     <label>Upload Sound Files (select multiple)</label>
-                    <input type="file" id="sbBuzzerFile" name="buzzer_file" accept="audio/mpeg,audio/wav,audio/ogg,audio/mp3,.mp3,.wav,.ogg" multiple>
+                    <div class="sb-upload-zone" id="sbBuzzerDropZone">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <p>Drag &amp; drop audio files here or click to browse</p>
+                        <span class="sb-upload-hint">Supported: MP3, WAV, OGG (select multiple)</span>
+                        <input type="file" id="sbBuzzerFile" name="buzzer_file" accept="audio/mpeg,audio/wav,audio/ogg,audio/mp3,.mp3,.wav,.ogg" multiple style="display:none;">
+                    </div>
+                    <div class="sb-selected-files" id="sbBuzzerSelected" style="display:none;"></div>
                 </div>
                 <button type="submit" class="sb-btn sb-btn-primary"><i class="fas fa-upload"></i> Upload Buzzer Sound(s)</button>
             </form>
@@ -162,7 +168,13 @@ try {
             <form id="sbHornUploadForm" onsubmit="return sbUploadHornSound(event)">
                 <div class="sb-settings-field">
                     <label>Upload Horn Sound Files (select multiple)</label>
-                    <input type="file" id="sbHornFile" name="horn_file" accept="audio/mpeg,audio/wav,audio/ogg,audio/mp3,.mp3,.wav,.ogg" multiple>
+                    <div class="sb-upload-zone" id="sbHornDropZone">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <p>Drag &amp; drop audio files here or click to browse</p>
+                        <span class="sb-upload-hint">Supported: MP3, WAV, OGG (select multiple)</span>
+                        <input type="file" id="sbHornFile" name="horn_file" accept="audio/mpeg,audio/wav,audio/ogg,audio/mp3,.mp3,.wav,.ogg" multiple style="display:none;">
+                    </div>
+                    <div class="sb-selected-files" id="sbHornSelected" style="display:none;"></div>
                 </div>
                 <button type="submit" class="sb-btn sb-btn-primary"><i class="fas fa-upload"></i> Upload Horn Sound(s)</button>
             </form>
@@ -220,7 +232,13 @@ try {
                 </div>
                 <div class="sb-settings-field">
                     <label>Logo Image</label>
-                    <input type="file" id="sbLogoFile" name="logo_file" accept="image/png,image/jpeg,image/svg+xml,image/webp,.png,.jpg,.jpeg,.svg,.webp">
+                    <div class="sb-upload-zone" id="sbLogoDropZone">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <p>Drag &amp; drop an image here or click to browse</p>
+                        <span class="sb-upload-hint">Supported: PNG, JPG, SVG, WebP</span>
+                        <input type="file" id="sbLogoFile" name="logo_file" accept="image/png,image/jpeg,image/svg+xml,image/webp,.png,.jpg,.jpeg,.svg,.webp" style="display:none;">
+                    </div>
+                    <div class="sb-selected-files" id="sbLogoSelected" style="display:none;"></div>
                 </div>
                 <button type="submit" class="sb-btn sb-btn-primary"><i class="fas fa-upload"></i> Upload Logo</button>
             </form>
@@ -317,6 +335,79 @@ try {
 .sb-settings-field input[type="file"] {
     padding: 8px;
     font-size: 13px;
+}
+/* ── Drag-and-drop upload zone (matches record_video style) ── */
+.sb-upload-zone {
+    border: 2px dashed #2D2D3F;
+    border-radius: 12px;
+    padding: 36px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.3s ease, background 0.3s ease;
+}
+.sb-upload-zone:hover {
+    border-color: #6B46C1;
+    background: rgba(107, 70, 193, 0.05);
+}
+.sb-upload-zone.sb-drag-over {
+    border-color: #6B46C1;
+    background: rgba(107, 70, 193, 0.1);
+}
+.sb-upload-zone > i {
+    font-size: 40px;
+    color: #6B46C1;
+    opacity: 0.5;
+    display: block;
+    margin-bottom: 12px;
+}
+.sb-upload-zone > p {
+    color: #A8A8B8;
+    margin: 0 0 6px;
+    font-size: 14px;
+}
+.sb-upload-hint {
+    font-size: 12px;
+    color: #666680;
+}
+.sb-selected-files {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 8px;
+}
+.sb-selected-file {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: rgba(107, 70, 193, 0.1);
+    border: 1px solid #6B46C1;
+    border-radius: 8px;
+}
+.sb-selected-file i {
+    font-size: 18px;
+    color: #6B46C1;
+}
+.sb-selected-file span {
+    flex: 1;
+    color: #E2E8F0;
+    font-size: 13px;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.sb-selected-file .sb-file-remove {
+    background: transparent;
+    border: none;
+    color: #8B8BA3;
+    cursor: pointer;
+    padding: 2px 6px;
+    font-size: 14px;
+    line-height: 1;
+}
+.sb-selected-file .sb-file-remove:hover {
+    color: #EF4444;
 }
 /* ── Settings Buttons (match display controls) ───────── */
 .sb-settings .sb-btn {
@@ -715,4 +806,65 @@ function sbDeleteTeamLogo(teamId, teamName) {
         }
     });
 }
+
+// ── Drag-and-drop upload zone helpers ──
+function sbInitUploadZone(zoneId, inputId, selectedId, iconClass) {
+    var zone = document.getElementById(zoneId);
+    var input = document.getElementById(inputId);
+    var selectedContainer = document.getElementById(selectedId);
+    if (!zone || !input || !selectedContainer) return;
+
+    zone.addEventListener('click', function() { input.click(); });
+
+    zone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        zone.classList.add('sb-drag-over');
+    });
+    zone.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        zone.classList.remove('sb-drag-over');
+    });
+    zone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        zone.classList.remove('sb-drag-over');
+        if (e.dataTransfer.files.length) {
+            input.files = e.dataTransfer.files;
+            sbShowSelectedFiles(zone, input, selectedContainer, iconClass);
+        }
+    });
+    input.addEventListener('change', function() {
+        if (input.files.length) {
+            sbShowSelectedFiles(zone, input, selectedContainer, iconClass);
+        }
+    });
+}
+
+function sbShowSelectedFiles(zone, input, container, iconClass) {
+    container.innerHTML = '';
+    for (var i = 0; i < input.files.length; i++) {
+        var file = input.files[i];
+        var sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+        var item = document.createElement('div');
+        item.className = 'sb-selected-file';
+        item.innerHTML = '<i class="fas ' + iconClass + '"></i>' +
+            '<span>' + file.name + ' (' + sizeMB + ' MB)</span>' +
+            '<button type="button" class="sb-file-remove" title="Remove"><i class="fas fa-times"></i></button>';
+        container.appendChild(item);
+    }
+    container.style.display = 'flex';
+    zone.style.display = 'none';
+
+    container.querySelectorAll('.sb-file-remove').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            input.value = '';
+            container.style.display = 'none';
+            container.innerHTML = '';
+            zone.style.display = '';
+        });
+    });
+}
+
+sbInitUploadZone('sbBuzzerDropZone', 'sbBuzzerFile', 'sbBuzzerSelected', 'fa-music');
+sbInitUploadZone('sbHornDropZone', 'sbHornFile', 'sbHornSelected', 'fa-bullhorn');
+sbInitUploadZone('sbLogoDropZone', 'sbLogoFile', 'sbLogoSelected', 'fa-image');
 </script>

@@ -2281,3 +2281,97 @@ test.describe('Team logo management', () => {
     expect(content).toContain('.sb-settings-logo-card:hover .sb-settings-logo-delete');
   });
 });
+
+// =====================================================
+// Styled upload zones (drag-and-drop) for scoreboard settings
+// =====================================================
+
+test.describe('Scoreboard settings styled upload zones', () => {
+  test('buzzer upload has drag-and-drop zone with cloud icon', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toContain('sbBuzzerDropZone');
+    expect(content).toContain('fa-cloud-upload-alt');
+    expect(content).toContain('sb-upload-zone');
+  });
+
+  test('horn upload has drag-and-drop zone with cloud icon', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toContain('sbHornDropZone');
+    expect(content).toContain('sb-upload-zone');
+  });
+
+  test('logo upload has drag-and-drop zone with cloud icon', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toContain('sbLogoDropZone');
+    expect(content).toContain('sb-upload-zone');
+  });
+
+  test('upload zones have hint text for supported formats', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toContain('sb-upload-hint');
+    expect(content).toContain('Supported: MP3, WAV, OGG');
+    expect(content).toContain('Supported: PNG, JPG, SVG, WebP');
+  });
+
+  test('upload zones have selected file display containers', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toContain('sbBuzzerSelected');
+    expect(content).toContain('sbHornSelected');
+    expect(content).toContain('sbLogoSelected');
+    expect(content).toContain('sb-selected-files');
+  });
+
+  test('CSS has dashed border upload zone styles', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toContain('.sb-upload-zone');
+    expect(content).toContain('2px dashed');
+    expect(content).toContain('border-radius: 12px');
+    expect(content).toContain('.sb-upload-zone:hover');
+  });
+
+  test('CSS has drag-over state styles', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toContain('.sb-drag-over');
+    expect(content).toContain('rgba(107, 70, 193');
+  });
+
+  test('CSS has selected file display styles', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toContain('.sb-selected-file');
+    expect(content).toContain('.sb-file-remove');
+    expect(content).toContain('.sb-file-remove:hover');
+  });
+
+  test('JS has sbInitUploadZone function for drag-and-drop', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toContain('sbInitUploadZone');
+    expect(content).toContain('dragover');
+    expect(content).toContain('dragleave');
+    expect(content).toContain('drop');
+  });
+
+  test('JS has sbShowSelectedFiles function', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toContain('sbShowSelectedFiles');
+    expect(content).toContain('sb-selected-file');
+    expect(content).toContain('sb-file-remove');
+  });
+
+  test('JS initializes all three upload zones', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toContain("sbInitUploadZone('sbBuzzerDropZone'");
+    expect(content).toContain("sbInitUploadZone('sbHornDropZone'");
+    expect(content).toContain("sbInitUploadZone('sbLogoDropZone'");
+  });
+
+  test('file inputs are hidden inside upload zones', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    // All file inputs should be display:none since the zone handles clicks
+    const buzzerSection = content.substring(content.indexOf('sbBuzzerDropZone'), content.indexOf('sbBuzzerDropZone') + 500);
+    expect(buzzerSection).toContain('style="display:none;"');
+    const hornSection = content.substring(content.indexOf('sbHornDropZone'), content.indexOf('sbHornDropZone') + 500);
+    expect(hornSection).toContain('style="display:none;"');
+    const logoSection = content.substring(content.indexOf('sbLogoDropZone'), content.indexOf('sbLogoDropZone') + 500);
+    expect(logoSection).toContain('style="display:none;"');
+  });
+});
