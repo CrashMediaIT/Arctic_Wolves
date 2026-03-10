@@ -899,32 +899,63 @@ class GitHubUpdater {
             
             // Execute migrations: create missing tables and add missing columns
             $schema_sql = file_get_contents($schema_file);
+            $create_table_pattern_tpl = '/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?`?%s`?\s*\(.*?\)\s*ENGINE[^;]*;/is';
             
-            foreach ($migrations as $migration) {
-                try {
-                    if ($migration['type'] === 'create_table') {
-                        $table_name = $migration['table'];
-                        if (preg_match('/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?`?' . preg_quote($table_name, '/') . '`?\s*\(.*?\)\s*ENGINE[^;]*;/is', $schema_sql, $match)) {
-                            $this->pdo->exec($match[0]);
-                            $results[] = "Created missing table: $table_name";
+            // Disable FK checks so tables can be created regardless of dependency order
+            try { $this->pdo->exec('SET FOREIGN_KEY_CHECKS = 0'); } catch (\Exception $e) { error_log('Could not disable FK checks: ' . $e->getMessage()); }
+            
+            try {
+                foreach ($migrations as $migration) {
+                    try {
+                        if ($migration['type'] === 'create_table') {
+                            $table_name = $migration['table'];
+                            if (preg_match(sprintf($create_table_pattern_tpl, preg_quote($table_name, '/')), $schema_sql, $match)) {
+                                $this->pdo->exec($match[0]);
+                                $results[] = "Created missing table: $table_name";
+                            }
+                        } elseif ($migration['type'] === 'add_column') {
+                            $result = $migrator->executeMigration($migration);
+                            if (!empty($result['skipped']) && strpos($result['message'], 'does not exist') !== false) {
+                                // Table missing — attempt to create it from schema file, then retry
+                                $table_name = $migration['table'];
+                                $created = false;
+                                if (preg_match(sprintf($create_table_pattern_tpl, preg_quote($table_name, '/')), $schema_sql, $match)) {
+                                    try {
+                                        $this->pdo->exec($match[0]);
+                                        $results[] = "Created missing table: $table_name";
+                                        $created = true;
+                                    } catch (\Exception $ce) {
+                                        $errors[] = "Could not create table $table_name: " . $ce->getMessage();
+                                    }
+                                }
+                                if ($created) {
+                                    $result = $migrator->executeMigration($migration);
+                                    if (!empty($result['skipped'])) {
+                                        $results[] = $result['message'] . ' (skipped)';
+                                    } else {
+                                        $results[] = $result['message'];
+                                    }
+                                } else {
+                                    $results[] = $result['message'] . ' (skipped)';
+                                }
+                            } elseif (!empty($result['skipped'])) {
+                                $results[] = $result['message'] . ' (skipped)';
+                            } else {
+                                $results[] = $result['message'];
+                            }
                         }
-                    } elseif ($migration['type'] === 'add_column') {
-                        $result = $migrator->executeMigration($migration);
-                        if (!empty($result['skipped'])) {
-                            $results[] = $result['message'] . ' (skipped)';
+                    } catch (\Exception $e) {
+                        // Ignore "Duplicate key name" errors (MySQL 1061 / SQLSTATE 42000) — index already exists
+                        if (strpos($e->getMessage(), '1061') !== false || strpos($e->getMessage(), 'Duplicate key name') !== false) {
+                            // Non-critical: index already exists on table
                         } else {
-                            $results[] = $result['message'];
+                            $errors[] = "Schema migration error: " . $e->getMessage();
+                            error_log("Update schema check error: " . $e->getMessage());
                         }
-                    }
-                } catch (\Exception $e) {
-                    // Ignore "Duplicate key name" errors (MySQL 1061 / SQLSTATE 42000) — index already exists
-                    if (strpos($e->getMessage(), '1061') !== false || strpos($e->getMessage(), 'Duplicate key name') !== false) {
-                        // Non-critical: index already exists on table
-                    } else {
-                        $errors[] = "Schema migration error: " . $e->getMessage();
-                        error_log("Update schema check error: " . $e->getMessage());
                     }
                 }
+            } finally {
+                try { $this->pdo->exec('SET FOREIGN_KEY_CHECKS = 1'); } catch (\Exception $e) { /* best-effort */ }
             }
             
             // Run inline migrations for columns that may not be detected by schema comparison
