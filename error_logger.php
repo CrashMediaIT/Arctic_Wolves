@@ -10,7 +10,6 @@ class ErrorLogger {
     private static $initialized = false;
     private static $pdo = null;
     private static $dbLogging = false;
-    private static $timezone_set = false;
     
     /**
      * Ensure the timezone is set.
