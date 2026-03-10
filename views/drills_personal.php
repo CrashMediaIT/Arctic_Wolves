@@ -66,6 +66,11 @@ if (function_exists('decryptUserRows')) {
     height: 100%;
     object-fit: cover;
 }
+.personal-drill-card .drill-thumbnail .drill-thumbnail-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
 .personal-drill-card .drill-thumbnail .video-play-indicator {
     position: absolute;
     top: 50%;
@@ -218,7 +223,7 @@ if (function_exists('decryptUserRows')) {
     <div class="personal-drill-card">
         <div class="drill-thumbnail">
             <?php if (!empty($pd['thumbnail_path'])): ?>
-                <img src="<?= htmlspecialchars(function_exists('resolveRustfsUrl') ? resolveRustfsUrl($pdo, $pd['thumbnail_path']) : $pd['thumbnail_path']) ?>" alt="<?= htmlspecialchars($pd['title']) ?> thumbnail" style="width:100%;height:100%;object-fit:cover;">
+                <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $pd['thumbnail_path'])) ?>" alt="<?= htmlspecialchars($pd['title']) ?> thumbnail" class="drill-thumbnail-img">
             <?php elseif (!empty($pd['video_upload_path'])):
                 $videoPath = $pd['video_upload_path'];
                 $videoExt = strtolower(pathinfo($videoPath, PATHINFO_EXTENSION));

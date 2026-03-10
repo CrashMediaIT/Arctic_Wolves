@@ -310,7 +310,7 @@ test.describe('Personal Drill Card CSS Collision Fixes', () => {
 
   test('thumbnail_path uses resolveRustfsUrl for image resolution', () => {
     const content = readFile('views/drills_personal.php');
-    expect(content).toContain('resolveRustfsUrl');
+    expect(content).toContain('resolveRustfsUrl($pdo');
     expect(content).toContain('image_helper.php');
   });
 
