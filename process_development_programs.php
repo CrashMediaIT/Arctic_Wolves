@@ -338,8 +338,12 @@ function handleSendMessage($pdo, $user_id, $input) {
         return;
     }
     
+    // Encrypt message body for at-rest protection
+    require_once __DIR__ . '/lib/encryption.php';
+    $encrypted_message = FieldEncryption::encrypt($message);
+
     $stmt = $pdo->prepare("INSERT INTO development_program_messages (enrollment_id, sender_id, message, video_url) VALUES (?, ?, ?, ?)");
-    $stmt->execute([$enrollment_id, $user_id, $message, $video_url ?: null]);
+    $stmt->execute([$enrollment_id, $user_id, $encrypted_message, $video_url ?: null]);
     
     echo json_encode(['success' => true]);
 }

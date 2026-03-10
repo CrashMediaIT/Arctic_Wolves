@@ -335,6 +335,9 @@ try {
             ");
             $stmt->execute([$staffId]);
             $schedules = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            if (function_exists('decryptUserRows')) {
+                $schedules = decryptUserRows($schedules);
+            }
             
             echo json_encode([
                 'success' => true,
@@ -746,6 +749,9 @@ try {
             }
             $stmt->execute($params);
             $shifts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            if (function_exists('decryptUserRows')) {
+                $shifts = decryptUserRows($shifts);
+            }
             
             if ($format === 'csv') {
                 // Generate CSV content

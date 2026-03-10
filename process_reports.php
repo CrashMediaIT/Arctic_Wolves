@@ -489,7 +489,8 @@ function getLocalPaymentsWithStripeInfo($date_from, $date_to) {
         ORDER BY p.payment_date DESC
     ");
     $stmt->execute([$date_from, $date_to]);
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    return function_exists('decryptUserRows') ? decryptUserRows($results) : $results;
 }
 
 // Add new accounting report data functions
