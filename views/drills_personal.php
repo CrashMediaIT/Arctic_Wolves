@@ -213,7 +213,7 @@ if (function_exists('decryptUserRows')) {
                 ];
                 $videoMimeType = $videoMimeTypes[$videoExt] ?? 'video/mp4';
             ?>
-                <video preload="metadata" muted>
+                <video preload="metadata" muted aria-label="<?= htmlspecialchars($pd['title']) ?> video preview">
                     <source src="<?= htmlspecialchars($videoPath) ?>#t=0.5" type="<?= $videoMimeType ?>">
                 </video>
             <?php else: ?>

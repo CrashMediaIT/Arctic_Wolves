@@ -1036,7 +1036,7 @@ $locations = $pdo->query("SELECT id, name FROM locations WHERE is_active = 1 ORD
                             <div class="drill-card-rich">
                                 <div class="drill-card-rich-thumb">
                                     <?php if (!empty($sd['custom_image'])): ?>
-                                        <img src="<?= htmlspecialchars(function_exists('resolveRustfsUrl') ? resolveRustfsUrl($pdo, $sd['custom_image']) : $sd['custom_image']) ?>" alt="Drill image">
+                                        <img src="<?= htmlspecialchars(function_exists('resolveRustfsUrl') ? resolveRustfsUrl($pdo, $sd['custom_image']) : $sd['custom_image']) ?>" alt="<?= htmlspecialchars($sd['drill_title']) ?> thumbnail">
                                     <?php elseif (!empty($sd['drill_video_url'])): ?>
                                         <div class="drill-card-video-icon"><i class="fas fa-play-circle"></i></div>
                                     <?php else: ?>
