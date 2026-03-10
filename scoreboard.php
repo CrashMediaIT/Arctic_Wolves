@@ -347,15 +347,17 @@ $spotify_configured = false;
 $subsonic_configured = false;
 $apple_music_configured = false;
 $custom_buzzer_url = '';
+$custom_horn_url = '';
 $network_speakers = [];
 try {
-    $stmt = $pdo->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('spotify_client_id', 'spotify_client_secret', 'subsonic_url', 'subsonic_username', 'subsonic_password', 'apple_music_token', 'scoreboard_buzzer_url', 'scoreboard_network_speakers')");
+    $stmt = $pdo->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('spotify_client_id', 'spotify_client_secret', 'subsonic_url', 'subsonic_username', 'subsonic_password', 'apple_music_token', 'scoreboard_buzzer_url', 'scoreboard_horn_url', 'scoreboard_network_speakers', 'scoreboard_buzzer_library', 'scoreboard_horn_library')");
     $stmt->execute();
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $s) {
         if ($s['setting_key'] === 'spotify_client_id' && !empty($s['setting_value'])) $spotify_configured = true;
         if ($s['setting_key'] === 'subsonic_url' && !empty($s['setting_value'])) $subsonic_configured = true;
         if ($s['setting_key'] === 'apple_music_token' && !empty($s['setting_value'])) $apple_music_configured = true;
         if ($s['setting_key'] === 'scoreboard_buzzer_url') $custom_buzzer_url = $s['setting_value'] ?? '';
+        if ($s['setting_key'] === 'scoreboard_horn_url') $custom_horn_url = $s['setting_value'] ?? '';
         if ($s['setting_key'] === 'scoreboard_network_speakers') $network_speakers = json_decode($s['setting_value'] ?? '[]', true) ?: [];
     }
 } catch (PDOException $e) { /* ignore */ }
@@ -419,6 +421,7 @@ if ($active_game) {
 const CSRF_TOKEN = '<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES) ?>';
 const ACTIVE_GAME_ID = <?= $active_game ? (int)$active_game['id'] : 'null' ?>;
 const CUSTOM_BUZZER_URL = '<?= htmlspecialchars($custom_buzzer_url, ENT_QUOTES) ?>';
+const CUSTOM_HORN_URL = '<?= htmlspecialchars($custom_horn_url, ENT_QUOTES) ?>';
 const IS_ADMIN = <?= $isAdmin ? 'true' : 'false' ?>;
 
 // Live clock in topbar

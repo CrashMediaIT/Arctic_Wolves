@@ -4,7 +4,8 @@
  *
  * Configure:
  *   - Music sources (Spotify, Apple Music, Subsonic)
- *   - Custom buzzer/horn sound upload
+ *   - Custom buzzer sound upload with library
+ *   - Custom goal horn sound upload with library
  *   - Network speakers (Bluesound Professional BSP1000, etc.)
  *   - Team logo management
  */
@@ -14,9 +15,18 @@ $settings = [];
 try {
     $stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'scoreboard_%' OR setting_key LIKE 'spotify_%' OR setting_key LIKE 'subsonic_%' OR setting_key LIKE 'apple_music_%'");
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $s) {
-        $settings[$s['setting_key']] = $s['setting_value'] ?? '';
+        $value = $s['setting_value'] ?? '';
+        // Decrypt sensitive credentials for display
+        if (in_array($s['setting_key'], ['spotify_client_secret', 'apple_music_token', 'subsonic_password']) && !empty($value)) {
+            $value = decryptCredential($value);
+        }
+        $settings[$s['setting_key']] = $value;
     }
 } catch (PDOException $e) { /* ignore */ }
+
+// Parse buzzer and horn libraries
+$buzzer_library = json_decode($settings['scoreboard_buzzer_library'] ?? '[]', true) ?: [];
+$horn_library = json_decode($settings['scoreboard_horn_library'] ?? '[]', true) ?: [];
 
 // Fetch existing team logos
 $team_logos = [];
@@ -92,15 +102,28 @@ try {
             </form>
         </div>
 
-        <!-- ═══════════ BUZZER / HORN SOUND ═══════════ -->
+        <!-- ═══════════ BUZZER SOUND (End of Period) ═══════════ -->
         <div class="sb-settings-section">
-            <h3><i class="fas fa-bullhorn" style="color:#F59E0B;"></i> Custom Buzzer / Horn Sound</h3>
-            <p class="sb-settings-desc">Upload a custom buzzer or horn sound (MP3/WAV/OGG). Falls back to the synthesized tone if no custom sound is set.</p>
+            <h3><i class="fas fa-bell" style="color:#F59E0B;"></i> Buzzer Sound (End of Period)</h3>
+            <p class="sb-settings-desc">The buzzer plays at the end of periods and during recurring shift-change alerts. Upload sounds to build a library, then select the active one.</p>
             <?php if (!empty($settings['scoreboard_buzzer_url'])): ?>
             <div class="sb-settings-current">
-                <span>Current: <strong><?= htmlspecialchars(basename($settings['scoreboard_buzzer_url'])) ?></strong></span>
+                <span>Active: <strong><?= htmlspecialchars(basename($settings['scoreboard_buzzer_url'])) ?></strong></span>
                 <audio controls src="<?= htmlspecialchars($settings['scoreboard_buzzer_url']) ?>" style="height:32px;"></audio>
-                <button type="button" class="sb-btn sb-btn-danger" onclick="sbRemoveBuzzerSound()" style="margin-left:8px;"><i class="fas fa-trash"></i> Remove</button>
+                <button type="button" class="sb-btn sb-btn-danger" onclick="sbRemoveBuzzerSound()" style="margin-left:8px;"><i class="fas fa-trash"></i> Remove Active</button>
+            </div>
+            <?php endif; ?>
+            <?php if (!empty($buzzer_library)): ?>
+            <div class="sb-settings-library">
+                <span class="sb-settings-library-label">Buzzer Library</span>
+                <?php foreach ($buzzer_library as $bi): ?>
+                <div class="sb-settings-library-item<?= ($bi['url'] ?? '') === ($settings['scoreboard_buzzer_url'] ?? '') ? ' active' : '' ?>">
+                    <span><?= htmlspecialchars($bi['name'] ?? basename($bi['url'] ?? '')) ?></span>
+                    <audio controls src="<?= htmlspecialchars($bi['url'] ?? '') ?>" style="height:28px;"></audio>
+                    <button type="button" class="sb-btn sb-btn-primary" onclick="sbSelectLibraryItem('buzzer','<?= htmlspecialchars($bi['url'] ?? '', ENT_QUOTES) ?>')" style="padding:4px 10px;font-size:12px;"><i class="fas fa-check"></i> Use</button>
+                    <button type="button" class="sb-btn sb-btn-danger" onclick="sbRemoveLibraryItem('buzzer','<?= htmlspecialchars($bi['url'] ?? '', ENT_QUOTES) ?>')" style="padding:4px 8px;font-size:12px;"><i class="fas fa-trash"></i></button>
+                </div>
+                <?php endforeach; ?>
             </div>
             <?php endif; ?>
             <form id="sbBuzzerUploadForm" onsubmit="return sbUploadBuzzerSound(event)">
@@ -109,6 +132,39 @@ try {
                     <input type="file" id="sbBuzzerFile" name="buzzer_file" accept="audio/mpeg,audio/wav,audio/ogg,audio/mp3,.mp3,.wav,.ogg">
                 </div>
                 <button type="submit" class="sb-btn sb-btn-primary"><i class="fas fa-upload"></i> Upload Buzzer Sound</button>
+            </form>
+        </div>
+
+        <!-- ═══════════ GOAL HORN SOUND ═══════════ -->
+        <div class="sb-settings-section">
+            <h3><i class="fas fa-bullhorn" style="color:#EF4444;"></i> Goal Horn Sound</h3>
+            <p class="sb-settings-desc">The goal horn plays when a goal is scored. Upload sounds to build a library, then select the active one. Falls back to the buzzer if no horn is set.</p>
+            <?php if (!empty($settings['scoreboard_horn_url'])): ?>
+            <div class="sb-settings-current">
+                <span>Active: <strong><?= htmlspecialchars(basename($settings['scoreboard_horn_url'])) ?></strong></span>
+                <audio controls src="<?= htmlspecialchars($settings['scoreboard_horn_url']) ?>" style="height:32px;"></audio>
+                <button type="button" class="sb-btn sb-btn-danger" onclick="sbRemoveHornSound()" style="margin-left:8px;"><i class="fas fa-trash"></i> Remove Active</button>
+            </div>
+            <?php endif; ?>
+            <?php if (!empty($horn_library)): ?>
+            <div class="sb-settings-library">
+                <span class="sb-settings-library-label">Horn Library</span>
+                <?php foreach ($horn_library as $hi): ?>
+                <div class="sb-settings-library-item<?= ($hi['url'] ?? '') === ($settings['scoreboard_horn_url'] ?? '') ? ' active' : '' ?>">
+                    <span><?= htmlspecialchars($hi['name'] ?? basename($hi['url'] ?? '')) ?></span>
+                    <audio controls src="<?= htmlspecialchars($hi['url'] ?? '') ?>" style="height:28px;"></audio>
+                    <button type="button" class="sb-btn sb-btn-primary" onclick="sbSelectLibraryItem('horn','<?= htmlspecialchars($hi['url'] ?? '', ENT_QUOTES) ?>')" style="padding:4px 10px;font-size:12px;"><i class="fas fa-check"></i> Use</button>
+                    <button type="button" class="sb-btn sb-btn-danger" onclick="sbRemoveLibraryItem('horn','<?= htmlspecialchars($hi['url'] ?? '', ENT_QUOTES) ?>')" style="padding:4px 8px;font-size:12px;"><i class="fas fa-trash"></i></button>
+                </div>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+            <form id="sbHornUploadForm" onsubmit="return sbUploadHornSound(event)">
+                <div class="sb-settings-field">
+                    <label>Upload Horn Sound File</label>
+                    <input type="file" id="sbHornFile" name="horn_file" accept="audio/mpeg,audio/wav,audio/ogg,audio/mp3,.mp3,.wav,.ogg">
+                </div>
+                <button type="submit" class="sb-btn sb-btn-primary"><i class="fas fa-upload"></i> Upload Horn Sound</button>
             </form>
         </div>
 
@@ -191,8 +247,11 @@ try {
     min-height: 100vh;
     min-height: 100dvh;
     background: #0A0A0F;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
+    /* No overflow-y here – let the html element be the sole scroll container.
+       Setting overflow-y:auto here created a competing scroll container that
+       broke touch scrolling on tablets/phones and mouse-wheel scrolling. */
+    overflow: visible;
+    padding-bottom: 40px;
 }
 .sb-settings-content {
     max-width: 800px;
@@ -315,6 +374,39 @@ try {
     color: #A8A8B8;
     font-weight: 600;
 }
+.sb-settings-library {
+    margin-bottom: 14px;
+}
+.sb-settings-library-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #A8A8B8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+}
+.sb-settings-library-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    background: #0A0A0F;
+    border: 1px solid #2D2D3F;
+    border-radius: 6px;
+    margin-bottom: 6px;
+    font-size: 13px;
+    color: #C4C4D4;
+    flex-wrap: wrap;
+}
+.sb-settings-library-item.active {
+    border-color: #6B46C1;
+    background: rgba(107,70,193,0.08);
+}
+.sb-settings-library-item span {
+    flex: 1;
+    min-width: 80px;
+}
 </style>
 
 <script>
@@ -379,7 +471,7 @@ function sbUploadBuzzerSound(e) {
 }
 
 function sbRemoveBuzzerSound() {
-    if (!confirm('Remove custom buzzer sound?')) return;
+    if (!confirm('Remove active buzzer sound?')) return;
     fetch('process_scoreboard.php', {
         method: 'POST',
         headers: {
@@ -391,6 +483,85 @@ function sbRemoveBuzzerSound() {
     }).then(function(r) { return r.json(); })
     .then(function(d) {
         if (d.success) window.location.reload();
+    });
+}
+
+function sbUploadHornSound(e) {
+    e.preventDefault();
+    var fileInput = document.getElementById('sbHornFile');
+    if (!fileInput.files.length) { alert('Please select a horn sound file.'); return false; }
+
+    var fd = new FormData();
+    fd.append('action', 'upload_horn');
+    fd.append('horn_file', fileInput.files[0]);
+
+    fetch('process_scoreboard.php', {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-Token': CSRF_TOKEN
+        },
+        body: fd
+    }).then(function(r) { return r.json(); })
+    .then(function(d) {
+        if (d.success) {
+            alert('Goal horn sound uploaded!');
+            window.location.reload();
+        } else {
+            alert(d.message || 'Upload failed');
+        }
+    });
+    return false;
+}
+
+function sbRemoveHornSound() {
+    if (!confirm('Remove active goal horn sound?')) return;
+    fetch('process_scoreboard.php', {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-Token': CSRF_TOKEN,
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: 'action=remove_horn'
+    }).then(function(r) { return r.json(); })
+    .then(function(d) {
+        if (d.success) window.location.reload();
+    });
+}
+
+function sbSelectLibraryItem(type, url) {
+    var action = (type === 'horn') ? 'select_horn' : 'select_buzzer';
+    fetch('process_scoreboard.php', {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-Token': CSRF_TOKEN,
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: 'action=' + encodeURIComponent(action) + '&url=' + encodeURIComponent(url)
+    }).then(function(r) { return r.json(); })
+    .then(function(d) {
+        if (d.success) window.location.reload();
+        else alert(d.message || 'Failed to select sound');
+    });
+}
+
+function sbRemoveLibraryItem(type, url) {
+    if (!confirm('Remove this sound from the ' + type + ' library?')) return;
+    var action = (type === 'horn') ? 'remove_horn_library_item' : 'remove_buzzer_library_item';
+    fetch('process_scoreboard.php', {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-Token': CSRF_TOKEN,
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: 'action=' + encodeURIComponent(action) + '&url=' + encodeURIComponent(url)
+    }).then(function(r) { return r.json(); })
+    .then(function(d) {
+        if (d.success) window.location.reload();
+        else alert(d.message || 'Failed to remove sound');
     });
 }
 
