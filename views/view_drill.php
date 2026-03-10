@@ -34,10 +34,12 @@ if ($drillId !== null && !ctype_digit((string)$drillId)) {
 if ($drillId) {
     try {
         $stmt = $pdo->prepare("
-            SELECT d.*, dc.name as category_name, u.first_name, u.last_name
+            SELECT d.*, dc.name as category_name, u.first_name, u.last_name,
+                   pd.id as personal_drill_id, pd.position as personal_drill_position
             FROM drills d
             LEFT JOIN drill_categories dc ON d.category_id = dc.id
             LEFT JOIN users u ON d.created_by = u.id
+            LEFT JOIN personal_drills pd ON pd.title = d.title AND pd.created_by = d.created_by
             WHERE d.id = ?
         ");
         $stmt->execute([$drillId]);
@@ -112,9 +114,15 @@ $canManageSharing = isset($_SESSION['user_id']) && ($drill['created_by'] == $_SE
                     <i class="fas fa-download"></i> Export Image
                 </button>
                 <?php if (isset($_SESSION['user_id']) && ($drill['created_by'] == $_SESSION['user_id'] || in_array($user_role ?? '', ['admin', 'coach']))): ?>
+                <?php if (!empty($drill['personal_drill_id'])): ?>
+                <a href="?page=personal_drills" class="btn btn-primary">
+                    <i class="fas fa-edit"></i> Edit Personal Drill
+                </a>
+                <?php else: ?>
                 <a href="?page=create_drill&edit=<?php echo $drillId; ?>" class="btn btn-primary">
                     <i class="fas fa-edit"></i> Edit Drill
                 </a>
+                <?php endif; ?>
                 <?php endif; ?>
             </div>
         </div>
@@ -124,6 +132,17 @@ $canManageSharing = isset($_SESSION['user_id']) && ($drill['created_by'] == $_SE
                     <!-- IHS Imported Image -->
                     <div class="ihs-diagram-container">
                         <img src="<?php echo htmlspecialchars(resolveRustfsUrl($pdo, $drill['custom_image'])); ?>" alt="<?php echo htmlspecialchars($drill['title']); ?> Diagram" class="ihs-drill-image" id="drill-ihs-image">
+                    </div>
+                <?php elseif (!empty($drill['thumbnail_path'])): ?>
+                    <!-- Personal Drill Video Thumbnail -->
+                    <div style="text-align:center;padding:20px;">
+                        <img src="<?php echo htmlspecialchars(resolveRustfsUrl($pdo, $drill['thumbnail_path'])); ?>" alt="<?php echo htmlspecialchars($drill['title']); ?> thumbnail" style="max-width:100%;max-height:400px;border-radius:8px;object-fit:contain;">
+                    </div>
+                <?php elseif (!empty($drill['personal_drill_id'])): ?>
+                    <!-- Personal Drill Position Icon (no video) -->
+                    <?php $pdPos = $drill['personal_drill_position'] ?? 'player'; ?>
+                    <div style="display:flex;align-items:center;justify-content:center;min-height:200px;background:var(--bg-main,#0d1117);border-radius:8px;">
+                        <span class="<?php echo $pdPos === 'goalie' ? 'icon-hockey-goalie' : 'icon-hockey-player'; ?>" style="font-size:72px;opacity:0.4;<?php echo $pdPos === 'goalie' ? 'color:var(--info,#3b82f6)' : 'color:var(--success,#10b981)'; ?>"></span>
                     </div>
                 <?php else: ?>
                     <!-- Drill Draw Canvas -->

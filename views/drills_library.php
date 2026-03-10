@@ -7,12 +7,14 @@ try {
     $stmt = $pdo->query("SELECT id, name FROM drill_categories ORDER BY name ASC");
     $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Get drills with category info
+    // Get drills with category info + detect personal drills
     $stmt = $pdo->prepare("
-        SELECT d.*, dc.name as category_name, u.first_name, u.last_name
+        SELECT d.*, dc.name as category_name, u.first_name, u.last_name,
+               pd.id as personal_drill_id, pd.position as personal_drill_position
         FROM drills d
         LEFT JOIN drill_categories dc ON d.category_id = dc.id
         LEFT JOIN users u ON d.created_by = u.id
+        LEFT JOIN personal_drills pd ON pd.title = d.title AND pd.created_by = d.created_by
         ORDER BY d.created_at DESC
     ");
     $stmt->execute();
@@ -148,17 +150,28 @@ $is_demo_drills = false;
                     }
                 }
             ?>
+            <?php
+                $isPersonalDrill = !empty($drill['personal_drill_id']);
+                $pdPosition = $drill['personal_drill_position'] ?? 'player';
+            ?>
                 <div class="drill-card" 
                      data-drill-id="<?php echo $drill['id']; ?>"
                      data-category="<?php echo $drill['category_id'] ?? ''; ?>"
                      data-title="<?php echo htmlspecialchars(strtolower($drill['title'])); ?>"
-                     data-coach="<?php echo strtolower($coachName); ?>">
+                     data-coach="<?php echo strtolower($coachName); ?>"
+                     <?php if ($isPersonalDrill): ?>data-personal-drill="1"<?php endif; ?>>
                     <div class="drill-select-overlay">
                         <input type="checkbox" class="drill-select-checkbox" value="<?php echo $drill['id']; ?>" onchange="updateBulkSelection()">
                     </div>
                     <div class="drill-image" data-ice-view="<?php echo htmlspecialchars($drillIceView); ?>">
-                        <?php if ($drill['custom_image']): ?>
+                        <?php if (!empty($drill['custom_image'])): ?>
                             <img src="<?php echo htmlspecialchars(resolveRustfsUrl($pdo, $drill['custom_image'])); ?>" alt="<?php echo htmlspecialchars($drill['title']); ?>">
+                        <?php elseif (!empty($drill['thumbnail_path'])): ?>
+                            <img src="<?php echo htmlspecialchars(resolveRustfsUrl($pdo, $drill['thumbnail_path'])); ?>" alt="<?php echo htmlspecialchars($drill['title']); ?>" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;">
+                        <?php elseif ($isPersonalDrill): ?>
+                            <div class="personal-drill-icon-area" style="position:absolute;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--bg-main,#0d1117);">
+                                <span class="<?php echo $pdPosition === 'goalie' ? 'icon-hockey-goalie' : 'icon-hockey-player'; ?>" style="font-size:48px;opacity:0.4;<?php echo $pdPosition === 'goalie' ? 'color:var(--info,#3b82f6)' : 'color:var(--success,#10b981)'; ?>"></span>
+                            </div>
                         <?php else: ?>
                             <div class="drill-diagram-preview" data-diagram='<?php echo htmlspecialchars($drill['diagram_data'] ?? '[]'); ?>' data-center-logo="<?php echo htmlspecialchars($centerLogoUrl); ?>">
                                 <canvas class="drill-thumbnail-canvas"></canvas>
@@ -183,6 +196,9 @@ $is_demo_drills = false;
                             <span><i class="fas fa-calendar"></i> <?php echo date('M d, Y', strtotime($drill['created_at'])); ?></span>
                             <?php if ($drill['ihs_source_url']): ?>
                                 <span class="badge badge-info">IHS Import</span>
+                            <?php endif; ?>
+                            <?php if ($isPersonalDrill): ?>
+                                <span class="badge badge-info">Personal</span>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -946,6 +962,15 @@ function editDrillFromView() {
 function loadDrillForEdit(drillId) {
     const drill = drillsData.find(d => d.id == drillId);
     if (!drill) return;
+    
+    // Check if this is a personal drill (linked to personal_drills table)
+    const isPersonalDrill = drill.personal_drill_id || document.querySelector('.drill-card[data-drill-id="' + drillId + '"][data-personal-drill]');
+    
+    if (isPersonalDrill) {
+        // For personal drills, redirect to the personal drills tab for editing
+        window.location.href = '?page=personal_drills';
+        return;
+    }
     
     // Check if this is an imported drill (has ihs_source_url or custom_image but no diagram_data)
     const isImported = drill.ihs_source_url || (drill.custom_image && !drill.diagram_data);

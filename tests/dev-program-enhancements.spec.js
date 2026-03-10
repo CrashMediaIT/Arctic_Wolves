@@ -433,3 +433,85 @@ test.describe('Personal Drill Edit and Delete', () => {
     expect(content).not.toContain('page=create_drill&edit=');
   });
 });
+
+// =====================================================
+// 9. Personal drills in drill library view
+// =====================================================
+
+test.describe('Personal Drills in Library View', () => {
+
+  test('library query LEFT JOINs personal_drills to detect them', () => {
+    const content = readFile('views/drills_library.php');
+    expect(content).toContain('LEFT JOIN personal_drills pd');
+    expect(content).toContain('personal_drill_id');
+    expect(content).toContain('personal_drill_position');
+  });
+
+  test('library cards check thumbnail_path before falling to ice canvas', () => {
+    const content = readFile('views/drills_library.php');
+    // Should check thumbnail_path as a priority display option
+    expect(content).toContain("drill['thumbnail_path']");
+    // Thumbnail path should use resolveRustfsUrl
+    expect(content).toContain("resolveRustfsUrl($pdo, $drill['thumbnail_path'])");
+  });
+
+  test('library cards show position SVG icon for personal drills without video', () => {
+    const content = readFile('views/drills_library.php');
+    // Should have personal drill icon area with position-based SVG
+    expect(content).toContain('personal-drill-icon-area');
+    expect(content).toContain('icon-hockey-goalie');
+    expect(content).toContain('icon-hockey-player');
+  });
+
+  test('library cards mark personal drills with data attribute', () => {
+    const content = readFile('views/drills_library.php');
+    expect(content).toContain('data-personal-drill="1"');
+  });
+
+  test('library shows Personal badge for personal drills', () => {
+    const content = readFile('views/drills_library.php');
+    expect(content).toContain('>Personal</span>');
+  });
+
+  test('library edit handler detects personal drills and redirects to personal drills tab', () => {
+    const content = readFile('views/drills_library.php');
+    // Should check for personal drill before redirecting to ice canvas
+    expect(content).toContain('isPersonalDrill');
+    expect(content).toContain("page=personal_drills");
+  });
+});
+
+// =====================================================
+// 10. Personal drills in view_drill.php
+// =====================================================
+
+test.describe('Personal Drills in View Drill Page', () => {
+
+  test('view_drill query LEFT JOINs personal_drills', () => {
+    const content = readFile('views/view_drill.php');
+    expect(content).toContain('LEFT JOIN personal_drills pd');
+    expect(content).toContain('personal_drill_id');
+    expect(content).toContain('personal_drill_position');
+  });
+
+  test('view_drill shows thumbnail for personal drills with video', () => {
+    const content = readFile('views/view_drill.php');
+    expect(content).toContain("drill['thumbnail_path']");
+    // Should show thumbnail image
+    expect(content).toContain("resolveRustfsUrl($pdo, $drill['thumbnail_path'])");
+  });
+
+  test('view_drill shows position icon for personal drills without video', () => {
+    const content = readFile('views/view_drill.php');
+    expect(content).toContain("drill['personal_drill_id']");
+    expect(content).toContain('icon-hockey-goalie');
+    expect(content).toContain('icon-hockey-player');
+  });
+
+  test('view_drill edit button redirects to personal drills tab for personal drills', () => {
+    const content = readFile('views/view_drill.php');
+    // Should have conditional: personal drill → personal_drills page, else → create_drill&edit
+    expect(content).toContain("page=personal_drills");
+    expect(content).toContain('Edit Personal Drill');
+  });
+});
