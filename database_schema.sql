@@ -4869,6 +4869,7 @@ CREATE TABLE IF NOT EXISTS `personal_drills` (
     `video_url` VARCHAR(512) DEFAULT NULL,
     `video_upload_path` VARCHAR(500) DEFAULT NULL COMMENT 'Path to uploaded video file',
     `position` ENUM('player', 'goalie') DEFAULT 'player' COMMENT 'Target position for the drill',
+    `thumbnail_path` VARCHAR(500) DEFAULT NULL COMMENT 'RustFS path to video thumbnail image',
     `created_by` INT NOT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -4923,6 +4924,7 @@ CREATE TABLE IF NOT EXISTS `development_program_videos` (
     `description` TEXT DEFAULT NULL,
     `video_url` VARCHAR(512) DEFAULT NULL,
     `video_upload_path` VARCHAR(500) DEFAULT NULL,
+    `thumbnail_path` VARCHAR(500) DEFAULT NULL COMMENT 'RustFS path to video thumbnail image',
     `status` ENUM('pending_review', 'reviewed', 'feedback_given') DEFAULT 'pending_review',
     `coach_feedback` TEXT DEFAULT NULL,
     `reviewed_by` INT DEFAULT NULL,
@@ -5045,3 +5047,12 @@ CREATE TABLE IF NOT EXISTS `scoreboard_shots` (
 
 -- Add position field to personal_drills for player/goalie drill thumbnails
 ALTER TABLE `personal_drills` ADD COLUMN IF NOT EXISTS `position` ENUM('player', 'goalie') DEFAULT 'player' COMMENT 'Target position for the drill' AFTER `video_upload_path`;
+
+-- Add thumbnail_path column to personal_drills for video thumbnails
+ALTER TABLE `personal_drills` ADD COLUMN IF NOT EXISTS `thumbnail_path` VARCHAR(500) DEFAULT NULL COMMENT 'RustFS path to video thumbnail image' AFTER `position`;
+
+-- Add thumbnail_path column to development_program_videos for video thumbnails
+ALTER TABLE `development_program_videos` ADD COLUMN IF NOT EXISTS `thumbnail_path` VARCHAR(500) DEFAULT NULL COMMENT 'RustFS path to video thumbnail image' AFTER `video_upload_path`;
+
+-- Add thumbnail_path column to drills table for video thumbnails
+ALTER TABLE `drills` ADD COLUMN IF NOT EXISTS `thumbnail_path` VARCHAR(500) DEFAULT NULL COMMENT 'RustFS path to video thumbnail image' AFTER `video_upload_path`;

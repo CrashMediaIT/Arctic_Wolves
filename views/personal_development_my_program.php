@@ -221,7 +221,13 @@ unset($enrollment);
 .dev-video-list { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
 .dev-video-item {
     background: var(--bg-main, #0A0A0F); border: 1px solid var(--border, #2D2D3F);
-    border-radius: var(--radius-lg); padding: var(--space-3) var(--space-4); display: flex; justify-content: space-between; align-items: center;
+    border-radius: var(--radius-lg); padding: var(--space-3) var(--space-4); display: flex; justify-content: space-between; align-items: center; gap: var(--space-3);
+}
+.dev-video-item .video-thumb {
+    width: 80px; height: 56px; flex-shrink: 0; border-radius: 6px; overflow: hidden; background: var(--bg-card);
+}
+.dev-video-item .video-thumb img {
+    width: 100%; height: 100%; object-fit: cover;
 }
 .dev-video-item .video-info h5 { font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); color: var(--text-white); margin: 0 0 4px; }
 .dev-video-item .video-info span { font-size: var(--font-size-sm); color: var(--text-dim); }
@@ -478,6 +484,11 @@ unset($enrollment);
                 <div class="dev-video-list">
                     <?php foreach ($enrollment['videos'] as $vid): ?>
                     <div class="dev-video-item">
+                        <?php if (!empty($vid['thumbnail_path'])): ?>
+                        <div class="video-thumb">
+                            <img src="<?= htmlspecialchars($vid['thumbnail_path']) ?>" alt="Video thumbnail" loading="lazy">
+                        </div>
+                        <?php endif; ?>
                         <div class="video-info">
                             <h5><?= htmlspecialchars($vid['title']) ?></h5>
                             <span><?= date('M j, Y g:ia', strtotime($vid['created_at'])) ?><?= $vid['drill_title'] ? ' &bull; ' . htmlspecialchars($vid['drill_title']) : '' ?></span>
@@ -563,6 +574,7 @@ unset($enrollment);
 
 <?php endif; ?>
 
+<script src="js/video-thumbnail.js"></script>
 <script>
 const devCsrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
@@ -664,20 +676,24 @@ function submitDevVideo(enrollmentId) {
             });
         })
         .then(function() {
-            // Phase 3: Confirm upload in DB
-            var confirmForm = new FormData();
-            confirmForm.append('action', 'confirm_dev_video_upload');
-            confirmForm.append('csrf_token', devCsrfToken);
-            confirmForm.append('upload_nonce', uploadNonce);
-            confirmForm.append('enrollment_id', enrollmentId);
-            if (drillId) confirmForm.append('drill_assignment_id', drillId);
-            confirmForm.append('title', title);
-            confirmForm.append('description', desc || '');
-            return fetch('process_development_programs.php', {
-                method: 'POST',
-                headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                body: confirmForm
-            }).then(function(r) { return r.json(); });
+            // Phase 3: Extract thumbnail and confirm upload in DB
+            return (window.extractVideoThumbnail ? extractVideoThumbnail(videoFile) : Promise.resolve(null))
+                .then(function(thumbBase64) {
+                    var confirmForm = new FormData();
+                    confirmForm.append('action', 'confirm_dev_video_upload');
+                    confirmForm.append('csrf_token', devCsrfToken);
+                    confirmForm.append('upload_nonce', uploadNonce);
+                    confirmForm.append('enrollment_id', enrollmentId);
+                    if (drillId) confirmForm.append('drill_assignment_id', drillId);
+                    confirmForm.append('title', title);
+                    confirmForm.append('description', desc || '');
+                    if (thumbBase64) confirmForm.append('thumbnail_data', thumbBase64);
+                    return fetch('process_development_programs.php', {
+                        method: 'POST',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        body: confirmForm
+                    }).then(function(r) { return r.json(); });
+                });
         })
         .then(function(data) {
             if (data.success) { alert('Video submitted successfully! Your coach will be notified.'); location.reload(); }

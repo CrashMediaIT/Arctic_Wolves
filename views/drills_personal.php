@@ -202,7 +202,9 @@ if (function_exists('decryptUserRows')) {
     ?>
     <div class="personal-drill-card">
         <div class="drill-thumbnail">
-            <?php if (!empty($pd['video_upload_path'])):
+            <?php if (!empty($pd['thumbnail_path'])): ?>
+                <img src="<?= htmlspecialchars($pd['thumbnail_path']) ?>" alt="<?= htmlspecialchars($pd['title']) ?> thumbnail" style="width:100%;height:100%;object-fit:cover;">
+            <?php elseif (!empty($pd['video_upload_path'])):
                 $videoPath = $pd['video_upload_path'];
                 $videoExt = strtolower(pathinfo($videoPath, PATHINFO_EXTENSION));
                 $videoMimeTypes = [

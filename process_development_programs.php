@@ -10,6 +10,7 @@ require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/cloud_config.php';
 require_once __DIR__ . '/lib/file_upload_validator.php';
+require_once __DIR__ . '/lib/video_thumbnail.php';
 
 // Check AJAX request
 if (empty($_SERVER['HTTP_X_REQUESTED_WITH']) || strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) !== 'xmlhttprequest') {
@@ -364,6 +365,7 @@ function handleCreatePersonalDrill($pdo, $user_id, $input) {
     $description = trim($input['description'] ?? '');
     $position = in_array($input['position'] ?? '', ['player', 'goalie']) ? $input['position'] : 'player';
     $video_upload_path = null;
+    $thumbnail_path = null;
     
     if (!$title) {
         echo json_encode(['success' => false, 'error' => 'Title is required']);
@@ -382,7 +384,8 @@ function handleCreatePersonalDrill($pdo, $user_id, $input) {
         }
         
         $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        $filename = 'personal_drill_' . bin2hex(random_bytes(16)) . '.' . $extension;
+        $baseName = 'personal_drill_' . bin2hex(random_bytes(16));
+        $filename = $baseName . '.' . $extension;
         
         $persist = persistUploadedFile($pdo, $file['tmp_name'], 'drills/videos', $filename, '', true);
         if (!$persist['success']) {
@@ -390,18 +393,24 @@ function handleCreatePersonalDrill($pdo, $user_id, $input) {
             return;
         }
         $video_upload_path = $persist['rustfs_url'] ?? null;
+        
+        // Generate video thumbnail
+        $thumb = generateVideoThumbnail($pdo, $file['tmp_name'], 'drills/thumbnails', $baseName);
+        if ($thumb['success']) {
+            $thumbnail_path = $thumb['thumbnail_url'];
+        }
     }
     
     $pdo->beginTransaction();
     try {
         // Add to the main drill library first
-        $drill_stmt = $pdo->prepare("INSERT INTO drills (title, description, video_upload_path, created_by) VALUES (?, ?, ?, ?)");
-        $drill_stmt->execute([$title, $description ?: null, $video_upload_path, $user_id]);
+        $drill_stmt = $pdo->prepare("INSERT INTO drills (title, description, video_upload_path, thumbnail_path, created_by) VALUES (?, ?, ?, ?, ?)");
+        $drill_stmt->execute([$title, $description ?: null, $video_upload_path, $thumbnail_path, $user_id]);
         $drill_id = (int)$pdo->lastInsertId();
         
         // Create personal drill record referencing the library drill
-        $pd_stmt = $pdo->prepare("INSERT INTO personal_drills (title, description, video_upload_path, position, created_by) VALUES (?, ?, ?, ?, ?)");
-        $pd_stmt->execute([$title, $description ?: null, $video_upload_path, $position, $user_id]);
+        $pd_stmt = $pdo->prepare("INSERT INTO personal_drills (title, description, video_upload_path, position, thumbnail_path, created_by) VALUES (?, ?, ?, ?, ?, ?)");
+        $pd_stmt->execute([$title, $description ?: null, $video_upload_path, $position, $thumbnail_path, $user_id]);
         
         $pdo->commit();
         echo json_encode(['success' => true, 'drill_id' => $drill_id]);
@@ -513,6 +522,7 @@ function handleUploadDevVideo($pdo, $user_id, $input) {
     }
     
     $video_upload_path = null;
+    $thumbnail_path = null;
     
     // Handle video file upload if provided
     if (isset($_FILES['video_file']) && $_FILES['video_file']['error'] === UPLOAD_ERR_OK) {
@@ -526,7 +536,8 @@ function handleUploadDevVideo($pdo, $user_id, $input) {
         }
         
         $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        $filename = 'dev_video_' . bin2hex(random_bytes(16)) . '.' . $extension;
+        $baseName = 'dev_video_' . bin2hex(random_bytes(16));
+        $filename = $baseName . '.' . $extension;
         
         $persist = persistUploadedFile($pdo, $file['tmp_name'], 'development/videos', $filename, '', true);
         if (!$persist['success']) {
@@ -534,12 +545,18 @@ function handleUploadDevVideo($pdo, $user_id, $input) {
             return;
         }
         $video_upload_path = $persist['rustfs_url'] ?? null;
+        
+        // Generate video thumbnail
+        $thumb = generateVideoThumbnail($pdo, $file['tmp_name'], 'development/thumbnails', $baseName);
+        if ($thumb['success']) {
+            $thumbnail_path = $thumb['thumbnail_url'];
+        }
     }
     
     $final_url = $video_upload_path ?: ($video_url ?: null);
     
-    $stmt = $pdo->prepare("INSERT INTO development_program_videos (enrollment_id, athlete_id, drill_assignment_id, title, description, video_url, video_upload_path) VALUES (?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$enrollment_id, $user_id, $drill_assignment_id, $title, $description ?: null, $final_url, $video_upload_path]);
+    $stmt = $pdo->prepare("INSERT INTO development_program_videos (enrollment_id, athlete_id, drill_assignment_id, title, description, video_url, video_upload_path, thumbnail_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$enrollment_id, $user_id, $drill_assignment_id, $title, $description ?: null, $final_url, $video_upload_path, $thumbnail_path]);
     
     // If this is for a specific drill, update its status to in_progress
     if ($drill_assignment_id) {
@@ -608,12 +625,29 @@ function handleConfirmDevVideoUpload($pdo, $user_id, $input) {
     // Build video URL from pending upload metadata
     $video_url = $pending['rustfs_url'] ?? $pending['public_url'] ?? null;
     $video_upload_path = $pending['object_key'] ?? null;
+    $thumbnail_path = null;
+    
+    // Accept client-side generated thumbnail (base64 JPEG)
+    $thumbnail_data = $input['thumbnail_data'] ?? $_POST['thumbnail_data'] ?? '';
+    if (!empty($thumbnail_data)) {
+        $thumb_binary = base64_decode($thumbnail_data, true);
+        if ($thumb_binary !== false && strlen($thumb_binary) > 0 && strlen($thumb_binary) < 2 * 1024 * 1024) {
+            $rustfs = getRustFSSettings($pdo);
+            if (isRustFSConfigured($rustfs)) {
+                $thumbKey = 'Images/development/thumbnails/dev_video_' . bin2hex(random_bytes(8)) . '_thumb.jpg';
+                $upload = uploadContentToRustFS($rustfs, $thumb_binary, $thumbKey, 'image/jpeg');
+                if ($upload['success']) {
+                    $thumbnail_path = 'api/media.php?key=' . rawurlencode($thumbKey);
+                }
+            }
+        }
+    }
     
     // Clean up session
     unset($_SESSION['pending_video_upload']);
     
-    $stmt = $pdo->prepare("INSERT INTO development_program_videos (enrollment_id, athlete_id, drill_assignment_id, title, description, video_url, video_upload_path) VALUES (?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$enrollment_id, $user_id, $drill_assignment_id, $title, $description ?: null, $video_url, $video_upload_path]);
+    $stmt = $pdo->prepare("INSERT INTO development_program_videos (enrollment_id, athlete_id, drill_assignment_id, title, description, video_url, video_upload_path, thumbnail_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$enrollment_id, $user_id, $drill_assignment_id, $title, $description ?: null, $video_url, $video_upload_path, $thumbnail_path]);
     
     // If this is for a specific drill, update its status to in_progress
     if ($drill_assignment_id) {

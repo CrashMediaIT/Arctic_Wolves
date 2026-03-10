@@ -397,7 +397,7 @@ if (!empty($drill['drill_image'])) {
             <?php foreach ($drill_videos as $vid): ?>
             <div class="dev-drill-video-item">
                 <?php if (!empty($vid['thumbnail_path'])): ?>
-                <div class="video-thumb" style="width:80px;height:56px;flex-shrink:0;border-radius:6px;overflow:hidden;background:var(--bg-main,#0d1117);">
+                <div class="video-thumb" style="width:80px;height:56px;flex-shrink:0;border-radius:6px;overflow:hidden;background:var(--bg-main);">
                     <img src="<?= htmlspecialchars($vid['thumbnail_path']) ?>" alt="Video thumbnail" loading="lazy" style="width:100%;height:100%;object-fit:cover;">
                 </div>
                 <?php endif; ?>
