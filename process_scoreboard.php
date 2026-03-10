@@ -405,8 +405,9 @@ try {
                 exit();
             }
             $score = max(0, $score);
-            $col = ($team === 'home') ? 'home_score' : 'away_score';
-            $pdo->prepare("UPDATE scoreboard_games SET $col = ? WHERE id = ?")->execute([$score, $game_id]);
+            $colMap = ['home' => 'home_score', 'away' => 'away_score'];
+            $col = $colMap[$team];
+            $pdo->prepare("UPDATE scoreboard_games SET {$col} = ? WHERE id = ?")->execute([$score, $game_id]);
             $stmt = $pdo->prepare("SELECT home_score, away_score FROM scoreboard_games WHERE id = ?");
             $stmt->execute([$game_id]);
             $scores = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -423,8 +424,9 @@ try {
                 exit();
             }
             $shots = max(0, $shots);
-            $col = ($team === 'home') ? 'home_shots' : 'away_shots';
-            $pdo->prepare("UPDATE scoreboard_games SET $col = ? WHERE id = ?")->execute([$shots, $game_id]);
+            $colMap = ['home' => 'home_shots', 'away' => 'away_shots'];
+            $col = $colMap[$team];
+            $pdo->prepare("UPDATE scoreboard_games SET {$col} = ? WHERE id = ?")->execute([$shots, $game_id]);
             $stmt = $pdo->prepare("SELECT home_shots, away_shots FROM scoreboard_games WHERE id = ?");
             $stmt->execute([$game_id]);
             $shotsData = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -553,7 +555,7 @@ try {
                 if ($file['size'] > 10 * 1024 * 1024) continue;
                 $ext = pathinfo($file['name'], PATHINFO_EXTENSION) ?: 'mp3';
                 $ext = preg_replace('/[^a-z0-9]/i', '', $ext);
-                $filename = 'buzzer_' . time() . '_' . $uploadedCount . '.' . $ext;
+                $filename = 'buzzer_' . uniqid('', true) . '.' . $ext;
                 // Upload to RustFS
                 $persist = persistUploadedFile($pdo, $file['tmp_name'], 'scoreboard/buzzer', $filename);
                 if ($persist['success'] && !empty($persist['rustfs_url'])) {
@@ -638,7 +640,7 @@ try {
                 if ($file['size'] > 10 * 1024 * 1024) continue;
                 $ext = pathinfo($file['name'], PATHINFO_EXTENSION) ?: 'mp3';
                 $ext = preg_replace('/[^a-z0-9]/i', '', $ext);
-                $filename = 'horn_' . time() . '_' . $uploadedCount . '.' . $ext;
+                $filename = 'horn_' . uniqid('', true) . '.' . $ext;
                 // Upload to RustFS
                 $persist = persistUploadedFile($pdo, $file['tmp_name'], 'scoreboard/horn', $filename);
                 if ($persist['success'] && !empty($persist['rustfs_url'])) {

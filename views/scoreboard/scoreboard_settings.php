@@ -231,7 +231,7 @@ try {
                 <div class="sb-settings-logo-card">
                     <img src="<?= htmlspecialchars($tl['logo_url']) ?>" alt="<?= htmlspecialchars($tl['team_name']) ?>">
                     <span><?= htmlspecialchars($tl['team_name']) ?></span>
-                    <button type="button" class="sb-settings-logo-delete" onclick="sbDeleteTeamLogo(<?= (int)$tl['id'] ?>, '<?= htmlspecialchars($tl['team_name'], ENT_QUOTES) ?>')" title="Remove logo">
+                    <button type="button" class="sb-settings-logo-delete" data-team-id="<?= (int)$tl['id'] ?>" data-team-name="<?= htmlspecialchars($tl['team_name'], ENT_QUOTES) ?>" onclick="sbDeleteTeamLogo(this.dataset.teamId, this.dataset.teamName)" title="Remove logo">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -312,7 +312,7 @@ try {
 .sb-settings-field select:focus {
     outline: none;
     border-color: #6B46C1;
-    box-shadow: 0 0 0 3px rgba(107, 70, 193, 0.15);
+    box-shadow: 0 0 0 3px rgba(107, 70, 193, 0.3);
 }
 .sb-settings-field input[type="file"] {
     padding: 8px;

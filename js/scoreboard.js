@@ -190,9 +190,12 @@ function sbInitPenaltyItemClocks() {
     var clocks = document.querySelectorAll('[data-penalty-clock]');
     clocks.forEach(function(el) {
         var secs = parseInt(el.getAttribute('data-penalty-seconds'), 10);
-        if (!isNaN(secs) && secs > 0) {
-            sbPenaltyItemClocks.push({ seconds: secs, element: el });
+        if (isNaN(secs) || secs < 0) secs = 0;
+        if (secs === 0) {
+            el.textContent = '0:00';
+            el.classList.add('expired');
         }
+        sbPenaltyItemClocks.push({ seconds: secs, element: el });
     });
 }
 
