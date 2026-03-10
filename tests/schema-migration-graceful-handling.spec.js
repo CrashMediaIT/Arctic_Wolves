@@ -442,7 +442,7 @@ test.describe('SVG Icon CSS - inline data URLs', () => {
     const playerStart = content.indexOf('.icon-hockey-player {');
     const playerEnd = content.indexOf('}', playerStart);
     const playerBlock = content.substring(playerStart, playerEnd);
-    // The SVG fill should be #000 (encoded as %23000), not currentColor
+    // The SVG fill should be #000 (black) — encoded as %23000 in the data URL — not currentColor
     expect(playerBlock).toContain('%23000');
     expect(playerBlock).not.toContain('currentColor');
   });
