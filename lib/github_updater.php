@@ -902,7 +902,7 @@ class GitHubUpdater {
             $create_table_pattern_tpl = '/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?`?%s`?\s*\(.*?\)\s*ENGINE[^;]*;/is';
             
             // Disable FK checks so tables can be created regardless of dependency order
-            try { $this->pdo->exec('SET FOREIGN_KEY_CHECKS = 0'); } catch (\Exception $e) { /* best-effort */ }
+            try { $this->pdo->exec('SET FOREIGN_KEY_CHECKS = 0'); } catch (\Exception $e) { error_log('Could not disable FK checks: ' . $e->getMessage()); }
             
             try {
                 foreach ($migrations as $migration) {
