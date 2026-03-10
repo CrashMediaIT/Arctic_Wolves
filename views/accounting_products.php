@@ -3589,6 +3589,36 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+// Global showNotification helper for functions outside DOMContentLoaded closure
+function showNotification(message, type) {
+    var existing = document.querySelector('.notification-widget');
+    if (existing) existing.remove();
+    
+    var div = document.createElement('div');
+    div.className = 'notification-widget';
+    div.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000; padding: 16px 24px; border-radius: 8px; display: flex; align-items: center; gap: 12px; animation: slideIn 0.3s ease;';
+    if (type === 'success') {
+        div.style.background = 'rgba(16, 185, 129, 0.95)';
+        div.style.color = '#fff';
+    } else {
+        div.style.background = 'rgba(239, 68, 68, 0.95)';
+        div.style.color = '#fff';
+    }
+    var icon = document.createElement('i');
+    icon.className = 'fas fa-' + (type === 'success' ? 'check-circle' : 'exclamation-circle');
+    div.appendChild(icon);
+    var span = document.createElement('span');
+    span.textContent = message;
+    div.appendChild(span);
+    var closeBtn = document.createElement('button');
+    closeBtn.style.cssText = 'margin-left: 16px; background: none; border: none; color: inherit; cursor: pointer; font-size: 18px;';
+    closeBtn.textContent = '\u00d7';
+    closeBtn.onclick = function() { div.remove(); };
+    div.appendChild(closeBtn);
+    document.body.appendChild(div);
+    setTimeout(function() { if (div.parentElement) div.remove(); }, 5000);
+}
+
 function closeModal(modalId) {
     var modal = document.getElementById(modalId);
     if (modal) {
