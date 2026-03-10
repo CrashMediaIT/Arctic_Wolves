@@ -89,9 +89,11 @@ test.describe('Development program message encryption', () => {
     expect(content).toContain("decryptUserRows($enrollment['messages'])");
   });
 
-  test('athlete view also applies FieldEncryption::decryptRows on messages', () => {
+  test('athlete view also applies FieldEncryption::decryptRows on messages with sender fields', () => {
     const content = readFile('views/personal_development_my_program.php');
-    expect(content).toContain("FieldEncryption::decryptRows($enrollment['messages'], FieldEncryption::MESSAGE_ENCRYPTED_FIELDS)");
+    expect(content).toContain("FieldEncryption::decryptRows($enrollment['messages'], array_merge(");
+    expect(content).toContain("FieldEncryption::MESSAGE_ENCRYPTED_FIELDS");
+    expect(content).toContain("'sender_first', 'sender_last'");
   });
 
   test('coach view decrypts program chat messages', () => {
@@ -103,9 +105,11 @@ test.describe('Development program message encryption', () => {
     expect(content).toContain('decryptUserRows($selected_messages)');
   });
 
-  test('coach view also applies FieldEncryption::decryptRows on messages', () => {
+  test('coach view also applies FieldEncryption::decryptRows on messages with sender fields', () => {
     const content = readFile('views/development_programs.php');
-    expect(content).toContain('FieldEncryption::decryptRows($selected_messages, FieldEncryption::MESSAGE_ENCRYPTED_FIELDS)');
+    expect(content).toContain("FieldEncryption::decryptRows($selected_messages, array_merge(");
+    expect(content).toContain("FieldEncryption::MESSAGE_ENCRYPTED_FIELDS");
+    expect(content).toContain("'sender_first', 'sender_last'");
   });
 });
 

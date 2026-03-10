@@ -62,7 +62,10 @@ foreach ($enrollments as &$enrollment) {
         $enrollment['messages'] = decryptUserRows($enrollment['messages']);
     }
     if (class_exists('FieldEncryption')) {
-        $enrollment['messages'] = FieldEncryption::decryptRows($enrollment['messages'], FieldEncryption::MESSAGE_ENCRYPTED_FIELDS);
+        $enrollment['messages'] = FieldEncryption::decryptRows($enrollment['messages'], array_merge(
+            FieldEncryption::MESSAGE_ENCRYPTED_FIELDS,
+            ['sender_first', 'sender_last']
+        ));
     }
 
     // Get athlete-uploaded videos

@@ -127,7 +127,10 @@ if ($selected_enrollment_id) {
             $selected_messages = decryptUserRows($selected_messages);
         }
         if (class_exists('FieldEncryption')) {
-            $selected_messages = FieldEncryption::decryptRows($selected_messages, FieldEncryption::MESSAGE_ENCRYPTED_FIELDS);
+            $selected_messages = FieldEncryption::decryptRows($selected_messages, array_merge(
+                FieldEncryption::MESSAGE_ENCRYPTED_FIELDS,
+                ['sender_first', 'sender_last']
+            ));
         }
 
         // Get athlete-uploaded videos
