@@ -205,7 +205,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Fresh database — import the full schema
                 $_SESSION['setup']['existing_database'] = false;
                 $schema = file_get_contents(__DIR__ . '/database_schema.sql');
-                $pdo->exec($schema);
+                // Disable FK checks so tables can be created regardless of dependency order
+                $pdo->exec('SET FOREIGN_KEY_CHECKS = 0');
+                try {
+                    $pdo->exec($schema);
+                } finally {
+                    $pdo->exec('SET FOREIGN_KEY_CHECKS = 1');
+                }
             
             // Run migrations for existing installations
             // Use try-catch approach for portability
@@ -472,30 +478,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $migration_results = [];
                 $migration_errors = [];
                 
-                foreach ($migrations as $migration) {
-                    try {
-                        if ($migration['type'] === 'create_table') {
-                            // For missing tables, extract the CREATE TABLE from the schema file
-                            $schema_sql = file_get_contents(__DIR__ . '/database_schema.sql');
-                            $table_name = $migration['table'];
-                            
-                            // Extract the full CREATE TABLE statement from the schema file
-                            if (preg_match('/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?`?' . preg_quote($table_name) . '`?\s*\(.*?\)\s*ENGINE[^;]*;/is', $schema_sql, $match)) {
-                                $pdo->exec($match[0]);
-                                $migration_results[] = "Created missing table: $table_name";
+                $schema_sql = file_get_contents(__DIR__ . '/database_schema.sql');
+                $create_table_pattern_tpl = '/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?`?%s`?\s*\(.*?\)\s*ENGINE[^;]*;/is';
+                
+                // Disable FK checks so tables can be created regardless of dependency order
+                try { $pdo->exec('SET FOREIGN_KEY_CHECKS = 0'); } catch (Exception $e) { /* best-effort */ }
+                
+                try {
+                    foreach ($migrations as $migration) {
+                        try {
+                            if ($migration['type'] === 'create_table') {
+                                // For missing tables, extract the CREATE TABLE from the schema file
+                                $table_name = $migration['table'];
+                                
+                                // Extract the full CREATE TABLE statement from the schema file
+                                if (preg_match(sprintf($create_table_pattern_tpl, preg_quote($table_name, '/')), $schema_sql, $match)) {
+                                    $pdo->exec($match[0]);
+                                    $migration_results[] = "Created missing table: $table_name";
+                                }
+                            } elseif ($migration['type'] === 'add_column') {
+                                $result = $migrator->executeMigration($migration);
+                                if (!empty($result['skipped']) && strpos($result['message'], 'does not exist') !== false) {
+                                    // Table missing — attempt to create it from schema file, then retry
+                                    $table_name = $migration['table'];
+                                    $created = false;
+                                    if (preg_match(sprintf($create_table_pattern_tpl, preg_quote($table_name, '/')), $schema_sql, $match)) {
+                                        try {
+                                            $pdo->exec($match[0]);
+                                            $migration_results[] = "Created missing table: $table_name";
+                                            $created = true;
+                                        } catch (Exception $ce) {
+                                            $migration_errors[] = "Could not create table $table_name: " . $ce->getMessage();
+                                        }
+                                    }
+                                    if ($created) {
+                                        $result = $migrator->executeMigration($migration);
+                                        if (!empty($result['skipped'])) {
+                                            $migration_results[] = $result['message'] . ' (skipped)';
+                                        } else {
+                                            $migration_results[] = $result['message'];
+                                        }
+                                    } else {
+                                        $migration_results[] = $result['message'] . ' (skipped)';
+                                    }
+                                } elseif (!empty($result['skipped'])) {
+                                    $migration_results[] = $result['message'] . ' (skipped)';
+                                } else {
+                                    $migration_results[] = $result['message'];
+                                }
                             }
-                        } elseif ($migration['type'] === 'add_column') {
-                            $result = $migrator->executeMigration($migration);
-                            if (!empty($result['skipped'])) {
-                                $migration_results[] = $result['message'] . ' (skipped)';
-                            } else {
-                                $migration_results[] = $result['message'];
-                            }
+                        } catch (Exception $e) {
+                            $migration_errors[] = "Migration error: " . $e->getMessage();
+                            error_log("Setup migration error: " . $e->getMessage());
                         }
-                    } catch (Exception $e) {
-                        $migration_errors[] = "Migration error: " . $e->getMessage();
-                        error_log("Setup migration error: " . $e->getMessage());
                     }
+                } finally {
+                    try { $pdo->exec('SET FOREIGN_KEY_CHECKS = 1'); } catch (Exception $e) { /* best-effort */ }
                 }
                 
                 // Run the inline migrations for columns that may not be detected by schema comparison

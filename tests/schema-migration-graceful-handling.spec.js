@@ -205,3 +205,97 @@ test.describe('Database Schema - Affected Tables Exist', () => {
     expect(schema).toContain('CREATE TABLE IF NOT EXISTS `development_program_videos`');
   });
 });
+
+// =====================================================
+// 4. FK Checks Disabled During Table Creation
+// =====================================================
+
+test.describe('Migration Handlers - FK Checks Disabled During Table Creation', () => {
+
+  test('github_updater.php disables FK checks before migration loop', () => {
+    const content = readFile('lib/github_updater.php');
+    const fnStart = content.indexOf('function runSchemaCheck()');
+    const fnEnd = content.indexOf('}', content.indexOf("'Schema check failed:", fnStart));
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain('FOREIGN_KEY_CHECKS = 0');
+    expect(fn).toContain('FOREIGN_KEY_CHECKS = 1');
+  });
+
+  test('github_updater.php re-enables FK checks in finally block', () => {
+    const content = readFile('lib/github_updater.php');
+    const fnStart = content.indexOf('function runSchemaCheck()');
+    const fnEnd = content.indexOf('}', content.indexOf("'Schema check failed:", fnStart));
+    const fn = content.substring(fnStart, fnEnd);
+    // FOREIGN_KEY_CHECKS = 1 should be inside a finally block
+    expect(fn).toContain('finally');
+    const finallyIdx = fn.indexOf('finally');
+    const afterFinally = fn.substring(finallyIdx);
+    expect(afterFinally).toContain('FOREIGN_KEY_CHECKS = 1');
+  });
+
+  test('setup.php disables FK checks before migration loop', () => {
+    const content = readFile('setup.php');
+    // Look for FK check disable in the migration section
+    expect(content).toContain('FOREIGN_KEY_CHECKS = 0');
+    expect(content).toContain('FOREIGN_KEY_CHECKS = 1');
+  });
+
+  test('setup.php disables FK checks during fresh schema import', () => {
+    const content = readFile('setup.php');
+    // The full schema import for fresh databases should also disable FK checks
+    const freshIdx = content.indexOf('Fresh database');
+    expect(freshIdx).toBeGreaterThan(-1);
+    const freshSection = content.substring(freshIdx, freshIdx + 500);
+    expect(freshSection).toContain('FOREIGN_KEY_CHECKS = 0');
+    expect(freshSection).toContain('FOREIGN_KEY_CHECKS = 1');
+  });
+});
+
+// =====================================================
+// 5. Missing Table Fallback - Create Table Before Add Column
+// =====================================================
+
+test.describe('Migration Handlers - Missing Table Fallback', () => {
+
+  test('github_updater.php creates missing table when add_column finds table does not exist', () => {
+    const content = readFile('lib/github_updater.php');
+    const fnStart = content.indexOf('function runSchemaCheck()');
+    const fnEnd = content.indexOf('}', content.indexOf("'Schema check failed:", fnStart));
+    const fn = content.substring(fnStart, fnEnd);
+    // When add_column is skipped because table doesn't exist, should try to create the table
+    expect(fn).toContain("'does not exist'");
+    expect(fn).toContain('Created missing table');
+    // Should retry the column addition after creating the table
+    expect(fn).toContain('executeMigration');
+  });
+
+  test('setup.php creates missing table when add_column finds table does not exist', () => {
+    const content = readFile('setup.php');
+    // When add_column is skipped because table doesn't exist, should try to create the table
+    const migSection = content.substring(content.indexOf('compareSchemas'));
+    expect(migSection).toContain("'does not exist'");
+    expect(migSection).toContain('Created missing table');
+    // Should retry the column addition after creating the table
+    expect(migSection).toContain('executeMigration');
+  });
+
+  test('github_updater.php uses shared CREATE TABLE regex pattern template', () => {
+    const content = readFile('lib/github_updater.php');
+    const fnStart = content.indexOf('function runSchemaCheck()');
+    const fnEnd = content.indexOf('}', content.indexOf("'Schema check failed:", fnStart));
+    const fn = content.substring(fnStart, fnEnd);
+    // Should use a shared pattern template for consistency
+    expect(fn).toContain('create_table_pattern_tpl');
+    // The same pattern should be used for both create_table and the add_column fallback
+    const patternCount = (fn.match(/create_table_pattern_tpl/g) || []).length;
+    expect(patternCount).toBeGreaterThanOrEqual(3);
+  });
+
+  test('setup.php uses shared CREATE TABLE regex pattern template', () => {
+    const content = readFile('setup.php');
+    const migSection = content.substring(content.indexOf('compareSchemas'));
+    expect(migSection).toContain('create_table_pattern_tpl');
+    const patternCount = (migSection.match(/create_table_pattern_tpl/g) || []).length;
+    expect(patternCount).toBeGreaterThanOrEqual(3);
+  });
+});
