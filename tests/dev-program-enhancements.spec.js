@@ -282,3 +282,50 @@ test.describe('Coach Access to Drill Detail View', () => {
     expect(content).toContain('coach_view_param');
   });
 });
+
+// =====================================================
+// 7. Personal drill card CSS collision fixes
+// =====================================================
+
+test.describe('Personal Drill Card CSS Collision Fixes', () => {
+
+  test('form-row CSS is scoped to create-personal-drill-form to avoid global collisions', () => {
+    const content = readFile('views/drills_personal.php');
+    // Should use scoped selector, not bare .form-row
+    expect(content).toContain('.create-personal-drill-form .form-row {');
+    expect(content).toContain('.create-personal-drill-form .form-row label {');
+    expect(content).toContain('.create-personal-drill-form .form-row input');
+    expect(content).toContain('.create-personal-drill-form .form-row textarea');
+    expect(content).toContain('.create-personal-drill-form .form-row select');
+  });
+
+  test('form-row CSS explicitly overrides global grid display', () => {
+    const content = readFile('views/drills_personal.php');
+    // Must set display:block to override global display:grid
+    const formRowCSS = content.indexOf('.create-personal-drill-form .form-row {');
+    const formRowEnd = content.indexOf('}', formRowCSS);
+    const formRowBlock = content.substring(formRowCSS, formRowEnd);
+    expect(formRowBlock).toContain('display: block');
+  });
+
+  test('thumbnail_path uses resolveRustfsUrl for image resolution', () => {
+    const content = readFile('views/drills_personal.php');
+    expect(content).toContain('resolveRustfsUrl');
+    expect(content).toContain('image_helper.php');
+  });
+
+  test('video thumbnail section has play indicator overlay', () => {
+    const content = readFile('views/drills_personal.php');
+    expect(content).toContain('video-play-indicator');
+    expect(content).toContain('fa-play-circle');
+  });
+
+  test('select element styling is handled by CSS not inline styles', () => {
+    const content = readFile('views/drills_personal.php');
+    // The select element should not have inline style for layout
+    const selectTag = content.indexOf('<select id="pd-position"');
+    const selectEnd = content.indexOf('>', selectTag);
+    const selectElement = content.substring(selectTag, selectEnd);
+    expect(selectElement).not.toContain('style=');
+  });
+});

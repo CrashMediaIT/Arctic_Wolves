@@ -3,6 +3,7 @@
  * Personal Drills - Create drills with video, title, and description
  * These drills are added directly to the drill library for use in development programs
  */
+require_once __DIR__ . '/../lib/image_helper.php';
 
 $user_id = $_SESSION['user_id'] ?? 0;
 $user_role = $_SESSION['user_role'] ?? 'athlete';
@@ -65,6 +66,16 @@ if (function_exists('decryptUserRows')) {
     height: 100%;
     object-fit: cover;
 }
+.personal-drill-card .drill-thumbnail .video-play-indicator {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 36px;
+    color: rgba(255, 255, 255, 0.8);
+    pointer-events: none;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
 .personal-drill-card .drill-thumbnail .position-icon {
     font-size: 48px;
     opacity: 0.4;
@@ -114,17 +125,21 @@ if (function_exists('decryptUserRows')) {
     color: var(--text-white, #e2e8f0);
     margin-bottom: 16px;
 }
-.form-row {
+.create-personal-drill-form .form-row {
+    display: block;
+    grid-template-columns: none;
     margin-bottom: 14px;
 }
-.form-row label {
+.create-personal-drill-form .form-row label {
     display: block;
     font-size: 13px;
     font-weight: 600;
     color: var(--text-white, #e2e8f0);
     margin-bottom: 6px;
 }
-.form-row input, .form-row textarea {
+.create-personal-drill-form .form-row input,
+.create-personal-drill-form .form-row textarea,
+.create-personal-drill-form .form-row select {
     width: 100%;
     padding: 10px 14px;
     background: var(--bg-main, #0d1117);
@@ -134,7 +149,7 @@ if (function_exists('decryptUserRows')) {
     font-size: 13px;
     font-family: inherit;
 }
-.form-row textarea {
+.create-personal-drill-form .form-row textarea {
     min-height: 80px;
     resize: vertical;
 }
@@ -166,7 +181,7 @@ if (function_exists('decryptUserRows')) {
         </div>
         <div class="form-row">
             <label for="pd-position">Position</label>
-            <select id="pd-position" name="position" style="width:100%;padding:10px 14px;background:var(--bg-main,#0d1117);border:1px solid var(--border,#2d2d44);border-radius:8px;color:var(--text-white,#e2e8f0);font-size:13px;">
+            <select id="pd-position" name="position">
                 <option value="player">Player (Skater)</option>
                 <option value="goalie">Goalie</option>
             </select>
@@ -203,7 +218,7 @@ if (function_exists('decryptUserRows')) {
     <div class="personal-drill-card">
         <div class="drill-thumbnail">
             <?php if (!empty($pd['thumbnail_path'])): ?>
-                <img src="<?= htmlspecialchars($pd['thumbnail_path']) ?>" alt="<?= htmlspecialchars($pd['title']) ?> thumbnail" style="width:100%;height:100%;object-fit:cover;">
+                <img src="<?= htmlspecialchars(function_exists('resolveRustfsUrl') ? resolveRustfsUrl($pdo, $pd['thumbnail_path']) : $pd['thumbnail_path']) ?>" alt="<?= htmlspecialchars($pd['title']) ?> thumbnail" style="width:100%;height:100%;object-fit:cover;">
             <?php elseif (!empty($pd['video_upload_path'])):
                 $videoPath = $pd['video_upload_path'];
                 $videoExt = strtolower(pathinfo($videoPath, PATHINFO_EXTENSION));
@@ -218,6 +233,7 @@ if (function_exists('decryptUserRows')) {
                 <video preload="metadata" muted aria-label="<?= htmlspecialchars($pd['title']) ?> video preview">
                     <source src="<?= htmlspecialchars($videoPath) ?>#t=0.5" type="<?= $videoMimeType ?>">
                 </video>
+                <div class="video-play-indicator"><i class="fas fa-play-circle"></i></div>
             <?php else: ?>
                 <?php if ($pdPosition === 'goalie'): ?>
                     <span class="icon-hockey-goalie position-icon goalie"></span>
