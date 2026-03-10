@@ -60,6 +60,9 @@ foreach ($enrollments as &$enrollment) {
     if (function_exists('decryptUserRows')) {
         $enrollment['messages'] = decryptUserRows($enrollment['messages']);
     }
+    if (class_exists('FieldEncryption')) {
+        $enrollment['messages'] = FieldEncryption::decryptRows($enrollment['messages'], FieldEncryption::MESSAGE_ENCRYPTED_FIELDS);
+    }
 
     // Get athlete-uploaded videos
     $videos_stmt = $pdo->prepare("
@@ -243,21 +246,32 @@ unset($enrollment);
 
 /* Chat */
 .program-chat { margin-top: var(--space-5); border-top: 1px solid var(--border, #2D2D3F); padding-top: var(--space-4); }
-.program-chat .chat-title { font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); color: var(--text-white); margin-bottom: var(--space-3); }
+.program-chat .chat-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-3); }
+.program-chat .chat-title { font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); color: var(--text-white); margin: 0; }
 .program-chat .chat-title i { margin-right: 6px; }
-.chat-messages { max-height: 300px; overflow-y: auto; margin-bottom: var(--space-3); }
+.chat-e2e-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text-dim); background: rgba(107, 70, 193, 0.1); padding: 3px 8px; border-radius: var(--radius-md); }
+.chat-e2e-badge i { font-size: 9px; }
+.chat-messages { max-height: 380px; overflow-y: auto; margin-bottom: var(--space-3); display: flex; flex-direction: column; gap: 4px; padding: var(--space-2) 0; }
+.chat-messages::-webkit-scrollbar { width: 4px; }
+.chat-messages::-webkit-scrollbar-thumb { background: var(--border, #2D2D3F); border-radius: 4px; }
 .chat-empty { color: var(--text-dim); font-size: var(--font-size-sm); text-align: center; padding: var(--space-5); }
-.chat-msg { padding: var(--space-2) var(--space-3); margin-bottom: var(--space-2); border-radius: var(--radius-lg); font-size: var(--font-size-sm); }
-.chat-msg.from-coach { background: rgba(107, 70, 193, 0.1); border-left: 3px solid var(--primary); }
-.chat-msg.from-me { background: rgba(59, 130, 246, 0.1); border-left: 3px solid var(--info); }
-.chat-msg .msg-meta { font-size: var(--font-size-xs); color: var(--text-dim); margin-bottom: 4px; }
-.chat-msg .msg-video-link { color: var(--primary); font-size: var(--font-size-sm); margin-top: 6px; display: inline-flex; align-items: center; gap: 4px; }
+.chat-bubble-row { display: flex; max-width: 75%; }
+.chat-bubble-row.from-me { align-self: flex-end; }
+.chat-bubble-row.from-coach { align-self: flex-start; }
+.chat-bubble { padding: 10px 14px; border-radius: 16px; font-size: var(--font-size-sm); line-height: 1.5; word-wrap: break-word; }
+.chat-bubble-row.from-me .chat-bubble { background: linear-gradient(135deg, var(--primary, #6B46C1), var(--accent, #8B5CF6)); color: #fff; border-bottom-right-radius: 4px; }
+.chat-bubble-row.from-coach .chat-bubble { background: var(--bg-main, #0a0a0f); color: var(--text-white, #e2e8f0); border: 1px solid var(--border, #2D2D3F); border-bottom-left-radius: 4px; }
+.chat-bubble-meta { font-size: 10px; color: var(--text-dim); margin-top: 4px; display: flex; align-items: center; gap: 4px; }
+.chat-bubble-row.from-me .chat-bubble-meta { justify-content: flex-end; }
+.chat-bubble .msg-video-link { color: inherit; font-size: var(--font-size-sm); margin-top: 6px; display: inline-flex; align-items: center; gap: 4px; opacity: 0.9; }
+.chat-bubble-row.from-coach .chat-bubble .msg-video-link { color: var(--primary); }
 .chat-input-row { display: flex; gap: var(--space-2); }
 .chat-input-row input {
     flex: 1; padding: 10px 14px; background: var(--bg-main, #0A0A0F);
     border: 1px solid var(--border, #2D2D3F); border-radius: var(--radius-lg);
     color: var(--text-white); font-size: var(--font-size-sm);
 }
+.chat-input-row input:focus { outline: none; border-color: var(--primary, #6B46C1); box-shadow: 0 0 0 3px rgba(107, 70, 193, 0.15); }
 .chat-input-row button {
     padding: 10px var(--space-4); background: var(--primary); color: var(--text-white);
     border: none; border-radius: var(--radius-lg); cursor: pointer; font-weight: var(--font-weight-semibold); font-size: var(--font-size-sm);
@@ -466,18 +480,28 @@ unset($enrollment);
 
         <!-- Chat Section -->
         <div class="program-chat">
-            <h4 class="chat-title"><i class="fas fa-comments"></i> Program Chat</h4>
+            <div class="chat-header">
+                <h4 class="chat-title"><i class="fas fa-comments"></i> Program Chat</h4>
+                <span class="chat-e2e-badge" title="Messages are end-to-end encrypted"><i class="fas fa-lock"></i> Encrypted</span>
+            </div>
             <div class="chat-messages" id="chat-<?= (int)$enrollment['id'] ?>">
                 <?php if (empty($enrollment['messages'])): ?>
                     <p class="chat-empty">No messages yet. Start a conversation with your coach.</p>
                 <?php else: ?>
                     <?php foreach ($enrollment['messages'] as $msg): ?>
-                    <div class="chat-msg <?= $msg['sender_id'] == $user_id ? 'from-me' : 'from-coach' ?>">
-                        <div class="msg-meta"><?= htmlspecialchars($msg['sender_first'] . ' ' . $msg['sender_last']) ?> &bull; <?= date('M j, g:ia', strtotime($msg['created_at'])) ?></div>
-                        <?= htmlspecialchars($msg['message']) ?>
-                        <?php if ($msg['video_url']): ?>
-                            <div><a href="<?= htmlspecialchars($msg['video_url']) ?>" target="_blank" class="msg-video-link"><i class="fas fa-video"></i> Video</a></div>
-                        <?php endif; ?>
+                    <div class="chat-bubble-row <?= $msg['sender_id'] == $user_id ? 'from-me' : 'from-coach' ?>">
+                        <div>
+                            <div class="chat-bubble">
+                                <?= htmlspecialchars($msg['message']) ?>
+                                <?php if (!empty($msg['video_url'])): ?>
+                                    <div><a href="<?= htmlspecialchars($msg['video_url']) ?>" target="_blank" class="msg-video-link"><i class="fas fa-video"></i> Video</a></div>
+                                <?php endif; ?>
+                            </div>
+                            <div class="chat-bubble-meta">
+                                <?= htmlspecialchars($msg['sender_first'] . ' ' . $msg['sender_last']) ?> &bull; <?= date('M j, g:ia', strtotime($msg['created_at'])) ?>
+                                <i class="fas fa-lock" style="font-size:8px;" title="Encrypted"></i>
+                            </div>
+                        </div>
                     </div>
                     <?php endforeach; ?>
                 <?php endif; ?>

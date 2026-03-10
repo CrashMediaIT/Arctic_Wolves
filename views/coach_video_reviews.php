@@ -122,7 +122,7 @@ $selected_athlete = $_GET['athlete_id'] ?? null;
     </div>
 </div>
 
-<div class="page-tab-content" style="max-width:1400px; margin:0 auto; padding:0 16px;">
+<div class="page-tab-content">
 
 <?php if ($active_tab === 'pending'): ?>
 <!-- ═══════════════ PENDING REVIEWS TAB ═══════════════ -->

@@ -125,6 +125,9 @@ if ($selected_enrollment_id) {
         if (function_exists('decryptUserRows')) {
             $selected_messages = decryptUserRows($selected_messages);
         }
+        if (class_exists('FieldEncryption')) {
+            $selected_messages = FieldEncryption::decryptRows($selected_messages, FieldEncryption::MESSAGE_ENCRYPTED_FIELDS);
+        }
 
         // Get athlete-uploaded videos
         $videos_stmt = $pdo->prepare("
@@ -732,35 +735,53 @@ $locations = $pdo->query("SELECT id, name FROM locations WHERE is_active = 1 ORD
 
 /* --- Chat / Communication --- */
 .dev-chat-section { padding: 0; }
+.dev-chat-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.dev-chat-header h4 { font-size: var(--font-size-base, 14px); font-weight: var(--font-weight-semibold); color: var(--text-white); margin: 0; }
+.dev-chat-e2e-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text-dim); background: rgba(107, 70, 193, 0.1); padding: 3px 8px; border-radius: var(--radius-md, 6px); }
+.dev-chat-e2e-badge i { font-size: 9px; }
 .dev-chat-messages {
     max-height: 380px;
     overflow-y: auto;
     margin-bottom: 16px;
     padding: 4px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 .dev-chat-messages::-webkit-scrollbar { width: 4px; }
 .dev-chat-messages::-webkit-scrollbar-thumb { background: var(--border, #2D2D3F); border-radius: 4px; }
-.dev-chat-msg {
+.dev-chat-bubble-row { display: flex; max-width: 75%; }
+.dev-chat-bubble-row.from-coach { align-self: flex-end; }
+.dev-chat-bubble-row.from-athlete { align-self: flex-start; }
+.dev-chat-bubble {
     padding: 10px 14px;
-    margin-bottom: 8px;
-    border-radius: var(--radius-lg, 8px);
+    border-radius: 16px;
     font-size: var(--font-size-sm, 13px);
     line-height: 1.5;
+    word-wrap: break-word;
 }
-.dev-chat-msg.from-coach {
-    background: rgba(107,70,193,0.08);
-    border-left: 3px solid var(--primary, #6B46C1);
+.dev-chat-bubble-row.from-coach .dev-chat-bubble {
+    background: linear-gradient(135deg, var(--primary, #6B46C1), var(--accent, #8B5CF6));
+    color: #fff;
+    border-bottom-right-radius: 4px;
 }
-.dev-chat-msg.from-athlete {
-    background: rgba(59, 130, 246, 0.08);
-    border-left: 3px solid var(--info);
+.dev-chat-bubble-row.from-athlete .dev-chat-bubble {
+    background: var(--bg-main, #0a0a0f);
+    color: var(--text-white, #e2e8f0);
+    border: 1px solid var(--border, #2D2D3F);
+    border-bottom-left-radius: 4px;
 }
-.dev-chat-msg .msg-meta {
-    font-size: 11px;
+.dev-chat-bubble-meta {
+    font-size: 10px;
     color: var(--text-dim, #A8A8B8);
-    margin-bottom: 4px;
-    font-weight: 500;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
 }
+.dev-chat-bubble-row.from-coach .dev-chat-bubble-meta { justify-content: flex-end; }
+.dev-chat-bubble .msg-video-link { color: inherit; font-size: var(--font-size-sm, 13px); margin-top: 6px; display: inline-flex; align-items: center; gap: 4px; opacity: 0.9; }
+.dev-chat-bubble-row.from-athlete .dev-chat-bubble .msg-video-link { color: var(--primary); }
 .dev-chat-input {
     display: flex;
     gap: 8px;
@@ -1191,6 +1212,10 @@ $locations = $pdo->query("SELECT id, name FROM locations WHERE is_active = 1 ORD
                 <!-- ======== COMMUNICATION TAB ======== -->
                 <div class="detail-tab-content" id="tab-communication">
                     <div class="dev-chat-section">
+                        <div class="dev-chat-header">
+                            <h4><i class="fas fa-comments"></i> Messages</h4>
+                            <span class="dev-chat-e2e-badge" title="Messages are end-to-end encrypted"><i class="fas fa-lock"></i> Encrypted</span>
+                        </div>
                         <div class="dev-chat-messages">
                             <?php if (empty($selected_messages)): ?>
                                 <div class="dev-empty-state">
@@ -1199,12 +1224,19 @@ $locations = $pdo->query("SELECT id, name FROM locations WHERE is_active = 1 ORD
                                 </div>
                             <?php else: ?>
                                 <?php foreach ($selected_messages as $m): ?>
-                                <div class="dev-chat-msg <?= $m['sender_id'] == $user_id ? 'from-coach' : 'from-athlete' ?>">
-                                    <div class="msg-meta"><?= htmlspecialchars($m['sender_first'] . ' ' . $m['sender_last']) ?> &bull; <?= date('M j, g:ia', strtotime($m['created_at'])) ?></div>
-                                    <?= htmlspecialchars($m['message']) ?>
-                                    <?php if ($m['video_url']): ?>
-                                        <div style="margin-top:6px;"><a href="<?= htmlspecialchars($m['video_url']) ?>" target="_blank" style="color:var(--primary);font-size:var(--font-size-sm);display:inline-flex;align-items:center;gap:4px;"><i class="fas fa-video"></i> Watch Video</a></div>
-                                    <?php endif; ?>
+                                <div class="dev-chat-bubble-row <?= $m['sender_id'] == $user_id ? 'from-coach' : 'from-athlete' ?>">
+                                    <div>
+                                        <div class="dev-chat-bubble">
+                                            <?= htmlspecialchars($m['message']) ?>
+                                            <?php if (!empty($m['video_url'])): ?>
+                                                <div><a href="<?= htmlspecialchars($m['video_url']) ?>" target="_blank" class="msg-video-link"><i class="fas fa-video"></i> Watch Video</a></div>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div class="dev-chat-bubble-meta">
+                                            <?= htmlspecialchars($m['sender_first'] . ' ' . $m['sender_last']) ?> &bull; <?= date('M j, g:ia', strtotime($m['created_at'])) ?>
+                                            <i class="fas fa-lock" style="font-size:8px;" title="Encrypted"></i>
+                                        </div>
+                                    </div>
                                 </div>
                                 <?php endforeach; ?>
                             <?php endif; ?>

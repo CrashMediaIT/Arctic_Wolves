@@ -89,6 +89,11 @@ test.describe('Development program message encryption', () => {
     expect(content).toContain("decryptUserRows($enrollment['messages'])");
   });
 
+  test('athlete view also applies FieldEncryption::decryptRows on messages', () => {
+    const content = readFile('views/personal_development_my_program.php');
+    expect(content).toContain("FieldEncryption::decryptRows($enrollment['messages'], FieldEncryption::MESSAGE_ENCRYPTED_FIELDS)");
+  });
+
   test('coach view decrypts program chat messages', () => {
     const content = readFile('views/development_programs.php');
     // Messages query with sender_first/sender_last
@@ -96,6 +101,87 @@ test.describe('Development program message encryption', () => {
     expect(content).toContain('sender_last');
     // decryptUserRows is called on selected_messages
     expect(content).toContain('decryptUserRows($selected_messages)');
+  });
+
+  test('coach view also applies FieldEncryption::decryptRows on messages', () => {
+    const content = readFile('views/development_programs.php');
+    expect(content).toContain('FieldEncryption::decryptRows($selected_messages, FieldEncryption::MESSAGE_ENCRYPTED_FIELDS)');
+  });
+});
+
+// =====================================================
+// Chat bubble UI and encryption indicators
+// =====================================================
+
+test.describe('Development program chat bubble UI', () => {
+
+  test('athlete chat uses bubble-row layout with proper alignment classes', () => {
+    const content = readFile('views/personal_development_my_program.php');
+    expect(content).toContain('chat-bubble-row');
+    expect(content).toContain('chat-bubble');
+    expect(content).toContain('from-me');
+    expect(content).toContain('from-coach');
+  });
+
+  test('athlete chat has flex-direction column for message flow', () => {
+    const content = readFile('views/personal_development_my_program.php');
+    expect(content).toContain('display: flex');
+    expect(content).toContain('flex-direction: column');
+  });
+
+  test('athlete chat sent messages are right-aligned', () => {
+    const content = readFile('views/personal_development_my_program.php');
+    expect(content).toContain('.chat-bubble-row.from-me { align-self: flex-end');
+  });
+
+  test('athlete chat received messages are left-aligned', () => {
+    const content = readFile('views/personal_development_my_program.php');
+    expect(content).toContain('.chat-bubble-row.from-coach { align-self: flex-start');
+  });
+
+  test('athlete chat has encryption badge', () => {
+    const content = readFile('views/personal_development_my_program.php');
+    expect(content).toContain('chat-e2e-badge');
+    expect(content).toContain('fa-lock');
+    expect(content).toContain('Encrypted');
+  });
+
+  test('athlete chat bubbles have lock icon per message', () => {
+    const content = readFile('views/personal_development_my_program.php');
+    expect(content).toContain('chat-bubble-meta');
+    // Lock icon within the meta line
+    expect(content).toMatch(/chat-bubble-meta.*fa-lock/s);
+  });
+
+  test('coach chat uses bubble-row layout with proper alignment classes', () => {
+    const content = readFile('views/development_programs.php');
+    expect(content).toContain('dev-chat-bubble-row');
+    expect(content).toContain('dev-chat-bubble');
+    expect(content).toContain('from-coach');
+    expect(content).toContain('from-athlete');
+  });
+
+  test('coach chat sent messages are right-aligned', () => {
+    const content = readFile('views/development_programs.php');
+    expect(content).toContain('.dev-chat-bubble-row.from-coach { align-self: flex-end');
+  });
+
+  test('coach chat received messages are left-aligned', () => {
+    const content = readFile('views/development_programs.php');
+    expect(content).toContain('.dev-chat-bubble-row.from-athlete { align-self: flex-start');
+  });
+
+  test('coach chat has encryption badge', () => {
+    const content = readFile('views/development_programs.php');
+    expect(content).toContain('dev-chat-e2e-badge');
+    expect(content).toContain('fa-lock');
+    expect(content).toContain('Encrypted');
+  });
+
+  test('coach chat bubbles have lock icon per message', () => {
+    const content = readFile('views/development_programs.php');
+    expect(content).toContain('dev-chat-bubble-meta');
+    expect(content).toMatch(/dev-chat-bubble-meta.*fa-lock/s);
   });
 });
 
