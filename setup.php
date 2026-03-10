@@ -497,7 +497,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         $pdo->exec($match[0]);
                                         $migration_results[] = "Created missing table: $table_name";
                                     } catch (Exception $ce) {
-                                        if (strpos($ce->getMessage(), '1050') !== false || strpos($ce->getMessage(), 'already exists') !== false) {
+                                        $isAlreadyExists = ($ce->getCode() === '42S01' || strpos($ce->getMessage(), '1050') !== false || strpos($ce->getMessage(), 'already exists') !== false);
+                                        if ($isAlreadyExists) {
                                             $migration_results[] = "Table already exists: $table_name";
                                         } else {
                                             $migration_errors[] = "Could not create table $table_name: " . $ce->getMessage();
@@ -608,7 +609,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     $pdo->exec($match[0]);
                                     $migration_results[] = "Created missing table (retry): $table_name";
                                 } catch (Exception $ce) {
-                                    if (strpos($ce->getMessage(), '1050') === false && strpos($ce->getMessage(), 'already exists') === false) {
+                                    $isAlreadyExists = ($ce->getCode() === '42S01' || strpos($ce->getMessage(), '1050') !== false || strpos($ce->getMessage(), 'already exists') !== false);
+                                    if (!$isAlreadyExists) {
                                         $migration_errors[] = "Retry: could not create table $table_name: " . $ce->getMessage();
                                     }
                                 }

@@ -914,7 +914,8 @@ class GitHubUpdater {
                                     $this->pdo->exec($match[0]);
                                     $results[] = "Created missing table: $table_name";
                                 } catch (\Exception $ce) {
-                                    if (strpos($ce->getMessage(), '1050') !== false || strpos($ce->getMessage(), 'already exists') !== false) {
+                                    $isAlreadyExists = ($ce->getCode() === '42S01' || strpos($ce->getMessage(), '1050') !== false || strpos($ce->getMessage(), 'already exists') !== false);
+                                    if ($isAlreadyExists) {
                                         $results[] = "Table already exists: $table_name";
                                     } else {
                                         $errors[] = "Could not create table $table_name: " . $ce->getMessage();
@@ -1026,7 +1027,8 @@ class GitHubUpdater {
                                     $this->pdo->exec($match[0]);
                                     $results[] = "Created missing table (retry): $table_name";
                                 } catch (\Exception $ce) {
-                                    if (strpos($ce->getMessage(), '1050') === false && strpos($ce->getMessage(), 'already exists') === false) {
+                                    $isAlreadyExists = ($ce->getCode() === '42S01' || strpos($ce->getMessage(), '1050') !== false || strpos($ce->getMessage(), 'already exists') !== false);
+                                    if (!$isAlreadyExists) {
                                         $errors[] = "Retry: could not create table $table_name: " . $ce->getMessage();
                                         error_log("Schema retry create table error for $table_name: " . $ce->getMessage());
                                     }

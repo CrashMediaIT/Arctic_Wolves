@@ -313,7 +313,8 @@ test.describe('Migration Handlers - Create Table Error Handling', () => {
     const fn = content.substring(fnStart, fnEnd);
     // The create_table handler should have its own try-catch
     expect(fn).toContain("Could not create table $table_name:");
-    // Should handle 'already exists' errors gracefully
+    // Should handle 'already exists' errors gracefully using SQLSTATE and message
+    expect(fn).toContain("'42S01'");
     expect(fn).toContain("'1050'");
     expect(fn).toContain("'already exists'");
   });
@@ -331,6 +332,7 @@ test.describe('Migration Handlers - Create Table Error Handling', () => {
     const content = readFile('setup.php');
     const migSection = content.substring(content.indexOf('compareSchemas'));
     expect(migSection).toContain("Could not create table $table_name:");
+    expect(migSection).toContain("'42S01'");
     expect(migSection).toContain("'1050'");
     expect(migSection).toContain("'already exists'");
   });
@@ -394,13 +396,14 @@ test.describe('SVG Icon CSS - mask-mode alpha', () => {
 
   test('style-guide.css sets mask-mode: alpha for hockey icons', () => {
     const content = readFile('css/style-guide.css');
-    // Find the hockey icon section
-    const iconSection = content.substring(
-      content.indexOf('.icon-hockey-player'),
-      content.indexOf('.icon-hockey-player {', content.indexOf('.icon-hockey-player') + 1)
-    );
-    expect(iconSection).toContain('mask-mode: alpha');
-    expect(iconSection).toContain('-webkit-mask-mode: alpha');
+    // Find the shared hockey icon rule block (the comma-separated selector)
+    const ruleStart = content.indexOf('.icon-hockey-player,');
+    expect(ruleStart).toBeGreaterThan(-1);
+    // Get the rule block from selector to closing brace
+    const ruleEnd = content.indexOf('}', ruleStart);
+    const iconRule = content.substring(ruleStart, ruleEnd);
+    expect(iconRule).toContain('mask-mode: alpha');
+    expect(iconRule).toContain('-webkit-mask-mode: alpha');
   });
 
   test('hockey SVG files exist and are valid', () => {
