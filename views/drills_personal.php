@@ -3,6 +3,7 @@
  * Personal Drills - Create drills with video, title, and description
  * These drills are added directly to the drill library for use in development programs
  */
+require_once __DIR__ . '/../lib/image_helper.php';
 
 $user_id = $_SESSION['user_id'] ?? 0;
 $user_role = $_SESSION['user_role'] ?? 'athlete';
@@ -65,6 +66,21 @@ if (function_exists('decryptUserRows')) {
     height: 100%;
     object-fit: cover;
 }
+.personal-drill-card .drill-thumbnail .drill-thumbnail-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.personal-drill-card .drill-thumbnail .video-play-indicator {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 36px;
+    color: rgba(255, 255, 255, 0.8);
+    pointer-events: none;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
 .personal-drill-card .drill-thumbnail .position-icon {
     font-size: 48px;
     opacity: 0.4;
@@ -79,6 +95,12 @@ if (function_exists('decryptUserRows')) {
     border-radius: 12px;
     font-size: 11px;
     font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.personal-drill-card .drill-thumbnail .position-label .position-badge-icon {
+    font-size: 13px;
 }
 .personal-drill-card .drill-thumbnail .position-label.player { background: rgba(16, 185, 129, 0.15); color: var(--success, #10b981); }
 .personal-drill-card .drill-thumbnail .position-label.goalie { background: rgba(59, 130, 246, 0.15); color: var(--info, #3b82f6); }
@@ -101,6 +123,27 @@ if (function_exists('decryptUserRows')) {
     border-top: 1px solid var(--border, #2d2d44);
     padding-top: 10px;
 }
+.personal-drill-card-actions {
+    display: flex;
+    gap: 6px;
+    padding: 0 20px 16px;
+}
+.personal-drill-card-actions button {
+    padding: 6px 12px;
+    border: 1px solid var(--border, #2d2d44);
+    border-radius: 6px;
+    background: var(--bg-main, #0d1117);
+    color: var(--text-white, #e2e8f0);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.personal-drill-card-actions button:hover { border-color: var(--primary, #6B46C1); color: var(--primary, #6B46C1); }
+.personal-drill-card-actions button.btn-delete-drill:hover { border-color: var(--error, #EF4444); color: var(--error, #EF4444); }
 .create-personal-drill-form {
     background: var(--bg-card, #1a1a2e);
     border: 1px solid var(--border, #2d2d44);
@@ -114,17 +157,21 @@ if (function_exists('decryptUserRows')) {
     color: var(--text-white, #e2e8f0);
     margin-bottom: 16px;
 }
-.form-row {
+.create-personal-drill-form .form-row {
+    display: block;
+    grid-template-columns: none;
     margin-bottom: 14px;
 }
-.form-row label {
+.create-personal-drill-form .form-row label {
     display: block;
     font-size: 13px;
     font-weight: 600;
     color: var(--text-white, #e2e8f0);
     margin-bottom: 6px;
 }
-.form-row input, .form-row textarea {
+.create-personal-drill-form .form-row input,
+.create-personal-drill-form .form-row textarea,
+.create-personal-drill-form .form-row select {
     width: 100%;
     padding: 10px 14px;
     background: var(--bg-main, #0d1117);
@@ -134,7 +181,7 @@ if (function_exists('decryptUserRows')) {
     font-size: 13px;
     font-family: inherit;
 }
-.form-row textarea {
+.create-personal-drill-form .form-row textarea {
     min-height: 80px;
     resize: vertical;
 }
@@ -166,7 +213,7 @@ if (function_exists('decryptUserRows')) {
         </div>
         <div class="form-row">
             <label for="pd-position">Position</label>
-            <select id="pd-position" name="position" style="width:100%;padding:10px 14px;background:var(--bg-main,#0d1117);border:1px solid var(--border,#2d2d44);border-radius:8px;color:var(--text-white,#e2e8f0);font-size:13px;">
+            <select id="pd-position" name="position">
                 <option value="player">Player (Skater)</option>
                 <option value="goalie">Goalie</option>
             </select>
@@ -203,7 +250,7 @@ if (function_exists('decryptUserRows')) {
     <div class="personal-drill-card">
         <div class="drill-thumbnail">
             <?php if (!empty($pd['thumbnail_path'])): ?>
-                <img src="<?= htmlspecialchars($pd['thumbnail_path']) ?>" alt="<?= htmlspecialchars($pd['title']) ?> thumbnail" style="width:100%;height:100%;object-fit:cover;">
+                <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $pd['thumbnail_path'])) ?>" alt="<?= htmlspecialchars($pd['title']) ?> thumbnail" class="drill-thumbnail-img">
             <?php elseif (!empty($pd['video_upload_path'])):
                 $videoPath = $pd['video_upload_path'];
                 $videoExt = strtolower(pathinfo($videoPath, PATHINFO_EXTENSION));
@@ -218,6 +265,7 @@ if (function_exists('decryptUserRows')) {
                 <video preload="metadata" muted aria-label="<?= htmlspecialchars($pd['title']) ?> video preview">
                     <source src="<?= htmlspecialchars($videoPath) ?>#t=0.5" type="<?= $videoMimeType ?>">
                 </video>
+                <div class="video-play-indicator"><i class="fas fa-play-circle"></i></div>
             <?php else: ?>
                 <?php if ($pdPosition === 'goalie'): ?>
                     <span class="icon-hockey-goalie position-icon goalie"></span>
@@ -225,7 +273,7 @@ if (function_exists('decryptUserRows')) {
                     <span class="icon-hockey-player position-icon player"></span>
                 <?php endif; ?>
             <?php endif; ?>
-            <span class="position-label <?= htmlspecialchars($pdPosition) ?>"><?= $pdPosition === 'goalie' ? 'Goalie' : 'Player' ?></span>
+            <span class="position-label <?= htmlspecialchars($pdPosition) ?>"><span class="<?= $pdPosition === 'goalie' ? 'icon-hockey-goalie' : 'icon-hockey-player' ?> position-badge-icon"></span> <?= $pdPosition === 'goalie' ? 'Goalie' : 'Player' ?></span>
         </div>
         <div class="personal-drill-card-body">
             <h4><?= htmlspecialchars($pd['title']) ?></h4>
@@ -236,10 +284,55 @@ if (function_exists('decryptUserRows')) {
                 Created by <?= htmlspecialchars($pd['first_name'] . ' ' . $pd['last_name']) ?> &bull; <?= date('M j, Y', strtotime($pd['created_at'])) ?>
             </div>
         </div>
+        <div class="personal-drill-card-actions">
+            <?php $jsonFlags = JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT; ?>
+            <button type="button" onclick="editPersonalDrill(<?= (int)$pd['id'] ?>, <?= json_encode($pd['title'], $jsonFlags) ?>, <?= json_encode($pd['description'] ?? '', $jsonFlags) ?>, <?= json_encode($pdPosition, $jsonFlags) ?>)"><i class="fas fa-edit"></i> Edit</button>
+            <button type="button" class="btn-delete-drill" onclick="deletePersonalDrill(<?= (int)$pd['id'] ?>, <?= json_encode($pd['title'], $jsonFlags) ?>)"><i class="fas fa-trash"></i> Delete</button>
+        </div>
     </div>
     <?php endforeach; ?>
 </div>
 <?php endif; ?>
+
+<!-- Edit Personal Drill Modal -->
+<div id="edit-personal-drill-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center;">
+    <div class="create-personal-drill-form" style="max-width:500px;width:90%;margin:0;max-height:90vh;overflow-y:auto;">
+        <h3><i class="fas fa-edit"></i> Edit Personal Drill</h3>
+        <form id="edit-personal-drill-form" enctype="multipart/form-data">
+            <input type="hidden" id="edit-pd-id" name="drill_id">
+            <div class="form-row">
+                <label for="edit-pd-title">Title *</label>
+                <input type="text" id="edit-pd-title" name="title" required placeholder="Enter drill title">
+            </div>
+            <div class="form-row">
+                <label for="edit-pd-description">Description</label>
+                <textarea id="edit-pd-description" name="description" placeholder="Describe the drill, key points, and objectives"></textarea>
+            </div>
+            <div class="form-row">
+                <label for="edit-pd-position">Position</label>
+                <select id="edit-pd-position" name="position">
+                    <option value="player">Player (Skater)</option>
+                    <option value="goalie">Goalie</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <label for="edit-pd-video">Replace Video (optional)</label>
+                <input type="file" id="edit-pd-video" name="video_file" accept="video/mp4,video/webm,video/ogg,video/x-matroska,video/quicktime,video/x-msvideo">
+                <p style="font-size:11px;color:var(--text-dim,#94a3b8);margin-top:4px;"><i class="fas fa-info-circle"></i> Leave empty to keep current video.</p>
+            </div>
+            <div id="edit-pd-upload-progress" style="display:none;margin-bottom:14px;">
+                <div style="background:var(--bg-main,#0d1117);border-radius:8px;overflow:hidden;height:8px;">
+                    <div id="edit-pd-progress-bar" style="height:100%;background:var(--primary,#6B46C1);width:0%;transition:width 0.3s;"></div>
+                </div>
+                <p id="edit-pd-progress-text" style="font-size:11px;color:var(--text-dim,#94a3b8);margin-top:4px;">Uploading...</p>
+            </div>
+            <div style="display:flex;gap:8px;">
+                <button type="submit" class="btn-create-drill"><i class="fas fa-save"></i> Save Changes</button>
+                <button type="button" class="btn-create-drill" style="background:var(--bg-main,#0d1117);border:1px solid var(--border,#2d2d44);" onclick="closeEditModal()"><i class="fas fa-times"></i> Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
 
 <script>
 document.getElementById('personal-drill-form').addEventListener('submit', function(e) {
@@ -320,4 +413,140 @@ document.getElementById('personal-drill-form').addEventListener('submit', functi
     
     xhr.send(formData);
 });
+
+// Edit personal drill - open modal with pre-populated data
+function editPersonalDrill(id, title, description, position) {
+    document.getElementById('edit-pd-id').value = id;
+    document.getElementById('edit-pd-title').value = title;
+    document.getElementById('edit-pd-description').value = description || '';
+    document.getElementById('edit-pd-position').value = position || 'player';
+    document.getElementById('edit-pd-video').value = '';
+    const modal = document.getElementById('edit-personal-drill-modal');
+    modal.style.display = 'flex';
+}
+
+function closeEditModal() {
+    document.getElementById('edit-personal-drill-modal').style.display = 'none';
+}
+
+// Close modal on background click
+document.getElementById('edit-personal-drill-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeEditModal();
+});
+
+// Edit form submission
+document.getElementById('edit-personal-drill-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const drillId = document.getElementById('edit-pd-id').value;
+    const title = document.getElementById('edit-pd-title').value.trim();
+    if (!title) { alert('Title is required.'); return; }
+
+    const videoInput = document.getElementById('edit-pd-video');
+    const videoFile = videoInput.files ? videoInput.files[0] : null;
+
+    if (videoFile && videoFile.size > 10 * 1024 * 1024 * 1024) {
+        alert('Video file is too large. Maximum size is 10GB.');
+        return;
+    }
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+    const formData = new FormData();
+    formData.append('action', 'update_personal_drill');
+    formData.append('drill_id', drillId);
+    formData.append('title', title);
+    formData.append('description', document.getElementById('edit-pd-description').value.trim());
+    formData.append('position', document.getElementById('edit-pd-position').value);
+    if (videoFile) {
+        formData.append('video_file', videoFile);
+    }
+
+    const submitBtn = this.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+    const progressDiv = document.getElementById('edit-pd-upload-progress');
+    const progressBar = document.getElementById('edit-pd-progress-bar');
+    const progressText = document.getElementById('edit-pd-progress-text');
+
+    if (videoFile) {
+        progressDiv.style.display = 'block';
+    }
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', 'process_development_programs.php', true);
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+    xhr.setRequestHeader('X-CSRF-Token', csrfToken);
+
+    xhr.upload.addEventListener('progress', function(e) {
+        if (e.lengthComputable) {
+            const pct = Math.round((e.loaded / e.total) * 100);
+            progressBar.style.width = pct + '%';
+            progressText.textContent = pct < 100 ? 'Uploading... ' + pct + '%' : 'Processing...';
+        }
+    });
+
+    xhr.onload = function() {
+        try {
+            const data = JSON.parse(xhr.responseText);
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.error || 'Failed to update drill.');
+            }
+        } catch (err) {
+            alert('An error occurred.');
+        }
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-save"></i> Save Changes';
+        progressDiv.style.display = 'none';
+        progressBar.style.width = '0%';
+    };
+
+    xhr.onerror = function() {
+        alert('An error occurred.');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-save"></i> Save Changes';
+        progressDiv.style.display = 'none';
+        progressBar.style.width = '0%';
+    };
+
+    xhr.send(formData);
+});
+
+// Delete personal drill with confirmation
+function deletePersonalDrill(id, title) {
+    if (!confirm('Are you sure you want to delete "' + title + '"? This cannot be undone.')) return;
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+    const formData = new FormData();
+    formData.append('action', 'delete_personal_drill');
+    formData.append('drill_id', id);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', 'process_development_programs.php', true);
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+    xhr.setRequestHeader('X-CSRF-Token', csrfToken);
+
+    xhr.onload = function() {
+        try {
+            const data = JSON.parse(xhr.responseText);
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.error || 'Failed to delete drill.');
+            }
+        } catch (err) {
+            alert('An error occurred.');
+        }
+    };
+
+    xhr.onerror = function() {
+        alert('An error occurred.');
+    };
+
+    xhr.send(formData);
+}
 </script>

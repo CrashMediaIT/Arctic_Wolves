@@ -89,6 +89,14 @@ try {
             if (!$isAnyCoach && !$canManageDevPrograms) { echo json_encode(['success' => false, 'error' => 'Access denied']); exit; }
             handleCreatePersonalDrill($pdo, $user_id, $input);
             break;
+        case 'update_personal_drill':
+            if (!$isAnyCoach && !$canManageDevPrograms) { echo json_encode(['success' => false, 'error' => 'Access denied']); exit; }
+            handleUpdatePersonalDrill($pdo, $user_id, $input);
+            break;
+        case 'delete_personal_drill':
+            if (!$isAnyCoach && !$canManageDevPrograms) { echo json_encode(['success' => false, 'error' => 'Access denied']); exit; }
+            handleDeletePersonalDrill($pdo, $user_id, $input);
+            break;
         case 'update_notification_template':
             if (!$isAdmin) { echo json_encode(['success' => false, 'error' => 'Access denied']); exit; }
             handleUpdateNotificationTemplate($pdo, $user_id, $input);
@@ -418,6 +426,110 @@ function handleCreatePersonalDrill($pdo, $user_id, $input) {
         $pdo->rollBack();
         throw $e;
     }
+}
+
+/**
+ * Update a personal drill (title, description, position, video)
+ */
+function handleUpdatePersonalDrill($pdo, $user_id, $input) {
+    $drill_id = (int)($input['drill_id'] ?? 0);
+    $title = trim($input['title'] ?? '');
+    $description = trim($input['description'] ?? '');
+    $position = in_array($input['position'] ?? '', ['player', 'goalie']) ? $input['position'] : 'player';
+
+    if (!$drill_id) {
+        echo json_encode(['success' => false, 'error' => 'Invalid drill ID']);
+        return;
+    }
+    if (!$title) {
+        echo json_encode(['success' => false, 'error' => 'Title is required']);
+        return;
+    }
+
+    // Verify ownership (or admin)
+    $check = $pdo->prepare("SELECT id, created_by FROM personal_drills WHERE id = ?");
+    $check->execute([$drill_id]);
+    $existing = $check->fetch(PDO::FETCH_ASSOC);
+    if (!$existing) {
+        echo json_encode(['success' => false, 'error' => 'Drill not found']);
+        return;
+    }
+    $user_role = $_SESSION['user_role'] ?? '';
+    if ((int)$existing['created_by'] !== (int)$user_id && $user_role !== 'admin') {
+        echo json_encode(['success' => false, 'error' => 'Access denied']);
+        return;
+    }
+
+    $video_upload_path = null;
+    $thumbnail_path = null;
+
+    // Handle optional video file upload
+    if (isset($_FILES['video_file']) && $_FILES['video_file']['error'] === UPLOAD_ERR_OK) {
+        $file = $_FILES['video_file'];
+
+        $validator = new FileUploadValidator();
+        $validation = $validator->validateVideo($file);
+        if (!$validation['valid']) {
+            echo json_encode(['success' => false, 'error' => $validation['error']]);
+            return;
+        }
+
+        $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        $baseName = 'personal_drill_' . bin2hex(random_bytes(16));
+        $filename = $baseName . '.' . $extension;
+
+        $persist = persistUploadedFile($pdo, $file['tmp_name'], 'drills/videos', $filename, '', true);
+        if (!$persist['success']) {
+            echo json_encode(['success' => false, 'error' => 'Video upload failed. Please try again.']);
+            return;
+        }
+        $video_upload_path = $persist['rustfs_url'] ?? null;
+
+        $thumb = generateVideoThumbnail($pdo, $file['tmp_name'], 'drills/thumbnails', $baseName);
+        if ($thumb['success']) {
+            $thumbnail_path = $thumb['thumbnail_url'];
+        }
+    }
+
+    if ($video_upload_path) {
+        $stmt = $pdo->prepare("UPDATE personal_drills SET title = ?, description = ?, position = ?, video_upload_path = ?, thumbnail_path = ? WHERE id = ?");
+        $stmt->execute([$title, $description ?: null, $position, $video_upload_path, $thumbnail_path, $drill_id]);
+    } else {
+        $stmt = $pdo->prepare("UPDATE personal_drills SET title = ?, description = ?, position = ? WHERE id = ?");
+        $stmt->execute([$title, $description ?: null, $position, $drill_id]);
+    }
+    echo json_encode(['success' => true]);
+}
+
+/**
+ * Delete a personal drill
+ */
+function handleDeletePersonalDrill($pdo, $user_id, $input) {
+    $drill_id = (int)($input['drill_id'] ?? 0);
+
+    if (!$drill_id) {
+        echo json_encode(['success' => false, 'error' => 'Invalid drill ID']);
+        return;
+    }
+
+    // Verify ownership (or admin)
+    $check = $pdo->prepare("SELECT id, created_by FROM personal_drills WHERE id = ?");
+    $check->execute([$drill_id]);
+    $existing = $check->fetch(PDO::FETCH_ASSOC);
+    if (!$existing) {
+        echo json_encode(['success' => false, 'error' => 'Drill not found']);
+        return;
+    }
+    $user_role = $_SESSION['user_role'] ?? '';
+    if ((int)$existing['created_by'] !== (int)$user_id && $user_role !== 'admin') {
+        echo json_encode(['success' => false, 'error' => 'Access denied']);
+        return;
+    }
+
+    $stmt = $pdo->prepare("DELETE FROM personal_drills WHERE id = ?");
+    $stmt->execute([$drill_id]);
+
+    echo json_encode(['success' => true]);
 }
 
 /**

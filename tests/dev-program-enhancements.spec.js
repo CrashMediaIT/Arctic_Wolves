@@ -282,3 +282,236 @@ test.describe('Coach Access to Drill Detail View', () => {
     expect(content).toContain('coach_view_param');
   });
 });
+
+// =====================================================
+// 7. Personal drill card CSS collision fixes
+// =====================================================
+
+test.describe('Personal Drill Card CSS Collision Fixes', () => {
+
+  test('form-row CSS is scoped to create-personal-drill-form to avoid global collisions', () => {
+    const content = readFile('views/drills_personal.php');
+    // Should use scoped selector, not bare .form-row
+    expect(content).toContain('.create-personal-drill-form .form-row {');
+    expect(content).toContain('.create-personal-drill-form .form-row label {');
+    expect(content).toContain('.create-personal-drill-form .form-row input');
+    expect(content).toContain('.create-personal-drill-form .form-row textarea');
+    expect(content).toContain('.create-personal-drill-form .form-row select');
+  });
+
+  test('form-row CSS explicitly overrides global grid display', () => {
+    const content = readFile('views/drills_personal.php');
+    // Must set display:block to override global display:grid
+    const formRowCSS = content.indexOf('.create-personal-drill-form .form-row {');
+    const formRowEnd = content.indexOf('}', formRowCSS);
+    const formRowBlock = content.substring(formRowCSS, formRowEnd);
+    expect(formRowBlock).toContain('display: block');
+  });
+
+  test('thumbnail_path uses resolveRustfsUrl for image resolution', () => {
+    const content = readFile('views/drills_personal.php');
+    expect(content).toContain('resolveRustfsUrl($pdo');
+    expect(content).toContain('image_helper.php');
+  });
+
+  test('video thumbnail section has play indicator overlay', () => {
+    const content = readFile('views/drills_personal.php');
+    expect(content).toContain('video-play-indicator');
+    expect(content).toContain('fa-play-circle');
+  });
+
+  test('select element styling is handled by CSS not inline styles', () => {
+    const content = readFile('views/drills_personal.php');
+    // The select element should not have inline style for layout
+    const selectTag = content.indexOf('<select id="pd-position"');
+    const selectEnd = content.indexOf('>', selectTag);
+    const selectElement = content.substring(selectTag, selectEnd);
+    expect(selectElement).not.toContain('style=');
+  });
+});
+
+// =====================================================
+// 8. Personal drill edit/delete functionality
+// =====================================================
+
+test.describe('Personal Drill Edit and Delete', () => {
+
+  test('personal drill cards have edit and delete buttons', () => {
+    const content = readFile('views/drills_personal.php');
+    expect(content).toContain('editPersonalDrill(');
+    expect(content).toContain('deletePersonalDrill(');
+    expect(content).toContain('personal-drill-card-actions');
+  });
+
+  test('edit modal exists with all editable fields', () => {
+    const content = readFile('views/drills_personal.php');
+    expect(content).toContain('edit-personal-drill-modal');
+    expect(content).toContain('edit-pd-title');
+    expect(content).toContain('edit-pd-description');
+    expect(content).toContain('edit-pd-position');
+    expect(content).toContain('edit-pd-video');
+  });
+
+  test('edit form submits update_personal_drill action', () => {
+    const content = readFile('views/drills_personal.php');
+    expect(content).toContain("formData.append('action', 'update_personal_drill')");
+    expect(content).toContain("formData.append('drill_id'");
+  });
+
+  test('delete function sends delete_personal_drill action', () => {
+    const content = readFile('views/drills_personal.php');
+    expect(content).toContain("formData.append('action', 'delete_personal_drill')");
+  });
+
+  test('process handler has update_personal_drill case', () => {
+    const content = readFile('process_development_programs.php');
+    expect(content).toContain("case 'update_personal_drill':");
+    expect(content).toContain('handleUpdatePersonalDrill');
+  });
+
+  test('process handler has delete_personal_drill case', () => {
+    const content = readFile('process_development_programs.php');
+    expect(content).toContain("case 'delete_personal_drill':");
+    expect(content).toContain('handleDeletePersonalDrill');
+  });
+
+  test('update handler validates ownership before update', () => {
+    const content = readFile('process_development_programs.php');
+    const fnStart = content.indexOf('function handleUpdatePersonalDrill');
+    const fnEnd = content.indexOf('\nfunction ', fnStart + 10);
+    const fnBody = content.substring(fnStart, fnEnd > -1 ? fnEnd : fnStart + 3000);
+    expect(fnBody).toContain('created_by');
+    expect(fnBody).toContain('Access denied');
+    expect(fnBody).toContain('UPDATE personal_drills');
+  });
+
+  test('delete handler validates ownership before delete', () => {
+    const content = readFile('process_development_programs.php');
+    const fnStart = content.indexOf('function handleDeletePersonalDrill');
+    const fnEnd = content.indexOf('\nfunction ', fnStart + 10);
+    const fnBody = content.substring(fnStart, fnEnd > -1 ? fnEnd : fnStart + 2000);
+    expect(fnBody).toContain('created_by');
+    expect(fnBody).toContain('Access denied');
+    expect(fnBody).toContain('DELETE FROM personal_drills');
+  });
+
+  test('update handler allows updating title, description, and position', () => {
+    const content = readFile('process_development_programs.php');
+    const fnStart = content.indexOf('function handleUpdatePersonalDrill');
+    const fnEnd = content.indexOf('\nfunction ', fnStart + 10);
+    const fnBody = content.substring(fnStart, fnEnd > -1 ? fnEnd : fnStart + 3000);
+    expect(fnBody).toContain("title = ?");
+    expect(fnBody).toContain("description = ?");
+    expect(fnBody).toContain("position = ?");
+  });
+
+  test('position badge SVG icon always shows in position label on all cards', () => {
+    const content = readFile('views/drills_personal.php');
+    // The position-label should contain the SVG icon class for ALL cards (not just ones without video)
+    expect(content).toContain('position-badge-icon');
+    // Verify the icon is inside the position-label span (always visible)
+    const labelSpan = content.indexOf('position-label');
+    const labelEnd = content.indexOf('</span>', labelSpan + 50);
+    const labelContent = content.substring(labelSpan, labelEnd);
+    expect(labelContent).toContain('icon-hockey-');
+    expect(labelContent).toContain('position-badge-icon');
+  });
+
+  test('edit button uses json_encode with safe HTML flags for JS output', () => {
+    const content = readFile('views/drills_personal.php');
+    expect(content).toContain('JSON_HEX_TAG');
+    expect(content).toContain('JSON_HEX_AMP');
+    expect(content).toContain("json_encode($pd['title']");
+    expect(content).toContain("json_encode($pd['description']");
+    expect(content).toContain("json_encode($pdPosition");
+  });
+
+  test('edit stays on personal drills page not ice canvas', () => {
+    const content = readFile('views/drills_personal.php');
+    // Edit should use modal, not redirect to create_drill page
+    expect(content).toContain('edit-personal-drill-modal');
+    expect(content).not.toContain('page=create_drill&edit=');
+  });
+});
+
+// =====================================================
+// 9. Personal drills in drill library view
+// =====================================================
+
+test.describe('Personal Drills in Library View', () => {
+
+  test('library query LEFT JOINs personal_drills to detect them', () => {
+    const content = readFile('views/drills_library.php');
+    expect(content).toContain('LEFT JOIN personal_drills pd');
+    expect(content).toContain('personal_drill_id');
+    expect(content).toContain('personal_drill_position');
+  });
+
+  test('library cards check thumbnail_path before falling to ice canvas', () => {
+    const content = readFile('views/drills_library.php');
+    // Should check thumbnail_path as a priority display option
+    expect(content).toContain("drill['thumbnail_path']");
+    // Thumbnail path should use resolveRustfsUrl
+    expect(content).toContain("resolveRustfsUrl($pdo, $drill['thumbnail_path'])");
+  });
+
+  test('library cards show position SVG icon for personal drills without video', () => {
+    const content = readFile('views/drills_library.php');
+    // Should have personal drill icon area with position-based SVG
+    expect(content).toContain('personal-drill-icon-area');
+    expect(content).toContain('icon-hockey-goalie');
+    expect(content).toContain('icon-hockey-player');
+  });
+
+  test('library cards mark personal drills with data attribute', () => {
+    const content = readFile('views/drills_library.php');
+    expect(content).toContain('data-personal-drill="1"');
+  });
+
+  test('library shows Personal badge for personal drills', () => {
+    const content = readFile('views/drills_library.php');
+    expect(content).toContain('>Personal</span>');
+  });
+
+  test('library edit handler detects personal drills and redirects to personal drills tab', () => {
+    const content = readFile('views/drills_library.php');
+    // Should check for personal drill before redirecting to ice canvas
+    expect(content).toContain('isPersonalDrill');
+    expect(content).toContain("page=personal_drills");
+  });
+});
+
+// =====================================================
+// 10. Personal drills in view_drill.php
+// =====================================================
+
+test.describe('Personal Drills in View Drill Page', () => {
+
+  test('view_drill query LEFT JOINs personal_drills', () => {
+    const content = readFile('views/view_drill.php');
+    expect(content).toContain('LEFT JOIN personal_drills pd');
+    expect(content).toContain('personal_drill_id');
+    expect(content).toContain('personal_drill_position');
+  });
+
+  test('view_drill shows thumbnail for personal drills with video', () => {
+    const content = readFile('views/view_drill.php');
+    expect(content).toContain("drill['thumbnail_path']");
+    // Should show thumbnail image
+    expect(content).toContain("resolveRustfsUrl($pdo, $drill['thumbnail_path'])");
+  });
+
+  test('view_drill shows position icon for personal drills without video', () => {
+    const content = readFile('views/view_drill.php');
+    expect(content).toContain("drill['personal_drill_id']");
+    expect(content).toContain('icon-hockey-goalie');
+    expect(content).toContain('icon-hockey-player');
+  });
+
+  test('view_drill edit button redirects to personal drills tab for personal drills', () => {
+    const content = readFile('views/view_drill.php');
+    // Should have conditional: personal drill → personal_drills page, else → create_drill&edit
+    expect(content).toContain("page=personal_drills");
+    expect(content).toContain('Edit Personal Drill');
+  });
+});
