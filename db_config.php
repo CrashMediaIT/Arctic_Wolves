@@ -267,6 +267,15 @@ if (!function_exists('decryptUserRow')) {
                        'approved_by_first_name', 'approved_by_last_name',
                        'user_first_name', 'user_last_name',
                        'athlete_coach_first', 'athlete_coach_last',
+                       'evaluator_first_name', 'evaluator_last_name',
+                       'evaluator_first', 'evaluator_last',
+                       'inviter_first_name', 'inviter_last_name',
+                       'generated_by_first_name', 'generated_by_last_name',
+                       'performed_by_first_name', 'performed_by_last_name',
+                       'performer_first_name', 'performer_last_name',
+                       'created_by_first', 'created_by_last',
+                       'processed_first', 'processed_last',
+                       'athlete_first', 'athlete_last',
                        'message'];
         foreach ($piiFields as $field) {
             if (isset($row[$field]) && $row[$field] !== '') {

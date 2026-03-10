@@ -46,6 +46,9 @@ foreach ($enrollments as &$enrollment) {
     if (function_exists('decryptUserRows')) {
         $enrollment['drills'] = decryptUserRows($enrollment['drills']);
     }
+    if (class_exists('FieldEncryption')) {
+        $enrollment['drills'] = FieldEncryption::decryptRows($enrollment['drills'], ['coach_first', 'coach_last']);
+    }
     
     // Get recent messages
     $msgs_stmt = $pdo->prepare("
@@ -94,6 +97,9 @@ foreach ($enrollments as &$enrollment) {
     $enrollment['appointments'] = $appts_stmt->fetchAll(PDO::FETCH_ASSOC);
     if (function_exists('decryptUserRows')) {
         $enrollment['appointments'] = decryptUserRows($enrollment['appointments']);
+    }
+    if (class_exists('FieldEncryption')) {
+        $enrollment['appointments'] = FieldEncryption::decryptRows($enrollment['appointments'], ['coach_first', 'coach_last']);
     }
 }
 unset($enrollment);

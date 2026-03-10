@@ -346,3 +346,130 @@ test.describe('RLS TABLE_OWNER_MAP coverage', () => {
     expect(mapBody).toContain("'staff_pins'");
   });
 });
+
+// =====================================================
+// Comprehensive PII alias coverage in decryptUserRow
+// =====================================================
+
+test.describe('decryptUserRow comprehensive PII alias coverage', () => {
+  function getPiiFieldsBody() {
+    const content = readFile('db_config.php');
+    const fnStart = content.indexOf('function decryptUserRow($row)');
+    const fnEnd = content.indexOf('\n    }', fnStart) + 6;
+    return content.substring(fnStart, fnEnd);
+  }
+
+  test('includes evaluator_first_name alias', () => {
+    expect(getPiiFieldsBody()).toContain("'evaluator_first_name'");
+  });
+
+  test('includes evaluator_last_name alias', () => {
+    expect(getPiiFieldsBody()).toContain("'evaluator_last_name'");
+  });
+
+  test('includes evaluator_first alias', () => {
+    expect(getPiiFieldsBody()).toContain("'evaluator_first'");
+  });
+
+  test('includes evaluator_last alias', () => {
+    expect(getPiiFieldsBody()).toContain("'evaluator_last'");
+  });
+
+  test('includes generated_by_first_name alias', () => {
+    expect(getPiiFieldsBody()).toContain("'generated_by_first_name'");
+  });
+
+  test('includes generated_by_last_name alias', () => {
+    expect(getPiiFieldsBody()).toContain("'generated_by_last_name'");
+  });
+
+  test('includes performed_by_first_name alias', () => {
+    expect(getPiiFieldsBody()).toContain("'performed_by_first_name'");
+  });
+
+  test('includes performed_by_last_name alias', () => {
+    expect(getPiiFieldsBody()).toContain("'performed_by_last_name'");
+  });
+
+  test('includes performer_first_name alias', () => {
+    expect(getPiiFieldsBody()).toContain("'performer_first_name'");
+  });
+
+  test('includes performer_last_name alias', () => {
+    expect(getPiiFieldsBody()).toContain("'performer_last_name'");
+  });
+
+  test('includes created_by_first alias', () => {
+    expect(getPiiFieldsBody()).toContain("'created_by_first'");
+  });
+
+  test('includes created_by_last alias', () => {
+    expect(getPiiFieldsBody()).toContain("'created_by_last'");
+  });
+
+  test('includes processed_first alias', () => {
+    expect(getPiiFieldsBody()).toContain("'processed_first'");
+  });
+
+  test('includes processed_last alias', () => {
+    expect(getPiiFieldsBody()).toContain("'processed_last'");
+  });
+
+  test('includes athlete_first alias', () => {
+    expect(getPiiFieldsBody()).toContain("'athlete_first'");
+  });
+
+  test('includes athlete_last alias', () => {
+    expect(getPiiFieldsBody()).toContain("'athlete_last'");
+  });
+
+  test('includes inviter_first_name alias', () => {
+    expect(getPiiFieldsBody()).toContain("'inviter_first_name'");
+  });
+
+  test('includes inviter_last_name alias', () => {
+    expect(getPiiFieldsBody()).toContain("'inviter_last_name'");
+  });
+});
+
+// =====================================================
+// Belt-and-suspenders decryption in development programs
+// =====================================================
+
+test.describe('Development programs belt-and-suspenders decryption', () => {
+
+  test('coach view applies FieldEncryption::decryptRows on drills with coach fields', () => {
+    const content = readFile('views/development_programs.php');
+    expect(content).toContain("FieldEncryption::decryptRows($selected_drills, ['coach_first', 'coach_last'])");
+  });
+
+  test('coach view applies FieldEncryption::decryptRows on appointments with coach fields', () => {
+    const content = readFile('views/development_programs.php');
+    expect(content).toContain("FieldEncryption::decryptRows($selected_appointments, ['coach_first', 'coach_last'])");
+  });
+
+  test('coach view applies FieldEncryption::decryptRows on athletes list', () => {
+    const content = readFile('views/development_programs.php');
+    expect(content).toContain("FieldEncryption::decryptRows($athletes, ['first_name', 'last_name', 'athlete_coach_first', 'athlete_coach_last'])");
+  });
+
+  test('coach view applies FieldEncryption::decryptRows on history list', () => {
+    const content = readFile('views/development_programs.php');
+    expect(content).toContain("FieldEncryption::decryptRows($history_athletes, ['first_name', 'last_name', 'athlete_coach_first', 'athlete_coach_last'])");
+  });
+
+  test('coach view applies FieldEncryption::decryptFields on selected enrollment', () => {
+    const content = readFile('views/development_programs.php');
+    expect(content).toContain("FieldEncryption::decryptFields($selected, ['first_name', 'last_name', 'athlete_coach_first', 'athlete_coach_last'])");
+  });
+
+  test('athlete view applies FieldEncryption::decryptRows on drills with coach fields', () => {
+    const content = readFile('views/personal_development_my_program.php');
+    expect(content).toContain("FieldEncryption::decryptRows($enrollment['drills'], ['coach_first', 'coach_last'])");
+  });
+
+  test('athlete view applies FieldEncryption::decryptRows on appointments with coach fields', () => {
+    const content = readFile('views/personal_development_my_program.php');
+    expect(content).toContain("FieldEncryption::decryptRows($enrollment['appointments'], ['coach_first', 'coach_last'])");
+  });
+});
