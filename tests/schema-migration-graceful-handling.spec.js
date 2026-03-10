@@ -299,3 +299,119 @@ test.describe('Migration Handlers - Missing Table Fallback', () => {
     expect(patternCount).toBeGreaterThanOrEqual(3);
   });
 });
+
+// =====================================================
+// 6. Create Table Error Handling
+// =====================================================
+
+test.describe('Migration Handlers - Create Table Error Handling', () => {
+
+  test('github_updater.php has try-catch around create_table exec', () => {
+    const content = readFile('lib/github_updater.php');
+    const fnStart = content.indexOf('function runSchemaCheck()');
+    const fnEnd = content.indexOf('}', content.indexOf("'Schema check failed:", fnStart));
+    const fn = content.substring(fnStart, fnEnd);
+    // The create_table handler should have its own try-catch
+    expect(fn).toContain("Could not create table $table_name:");
+    // Should handle 'already exists' errors gracefully
+    expect(fn).toContain("'1050'");
+    expect(fn).toContain("'already exists'");
+  });
+
+  test('github_updater.php logs error when regex fails for create_table', () => {
+    const content = readFile('lib/github_updater.php');
+    const fnStart = content.indexOf('function runSchemaCheck()');
+    const fnEnd = content.indexOf('}', content.indexOf("'Schema check failed:", fnStart));
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain("Could not extract CREATE TABLE statement for");
+    expect(fn).toContain("Schema regex failed for table:");
+  });
+
+  test('setup.php has try-catch around create_table exec', () => {
+    const content = readFile('setup.php');
+    const migSection = content.substring(content.indexOf('compareSchemas'));
+    expect(migSection).toContain("Could not create table $table_name:");
+    expect(migSection).toContain("'1050'");
+    expect(migSection).toContain("'already exists'");
+  });
+
+  test('setup.php logs error when regex fails for create_table', () => {
+    const content = readFile('setup.php');
+    const migSection = content.substring(content.indexOf('compareSchemas'));
+    expect(migSection).toContain("Could not extract CREATE TABLE statement for");
+    expect(migSection).toContain("Setup schema regex failed for table:");
+  });
+});
+
+// =====================================================
+// 7. Post-Migration Verification & Retry
+// =====================================================
+
+test.describe('Migration Handlers - Post-Migration Verification', () => {
+
+  test('github_updater.php verifies schema after migration and retries missing tables', () => {
+    const content = readFile('lib/github_updater.php');
+    const fnStart = content.indexOf('function runSchemaCheck()');
+    const fnEnd = content.indexOf('}', content.indexOf("'Schema check failed:", fnStart));
+    const fn = content.substring(fnStart, fnEnd);
+    // Should verify schema after migration
+    expect(fn).toContain('getCurrentSchema()');
+    // Should compare post-migration schema
+    const compareCount = (fn.match(/compareSchemas/g) || []).length;
+    expect(compareCount).toBeGreaterThanOrEqual(2);
+    // Should retry missing tables
+    expect(fn).toContain("Created missing table (retry):");
+  });
+
+  test('setup.php verifies schema after migration and retries missing tables', () => {
+    const content = readFile('setup.php');
+    const migSection = content.substring(content.indexOf('compareSchemas'));
+    // Should retry missing tables
+    expect(migSection).toContain("Created missing table (retry):");
+    // Should re-verify after retry
+    const getCurrentSchemaCount = (migSection.match(/getCurrentSchema/g) || []).length;
+    expect(getCurrentSchemaCount).toBeGreaterThanOrEqual(2);
+  });
+
+  test('github_updater.php disables FK checks during retry', () => {
+    const content = readFile('lib/github_updater.php');
+    const fnStart = content.indexOf('function runSchemaCheck()');
+    const fnEnd = content.indexOf('}', content.indexOf("'Schema check failed:", fnStart));
+    const fn = content.substring(fnStart, fnEnd);
+    // Should have FK checks disabled during both initial and retry loops
+    const fkDisableCount = (fn.match(/FOREIGN_KEY_CHECKS\s*=\s*0/g) || []).length;
+    expect(fkDisableCount).toBeGreaterThanOrEqual(2);
+    const fkEnableCount = (fn.match(/FOREIGN_KEY_CHECKS\s*=\s*1/g) || []).length;
+    expect(fkEnableCount).toBeGreaterThanOrEqual(2);
+  });
+});
+
+// =====================================================
+// 8. SVG Icon CSS Mask Mode
+// =====================================================
+
+test.describe('SVG Icon CSS - mask-mode alpha', () => {
+
+  test('style-guide.css sets mask-mode: alpha for hockey icons', () => {
+    const content = readFile('css/style-guide.css');
+    // Find the hockey icon section
+    const iconSection = content.substring(
+      content.indexOf('.icon-hockey-player'),
+      content.indexOf('.icon-hockey-player {', content.indexOf('.icon-hockey-player') + 1)
+    );
+    expect(iconSection).toContain('mask-mode: alpha');
+    expect(iconSection).toContain('-webkit-mask-mode: alpha');
+  });
+
+  test('hockey SVG files exist and are valid', () => {
+    const playerSvg = readFile('assets/svg/hockey-player.svg');
+    expect(playerSvg).toContain('<svg');
+    expect(playerSvg).toContain('</svg>');
+    expect(playerSvg).toContain('viewBox');
+    
+    const goalieSvg = readFile('assets/svg/hockey-goalie.svg');
+    expect(goalieSvg).toContain('<svg');
+    expect(goalieSvg).toContain('</svg>');
+    expect(goalieSvg).toContain('viewBox');
+  });
+});

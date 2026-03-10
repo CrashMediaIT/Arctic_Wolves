@@ -493,8 +493,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 
                                 // Extract the full CREATE TABLE statement from the schema file
                                 if (preg_match(sprintf($create_table_pattern_tpl, preg_quote($table_name, '/')), $schema_sql, $match)) {
-                                    $pdo->exec($match[0]);
-                                    $migration_results[] = "Created missing table: $table_name";
+                                    try {
+                                        $pdo->exec($match[0]);
+                                        $migration_results[] = "Created missing table: $table_name";
+                                    } catch (Exception $ce) {
+                                        if (strpos($ce->getMessage(), '1050') !== false || strpos($ce->getMessage(), 'already exists') !== false) {
+                                            $migration_results[] = "Table already exists: $table_name";
+                                        } else {
+                                            $migration_errors[] = "Could not create table $table_name: " . $ce->getMessage();
+                                            error_log("Setup create table error for $table_name: " . $ce->getMessage());
+                                        }
+                                    }
+                                } else {
+                                    $migration_errors[] = "Could not extract CREATE TABLE statement for $table_name from schema file";
+                                    error_log("Setup schema regex failed for table: $table_name");
                                 }
                             } elseif ($migration['type'] === 'add_column') {
                                 $result = $migrator->executeMigration($migration);
@@ -581,10 +593,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
                 
-                // Verify schema after migration
+                // Verify schema after migration — retry any tables still missing
                 $post_schema = $migrator->getCurrentSchema();
                 $remaining = $migrator->compareSchemas($post_schema, $expected_schema);
                 $remaining_tables = array_filter($remaining, function($m) { return $m['type'] === 'create_table'; });
+                
+                if (!empty($remaining_tables)) {
+                    try { $pdo->exec('SET FOREIGN_KEY_CHECKS = 0'); } catch (Exception $e) { /* best-effort */ }
+                    try {
+                        foreach ($remaining_tables as $rm) {
+                            $table_name = $rm['table'];
+                            if (preg_match(sprintf($create_table_pattern_tpl, preg_quote($table_name, '/')), $schema_sql, $match)) {
+                                try {
+                                    $pdo->exec($match[0]);
+                                    $migration_results[] = "Created missing table (retry): $table_name";
+                                } catch (Exception $ce) {
+                                    if (strpos($ce->getMessage(), '1050') === false && strpos($ce->getMessage(), 'already exists') === false) {
+                                        $migration_errors[] = "Retry: could not create table $table_name: " . $ce->getMessage();
+                                    }
+                                }
+                            }
+                        }
+                    } finally {
+                        try { $pdo->exec('SET FOREIGN_KEY_CHECKS = 1'); } catch (Exception $e) { /* best-effort */ }
+                    }
+                    // Re-verify after retry
+                    $post_schema = $migrator->getCurrentSchema();
+                    $remaining = $migrator->compareSchemas($post_schema, $expected_schema);
+                    $remaining_tables = array_filter($remaining, function($m) { return $m['type'] === 'create_table'; });
+                }
                 
                 $_SESSION['setup']['schema_migration'] = [
                     'results' => $migration_results,

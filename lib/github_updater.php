@@ -910,8 +910,20 @@ class GitHubUpdater {
                         if ($migration['type'] === 'create_table') {
                             $table_name = $migration['table'];
                             if (preg_match(sprintf($create_table_pattern_tpl, preg_quote($table_name, '/')), $schema_sql, $match)) {
-                                $this->pdo->exec($match[0]);
-                                $results[] = "Created missing table: $table_name";
+                                try {
+                                    $this->pdo->exec($match[0]);
+                                    $results[] = "Created missing table: $table_name";
+                                } catch (\Exception $ce) {
+                                    if (strpos($ce->getMessage(), '1050') !== false || strpos($ce->getMessage(), 'already exists') !== false) {
+                                        $results[] = "Table already exists: $table_name";
+                                    } else {
+                                        $errors[] = "Could not create table $table_name: " . $ce->getMessage();
+                                        error_log("Schema create table error for $table_name: " . $ce->getMessage());
+                                    }
+                                }
+                            } else {
+                                $errors[] = "Could not extract CREATE TABLE statement for $table_name from schema file";
+                                error_log("Schema regex failed for table: $table_name");
                             }
                         } elseif ($migration['type'] === 'add_column') {
                             $result = $migrator->executeMigration($migration);
@@ -997,6 +1009,36 @@ class GitHubUpdater {
                 }
             } catch (\PDOException $e) {
                 // Non-critical — FK may already exist or tables may not be ready
+            }
+            
+            // Verify schema after migration — retry any tables still missing
+            try {
+                $post_schema = $migrator->getCurrentSchema();
+                $remaining = $migrator->compareSchemas($post_schema, $expected_schema);
+                $remaining_tables = array_filter($remaining, function($m) { return $m['type'] === 'create_table'; });
+                if (!empty($remaining_tables)) {
+                    try { $this->pdo->exec('SET FOREIGN_KEY_CHECKS = 0'); } catch (\Exception $e) { /* best-effort */ }
+                    try {
+                        foreach ($remaining_tables as $rm) {
+                            $table_name = $rm['table'];
+                            if (preg_match(sprintf($create_table_pattern_tpl, preg_quote($table_name, '/')), $schema_sql, $match)) {
+                                try {
+                                    $this->pdo->exec($match[0]);
+                                    $results[] = "Created missing table (retry): $table_name";
+                                } catch (\Exception $ce) {
+                                    if (strpos($ce->getMessage(), '1050') === false && strpos($ce->getMessage(), 'already exists') === false) {
+                                        $errors[] = "Retry: could not create table $table_name: " . $ce->getMessage();
+                                        error_log("Schema retry create table error for $table_name: " . $ce->getMessage());
+                                    }
+                                }
+                            }
+                        }
+                    } finally {
+                        try { $this->pdo->exec('SET FOREIGN_KEY_CHECKS = 1'); } catch (\Exception $e) { /* best-effort */ }
+                    }
+                }
+            } catch (\Exception $e) {
+                error_log("Post-migration verification error: " . $e->getMessage());
             }
             
             return [
