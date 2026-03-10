@@ -32,7 +32,7 @@ class RowLevelSecurity {
         'users'                     => 'id',
         'athlete_evaluations'       => 'athlete_id',
         'evaluation_scores'         => null, // Accessed via evaluation join
-        'goals'                     => 'user_id',
+        'goals'                     => 'athlete_id',
         'goal_evaluations'          => null, // Accessed via goal join
         'bookings'                  => 'user_id',
         'transactions'              => 'user_id',
@@ -42,6 +42,17 @@ class RowLevelSecurity {
         'parent_athlete_relationships' => 'parent_id',
         'managed_athletes'          => 'parent_id',
         'user_agreements'           => 'user_id',
+        'videos'                    => 'athlete_id',
+        'expenses'                  => 'user_id',
+        'athlete_stats'             => 'user_id',
+        'athlete_notes'             => 'user_id',
+        'session_attendance'        => 'user_id',
+        'session_feedback'          => 'user_id',
+        'mileage_logs'              => 'user_id',
+        'event_registrations'       => 'user_id',
+        'development_program_enrollments' => 'athlete_id',
+        'development_program_videos'      => 'athlete_id',
+        'staff_pins'                => 'user_id',
     ];
 
     public function __construct($pdo, $user_id = null, $user_role = null) {
