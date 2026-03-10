@@ -299,3 +299,171 @@ test.describe('Migration Handlers - Missing Table Fallback', () => {
     expect(patternCount).toBeGreaterThanOrEqual(3);
   });
 });
+
+// =====================================================
+// 6. Create Table Error Handling
+// =====================================================
+
+test.describe('Migration Handlers - Create Table Error Handling', () => {
+
+  test('github_updater.php has try-catch around create_table exec', () => {
+    const content = readFile('lib/github_updater.php');
+    const fnStart = content.indexOf('function runSchemaCheck()');
+    const fnEnd = content.indexOf('}', content.indexOf("'Schema check failed:", fnStart));
+    const fn = content.substring(fnStart, fnEnd);
+    // The create_table handler should have its own try-catch
+    expect(fn).toContain("Could not create table $table_name:");
+    // Should handle 'already exists' errors gracefully using SQLSTATE and message
+    expect(fn).toContain("'42S01'");
+    expect(fn).toContain("'1050'");
+    expect(fn).toContain("'already exists'");
+  });
+
+  test('github_updater.php logs error when regex fails for create_table', () => {
+    const content = readFile('lib/github_updater.php');
+    const fnStart = content.indexOf('function runSchemaCheck()');
+    const fnEnd = content.indexOf('}', content.indexOf("'Schema check failed:", fnStart));
+    const fn = content.substring(fnStart, fnEnd);
+    expect(fn).toContain("Could not extract CREATE TABLE statement for");
+    expect(fn).toContain("Schema regex failed for table:");
+  });
+
+  test('setup.php has try-catch around create_table exec', () => {
+    const content = readFile('setup.php');
+    const migSection = content.substring(content.indexOf('compareSchemas'));
+    expect(migSection).toContain("Could not create table $table_name:");
+    expect(migSection).toContain("'42S01'");
+    expect(migSection).toContain("'1050'");
+    expect(migSection).toContain("'already exists'");
+  });
+
+  test('setup.php logs error when regex fails for create_table', () => {
+    const content = readFile('setup.php');
+    const migSection = content.substring(content.indexOf('compareSchemas'));
+    expect(migSection).toContain("Could not extract CREATE TABLE statement for");
+    expect(migSection).toContain("Setup schema regex failed for table:");
+  });
+});
+
+// =====================================================
+// 7. Post-Migration Verification & Retry
+// =====================================================
+
+test.describe('Migration Handlers - Post-Migration Verification', () => {
+
+  test('github_updater.php verifies schema after migration and retries missing tables', () => {
+    const content = readFile('lib/github_updater.php');
+    const fnStart = content.indexOf('function runSchemaCheck()');
+    const fnEnd = content.indexOf('}', content.indexOf("'Schema check failed:", fnStart));
+    const fn = content.substring(fnStart, fnEnd);
+    // Should verify schema after migration
+    expect(fn).toContain('getCurrentSchema()');
+    // Should compare post-migration schema
+    const compareCount = (fn.match(/compareSchemas/g) || []).length;
+    expect(compareCount).toBeGreaterThanOrEqual(2);
+    // Should retry missing tables
+    expect(fn).toContain("Created missing table (retry):");
+  });
+
+  test('setup.php verifies schema after migration and retries missing tables', () => {
+    const content = readFile('setup.php');
+    const migSection = content.substring(content.indexOf('compareSchemas'));
+    // Should retry missing tables
+    expect(migSection).toContain("Created missing table (retry):");
+    // Should re-verify after retry
+    const getCurrentSchemaCount = (migSection.match(/getCurrentSchema/g) || []).length;
+    expect(getCurrentSchemaCount).toBeGreaterThanOrEqual(2);
+  });
+
+  test('github_updater.php disables FK checks during retry', () => {
+    const content = readFile('lib/github_updater.php');
+    const fnStart = content.indexOf('function runSchemaCheck()');
+    const fnEnd = content.indexOf('}', content.indexOf("'Schema check failed:", fnStart));
+    const fn = content.substring(fnStart, fnEnd);
+    // Should have FK checks disabled during both initial and retry loops
+    const fkDisableCount = (fn.match(/FOREIGN_KEY_CHECKS\s*=\s*0/g) || []).length;
+    expect(fkDisableCount).toBeGreaterThanOrEqual(2);
+    const fkEnableCount = (fn.match(/FOREIGN_KEY_CHECKS\s*=\s*1/g) || []).length;
+    expect(fkEnableCount).toBeGreaterThanOrEqual(2);
+  });
+});
+
+// =====================================================
+// 8. SVG Icon CSS - inline data URLs for cross-browser reliability
+// =====================================================
+
+test.describe('SVG Icon CSS - inline data URLs', () => {
+
+  test('style-guide.css uses inline SVG data URLs for hockey icons (not external files)', () => {
+    const content = readFile('css/style-guide.css');
+    // Find the shared hockey icon rule block (the comma-separated selector)
+    const ruleStart = content.indexOf('.icon-hockey-player,');
+    expect(ruleStart).toBeGreaterThan(-1);
+    // Get the rule block from selector to closing brace
+    const ruleEnd = content.indexOf('}', ruleStart);
+    const iconRule = content.substring(ruleStart, ruleEnd);
+    // Should NOT use mask-mode (was incorrectly added for Firefox; Chrome/Edge ignore it)
+    expect(iconRule).not.toContain('mask-mode');
+    // Should use background-color: currentColor for coloring
+    expect(iconRule).toContain('background-color: currentColor');
+  });
+
+  test('hockey player icon uses inline SVG data URL', () => {
+    const content = readFile('css/style-guide.css');
+    const playerRuleStart = content.indexOf('.icon-hockey-player {');
+    expect(playerRuleStart).toBeGreaterThan(-1);
+    const playerRuleEnd = content.indexOf('}', playerRuleStart);
+    const playerRule = content.substring(playerRuleStart, playerRuleEnd);
+    // Should use data URL, not external file reference
+    expect(playerRule).toContain("mask-image: url(\"data:image/svg+xml,");
+    expect(playerRule).toContain("-webkit-mask-image: url(\"data:image/svg+xml,");
+    // Should NOT reference external SVG file
+    expect(playerRule).not.toContain('hockey-player.svg');
+  });
+
+  test('hockey goalie icon uses inline SVG data URL', () => {
+    const content = readFile('css/style-guide.css');
+    // Find the standalone .icon-hockey-goalie rule (skip the shared comma-separated selector)
+    const playerRuleStart = content.indexOf('.icon-hockey-player {');
+    const goalieRuleStart = content.indexOf('.icon-hockey-goalie {', playerRuleStart);
+    expect(goalieRuleStart).toBeGreaterThan(playerRuleStart);
+    const goalieRuleEnd = content.indexOf('}', goalieRuleStart);
+    const goalieRule = content.substring(goalieRuleStart, goalieRuleEnd);
+    // Should use data URL, not external file reference
+    expect(goalieRule).toContain("mask-image: url(\"data:image/svg+xml,");
+    expect(goalieRule).toContain("-webkit-mask-image: url(\"data:image/svg+xml,");
+    // Should NOT reference external SVG file
+    expect(goalieRule).not.toContain('hockey-goalie.svg');
+  });
+
+  test('SVG data URLs use explicit fill (not currentColor) for reliable mask rendering', () => {
+    const content = readFile('css/style-guide.css');
+    // Find the player and goalie mask-image data URLs
+    const playerStart = content.indexOf('.icon-hockey-player {');
+    const playerEnd = content.indexOf('}', playerStart);
+    const playerBlock = content.substring(playerStart, playerEnd);
+    // The SVG fill should be #000 (black) — encoded as %23000 in the data URL — not currentColor
+    expect(playerBlock).toContain('%23000');
+    expect(playerBlock).not.toContain('currentColor');
+  });
+
+  test('hockey SVG source files exist with explicit fill and no external URLs', () => {
+    const playerSvg = readFile('assets/svg/hockey-player.svg');
+    expect(playerSvg).toContain('<svg');
+    expect(playerSvg).toContain('</svg>');
+    expect(playerSvg).toContain('viewBox');
+    // SVG files should use fill="black" for reliable mask rendering
+    expect(playerSvg).toContain('fill="black"');
+    // Should not contain external URL references (comments linking to source websites)
+    expect(playerSvg).not.toContain('freesvg.org');
+    expect(playerSvg).not.toContain('Source:');
+    
+    const goalieSvg = readFile('assets/svg/hockey-goalie.svg');
+    expect(goalieSvg).toContain('<svg');
+    expect(goalieSvg).toContain('</svg>');
+    expect(goalieSvg).toContain('viewBox');
+    expect(goalieSvg).toContain('fill="black"');
+    expect(goalieSvg).not.toContain('freesvg.org');
+    expect(goalieSvg).not.toContain('Source:');
+  });
+});
