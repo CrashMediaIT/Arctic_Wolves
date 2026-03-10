@@ -6,6 +6,7 @@
 
 $user_id = $_SESSION['user_id'] ?? 0;
 
+try {
 // Get user's active enrollments with assigned drills
 $enrollments_stmt = $pdo->prepare("
     SELECT dpe.*, dpe.program_name, dpe.template_id, dpe.start_date, dpe.end_date
@@ -93,6 +94,11 @@ foreach ($enrollments as &$enrollment) {
     }
 }
 unset($enrollment);
+} catch (PDOException $e) {
+    error_log("My Program view error: " . $e->getMessage());
+    $enrollments = $enrollments ?? [];
+    $completed_programs = $completed_programs ?? [];
+}
 ?>
 
 <style>
@@ -552,6 +558,7 @@ unset($enrollment);
 const devCsrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
 function devFetch(data) {
+    data.csrf_token = devCsrfToken;
     return fetch('process_development_programs.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-Token': devCsrfToken },
