@@ -2,19 +2,15 @@
  * Tests for Application Time Offset and HLS Error Cache Prevention
  *
  * Verifies:
- * 1. db_config.php loads app_time_offset from system_settings
- * 2. db_config.php defines APP_TIME_OFFSET constant and appTime()/appDate() helpers
- * 3. db_config.php includes app_time_offset in MySQL session timezone calculation
- * 4. error_logger.php uses appDate() for timestamps
- * 5. lib/logger.php uses appDate() for timestamps
- * 6. api/media.php has Cache-Control: no-store on all error responses
- * 7. js/hls-player.js has xhrSetup cache-buster for HLS.js
- * 8. js/hls-player.js reports empty URL as silent failure
- * 9. js/hls-player.js uses exponential backoff for retries
- * 10. process_settings.php has ntp_sync and set_manual_time handlers
- * 11. views/admin_system_tools.php has Date & Time management card
- * 12. views/pwa/settings.php uses proper timezone identifiers
- * 13. process_settings.php update_general validates timezone
+ * 1. db_config.php defines APP_TIME_OFFSET constant (always 0) and appTime()/appDate() helpers
+ * 2. db_config.php sets timezone from Docker TZ env var
+ * 3. error_logger.php uses appDate() for timestamps
+ * 4. lib/logger.php uses appDate() for timestamps
+ * 5. api/media.php has Cache-Control: no-store on all error responses
+ * 6. js/hls-player.js has cache-buster and retry improvements
+ * 7. Time sync actions (ntp_sync, set_manual_time) are removed
+ * 8. Admin Date & Time card is simplified (no NTP/manual controls)
+ * 9. views/pwa/settings.php shows timezone from Docker ENV
  */
 
 import { test, expect } from '@playwright/test';
@@ -28,51 +24,40 @@ function readFile(relativePath) {
 }
 
 // =====================================================
-// 1. db_config.php time offset infrastructure
+// 1. db_config.php time infrastructure (ENV-based)
 // =====================================================
 
-test.describe('db_config.php app time offset', () => {
+test.describe('db_config.php app time helpers', () => {
   const content = () => readFile('db_config.php');
 
-  test('loads app_time_offset alongside timezone from system_settings', () => {
+  test('does NOT call date_default_timezone_set', () => {
     const c = content();
-    expect(c).toContain("'app_time_offset'");
-    expect(c).toContain("'timezone'");
+    expect(c).not.toContain('date_default_timezone_set');
   });
 
-  test('defines APP_TIME_OFFSET constant', () => {
+  test('defines APP_TIME_OFFSET constant as 0', () => {
     const c = content();
-    expect(c).toContain("define('APP_TIME_OFFSET'");
+    expect(c).toContain("define('APP_TIME_OFFSET', 0)");
   });
 
   test('defines appTime() helper function', () => {
     const c = content();
     expect(c).toContain('function appTime()');
-    expect(c).toContain('APP_TIME_OFFSET');
   });
 
   test('defines appDate() helper function', () => {
     const c = content();
     expect(c).toContain('function appDate(');
-    expect(c).toContain('appTime()');
   });
 
-  test('loads app_time_offset separately from MySQL timezone', () => {
+  test('uses date_default_timezone_get for MySQL sync', () => {
     const c = content();
-    expect(c).toContain('$_app_time_offset');
+    expect(c).toContain('date_default_timezone_get()');
+  });
+
+  test('MySQL SET time_zone is present', () => {
+    const c = content();
     expect(c).toContain("SET time_zone");
-  });
-
-  test('MySQL SET time_zone uses only timezone offset (not app_time_offset)', () => {
-    const c = content();
-    // app_time_offset is a PHP-side correction; MySQL timezone uses only the
-    // actual timezone offset to avoid out-of-range failures.
-    expect(c).toContain('$offset_s');
-    const setTz = c.indexOf("SET time_zone");
-    expect(setTz).toBeGreaterThan(-1);
-    // The SET time_zone should be inside its own try/catch
-    const innerTry = c.lastIndexOf('try {', setTz);
-    expect(innerTry).toBeGreaterThan(-1);
   });
 });
 
@@ -267,61 +252,41 @@ test.describe('Video views use getAttribute to avoid empty src resolution', () =
 });
 
 // =====================================================
-// 5. Time sync handlers in process_settings.php
+// 5. Time sync handlers removed from process_settings.php
 // =====================================================
 
-test.describe('Time synchronisation handlers in process_settings.php', () => {
+test.describe('Time synchronisation handlers removed from process_settings.php', () => {
   const content = () => readFile('process_settings.php');
 
-  test('ntp_sync action is in JSON actions list', () => {
+  test('ntp_sync action is NOT in JSON actions list', () => {
     const c = content();
-    expect(c).toContain("'ntp_sync'");
+    expect(c).not.toContain("'ntp_sync'");
   });
 
-  test('set_manual_time action is in JSON actions list', () => {
+  test('set_manual_time action is NOT in JSON actions list', () => {
     const c = content();
-    expect(c).toContain("'set_manual_time'");
+    expect(c).not.toContain("'set_manual_time'");
   });
 
-  test('reset_time_offset action is in JSON actions list', () => {
+  test('reset_time_offset action is NOT in JSON actions list', () => {
     const c = content();
-    expect(c).toContain("'reset_time_offset'");
+    expect(c).not.toContain("'reset_time_offset'");
   });
 
-  test('ntp_sync handler queries HTTP Date headers', () => {
-    const c = content();
-    const ntpIdx = c.indexOf("case 'ntp_sync':");
-    expect(ntpIdx).toBeGreaterThan(-1);
-    const handler = c.substring(ntpIdx, ntpIdx + 3000);
-    expect(handler).toContain('CURLOPT_NOBODY');
-    expect(handler).toContain("Date:");
-    expect(handler).toContain('app_time_offset');
-  });
-
-  test('set_manual_time handler computes offset', () => {
-    const c = content();
-    const manualIdx = c.indexOf("case 'set_manual_time':");
-    expect(manualIdx).toBeGreaterThan(-1);
-    const handler = c.substring(manualIdx, manualIdx + 1500);
-    expect(handler).toContain('manual_datetime');
-    expect(handler).toContain('strtotime');
-    expect(handler).toContain('app_time_offset');
-  });
-
-  test('update_general validates timezone', () => {
+  test('update_general does not save timezone to DB', () => {
     const c = content();
     const generalIdx = c.indexOf("case 'update_general':");
     expect(generalIdx).toBeGreaterThan(-1);
     const handler = c.substring(generalIdx, generalIdx + 800);
-    expect(handler).toContain('timezone_identifiers_list()');
+    expect(handler).not.toContain("updateSetting($pdo, 'timezone'");
   });
 });
 
 // =====================================================
-// 6. Admin System Tools Date & Time card
+// 6. Admin System Tools Date & Time card (simplified)
 // =====================================================
 
-test.describe('Admin System Tools Date & Time management', () => {
+test.describe('Admin System Tools Date & Time display', () => {
   const content = () => readFile('views/admin_system_tools.php');
 
   test('has Date & Time card header', () => {
@@ -337,55 +302,39 @@ test.describe('Admin System Tools Date & Time management', () => {
     expect(c).toContain('setInterval');
   });
 
-  test('has NTP sync button', () => {
+  test('does NOT have NTP sync button', () => {
     const c = content();
-    expect(c).toContain('btn-ntp-sync');
-    expect(c).toContain('awNtpSync');
+    expect(c).not.toContain('awNtpSync');
+    expect(c).not.toContain('btn-ntp-sync');
   });
 
-  test('has manual time setter input', () => {
+  test('does NOT have manual time setter', () => {
     const c = content();
-    expect(c).toContain('manual-datetime');
-    expect(c).toContain('datetime-local');
-    expect(c).toContain('awSetManualTime');
+    expect(c).not.toContain('awSetManualTime');
+    expect(c).not.toContain('manual-datetime');
   });
 
-  test('shows active offset', () => {
+  test('shows timezone source as Docker ENV', () => {
     const c = content();
-    expect(c).toContain('app_time_offset');
-    expect(c).toContain('time-offset-display');
-  });
-
-  test('has reset offset button when offset is non-zero', () => {
-    const c = content();
-    expect(c).toContain('awResetTimeOffset');
-    expect(c).toContain('btn-reset-offset');
+    expect(c).toContain('Docker TZ environment variable');
   });
 });
 
 // =====================================================
-// 7. PWA settings timezone fix
+// 7. PWA settings timezone — read-only from Docker ENV
 // =====================================================
 
-test.describe('PWA settings timezone format fix', () => {
+test.describe('PWA settings timezone display', () => {
   const content = () => readFile('views/pwa/settings.php');
 
-  test('timezone options use proper identifiers without labels in values', () => {
+  test('shows timezone from Docker ENV as read-only', () => {
     const c = content();
-    // Should have value="America/New_York" not value="America/New_York (EST)"
-    expect(c).toContain("'America/New_York' =>");
-    expect(c).not.toContain("'America/New_York (EST)'");
+    expect(c).toContain('Docker ENV');
+    expect(c).toContain('date_default_timezone_get()');
   });
 
-  test('includes Newfoundland and Atlantic timezones', () => {
+  test('does not have a timezone select dropdown', () => {
     const c = content();
-    expect(c).toContain("'America/St_Johns'");
-    expect(c).toContain("'America/Halifax'");
-  });
-
-  test('default timezone does not include label suffix', () => {
-    const c = content();
-    expect(c).toContain("?? 'America/New_York'");
-    expect(c).not.toContain("?? 'America/New_York (EST)'");
+    expect(c).not.toContain('name="timezone"');
   });
 });

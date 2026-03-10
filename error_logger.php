@@ -10,28 +10,15 @@ class ErrorLogger {
     private static $initialized = false;
     private static $pdo = null;
     private static $dbLogging = false;
-    private static $timezone_set = false;
     
     /**
-     * Ensure the timezone is set from system settings
+     * Ensure the timezone is set.
+     * Timezone is set externally via php.ini / Docker TZ env var.
+     * No application-level override is needed.
      */
     private static function ensureTimezone() {
-        if (self::$timezone_set) {
-            return;
-        }
-        self::$timezone_set = true;
-        
-        try {
-            if (self::$pdo !== null) {
-                $stmt = self::$pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'timezone' LIMIT 1");
-                $tz = $stmt->fetchColumn();
-                if (!empty($tz) && in_array($tz, timezone_identifiers_list())) {
-                    date_default_timezone_set($tz);
-                }
-            }
-        } catch (Exception $e) {
-            // Silently fail - use default timezone
-        }
+        // Timezone is set externally (php.ini / Docker TZ).
+        // No application override needed.
     }
     
     /**

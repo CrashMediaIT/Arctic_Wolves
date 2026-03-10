@@ -152,16 +152,19 @@ test.describe('Products View - Registered Users', () => {
 });
 
 // =====================================================
-// 4. Logger Timezone from System Settings
+// 4. Logger Timezone — no DB query, system TZ only
 // =====================================================
 
-test.describe('Logger Timezone from System Settings', () => {
-  test('lib/logger.php loads timezone from system_settings', () => {
+test.describe('Logger Timezone — no DB override', () => {
+  test('lib/logger.php has ensureTimezone method', () => {
     const content = readFile('lib/logger.php');
     expect(content).toContain('ensureTimezone');
-    expect(content).toContain('system_settings');
-    expect(content).toContain('timezone');
-    expect(content).toContain('date_default_timezone_set');
+  });
+
+  test('lib/logger.php does not query DB for timezone', () => {
+    const content = readFile('lib/logger.php');
+    expect(content).not.toContain("setting_key = 'timezone'");
+    expect(content).not.toContain('date_default_timezone_set');
   });
 
   test('lib/logger.php calls ensureTimezone before logging', () => {
@@ -174,22 +177,15 @@ test.describe('Logger Timezone from System Settings', () => {
     expect(logFn).toContain('ensureTimezone');
   });
 
-  test('error_logger.php loads timezone from system_settings', () => {
+  test('error_logger.php has ensureTimezone method', () => {
     const content = readFile('error_logger.php');
     expect(content).toContain('ensureTimezone');
-    expect(content).toContain('system_settings');
-    expect(content).toContain('timezone');
-    expect(content).toContain('date_default_timezone_set');
   });
 
-  test('error_logger.php sets timezone when database connection is set', () => {
+  test('error_logger.php does not query DB for timezone', () => {
     const content = readFile('error_logger.php');
-    // setDatabase should trigger timezone loading
-    const setDbFn = content.substring(
-      content.indexOf('function setDatabase('),
-      content.indexOf('}', content.indexOf('function setDatabase(') + 50)
-    );
-    expect(setDbFn).toContain('ensureTimezone');
+    expect(content).not.toContain("setting_key = 'timezone'");
+    expect(content).not.toContain('date_default_timezone_set');
   });
 });
 

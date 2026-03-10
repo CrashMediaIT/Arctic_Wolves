@@ -42,25 +42,19 @@ test.describe('NGINX real_ip configuration for HAProxy', () => {
 });
 
 // =====================================================
-// 2. Timezone loaded from database at bootstrap
+// 2. Timezone — no application override, system TZ only
 // =====================================================
 
-test.describe('Application timezone from database', () => {
-  test('db_config.php loads timezone from system_settings after connection', () => {
+test.describe('Application timezone — no override', () => {
+  test('db_config.php does NOT call date_default_timezone_set', () => {
     const content = readFile('db_config.php');
-    expect(content).toContain("'timezone'");
-    expect(content).toContain("'app_time_offset'");
-    expect(content).toContain('date_default_timezone_set');
-    expect(content).toContain('timezone_identifiers_list');
+    expect(content).not.toContain('date_default_timezone_set');
   });
 
-  test('db_config.php applies timezone before defining DB_CONNECTED constant', () => {
+  test('db_config.php syncs MySQL session timezone via date_default_timezone_get', () => {
     const content = readFile('db_config.php');
-    const tzPos = content.indexOf('date_default_timezone_set($tz_value)');
-    const constPos = content.indexOf("define('DB_CONNECTED'");
-    expect(tzPos).toBeGreaterThan(-1);
-    expect(constPos).toBeGreaterThan(-1);
-    expect(tzPos).toBeLessThan(constPos);
+    expect(content).toContain('date_default_timezone_get()');
+    expect(content).toContain("SET time_zone");
   });
 });
 
