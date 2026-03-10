@@ -115,7 +115,7 @@ try {
             ");
             $insert_stmt->execute([$user_id, $athlete['id'], $relationship ?: 'parent']);
             
-            Auditor::log($pdo, $user_id, 'create', 'managed_athletes', $athlete['id'], ['action' => 'linked_athlete', 'athlete_email' => $athlete_email]);
+            Auditor::log($pdo, $user_id, 'create', 'parent_athlete_relationships', $athlete['id'], ['action' => 'linked_athlete', 'athlete_email' => $athlete_email]);
             
             // Log security event
             logSecurityEvent('athlete_linked', "Parent $user_id linked athlete {$athlete['id']}", $user_id);
@@ -267,7 +267,7 @@ try {
             $delete_stmt = $pdo->prepare("DELETE FROM parent_athlete_relationships WHERE id = ? AND parent_id = ?");
             $delete_stmt->execute([$managed_id, $user_id]);
             
-            Auditor::log($pdo, $user_id, 'delete', 'managed_athletes', $managed_id, ['action' => 'removed_athlete', 'athlete_id' => $managed['athlete_id']]);
+            Auditor::log($pdo, $user_id, 'delete', 'parent_athlete_relationships', $managed_id, ['action' => 'removed_athlete', 'athlete_id' => $managed['athlete_id']]);
             
             // Log security event
             logSecurityEvent('athlete_removed', "Parent $user_id removed athlete {$managed['athlete_id']} from managed list", $user_id);
