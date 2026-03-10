@@ -276,6 +276,13 @@ foreach ($away_penalties as $p) {
             letter-spacing: 0.04em;
         }
         .sb-ctrl-btn-primary.buzzer-btn:hover { background: #DC2626; }
+        .sb-ctrl-btn-primary.horn-btn {
+            background: #D97706;
+            min-height: 56px;
+            font-size: 18px;
+            letter-spacing: 0.04em;
+        }
+        .sb-ctrl-btn-primary.horn-btn:hover { background: #F59E0B; }
         .sb-ctrl-btn-primary.announce-btn {
             background: #0D9488;
             min-height: 56px;
@@ -638,7 +645,10 @@ foreach ($away_penalties as $p) {
             <hr class="sb-ctrl-divider">
 
             <button class="sb-ctrl-btn-primary buzzer-btn" id="sbBuzzerBtn" onclick="sbBuzzer()">
-                <i class="fas fa-bullhorn"></i> BUZZER / HORN
+                <i class="fas fa-bell"></i> BUZZER
+            </button>
+            <button class="sb-ctrl-btn-primary horn-btn" id="sbHornBtn" onclick="sbGoalHorn()">
+                <i class="fas fa-bullhorn"></i> GOAL HORN
             </button>
         </div>
 

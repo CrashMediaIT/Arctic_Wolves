@@ -891,7 +891,8 @@ test.describe('Reorganized operator controls layout', () => {
     expect(content).toContain('Clock &amp; Period');
     expect(content).toContain('Period Navigation');
     expect(content).toContain('Recurring Buzzer');
-    expect(content).toContain('BUZZER / HORN');
+    expect(content).toContain('BUZZER');
+    expect(content).toContain('GOAL HORN');
   });
 
   test('display view has Music & Audio panel', () => {
@@ -1189,14 +1190,19 @@ test.describe('Scrollable layout and dynamic sizing', () => {
     expect(htmlRule).toContain('-webkit-overflow-scrolling: touch');
   });
 
-  test('settings view has overflow-y auto for scrolling', () => {
+  test('settings view uses overflow visible to let html handle scrolling', () => {
     const content = readFile('views/scoreboard/scoreboard_settings.php');
-    expect(content).toMatch(/\.sb-settings\s*\{[^}]*overflow-y:\s*auto/s);
+    expect(content).toMatch(/\.sb-settings\s*\{[^}]*overflow:\s*visible/s);
   });
 
-  test('settings view has touch scrolling support', () => {
+  test('settings view does not create competing scroll container', () => {
     const content = readFile('views/scoreboard/scoreboard_settings.php');
-    expect(content).toMatch(/\.sb-settings\s*\{[^}]*-webkit-overflow-scrolling:\s*touch/s);
+    // sb-settings should NOT have overflow-y:auto (which creates a competing scroll container)
+    const settingsRule = content.substring(
+      content.indexOf('.sb-settings {'),
+      content.indexOf('.sb-settings {') + 300
+    );
+    expect(settingsRule).not.toContain('overflow-y: auto');
   });
 
   test('scoresheet content has touch scrolling support', () => {
@@ -1682,7 +1688,7 @@ test.describe('Settings page - admin only', () => {
 
   test('settings view has custom buzzer sound upload section', () => {
     const content = readFile('views/scoreboard/scoreboard_settings.php');
-    expect(content).toContain('Custom Buzzer');
+    expect(content).toContain('Buzzer Sound');
     expect(content).toContain('sbBuzzerFile');
     expect(content).toContain('sbUploadBuzzerSound');
     expect(content).toContain('sbRemoveBuzzerSound');
@@ -1760,5 +1766,197 @@ test.describe('Apple Music and multiple audio outputs', () => {
     const content = readFile('views/scoreboard/scoreboard_display.php');
     expect(content).toContain('No music sources configured');
     expect(content).toContain('Configure in Settings');
+  });
+});
+
+// =====================================================
+// 29. Goal Horn (separate from Buzzer)
+// =====================================================
+
+test.describe('Goal horn separate from buzzer', () => {
+  test('JS has separate sbGoalHorn function', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbGoalHorn()');
+  });
+
+  test('JS sbGoalHorn uses CUSTOM_HORN_URL when available', () => {
+    const content = readFile('js/scoreboard.js');
+    const hornFn = content.substring(
+      content.indexOf('function sbGoalHorn()'),
+      content.indexOf('function sbGoalHorn()') + 400
+    );
+    expect(hornFn).toContain('CUSTOM_HORN_URL');
+  });
+
+  test('JS sbGoalHorn falls back to sbBuzzer when no horn configured', () => {
+    const content = readFile('js/scoreboard.js');
+    const hornStart = content.indexOf('function sbGoalHorn()');
+    const hornEnd = content.indexOf('\n}', hornStart) + 2;
+    const hornFn = content.substring(hornStart, hornEnd);
+    expect(hornFn).toContain('sbBuzzer()');
+  });
+
+  test('JS sbAddGoal calls sbGoalHorn instead of sbBuzzer', () => {
+    const content = readFile('js/scoreboard.js');
+    const goalStart = content.indexOf('function sbAddGoal(');
+    const goalEnd = content.indexOf('\n}', goalStart) + 2;
+    const goalFn = content.substring(goalStart, goalEnd);
+    expect(goalFn).toContain('sbGoalHorn()');
+    expect(goalFn).not.toContain('sbBuzzer()');
+  });
+
+  test('scoreboard.php passes CUSTOM_HORN_URL to JS', () => {
+    const content = readFile('scoreboard.php');
+    expect(content).toContain('CUSTOM_HORN_URL');
+    expect(content).toContain('custom_horn_url');
+  });
+
+  test('scoreboard.php loads scoreboard_horn_url from settings', () => {
+    const content = readFile('scoreboard.php');
+    expect(content).toContain('scoreboard_horn_url');
+  });
+
+  test('display view has separate buzzer and goal horn buttons', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sbBuzzerBtn');
+    expect(content).toContain('sbHornBtn');
+    expect(content).toContain('sbGoalHorn()');
+    expect(content).toContain('BUZZER');
+    expect(content).toContain('GOAL HORN');
+  });
+
+  test('display view has horn-btn CSS class', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('.horn-btn');
+  });
+});
+
+// =====================================================
+// 30. Buzzer and Horn Libraries
+// =====================================================
+
+test.describe('Buzzer and horn sound libraries', () => {
+  test('settings view has separate buzzer and horn sections', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toContain('Buzzer Sound (End of Period)');
+    expect(content).toContain('Goal Horn Sound');
+  });
+
+  test('settings view has buzzer library display', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toContain('Buzzer Library');
+    expect(content).toContain('buzzer_library');
+  });
+
+  test('settings view has horn library display', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toContain('Horn Library');
+    expect(content).toContain('horn_library');
+  });
+
+  test('settings view has horn upload form', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toContain('sbHornUploadForm');
+    expect(content).toContain('sbHornFile');
+    expect(content).toContain('sbUploadHornSound');
+    expect(content).toContain('sbRemoveHornSound');
+  });
+
+  test('settings view has library item selection and removal JS', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toContain('sbSelectLibraryItem');
+    expect(content).toContain('sbRemoveLibraryItem');
+  });
+
+  test('process_scoreboard.php has upload_horn action', () => {
+    const content = readFile('process_scoreboard.php');
+    expect(content).toContain("case 'upload_horn':");
+    expect(content).toContain('horn_file');
+    expect(content).toContain('scoreboard_horn_url');
+    expect(content).toContain('scoreboard_horn_library');
+  });
+
+  test('process_scoreboard.php has remove_horn action', () => {
+    const content = readFile('process_scoreboard.php');
+    expect(content).toContain("case 'remove_horn':");
+  });
+
+  test('process_scoreboard.php has select_buzzer action', () => {
+    const content = readFile('process_scoreboard.php');
+    expect(content).toContain("case 'select_buzzer':");
+  });
+
+  test('process_scoreboard.php has select_horn action', () => {
+    const content = readFile('process_scoreboard.php');
+    expect(content).toContain("case 'select_horn':");
+  });
+
+  test('process_scoreboard.php has buzzer library item removal action', () => {
+    const content = readFile('process_scoreboard.php');
+    expect(content).toContain("case 'remove_buzzer_library_item':");
+    expect(content).toContain('scoreboard_buzzer_library');
+  });
+
+  test('process_scoreboard.php has horn library item removal action', () => {
+    const content = readFile('process_scoreboard.php');
+    expect(content).toContain("case 'remove_horn_library_item':");
+    expect(content).toContain('scoreboard_horn_library');
+  });
+
+  test('process_scoreboard.php upload_buzzer adds to library', () => {
+    const content = readFile('process_scoreboard.php');
+    const buzzerUpload = content.substring(
+      content.indexOf("case 'upload_buzzer':"),
+      content.indexOf("case 'remove_buzzer':")
+    );
+    expect(buzzerUpload).toContain('scoreboard_buzzer_library');
+  });
+
+  test('settings view has library item CSS styles', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toContain('.sb-settings-library');
+    expect(content).toContain('.sb-settings-library-item');
+  });
+});
+
+// =====================================================
+// 31. Security - Credential Encryption
+// =====================================================
+
+test.describe('Scoreboard credential encryption', () => {
+  test('process_scoreboard.php encrypts sensitive credentials on save', () => {
+    const content = readFile('process_scoreboard.php');
+    // Look for the encryption code in the save_settings action area (broader search)
+    const saveStart = content.indexOf("case 'save_settings':");
+    const saveEnd = content.indexOf("case 'upload_buzzer':", saveStart);
+    const saveSection = content.substring(saveStart, saveEnd);
+    expect(saveSection).toContain('encryptPassword');
+    expect(saveSection).toContain('spotify_client_secret');
+    expect(saveSection).toContain('apple_music_token');
+    expect(saveSection).toContain('subsonic_password');
+  });
+
+  test('settings view decrypts credentials on load', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toContain('decryptCredential');
+    expect(content).toContain('spotify_client_secret');
+    expect(content).toContain('apple_music_token');
+    expect(content).toContain('subsonic_password');
+  });
+
+  test('security.php getEncryptedSettingKeys includes scoreboard credentials', () => {
+    const content = readFile('security.php');
+    const fn = content.substring(
+      content.indexOf('function getEncryptedSettingKeys'),
+      content.indexOf('}', content.indexOf('function getEncryptedSettingKeys')) + 1
+    );
+    expect(fn).toContain('spotify_client_secret');
+    expect(fn).toContain('apple_music_token');
+    expect(fn).toContain('subsonic_password');
+  });
+
+  test('process_scoreboard.php uses FieldEncryption for credential encryption', () => {
+    const content = readFile('process_scoreboard.php');
+    expect(content).toContain('FieldEncryption::isConfigured');
   });
 });

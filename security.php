@@ -848,6 +848,9 @@ function getEncryptedSettingKeys() {
         'stallion_api_secret',
         'recaptcha_site_key',
         'recaptcha_secret_key',
+        'spotify_client_secret',
+        'apple_music_token',
+        'subsonic_password',
     ];
 }
 

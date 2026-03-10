@@ -267,7 +267,7 @@ function sbAddGoal(team) {
             document.getElementById('sbHomeScore').textContent = d.home_score;
             document.getElementById('sbAwayScore').textContent = d.away_score;
             sbFlashGoalLight();
-            sbBuzzer(); // Horn on goal
+            sbGoalHorn(); // Play goal horn on goal
 
             // NHL Rule 16.2: Minor penalty expires on PPG
             if (ppgClearable) {
@@ -486,6 +486,22 @@ function sbBuzzer() {
     } catch (e) {
         // Audio API not available
     }
+}
+
+// ── Goal Horn (separate from period buzzer) ───────────────
+function sbGoalHorn() {
+    // Use custom horn sound if uploaded (admin configurable via Settings)
+    if (typeof CUSTOM_HORN_URL !== 'undefined' && CUSTOM_HORN_URL) {
+        try {
+            var audio = new Audio(CUSTOM_HORN_URL);
+            audio.volume = 1.0;
+            audio.play().catch(function() {});
+            return;
+        } catch (e) { /* fall through to buzzer fallback */ }
+    }
+
+    // Fallback: use buzzer if no separate horn is configured
+    sbBuzzer();
 }
 
 // ── Clock Mode (stop time vs running time) ────────────────

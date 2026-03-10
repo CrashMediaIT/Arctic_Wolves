@@ -458,8 +458,16 @@ try {
             }
 
             foreach ($settingsToSave as $key => $value) {
+                // Encrypt sensitive credentials before storage
+                $settingValue = $value;
+                if (in_array($key, ['spotify_client_secret', 'apple_music_token', 'subsonic_password']) && !empty($value)) {
+                    require_once __DIR__ . '/lib/encryption.php';
+                    if (FieldEncryption::isConfigured()) {
+                        $settingValue = encryptPassword($value);
+                    }
+                }
                 $stmt = $pdo->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?");
-                $stmt->execute([$key, $value, $value]);
+                $stmt->execute([$key, $settingValue, $settingValue]);
             }
             Auditor::log($pdo, $user_id, 'update', 'system_settings', 0, ['action' => 'Scoreboard settings updated', 'section' => $section]);
             echo json_encode(['success' => true]);
@@ -500,6 +508,14 @@ try {
                 exit();
             }
             $buzzerUrl = '/uploads/scoreboard/' . $filename;
+            // Add to buzzer library
+            $libStmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'scoreboard_buzzer_library'");
+            $libStmt->execute();
+            $buzzerLibrary = json_decode($libStmt->fetchColumn() ?: '[]', true) ?: [];
+            $buzzerLibrary[] = ['name' => basename($file['name'], '.' . $ext), 'url' => $buzzerUrl];
+            $pdo->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES ('scoreboard_buzzer_library', ?) ON DUPLICATE KEY UPDATE setting_value = ?")
+                ->execute([json_encode($buzzerLibrary), json_encode($buzzerLibrary)]);
+            // Set as active buzzer
             $stmt = $pdo->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES ('scoreboard_buzzer_url', ?) ON DUPLICATE KEY UPDATE setting_value = ?");
             $stmt->execute([$buzzerUrl, $buzzerUrl]);
             Auditor::log($pdo, $user_id, 'update', 'system_settings', 0, ['action' => 'Buzzer sound uploaded', 'file' => $filename]);
@@ -516,6 +532,152 @@ try {
             $stmt = $pdo->prepare("DELETE FROM system_settings WHERE setting_key = 'scoreboard_buzzer_url'");
             $stmt->execute();
             Auditor::log($pdo, $user_id, 'delete', 'system_settings', 0, ['action' => 'Buzzer sound removed']);
+            echo json_encode(['success' => true]);
+            break;
+
+        // ── Upload custom goal horn sound (admin-only) ────────
+        case 'upload_horn':
+            if (!$isAdmin) {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Admin access required']);
+                exit();
+            }
+            if (!isset($_FILES['horn_file']) || $_FILES['horn_file']['error'] !== UPLOAD_ERR_OK) {
+                echo json_encode(['success' => false, 'message' => 'No file uploaded or upload error']);
+                exit();
+            }
+            $file = $_FILES['horn_file'];
+            $allowedMimes = ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp3', 'audio/x-wav'];
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $mime = finfo_file($finfo, $file['tmp_name']);
+            finfo_close($finfo);
+            if (!in_array($mime, $allowedMimes)) {
+                echo json_encode(['success' => false, 'message' => 'Invalid file type. Allowed: MP3, WAV, OGG']);
+                exit();
+            }
+            if ($file['size'] > 10 * 1024 * 1024) {
+                echo json_encode(['success' => false, 'message' => 'File too large (max 10MB)']);
+                exit();
+            }
+            $uploadDir = __DIR__ . '/uploads/scoreboard/';
+            if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+            $ext = pathinfo($file['name'], PATHINFO_EXTENSION) ?: 'mp3';
+            $ext = preg_replace('/[^a-z0-9]/i', '', $ext);
+            $filename = 'horn_' . time() . '.' . $ext;
+            $dest = $uploadDir . $filename;
+            if (!move_uploaded_file($file['tmp_name'], $dest)) {
+                echo json_encode(['success' => false, 'message' => 'Failed to save file']);
+                exit();
+            }
+            $hornUrl = '/uploads/scoreboard/' . $filename;
+            // Add to horn library
+            $libStmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'scoreboard_horn_library'");
+            $libStmt->execute();
+            $hornLibrary = json_decode($libStmt->fetchColumn() ?: '[]', true) ?: [];
+            $hornLibrary[] = ['name' => basename($file['name'], '.' . $ext), 'url' => $hornUrl];
+            $pdo->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES ('scoreboard_horn_library', ?) ON DUPLICATE KEY UPDATE setting_value = ?")
+                ->execute([json_encode($hornLibrary), json_encode($hornLibrary)]);
+            // Set as active horn
+            $stmt = $pdo->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES ('scoreboard_horn_url', ?) ON DUPLICATE KEY UPDATE setting_value = ?");
+            $stmt->execute([$hornUrl, $hornUrl]);
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', 0, ['action' => 'Goal horn sound uploaded', 'file' => $filename]);
+            echo json_encode(['success' => true, 'url' => $hornUrl]);
+            break;
+
+        // ── Remove custom goal horn sound (admin-only) ────────
+        case 'remove_horn':
+            if (!$isAdmin) {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Admin access required']);
+                exit();
+            }
+            $stmt = $pdo->prepare("DELETE FROM system_settings WHERE setting_key = 'scoreboard_horn_url'");
+            $stmt->execute();
+            Auditor::log($pdo, $user_id, 'delete', 'system_settings', 0, ['action' => 'Goal horn sound removed']);
+            echo json_encode(['success' => true]);
+            break;
+
+        // ── Select active sound from buzzer library (admin-only) ────────
+        case 'select_buzzer':
+            if (!$isAdmin) {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Admin access required']);
+                exit();
+            }
+            $url = trim($_POST['url'] ?? '');
+            if (empty($url)) {
+                echo json_encode(['success' => false, 'message' => 'No sound URL provided']);
+                exit();
+            }
+            $stmt = $pdo->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES ('scoreboard_buzzer_url', ?) ON DUPLICATE KEY UPDATE setting_value = ?");
+            $stmt->execute([$url, $url]);
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', 0, ['action' => 'Buzzer sound selected from library', 'url' => $url]);
+            echo json_encode(['success' => true]);
+            break;
+
+        // ── Select active sound from horn library (admin-only) ────────
+        case 'select_horn':
+            if (!$isAdmin) {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Admin access required']);
+                exit();
+            }
+            $url = trim($_POST['url'] ?? '');
+            if (empty($url)) {
+                echo json_encode(['success' => false, 'message' => 'No sound URL provided']);
+                exit();
+            }
+            $stmt = $pdo->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES ('scoreboard_horn_url', ?) ON DUPLICATE KEY UPDATE setting_value = ?");
+            $stmt->execute([$url, $url]);
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', 0, ['action' => 'Goal horn selected from library', 'url' => $url]);
+            echo json_encode(['success' => true]);
+            break;
+
+        // ── Remove item from buzzer library (admin-only) ────────
+        case 'remove_buzzer_library_item':
+            if (!$isAdmin) {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Admin access required']);
+                exit();
+            }
+            $url = trim($_POST['url'] ?? '');
+            $libStmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'scoreboard_buzzer_library'");
+            $libStmt->execute();
+            $buzzerLibrary = json_decode($libStmt->fetchColumn() ?: '[]', true) ?: [];
+            $buzzerLibrary = array_values(array_filter($buzzerLibrary, function($item) use ($url) { return ($item['url'] ?? '') !== $url; }));
+            $pdo->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES ('scoreboard_buzzer_library', ?) ON DUPLICATE KEY UPDATE setting_value = ?")
+                ->execute([json_encode($buzzerLibrary), json_encode($buzzerLibrary)]);
+            // If active buzzer was removed, clear it
+            $activeStmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'scoreboard_buzzer_url'");
+            $activeStmt->execute();
+            if ($activeStmt->fetchColumn() === $url) {
+                $pdo->prepare("DELETE FROM system_settings WHERE setting_key = 'scoreboard_buzzer_url'")->execute();
+            }
+            Auditor::log($pdo, $user_id, 'delete', 'system_settings', 0, ['action' => 'Buzzer library item removed', 'url' => $url]);
+            echo json_encode(['success' => true]);
+            break;
+
+        // ── Remove item from horn library (admin-only) ────────
+        case 'remove_horn_library_item':
+            if (!$isAdmin) {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Admin access required']);
+                exit();
+            }
+            $url = trim($_POST['url'] ?? '');
+            $libStmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'scoreboard_horn_library'");
+            $libStmt->execute();
+            $hornLibrary = json_decode($libStmt->fetchColumn() ?: '[]', true) ?: [];
+            $hornLibrary = array_values(array_filter($hornLibrary, function($item) use ($url) { return ($item['url'] ?? '') !== $url; }));
+            $pdo->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES ('scoreboard_horn_library', ?) ON DUPLICATE KEY UPDATE setting_value = ?")
+                ->execute([json_encode($hornLibrary), json_encode($hornLibrary)]);
+            // If active horn was removed, clear it
+            $activeStmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'scoreboard_horn_url'");
+            $activeStmt->execute();
+            if ($activeStmt->fetchColumn() === $url) {
+                $pdo->prepare("DELETE FROM system_settings WHERE setting_key = 'scoreboard_horn_url'")->execute();
+            }
+            Auditor::log($pdo, $user_id, 'delete', 'system_settings', 0, ['action' => 'Horn library item removed', 'url' => $url]);
             echo json_encode(['success' => true]);
             break;
 
