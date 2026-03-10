@@ -2,38 +2,81 @@
 /**
  * Development Program - Drill Detail View (Full Page)
  * Athletes can view full drill details, watch videos, update status, and record/upload videos.
+ * Coaches (goalie_dev, player_dev, admin) can also view drill details for their enrolled athletes.
  * Uses the same presigned URL video upload flow as the rest of the application.
  */
 
 $user_id = $_SESSION['user_id'] ?? 0;
 $drill_assignment_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $enrollment_id = isset($_GET['enrollment_id']) ? (int)$_GET['enrollment_id'] : 0;
+$is_coach_view = isset($_GET['coach_view']) && $_GET['coach_view'] === '1';
 
 if (!$drill_assignment_id) {
     echo '<div style="text-align:center;padding:60px 20px;color:var(--text-dim);"><i class="fas fa-exclamation-triangle" style="font-size:48px;display:block;margin-bottom:16px;opacity:0.5;"></i><h3 style="color:var(--text-white);">Drill Not Found</h3><p>The drill you are looking for could not be found.</p><a href="?page=personal_development_my_program" style="color:var(--primary);">← Back to My Program</a></div>';
     return;
 }
 
-// Fetch drill assignment with full drill data
-$stmt = $pdo->prepare("
-    SELECT dpd.*, d.title as drill_title, d.description as drill_description,
-           d.video_url as drill_video_url, d.custom_image as drill_image,
-           d.setup as drill_setup, d.coaching_points as drill_coaching_points,
-           d.progression as drill_progression,
-           d.diagram_data,
-           u.first_name as coach_first, u.last_name as coach_last,
-           dpe.athlete_id, dpe.program_type
-    FROM development_program_drills dpd
-    JOIN drills d ON dpd.drill_id = d.id
-    JOIN users u ON dpd.assigned_by = u.id
-    JOIN development_program_enrollments dpe ON dpd.enrollment_id = dpe.id
-    WHERE dpd.id = ? AND dpe.athlete_id = ?
-");
-$stmt->execute([$drill_assignment_id, $user_id]);
-$drill = $stmt->fetch(PDO::FETCH_ASSOC);
+// Determine user roles
+$user_roles_list = $user_roles_list ?? [];
+$isCoachAccess = is_array($user_roles_list) && (
+    in_array('goalie_dev', $user_roles_list) ||
+    in_array('player_dev', $user_roles_list) ||
+    in_array('admin', $user_roles_list)
+);
+
+// Try athlete access first, then coach access
+$drill = null;
+if (!$is_coach_view) {
+    $stmt = $pdo->prepare("
+        SELECT dpd.*, d.title as drill_title, d.description as drill_description,
+               d.video_url as drill_video_url, d.custom_image as drill_image,
+               d.setup as drill_setup, d.coaching_points as drill_coaching_points,
+               d.progression as drill_progression,
+               d.diagram_data,
+               u.first_name as coach_first, u.last_name as coach_last,
+               dpe.athlete_id, dpe.program_type
+        FROM development_program_drills dpd
+        JOIN drills d ON dpd.drill_id = d.id
+        JOIN users u ON dpd.assigned_by = u.id
+        JOIN development_program_enrollments dpe ON dpd.enrollment_id = dpe.id
+        WHERE dpd.id = ? AND dpe.athlete_id = ?
+    ");
+    $stmt->execute([$drill_assignment_id, $user_id]);
+    $drill = $stmt->fetch(PDO::FETCH_ASSOC);
+}
+
+// Coach access: verify the enrollment belongs to a program type they manage
+if (!$drill && $isCoachAccess) {
+    $is_coach_view = true;
+    $coach_program_types = [];
+    if (in_array('goalie_dev', $user_roles_list) || in_array('admin', $user_roles_list)) $coach_program_types[] = 'goalie_dev';
+    if (in_array('player_dev', $user_roles_list) || in_array('admin', $user_roles_list)) $coach_program_types[] = 'player_dev';
+    $coach_placeholders = implode(',', array_fill(0, count($coach_program_types), '?'));
+
+    $stmt = $pdo->prepare("
+        SELECT dpd.*, d.title as drill_title, d.description as drill_description,
+               d.video_url as drill_video_url, d.custom_image as drill_image,
+               d.setup as drill_setup, d.coaching_points as drill_coaching_points,
+               d.progression as drill_progression,
+               d.diagram_data,
+               u.first_name as coach_first, u.last_name as coach_last,
+               dpe.athlete_id, dpe.program_type,
+               au.first_name as athlete_first_name, au.last_name as athlete_last_name
+        FROM development_program_drills dpd
+        JOIN drills d ON dpd.drill_id = d.id
+        JOIN users u ON dpd.assigned_by = u.id
+        JOIN development_program_enrollments dpe ON dpd.enrollment_id = dpe.id
+        JOIN users au ON dpe.athlete_id = au.id
+        WHERE dpd.id = ? AND dpe.program_type IN ($coach_placeholders)
+    ");
+    $stmt->execute(array_merge([$drill_assignment_id], $coach_program_types));
+    $drill = $stmt->fetch(PDO::FETCH_ASSOC);
+}
 
 if (!$drill) {
-    echo '<div style="text-align:center;padding:60px 20px;color:var(--text-dim);"><i class="fas fa-lock" style="font-size:48px;display:block;margin-bottom:16px;opacity:0.5;"></i><h3 style="color:var(--text-white);">Access Denied</h3><p>You do not have access to this drill.</p><a href="?page=personal_development_my_program" style="color:var(--primary);">← Back to My Program</a></div>';
+    $back_link = $is_coach_view ? '?page=development_programs' : '?page=personal_development_my_program';
+    $back_text = $is_coach_view ? '← Back to Development Programs' : '← Back to My Program';
+    echo '<div style="text-align:center;padding:60px 20px;color:var(--text-dim);"><i class="fas fa-lock" style="font-size:48px;display:block;margin-bottom:16px;opacity:0.5;"></i><h3 style="color:var(--text-white);">Access Denied</h3><p>You do not have access to this drill.</p><a href="' . $back_link . '" style="color:var(--primary);">' . $back_text . '</a></div>';
     return;
 }
 
@@ -232,9 +275,15 @@ if (!empty($drill['drill_image'])) {
 </style>
 
 <div class="dev-drill-page">
+    <?php if ($is_coach_view): ?>
+    <a href="?page=development_programs&enrollment_id=<?= (int)$drill['enrollment_id'] ?>" class="dev-drill-back">
+        <i class="fas fa-arrow-left"></i> Back to <?= htmlspecialchars(trim(($drill['athlete_first_name'] ?? '') . ' ' . ($drill['athlete_last_name'] ?? '')) ?: 'Athlete' ?>'s Program
+    </a>
+    <?php else: ?>
     <a href="?page=personal_development_my_program" class="dev-drill-back">
         <i class="fas fa-arrow-left"></i> Back to My Program
     </a>
+    <?php endif; ?>
 
     <!-- Header -->
     <div class="dev-drill-header">
@@ -243,7 +292,11 @@ if (!empty($drill['drill_image'])) {
             <span class="dev-drill-status <?= htmlspecialchars($drill['status']) ?>"><?= str_replace('_', ' ', htmlspecialchars($drill['status'])) ?></span>
             <span class="dev-drill-coach"><i class="fas fa-user-tie"></i> Assigned by <?= htmlspecialchars(trim(($drill['coach_first'] ?? '') . ' ' . ($drill['coach_last'] ?? ''))) ?></span>
             <span class="dev-drill-coach"><i class="fas fa-hockey-puck"></i> <?= $drill['program_type'] === 'goalie_dev' ? 'Goalie Development' : 'Player Development' ?></span>
+            <?php if ($is_coach_view && (!empty($drill['athlete_first_name']) || !empty($drill['athlete_last_name']))): ?>
+            <span class="dev-drill-coach"><i class="fas fa-user"></i> Athlete: <?= htmlspecialchars(trim(($drill['athlete_first_name'] ?? '') . ' ' . ($drill['athlete_last_name'] ?? ''))) ?></span>
+            <?php endif; ?>
         </div>
+        <?php if (!$is_coach_view): ?>
         <div class="dev-drill-actions">
             <?php if ($drill['status'] === 'assigned'): ?>
             <button class="btn btn-secondary" onclick="updateDrillStatus(<?= (int)$drill['id'] ?>, 'in_progress')"><i class="fas fa-play"></i> Mark In Progress</button>
@@ -252,6 +305,7 @@ if (!empty($drill['drill_image'])) {
             <?php endif; ?>
             <button class="btn btn-primary" onclick="document.getElementById('dev-drill-upload-section').scrollIntoView({behavior:'smooth'})"><i class="fas fa-video"></i> Upload Video</button>
         </div>
+        <?php endif; ?>
     </div>
 
     <!-- Drill Details -->
@@ -333,6 +387,7 @@ if (!empty($drill['drill_image'])) {
     <?php endif; ?>
 
     <!-- Submitted Videos -->
+    <?php if (!$is_coach_view): ?>
     <div class="dev-drill-card">
         <h3><i class="fas fa-film"></i> Your Submitted Videos (<?= count($drill_videos) ?>)</h3>
         <?php if (empty($drill_videos)): ?>
@@ -357,7 +412,9 @@ if (!empty($drill['drill_image'])) {
         </div>
         <?php endif; ?>
     </div>
+    <?php endif; ?>
 
+    <?php if (!$is_coach_view): ?>
     <!-- Upload Video -->
     <div class="dev-drill-card" id="dev-drill-upload-section">
         <h3><i class="fas fa-cloud-upload-alt"></i> Upload Video for this Drill</h3>
@@ -377,6 +434,7 @@ if (!empty($drill['drill_image'])) {
             </button>
         </div>
     </div>
+    <?php endif; ?>
 
     <!-- Navigation between drills -->
     <?php
@@ -387,16 +445,17 @@ if (!empty($drill['drill_image'])) {
     $prev_drill = ($current_idx !== null && $current_idx > 0) ? $all_drills[$current_idx - 1] : null;
     $next_drill = ($current_idx !== null && $current_idx < count($all_drills) - 1) ? $all_drills[$current_idx + 1] : null;
     ?>
+    <?php $coach_view_param = $is_coach_view ? '&coach_view=1' : ''; ?>
     <div class="dev-drill-nav">
         <?php if ($prev_drill): ?>
-        <a href="?page=dev_drill_detail&id=<?= (int)$prev_drill['id'] ?>&enrollment_id=<?= $enrollment_id ?>">
+        <a href="?page=dev_drill_detail&id=<?= (int)$prev_drill['id'] ?>&enrollment_id=<?= $enrollment_id ?><?= $coach_view_param ?>">
             <i class="fas fa-arrow-left"></i> <?= htmlspecialchars($prev_drill['drill_title']) ?>
         </a>
         <?php else: ?>
         <span></span>
         <?php endif; ?>
         <?php if ($next_drill): ?>
-        <a href="?page=dev_drill_detail&id=<?= (int)$next_drill['id'] ?>&enrollment_id=<?= $enrollment_id ?>">
+        <a href="?page=dev_drill_detail&id=<?= (int)$next_drill['id'] ?>&enrollment_id=<?= $enrollment_id ?><?= $coach_view_param ?>">
             <?= htmlspecialchars($next_drill['drill_title']) ?> <i class="fas fa-arrow-right"></i>
         </a>
         <?php endif; ?>

@@ -31,11 +31,13 @@ $placeholders = implode(',', array_fill(0, count($program_types), '?'));
 $athletes_stmt = $pdo->prepare("
     SELECT dpe.*, u.first_name, u.last_name, u.email,
            dpe.program_name, dpe.template_id, dpe.start_date, dpe.end_date,
+           c.first_name as athlete_coach_first, c.last_name as athlete_coach_last,
            (SELECT COUNT(*) FROM development_program_drills dpd WHERE dpd.enrollment_id = dpe.id) as drill_count,
            (SELECT COUNT(*) FROM development_program_messages dpm WHERE dpm.enrollment_id = dpe.id) as message_count,
            (SELECT COUNT(*) FROM development_program_videos dpv WHERE dpv.enrollment_id = dpe.id AND dpv.status = 'pending_review') as pending_video_count
     FROM development_program_enrollments dpe
     JOIN users u ON dpe.athlete_id = u.id
+    LEFT JOIN users c ON u.assigned_coach_id = c.id
     WHERE dpe.program_type IN ($placeholders) AND dpe.status = 'active'
     ORDER BY dpe.enrolled_at DESC
 ");
@@ -51,9 +53,11 @@ if (function_exists('decryptUserRows')) {
 $history_stmt = $pdo->prepare("
     SELECT dpe.*, u.first_name, u.last_name, u.email,
            dpe.program_name, dpe.template_id, dpe.start_date, dpe.end_date,
+           c.first_name as athlete_coach_first, c.last_name as athlete_coach_last,
            (SELECT COUNT(*) FROM development_program_drills dpd WHERE dpd.enrollment_id = dpe.id) as drill_count
     FROM development_program_enrollments dpe
     JOIN users u ON dpe.athlete_id = u.id
+    LEFT JOIN users c ON u.assigned_coach_id = c.id
     WHERE dpe.program_type IN ($placeholders) AND dpe.status IN ('completed', 'paused', 'cancelled')
     ORDER BY dpe.completed_at DESC, dpe.enrolled_at DESC
 ");
@@ -76,9 +80,11 @@ $selected_appointments = [];
 if ($selected_enrollment_id) {
     // Verify access
     $sel_stmt = $pdo->prepare("
-        SELECT dpe.*, u.first_name, u.last_name
+        SELECT dpe.*, u.first_name, u.last_name,
+               c.first_name as athlete_coach_first, c.last_name as athlete_coach_last
         FROM development_program_enrollments dpe
         JOIN users u ON dpe.athlete_id = u.id
+        LEFT JOIN users c ON u.assigned_coach_id = c.id
         WHERE dpe.id = ? AND dpe.program_type IN ($placeholders)
     ");
     $sel_stmt->execute(array_merge([$selected_enrollment_id], $program_types));
@@ -904,7 +910,28 @@ $locations = $pdo->query("SELECT id, name FROM locations WHERE is_active = 1 ORD
 /* Back button */
 .dev-back-btn { display: inline-flex; align-items: center; gap: 6px; padding: var(--space-2) var(--space-4); background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); color: var(--text-white); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); cursor: pointer; text-decoration: none; margin-bottom: var(--space-4); transition: border-color var(--transition-normal); }
 .dev-back-btn:hover { border-color: var(--primary); }
+/* Rich drill cards for coach view */
+.drill-card-list { display: flex; flex-direction: column; gap: var(--space-4); }
+.drill-card-rich { display: flex; gap: var(--space-4); background: var(--bg-main, #0A0A0F); border: 1px solid var(--border); border-radius: var(--radius-xl); overflow: hidden; transition: border-color var(--transition-normal), transform var(--transition-fast); }
+.drill-card-rich:hover { border-color: rgba(107, 70, 193, 0.4); transform: translateY(-1px); }
+.drill-card-rich-thumb { width: 120px; min-height: 90px; flex-shrink: 0; background: var(--bg-card, #16161F); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.drill-card-rich-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.drill-card-video-icon, .drill-card-default-icon { font-size: 28px; color: var(--text-dim); opacity: 0.5; }
+.drill-card-video-icon { color: var(--info); opacity: 0.7; }
+.drill-card-rich-body { flex: 1; padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.drill-card-rich-header { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); }
+.drill-card-rich-header h4 { font-size: 15px; font-weight: var(--font-weight-semibold); color: var(--text-white); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.drill-card-rich-desc { font-size: var(--font-size-sm); color: var(--text-dim); line-height: 1.5; margin: 0; }
+.drill-card-coach-note { font-size: var(--font-size-sm); color: var(--warning); margin: 0; }
+.drill-card-coach-note i { margin-right: 4px; }
+.drill-card-rich-footer { display: flex; align-items: center; gap: var(--space-3); margin-top: auto; flex-wrap: wrap; }
+.drill-view-link { font-size: var(--font-size-sm); color: var(--primary); font-weight: var(--font-weight-semibold); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+.drill-view-link:hover { opacity: 0.8; }
+.drill-has-video { font-size: var(--font-size-sm); color: var(--info); display: inline-flex; align-items: center; gap: 4px; }
+.drill-card-rich-actions { margin-left: auto; display: flex; gap: 6px; }
 @media (max-width: 600px) {
+    .drill-card-rich { flex-direction: column; }
+    .drill-card-rich-thumb { width: 100%; min-height: 60px; max-height: 120px; }
     .dev-active-cards { grid-template-columns: 1fr; }
     .dev-history-filters { flex-direction: column; }
     .dev-history-filters input, .dev-history-filters select { width: 100%; }
@@ -916,7 +943,11 @@ $locations = $pdo->query("SELECT id, name FROM locations WHERE is_active = 1 ORD
 <a href="?page=development_programs" class="dev-back-btn"><i class="fas fa-arrow-left"></i> Back to All Programs</a>
 
 <div class="page-header" style="margin-bottom:12px;">
-    <h1 class="page-title"><i class="fas fa-hockey-puck"></i> <?= htmlspecialchars($selected['first_name'] . ' ' . $selected['last_name']) ?></h1>
+    <h1 class="page-title"><i class="fas fa-hockey-puck"></i> <?= htmlspecialchars($selected['first_name'] . ' ' . $selected['last_name']) ?>
+        <?php if (!empty($selected['athlete_coach_first']) || !empty($selected['athlete_coach_last'])): ?>
+        <span style="font-size:var(--font-size-base);font-weight:var(--font-weight-semibold);color:var(--text-dim);margin-left:var(--space-3);"><i class="fas fa-user-tie"></i> Coach: <?= htmlspecialchars(trim(($selected['athlete_coach_first'] ?? '') . ' ' . ($selected['athlete_coach_last'] ?? ''))) ?></span>
+        <?php endif; ?>
+    </h1>
     <p class="page-description"><?= htmlspecialchars($selected['program_name'] ?? ($selected['program_type'] === 'goalie_dev' ? 'Goalie Development' : 'Player Development')) ?></p>
 </div>
 
@@ -1000,21 +1031,41 @@ $locations = $pdo->query("SELECT id, name FROM locations WHERE is_active = 1 ORD
                             <p>No drills assigned yet. Use the selector above to add drills from the library.</p>
                         </div>
                     <?php else: ?>
-                        <div class="drill-mgmt-list">
+                        <div class="drill-card-list">
                         <?php foreach ($selected_drills as $sd): ?>
-                            <div class="drill-mgmt-item">
-                                <div>
-                                    <h4><?= htmlspecialchars($sd['drill_title']) ?></h4>
-                                    <div class="drill-meta">
-                                        <span class="drill-status <?= htmlspecialchars($sd['status']) ?>"><?= str_replace('_', ' ', htmlspecialchars($sd['status'])) ?></span>
-                                        <?php if ($sd['coach_notes']): ?><span><?= htmlspecialchars(substr($sd['coach_notes'], 0, 80)) ?></span><?php endif; ?>
-                                    </div>
+                            <div class="drill-card-rich">
+                                <div class="drill-card-rich-thumb">
+                                    <?php if (!empty($sd['custom_image'])): ?>
+                                        <img src="<?= htmlspecialchars(function_exists('resolveRustfsUrl') ? resolveRustfsUrl($pdo, $sd['custom_image']) : $sd['custom_image']) ?>" alt="<?= htmlspecialchars($sd['drill_title']) ?> thumbnail">
+                                    <?php elseif (!empty($sd['drill_video_url'])): ?>
+                                        <div class="drill-card-video-icon"><i class="fas fa-play-circle"></i></div>
+                                    <?php else: ?>
+                                        <div class="drill-card-default-icon"><i class="fas fa-clipboard-list"></i></div>
+                                    <?php endif; ?>
                                 </div>
-                                <div class="drill-mgmt-actions">
-                                    <button class="btn-sm-primary" onclick="updateDrillStatus(<?= (int)$sd['id'] ?>, '<?= $sd['status'] === 'assigned' ? 'in_progress' : 'completed' ?>')">
-                                        <?= $sd['status'] === 'assigned' ? 'Start' : ($sd['status'] === 'in_progress' ? 'Complete' : '✓') ?>
-                                    </button>
-                                    <button class="btn-sm-danger" onclick="removeDrill(<?= (int)$sd['id'] ?>, <?= (int)$selected['id'] ?>)"><i class="fas fa-trash"></i></button>
+                                <div class="drill-card-rich-body">
+                                    <div class="drill-card-rich-header">
+                                        <h4><?= htmlspecialchars($sd['drill_title']) ?></h4>
+                                        <span class="drill-status <?= htmlspecialchars($sd['status']) ?>"><?= str_replace('_', ' ', htmlspecialchars($sd['status'])) ?></span>
+                                    </div>
+                                    <?php if (!empty($sd['drill_description'])): ?>
+                                    <p class="drill-card-rich-desc"><?= htmlspecialchars(substr($sd['drill_description'], 0, 150)) ?><?= strlen($sd['drill_description']) > 150 ? '...' : '' ?></p>
+                                    <?php endif; ?>
+                                    <?php if ($sd['coach_notes']): ?>
+                                    <p class="drill-card-coach-note"><i class="fas fa-sticky-note"></i> <?= htmlspecialchars(substr($sd['coach_notes'], 0, 100)) ?></p>
+                                    <?php endif; ?>
+                                    <div class="drill-card-rich-footer">
+                                        <a href="?page=dev_drill_detail&id=<?= (int)$sd['id'] ?>&enrollment_id=<?= (int)$selected['id'] ?>&coach_view=1" class="drill-view-link"><i class="fas fa-eye"></i> View Full Details</a>
+                                        <?php if (!empty($sd['drill_video_url'])): ?>
+                                        <span class="drill-has-video"><i class="fas fa-video"></i> Has Video</span>
+                                        <?php endif; ?>
+                                        <div class="drill-card-rich-actions">
+                                            <button class="btn-sm-primary" onclick="updateDrillStatus(<?= (int)$sd['id'] ?>, '<?= $sd['status'] === 'assigned' ? 'in_progress' : 'completed' ?>')">
+                                                <?= $sd['status'] === 'assigned' ? 'Start' : ($sd['status'] === 'in_progress' ? 'Complete' : '✓') ?>
+                                            </button>
+                                            <button class="btn-sm-danger" onclick="removeDrill(<?= (int)$sd['id'] ?>, <?= (int)$selected['id'] ?>)"><i class="fas fa-trash"></i></button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         <?php endforeach; ?>
@@ -1215,6 +1266,9 @@ $locations = $pdo->query("SELECT id, name FROM locations WHERE is_active = 1 ORD
             <div style="display:flex;justify-content:space-between;align-items:flex-start;">
                 <div>
                     <div class="card-athlete-name"><?= htmlspecialchars($a['first_name'] . ' ' . $a['last_name']) ?></div>
+                    <?php if (!empty($a['athlete_coach_first']) || !empty($a['athlete_coach_last'])): ?>
+                    <div style="font-size:var(--font-size-sm);color:var(--text-dim);margin-top:2px;"><i class="fas fa-user-tie" style="margin-right:4px;"></i> Coach: <?= htmlspecialchars(trim(($a['athlete_coach_first'] ?? '') . ' ' . ($a['athlete_coach_last'] ?? ''))) ?></div>
+                    <?php endif; ?>
                     <div class="card-program-name"><?= htmlspecialchars($program_display) ?></div>
                 </div>
                 <?php if ((int)($a['pending_video_count'] ?? 0) > 0): ?>
@@ -1270,6 +1324,7 @@ $locations = $pdo->query("SELECT id, name FROM locations WHERE is_active = 1 ORD
         <thead>
             <tr>
                 <th>Athlete</th>
+                <th>Coach</th>
                 <th>Program</th>
                 <th>Position</th>
                 <th>Enrolled</th>
@@ -1288,6 +1343,7 @@ $locations = $pdo->query("SELECT id, name FROM locations WHERE is_active = 1 ORD
                 data-position="<?= htmlspecialchars($h['program_type']) ?>"
                 data-program="<?= htmlspecialchars($h['program_name'] ?? '') ?>">
                 <td><strong><?= htmlspecialchars($h['first_name'] . ' ' . $h['last_name']) ?></strong></td>
+                <td><?= !empty($h['athlete_coach_first']) || !empty($h['athlete_coach_last']) ? htmlspecialchars(trim(($h['athlete_coach_first'] ?? '') . ' ' . ($h['athlete_coach_last'] ?? ''))) : '<span style="color:var(--text-dim);">—</span>' ?></td>
                 <td><?= htmlspecialchars($h_program) ?></td>
                 <td>
                     <span class="dev-program-badge <?= htmlspecialchars($h['program_type']) ?>">

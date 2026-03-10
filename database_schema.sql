@@ -4868,6 +4868,7 @@ CREATE TABLE IF NOT EXISTS `personal_drills` (
     `description` TEXT DEFAULT NULL,
     `video_url` VARCHAR(512) DEFAULT NULL,
     `video_upload_path` VARCHAR(500) DEFAULT NULL COMMENT 'Path to uploaded video file',
+    `position` ENUM('player', 'goalie') DEFAULT 'player' COMMENT 'Target position for the drill',
     `created_by` INT NOT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -5041,3 +5042,6 @@ CREATE TABLE IF NOT EXISTS `scoreboard_shots` (
     FOREIGN KEY (`game_id`) REFERENCES `scoreboard_games`(`id`) ON DELETE CASCADE,
     UNIQUE KEY `unique_game_period_team` (`game_id`, `period`, `team`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Add position field to personal_drills for player/goalie drill thumbnails
+ALTER TABLE `personal_drills` ADD COLUMN IF NOT EXISTS `position` ENUM('player', 'goalie') DEFAULT 'player' COMMENT 'Target position for the drill' AFTER `video_upload_path`;

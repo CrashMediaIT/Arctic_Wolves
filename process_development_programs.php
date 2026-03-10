@@ -350,6 +350,7 @@ function handleSendMessage($pdo, $user_id, $input) {
 function handleCreatePersonalDrill($pdo, $user_id, $input) {
     $title = trim($input['title'] ?? '');
     $description = trim($input['description'] ?? '');
+    $position = in_array($input['position'] ?? '', ['player', 'goalie']) ? $input['position'] : 'player';
     $video_upload_path = null;
     
     if (!$title) {
@@ -387,8 +388,8 @@ function handleCreatePersonalDrill($pdo, $user_id, $input) {
         $drill_id = (int)$pdo->lastInsertId();
         
         // Create personal drill record referencing the library drill
-        $pd_stmt = $pdo->prepare("INSERT INTO personal_drills (title, description, video_upload_path, created_by) VALUES (?, ?, ?, ?)");
-        $pd_stmt->execute([$title, $description ?: null, $video_upload_path, $user_id]);
+        $pd_stmt = $pdo->prepare("INSERT INTO personal_drills (title, description, video_upload_path, position, created_by) VALUES (?, ?, ?, ?, ?)");
+        $pd_stmt->execute([$title, $description ?: null, $video_upload_path, $position, $user_id]);
         
         $pdo->commit();
         echo json_encode(['success' => true, 'drill_id' => $drill_id]);
