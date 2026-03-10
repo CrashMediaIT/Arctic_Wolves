@@ -764,6 +764,11 @@ function sbSpotifyConnect() {
     alert('Spotify integration: Configure your Spotify client credentials in System Tools → Scoreboard Settings to enable Web Playback.');
 }
 
+function sbAppleMusicConnect() {
+    // Open Apple MusicKit JS integration
+    alert('Apple Music integration: Configure your Apple Developer Token and Team ID in System Tools → Scoreboard Settings to enable Apple Music streaming.');
+}
+
 function sbSubsonicBrowse() {
     // Open Subsonic music library browser
     alert('Subsonic integration: Configure your Subsonic server URL and credentials in System Tools → Scoreboard Settings to browse your music library.');

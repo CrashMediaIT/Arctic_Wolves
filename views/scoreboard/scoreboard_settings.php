@@ -128,10 +128,10 @@ try {
             <?php endif; ?>
             <form id="sbBuzzerUploadForm" onsubmit="return sbUploadBuzzerSound(event)">
                 <div class="sb-settings-field">
-                    <label>Upload Sound File</label>
-                    <input type="file" id="sbBuzzerFile" name="buzzer_file" accept="audio/mpeg,audio/wav,audio/ogg,audio/mp3,.mp3,.wav,.ogg">
+                    <label>Upload Sound Files (select multiple)</label>
+                    <input type="file" id="sbBuzzerFile" name="buzzer_file" accept="audio/mpeg,audio/wav,audio/ogg,audio/mp3,.mp3,.wav,.ogg" multiple>
                 </div>
-                <button type="submit" class="sb-btn sb-btn-primary"><i class="fas fa-upload"></i> Upload Buzzer Sound</button>
+                <button type="submit" class="sb-btn sb-btn-primary"><i class="fas fa-upload"></i> Upload Buzzer Sound(s)</button>
             </form>
         </div>
 
@@ -161,10 +161,10 @@ try {
             <?php endif; ?>
             <form id="sbHornUploadForm" onsubmit="return sbUploadHornSound(event)">
                 <div class="sb-settings-field">
-                    <label>Upload Horn Sound File</label>
-                    <input type="file" id="sbHornFile" name="horn_file" accept="audio/mpeg,audio/wav,audio/ogg,audio/mp3,.mp3,.wav,.ogg">
+                    <label>Upload Horn Sound Files (select multiple)</label>
+                    <input type="file" id="sbHornFile" name="horn_file" accept="audio/mpeg,audio/wav,audio/ogg,audio/mp3,.mp3,.wav,.ogg" multiple>
                 </div>
-                <button type="submit" class="sb-btn sb-btn-primary"><i class="fas fa-upload"></i> Upload Horn Sound</button>
+                <button type="submit" class="sb-btn sb-btn-primary"><i class="fas fa-upload"></i> Upload Horn Sound(s)</button>
             </form>
         </div>
 
@@ -425,6 +425,7 @@ function sbSaveSettings(e, section) {
         body: (function() {
             var params = new URLSearchParams();
             params.append('action', 'save_settings');
+            params.append('csrf_token', CSRF_TOKEN);
             params.append('section', section);
             for (var pair of fd.entries()) {
                 params.append(pair[0], pair[1]);
@@ -445,11 +446,14 @@ function sbSaveSettings(e, section) {
 function sbUploadBuzzerSound(e) {
     e.preventDefault();
     var fileInput = document.getElementById('sbBuzzerFile');
-    if (!fileInput.files.length) { alert('Please select a sound file.'); return false; }
+    if (!fileInput.files.length) { alert('Please select one or more sound files.'); return false; }
 
     var fd = new FormData();
     fd.append('action', 'upload_buzzer');
-    fd.append('buzzer_file', fileInput.files[0]);
+    fd.append('csrf_token', CSRF_TOKEN);
+    for (var i = 0; i < fileInput.files.length; i++) {
+        fd.append('buzzer_file[]', fileInput.files[i]);
+    }
 
     fetch('process_scoreboard.php', {
         method: 'POST',
@@ -461,7 +465,8 @@ function sbUploadBuzzerSound(e) {
     }).then(function(r) { return r.json(); })
     .then(function(d) {
         if (d.success) {
-            alert('Buzzer sound uploaded!');
+            var msg = (d.count && d.count > 1) ? d.count + ' buzzer sounds uploaded!' : 'Buzzer sound uploaded!';
+            alert(msg);
             window.location.reload();
         } else {
             alert(d.message || 'Upload failed');
@@ -479,7 +484,7 @@ function sbRemoveBuzzerSound() {
             'X-CSRF-Token': CSRF_TOKEN,
             'Content-Type': 'application/x-www-form-urlencoded'
         },
-        body: 'action=remove_buzzer'
+        body: 'action=remove_buzzer&csrf_token=' + encodeURIComponent(CSRF_TOKEN)
     }).then(function(r) { return r.json(); })
     .then(function(d) {
         if (d.success) window.location.reload();
@@ -489,11 +494,14 @@ function sbRemoveBuzzerSound() {
 function sbUploadHornSound(e) {
     e.preventDefault();
     var fileInput = document.getElementById('sbHornFile');
-    if (!fileInput.files.length) { alert('Please select a horn sound file.'); return false; }
+    if (!fileInput.files.length) { alert('Please select one or more horn sound files.'); return false; }
 
     var fd = new FormData();
     fd.append('action', 'upload_horn');
-    fd.append('horn_file', fileInput.files[0]);
+    fd.append('csrf_token', CSRF_TOKEN);
+    for (var i = 0; i < fileInput.files.length; i++) {
+        fd.append('horn_file[]', fileInput.files[i]);
+    }
 
     fetch('process_scoreboard.php', {
         method: 'POST',
@@ -505,7 +513,8 @@ function sbUploadHornSound(e) {
     }).then(function(r) { return r.json(); })
     .then(function(d) {
         if (d.success) {
-            alert('Goal horn sound uploaded!');
+            var msg = (d.count && d.count > 1) ? d.count + ' goal horn sounds uploaded!' : 'Goal horn sound uploaded!';
+            alert(msg);
             window.location.reload();
         } else {
             alert(d.message || 'Upload failed');
@@ -523,7 +532,7 @@ function sbRemoveHornSound() {
             'X-CSRF-Token': CSRF_TOKEN,
             'Content-Type': 'application/x-www-form-urlencoded'
         },
-        body: 'action=remove_horn'
+        body: 'action=remove_horn&csrf_token=' + encodeURIComponent(CSRF_TOKEN)
     }).then(function(r) { return r.json(); })
     .then(function(d) {
         if (d.success) window.location.reload();
@@ -539,7 +548,7 @@ function sbSelectLibraryItem(type, url) {
             'X-CSRF-Token': CSRF_TOKEN,
             'Content-Type': 'application/x-www-form-urlencoded'
         },
-        body: 'action=' + encodeURIComponent(action) + '&url=' + encodeURIComponent(url)
+        body: 'action=' + encodeURIComponent(action) + '&url=' + encodeURIComponent(url) + '&csrf_token=' + encodeURIComponent(CSRF_TOKEN)
     }).then(function(r) { return r.json(); })
     .then(function(d) {
         if (d.success) window.location.reload();
@@ -557,7 +566,7 @@ function sbRemoveLibraryItem(type, url) {
             'X-CSRF-Token': CSRF_TOKEN,
             'Content-Type': 'application/x-www-form-urlencoded'
         },
-        body: 'action=' + encodeURIComponent(action) + '&url=' + encodeURIComponent(url)
+        body: 'action=' + encodeURIComponent(action) + '&url=' + encodeURIComponent(url) + '&csrf_token=' + encodeURIComponent(CSRF_TOKEN)
     }).then(function(r) { return r.json(); })
     .then(function(d) {
         if (d.success) window.location.reload();
@@ -572,6 +581,7 @@ function sbUploadTeamLogo(e) {
 
     var fd = new FormData();
     fd.append('action', 'upload_team_logo');
+    fd.append('csrf_token', CSRF_TOKEN);
     fd.append('logo_file', fileInput.files[0]);
     fd.append('team_id', document.getElementById('sbLogoTeamSelect').value);
     var newName = document.querySelector('[name="new_team_name"]');
