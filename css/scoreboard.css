@@ -32,8 +32,7 @@ body.sb-body {
   min-height: 100dvh;
   height: auto !important;
   overflow: visible !important;
-  touch-action: pan-y pan-x;
-  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
   -webkit-font-smoothing: antialiased;
   cursor: default;
 }

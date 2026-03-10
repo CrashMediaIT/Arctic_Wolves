@@ -1323,9 +1323,17 @@ test.describe('Scrollable layout and dynamic sizing', () => {
     expect(gridSection).toContain('overflow: visible');
   });
 
-  test('CSS body.sb-body has webkit overflow scrolling for iOS momentum', () => {
+  test('CSS html scroll container has webkit overflow scrolling (not body)', () => {
     const content = readFile('css/scoreboard.css');
-    expect(content).toMatch(/body\.sb-body\s*\{[^}]*-webkit-overflow-scrolling:\s*touch/s);
+    const htmlRule = content.substring(
+      content.indexOf('html:has(body.sb-body)'),
+      content.indexOf('html:has(body.sb-body)') + 300
+    );
+    expect(htmlRule).toContain('-webkit-overflow-scrolling: touch');
+    // body rule should NOT have -webkit-overflow-scrolling since html is the sole scroll container
+    const bodyStart = content.indexOf('body.sb-body {');
+    const bodyRule = content.substring(bodyStart, bodyStart + 300);
+    expect(bodyRule).not.toContain('-webkit-overflow-scrolling');
   });
 
   test('settings view overflow uses !important', () => {
