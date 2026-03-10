@@ -326,14 +326,27 @@ $current_label = $page_labels[$page] ?? 'Game Plan';
 
 <!-- ── Scripts ─────────────────────────────────────────── -->
 <script>
-// Live clock in topbar
+// Live clock in topbar – anchored to server time & configured timezone
 (function() {
+    var tvTimezone = '<?= htmlspecialchars(date_default_timezone_get(), ENT_QUOTES) ?>';
+    var tvServerTs = <?= (int)appTime() ?>;
+    var tvPageLoad = Date.now();
+
     function updateClock() {
-        var d = new Date();
-        var h = d.getHours(), m = d.getMinutes();
-        var ampm = h >= 12 ? 'PM' : 'AM';
-        h = h % 12 || 12;
-        var str = h + ':' + (m < 10 ? '0' : '') + m + ' ' + ampm;
+        var elapsedMs = Date.now() - tvPageLoad;
+        var corrected = new Date(tvServerTs * 1000 + elapsedMs);
+        var str;
+        try {
+            str = corrected.toLocaleTimeString('en-US', {
+                hour: 'numeric', minute: '2-digit',
+                hour12: true, timeZone: tvTimezone
+            });
+        } catch (e) {
+            var h = corrected.getUTCHours(), m = corrected.getUTCMinutes();
+            var ampm = h >= 12 ? 'PM' : 'AM';
+            h = h % 12 || 12;
+            str = h + ':' + (m < 10 ? '0' : '') + m + ' ' + ampm;
+        }
         var el = document.getElementById('tvClock');
         if (el) el.textContent = str;
     }
