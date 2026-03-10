@@ -963,8 +963,8 @@ function loadDrillForEdit(drillId) {
     const drill = drillsData.find(d => d.id == drillId);
     if (!drill) return;
     
-    // Check if this is a personal drill (linked to personal_drills table)
-    const isPersonalDrill = drill.personal_drill_id || document.querySelector('.drill-card[data-drill-id="' + drillId + '"][data-personal-drill]');
+    // Check if this is a personal drill (detected via SQL JOIN in drillsData)
+    const isPersonalDrill = !!drill.personal_drill_id;
     
     if (isPersonalDrill) {
         // For personal drills, redirect to the personal drills tab for editing
