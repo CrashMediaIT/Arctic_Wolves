@@ -214,6 +214,7 @@ foreach ($away_penalties as $p) {
             gap: clamp(8px, 1.2vw, 16px);
             padding: clamp(8px, 1.2vw, 16px);
             padding-bottom: 24px;
+            overflow: visible;
         }
         @media (max-width: 1200px) {
             .sb-controls-grid { grid-template-columns: 1fr 1fr; }

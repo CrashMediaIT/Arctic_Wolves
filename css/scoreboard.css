@@ -14,11 +14,14 @@
    style-guide.css sets overflow-x:hidden on html,body which implicitly sets overflow-y:auto,
    creating a competing scroll container on BOTH html and body. Fix: make html the sole
    scroll container by explicitly setting both axes here and resetting body to overflow:visible.
-   !important is needed to override the html,body rule in style-guide.css. */
-html:has(body.sb-body) {
+   !important is needed to override the html,body rule in style-guide.css.
+   html.sb-html is a JS-applied class fallback for browsers where :has() may not work. */
+html:has(body.sb-body),
+html.sb-html {
   overflow-x: hidden !important;
   overflow-y: scroll !important;
   -webkit-overflow-scrolling: touch;
+  height: auto !important;
 }
 
 body.sb-body {
@@ -27,7 +30,8 @@ body.sb-body {
   color: #fff;
   min-height: 100vh;
   min-height: 100dvh;
-  overflow: visible;
+  height: auto !important;
+  overflow: visible !important;
   touch-action: pan-y;
   -webkit-font-smoothing: antialiased;
   cursor: default;
@@ -120,6 +124,7 @@ body.sb-body {
   flex-direction: column;
   min-height: calc(100vh - 48px);
   min-height: calc(100dvh - 48px);
+  overflow: visible;
 }
 
 /* ── Professional Scoreboard Panel (Nevco/Daktronics) ── */
@@ -768,7 +773,7 @@ body.sb-body {
   min-height: 100vh;
   min-height: 100dvh;
   /* Let html element be the sole scroll container, not this div */
-  overflow: visible;
+  overflow: visible !important;
 }
 .sb-scoresheet-content {
   padding: clamp(12px, 2vw, 24px);

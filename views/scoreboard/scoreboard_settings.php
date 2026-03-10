@@ -253,7 +253,7 @@ try {
     /* No overflow-y here – let the html element be the sole scroll container.
        Setting overflow-y:auto here created a competing scroll container that
        broke touch scrolling on tablets/phones and mouse-wheel scrolling. */
-    overflow: visible;
+    overflow: visible !important;
     padding-bottom: 40px;
 }
 .sb-settings-content {
