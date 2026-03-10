@@ -396,6 +396,11 @@ if (!empty($drill['drill_image'])) {
         <div class="dev-drill-video-list">
             <?php foreach ($drill_videos as $vid): ?>
             <div class="dev-drill-video-item">
+                <?php if (!empty($vid['thumbnail_path'])): ?>
+                <div class="video-thumb" style="width:80px;height:56px;flex-shrink:0;border-radius:6px;overflow:hidden;background:var(--bg-main,#0d1117);">
+                    <img src="<?= htmlspecialchars($vid['thumbnail_path']) ?>" alt="Video thumbnail" loading="lazy" style="width:100%;height:100%;object-fit:cover;">
+                </div>
+                <?php endif; ?>
                 <div class="video-info">
                     <h5><?= htmlspecialchars($vid['title']) ?></h5>
                     <span><?= date('M j, Y g:ia', strtotime($vid['created_at'])) ?></span>
@@ -462,6 +467,7 @@ if (!empty($drill['drill_image'])) {
     </div>
 </div>
 
+<script src="js/video-thumbnail.js"></script>
 <script>
 var devDrillCsrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
@@ -566,19 +572,23 @@ function submitDrillVideo() {
         .then(function() {
             // Phase 3: Confirm upload
             statusEl.textContent = 'Confirming upload...';
-            var confirmForm = new FormData();
-            confirmForm.append('action', 'confirm_dev_video_upload');
-            confirmForm.append('csrf_token', devDrillCsrf);
-            confirmForm.append('upload_nonce', uploadNonce);
-            confirmForm.append('enrollment_id', '<?= $enrollment_id ?>');
-            confirmForm.append('drill_assignment_id', '<?= $drill_assignment_id ?>');
-            confirmForm.append('title', title);
-            confirmForm.append('description', desc);
-            return fetch('process_development_programs.php', {
-                method: 'POST',
-                headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                body: confirmForm
-            }).then(function(r) { return r.json(); });
+            return (window.extractVideoThumbnail ? extractVideoThumbnail(videoFile).catch(function(){ return null; }) : Promise.resolve(null))
+                .then(function(thumbBase64) {
+                    var confirmForm = new FormData();
+                    confirmForm.append('action', 'confirm_dev_video_upload');
+                    confirmForm.append('csrf_token', devDrillCsrf);
+                    confirmForm.append('upload_nonce', uploadNonce);
+                    confirmForm.append('enrollment_id', '<?= $enrollment_id ?>');
+                    confirmForm.append('drill_assignment_id', '<?= $drill_assignment_id ?>');
+                    confirmForm.append('title', title);
+                    confirmForm.append('description', desc);
+                    if (thumbBase64) confirmForm.append('thumbnail_data', thumbBase64);
+                    return fetch('process_development_programs.php', {
+                        method: 'POST',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        body: confirmForm
+                    }).then(function(r) { return r.json(); });
+                });
         })
         .then(function(data) {
             if (data.success) {
