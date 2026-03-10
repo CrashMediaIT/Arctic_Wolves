@@ -284,6 +284,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 }
 
 // Validate CSRF token for POST requests
+$_jsonAction = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Handle JSON requests before checkCsrfToken (which reads $_POST)
     $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
@@ -300,8 +301,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit();
             }
             $jsonCsrfValidated = true;
+            $_jsonAction = $jsonInput['action'] ?? '';
 
-            if (($jsonInput['action'] ?? '') === 'bulk_delete') {
+            if ($_jsonAction === 'bulk_delete') {
                 header('Content-Type: application/json');
                 $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
             
@@ -369,14 +371,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// For JSON requests, get action from JSON body; otherwise from $_POST
-$contentType = $_SERVER['CONTENT_TYPE'] ?? '';
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && strpos($contentType, 'application/json') !== false) {
-    $jsonBody = json_decode(file_get_contents('php://input'), true);
-    $action = $jsonBody['action'] ?? '';
-} else {
-    $action = $_POST['action'] ?? '';
-}
+// For JSON requests, reuse action from CSRF validation phase; otherwise from $_POST
+$action = $_jsonAction !== null ? $_jsonAction : ($_POST['action'] ?? '');
 $user_id = $_SESSION['user_id'] ?? 0;
 
 // =========================================================
