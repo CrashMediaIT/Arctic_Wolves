@@ -164,12 +164,18 @@ test.describe('Inline Migrations - Missing Table Error Handling', () => {
     const fn = content.substring(fnStart, fnEnd);
     expect(fn).toContain("doesn't exist");
     expect(fn).toContain('does not exist');
+    // Error categorization should use readable helper variables
+    expect(fn).toContain('isTableNotFound');
+    expect(fn).toContain('isDuplicateColumn');
   });
 
   test('setup.php checks for "does not exist" and "doesn\'t exist" MySQL messages', () => {
     const content = readFile('setup.php');
     expect(content).toContain("doesn't exist");
     expect(content).toContain('does not exist');
+    // Error categorization should use readable helper variables
+    expect(content).toContain('isTableNotFound');
+    expect(content).toContain('isDuplicateColumn');
   });
 });
 
