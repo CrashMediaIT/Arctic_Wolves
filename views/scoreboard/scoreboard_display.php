@@ -507,6 +507,18 @@ foreach ($away_penalties as $p) {
         <div class="sb-ctrl-panel">
             <div class="sb-ctrl-panel-title">🏠 Home — <?= htmlspecialchars($active_game['home_team_name'] ?? 'Home') ?></div>
 
+            <?php if ($isAdmin): ?>
+            <div class="sb-ctrl-logo-upload">
+                <?php if (!empty($home_logo_url)): ?>
+                <img src="<?= htmlspecialchars($home_logo_url) ?>" alt="Home Logo" class="sb-ctrl-team-logo-thumb">
+                <?php endif; ?>
+                <label class="sb-ctrl-btn-secondary sb-ctrl-logo-btn" style="min-height:32px;font-size:11px;cursor:pointer;">
+                    <i class="fas fa-camera"></i> <?= !empty($home_logo_url) ? 'Change' : 'Upload' ?> Logo
+                    <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" style="display:none;" data-team="home" data-team-id="<?= (int)($active_game['home_team_id'] ?? 0) ?>" onchange="sbQuickLogoUpload(this)">
+                </label>
+            </div>
+            <?php endif; ?>
+
             <span class="sb-ctrl-section-label">Goals</span>
             <button class="sb-ctrl-btn-primary home-accent goal-btn" onclick="sbAddGoal('home')">
                 <i class="fas fa-plus-circle"></i> +1 Home Goal
@@ -701,22 +713,17 @@ foreach ($away_penalties as $p) {
 
             <span class="sb-ctrl-section-label">Music Library</span>
             <div class="sb-ctrl-music-library">
-                <?php if ($spotify_configured): ?>
-                <button class="sb-ctrl-btn-secondary" onclick="sbSpotifyConnect()" style="color:#1DB954;border-color:#1DB954;">
-                    <i class="fab fa-spotify"></i> Spotify Connect
+                <?php if ($spotify_configured || $subsonic_configured || $apple_music_configured): ?>
+                <button class="sb-ctrl-btn-primary" onclick="sbOpenMusicLibrary()" style="background:#1A1A24;border:1px solid #6B46C1;color:#E2E8F0;min-height:52px;">
+                    <i class="fas fa-headphones"></i> Open Music Library
                 </button>
-                <?php endif; ?>
-                <?php if ($apple_music_configured): ?>
-                <button class="sb-ctrl-btn-secondary" onclick="sbAppleMusicConnect()" style="color:#FC3C44;border-color:#FC3C44;">
-                    <i class="fab fa-apple"></i> Apple Music
-                </button>
-                <?php endif; ?>
-                <?php if ($subsonic_configured): ?>
-                <button class="sb-ctrl-btn-secondary" onclick="sbSubsonicBrowse()">
-                    <i class="fas fa-server"></i> Subsonic Library
-                </button>
-                <?php endif; ?>
-                <?php if (!$spotify_configured && !$subsonic_configured && !$apple_music_configured): ?>
+                <div class="sb-ctrl-music-player" id="sbMusicPlayerControls" style="display:flex;align-items:center;gap:6px;padding:4px 0;">
+                    <button class="sb-ctrl-btn-secondary" onclick="sbMusicPrev()" style="min-height:36px;min-width:36px;padding:0;flex:0;"><i class="fas fa-step-backward"></i></button>
+                    <button class="sb-ctrl-btn-secondary" id="sbMusicPlayPause" onclick="sbMusicToggle()" style="min-height:36px;min-width:36px;padding:0;flex:0;"><i class="fas fa-play"></i></button>
+                    <button class="sb-ctrl-btn-secondary" onclick="sbMusicNext()" style="min-height:36px;min-width:36px;padding:0;flex:0;"><i class="fas fa-step-forward"></i></button>
+                    <button class="sb-ctrl-btn-secondary" onclick="sbMusicStop()" style="min-height:36px;min-width:36px;padding:0;flex:0;"><i class="fas fa-stop"></i></button>
+                </div>
+                <?php else: ?>
                 <div style="text-align:center;padding:12px;color:#555;font-size:12px;">No music sources configured<?php if ($isAdmin): ?> — <a href="?view=settings" style="color:#6B46C1;">Configure in Settings</a><?php endif; ?></div>
                 <?php endif; ?>
             </div>
@@ -738,6 +745,18 @@ foreach ($away_penalties as $p) {
         <!-- ════════ COLUMN 4: AWAY TEAM ════════ -->
         <div class="sb-ctrl-panel">
             <div class="sb-ctrl-panel-title">🏒 Away — <?= htmlspecialchars($active_game['away_team_name'] ?? 'Away') ?></div>
+
+            <?php if ($isAdmin): ?>
+            <div class="sb-ctrl-logo-upload">
+                <?php if (!empty($away_logo_url)): ?>
+                <img src="<?= htmlspecialchars($away_logo_url) ?>" alt="Away Logo" class="sb-ctrl-team-logo-thumb">
+                <?php endif; ?>
+                <label class="sb-ctrl-btn-secondary sb-ctrl-logo-btn" style="min-height:32px;font-size:11px;cursor:pointer;">
+                    <i class="fas fa-camera"></i> <?= !empty($away_logo_url) ? 'Change' : 'Upload' ?> Logo
+                    <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" style="display:none;" data-team="away" data-team-id="<?= (int)($active_game['away_team_id'] ?? 0) ?>" onchange="sbQuickLogoUpload(this)">
+                </label>
+            </div>
+            <?php endif; ?>
 
             <span class="sb-ctrl-section-label">Goals</span>
             <button class="sb-ctrl-btn-primary away-accent goal-btn" onclick="sbAddGoal('away')">
@@ -1147,4 +1166,346 @@ function sbToggleEmptyNet(team) {
     var isActive = el.style.display !== 'none';
     el.style.display = isActive ? 'none' : 'inline-flex';
 }
+
+// ── Quick logo upload from team controls ──────────────────
+function sbQuickLogoUpload(input) {
+    if (!input.files || !input.files[0]) return;
+    var teamId = parseInt(input.getAttribute('data-team-id'), 10) || 0;
+    if (!teamId || teamId <= 0) {
+        alert('This team is not linked to a team record. Link the team when starting the game to upload logos.');
+        return;
+    }
+    var fd = new FormData();
+    fd.append('action', 'upload_team_logo');
+    fd.append('csrf_token', CSRF_TOKEN);
+    fd.append('team_id', teamId);
+    fd.append('logo_file', input.files[0]);
+    fetch('/process_scoreboard.php', {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-Token': CSRF_TOKEN },
+        body: fd
+    }).then(function(r) { return r.json(); })
+    .then(function(d) {
+        if (d.success) {
+            sbSaveAndReload();
+        } else {
+            alert(d.message || 'Logo upload failed');
+        }
+    }).catch(function() { alert('Network error uploading logo.'); });
+}
 </script>
+
+<!-- Music Library Modal -->
+<div class="sb-modal-overlay" id="sb-music-library-modal">
+    <div class="sb-modal sb-music-library-modal">
+        <div class="sb-ml-header">
+            <h2><i class="fas fa-headphones"></i> Music Library</h2>
+            <button class="sb-ml-close-btn" onclick="document.getElementById('sb-music-library-modal').classList.remove('active')"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="sb-ml-tabs">
+            <?php if ($subsonic_configured): ?>
+            <button class="sb-ml-tab active" data-source="subsonic" onclick="sbMusicLibraryLoadSource('subsonic')">
+                <i class="fas fa-server"></i> Subsonic
+            </button>
+            <?php endif; ?>
+            <?php if ($spotify_configured): ?>
+            <button class="sb-ml-tab" data-source="spotify" onclick="sbMusicLibraryLoadSource('spotify')">
+                <i class="fab fa-spotify"></i> Spotify
+            </button>
+            <?php endif; ?>
+            <?php if ($apple_music_configured): ?>
+            <button class="sb-ml-tab" data-source="apple_music" onclick="sbMusicLibraryLoadSource('apple_music')">
+                <i class="fab fa-apple"></i> Apple Music
+            </button>
+            <?php endif; ?>
+        </div>
+        <div class="sb-ml-body" id="sbMusicLibraryContent">
+            <div class="sb-ml-loading"><i class="fas fa-music"></i> Select a source above to browse music</div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* ── Music Library Modal (Spotify-inspired) ──────────────── */
+.sb-music-library-modal {
+    max-width: 720px;
+    width: 95vw;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+}
+.sb-ml-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid #2D2D3F;
+}
+.sb-ml-header h2 {
+    margin: 0;
+    font-size: 18px;
+    color: #E2E8F0;
+}
+.sb-ml-close-btn {
+    background: none;
+    border: none;
+    color: #8B8BA3;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px 8px;
+}
+.sb-ml-close-btn:hover { color: #E2E8F0; }
+.sb-ml-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid #2D2D3F;
+    padding: 0 16px;
+}
+.sb-ml-tab {
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #8B8BA3;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: color 0.15s, border-color 0.15s;
+}
+.sb-ml-tab:hover { color: #E2E8F0; }
+.sb-ml-tab.active {
+    color: #6B46C1;
+    border-bottom-color: #6B46C1;
+}
+.sb-ml-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    min-height: 300px;
+}
+.sb-ml-loading, .sb-ml-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 48px 24px;
+    color: #8B8BA3;
+    font-size: 14px;
+    text-align: center;
+}
+.sb-ml-loading i, .sb-ml-empty i { font-size: 32px; color: #6B46C1; }
+.sb-ml-search {
+    position: relative;
+    margin-bottom: 16px;
+}
+.sb-ml-search input {
+    width: 100%;
+    padding: 10px 14px 10px 36px;
+    font-size: 14px;
+    color: #E2E8F0;
+    background: #0A0A0F;
+    border: 1px solid #2D2D3F;
+    border-radius: 20px;
+    outline: none;
+}
+.sb-ml-search input:focus { border-color: #6B46C1; }
+.sb-ml-search i {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #8B8BA3;
+    font-size: 13px;
+}
+.sb-ml-section-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #E2E8F0;
+    margin: 16px 0 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.sb-ml-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+.sb-ml-album-card {
+    background: #111118;
+    border: 1px solid #2D2D3F;
+    border-radius: 8px;
+    padding: 10px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    text-align: center;
+}
+.sb-ml-album-card:hover { background: #1A1A24; border-color: #6B46C1; }
+.sb-ml-album-cover {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    background: #0A0A0F;
+}
+.sb-ml-no-art {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    color: #2D2D3F;
+}
+.sb-ml-album-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #E2E8F0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.sb-ml-album-artist {
+    font-size: 11px;
+    color: #8B8BA3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.sb-ml-track-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.sb-ml-track {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.1s;
+}
+.sb-ml-track:hover { background: #1A1A24; }
+.sb-ml-track-active { background: #1A1A24; }
+.sb-ml-track-active .sb-ml-track-title { color: #6B46C1; }
+.sb-ml-track-num {
+    width: 24px;
+    text-align: right;
+    font-size: 12px;
+    color: #555;
+    flex-shrink: 0;
+}
+.sb-ml-track-info { flex: 1; min-width: 0; }
+.sb-ml-track-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #E2E8F0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.sb-ml-track-artist {
+    font-size: 11px;
+    color: #8B8BA3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.sb-ml-track-duration {
+    font-size: 11px;
+    color: #555;
+    flex-shrink: 0;
+    min-width: 36px;
+    text-align: right;
+}
+.sb-ml-track-play {
+    background: none;
+    border: none;
+    color: #8B8BA3;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 4px 6px;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s;
+}
+.sb-ml-track:hover .sb-ml-track-play { opacity: 1; }
+.sb-ml-track-play:hover { color: #6B46C1; }
+.sb-ml-back-btn {
+    background: none;
+    border: 1px solid #2D2D3F;
+    color: #8B8BA3;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    margin-bottom: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.sb-ml-back-btn:hover { color: #E2E8F0; border-color: #6B46C1; }
+.sb-ml-album-header {
+    display: flex;
+    gap: 16px;
+    align-items: flex-end;
+    margin-bottom: 16px;
+}
+.sb-ml-album-header-cover {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+.sb-ml-album-header-info { flex: 1; }
+.sb-ml-album-header-name {
+    font-size: 20px;
+    font-weight: 700;
+    color: #E2E8F0;
+}
+.sb-ml-album-header-artist {
+    font-size: 13px;
+    color: #8B8BA3;
+    margin-bottom: 8px;
+}
+.sb-ml-play-all-btn {
+    background: #6B46C1;
+    color: #fff;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.sb-ml-play-all-btn:hover { background: #7C5DD4; }
+/* ── Logo upload thumb in team controls ────────────────── */
+.sb-ctrl-logo-upload {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+.sb-ctrl-team-logo-thumb {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+    border-radius: 4px;
+    border: 1px solid #2D2D3F;
+}
+.sb-ctrl-logo-btn {
+    display: inline-flex !important;
+    width: auto !important;
+    min-width: auto !important;
+}
+</style>

@@ -859,6 +859,146 @@ try {
             echo json_encode(['success' => true]);
             break;
 
+        // ── Subsonic music library browsing ───────────────
+        case 'subsonic_library':
+            $subSettings = [];
+            $stmt = $pdo->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('subsonic_url', 'subsonic_username', 'subsonic_password')");
+            $stmt->execute();
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $s) {
+                $subSettings[$s['setting_key']] = $s['setting_value'] ?? '';
+            }
+            $subUrl = rtrim($subSettings['subsonic_url'] ?? '', '/');
+            $subUser = $subSettings['subsonic_username'] ?? '';
+            $subPass = $subSettings['subsonic_password'] ?? '';
+            if (empty($subUrl) || empty($subUser)) {
+                echo json_encode(['success' => false, 'message' => 'Subsonic server not configured. Set URL and credentials in Settings.']);
+                exit();
+            }
+            // Decrypt password if encrypted
+            if (!empty($subPass)) {
+                require_once __DIR__ . '/lib/encryption.php';
+                if (FieldEncryption::isConfigured()) {
+                    try { $subPass = decryptCredential($subPass); } catch (Exception $e) { /* use as-is */ }
+                }
+            }
+            // Use Subsonic API – salt + token auth (Subsonic API >= 1.13.0)
+            $salt = bin2hex(random_bytes(8));
+            $token = md5($subPass . $salt);
+            $baseParams = 'u=' . urlencode($subUser) . '&t=' . urlencode($token) . '&s=' . urlencode($salt) . '&v=1.16.1&c=ArcticWolves&f=json';
+
+            // Fetch albums (getAlbumList2)
+            $albumsUrl = $subUrl . '/rest/getAlbumList2?' . $baseParams . '&type=alphabeticalByName&size=100';
+            $albums = [];
+            $ctx = stream_context_create(['http' => ['timeout' => 10, 'ignore_errors' => true]]);
+            $albumsResp = file_get_contents($albumsUrl, false, $ctx);
+            if ($albumsResp === false) {
+                $httpStatus = isset($http_response_header[0]) ? $http_response_header[0] : 'no response';
+                error_log('Subsonic: Failed to fetch album list from ' . parse_url($subUrl, PHP_URL_HOST) . ' (' . $httpStatus . ')');
+            }
+            if ($albumsResp) {
+                $albumsData = json_decode($albumsResp, true);
+                $albumList = $albumsData['subsonic-response']['albumList2']['album'] ?? [];
+                foreach ($albumList as $a) {
+                    $cover = !empty($a['coverArt']) ? $subUrl . '/rest/getCoverArt?' . $baseParams . '&id=' . urlencode($a['coverArt']) . '&size=200' : '';
+                    $albums[] = [
+                        'id' => $a['id'] ?? '',
+                        'name' => $a['name'] ?? $a['title'] ?? 'Unknown',
+                        'artist' => $a['artist'] ?? '',
+                        'cover' => $cover
+                    ];
+                }
+            }
+            // Fetch random songs
+            $songsUrl = $subUrl . '/rest/getRandomSongs?' . $baseParams . '&size=50';
+            $songs = [];
+            $songsResp = file_get_contents($songsUrl, false, $ctx);
+            if ($songsResp === false) {
+                $httpStatus = isset($http_response_header[0]) ? $http_response_header[0] : 'no response';
+                error_log('Subsonic: Failed to fetch songs from ' . parse_url($subUrl, PHP_URL_HOST) . ' (' . $httpStatus . ')');
+            }
+            if ($songsResp) {
+                $songsData = json_decode($songsResp, true);
+                $songList = $songsData['subsonic-response']['randomSongs']['song'] ?? [];
+                foreach ($songList as $s) {
+                    $durationSec = (int)($s['duration'] ?? 0);
+                    $durationStr = $durationSec > 0 ? sprintf('%d:%02d', floor($durationSec / 60), $durationSec % 60) : '';
+                    $songs[] = [
+                        'id' => $s['id'] ?? '',
+                        'title' => $s['title'] ?? 'Unknown',
+                        'artist' => $s['artist'] ?? '',
+                        'album' => $s['album'] ?? '',
+                        'duration' => $durationStr,
+                        'url' => $subUrl . '/rest/stream?' . $baseParams . '&id=' . urlencode($s['id'] ?? '')
+                    ];
+                }
+            }
+            echo json_encode(['success' => true, 'albums' => $albums, 'songs' => $songs]);
+            break;
+
+        case 'subsonic_album':
+            $subSettings = [];
+            $stmt = $pdo->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('subsonic_url', 'subsonic_username', 'subsonic_password')");
+            $stmt->execute();
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $s) {
+                $subSettings[$s['setting_key']] = $s['setting_value'] ?? '';
+            }
+            $subUrl = rtrim($subSettings['subsonic_url'] ?? '', '/');
+            $subUser = $subSettings['subsonic_username'] ?? '';
+            $subPass = $subSettings['subsonic_password'] ?? '';
+            if (empty($subUrl) || empty($subUser)) {
+                echo json_encode(['success' => false, 'message' => 'Subsonic server not configured.']);
+                exit();
+            }
+            if (!empty($subPass)) {
+                require_once __DIR__ . '/lib/encryption.php';
+                if (FieldEncryption::isConfigured()) {
+                    try { $subPass = decryptCredential($subPass); } catch (Exception $e) { /* use as-is */ }
+                }
+            }
+            $salt = bin2hex(random_bytes(8));
+            $token = md5($subPass . $salt);
+            $baseParams = 'u=' . urlencode($subUser) . '&t=' . urlencode($token) . '&s=' . urlencode($salt) . '&v=1.16.1&c=ArcticWolves&f=json';
+            $albumId = $_POST['album_id'] ?? '';
+            if (empty($albumId)) {
+                echo json_encode(['success' => false, 'message' => 'Missing album ID']);
+                exit();
+            }
+            $albumUrl = $subUrl . '/rest/getAlbum?' . $baseParams . '&id=' . urlencode($albumId);
+            $ctx = stream_context_create(['http' => ['timeout' => 10, 'ignore_errors' => true]]);
+            $albumResp = file_get_contents($albumUrl, false, $ctx);
+            if ($albumResp === false) {
+                $httpStatus = isset($http_response_header[0]) ? $http_response_header[0] : 'no response';
+                error_log('Subsonic: Failed to fetch album ' . $albumId . ' from ' . parse_url($subUrl, PHP_URL_HOST) . ' (' . $httpStatus . ')');
+            }
+            $album = [];
+            $songs = [];
+            if ($albumResp) {
+                $albumData = json_decode($albumResp, true);
+                $a = $albumData['subsonic-response']['album'] ?? [];
+                $cover = !empty($a['coverArt']) ? $subUrl . '/rest/getCoverArt?' . $baseParams . '&id=' . urlencode($a['coverArt']) . '&size=300' : '';
+                $album = [
+                    'id' => $a['id'] ?? '',
+                    'name' => $a['name'] ?? $a['title'] ?? 'Unknown',
+                    'artist' => $a['artist'] ?? '',
+                    'cover' => $cover
+                ];
+                $songList = $a['song'] ?? [];
+                foreach ($songList as $s) {
+                    $durationSec = (int)($s['duration'] ?? 0);
+                    $durationStr = $durationSec > 0 ? sprintf('%d:%02d', floor($durationSec / 60), $durationSec % 60) : '';
+                    $songs[] = [
+                        'id' => $s['id'] ?? '',
+                        'title' => $s['title'] ?? 'Unknown',
+                        'artist' => $s['artist'] ?? '',
+                        'album' => $a['name'] ?? '',
+                        'duration' => $durationStr,
+                        'url' => $subUrl . '/rest/stream?' . $baseParams . '&id=' . urlencode($s['id'] ?? '')
+                    ];
+                }
+            }
+            echo json_encode(['success' => true, 'album' => $album, 'songs' => $songs]);
+            break;
+
         default:
             echo json_encode(['success' => false, 'message' => 'Unknown action']);
     }
