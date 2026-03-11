@@ -387,6 +387,7 @@ $current_label = $page_labels[$page] ?? 'Game Plan';
     }
 
     setInterval(pollPairState, 3000);
+    pollPairState();
 })();
 <?php endif; ?>
 

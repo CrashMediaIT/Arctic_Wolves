@@ -26,7 +26,7 @@ test.describe('gameplan.php global telestration overlay', () => {
   test('should detect active pair for telestration', () => {
     const content = readFile('gameplan.php');
     expect(content).toContain('gp_active_pair_id');
-    expect(content).toContain("SELECT id FROM vr_device_pairs");
+    expect(content).toContain("SELECT id, is_frozen FROM vr_device_pairs");
     expect(content).toContain("vr_device_pair_controllers");
   });
 
@@ -159,7 +159,7 @@ test.describe('PWA gameplan telestration overlay', () => {
   test('should detect active pair', () => {
     const content = readFile('views/pwa/gameplan.php');
     expect(content).toContain('gp_pwa_active_pair_id');
-    expect(content).toContain("SELECT id FROM vr_device_pairs");
+    expect(content).toContain("SELECT id, is_frozen FROM vr_device_pairs");
   });
 
   test('should render gpTeleCanvas when active pair exists', () => {
@@ -218,5 +218,83 @@ test.describe('Consistent CSS class naming', () => {
     const pwa = readFile('views/pwa/gameplan.php');
     expect(gp).toContain('gpTeleDrawBtn');
     expect(pwa).toContain('gpTeleDrawBtn');
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  5. TV viewer auto-update — immediate polling                      */
+/* ------------------------------------------------------------------ */
+test.describe('TV viewer auto-update polling', () => {
+
+  test('should poll pair state immediately on load', () => {
+    const content = readFile('gameplan_tv.php');
+    expect(content).toContain('setInterval(pollPairState');
+    expect(content).toContain('pollPairState();');
+  });
+
+  test('should detect controller page changes', () => {
+    const content = readFile('gameplan_tv.php');
+    expect(content).toContain('controller_page');
+    expect(content).toContain('currentPage');
+    expect(content).toContain('window.location.reload()');
+  });
+
+  test('should detect freeze state changes', () => {
+    const content = readFile('gameplan_tv.php');
+    expect(content).toContain('is_frozen');
+    expect(content).toContain('isFrozen');
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  6. Freeze button in telestration controls                         */
+/* ------------------------------------------------------------------ */
+test.describe('Freeze button in telestration controls', () => {
+
+  test('gameplan.php should have freeze button in telestration toolbar', () => {
+    const content = readFile('gameplan.php');
+    expect(content).toContain('id="gpTeleFreeze"');
+    expect(content).toContain('fa-snowflake');
+    expect(content).toContain('toggle_freeze_pair');
+  });
+
+  test('gameplan.php should fetch is_frozen state with pair detection', () => {
+    const content = readFile('gameplan.php');
+    expect(content).toContain('gp_pair_is_frozen');
+    expect(content).toContain('SELECT id, is_frozen FROM vr_device_pairs');
+  });
+
+  test('gameplan.php freeze button should toggle state via process_video.php', () => {
+    const content = readFile('gameplan.php');
+    expect(content).toContain('gpTeleFreeze');
+    expect(content).toContain("action=toggle_freeze_pair");
+    expect(content).toContain('gpFrozen = !gpFrozen');
+  });
+
+  test('gameplan.php freeze button should update icon on toggle', () => {
+    const content = readFile('gameplan.php');
+    expect(content).toContain("'fas fa-play'");
+    expect(content).toContain("'fas fa-snowflake'");
+    expect(content).toContain("classList.toggle('active'");
+  });
+
+  test('PWA gameplan should have freeze button in telestration toolbar', () => {
+    const content = readFile('views/pwa/gameplan.php');
+    expect(content).toContain('id="gpTeleFreeze"');
+    expect(content).toContain('fa-snowflake');
+    expect(content).toContain('toggle_freeze_pair');
+  });
+
+  test('PWA gameplan should fetch is_frozen state with pair detection', () => {
+    const content = readFile('views/pwa/gameplan.php');
+    expect(content).toContain('gp_pwa_pair_is_frozen');
+    expect(content).toContain('SELECT id, is_frozen FROM vr_device_pairs');
+  });
+
+  test('PWA freeze button should toggle state via process_video.php', () => {
+    const content = readFile('views/pwa/gameplan.php');
+    expect(content).toContain('gpTeleFreeze');
+    expect(content).toContain("action=toggle_freeze_pair");
+    expect(content).toContain('gpFrozen = !gpFrozen');
   });
 });

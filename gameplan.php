@@ -139,17 +139,21 @@ if ($isAnyCoach && isset($allowed_pages[$page])) {
 
 // ── Detect active casting pair for global telestration overlay ─────
 $gp_active_pair_id = 0;
+$gp_pair_is_frozen = false;
 if ($isAnyCoach) {
     try {
         $pairDetect = $pdo->prepare("
-            SELECT id FROM vr_device_pairs
+            SELECT id, is_frozen FROM vr_device_pairs
             WHERE status IN ('paired', 'active')
               AND (created_by = ? OR id IN (SELECT pair_id FROM vr_device_pair_controllers WHERE user_id = ?))
             LIMIT 1
         ");
         $pairDetect->execute([$user_id, $user_id]);
         $pairRow = $pairDetect->fetch(PDO::FETCH_ASSOC);
-        if ($pairRow) $gp_active_pair_id = (int)$pairRow['id'];
+        if ($pairRow) {
+            $gp_active_pair_id = (int)$pairRow['id'];
+            $gp_pair_is_frozen = (bool)$pairRow['is_frozen'];
+        }
     } catch (PDOException $e) { /* ignore */ }
 }
 
@@ -524,6 +528,10 @@ try {
             <div style="width:1px;height:24px;background:var(--border,#2D2D3F);"></div>
             <input type="range" id="gpTeleWidth" min="1" max="8" value="3" style="width:60px;accent-color:var(--primary,#6B46C1);" title="Line width">
             <button class="gp-tele-tool" id="gpTeleClear" title="Clear"><i class="fas fa-eraser"></i></button>
+            <div style="width:1px;height:24px;background:var(--border,#2D2D3F);"></div>
+            <button class="gp-tele-tool<?= $gp_pair_is_frozen ? ' active' : '' ?>" id="gpTeleFreeze" title="<?= $gp_pair_is_frozen ? 'Unfreeze — TV follows your navigation' : 'Freeze — navigate privately without updating TV' ?>">
+                <i class="fas fa-<?= $gp_pair_is_frozen ? 'play' : 'snowflake' ?>"></i>
+            </button>
         </div>
     </div>
     <!-- Draw toggle button — tap to toggle drawing mode -->
@@ -672,6 +680,29 @@ try {
     if (clearBtn) clearBtn.addEventListener('click', function() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         broadcastTelestration();
+    });
+
+    // Freeze/Unfreeze viewer
+    var freezeBtn = document.getElementById('gpTeleFreeze');
+    var gpFrozen = <?= $gp_pair_is_frozen ? 'true' : 'false' ?>;
+    if (freezeBtn) freezeBtn.addEventListener('click', function() {
+        var csrf = document.querySelector('input[name="csrf_token"]') || document.querySelector('meta[name="csrf-token"]');
+        var token = csrf ? (csrf.value || csrf.content || '') : '';
+        if (!token) return;
+        fetch('/process_video.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'action=toggle_freeze_pair&pair_id=' + pairId + '&csrf_token=' + encodeURIComponent(token)
+        }).then(function(r) { return r.json(); }).then(function(data) {
+            if (data.success) {
+                gpFrozen = !gpFrozen;
+                freezeBtn.classList.toggle('active', gpFrozen);
+                freezeBtn.querySelector('i').className = gpFrozen ? 'fas fa-play' : 'fas fa-snowflake';
+                freezeBtn.title = gpFrozen
+                    ? 'Unfreeze — TV follows your navigation'
+                    : 'Freeze — navigate privately without updating TV';
+            }
+        }).catch(function() { /* best-effort */ });
     });
 
     // Broadcast to paired TV

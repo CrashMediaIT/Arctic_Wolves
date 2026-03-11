@@ -73,17 +73,21 @@ if ($isAnyCoach && isset($gp_views[$gp_sub])) {
     }
 }
 // Detect active pair for global telestration overlay
+$gp_pwa_pair_is_frozen = false;
 if ($isAnyCoach) {
     try {
         $pwaPairDetect = $pdo->prepare("
-            SELECT id FROM vr_device_pairs
+            SELECT id, is_frozen FROM vr_device_pairs
             WHERE status IN ('paired', 'active')
               AND (created_by = ? OR id IN (SELECT pair_id FROM vr_device_pair_controllers WHERE user_id = ?))
             LIMIT 1
         ");
         $pwaPairDetect->execute([$user_id, $user_id]);
         $pwaPairRow = $pwaPairDetect->fetch(PDO::FETCH_ASSOC);
-        if ($pwaPairRow) $gp_pwa_active_pair_id = (int)$pwaPairRow['id'];
+        if ($pwaPairRow) {
+            $gp_pwa_active_pair_id = (int)$pwaPairRow['id'];
+            $gp_pwa_pair_is_frozen = (bool)$pwaPairRow['is_frozen'];
+        }
     } catch (PDOException $e) { /* ignore */ }
 }
 
@@ -761,6 +765,10 @@ document.addEventListener('DOMContentLoaded', function() {
             <div style="width:1px;height:24px;background:var(--border,#2D2D3F);"></div>
             <input type="range" id="gpTeleWidth" min="1" max="8" value="3" style="width:60px;accent-color:var(--primary,#6B46C1);" title="Line width">
             <button class="gp-tele-tool" id="gpTeleClear" title="Clear"><i class="fas fa-eraser"></i></button>
+            <div style="width:1px;height:24px;background:var(--border,#2D2D3F);"></div>
+            <button class="gp-tele-tool<?= $gp_pwa_pair_is_frozen ? ' active' : '' ?>" id="gpTeleFreeze" title="<?= $gp_pwa_pair_is_frozen ? 'Unfreeze — TV follows your navigation' : 'Freeze — navigate privately without updating TV' ?>">
+                <i class="fas fa-<?= $gp_pwa_pair_is_frozen ? 'play' : 'snowflake' ?>"></i>
+            </button>
         </div>
     </div>
     <button id="gpTeleDrawBtn" title="Toggle telestration drawing" style="width:56px;height:56px;border-radius:50%;border:2px solid var(--primary,#6B46C1);background:var(--bg-card,#16161F);color:var(--primary-light,#8B5CF6);font-size:20px;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;transition:all .2s;">
@@ -840,6 +848,29 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.gp-tele-color').forEach(function(btn) { btn.addEventListener('click', function() { document.querySelectorAll('.gp-tele-color').forEach(function(b) { b.classList.remove('active'); }); btn.classList.add('active'); color = btn.dataset.color; }); });
     var widthInput = document.getElementById('gpTeleWidth'); if (widthInput) widthInput.addEventListener('input', function() { lineWidth = parseInt(this.value) || 3; });
     var clearBtn = document.getElementById('gpTeleClear'); if (clearBtn) clearBtn.addEventListener('click', function() { ctx.clearRect(0, 0, canvas.width, canvas.height); broadcastTelestration(); });
+
+    // Freeze/Unfreeze viewer
+    var freezeBtn = document.getElementById('gpTeleFreeze');
+    var gpFrozen = <?= $gp_pwa_pair_is_frozen ? 'true' : 'false' ?>;
+    if (freezeBtn) freezeBtn.addEventListener('click', function() {
+        var csrf = document.querySelector('input[name="csrf_token"]') || document.querySelector('meta[name="csrf-token"]');
+        var token = csrf ? (csrf.value || csrf.content || '') : '';
+        if (!token) return;
+        fetch('/process_video.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'action=toggle_freeze_pair&pair_id=' + pairId + '&csrf_token=' + encodeURIComponent(token)
+        }).then(function(r) { return r.json(); }).then(function(data) {
+            if (data.success) {
+                gpFrozen = !gpFrozen;
+                freezeBtn.classList.toggle('active', gpFrozen);
+                freezeBtn.querySelector('i').className = gpFrozen ? 'fas fa-play' : 'fas fa-snowflake';
+                freezeBtn.title = gpFrozen
+                    ? 'Unfreeze — TV follows your navigation'
+                    : 'Freeze — navigate privately without updating TV';
+            }
+        }).catch(function() { /* best-effort */ });
+    });
 
     var broadcastTimer = null;
     function broadcastTelestration() {
