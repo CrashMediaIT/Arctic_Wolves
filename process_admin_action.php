@@ -389,7 +389,7 @@ function _persistLocationImage($pdo, $image_url) {
     }
 
     // If the URL is already a RustFS proxy path, keep it as-is
-    if (strpos($image_url, 'api/media.php?key=') !== false || strpos($image_url, 'Images/') === 0) {
+    if (strpos($image_url, 'api/media.php?key=') !== false) {
         return $image_url;
     }
 

@@ -73,7 +73,10 @@ function getSiteFaviconUrl($pdo) {
  * @return string MIME type string or empty string
  */
 function getFaviconMimeType($url) {
-    $path = parse_url($url, PHP_URL_PATH) ?? $url;
+    $path = parse_url($url, PHP_URL_PATH);
+    if ($path === false || $path === null) {
+        $path = $url;
+    }
     $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
     $map = [
         'ico'  => 'image/x-icon',

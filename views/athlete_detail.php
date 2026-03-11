@@ -314,7 +314,7 @@ $teams = $teams_stmt->fetchAll();
 </style>
 
 <?php
-$initials = strtoupper(mb_substr($athlete['first_name'], 0, 1) . mb_substr($athlete['last_name'], 0, 1));
+$initials = strtoupper(mb_substr($athlete['first_name'] ?? '', 0, 1) . mb_substr($athlete['last_name'] ?? '', 0, 1));
 ?>
 
 <div class="ath-detail-header">
