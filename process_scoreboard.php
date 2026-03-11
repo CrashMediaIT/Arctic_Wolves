@@ -892,7 +892,8 @@ try {
             $ctx = stream_context_create(['http' => ['timeout' => 10, 'ignore_errors' => true]]);
             $albumsResp = file_get_contents($albumsUrl, false, $ctx);
             if ($albumsResp === false) {
-                error_log('Subsonic: Failed to fetch album list from ' . parse_url($subUrl, PHP_URL_HOST));
+                $httpStatus = isset($http_response_header[0]) ? $http_response_header[0] : 'no response';
+                error_log('Subsonic: Failed to fetch album list from ' . parse_url($subUrl, PHP_URL_HOST) . ' (' . $httpStatus . ')');
             }
             if ($albumsResp) {
                 $albumsData = json_decode($albumsResp, true);
@@ -912,7 +913,8 @@ try {
             $songs = [];
             $songsResp = file_get_contents($songsUrl, false, $ctx);
             if ($songsResp === false) {
-                error_log('Subsonic: Failed to fetch songs from ' . parse_url($subUrl, PHP_URL_HOST));
+                $httpStatus = isset($http_response_header[0]) ? $http_response_header[0] : 'no response';
+                error_log('Subsonic: Failed to fetch songs from ' . parse_url($subUrl, PHP_URL_HOST) . ' (' . $httpStatus . ')');
             }
             if ($songsResp) {
                 $songsData = json_decode($songsResp, true);
@@ -965,7 +967,8 @@ try {
             $ctx = stream_context_create(['http' => ['timeout' => 10, 'ignore_errors' => true]]);
             $albumResp = file_get_contents($albumUrl, false, $ctx);
             if ($albumResp === false) {
-                error_log('Subsonic: Failed to fetch album ' . $albumId . ' from ' . parse_url($subUrl, PHP_URL_HOST));
+                $httpStatus = isset($http_response_header[0]) ? $http_response_header[0] : 'no response';
+                error_log('Subsonic: Failed to fetch album ' . $albumId . ' from ' . parse_url($subUrl, PHP_URL_HOST) . ' (' . $httpStatus . ')');
             }
             $album = [];
             $songs = [];

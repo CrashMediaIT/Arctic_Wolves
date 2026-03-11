@@ -936,12 +936,17 @@ function sbMusicPlay(url, title, artist, source) {
     }
     sbMusicPlayer.audio.src = url;
     sbMusicPlayer.audio.volume = window._sbMusicVolume || 0.8;
-    sbMusicPlayer.audio.play().catch(function() {});
     sbMusicPlayer.currentTrack = { url: url, title: title, artist: artist, source: source };
-    sbMusicPlayer.playing = true;
     sbUpdateNowPlaying(title, artist, source);
-    var btn = document.getElementById('sbMusicPlayPause');
-    if (btn) btn.innerHTML = '<i class="fas fa-pause"></i>';
+    sbMusicPlayer.audio.play().then(function() {
+        sbMusicPlayer.playing = true;
+        var btn = document.getElementById('sbMusicPlayPause');
+        if (btn) btn.innerHTML = '<i class="fas fa-pause"></i>';
+    }).catch(function() {
+        sbMusicPlayer.playing = false;
+        var btn = document.getElementById('sbMusicPlayPause');
+        if (btn) btn.innerHTML = '<i class="fas fa-play"></i>';
+    });
 }
 
 function sbMusicPause() {
