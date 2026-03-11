@@ -11,6 +11,25 @@
  */
 require_once __DIR__ . '/../../lib/image_helper.php';
 
+// ── Detect active device pair for telestration sync ───────────
+$vr_active_pair_id = 0;
+$vr_is_tv_viewer = !empty($_SESSION['tv_pair_id']);
+if ($vr_is_tv_viewer) {
+    $vr_active_pair_id = (int)$_SESSION['tv_pair_id'];
+} elseif ($isAnyCoach) {
+    try {
+        $pairStmt = $pdo->prepare("
+            SELECT id FROM vr_device_pairs
+            WHERE status IN ('paired', 'active')
+              AND (created_by = ? OR id IN (SELECT pair_id FROM vr_device_pair_controllers WHERE user_id = ?))
+            LIMIT 1
+        ");
+        $pairStmt->execute([$user_id, $user_id]);
+        $activePair = $pairStmt->fetch(PDO::FETCH_ASSOC);
+        if ($activePair) $vr_active_pair_id = (int)$activePair['id'];
+    } catch (PDOException $e) { /* ignore */ }
+}
+
 // -- Tab & Filter parameters -----------------------------------------------
 $vr_tab = isset($_GET['tab']) ? preg_replace('/[^a-z_]/', '', $_GET['tab']) : 'by_game';
 if (!in_array($vr_tab, ['clips', 'by_game', 'scouting', 'device_pair'])) $vr_tab = 'by_game';
@@ -58,6 +77,9 @@ if ($vr_tab === 'clips') {
             SELECT c.id, c.title, c.description, c.start_time, c.end_time,
                    c.thumbnail_path, c.created_at,
                    vs.filename AS source_filename, vs.camera_angle, vs.duration AS source_duration,
+                   vs.file_path AS source_path, vs.hls_url AS source_hls_url,
+                   vs.hls_status AS source_hls_status, vs.dash_url AS source_dash_url,
+                   vs.dash_manifest_url AS source_dash_manifest_url,
                    GROUP_CONCAT(DISTINCT t.name ORDER BY t.category, t.name SEPARATOR ', ') AS tag_names,
                    GROUP_CONCAT(DISTINCT t.category ORDER BY t.category SEPARATOR ', ') AS tag_categories,
                    GROUP_CONCAT(DISTINCT t.color ORDER BY t.category, t.name SEPARATOR ',') AS tag_colors,
@@ -194,6 +216,9 @@ if ($vr_tab === 'by_game') {
                 SELECT c.id, c.title, c.description, c.start_time, c.end_time,
                        c.thumbnail_path, c.created_at,
                        vs.camera_angle,
+                       vs.file_path AS source_path, vs.hls_url AS source_hls_url,
+                       vs.hls_status AS source_hls_status, vs.dash_url AS source_dash_url,
+                       vs.dash_manifest_url AS source_dash_manifest_url,
                        GROUP_CONCAT(DISTINCT t.id ORDER BY t.category, t.name SEPARATOR ',') AS tag_ids,
                        GROUP_CONCAT(DISTINCT t.name ORDER BY t.category, t.name SEPARATOR ', ') AS tag_names,
                        GROUP_CONCAT(DISTINCT t.category ORDER BY t.category SEPARATOR ', ') AS tag_categories,
@@ -384,8 +409,21 @@ if (!function_exists('vr_safe_color')) {
 </div>
 <?php elseif ($vr_view_mode === 'grid'): ?>
 <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; margin-top: 20px;">
-    <?php foreach ($vr_clips as $clip): ?>
-    <div class="card" data-clip-id="<?= (int)$clip['id'] ?>">
+    <?php foreach ($vr_clips as $clip):
+        $clip_src_row = ['file_path' => $clip['source_path'] ?? '', 'hls_url' => $clip['source_hls_url'] ?? '', 'hls_status' => $clip['source_hls_status'] ?? '', 'dash_url' => $clip['source_dash_url'] ?? '', 'dash_manifest_url' => $clip['source_dash_manifest_url'] ?? ''];
+        $clip_play_url = resolveRustfsUrl($pdo, getPreferredVideoUrl($clip_src_row)) ?? '';
+        $clip_fallback = '';
+        if (preg_match('/\.m3u8(\?|&|$)/i', $clip_play_url)) {
+            $orig = resolveRustfsUrl($pdo, $clip['source_path'] ?? '') ?? '';
+            if ($orig && $orig !== $clip_play_url) $clip_fallback = $orig;
+        } else {
+            $clip_fallback = resolveRustfsUrl($pdo, $clip['source_hls_url'] ?? '') ?? '';
+            if (empty($clip_fallback)) $clip_fallback = deriveFallbackUrl($clip_play_url);
+        }
+        $clip_dash_url = getDashUrl($clip_src_row);
+        if ($clip_dash_url) $clip_dash_url = resolveRustfsUrl($pdo, $clip_dash_url) ?? '';
+    ?>
+    <div class="card vr-clip-playable" style="cursor:pointer;" data-clip-id="<?= (int)$clip['id'] ?>" data-source="<?= htmlspecialchars($clip_play_url) ?>"<?php if ($clip_fallback && $clip_fallback !== $clip_play_url): ?> data-fallback-url="<?= htmlspecialchars($clip_fallback) ?>"<?php endif; ?><?php if ($clip_dash_url): ?> data-dash-url="<?= htmlspecialchars($clip_dash_url) ?>"<?php endif; ?>>
         <div style="position: relative; background: var(--bg-card); border-bottom: 1px solid var(--border); aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 8px 8px 0 0;">
             <?php if (!empty($clip['thumbnail_path'])): ?>
             <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $clip['thumbnail_path'])) ?>" alt="Clip thumbnail" loading="lazy" style="width: 100%; height: 100%; object-fit: cover;">
