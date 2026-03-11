@@ -31,6 +31,30 @@ if ($vr_is_tv_viewer) {
 }
 
 // -- Tab & Filter parameters -----------------------------------------------
+
+// Helper: resolve clip video URLs from source fields (avoids duplication in grid/list/game views)
+function vr_resolve_clip_urls($pdo, $clip) {
+    $src_row = [
+        'file_path' => $clip['source_path'] ?? '',
+        'hls_url' => $clip['source_hls_url'] ?? '',
+        'hls_status' => $clip['source_hls_status'] ?? '',
+        'dash_url' => $clip['source_dash_url'] ?? '',
+        'dash_manifest_url' => $clip['source_dash_manifest_url'] ?? ''
+    ];
+    $play_url = resolveRustfsUrl($pdo, getPreferredVideoUrl($src_row)) ?? '';
+    $fallback = '';
+    if (preg_match('/\.m3u8(\?|&|$)/i', $play_url)) {
+        $orig = resolveRustfsUrl($pdo, $clip['source_path'] ?? '') ?? '';
+        if ($orig && $orig !== $play_url) $fallback = $orig;
+    } else {
+        $fallback = resolveRustfsUrl($pdo, $clip['source_hls_url'] ?? '') ?? '';
+        if (empty($fallback)) $fallback = deriveFallbackUrl($play_url);
+    }
+    $dash_url = getDashUrl($src_row);
+    if ($dash_url) $dash_url = resolveRustfsUrl($pdo, $dash_url) ?? '';
+    return ['play_url' => $play_url, 'fallback' => $fallback, 'dash_url' => $dash_url];
+}
+
 $vr_tab = isset($_GET['tab']) ? preg_replace('/[^a-z_]/', '', $_GET['tab']) : 'by_game';
 if (!in_array($vr_tab, ['clips', 'by_game', 'scouting', 'device_pair'])) $vr_tab = 'by_game';
 
@@ -410,18 +434,10 @@ if (!function_exists('vr_safe_color')) {
 <?php elseif ($vr_view_mode === 'grid'): ?>
 <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; margin-top: 20px;">
     <?php foreach ($vr_clips as $clip):
-        $clip_src_row = ['file_path' => $clip['source_path'] ?? '', 'hls_url' => $clip['source_hls_url'] ?? '', 'hls_status' => $clip['source_hls_status'] ?? '', 'dash_url' => $clip['source_dash_url'] ?? '', 'dash_manifest_url' => $clip['source_dash_manifest_url'] ?? ''];
-        $clip_play_url = resolveRustfsUrl($pdo, getPreferredVideoUrl($clip_src_row)) ?? '';
-        $clip_fallback = '';
-        if (preg_match('/\.m3u8(\?|&|$)/i', $clip_play_url)) {
-            $orig = resolveRustfsUrl($pdo, $clip['source_path'] ?? '') ?? '';
-            if ($orig && $orig !== $clip_play_url) $clip_fallback = $orig;
-        } else {
-            $clip_fallback = resolveRustfsUrl($pdo, $clip['source_hls_url'] ?? '') ?? '';
-            if (empty($clip_fallback)) $clip_fallback = deriveFallbackUrl($clip_play_url);
-        }
-        $clip_dash_url = getDashUrl($clip_src_row);
-        if ($clip_dash_url) $clip_dash_url = resolveRustfsUrl($pdo, $clip_dash_url) ?? '';
+        $clip_urls = vr_resolve_clip_urls($pdo, $clip);
+        $clip_play_url = $clip_urls['play_url'];
+        $clip_fallback = $clip_urls['fallback'];
+        $clip_dash_url = $clip_urls['dash_url'];
     ?>
     <div class="card vr-clip-playable" style="cursor:pointer;" data-clip-id="<?= (int)$clip['id'] ?>" data-source="<?= htmlspecialchars($clip_play_url) ?>"<?php if ($clip_fallback && $clip_fallback !== $clip_play_url): ?> data-fallback-url="<?= htmlspecialchars($clip_fallback) ?>"<?php endif; ?><?php if ($clip_dash_url): ?> data-dash-url="<?= htmlspecialchars($clip_dash_url) ?>"<?php endif; ?>>
         <div style="position: relative; background: var(--bg-card); border-bottom: 1px solid var(--border); aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 8px 8px 0 0;">
@@ -471,18 +487,10 @@ ksort($grouped);
     </div>
     <div class="card-body" style="padding: 0;">
         <?php foreach ($group_clips as $clip):
-            $clip_src_row = ['file_path' => $clip['source_path'] ?? '', 'hls_url' => $clip['source_hls_url'] ?? '', 'hls_status' => $clip['source_hls_status'] ?? '', 'dash_url' => $clip['source_dash_url'] ?? '', 'dash_manifest_url' => $clip['source_dash_manifest_url'] ?? ''];
-            $clip_play_url = resolveRustfsUrl($pdo, getPreferredVideoUrl($clip_src_row)) ?? '';
-            $clip_fallback = '';
-            if (preg_match('/\.m3u8(\?|&|$)/i', $clip_play_url)) {
-                $orig = resolveRustfsUrl($pdo, $clip['source_path'] ?? '') ?? '';
-                if ($orig && $orig !== $clip_play_url) $clip_fallback = $orig;
-            } else {
-                $clip_fallback = resolveRustfsUrl($pdo, $clip['source_hls_url'] ?? '') ?? '';
-                if (empty($clip_fallback)) $clip_fallback = deriveFallbackUrl($clip_play_url);
-            }
-            $clip_dash_url = getDashUrl($clip_src_row);
-            if ($clip_dash_url) $clip_dash_url = resolveRustfsUrl($pdo, $clip_dash_url) ?? '';
+            $clip_urls = vr_resolve_clip_urls($pdo, $clip);
+            $clip_play_url = $clip_urls['play_url'];
+            $clip_fallback = $clip_urls['fallback'];
+            $clip_dash_url = $clip_urls['dash_url'];
         ?>
         <div class="vr-clip-playable" data-clip-id="<?= (int)$clip['id'] ?>" data-source="<?= htmlspecialchars($clip_play_url) ?>"<?php if ($clip_fallback && $clip_fallback !== $clip_play_url): ?> data-fallback-url="<?= htmlspecialchars($clip_fallback) ?>"<?php endif; ?><?php if ($clip_dash_url): ?> data-dash-url="<?= htmlspecialchars($clip_dash_url) ?>"<?php endif; ?> style="display: grid; grid-template-columns: 80px 1fr; align-items: center; gap: 16px; padding: 14px 20px; border-bottom: 1px solid var(--border); transition: background .2s; cursor: pointer;" onmouseover="this.style.background='var(--bg-hover, rgba(255,255,255,0.02))'" onmouseout="this.style.background='transparent'">
             <div style="width: 80px; height: 56px; background: rgba(var(--primary-rgb, 107,70,193), 0.12); border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid var(--border);">
@@ -608,18 +616,10 @@ ksort($grouped);
         </div>
         <div class="card-body" style="padding: 0;">
             <?php foreach ($cat_clips as $gc):
-                $gc_src_row = ['file_path' => $gc['source_path'] ?? '', 'hls_url' => $gc['source_hls_url'] ?? '', 'hls_status' => $gc['source_hls_status'] ?? '', 'dash_url' => $gc['source_dash_url'] ?? '', 'dash_manifest_url' => $gc['source_dash_manifest_url'] ?? ''];
-                $gc_play_url = resolveRustfsUrl($pdo, getPreferredVideoUrl($gc_src_row)) ?? '';
-                $gc_fallback = '';
-                if (preg_match('/\.m3u8(\?|&|$)/i', $gc_play_url)) {
-                    $orig = resolveRustfsUrl($pdo, $gc['source_path'] ?? '') ?? '';
-                    if ($orig && $orig !== $gc_play_url) $gc_fallback = $orig;
-                } else {
-                    $gc_fallback = resolveRustfsUrl($pdo, $gc['source_hls_url'] ?? '') ?? '';
-                    if (empty($gc_fallback)) $gc_fallback = deriveFallbackUrl($gc_play_url);
-                }
-                $gc_dash_url = getDashUrl($gc_src_row);
-                if ($gc_dash_url) $gc_dash_url = resolveRustfsUrl($pdo, $gc_dash_url) ?? '';
+                $gc_urls = vr_resolve_clip_urls($pdo, $gc);
+                $gc_play_url = $gc_urls['play_url'];
+                $gc_fallback = $gc_urls['fallback'];
+                $gc_dash_url = $gc_urls['dash_url'];
             ?>
             <div class="vr-clip-playable" data-clip-id="<?= (int)$gc['id'] ?>" data-source="<?= htmlspecialchars($gc_play_url) ?>"<?php if ($gc_fallback && $gc_fallback !== $gc_play_url): ?> data-fallback-url="<?= htmlspecialchars($gc_fallback) ?>"<?php endif; ?><?php if ($gc_dash_url): ?> data-dash-url="<?= htmlspecialchars($gc_dash_url) ?>"<?php endif; ?> style="display: grid; grid-template-columns: 80px 1fr; align-items: center; gap: 16px; padding: 14px 20px; border-bottom: 1px solid var(--border); transition: background .2s; cursor: pointer;" onmouseover="this.style.background='var(--bg-hover, rgba(255,255,255,0.02))'" onmouseout="this.style.background='transparent'">
                 <div style="width: 80px; height: 56px; background: rgba(var(--primary-rgb, 107,70,193), 0.12); border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid var(--border);">

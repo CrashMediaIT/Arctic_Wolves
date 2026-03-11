@@ -3373,10 +3373,15 @@ function handleBroadcastTelestration() {
         exit;
     }
 
-    // Validate canvas_data is a data URL (image/png base64)
+    // Validate canvas_data is a data URL (image/png base64) and within size limit
     $canvas_data = $_POST['canvas_data'] ?? '';
     if ($canvas_data !== '' && strpos($canvas_data, 'data:image/png;base64,') !== 0) {
         echo json_encode(['success' => false, 'error' => 'Invalid canvas data format']);
+        exit;
+    }
+    // Reject oversized payloads (2MB max for canvas data URL)
+    if (strlen($canvas_data) > 2 * 1024 * 1024) {
+        echo json_encode(['success' => false, 'error' => 'Canvas data too large']);
         exit;
     }
 

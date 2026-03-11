@@ -43,6 +43,8 @@ test.describe('Auto-cast in gameplan.php', () => {
   test('auto-cast should only fire for valid allowed pages', () => {
     const content = readFile('gameplan.php');
     expect(content).toContain('isset($allowed_pages[$page])');
+    const pwaContent = readFile('views/pwa/gameplan.php');
+    expect(pwaContent).toContain('isset($gp_views[$gp_sub])');
   });
 
   test('auto-cast should check both creator and joined controllers', () => {
@@ -174,6 +176,12 @@ test.describe('Telestration broadcast in process_video.php', () => {
     expect(content).toContain('telestration_seq = telestration_seq + 1');
   });
 
+  test('broadcast handler should reject oversized canvas data', () => {
+    const content = readFile('process_video.php');
+    expect(content).toContain('Canvas data too large');
+    expect(content).toContain('2 * 1024 * 1024');
+  });
+
   test('broadcast handler should check controller authorization', () => {
     const content = readFile('process_video.php');
     const funcStart = content.indexOf('function handleBroadcastTelestration');
@@ -264,6 +272,14 @@ test.describe('Video review clips have playback data attributes', () => {
     expect(content).toContain('vs.file_path AS source_path');
     expect(content).toContain('vs.hls_url AS source_hls_url');
     expect(content).toContain('vs.dash_url AS source_dash_url');
+  });
+
+  test('should use vr_resolve_clip_urls helper to avoid duplication', () => {
+    const content = readFile('views/gameplan/gp_video_review.php');
+    expect(content).toContain('function vr_resolve_clip_urls');
+    const calls = content.match(/vr_resolve_clip_urls\(/g);
+    expect(calls).toBeTruthy();
+    expect(calls.length).toBeGreaterThanOrEqual(3);
   });
 
   test('by_game tab query should include source video fields', () => {
