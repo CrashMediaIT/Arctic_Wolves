@@ -428,9 +428,21 @@ if (!empty($_GET['partial']) && $tv_paired) {
                 if (!data.is_frozen && data.controller_page && data.controller_page !== currentPage) {
                     swapContent(data.controller_page);
                 }
-                // If freeze state changed, update local state
+                // If freeze state changed, update local state and UI
                 if (data.is_frozen !== isFrozen) {
                     isFrozen = data.is_frozen;
+                    var badge = document.querySelector('.tv-frozen-badge');
+                    if (badge) {
+                        badge.style.display = isFrozen ? 'inline-flex' : 'none';
+                    } else if (isFrozen) {
+                        var title = document.querySelector('.tv-topbar-title');
+                        if (title) {
+                            var newBadge = document.createElement('span');
+                            newBadge.className = 'tv-frozen-badge';
+                            newBadge.innerHTML = '<i class="fas fa-snowflake"></i> Frozen';
+                            title.appendChild(newBadge);
+                        }
+                    }
                 }
             })
             .catch(function() { /* retry on next poll */ });
@@ -466,7 +478,7 @@ if ('serviceWorker' in navigator) {
     if (!canvas) return;
     var ctx = canvas.getContext('2d');
     var pairId = <?= (int)$tv_pair_id ?>;
-    var teleSeq = 0;
+    var teleSeq = -1;
 
     function resizeCanvas() {
         var w = window.innerWidth, h = window.innerHeight;
@@ -482,7 +494,7 @@ if ('serviceWorker' in navigator) {
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 var seq = parseInt(data.telestration_seq, 10) || 0;
-                if (seq > 0 && seq !== teleSeq) {
+                if (seq !== teleSeq) {
                     teleSeq = seq;
                     if (data.telestration_data) {
                         var img = new Image();
