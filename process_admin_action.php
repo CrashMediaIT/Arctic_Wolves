@@ -3577,6 +3577,9 @@ if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'location') 
             throw new Exception('Location ID, name, and city are required');
         }
         
+        // Download external image and persist to RustFS
+        $image_url = _persistLocationImage($pdo, $image_url);
+        
         $stmt = $pdo->prepare("UPDATE locations SET name = ?, address = ?, city = ?, province = ?, postal_code = ?, phone = ?, is_active = ?, google_place_id = ?, image_url = ? WHERE id = ?");
         $stmt->execute([$name, $address ?: null, $city, $province ?: null, $postal_code ?: null, $phone ?: null, $is_active, $google_place_id ?: null, $image_url ?: null, $id]);
         Auditor::log($pdo, $user_id, 'update', 'locations', intval($_POST['id']), ['action' => 'edit_location']);
