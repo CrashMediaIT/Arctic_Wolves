@@ -704,27 +704,28 @@ These pages are available to On-ice Coaches and Administrators only (not Health 
 ---
 
 ### 14. Session Evaluations
-**Page:** `?page=coach_session_evaluations`  
+**Integrated into:** `?page=coach_calendar`  
 **Icon:** Clipboard Check  
-**File:** `views/coach_session_evaluations.php` (parent page)
+**Files:** `views/coach_calendar.php` (calendar with evaluation integration), `views/session_evaluation_form.php` (evaluation form)
 
-**Purpose:** Evaluate athlete performance during training sessions.
-
-**Tabs:**
-
-#### 14.1 Evaluations List
-**Main view** - List of sessions needing evaluation
+**Purpose:** Evaluate athlete performance during training sessions directly from the coach calendar.
 
 **Features:**
-- Sessions awaiting evaluation
-- Completed evaluations
-- Filter by date, athlete, session type
-- Quick evaluate button
+- Evaluation indicators on session cards showing evaluation name and status
+- "Evaluate" button on sessions without evaluations opens a Start Evaluation modal
+- "Continue Evaluation" link on sessions with existing evaluations goes to evaluation form
+- Start Evaluation modal with:
+  - Evaluation template selection (from eval framework)
+  - Athlete roster picker (checkboxes for assigned athletes)
+  - Auto-name from template or custom name
+- Evaluations created via AJAX to `process_session_evaluations.php` (`start_evaluation` action)
 
 **Testing Focus:**
-- Unevaluated sessions appear
-- Completed evaluations marked
-- Filters work correctly
+- Evaluation data loads alongside sessions on calendar
+- "Evaluate" opens template/athlete selection modal
+- "Continue Evaluation" links to evaluation form
+- Start Evaluation creates evaluation and redirects to form
+- Navigation does not reference removed `coach_session_evaluations` page
 
 #### 14.2 Evaluation Form
 **Page:** `?page=session_evaluation_form`  
@@ -2526,8 +2527,8 @@ This section provides important test scenarios that span multiple features.
 **Objective:** Test evaluation creation and athlete visibility.
 
 **Steps:**
-1. Coach navigates to Session Evaluations
-2. Coach selects session to evaluate
+1. Coach navigates to Calendar and clicks "Evaluate" on a session
+2. Coach selects evaluation template and athletes from roster
 3. Coach fills evaluation form for athlete
 4. Coach submits evaluation
 5. Athlete logs in and views Performance Stats
