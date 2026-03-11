@@ -398,6 +398,18 @@ if (!empty($_GET['partial']) && $tv_paired) {
                 })
                 .then(function(html) {
                     container.innerHTML = html;
+                    // innerHTML doesn't execute <script> tags — evaluate them manually
+                    var scripts = container.querySelectorAll('script');
+                    for (var i = 0; i < scripts.length; i++) {
+                        var oldScript = scripts[i];
+                        var newScript = document.createElement('script');
+                        if (oldScript.src) {
+                            newScript.src = oldScript.src;
+                        } else {
+                            newScript.textContent = oldScript.textContent;
+                        }
+                        oldScript.parentNode.replaceChild(newScript, oldScript);
+                    }
                     container.style.opacity = '1';
                     currentPage = newPage;
                     tvTransitioning = false;
@@ -476,7 +488,6 @@ if ('serviceWorker' in navigator) {
 (function() {
     var canvas = document.getElementById('tvTeleCanvas');
     if (!canvas) return;
-    var ctx = canvas.getContext('2d');
     var pairId = <?= (int)$tv_pair_id ?>;
     var teleSeq = -1;
 
@@ -500,14 +511,18 @@ if ('serviceWorker' in navigator) {
                         var img = new Image();
                         img.onload = function() {
                             resizeCanvas();
+                            // Get fresh context after potential resize (canvas resize resets state)
+                            var ctx = canvas.getContext('2d');
                             ctx.clearRect(0, 0, canvas.width, canvas.height);
                             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                         };
                         img.onerror = function() {
+                            var ctx = canvas.getContext('2d');
                             ctx.clearRect(0, 0, canvas.width, canvas.height);
                         };
                         img.src = data.telestration_data;
                     } else {
+                        var ctx = canvas.getContext('2d');
                         ctx.clearRect(0, 0, canvas.width, canvas.height);
                     }
                 }

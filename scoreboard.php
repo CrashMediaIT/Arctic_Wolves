@@ -403,6 +403,15 @@ if ($active_game) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="css/style-guide.css?v=<?= filemtime(__DIR__ . '/css/style-guide.css') ?>">
     <link rel="stylesheet" href="css/scoreboard.css?v=<?= filemtime(__DIR__ . '/css/scoreboard.css') ?>">
+    <script>
+    // Constants must be defined before scoreboard.js executes (defer preserves order)
+    var CSRF_TOKEN = '<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES) ?>';
+    var ACTIVE_GAME_ID = <?= $active_game ? (int)$active_game['id'] : 'null' ?>;
+    var CUSTOM_BUZZER_URL = '<?= htmlspecialchars($custom_buzzer_url, ENT_QUOTES) ?>';
+    var CUSTOM_HORN_URL = '<?= htmlspecialchars($custom_horn_url, ENT_QUOTES) ?>';
+    var IS_ADMIN = <?= $isAdmin ? 'true' : 'false' ?>;
+    </script>
+    <script defer src="js/scoreboard.js?v=<?= filemtime(__DIR__ . '/js/scoreboard.js') ?>"></script>
 </head>
 <body class="sb-body">
 <script>document.documentElement.classList.add('sb-html');</script>
@@ -435,13 +444,6 @@ if ($active_game) {
 
 <!-- ── Scripts ─────────────────────────────────────────── -->
 <script>
-// CSRF token for AJAX requests
-const CSRF_TOKEN = '<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES) ?>';
-const ACTIVE_GAME_ID = <?= $active_game ? (int)$active_game['id'] : 'null' ?>;
-const CUSTOM_BUZZER_URL = '<?= htmlspecialchars($custom_buzzer_url, ENT_QUOTES) ?>';
-const CUSTOM_HORN_URL = '<?= htmlspecialchars($custom_horn_url, ENT_QUOTES) ?>';
-const IS_ADMIN = <?= $isAdmin ? 'true' : 'false' ?>;
-
 // Live clock in topbar – anchored to server time & configured timezone
 (function() {
     var sbTimezone = '<?= htmlspecialchars(date_default_timezone_get(), ENT_QUOTES) ?>';
@@ -473,6 +475,5 @@ const IS_ADMIN = <?= $isAdmin ? 'true' : 'false' ?>;
     setInterval(updateClock, 1000);
 })();
 </script>
-<script src="js/scoreboard.js?v=<?= filemtime(__DIR__ . '/js/scoreboard.js') ?>"></script>
 </body>
 </html>
