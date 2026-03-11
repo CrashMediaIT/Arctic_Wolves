@@ -573,6 +573,8 @@ function sbSaveSettings(e, section) {
     e.preventDefault();
     var form = e.target;
     var fd = new FormData(form);
+    fd.append('action', 'save_settings');
+    fd.append('csrf_token', CSRF_TOKEN);
     fd.append('section', section);
 
     fetch('process_scoreboard.php', {
@@ -581,16 +583,7 @@ function sbSaveSettings(e, section) {
             'X-Requested-With': 'XMLHttpRequest',
             'X-CSRF-Token': CSRF_TOKEN
         },
-        body: (function() {
-            var params = new URLSearchParams();
-            params.append('action', 'save_settings');
-            params.append('csrf_token', CSRF_TOKEN);
-            params.append('section', section);
-            for (var pair of fd.entries()) {
-                params.append(pair[0], pair[1]);
-            }
-            return params;
-        })()
+        body: fd
     }).then(function(r) { return r.json(); })
     .then(function(d) {
         if (d.success) {
@@ -598,6 +591,8 @@ function sbSaveSettings(e, section) {
         } else {
             alert(d.message || 'Failed to save settings');
         }
+    }).catch(function(err) {
+        alert('Network error – please try again.');
     });
     return false;
 }
@@ -630,7 +625,7 @@ function sbUploadBuzzerSound(e) {
         } else {
             alert(d.message || 'Upload failed');
         }
-    });
+    }).catch(function() { alert('Network error – please try again.'); });
     return false;
 }
 
@@ -647,7 +642,8 @@ function sbRemoveBuzzerSound() {
     }).then(function(r) { return r.json(); })
     .then(function(d) {
         if (d.success) window.location.reload();
-    });
+        else alert(d.message || 'Failed to remove buzzer');
+    }).catch(function() { alert('Network error – please try again.'); });
 }
 
 function sbUploadHornSound(e) {
@@ -678,7 +674,7 @@ function sbUploadHornSound(e) {
         } else {
             alert(d.message || 'Upload failed');
         }
-    });
+    }).catch(function() { alert('Network error – please try again.'); });
     return false;
 }
 
@@ -695,7 +691,8 @@ function sbRemoveHornSound() {
     }).then(function(r) { return r.json(); })
     .then(function(d) {
         if (d.success) window.location.reload();
-    });
+        else alert(d.message || 'Failed to remove horn');
+    }).catch(function() { alert('Network error – please try again.'); });
 }
 
 function sbSelectLibraryItem(type, url) {
@@ -712,7 +709,7 @@ function sbSelectLibraryItem(type, url) {
     .then(function(d) {
         if (d.success) window.location.reload();
         else alert(d.message || 'Failed to select sound');
-    });
+    }).catch(function() { alert('Network error – please try again.'); });
 }
 
 function sbRemoveLibraryItem(type, url) {
@@ -730,7 +727,7 @@ function sbRemoveLibraryItem(type, url) {
     .then(function(d) {
         if (d.success) window.location.reload();
         else alert(d.message || 'Failed to remove sound');
-    });
+    }).catch(function() { alert('Network error – please try again.'); });
 }
 
 function sbUploadTeamLogo(e) {
@@ -761,7 +758,7 @@ function sbUploadTeamLogo(e) {
         } else {
             alert(d.message || 'Upload failed');
         }
-    });
+    }).catch(function() { alert('Network error – please try again.'); });
     return false;
 }
 
@@ -804,7 +801,7 @@ function sbDeleteTeamLogo(teamId, teamName) {
         } else {
             alert(d.message || 'Failed to remove logo');
         }
-    });
+    }).catch(function() { alert('Network error – please try again.'); });
 }
 
 // ── Drag-and-drop upload zone helpers ──
