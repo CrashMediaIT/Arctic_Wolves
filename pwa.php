@@ -246,7 +246,6 @@ $allowed_pages = [
     'coach_goals'             => 'views/coach_goals.php',
     'manage_athletes'         => 'views/manage_athletes.php',
     'athletes'                => 'views/athletes.php',
-    'coach_session_evaluations' => 'views/coach_session_evaluations.php',
     'session_evaluation_form'   => 'views/session_evaluation_form.php',
     'coach_pending_reviews'     => 'views/coach_video_reviews.php',
     'coach_video_reviews'       => 'views/coach_video_reviews.php',

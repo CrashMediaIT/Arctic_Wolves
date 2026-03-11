@@ -104,10 +104,6 @@
             <i class="fas fa-hockey-puck"></i> Shot Speed
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
-        <a href="?page=coach_session_evaluations" class="pwa-menu-item">
-            <i class="fas fa-clipboard-check"></i> Session Evaluations
-            <i class="fas fa-chevron-right menu-chevron"></i>
-        </a>
         <a href="?page=coach_video_reviews" class="pwa-menu-item">
             <i class="fas fa-video"></i> Video Reviews
             <i class="fas fa-chevron-right menu-chevron"></i>
