@@ -235,8 +235,7 @@ test.describe('Scoreboard view structure', () => {
 
   test('scoreboard display has music controls', () => {
     const content = readFile('views/scoreboard/scoreboard_display.php');
-    expect(content).toContain('sbSpotifyConnect');
-    expect(content).toContain('sbSubsonicBrowse');
+    expect(content).toContain('sbOpenMusicLibrary');
     expect(content).toContain('sbToggleMic');
     expect(content).toContain('sbSpeakerSettings');
   });
@@ -1429,7 +1428,7 @@ test.describe('NHL penalty rules implementation', () => {
   test('JS sbClearPenaltyOnGoal skips major penalties', () => {
     const content = readFile('js/scoreboard.js');
     const fnStart = content.indexOf('function sbClearPenaltyOnGoal(');
-    const fn = content.substring(fnStart, fnStart + 800);
+    const fn = content.substring(fnStart, fnStart + 1800);
     expect(fn).toContain("'minor'");
     expect(fn).toContain("'double_minor'");
     // Only clear ONE (the oldest)
@@ -1832,11 +1831,11 @@ test.describe('Apple Music and multiple audio outputs', () => {
     expect(content).toContain('apple_music_token');
   });
 
-  test('display view shows Apple Music button when configured', () => {
+  test('display view shows Apple Music tab in music library when configured', () => {
     const content = readFile('views/scoreboard/scoreboard_display.php');
     expect(content).toContain('apple_music_configured');
     expect(content).toContain('Apple Music');
-    expect(content).toContain('sbAppleMusicConnect');
+    expect(content).toContain('sbMusicLibraryLoadSource');
   });
 
   test('scoreboard.php loads network_speakers config', () => {
