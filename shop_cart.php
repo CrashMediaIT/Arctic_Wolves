@@ -108,7 +108,8 @@ $cartCount = $cartData['item_count'];
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shopping Cart | Arctic Wolves</title>
     
-    <link rel="icon" type="image/png" href="<?= htmlspecialchars($site_favicon_url) ?>">
+    <?php $__favType = getFaviconMimeType($site_favicon_url); ?>
+    <link rel="icon" <?= $__favType ? 'type="' . $__favType . '"' : '' ?> href="<?= htmlspecialchars($site_favicon_url) ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="style.css">
     <style>

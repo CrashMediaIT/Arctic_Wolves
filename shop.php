@@ -168,7 +168,8 @@ $cartCount = array_sum(array_column($_SESSION['shop_cart'], 'quantity'));
     <title>Shop | Arctic Wolves</title>
     <meta name="description" content="Shop official Arctic Wolves merchandise - jerseys, apparel, and accessories.">
     
-    <link rel="icon" type="image/png" href="<?= htmlspecialchars($site_favicon_url) ?>">
+    <?php $__favType = getFaviconMimeType($site_favicon_url); ?>
+    <link rel="icon" <?= $__favType ? 'type="' . $__favType . '"' : '' ?> href="<?= htmlspecialchars($site_favicon_url) ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="style.css">
     <style>

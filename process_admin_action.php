@@ -378,6 +378,79 @@ $user_id = $_SESSION['user_id'] ?? 0;
 // =========================================================
 // MODULE 1: LOCATION MANAGEMENT
 // =========================================================
+
+/**
+ * Download a location image from an external URL and persist it to RustFS.
+ * Returns the RustFS proxy URL on success, or the original URL as fallback.
+ */
+function _persistLocationImage($pdo, $image_url) {
+    if (empty($image_url)) {
+        return null;
+    }
+
+    // If the URL is already a RustFS proxy path, keep it as-is
+    if (strpos($image_url, 'api/media.php?key=') !== false || strpos($image_url, 'Images/') === 0) {
+        return $image_url;
+    }
+
+    // Only download http/https URLs
+    if (strpos($image_url, 'http://') !== 0 && strpos($image_url, 'https://') !== 0) {
+        return $image_url;
+    }
+
+    try {
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL            => $image_url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_TIMEOUT        => 30,
+            CURLOPT_USERAGENT      => 'Mozilla/5.0 (compatible; ArcticWolvesBot/1.0)',
+            CURLOPT_SSL_VERIFYPEER => true,
+        ]);
+        $data = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($http_code !== 200 || empty($data)) {
+            return $image_url; // fallback to original URL
+        }
+
+        // Validate it is actually an image
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $mime  = $finfo->buffer($data);
+        $mime_to_ext = [
+            'image/jpeg' => 'jpg',
+            'image/png'  => 'png',
+            'image/gif'  => 'gif',
+            'image/webp' => 'webp',
+        ];
+        if (!isset($mime_to_ext[$mime])) {
+            return $image_url; // not a valid image, keep original
+        }
+
+        $ext      = $mime_to_ext[$mime];
+        $filename = 'location_' . bin2hex(random_bytes(16)) . '.' . $ext;
+        $tmp_file = sys_get_temp_dir() . '/' . $filename;
+
+        if (!file_put_contents($tmp_file, $data)) {
+            return $image_url;
+        }
+
+        $persist = persistUploadedFile($pdo, $tmp_file, 'locations', $filename);
+        @unlink($tmp_file);
+
+        if (!empty($persist['rustfs_url'])) {
+            return $persist['rustfs_url'];
+        }
+
+        return $image_url; // fallback to original
+    } catch (\Throwable $e) {
+        error_log("_persistLocationImage: " . $e->getMessage());
+        return $image_url;
+    }
+}
+
 if ($action == 'add_location') {
     $pdo->prepare("INSERT INTO locations (name, city) VALUES (?, ?)")->execute([trim($_POST['name']), trim($_POST['city'])]);
     Auditor::log($pdo, $user_id, 'create', 'locations', $pdo->lastInsertId(), ['action' => 'add_location', 'name' => trim($_POST['name']), 'city' => trim($_POST['city'])]);
@@ -395,6 +468,9 @@ if ($action == 'create_location') {
         if (empty($name) || empty($city)) {
             throw new Exception('Name and city are required');
         }
+        
+        // Download external image and persist to RustFS
+        $image_url = _persistLocationImage($pdo, $image_url);
         
         $stmt = $pdo->prepare("INSERT INTO locations (name, city, google_place_id, image_url) VALUES (?, ?, ?, ?)");
         $stmt->execute([$name, $city, $google_place_id ?: null, $image_url ?: null]);
@@ -430,6 +506,9 @@ if ($action == 'edit_location') {
         if ($location_id <= 0 || empty($name) || empty($city)) {
             throw new Exception('Invalid data provided');
         }
+        
+        // Download external image and persist to RustFS
+        $image_url = _persistLocationImage($pdo, $image_url);
         
         $stmt = $pdo->prepare("UPDATE locations SET name = ?, city = ?, google_place_id = ?, image_url = ? WHERE id = ?");
         $stmt->execute([$name, $city, $google_place_id ?: null, $image_url ?: null, $location_id]);

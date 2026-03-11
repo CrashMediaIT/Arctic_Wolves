@@ -62,3 +62,27 @@ function getSiteFaviconUrl($pdo) {
         return DEFAULT_LOGO_URL;
     }
 }
+
+/**
+ * Detect the MIME type for a favicon URL based on file extension.
+ * Supports ICO, PNG, SVG, GIF, JPEG, and WEBP formats.
+ * Returns an empty string if the type cannot be determined, allowing
+ * the browser to auto-detect.
+ *
+ * @param string $url The favicon URL
+ * @return string MIME type string or empty string
+ */
+function getFaviconMimeType($url) {
+    $path = parse_url($url, PHP_URL_PATH) ?? $url;
+    $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+    $map = [
+        'ico'  => 'image/x-icon',
+        'png'  => 'image/png',
+        'svg'  => 'image/svg+xml',
+        'gif'  => 'image/gif',
+        'jpg'  => 'image/jpeg',
+        'jpeg' => 'image/jpeg',
+        'webp' => 'image/webp',
+    ];
+    return $map[$ext] ?? '';
+}
