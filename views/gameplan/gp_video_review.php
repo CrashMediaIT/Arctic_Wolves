@@ -825,7 +825,7 @@ try {
         </div>
         <div class="card-body">
             <p style="font-size: 13px; color: var(--text-muted, #888); margin-bottom: 16px;">
-                As a controller, you manage what appears on the paired TV display. Navigate to any page and it will appear on the TV. Use freeze to navigate privately without updating the TV.
+                As a controller, everything you do is cast to the paired TV display. Simply use Game Plan as normal — the TV automatically mirrors your current page. Use freeze to pause casting and navigate privately.
             </p>
 
             <!-- Create New Pair -->
@@ -911,26 +911,24 @@ try {
                     <?php endif; ?>
                 </div>
 
-                <!-- TV Navigation — controller sends pages to the TV viewer -->
+                <!-- Casting Status — TV automatically follows controller navigation -->
                 <?php if ($pair_is_active): ?>
                 <div style="padding: 12px 16px; border-top: 1px solid var(--border, #333); background: rgba(107,70,193,.04);">
-                    <div style="font-size: 10px; font-weight: 700; color: var(--text-muted, #888); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px;">
-                        <i class="fas fa-tv" style="margin-right: 4px;"></i> Navigate TV Display
+                    <div style="font-size: 10px; font-weight: 700; color: var(--text-muted, #888); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px;">
+                        <i class="fas fa-broadcast-tower" style="margin-right: 4px;"></i> Casting
                         <?php if ($pair['is_frozen']): ?>
-                        <span style="color: var(--warning, #F59E0B); margin-left: 6px;"><i class="fas fa-snowflake"></i> Frozen — TV won't update</span>
+                        <span style="color: var(--warning, #F59E0B); margin-left: 6px;"><i class="fas fa-snowflake"></i> Paused — TV stays on current view</span>
+                        <?php else: ?>
+                        <span style="color: var(--success, #10B981); margin-left: 6px;"><i class="fas fa-circle" style="font-size: 7px; vertical-align: middle;"></i> Live</span>
                         <?php endif; ?>
                     </div>
-                    <div style="display: flex; flex-wrap: wrap; gap: 6px;" id="tvNavBtns_<?= (int)$pair['id'] ?>">
-                        <button type="button" class="btn btn-sm btn-secondary tv-nav-btn" data-pair="<?= (int)$pair['id'] ?>" data-page="home"><i class="fas fa-house"></i> Dashboard</button>
-                        <button type="button" class="btn btn-sm btn-secondary tv-nav-btn" data-pair="<?= (int)$pair['id'] ?>" data-page="video_review"><i class="fas fa-film"></i> Video Review</button>
-                        <button type="button" class="btn btn-sm btn-secondary tv-nav-btn" data-pair="<?= (int)$pair['id'] ?>" data-page="game_plan"><i class="fas fa-clipboard-list"></i> Game Plans</button>
-                        <button type="button" class="btn btn-sm btn-secondary tv-nav-btn" data-pair="<?= (int)$pair['id'] ?>" data-page="whiteboard"><i class="fas fa-chalkboard"></i> Whiteboard</button>
-                        <button type="button" class="btn btn-sm btn-secondary tv-nav-btn" data-pair="<?= (int)$pair['id'] ?>" data-page="lines"><i class="fas fa-users-line"></i> Game Lines</button>
-                        <button type="button" class="btn btn-sm btn-secondary tv-nav-btn" data-pair="<?= (int)$pair['id'] ?>" data-page="roster"><i class="fas fa-id-card"></i> Roster</button>
-                        <button type="button" class="btn btn-sm btn-secondary tv-nav-btn" data-pair="<?= (int)$pair['id'] ?>" data-page="calendar"><i class="fas fa-calendar"></i> Calendar</button>
-                        <button type="button" class="btn btn-sm btn-secondary tv-nav-btn" data-pair="<?= (int)$pair['id'] ?>" data-page="film_room"><i class="fas fa-video"></i> Film Room</button>
-                        <button type="button" class="btn btn-sm btn-secondary tv-nav-btn" data-pair="<?= (int)$pair['id'] ?>" data-page="review_sessions"><i class="fas fa-chalkboard-user"></i> Reviews</button>
-                    </div>
+                    <p style="font-size: 12px; color: var(--text-muted, #888); margin: 0;">
+                        <?php if ($pair['is_frozen']): ?>
+                        Casting is paused. Navigate freely without updating the TV. Press <strong>Unfreeze</strong> to resume casting.
+                        <?php else: ?>
+                        The TV is mirroring your navigation. Currently showing: <strong><?= htmlspecialchars(ucwords(str_replace('_', ' ', $pair['controller_page'] ?? 'home'))) ?></strong>
+                        <?php endif; ?>
+                    </p>
                 </div>
                 <?php endif; ?>
             </div>
@@ -970,7 +968,7 @@ try {
         </div>
         <div class="card-body">
             <p style="font-size: 13px; color: var(--text-muted, #888); margin-bottom: 16px;">
-                The TV viewer display requires pairing before showing any content. Once paired, the controller navigates and the TV follows. Use the <strong>Game Plan TV</strong> app on your TV or go to <code style="background: rgba(107,70,193,.1); padding: 2px 6px; border-radius: 4px; font-size: 12px;">/gameplan_tv.php</code> on any large display.
+                The TV viewer display requires pairing before showing any content. Once paired, everything you do on Game Plan is automatically cast to the TV — just like screen casting. Use the <strong>Game Plan TV</strong> app on your TV or go to <code style="background: rgba(107,70,193,.1); padding: 2px 6px; border-radius: 4px; font-size: 12px;">/gameplan_tv.php</code> on any large display.
             </p>
 
             <!-- Viewer Info: How It Works -->
@@ -987,11 +985,11 @@ try {
                     </div>
                     <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px;">
                         <span style="background: var(--primary, #6B46C1); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0;">3</span>
-                        <span>Use the <strong>Navigate TV Display</strong> buttons to control what the TV shows — all pages are available</span>
+                        <span><strong>Use Game Plan as normal</strong> — everything you navigate to is automatically cast to the TV</span>
                     </div>
                     <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px;">
                         <span style="background: var(--primary, #6B46C1); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0;">4</span>
-                        <span><strong>Freeze</strong> the viewer to navigate on your device without updating the TV</span>
+                        <span><strong>Freeze</strong> to pause casting — navigate privately without updating the TV. Unfreeze to resume</span>
                     </div>
                     <div style="display: flex; align-items: flex-start; gap: 8px;">
                         <span style="background: var(--primary, #6B46C1); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0;">5</span>
@@ -1015,44 +1013,5 @@ function toggleFreeze(pairId) {
         if (data.success) { persistToast('Viewer freeze state updated', 'success'); location.reload(); }
     });
 }
-
-// TV navigation — send page changes to the paired TV
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('.tv-nav-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            var pairId = this.dataset.pair;
-            var page = this.dataset.page;
-            var csrfEl = document.querySelector('input[name="csrf_token"]');
-            if (!csrfEl || !csrfEl.value) { if (typeof persistToast === 'function') persistToast('Session expired. Please reload.', 'error'); return; }
-
-            btn.disabled = true;
-            btn.style.opacity = '0.5';
-
-            fetch('/process_video.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'action=navigate_pair&pair_id=' + pairId + '&target_page=' + encodeURIComponent(page) + '&csrf_token=' + encodeURIComponent(csrfEl.value)
-            }).then(function(r) { return r.json(); }).then(function(data) {
-                btn.disabled = false;
-                btn.style.opacity = '1';
-                if (data.success) {
-                    // Highlight the active nav button
-                    var container = document.getElementById('tvNavBtns_' + pairId);
-                    if (container) {
-                        container.querySelectorAll('.tv-nav-btn').forEach(function(b) {
-                            b.classList.remove('btn-primary');
-                            b.classList.add('btn-secondary');
-                        });
-                    }
-                    btn.classList.remove('btn-secondary');
-                    btn.classList.add('btn-primary');
-                }
-            }).catch(function() {
-                btn.disabled = false;
-                btn.style.opacity = '1';
-            });
-        });
-    });
-});
 </script>
 <?php endif; ?>

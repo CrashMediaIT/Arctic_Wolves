@@ -119,6 +119,24 @@ if ($isAdmin) {
 
 $view_file = $allowed_pages[$page] ?? $allowed_pages['home'];
 
+// Auto-cast: sync current page to any active unfrozen pairs this user controls.
+// This makes TV pairing work like casting — the controller navigates normally and
+// the TV automatically follows without needing dedicated navigation buttons.
+if ($isAnyCoach && isset($allowed_pages[$page])) {
+    try {
+        $castStmt = $pdo->prepare("
+            UPDATE vr_device_pairs
+            SET controller_page = ?, status = 'active'
+            WHERE is_frozen = 0
+              AND status IN ('paired', 'active')
+              AND (created_by = ? OR id IN (SELECT pair_id FROM vr_device_pair_controllers WHERE user_id = ?))
+        ");
+        $castStmt->execute([$page, $user_id, $user_id]);
+    } catch (PDOException $e) {
+        // Silently ignore — casting is best-effort
+    }
+}
+
 // Load recent videos for the home page
 $recentVideos = [];
 try {

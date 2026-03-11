@@ -222,22 +222,27 @@ if (!function_exists('vr_format_duration')) {
         <div class="vr-form-actions">
             <button type="submit" class="vr-btn-primary" id="vrUploadSubmitBtn"><i class="fas fa-upload"></i> Upload Source</button>
         </div>
-        <!-- Upload progress overlay -->
-        <div id="vrUploadProgressOverlay" style="display:none; margin-top:16px; padding:16px; border-radius:10px; background:var(--gp-card, #1a1a2e); border:1px solid var(--gp-border, #333);">
-            <div style="font-weight:600; margin-bottom:8px;" id="vrUploadProgressStatus">Uploading video...</div>
-            <div style="width:100%; background:rgba(255,255,255,0.1); border-radius:8px; overflow:hidden; height:20px;">
-                <div id="vrUploadProgressBar" style="width:0%; height:100%; background:var(--gp-primary-light, #6B46C1); border-radius:8px; transition:width 0.3s;"></div>
+        <!-- Upload progress modal (standard pattern) -->
+        <div id="vrUploadProgressOverlay" class="upload-progress-overlay" style="display: none;">
+            <div class="upload-progress-card">
+                <div class="spinner" id="frUploadSpinner"></div>
+                <h4>Uploading Video...</h4>
+                <p class="upload-progress-text">Uploading your video to the film room. Please do not close this page.</p>
+                <div class="upload-progress-bar-container">
+                    <div class="upload-progress-bar" id="vrUploadProgressBar"></div>
+                </div>
+                <span class="upload-progress-percent" id="vrUploadProgressPercent">0%</span>
+                <span class="upload-progress-status" id="vrUploadProgressStatus">Preparing upload...</span>
+                <details id="frUploadLogDetails" style="width:100%;margin-top:12px;text-align:left;">
+                    <summary style="cursor:pointer;font-weight:600;font-size:13px;color:var(--text-dim,#6b7280);user-select:none;">
+                        <i class="fas fa-terminal"></i> Upload Log
+                    </summary>
+                    <pre id="frUploadLogPre" style="margin-top:6px;max-height:200px;overflow:auto;background:var(--bg-main,#0a0a0f);color:#cdd6f4;padding:10px;border-radius:6px;font-size:11px;white-space:pre-wrap;line-height:1.5;"></pre>
+                </details>
+                <button type="button" class="btn btn-danger" id="vrCancelUploadBtn" style="margin-top: 16px;">
+                    <i class="fas fa-times"></i> Cancel Upload
+                </button>
             </div>
-            <div id="vrUploadProgressPercent" style="text-align:right; font-size:12px; margin-top:4px; color:var(--gp-text-dim, #888);">0%</div>
-            <details id="frUploadLogDetails" style="width:100%;margin-top:12px;text-align:left;">
-                <summary style="cursor:pointer;font-weight:600;font-size:12px;color:var(--text-muted,#6b7280);user-select:none;">
-                    <i class="fas fa-terminal"></i> Upload Log
-                </summary>
-                <pre id="frUploadLogPre" style="margin-top:6px;max-height:200px;overflow:auto;background:var(--bg-main,#0a0a0f);color:#cdd6f4;padding:10px;border-radius:6px;font-size:11px;white-space:pre-wrap;line-height:1.5;"></pre>
-            </details>
-            <button type="button" class="btn btn-danger" id="vrCancelUploadBtn" style="margin-top: 10px; font-size: 13px;">
-                <i class="fas fa-times"></i> Cancel Upload
-            </button>
         </div>
     </form>
 </div>
@@ -646,7 +651,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             var videoFile = fileInput.files[0];
             submitBtn.disabled = true;
-            overlay.style.display = 'block';
+            overlay.style.display = 'flex';
             bar.style.width = '0%';
             percent.textContent = '0%';
             status.textContent = 'Requesting upload URL...';
