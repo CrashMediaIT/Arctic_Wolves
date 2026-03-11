@@ -277,7 +277,7 @@ if (!empty($drill['drill_image'])) {
 <div class="dev-drill-page">
     <?php if ($is_coach_view): ?>
     <a href="?page=development_programs&enrollment_id=<?= (int)$drill['enrollment_id'] ?>" class="dev-drill-back">
-        <i class="fas fa-arrow-left"></i> Back to <?= htmlspecialchars(trim(($drill['athlete_first_name'] ?? '') . ' ' . ($drill['athlete_last_name'] ?? '')) ?: 'Athlete' ?>'s Program
+        <i class="fas fa-arrow-left"></i> Back to <?= htmlspecialchars(trim(($drill['athlete_first_name'] ?? '') . ' ' . ($drill['athlete_last_name'] ?? '')) ?: 'Athlete') ?>'s Program
     </a>
     <?php else: ?>
     <a href="?page=personal_development_my_program" class="dev-drill-back">

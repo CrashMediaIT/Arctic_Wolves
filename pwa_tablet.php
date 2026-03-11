@@ -253,7 +253,6 @@ $allowed_pages = [
     'coach_goals'             => 'views/coach_goals.php',
     'manage_athletes'         => 'views/manage_athletes.php',
     'athletes'                => 'views/athletes.php',
-    'coach_session_evaluations' => 'views/coach_session_evaluations.php',
     'session_evaluation_form'   => 'views/session_evaluation_form.php',
     'coach_pending_reviews'     => 'views/coach_video_reviews.php',
     'coach_video_reviews'       => 'views/coach_video_reviews.php',
@@ -445,7 +444,6 @@ try {
             <a href="?page=roster" class="nav-link <?= $page=='roster'?'active':'' ?>"><i class="fa-solid fa-users-gear"></i> Roster</a>
             <a href="?page=coach_stopwatch" class="nav-link <?= $page=='coach_stopwatch'?'active':'' ?>"><i class="fa-solid fa-stopwatch"></i> Stopwatch</a>
             <a href="?page=coach_shot_speed" class="nav-link <?= $page=='coach_shot_speed'?'active':'' ?>"><i class="fa-solid fa-hockey-puck"></i> Shot Speed</a>
-            <a href="?page=coach_session_evaluations" class="nav-link <?= in_array($page, ['coach_session_evaluations','session_evaluation_form'])?'active':'' ?>"><i class="fa-solid fa-clipboard-check"></i> Session Evaluations</a>
             <a href="?page=coach_video_reviews" class="nav-link <?= in_array($page, ['coach_video_reviews','coach_pending_reviews'])?'active':'' ?>"><i class="fa-solid fa-video"></i> Video Reviews</a>
             <a href="?page=travel" class="nav-link <?= in_array($page, ['travel','mileage'])?'active':'' ?>"><i class="fa-solid fa-plane"></i> Travel</a>
             <a href="?page=record_drill_video" class="nav-link <?= $page=='record_drill_video'?'active':'' ?>"><i class="fa-solid fa-video"></i> Video Recording</a>

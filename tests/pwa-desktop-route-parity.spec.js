@@ -182,12 +182,12 @@ test.describe('PWA Navigation Label Parity with Desktop', () => {
 
   test('pwa_more_menu.php Coaches Corner order matches desktop', () => {
     const content = readFileSync(join(ROOT, 'pwa_more_menu.php'), 'utf-8');
-    // Desktop order: Stopwatch comes before Session Evaluations
+    // Desktop order: Stopwatch comes before Video Reviews (Session Evaluations removed - now on coach calendar)
     const stopwatchIdx = content.indexOf('page=coach_stopwatch');
-    const evalIdx = content.indexOf('page=coach_session_evaluations');
+    const videoReviewsIdx = content.indexOf('page=coach_video_reviews');
     expect(stopwatchIdx).toBeGreaterThan(-1);
-    expect(evalIdx).toBeGreaterThan(-1);
-    expect(stopwatchIdx).toBeLessThan(evalIdx);
+    expect(videoReviewsIdx).toBeGreaterThan(-1);
+    expect(stopwatchIdx).toBeLessThan(videoReviewsIdx);
   });
 
   test('pwa_tablet.php Video nav active state includes record_video and video_review_detail', () => {

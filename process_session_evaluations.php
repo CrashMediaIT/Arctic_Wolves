@@ -46,7 +46,7 @@ function sendResponse($success, $message, $data = []) {
         echo json_encode(array_merge(['success' => $success, 'message' => $message], $data));
     } else {
         $status = $success ? 'success' : 'error';
-        header("Location: dashboard.php?page=coach_session_evaluations&status={$status}&message=" . urlencode($message));
+        header("Location: dashboard.php?page=coach_calendar&status={$status}&message=" . urlencode($message));
     }
     exit;
 }
@@ -174,6 +174,90 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 Auditor::log($pdo, $user_id, 'create', 'session_evaluations', $evaluation_id, ['action' => 'session_evaluation_created']);
                 
                 sendResponse(true, 'Evaluation assigned to session successfully', ['evaluation_id' => $evaluation_id]);
+                break;
+                
+            case 'start_evaluation':
+                // Create evaluation for a session with template and athletes in one step
+                $session_id = intval($_POST['session_id'] ?? 0);
+                $template_id = intval($_POST['template_id'] ?? 0);
+                $name = trim($_POST['name'] ?? '');
+                $athlete_ids = $_POST['athlete_ids'] ?? [];
+                
+                if ($session_id <= 0) {
+                    throw new Exception('Please select a valid session');
+                }
+                
+                // Verify session exists
+                $stmt = $pdo->prepare("SELECT id FROM sessions WHERE id = ?");
+                $stmt->execute([$session_id]);
+                if (!$stmt->fetch()) {
+                    throw new Exception('Session not found');
+                }
+                
+                // Check if evaluation already exists for this session
+                $stmt = $pdo->prepare("SELECT id FROM session_evaluations WHERE session_id = ?");
+                $stmt->execute([$session_id]);
+                $existing = $stmt->fetch();
+                if ($existing) {
+                    // Evaluation already exists - return it so we can redirect
+                    sendResponse(true, 'Evaluation already exists', ['evaluation_id' => $existing['id']]);
+                }
+                
+                // Get template name if template_id provided
+                $eval_name = $name;
+                if ($template_id > 0) {
+                    $stmt = $pdo->prepare("SELECT title FROM evaluation_templates WHERE id = ?");
+                    $stmt->execute([$template_id]);
+                    $tpl = $stmt->fetch(PDO::FETCH_ASSOC);
+                    if ($tpl && empty($eval_name)) {
+                        $eval_name = $tpl['title'];
+                    }
+                }
+                
+                // Create session evaluation with template reference
+                $stmt = $pdo->prepare("
+                    INSERT INTO session_evaluations (session_id, name, description, status, template_id, created_by, created_at)
+                    VALUES (?, ?, '', 'active', ?, ?, NOW())
+                ");
+                $stmt->execute([$session_id, $eval_name, $template_id > 0 ? $template_id : null, $user_id]);
+                $evaluation_id = $pdo->lastInsertId();
+                
+                Auditor::log($pdo, $user_id, 'create', 'session_evaluations', $evaluation_id, ['action' => 'session_evaluation_started']);
+                
+                // Add selected athletes
+                if (is_array($athlete_ids)) {
+                    foreach ($athlete_ids as $aid) {
+                        $aid = intval($aid);
+                        if ($aid <= 0) continue;
+                        
+                        // Get user data (already encrypted in DB)
+                        $stmt = $pdo->prepare("SELECT first_name, last_name, email, date_of_birth FROM users WHERE id = ?");
+                        $stmt->execute([$aid]);
+                        $athlete_user = $stmt->fetch(PDO::FETCH_ASSOC);
+                        if (!$athlete_user) continue;
+                        
+                        // Check for duplicate
+                        $stmt = $pdo->prepare("SELECT id FROM session_evaluation_athletes WHERE session_evaluation_id = ? AND user_id = ?");
+                        $stmt->execute([$evaluation_id, $aid]);
+                        if ($stmt->fetch()) continue;
+                        
+                        $stmt = $pdo->prepare("
+                            INSERT INTO session_evaluation_athletes 
+                            (session_evaluation_id, user_id, first_name, last_name, email, date_of_birth, created_at)
+                            VALUES (?, ?, ?, ?, ?, ?, NOW())
+                        ");
+                        $stmt->execute([
+                            $evaluation_id,
+                            $aid,
+                            $athlete_user['first_name'],
+                            $athlete_user['last_name'],
+                            $athlete_user['email'],
+                            $athlete_user['date_of_birth']
+                        ]);
+                    }
+                }
+                
+                sendResponse(true, 'Evaluation started successfully', ['evaluation_id' => $evaluation_id]);
                 break;
                 
             case 'update_session_evaluation':

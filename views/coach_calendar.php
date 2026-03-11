@@ -29,7 +29,10 @@ $sessions_query = "
            pp.id as practice_plan_id,
            COUNT(DISTINCT b.id) as registered_count,
            MAX(CASE WHEN sc.coach_id = ? THEN 1 ELSE 0 END) as is_assigned_coach,
-           GROUP_CONCAT(DISTINCT pkg.name ORDER BY pkg.name SEPARATOR ', ') as package_names
+           GROUP_CONCAT(DISTINCT pkg.name ORDER BY pkg.name SEPARATOR ', ') as package_names,
+           se.id as evaluation_id,
+           se.name as evaluation_name,
+           se.status as evaluation_status
     FROM sessions s
     LEFT JOIN users c ON s.coach_id = c.id
     LEFT JOIN session_coaches sc ON sc.session_id = s.id
@@ -40,6 +43,7 @@ $sessions_query = "
     LEFT JOIN bookings b ON b.session_id = s.id
     LEFT JOIN package_sessions ps ON ps.session_id = s.id
     LEFT JOIN packages pkg ON ps.package_id = pkg.id
+    LEFT JOIN session_evaluations se ON se.session_id = s.id
     WHERE s.session_date >= DATE_SUB(NOW(), INTERVAL 1 DAY)
       AND s.status = 'scheduled'
 ";
@@ -211,6 +215,23 @@ $assigned_athletes_stmt->execute([$user_id, $user_id]);
 $assigned_athletes = $assigned_athletes_stmt->fetchAll();
 $assigned_athletes = decryptUserRows($assigned_athletes);
 
+// Get evaluation templates for the "Start Evaluation" modal
+$eval_templates = [];
+try {
+    $et_stmt = $pdo->query("
+        SELECT et.id, et.title, et.description,
+               GROUP_CONCAT(ec.name ORDER BY etc2.display_order SEPARATOR ', ') as category_names
+        FROM evaluation_templates et
+        LEFT JOIN evaluation_template_categories etc2 ON et.id = etc2.template_id
+        LEFT JOIN eval_categories ec ON etc2.category_id = ec.id
+        GROUP BY et.id
+        ORDER BY et.title
+    ");
+    $eval_templates = $et_stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log("Evaluation templates fetch note: " . $e->getMessage());
+}
+
 // No demo data - show actual data from database only
 $is_demo_data = false;
 ?>
@@ -287,7 +308,7 @@ $is_demo_data = false;
             $end = $startTs + ($session['duration_minutes'] ?? 60) * 60;
             $is_mine_cal = ($session['coach_user_id'] == $user_id || ($session['is_assigned_coach'] ?? 0) > 0);
         ?>
-        <div class="session-data" data-session-id="<?= $session['id'] ?>" data-date="<?= date('Y-m-d', $dt) ?>" data-time="<?= $timeStr ?>" data-title="<?= htmlspecialchars($session['session_type_name'] ?? $session['title'] ?? 'Session') ?>" data-coach="<?= htmlspecialchars(trim(($session['coach_first_name'] ?? '') . ' ' . ($session['coach_last_name'] ?? '')) ?: '') ?>" data-location="<?= htmlspecialchars($session['location_name'] ?? '') ?>" data-datetime="<?= date('l, F j, Y \a\t g:i A', $startTs) ?>" data-end-time="<?= date('g:i A', $end) ?>" data-duration="<?= $session['duration_minutes'] ?? 60 ?>" data-description="<?= htmlspecialchars($session['description'] ?? '') ?>" data-practice-plan="<?= htmlspecialchars($session['practice_plan_name'] ?? '') ?>" data-practice-plan-id="<?= $session['practice_plan_id'] ?? '' ?>" data-is-mine="<?= $is_mine_cal ? '1' : '0' ?>"></div>
+        <div class="session-data" data-session-id="<?= $session['id'] ?>" data-date="<?= date('Y-m-d', $dt) ?>" data-time="<?= $timeStr ?>" data-title="<?= htmlspecialchars($session['session_type_name'] ?? $session['title'] ?? 'Session') ?>" data-coach="<?= htmlspecialchars(trim(($session['coach_first_name'] ?? '') . ' ' . ($session['coach_last_name'] ?? '')) ?: '') ?>" data-location="<?= htmlspecialchars($session['location_name'] ?? '') ?>" data-datetime="<?= date('l, F j, Y \a\t g:i A', $startTs) ?>" data-end-time="<?= date('g:i A', $end) ?>" data-duration="<?= $session['duration_minutes'] ?? 60 ?>" data-description="<?= htmlspecialchars($session['description'] ?? '') ?>" data-practice-plan="<?= htmlspecialchars($session['practice_plan_name'] ?? '') ?>" data-practice-plan-id="<?= $session['practice_plan_id'] ?? '' ?>" data-is-mine="<?= $is_mine_cal ? '1' : '0' ?>" data-evaluation-id="<?= $session['evaluation_id'] ?? '' ?>" data-evaluation-name="<?= htmlspecialchars($session['evaluation_name'] ?? '') ?>" data-evaluation-status="<?= htmlspecialchars($session['evaluation_status'] ?? '') ?>"></div>
         <?php endforeach; ?>
     </div>
     <?php else: ?>
@@ -304,7 +325,7 @@ $is_demo_data = false;
                 $end = $startTs + ($session['duration_minutes'] ?? 60) * 60;
                 $is_mine = ($session['coach_user_id'] == $user_id || ($session['is_assigned_coach'] ?? 0) > 0);
             ?>
-            <div class="session-card <?= $is_mine ? 'my-session' : '' ?>" data-session-id="<?= $session['id'] ?>" data-session-title="<?= htmlspecialchars($session['session_type_name'] ?? $session['title'] ?? 'Session') ?>" data-session-datetime="<?= date('l, F j, Y \a\t g:i A', $startTs) ?>" data-session-end-time="<?= date('g:i A', $end) ?>" data-session-duration="<?= $session['duration_minutes'] ?? 60 ?>" data-session-coach="<?= htmlspecialchars(trim(($session['coach_first_name'] ?? '') . ' ' . ($session['coach_last_name'] ?? '')) ?: 'TBD') ?>" data-session-location="<?= htmlspecialchars($session['location_name'] ?? '') ?>" data-session-description="<?= htmlspecialchars($session['description'] ?? '') ?>" data-session-practice-plan="<?= htmlspecialchars($session['practice_plan_name'] ?? '') ?>" data-session-practice-plan-id="<?= $session['practice_plan_id'] ?? '' ?>" data-is-mine="<?= $is_mine ? '1' : '0' ?>">
+            <div class="session-card <?= $is_mine ? 'my-session' : '' ?>" data-session-id="<?= $session['id'] ?>" data-session-title="<?= htmlspecialchars($session['session_type_name'] ?? $session['title'] ?? 'Session') ?>" data-session-datetime="<?= date('l, F j, Y \a\t g:i A', $startTs) ?>" data-session-end-time="<?= date('g:i A', $end) ?>" data-session-duration="<?= $session['duration_minutes'] ?? 60 ?>" data-session-coach="<?= htmlspecialchars(trim(($session['coach_first_name'] ?? '') . ' ' . ($session['coach_last_name'] ?? '')) ?: 'TBD') ?>" data-session-location="<?= htmlspecialchars($session['location_name'] ?? '') ?>" data-session-description="<?= htmlspecialchars($session['description'] ?? '') ?>" data-session-practice-plan="<?= htmlspecialchars($session['practice_plan_name'] ?? '') ?>" data-session-practice-plan-id="<?= $session['practice_plan_id'] ?? '' ?>" data-is-mine="<?= $is_mine ? '1' : '0' ?>" data-evaluation-id="<?= $session['evaluation_id'] ?? '' ?>" data-evaluation-name="<?= htmlspecialchars($session['evaluation_name'] ?? '') ?>">
                 <div class="session-date">
                     <div class="date-box <?= $is_mine ? 'my-session-badge' : '' ?>">
                         <span class="date-day"><?= date('d', $dt) ?></span>
@@ -326,13 +347,20 @@ $is_demo_data = false;
                         <?php else: ?>
                             <span class="tag no-plan-tag"><i class="fas fa-exclamation-circle"></i> No Practice Plan</span>
                         <?php endif; ?>
+                        <?php if (!empty($session['evaluation_id'])): ?>
+                            <span class="tag eval-tag"><i class="fas fa-clipboard-check"></i> <?= htmlspecialchars($session['evaluation_name'] ?: 'Evaluation') ?> (<?= ucfirst($session['evaluation_status']) ?>)</span>
+                        <?php endif; ?>
                     </div>
                 </div>
                 <div class="session-actions">
                     <button class="btn btn-secondary" onclick="openSessionDetailModal(this.closest('.session-card'))"><i class="fas fa-eye"></i> View</button>
                     <?php if ($is_mine || $user_role === 'admin'): ?>
                     <button class="btn btn-secondary" onclick="openAssignPlanModal('<?= $session['id'] ?>', '<?= $session['practice_plan_id'] ?? '' ?>')"><i class="fas fa-clipboard-list"></i> <?= !empty($session['practice_plan_name']) ? 'Change' : 'Add' ?> Plan</button>
-                    <a href="?page=coach_session_evaluations&session_id=<?= intval($session['id']) ?>" class="btn btn-secondary"><i class="fas fa-clipboard-check"></i> Evaluation</a>
+                    <?php if (!empty($session['evaluation_id'])): ?>
+                    <a href="?page=session_evaluation_form&evaluation_id=<?= intval($session['evaluation_id']) ?>" class="btn btn-secondary"><i class="fas fa-clipboard-check"></i> Continue Evaluation</a>
+                    <?php else: ?>
+                    <button class="btn btn-secondary" onclick="openStartEvalModal(<?= intval($session['id']) ?>)"><i class="fas fa-clipboard-check"></i> Evaluate</button>
+                    <?php endif; ?>
                     <?php endif; ?>
                     <a href="?page=record_drill_video&session_id=<?= $session['id'] ?>" class="btn btn-secondary"><i class="fas fa-video"></i> Record</a>
                 </div>
@@ -435,6 +463,43 @@ $is_demo_data = false;
     </div>
 </div>
 
+<div class="session-modal-overlay" id="startEvalModal">
+    <div class="session-modal session-modal-large">
+        <div class="session-modal-header"><h2><i class="fas fa-clipboard-check"></i> Start Evaluation</h2><button class="session-modal-close" onclick="closeStartEvalModal()">&times;</button></div>
+        <div class="session-modal-body">
+            <input type="hidden" id="evalSessionId" value="">
+            <div class="form-group">
+                <label>Evaluation Template</label>
+                <select id="evalTemplateSelect" class="form-select">
+                    <option value="">-- No Template (use all categories) --</option>
+                    <?php foreach ($eval_templates as $tpl): ?>
+                    <option value="<?= $tpl['id'] ?>"><?= htmlspecialchars($tpl['title']) ?><?= !empty($tpl['category_names']) ? ' (' . htmlspecialchars($tpl['category_names']) . ')' : '' ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Evaluation Name (optional)</label>
+                <input type="text" id="evalName" class="form-input" placeholder="Auto-generated from template if blank">
+            </div>
+            <div class="form-group">
+                <label>Select Athletes from Roster</label>
+                <p class="help-text" style="font-size: 12px; color: var(--text-dim); margin-bottom: 8px;">Choose which athletes to evaluate in this session.</p>
+                <div class="athlete-selection-grid" id="evalAthleteGrid">
+                    <?php if (count($assigned_athletes) > 0): foreach ($assigned_athletes as $athlete): ?>
+                        <label class="athlete-checkbox"><input type="checkbox" name="eval_athlete_ids[]" value="<?= $athlete['id'] ?>"><span><?= htmlspecialchars($athlete['first_name'] . ' ' . $athlete['last_name']) ?></span></label>
+                    <?php endforeach; else: ?>
+                        <p class="no-athletes-notice">No athletes assigned to you yet.</p>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeStartEvalModal()">Cancel</button>
+                <button type="button" class="btn btn-primary" id="startEvalBtn" onclick="submitStartEval()"><i class="fas fa-play"></i> Start Evaluation</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
 .calendar-content { padding: 0; }
 .filter-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 24px; overflow: hidden; }
@@ -470,6 +535,7 @@ $is_demo_data = false;
 .tag { padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; }
 .plan-tag { background: rgba(16, 185, 129, 0.15); color: #10B981; }
 .no-plan-tag { background: rgba(245, 158, 11, 0.15); color: #F59E0B; }
+.eval-tag { background: rgba(107, 70, 193, 0.15); color: #8B5CF6; }
 .session-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 .sessions-calendar { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
 .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
@@ -549,7 +615,10 @@ document.addEventListener('DOMContentLoaded', function() {
             description: el.dataset.description || '',
             practicePlan: el.dataset.practicePlan || '',
             practicePlanId: el.dataset.practicePlanId || '',
-            isMine: el.dataset.isMine === '1'
+            isMine: el.dataset.isMine === '1',
+            evaluationId: el.dataset.evaluationId || '',
+            evaluationName: el.dataset.evaluationName || '',
+            evaluationStatus: el.dataset.evaluationStatus || ''
         });
     });
     
@@ -618,7 +687,18 @@ function openSessionDetailModal(cardEl) {
         assignPlanBtn.onclick = function() { closeSessionDetailModal(); openAssignPlanModal(sessionId, cardEl.dataset.sessionPracticePlanId || ''); };
         document.getElementById('modalAssignPlanLabel').textContent = planName ? 'Change Plan' : 'Add Plan';
         evalLink.style.display = '';
-        evalLink.href = '?page=coach_session_evaluations&session_id=' + sessionId;
+        var evalId = cardEl.dataset.evaluationId;
+        if (evalId) {
+            evalLink.href = '?page=session_evaluation_form&evaluation_id=' + evalId;
+            evalLink.textContent = '';
+            evalLink.innerHTML = '<i class="fas fa-clipboard-check"></i> Continue Evaluation';
+            evalLink.onclick = null;
+        } else {
+            evalLink.href = '#';
+            evalLink.textContent = '';
+            evalLink.innerHTML = '<i class="fas fa-clipboard-check"></i> Evaluate';
+            evalLink.onclick = function(e) { e.preventDefault(); closeSessionDetailModal(); openStartEvalModal(parseInt(sessionId)); };
+        }
     } else {
         assignPlanBtn.style.display = 'none';
         evalLink.style.display = 'none';
@@ -645,7 +725,17 @@ function openCalendarSessionModal(s) {
         assignPlanBtn.onclick = function() { closeSessionDetailModal(); openAssignPlanModal(s.id, s.practicePlanId || ''); };
         document.getElementById('modalAssignPlanLabel').textContent = s.practicePlan ? 'Change Plan' : 'Add Plan';
         evalLink.style.display = '';
-        evalLink.href = '?page=coach_session_evaluations&session_id=' + s.id;
+        if (s.evaluationId) {
+            evalLink.href = '?page=session_evaluation_form&evaluation_id=' + s.evaluationId;
+            evalLink.textContent = '';
+            evalLink.innerHTML = '<i class="fas fa-clipboard-check"></i> Continue Evaluation';
+            evalLink.onclick = null;
+        } else {
+            evalLink.href = '#';
+            evalLink.textContent = '';
+            evalLink.innerHTML = '<i class="fas fa-clipboard-check"></i> Evaluate';
+            evalLink.onclick = function(e) { e.preventDefault(); closeSessionDetailModal(); openStartEvalModal(parseInt(s.id)); };
+        }
     } else {
         assignPlanBtn.style.display = 'none';
         evalLink.style.display = 'none';
@@ -666,6 +756,61 @@ function openAssignPlanModal(sessionId, currentPlanId) {
 function closeAssignPlanModal() { document.getElementById('assignPlanModal').classList.remove('active'); }
 function openPrivateSessionModal() { document.getElementById('privateSessionModal').classList.add('active'); }
 function closePrivateSessionModal() { document.getElementById('privateSessionModal').classList.remove('active'); }
+
+function openStartEvalModal(sessionId) {
+    if (!sessionId || isNaN(sessionId)) return;
+    document.getElementById('evalSessionId').value = sessionId;
+    document.getElementById('evalTemplateSelect').value = '';
+    document.getElementById('evalName').value = '';
+    document.querySelectorAll('#evalAthleteGrid input[type="checkbox"]').forEach(function(cb) { cb.checked = false; });
+    document.getElementById('startEvalModal').classList.add('active');
+}
+function closeStartEvalModal() { document.getElementById('startEvalModal').classList.remove('active'); }
+
+function submitStartEval() {
+    var sessionId = document.getElementById('evalSessionId').value;
+    var templateId = document.getElementById('evalTemplateSelect').value;
+    var name = document.getElementById('evalName').value.trim();
+    var athleteIds = [];
+    document.querySelectorAll('#evalAthleteGrid input[type="checkbox"]:checked').forEach(function(cb) {
+        athleteIds.push(cb.value);
+    });
+
+    if (!sessionId) return;
+
+    var btn = document.getElementById('startEvalBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting...';
+
+    var formData = new FormData();
+    formData.append('action', 'start_evaluation');
+    formData.append('session_id', sessionId);
+    formData.append('csrf_token', document.querySelector('input[name="csrf_token"]').value);
+    if (templateId) formData.append('template_id', templateId);
+    if (name) formData.append('name', name);
+    athleteIds.forEach(function(id) { formData.append('athlete_ids[]', id); });
+
+    fetch('process_session_evaluations.php', {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success && data.evaluation_id) {
+            window.location.href = '?page=session_evaluation_form&evaluation_id=' + data.evaluation_id;
+        } else {
+            alert(data.message || 'Failed to start evaluation');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-play"></i> Start Evaluation';
+        }
+    })
+    .catch(function() {
+        alert('Network error. Please try again.');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-play"></i> Start Evaluation';
+    });
+}
 
 // Calculate and display price based on hourly rate and duration
 function updateCalculatedPrice() {

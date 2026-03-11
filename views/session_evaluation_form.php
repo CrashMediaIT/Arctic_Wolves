@@ -5,7 +5,7 @@
 $evaluation_id = isset($_GET['evaluation_id']) ? intval($_GET['evaluation_id']) : 0;
 
 if ($evaluation_id <= 0) {
-    echo '<div class="error-container"><h2>Invalid Evaluation</h2><p>No evaluation ID provided.</p><a href="?page=coach_session_evaluations" class="btn btn-primary">Back to Evaluations</a></div>';
+    echo '<div class="error-container"><h2>Invalid Evaluation</h2><p>No evaluation ID provided.</p><a href="?page=coach_calendar" class="btn btn-primary">Back to Evaluations</a></div>';
     return;
 }
 
@@ -23,7 +23,7 @@ try {
     $evaluation = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$evaluation) {
-        echo '<div class="error-container"><h2>Evaluation Not Found</h2><p>The requested evaluation does not exist.</p><a href="?page=coach_session_evaluations" class="btn btn-primary">Back to Evaluations</a></div>';
+        echo '<div class="error-container"><h2>Evaluation Not Found</h2><p>The requested evaluation does not exist.</p><a href="?page=coach_calendar" class="btn btn-primary">Back to Evaluations</a></div>';
         return;
     }
     
@@ -97,15 +97,15 @@ try {
     
 } catch (PDOException $e) {
     error_log("Session evaluation form error: " . $e->getMessage());
-    echo '<div class="error-container"><h2>Error</h2><p>An error occurred loading the evaluation.</p><a href="?page=coach_session_evaluations" class="btn btn-primary">Back to Evaluations</a></div>';
+    echo '<div class="error-container"><h2>Error</h2><p>An error occurred loading the evaluation.</p><a href="?page=coach_calendar" class="btn btn-primary">Back to Evaluations</a></div>';
     return;
 }
 ?>
 
 <div class="eval-form-header">
     <div class="header-left">
-        <a href="?page=coach_session_evaluations" class="back-link">
-            <i class="fas fa-arrow-left"></i> Back to Sessions
+        <a href="?page=coach_calendar" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Calendar
         </a>
         <h1 class="page-title">
             <i class="fas fa-clipboard-check"></i>
@@ -119,7 +119,7 @@ try {
         </div>
     </div>
     <div class="header-right">
-        <button class="btn btn-secondary" onclick="window.location='?page=coach_session_evaluations'">
+        <button class="btn btn-secondary" onclick="window.location='?page=coach_calendar'">
             <i class="fas fa-list"></i> All Sessions
         </button>
     </div>
@@ -130,7 +130,7 @@ try {
         <i class="fas fa-users placeholder-icon"></i>
         <h3>No Athletes Assigned</h3>
         <p class="placeholder-text">No athletes have been added to this evaluation yet. Add athletes to begin evaluating.</p>
-        <a href="?page=coach_session_evaluations" class="btn btn-primary" style="margin-top: 20px;">
+        <a href="?page=coach_calendar" class="btn btn-primary" style="margin-top: 20px;">
             <i class="fas fa-user-plus"></i> Manage Athletes
         </a>
     </div>

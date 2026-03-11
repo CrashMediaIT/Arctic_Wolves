@@ -302,7 +302,6 @@ $allowed_pages = [
     'athletes'                => 'views/athletes.php',
     
     // Session Evaluations (Coaches Corner)
-    'coach_session_evaluations' => 'views/coach_session_evaluations.php',
     'session_evaluation_form'   => 'views/session_evaluation_form.php',
     'coach_pending_reviews'     => 'views/coach_video_reviews.php',
     'coach_video_reviews'       => 'views/coach_video_reviews.php',
@@ -863,9 +862,6 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             </a>
             <a href="?page=coach_shot_speed" class="nav-link <?= $page=='coach_shot_speed'?'active':'' ?>">
                 <i class="fa-solid fa-hockey-puck icon"></i> Shot Speed
-            </a>
-            <a href="?page=coach_session_evaluations" class="nav-link <?= in_array($page, ['coach_session_evaluations','session_evaluation_form'])?'active':'' ?>">
-                <i class="fa-solid fa-clipboard-check icon"></i> Session Evaluations
             </a>
             <a href="?page=coach_video_reviews" class="nav-link <?= in_array($page, ['coach_video_reviews','coach_pending_reviews'])?'active':'' ?>">
                 <i class="fa-solid fa-video icon"></i> Video Reviews
