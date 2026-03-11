@@ -1100,19 +1100,20 @@ function formatTime(dateStr) {
     const days = Math.floor(diff / 86400000);
     
     if (days === 0) {
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return date.toLocaleTimeString([], { timeZone: window.APP_TIMEZONE, hour: '2-digit', minute: '2-digit' });
     } else if (days === 1) {
         return 'Yesterday';
     } else if (days < 7) {
-        return date.toLocaleDateString([], { weekday: 'short' });
+        return date.toLocaleDateString([], { timeZone: window.APP_TIMEZONE, weekday: 'short' });
     } else {
-        return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+        return date.toLocaleDateString([], { timeZone: window.APP_TIMEZONE, month: 'short', day: 'numeric' });
     }
 }
 
 function formatFullTime(dateStr) {
     const date = new Date(dateStr);
     return date.toLocaleString([], { 
+        timeZone: window.APP_TIMEZONE,
         month: 'short', day: 'numeric', year: 'numeric',
         hour: '2-digit', minute: '2-digit' 
     });
@@ -1319,7 +1320,7 @@ function renderMessages(messages) {
     let lastDate = '';
     
     messages.forEach(msg => {
-        const msgDate = new Date(msg.created_at).toLocaleDateString();
+        const msgDate = new Date(msg.created_at).toLocaleDateString([], {timeZone: window.APP_TIMEZONE});
         if (msgDate !== lastDate) {
             html += `<div class="msg-date-divider"><span>${formatDateDivider(msg.created_at)}</span></div>`;
             lastDate = msgDate;
@@ -1359,7 +1360,7 @@ function formatDateDivider(dateStr) {
     
     if (diff === 0) return 'Today';
     if (diff === 1) return 'Yesterday';
-    return date.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+    return date.toLocaleDateString([], { timeZone: window.APP_TIMEZONE, weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 }
 
 // Send message

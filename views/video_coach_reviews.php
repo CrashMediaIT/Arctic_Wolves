@@ -1158,7 +1158,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Upload log helper
     var crLogPre = document.getElementById('crUploadLogPre');
     function crLog(msg) {
-        if (crLogPre) { crLogPre.textContent += '[' + new Date().toLocaleTimeString() + '] ' + msg + '\n'; crLogPre.scrollTop = crLogPre.scrollHeight; }
+        if (crLogPre) { crLogPre.textContent += '[' + new Date().toLocaleTimeString([], {timeZone: window.APP_TIMEZONE}) + '] ' + msg + '\n'; crLogPre.scrollTop = crLogPre.scrollHeight; }
         console.log('[Upload] ' + msg);
     }
     function crLogError(msg) { crLog('ERROR: ' + msg); }

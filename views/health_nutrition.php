@@ -1006,7 +1006,7 @@ function changeDay(delta) {
 }
 
 function formatDate(date) {
-    const options = { weekday: 'long', month: 'long', day: 'numeric' };
+    const options = { timeZone: window.APP_TIMEZONE, weekday: 'long', month: 'long', day: 'numeric' };
     return date.toLocaleDateString('en-US', options);
 }
 

@@ -3386,7 +3386,7 @@ function githubAddLogEntry(message, type) {
     else if (type === 'info') color = '#60a5fa';
     
     logEntry.innerHTML = `
-        <span style="color: var(--text-dim); flex-shrink: 0;">${new Date().toLocaleTimeString()}</span>
+        <span style="color: var(--text-dim); flex-shrink: 0;">${new Date().toLocaleTimeString([], {timeZone: window.APP_TIMEZONE})}</span>
         <span style="flex: 1; color: ${color};">${message}</span>
     `;
     container.appendChild(logEntry);
@@ -3448,7 +3448,7 @@ async function githubCheckForUpdates() {
                 document.getElementById('githubLatestSha').textContent = data.latest_commit.sha ? data.latest_commit.sha.substring(0, 7) : '';
                 document.getElementById('githubLatestMessage').textContent = data.latest_commit.message || '';
                 document.getElementById('githubLatestAuthor').textContent = data.latest_commit.author || '';
-                document.getElementById('githubLatestDate').textContent = data.latest_commit.date ? new Date(data.latest_commit.date).toLocaleString() : '';
+                document.getElementById('githubLatestDate').textContent = data.latest_commit.date ? new Date(data.latest_commit.date).toLocaleString([], {timeZone: window.APP_TIMEZONE}) : '';
             }
         } else {
             versionInfo.textContent = 'Error checking for updates';
@@ -3651,7 +3651,7 @@ function checkStripeUpdates() {
                 <div class="status-info">
                     <h4>Latest Version: ${latestVersion}</h4>
                     <p>${data.name || 'Stripe PHP Library'}<br>
-                    <small>Released: ${new Date(data.published_at).toLocaleDateString()}</small></p>
+                    <small>Released: ${new Date(data.published_at).toLocaleDateString([], {timeZone: window.APP_TIMEZONE})}</small></p>
                 </div>
             `;
             updateBtn.disabled = false;

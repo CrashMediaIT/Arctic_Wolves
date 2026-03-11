@@ -923,7 +923,7 @@ function mEscapeHtml(t) {
 
 function mFormatDate(ds) {
     if (!ds) return '';
-    return new Date(ds).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    return new Date(ds).toLocaleDateString('en-US', { timeZone: window.APP_TIMEZONE, year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 function mShowToast(msg, type) {

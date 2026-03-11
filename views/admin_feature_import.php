@@ -492,7 +492,7 @@ async function loadInstalledVersions() {
                 html += '<tr style="border-bottom: 1px solid var(--border);">';
                 html += `<td style="padding: 8px; color: #fff;">${feature}</td>`;
                 html += `<td style="padding: 8px; color: var(--success);">${latest.version}</td>`;
-                html += `<td style="padding: 8px; color: var(--text-light);">${new Date(latest.applied_at).toLocaleDateString()}</td>`;
+                html += `<td style="padding: 8px; color: var(--text-light);">${new Date(latest.applied_at).toLocaleDateString([], {timeZone: window.APP_TIMEZONE})}</td>`;
                 html += '</tr>';
             }
             
@@ -645,7 +645,7 @@ function addLogEntry(entry) {
     logEntry.className = 'log-entry ' + (entry.type || 'info');
     
     logEntry.innerHTML = `
-        <span class="log-time">${entry.timestamp || new Date().toLocaleTimeString()}</span>
+        <span class="log-time">${entry.timestamp || new Date().toLocaleTimeString([], {timeZone: window.APP_TIMEZONE})}</span>
         <span class="log-message">${entry.message}</span>
     `;
     

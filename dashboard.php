@@ -388,6 +388,7 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
     <script src="https://cdn.jsdelivr.net/npm/dashjs@5.0.0/dist/dash.all.min.js"></script>
     <script src="js/hls-player.js"></script>
     <script src="js/typeahead.js"></script>
+    <script>window.APP_TIMEZONE = <?= json_encode(date_default_timezone_get()) ?>;</script>
     <style>
         /* Dashboard-specific layout styles */
         body { margin: 0; background: var(--bg-main); font-family: 'Inter', sans-serif; color: #fff; display: flex; height: 100vh; overflow: hidden; }

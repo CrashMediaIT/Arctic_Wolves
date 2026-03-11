@@ -241,7 +241,7 @@ try {
         var html = '';
         speeds.forEach(function(entry) {
             var d = new Date(entry.created_at);
-            var timeStr = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+            var timeStr = d.toLocaleDateString([], {timeZone: window.APP_TIMEZONE}) + ' ' + d.toLocaleTimeString([], {timeZone: window.APP_TIMEZONE, hour:'2-digit',minute:'2-digit'});
             var val = parseFloat(entry.speed);
             var color = (val === maxSpeed && speeds.length > 1) ? '#10B981' : '#fff';
             html += '<div class="m-history-item">' +

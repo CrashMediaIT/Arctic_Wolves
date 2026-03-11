@@ -344,6 +344,7 @@ try {
     <script src="https://cdn.jsdelivr.net/npm/dashjs@5.0.0/dist/dash.all.min.js"></script>
     <script src="js/hls-player.js"></script>
     <script src="js/typeahead.js"></script>
+    <script>window.APP_TIMEZONE = <?= json_encode(date_default_timezone_get()) ?>;</script>
     <style>
       /* Override desktop sidebar layout - PWA uses stacked layout */
       .sidebar { display: none !important; }

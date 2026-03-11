@@ -143,7 +143,7 @@ endif;
     var pwaLogDetails = document.getElementById('pwaUploadLogDetails');
     function pwaLog(msg) {
         if (pwaLogPre) {
-            pwaLogPre.textContent += '[' + new Date().toLocaleTimeString() + '] ' + msg + '\n';
+            pwaLogPre.textContent += '[' + new Date().toLocaleTimeString([], {timeZone: window.APP_TIMEZONE}) + '] ' + msg + '\n';
             pwaLogPre.scrollTop = pwaLogPre.scrollHeight;
         }
         console.log('[PWADrillUpload] ' + msg);

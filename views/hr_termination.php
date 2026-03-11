@@ -1090,7 +1090,7 @@ document.querySelectorAll('.view-details').forEach(function(btn) {
         document.getElementById('modal-reason').textContent = data.reason || 'No details provided';
         document.getElementById('modal-final-comments').textContent = data.finalComments || 'No comments';
         document.getElementById('modal-processed-by').textContent = data.processedBy ? data.processedBy.trim() : 'N/A';
-        document.getElementById('modal-created').textContent = data.created ? new Date(data.created).toLocaleString() : 'N/A';
+        document.getElementById('modal-created').textContent = data.created ? new Date(data.created).toLocaleString([], {timeZone: window.APP_TIMEZONE}) : 'N/A';
         
         // Checklist
         const checklistContainer = document.getElementById('modal-checklist');

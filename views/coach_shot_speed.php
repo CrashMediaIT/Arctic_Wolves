@@ -464,7 +464,7 @@ function renderSpeeds(speeds) {
         const isMax = speedValue === maxSpeed && speeds.length > 1;
         const speedClass = isMax ? 'speed-value speed-max' : 'speed-value';
         const date = new Date(speed.created_at);
-        const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        const dateStr = date.toLocaleDateString([], {timeZone: window.APP_TIMEZONE}) + ' ' + date.toLocaleTimeString([], {timeZone: window.APP_TIMEZONE, hour: '2-digit', minute:'2-digit'});
         
         // Escape user-provided data
         const escapedNotes = speed.notes ? escapeHtml(speed.notes) : '-';

@@ -529,10 +529,12 @@ function openCreateModal() {
     document.getElementById('notification-id').value = '';
     document.getElementById('notification-form').reset();
     
-    // Set default start time to now
+    // Set default start time to now (in app timezone)
     const now = new Date();
-    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-    document.getElementById('notification-start').value = now.toISOString().slice(0, 16);
+    document.getElementById('notification-start').value = new Intl.DateTimeFormat('sv-SE', {
+        timeZone: window.APP_TIMEZONE, year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', hour12: false
+    }).format(now).replace(' ', 'T');
     document.getElementById('notification-active').checked = true;
     
     // Show email option for new notifications
@@ -555,17 +557,21 @@ function editNotification(id) {
     document.getElementById('notification-type').value = notification.notification_type;
     document.getElementById('notification-message').value = notification.message;
     
-    // Format dates for datetime-local input
+    // Format dates for datetime-local input (in app timezone)
     if (notification.start_date) {
         const start = new Date(notification.start_date);
-        start.setMinutes(start.getMinutes() - start.getTimezoneOffset());
-        document.getElementById('notification-start').value = start.toISOString().slice(0, 16);
+        document.getElementById('notification-start').value = new Intl.DateTimeFormat('sv-SE', {
+            timeZone: window.APP_TIMEZONE, year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit', hour12: false
+        }).format(start).replace(' ', 'T');
     }
     
     if (notification.end_date) {
         const end = new Date(notification.end_date);
-        end.setMinutes(end.getMinutes() - end.getTimezoneOffset());
-        document.getElementById('notification-end').value = end.toISOString().slice(0, 16);
+        document.getElementById('notification-end').value = new Intl.DateTimeFormat('sv-SE', {
+            timeZone: window.APP_TIMEZONE, year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit', hour12: false
+        }).format(end).replace(' ', 'T');
     } else {
         document.getElementById('notification-end').value = '';
     }

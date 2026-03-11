@@ -1503,7 +1503,7 @@ function viewTemplateDetails(templateId) {
                 ${template.created_at ? `
                 <div class="template-detail-section">
                     <h4>Created</h4>
-                    <p>${new Date(template.created_at).toLocaleString()}</p>
+                    <p>${new Date(template.created_at).toLocaleString([], {timeZone: window.APP_TIMEZONE})}</p>
                 </div>
                 ` : ''}
             `;

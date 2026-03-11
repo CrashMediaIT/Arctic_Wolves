@@ -758,7 +758,7 @@ if (!function_exists('mMsgTimeAgo')) {
         var html = '';
         var lastDate = '';
         messages.forEach(function(msg) {
-            var msgDate = new Date(msg.created_at.replace(/-/g, '/')).toLocaleDateString();
+            var msgDate = new Date(msg.created_at.replace(/-/g, '/')).toLocaleDateString([], {timeZone: window.APP_TIMEZONE});
             if (msgDate !== lastDate) {
                 html += '<div class="m-chat-date-divider"><span>' + formatDateDivider(msg.created_at) + '</span></div>';
                 lastDate = msgDate;
@@ -811,12 +811,12 @@ if (!function_exists('mMsgTimeAgo')) {
         var diff = Math.floor((now - date) / 86400000);
         if (diff === 0) return 'Today';
         if (diff === 1) return 'Yesterday';
-        return date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+        return date.toLocaleDateString(undefined, { timeZone: window.APP_TIMEZONE, weekday: 'short', month: 'short', day: 'numeric' });
     }
 
     function formatMsgTime(dateStr) {
         var date = new Date(dateStr.replace(/-/g, '/'));
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return date.toLocaleTimeString([], { timeZone: window.APP_TIMEZONE, hour: '2-digit', minute: '2-digit' });
     }
 
     /* ---- Send Message from Chat View ---- */

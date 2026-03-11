@@ -1026,9 +1026,7 @@ function escapeHtml(text) {
 
 function formatDate(dateStr) {
     const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
+    return date.toLocaleDateString('en-US', { timeZone: window.APP_TIMEZONE, month: 'short', day: 'numeric', year: 'numeric' });
 // Form submissions
 document.getElementById('evaluationForm').addEventListener('submit', function(e) {
     e.preventDefault();

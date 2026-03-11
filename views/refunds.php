@@ -617,7 +617,7 @@ function displayBookings(bookings) {
     
     bookings.forEach(booking => {
         html += '<tr>';
-        html += `<td>${new Date(booking.session_date).toLocaleDateString()}</td>`;
+        html += `<td>${new Date(booking.session_date).toLocaleDateString([], {timeZone: window.APP_TIMEZONE})}</td>`;
         html += `<td>${booking.first_name} ${booking.last_name}<br><small style="color: rgba(255,255,255,0.5)">${booking.email}</small></td>`;
         html += `<td>${booking.session_name}</td>`;
         html += `<td>${booking.athlete_name || 'N/A'}</td>`;
@@ -692,7 +692,7 @@ function updateMethodFields() {
         select.innerHTML = '<option value="">-- Select Session --</option>';
         RefundSystem.upcomingSessions.forEach(session => {
             select.innerHTML += `<option value="${session.id}">
-                ${session.title} - ${new Date(session.session_date).toLocaleDateString()} ${session.session_time}
+                ${session.title} - ${new Date(session.session_date).toLocaleDateString([], {timeZone: window.APP_TIMEZONE})} ${session.session_time}
             </option>`;
         });
     }
@@ -826,7 +826,7 @@ function displayRefundHistory(refunds) {
     
     refunds.forEach(refund => {
         html += '<tr>';
-        html += `<td>${new Date(refund.refund_date).toLocaleDateString()}</td>`;
+        html += `<td>${new Date(refund.refund_date).toLocaleDateString([], {timeZone: window.APP_TIMEZONE})}</td>`;
         html += `<td>${refund.first_name} ${refund.last_name}<br><small style="color: rgba(255,255,255,0.5)">${refund.email}</small></td>`;
         html += `<td>${refund.session_name || 'N/A'}</td>`;
         

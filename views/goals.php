@@ -1330,9 +1330,7 @@ function escapeHtml(text) {
 
 function formatDate(dateString) {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-}
-
+    return date.toLocaleDateString('en-US', { timeZone: window.APP_TIMEZONE, year: 'numeric', month: 'short', day: 'numeric' });
 // Close modals on outside click
 document.querySelectorAll('.modal').forEach(modal => {
     modal.addEventListener('click', (e) => {
