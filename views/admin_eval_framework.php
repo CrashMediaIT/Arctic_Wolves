@@ -1616,7 +1616,7 @@ function openEditEvaluationModal(templateId) {
             } else {
                 var html = '';
                 sessions.forEach(function(s) {
-                    var dateDisplay = s.session_date ? new Date(s.session_date + 'T00:00:00').toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'}) : 'N/A';
+                    var dateDisplay = s.session_date ? new Date(s.session_date + 'T00:00:00').toLocaleDateString('en-US', {timeZone: window.APP_TIMEZONE, month: 'short', day: 'numeric', year: 'numeric'}) : 'N/A';
                     html += '<div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; border-radius: 6px; background: var(--bg-main, #0A0A0F); margin-bottom: 4px;">';
                     html += '<span style="font-size: 13px; color: var(--text-white, #fff);"><i class="fas fa-calendar" style="color: var(--primary); margin-right: 8px;"></i>' + (s.session_title || 'Untitled') + ' <small style="color: var(--text-dim);">(' + dateDisplay + ')</small></span>';
                     html += '<button type="button" class="btn-action danger" style="padding: 4px 8px; font-size: 11px; background: rgba(239,68,68,0.1); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); border-radius: 4px; cursor: pointer;" onclick="removeEvalFromSession(' + s.session_eval_id + ', ' + templateId + ')"><i class="fas fa-unlink"></i> Remove</button>';

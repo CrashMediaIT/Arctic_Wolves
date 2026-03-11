@@ -2839,6 +2839,7 @@ document.addEventListener('DOMContentLoaded', function() {
             dates.forEach(function(date) {
                 var dateObj = new Date(date.session_date);
                 var formattedDate = dateObj.toLocaleString('en-US', { 
+                    timeZone: window.APP_TIMEZONE,
                     weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
                     hour: 'numeric', minute: '2-digit'
                 });
