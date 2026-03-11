@@ -11,6 +11,25 @@ if (!$isAnyCoach) {
     return;
 }
 
+// ── Detect active device pair for telestration sync ───────────
+$wb_active_pair_id = 0;
+$wb_is_tv_viewer = !empty($_SESSION['tv_pair_id']);
+if ($wb_is_tv_viewer) {
+    $wb_active_pair_id = (int)$_SESSION['tv_pair_id'];
+} elseif ($isAnyCoach) {
+    try {
+        $pairStmt = $pdo->prepare("
+            SELECT id FROM vr_device_pairs
+            WHERE status IN ('paired', 'active')
+              AND (created_by = ? OR id IN (SELECT pair_id FROM vr_device_pair_controllers WHERE user_id = ?))
+            LIMIT 1
+        ");
+        $pairStmt->execute([$user_id, $user_id]);
+        $activePair = $pairStmt->fetch(PDO::FETCH_ASSOC);
+        if ($activePair) $wb_active_pair_id = (int)$activePair['id'];
+    } catch (PDOException $e) { /* ignore */ }
+}
+
 // ── Fetch center ice logo URL from theme settings ─────────────
 $wb_centerLogoUrl = '';
 try {
@@ -532,6 +551,78 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+
+    // ── Telestration Sync (Controller → TV Viewer) ────────────
+    var wbPairId = <?= (int)$wb_active_pair_id ?>;
+    var wbIsTvViewer = <?= $wb_is_tv_viewer ? 'true' : 'false' ?>;
+
+    if (wbPairId && !wbIsTvViewer) {
+        // CONTROLLER MODE: broadcast drawings to paired TV
+        var wbBroadcastTimer = null;
+        function wbBroadcastTelestration() {
+            var dataUrl = drawCanvas.toDataURL('image/png');
+            var csrf = document.querySelector('input[name="csrf_token"]') || document.querySelector('meta[name="csrf-token"]');
+            var token = csrf ? (csrf.value || csrf.content || '') : '';
+            if (!token) return;
+            fetch('/process_video.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'action=broadcast_telestration&pair_id=' + wbPairId
+                    + '&canvas_data=' + encodeURIComponent(dataUrl)
+                    + '&csrf_token=' + encodeURIComponent(token)
+            }).catch(function() { /* best-effort */ });
+        }
+        function wbDebouncedBroadcast() {
+            if (wbBroadcastTimer) clearTimeout(wbBroadcastTimer);
+            wbBroadcastTimer = setTimeout(wbBroadcastTelestration, 500);
+        }
+        // Patch onEnd, wbUndo, wbClear to broadcast
+        var origOnEnd = onEnd;
+        onEnd = function(e) { origOnEnd(e); wbDebouncedBroadcast(); };
+        // Re-bind events with patched onEnd
+        drawCanvas.removeEventListener('mouseup', origOnEnd);
+        drawCanvas.removeEventListener('mouseleave', origOnEnd);
+        drawCanvas.removeEventListener('touchend', origOnEnd);
+        drawCanvas.addEventListener('mouseup', onEnd);
+        drawCanvas.addEventListener('mouseleave', onEnd);
+        drawCanvas.addEventListener('touchend', onEnd);
+
+        var origUndo = window.wbUndo;
+        window.wbUndo = function() { origUndo(); wbDebouncedBroadcast(); };
+        var origClear = window.wbClear;
+        window.wbClear = function() { origClear(); wbBroadcastTelestration(); };
+    }
+
+    if (wbPairId && wbIsTvViewer) {
+        // TV VIEWER MODE: receive telestration from controller
+        drawCanvas.style.cursor = 'default';
+        drawCanvas.style.pointerEvents = 'none';
+        var wbTeleSeq = 0;
+
+        function wbPollTelestration() {
+            fetch('/api_tv_pair_state.php?pair_id=' + wbPairId + '&include_telestration=1&_=' + Date.now())
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.telestration_seq && data.telestration_seq !== wbTeleSeq) {
+                        wbTeleSeq = data.telestration_seq;
+                        if (data.telestration_data) {
+                            var img = new Image();
+                            img.onload = function() {
+                                drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+                                drawCtx.drawImage(img, 0, 0, drawCanvas.width, drawCanvas.height);
+                            };
+                            img.src = data.telestration_data;
+                        } else {
+                            drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+                        }
+                    }
+                })
+                .catch(function() { /* retry next poll */ });
+        }
+
+        setInterval(wbPollTelestration, 2000);
+        wbPollTelestration(); // initial fetch
+    }
 });
 </script>
 

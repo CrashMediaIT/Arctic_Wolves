@@ -4567,6 +4567,8 @@ CREATE TABLE IF NOT EXISTS `vr_device_pairs` (
     `current_time` DECIMAL(10,3) DEFAULT 0.000 COMMENT 'Current playback time in seconds',
     `is_frozen` TINYINT(1) DEFAULT 0 COMMENT 'Whether the viewer display is frozen',
     `controller_page` VARCHAR(50) DEFAULT 'home' COMMENT 'Current page the controller is navigating',
+    `telestration_data` MEDIUMTEXT DEFAULT NULL COMMENT 'Canvas drawing data URL for telestration sync to TV viewer',
+    `telestration_seq` INT DEFAULT 0 COMMENT 'Telestration version counter for efficient polling',
     `created_by` INT DEFAULT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

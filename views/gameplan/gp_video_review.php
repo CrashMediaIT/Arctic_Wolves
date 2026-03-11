@@ -11,7 +11,50 @@
  */
 require_once __DIR__ . '/../../lib/image_helper.php';
 
+// ── Detect active device pair for telestration sync ───────────
+$vr_active_pair_id = 0;
+$vr_is_tv_viewer = !empty($_SESSION['tv_pair_id']);
+if ($vr_is_tv_viewer) {
+    $vr_active_pair_id = (int)$_SESSION['tv_pair_id'];
+} elseif ($isAnyCoach) {
+    try {
+        $pairStmt = $pdo->prepare("
+            SELECT id FROM vr_device_pairs
+            WHERE status IN ('paired', 'active')
+              AND (created_by = ? OR id IN (SELECT pair_id FROM vr_device_pair_controllers WHERE user_id = ?))
+            LIMIT 1
+        ");
+        $pairStmt->execute([$user_id, $user_id]);
+        $activePair = $pairStmt->fetch(PDO::FETCH_ASSOC);
+        if ($activePair) $vr_active_pair_id = (int)$activePair['id'];
+    } catch (PDOException $e) { /* ignore */ }
+}
+
 // -- Tab & Filter parameters -----------------------------------------------
+
+// Helper: resolve clip video URLs from source fields (avoids duplication in grid/list/game views)
+function vr_resolve_clip_urls($pdo, $clip) {
+    $src_row = [
+        'file_path' => $clip['source_path'] ?? '',
+        'hls_url' => $clip['source_hls_url'] ?? '',
+        'hls_status' => $clip['source_hls_status'] ?? '',
+        'dash_url' => $clip['source_dash_url'] ?? '',
+        'dash_manifest_url' => $clip['source_dash_manifest_url'] ?? ''
+    ];
+    $play_url = resolveRustfsUrl($pdo, getPreferredVideoUrl($src_row)) ?? '';
+    $fallback = '';
+    if (preg_match('/\.m3u8(\?|&|$)/i', $play_url)) {
+        $orig = resolveRustfsUrl($pdo, $clip['source_path'] ?? '') ?? '';
+        if ($orig && $orig !== $play_url) $fallback = $orig;
+    } else {
+        $fallback = resolveRustfsUrl($pdo, $clip['source_hls_url'] ?? '') ?? '';
+        if (empty($fallback)) $fallback = deriveFallbackUrl($play_url);
+    }
+    $dash_url = getDashUrl($src_row);
+    if ($dash_url) $dash_url = resolveRustfsUrl($pdo, $dash_url) ?? '';
+    return ['play_url' => $play_url, 'fallback' => $fallback, 'dash_url' => $dash_url];
+}
+
 $vr_tab = isset($_GET['tab']) ? preg_replace('/[^a-z_]/', '', $_GET['tab']) : 'by_game';
 if (!in_array($vr_tab, ['clips', 'by_game', 'scouting', 'device_pair'])) $vr_tab = 'by_game';
 
@@ -58,6 +101,9 @@ if ($vr_tab === 'clips') {
             SELECT c.id, c.title, c.description, c.start_time, c.end_time,
                    c.thumbnail_path, c.created_at,
                    vs.filename AS source_filename, vs.camera_angle, vs.duration AS source_duration,
+                   vs.file_path AS source_path, vs.hls_url AS source_hls_url,
+                   vs.hls_status AS source_hls_status, vs.dash_url AS source_dash_url,
+                   vs.dash_manifest_url AS source_dash_manifest_url,
                    GROUP_CONCAT(DISTINCT t.name ORDER BY t.category, t.name SEPARATOR ', ') AS tag_names,
                    GROUP_CONCAT(DISTINCT t.category ORDER BY t.category SEPARATOR ', ') AS tag_categories,
                    GROUP_CONCAT(DISTINCT t.color ORDER BY t.category, t.name SEPARATOR ',') AS tag_colors,
@@ -194,6 +240,9 @@ if ($vr_tab === 'by_game') {
                 SELECT c.id, c.title, c.description, c.start_time, c.end_time,
                        c.thumbnail_path, c.created_at,
                        vs.camera_angle,
+                       vs.file_path AS source_path, vs.hls_url AS source_hls_url,
+                       vs.hls_status AS source_hls_status, vs.dash_url AS source_dash_url,
+                       vs.dash_manifest_url AS source_dash_manifest_url,
                        GROUP_CONCAT(DISTINCT t.id ORDER BY t.category, t.name SEPARATOR ',') AS tag_ids,
                        GROUP_CONCAT(DISTINCT t.name ORDER BY t.category, t.name SEPARATOR ', ') AS tag_names,
                        GROUP_CONCAT(DISTINCT t.category ORDER BY t.category SEPARATOR ', ') AS tag_categories,
@@ -384,8 +433,13 @@ if (!function_exists('vr_safe_color')) {
 </div>
 <?php elseif ($vr_view_mode === 'grid'): ?>
 <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; margin-top: 20px;">
-    <?php foreach ($vr_clips as $clip): ?>
-    <div class="card" data-clip-id="<?= (int)$clip['id'] ?>">
+    <?php foreach ($vr_clips as $clip):
+        $clip_urls = vr_resolve_clip_urls($pdo, $clip);
+        $clip_play_url = $clip_urls['play_url'];
+        $clip_fallback = $clip_urls['fallback'];
+        $clip_dash_url = $clip_urls['dash_url'];
+    ?>
+    <div class="card vr-clip-playable" style="cursor:pointer;" data-clip-id="<?= (int)$clip['id'] ?>" data-source="<?= htmlspecialchars($clip_play_url) ?>"<?php if ($clip_fallback && $clip_fallback !== $clip_play_url): ?> data-fallback-url="<?= htmlspecialchars($clip_fallback) ?>"<?php endif; ?><?php if ($clip_dash_url): ?> data-dash-url="<?= htmlspecialchars($clip_dash_url) ?>"<?php endif; ?>>
         <div style="position: relative; background: var(--bg-card); border-bottom: 1px solid var(--border); aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 8px 8px 0 0;">
             <?php if (!empty($clip['thumbnail_path'])): ?>
             <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $clip['thumbnail_path'])) ?>" alt="Clip thumbnail" loading="lazy" style="width: 100%; height: 100%; object-fit: cover;">
@@ -432,8 +486,13 @@ ksort($grouped);
         <span class="status-badge active"><?= count($group_clips) ?> clips</span>
     </div>
     <div class="card-body" style="padding: 0;">
-        <?php foreach ($group_clips as $clip): ?>
-        <div data-clip-id="<?= (int)$clip['id'] ?>" style="display: grid; grid-template-columns: 80px 1fr; align-items: center; gap: 16px; padding: 14px 20px; border-bottom: 1px solid var(--border); transition: background .2s; cursor: pointer;" onmouseover="this.style.background='var(--bg-hover, rgba(255,255,255,0.02))'" onmouseout="this.style.background='transparent'">
+        <?php foreach ($group_clips as $clip):
+            $clip_urls = vr_resolve_clip_urls($pdo, $clip);
+            $clip_play_url = $clip_urls['play_url'];
+            $clip_fallback = $clip_urls['fallback'];
+            $clip_dash_url = $clip_urls['dash_url'];
+        ?>
+        <div class="vr-clip-playable" data-clip-id="<?= (int)$clip['id'] ?>" data-source="<?= htmlspecialchars($clip_play_url) ?>"<?php if ($clip_fallback && $clip_fallback !== $clip_play_url): ?> data-fallback-url="<?= htmlspecialchars($clip_fallback) ?>"<?php endif; ?><?php if ($clip_dash_url): ?> data-dash-url="<?= htmlspecialchars($clip_dash_url) ?>"<?php endif; ?> style="display: grid; grid-template-columns: 80px 1fr; align-items: center; gap: 16px; padding: 14px 20px; border-bottom: 1px solid var(--border); transition: background .2s; cursor: pointer;" onmouseover="this.style.background='var(--bg-hover, rgba(255,255,255,0.02))'" onmouseout="this.style.background='transparent'">
             <div style="width: 80px; height: 56px; background: rgba(var(--primary-rgb, 107,70,193), 0.12); border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid var(--border);">
                 <?php if (!empty($clip['thumbnail_path'])): ?>
                 <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $clip['thumbnail_path'])) ?>" alt="" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
@@ -556,8 +615,13 @@ ksort($grouped);
             <span class="status-badge active"><?= count($cat_clips) ?> clip<?= count($cat_clips) !== 1 ? 's' : '' ?></span>
         </div>
         <div class="card-body" style="padding: 0;">
-            <?php foreach ($cat_clips as $gc): ?>
-            <div data-clip-id="<?= (int)$gc['id'] ?>" style="display: grid; grid-template-columns: 80px 1fr; align-items: center; gap: 16px; padding: 14px 20px; border-bottom: 1px solid var(--border); transition: background .2s; cursor: pointer;" onmouseover="this.style.background='var(--bg-hover, rgba(255,255,255,0.02))'" onmouseout="this.style.background='transparent'">
+            <?php foreach ($cat_clips as $gc):
+                $gc_urls = vr_resolve_clip_urls($pdo, $gc);
+                $gc_play_url = $gc_urls['play_url'];
+                $gc_fallback = $gc_urls['fallback'];
+                $gc_dash_url = $gc_urls['dash_url'];
+            ?>
+            <div class="vr-clip-playable" data-clip-id="<?= (int)$gc['id'] ?>" data-source="<?= htmlspecialchars($gc_play_url) ?>"<?php if ($gc_fallback && $gc_fallback !== $gc_play_url): ?> data-fallback-url="<?= htmlspecialchars($gc_fallback) ?>"<?php endif; ?><?php if ($gc_dash_url): ?> data-dash-url="<?= htmlspecialchars($gc_dash_url) ?>"<?php endif; ?> style="display: grid; grid-template-columns: 80px 1fr; align-items: center; gap: 16px; padding: 14px 20px; border-bottom: 1px solid var(--border); transition: background .2s; cursor: pointer;" onmouseover="this.style.background='var(--bg-hover, rgba(255,255,255,0.02))'" onmouseout="this.style.background='transparent'">
                 <div style="width: 80px; height: 56px; background: rgba(var(--primary-rgb, 107,70,193), 0.12); border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid var(--border);">
                     <?php if (!empty($gc['thumbnail_path'])): ?>
                     <img src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $gc['thumbnail_path'])) ?>" alt="" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
@@ -825,7 +889,7 @@ try {
         </div>
         <div class="card-body">
             <p style="font-size: 13px; color: var(--text-muted, #888); margin-bottom: 16px;">
-                As a controller, you manage what appears on the paired TV display. Navigate to any page and it will appear on the TV. Use freeze to navigate privately without updating the TV.
+                As a controller, everything you do is cast to the paired TV display. Simply use Game Plan as normal — the TV automatically mirrors your current page. Use freeze to pause casting and navigate privately.
             </p>
 
             <!-- Create New Pair -->
@@ -911,26 +975,24 @@ try {
                     <?php endif; ?>
                 </div>
 
-                <!-- TV Navigation — controller sends pages to the TV viewer -->
+                <!-- Casting Status — TV automatically follows controller navigation -->
                 <?php if ($pair_is_active): ?>
                 <div style="padding: 12px 16px; border-top: 1px solid var(--border, #333); background: rgba(107,70,193,.04);">
-                    <div style="font-size: 10px; font-weight: 700; color: var(--text-muted, #888); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px;">
-                        <i class="fas fa-tv" style="margin-right: 4px;"></i> Navigate TV Display
+                    <div style="font-size: 10px; font-weight: 700; color: var(--text-muted, #888); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px;">
+                        <i class="fas fa-broadcast-tower" style="margin-right: 4px;"></i> Casting
                         <?php if ($pair['is_frozen']): ?>
-                        <span style="color: var(--warning, #F59E0B); margin-left: 6px;"><i class="fas fa-snowflake"></i> Frozen — TV won't update</span>
+                        <span style="color: var(--warning, #F59E0B); margin-left: 6px;"><i class="fas fa-snowflake"></i> Paused — TV stays on current view</span>
+                        <?php else: ?>
+                        <span style="color: var(--success, #10B981); margin-left: 6px;"><i class="fas fa-circle" style="font-size: 7px; vertical-align: middle;"></i> Live</span>
                         <?php endif; ?>
                     </div>
-                    <div style="display: flex; flex-wrap: wrap; gap: 6px;" id="tvNavBtns_<?= (int)$pair['id'] ?>">
-                        <button type="button" class="btn btn-sm btn-secondary tv-nav-btn" data-pair="<?= (int)$pair['id'] ?>" data-page="home"><i class="fas fa-house"></i> Dashboard</button>
-                        <button type="button" class="btn btn-sm btn-secondary tv-nav-btn" data-pair="<?= (int)$pair['id'] ?>" data-page="video_review"><i class="fas fa-film"></i> Video Review</button>
-                        <button type="button" class="btn btn-sm btn-secondary tv-nav-btn" data-pair="<?= (int)$pair['id'] ?>" data-page="game_plan"><i class="fas fa-clipboard-list"></i> Game Plans</button>
-                        <button type="button" class="btn btn-sm btn-secondary tv-nav-btn" data-pair="<?= (int)$pair['id'] ?>" data-page="whiteboard"><i class="fas fa-chalkboard"></i> Whiteboard</button>
-                        <button type="button" class="btn btn-sm btn-secondary tv-nav-btn" data-pair="<?= (int)$pair['id'] ?>" data-page="lines"><i class="fas fa-users-line"></i> Game Lines</button>
-                        <button type="button" class="btn btn-sm btn-secondary tv-nav-btn" data-pair="<?= (int)$pair['id'] ?>" data-page="roster"><i class="fas fa-id-card"></i> Roster</button>
-                        <button type="button" class="btn btn-sm btn-secondary tv-nav-btn" data-pair="<?= (int)$pair['id'] ?>" data-page="calendar"><i class="fas fa-calendar"></i> Calendar</button>
-                        <button type="button" class="btn btn-sm btn-secondary tv-nav-btn" data-pair="<?= (int)$pair['id'] ?>" data-page="film_room"><i class="fas fa-video"></i> Film Room</button>
-                        <button type="button" class="btn btn-sm btn-secondary tv-nav-btn" data-pair="<?= (int)$pair['id'] ?>" data-page="review_sessions"><i class="fas fa-chalkboard-user"></i> Reviews</button>
-                    </div>
+                    <p style="font-size: 12px; color: var(--text-muted, #888); margin: 0;">
+                        <?php if ($pair['is_frozen']): ?>
+                        Casting is paused. Navigate freely without updating the TV. Press <strong>Unfreeze</strong> to resume casting.
+                        <?php else: ?>
+                        The TV is mirroring your navigation. Currently showing: <strong><?= htmlspecialchars(ucwords(str_replace('_', ' ', $pair['controller_page'] ?? 'home'))) ?></strong>
+                        <?php endif; ?>
+                    </p>
                 </div>
                 <?php endif; ?>
             </div>
@@ -970,7 +1032,7 @@ try {
         </div>
         <div class="card-body">
             <p style="font-size: 13px; color: var(--text-muted, #888); margin-bottom: 16px;">
-                The TV viewer display requires pairing before showing any content. Once paired, the controller navigates and the TV follows. Use the <strong>Game Plan TV</strong> app on your TV or go to <code style="background: rgba(107,70,193,.1); padding: 2px 6px; border-radius: 4px; font-size: 12px;">/gameplan_tv.php</code> on any large display.
+                The TV viewer display requires pairing before showing any content. Once paired, everything you do on Game Plan is automatically cast to the TV — just like screen casting. Use the <strong>Game Plan TV</strong> app on your TV or go to <code style="background: rgba(107,70,193,.1); padding: 2px 6px; border-radius: 4px; font-size: 12px;">/gameplan_tv.php</code> on any large display.
             </p>
 
             <!-- Viewer Info: How It Works -->
@@ -987,11 +1049,11 @@ try {
                     </div>
                     <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px;">
                         <span style="background: var(--primary, #6B46C1); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0;">3</span>
-                        <span>Use the <strong>Navigate TV Display</strong> buttons to control what the TV shows — all pages are available</span>
+                        <span><strong>Use Game Plan as normal</strong> — everything you navigate to is automatically cast to the TV</span>
                     </div>
                     <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px;">
                         <span style="background: var(--primary, #6B46C1); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0;">4</span>
-                        <span><strong>Freeze</strong> the viewer to navigate on your device without updating the TV</span>
+                        <span><strong>Freeze</strong> to pause casting — navigate privately without updating the TV. Unfreeze to resume</span>
                     </div>
                     <div style="display: flex; align-items: flex-start; gap: 8px;">
                         <span style="background: var(--primary, #6B46C1); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0;">5</span>
@@ -1015,44 +1077,305 @@ function toggleFreeze(pairId) {
         if (data.success) { persistToast('Viewer freeze state updated', 'success'); location.reload(); }
     });
 }
+</script>
+<?php endif; ?>
 
-// TV navigation — send page changes to the paired TV
+<!-- Video Player Modal with Telestration Canvas -->
+<div class="modal-overlay" id="vrPlayerModal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.85);align-items:center;justify-content:center;">
+    <div class="modal-content" style="width:90%;max-width:900px;">
+        <div class="modal-header">
+            <h3 id="vrPlayerTitle"><i class="fas fa-play-circle"></i> Clip</h3>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <button type="button" class="btn btn-sm btn-secondary" id="vrTeleToggle" title="Toggle telestration" style="display:none;"><i class="fas fa-pencil"></i> Draw</button>
+                <button type="button" class="modal-close" id="vrClosePlayer">&times;</button>
+            </div>
+        </div>
+        <div class="modal-body" style="padding:0;">
+            <div style="position:relative;background:#000;border-radius:0 0 8px 8px;overflow:hidden;" id="vrPlayerContainer">
+                <video id="vrModalVideo" controls style="width:100%;max-height:500px;display:block;background:#000;">
+                    <source id="vrModalSource" src="">
+                </video>
+                <canvas id="vrTeleCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;cursor:crosshair;display:none;"></canvas>
+            </div>
+            <!-- Telestration Toolbar (hidden until Draw is toggled) -->
+            <div id="vrTeleToolbar" style="display:none;padding:10px 16px;background:var(--bg-card,#16161F);border-top:1px solid var(--border,#333);">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                    <div style="display:flex;gap:4px;border-right:1px solid var(--border);padding-right:10px;">
+                        <button class="btn btn-sm btn-secondary vr-tele-tool active" data-tool="freehand" title="Freehand"><i class="fas fa-pencil"></i></button>
+                        <button class="btn btn-sm btn-secondary vr-tele-tool" data-tool="line" title="Line"><i class="fas fa-minus"></i></button>
+                        <button class="btn btn-sm btn-secondary vr-tele-tool" data-tool="arrow" title="Arrow"><i class="fas fa-arrow-right"></i></button>
+                    </div>
+                    <div style="display:flex;gap:4px;border-right:1px solid var(--border);padding-right:10px;">
+                        <button class="btn btn-sm vr-tele-color" data-color="#EF4444" style="width:24px;height:24px;padding:0;background:#EF4444;border:2px solid #fff;border-radius:50%;"></button>
+                        <button class="btn btn-sm vr-tele-color" data-color="#3B82F6" style="width:24px;height:24px;padding:0;background:#3B82F6;border:2px solid transparent;border-radius:50%;"></button>
+                        <button class="btn btn-sm vr-tele-color" data-color="#10B981" style="width:24px;height:24px;padding:0;background:#10B981;border:2px solid transparent;border-radius:50%;"></button>
+                        <button class="btn btn-sm vr-tele-color" data-color="#F59E0B" style="width:24px;height:24px;padding:0;background:#F59E0B;border:2px solid transparent;border-radius:50%;"></button>
+                        <button class="btn btn-sm vr-tele-color" data-color="#FFFFFF" style="width:24px;height:24px;padding:0;background:#FFFFFF;border:2px solid transparent;border-radius:50%;"></button>
+                    </div>
+                    <input type="range" id="vrTeleLineWidth" min="1" max="8" value="3" style="width:80px;" title="Line width">
+                    <button class="btn btn-sm btn-secondary" id="vrTeleClear" title="Clear drawings"><i class="fas fa-eraser"></i> Clear</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
 document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('.tv-nav-btn').forEach(function(btn) {
+    // ── Video Player Modal (same pattern as gp_my_clips.php) ──
+    var vrModal = document.getElementById('vrPlayerModal');
+    var vrVideo = document.getElementById('vrModalVideo');
+    var vrSource = document.getElementById('vrModalSource');
+    var vrTitleEl = document.getElementById('vrPlayerTitle');
+    var vrHls = null;
+    var _vrFallbackUrl = '';
+    var _vrFallbackTried = false;
+
+    document.querySelectorAll('.vr-clip-playable').forEach(function(card) {
+        card.addEventListener('click', function() {
+            var src = card.dataset.source || '';
+            _vrFallbackUrl = card.dataset.fallbackUrl || '';
+            _vrFallbackTried = false;
+            vrVideo._dashTried = false;
+            var dashUrl = card.dataset.dashUrl || '';
+            if (dashUrl) { vrVideo.setAttribute('data-dash-url', dashUrl); }
+            else { vrVideo.removeAttribute('data-dash-url'); }
+            var titleNode = card.querySelector('h4') || card.querySelector('[style*="font-weight:700"]');
+            vrTitleEl.innerHTML = '<i class="fas fa-play-circle"></i> ' + (titleNode ? titleNode.textContent.trim() : 'Clip');
+            if (vrHls) { vrHls.destroy(); vrHls = null; }
+            if (src) {
+                if (typeof window.awInitHlsPlayer === 'function') {
+                    vrHls = window.awInitHlsPlayer(vrVideo, src);
+                } else {
+                    vrSource.src = src;
+                    vrVideo.load();
+                }
+                vrVideo.style.display = 'block';
+            } else {
+                vrVideo.style.display = 'none';
+            }
+            vrModal.style.display = 'flex';
+            resizeTeleCanvas();
+        });
+    });
+
+    vrVideo.addEventListener('error', function(e) {
+        if (e && e.target !== vrVideo) return;
+        if (_vrFallbackUrl && !_vrFallbackTried) {
+            _vrFallbackTried = true;
+            if (vrHls) { vrHls.destroy(); vrHls = null; }
+            if (typeof window.awInitHlsPlayer === 'function') {
+                vrHls = window.awInitHlsPlayer(vrVideo, _vrFallbackUrl);
+            }
+        } else if (typeof window.awTryDashFallback === 'function' && vrVideo.getAttribute('data-dash-url') && !vrVideo._dashTried) {
+            vrVideo._dashTried = true;
+            window.awTryDashFallback(vrVideo);
+        }
+    }, true);
+
+    function closeVrPlayerModal() {
+        vrModal.style.display = 'none';
+        if (vrHls) { vrHls.destroy(); vrHls = null; }
+        if (vrVideo._awDash) { try { vrVideo._awDash.reset(); } catch(e){} vrVideo._awDash = null; }
+        vrVideo.pause();
+        vrVideo.removeAttribute('src');
+        // Reset telestration
+        if (teleDrawing) { teleDrawing = false; toggleTelestration(false); }
+        var tc = document.getElementById('vrTeleCanvas');
+        if (tc) { var ctx = tc.getContext('2d'); ctx.clearRect(0, 0, tc.width, tc.height); }
+    }
+
+    document.getElementById('vrClosePlayer').addEventListener('click', closeVrPlayerModal);
+    vrModal.addEventListener('click', function(e) { if (e.target === vrModal) closeVrPlayerModal(); });
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && vrModal.style.display === 'flex') closeVrPlayerModal(); });
+
+    // ── Telestration Canvas on Video ──────────────────────────
+    var teleCanvas = document.getElementById('vrTeleCanvas');
+    var teleCtx = teleCanvas ? teleCanvas.getContext('2d') : null;
+    var teleDrawing = false; // telestration mode active
+    var teleIsDrawing = false; // currently drawing a stroke
+    var teleTool = 'freehand';
+    var teleColor = '#EF4444';
+    var teleLineWidth = 3;
+    var teleStartX, teleStartY;
+    var teleHistory = [];
+    var vrPairId = <?= (int)$vr_active_pair_id ?>;
+    var vrIsTvViewer = <?= $vr_is_tv_viewer ? 'true' : 'false' ?>;
+
+    function resizeTeleCanvas() {
+        if (!teleCanvas) return;
+        var container = document.getElementById('vrPlayerContainer');
+        if (!container) return;
+        var rect = container.getBoundingClientRect();
+        teleCanvas.width = Math.round(rect.width);
+        teleCanvas.height = Math.round(rect.height);
+        redrawTeleHistory();
+    }
+    window.addEventListener('resize', function() { if (vrModal.style.display === 'flex') resizeTeleCanvas(); });
+
+    function saveTeleHistory() {
+        if (!teleCtx) return;
+        teleHistory.push(teleCtx.getImageData(0, 0, teleCanvas.width, teleCanvas.height));
+        if (teleHistory.length > 30) teleHistory.shift();
+    }
+    function redrawTeleHistory() {
+        if (teleHistory.length > 0 && teleCtx) {
+            var last = teleHistory[teleHistory.length - 1];
+            var temp = document.createElement('canvas');
+            temp.width = last.width; temp.height = last.height;
+            temp.getContext('2d').putImageData(last, 0, 0);
+            teleCtx.clearRect(0, 0, teleCanvas.width, teleCanvas.height);
+            teleCtx.drawImage(temp, 0, 0, teleCanvas.width, teleCanvas.height);
+        }
+    }
+
+    function toggleTelestration(on) {
+        teleDrawing = on;
+        var canvas = document.getElementById('vrTeleCanvas');
+        var toolbar = document.getElementById('vrTeleToolbar');
+        var toggleBtn = document.getElementById('vrTeleToggle');
+        if (canvas) { canvas.style.display = on ? 'block' : 'none'; canvas.style.pointerEvents = on ? 'auto' : 'none'; }
+        if (toolbar) toolbar.style.display = on ? 'block' : 'none';
+        if (toggleBtn) { toggleBtn.classList.toggle('btn-primary', on); toggleBtn.classList.toggle('btn-secondary', !on); }
+        if (on) resizeTeleCanvas();
+    }
+
+    // Show draw button for coaches with active pair
+    var teleToggleBtn = document.getElementById('vrTeleToggle');
+    if (teleToggleBtn) {
+        teleToggleBtn.style.display = 'inline-flex';
+        teleToggleBtn.addEventListener('click', function() { toggleTelestration(!teleDrawing); });
+    }
+
+    function getTelePos(e) {
+        var rect = teleCanvas.getBoundingClientRect();
+        var touch = e.touches ? e.touches[0] : e;
+        return { x: (touch.clientX - rect.left) * (teleCanvas.width / rect.width), y: (touch.clientY - rect.top) * (teleCanvas.height / rect.height) };
+    }
+
+    function teleOnStart(e) {
+        if (!teleDrawing || !teleCtx) return;
+        e.preventDefault(); e.stopPropagation();
+        teleIsDrawing = true;
+        var pos = getTelePos(e);
+        teleStartX = pos.x; teleStartY = pos.y;
+        if (teleTool === 'freehand') {
+            teleCtx.beginPath(); teleCtx.moveTo(pos.x, pos.y);
+            teleCtx.strokeStyle = teleColor; teleCtx.lineWidth = teleLineWidth;
+            teleCtx.lineCap = 'round'; teleCtx.lineJoin = 'round';
+        }
+    }
+    function teleOnMove(e) {
+        if (!teleIsDrawing || !teleCtx) return;
+        e.preventDefault(); e.stopPropagation();
+        var pos = getTelePos(e);
+        if (teleTool === 'freehand') { teleCtx.lineTo(pos.x, pos.y); teleCtx.stroke(); }
+        else { redrawTeleHistory(); drawTeleStraight(teleCtx, teleStartX, teleStartY, pos.x, pos.y, teleTool, teleColor, teleLineWidth); }
+    }
+    function teleOnEnd(e) {
+        if (!teleIsDrawing || !teleCtx) return;
+        teleIsDrawing = false;
+        if (teleTool !== 'freehand') {
+            var pos = e.changedTouches ? getTelePos(e.changedTouches[0]) : getTelePos(e);
+            redrawTeleHistory();
+            drawTeleStraight(teleCtx, teleStartX, teleStartY, pos.x, pos.y, teleTool, teleColor, teleLineWidth);
+        }
+        saveTeleHistory();
+        vrBroadcastTelestration();
+    }
+
+    function drawTeleStraight(ctx, x1, y1, x2, y2, tool, color, width) {
+        ctx.strokeStyle = color; ctx.lineWidth = width; ctx.lineCap = 'round'; ctx.setLineDash([]);
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+        if (tool === 'arrow') {
+            var angle = Math.atan2(y2 - y1, x2 - x1);
+            var headLen = width * 5;
+            ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(x2, y2);
+            ctx.lineTo(x2 - headLen * Math.cos(angle - Math.PI / 6), y2 - headLen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(x2 - headLen * Math.cos(angle + Math.PI / 6), y2 - headLen * Math.sin(angle + Math.PI / 6));
+            ctx.closePath(); ctx.fill();
+        }
+    }
+
+    if (teleCanvas) {
+        teleCanvas.addEventListener('mousedown', teleOnStart);
+        teleCanvas.addEventListener('mousemove', teleOnMove);
+        teleCanvas.addEventListener('mouseup', teleOnEnd);
+        teleCanvas.addEventListener('mouseleave', teleOnEnd);
+        teleCanvas.addEventListener('touchstart', teleOnStart, { passive: false });
+        teleCanvas.addEventListener('touchmove', teleOnMove, { passive: false });
+        teleCanvas.addEventListener('touchend', teleOnEnd);
+    }
+
+    // Tool/color selection
+    document.querySelectorAll('.vr-tele-tool').forEach(function(btn) {
         btn.addEventListener('click', function() {
-            var pairId = this.dataset.pair;
-            var page = this.dataset.page;
-            var csrfEl = document.querySelector('input[name="csrf_token"]');
-            if (!csrfEl || !csrfEl.value) { if (typeof persistToast === 'function') persistToast('Session expired. Please reload.', 'error'); return; }
+            document.querySelectorAll('.vr-tele-tool').forEach(function(b) { b.classList.remove('active'); b.classList.remove('btn-primary'); b.classList.add('btn-secondary'); });
+            btn.classList.add('active'); btn.classList.remove('btn-secondary'); btn.classList.add('btn-primary');
+            teleTool = btn.dataset.tool;
+        });
+    });
+    document.querySelectorAll('.vr-tele-color').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.vr-tele-color').forEach(function(b) { b.style.borderColor = 'transparent'; });
+            btn.style.borderColor = '#fff';
+            teleColor = btn.dataset.color;
+        });
+    });
+    var teleWidthInput = document.getElementById('vrTeleLineWidth');
+    if (teleWidthInput) teleWidthInput.addEventListener('input', function() { teleLineWidth = parseInt(this.value) || 3; });
+    var teleClearBtn = document.getElementById('vrTeleClear');
+    if (teleClearBtn) teleClearBtn.addEventListener('click', function() {
+        teleHistory = [];
+        if (teleCtx) teleCtx.clearRect(0, 0, teleCanvas.width, teleCanvas.height);
+        vrBroadcastTelestration();
+    });
 
-            btn.disabled = true;
-            btn.style.opacity = '0.5';
-
+    // ── Telestration Broadcast (Controller → TV) ──────────────
+    var vrBroadcastTimer = null;
+    function vrBroadcastTelestration() {
+        if (!vrPairId || vrIsTvViewer || !teleCanvas) return;
+        if (vrBroadcastTimer) clearTimeout(vrBroadcastTimer);
+        vrBroadcastTimer = setTimeout(function() {
+            var dataUrl = teleCanvas.toDataURL('image/png');
+            var csrf = document.querySelector('input[name="csrf_token"]') || document.querySelector('meta[name="csrf-token"]');
+            var token = csrf ? (csrf.value || csrf.content || '') : '';
+            if (!token) return;
             fetch('/process_video.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'action=navigate_pair&pair_id=' + pairId + '&target_page=' + encodeURIComponent(page) + '&csrf_token=' + encodeURIComponent(csrfEl.value)
-            }).then(function(r) { return r.json(); }).then(function(data) {
-                btn.disabled = false;
-                btn.style.opacity = '1';
-                if (data.success) {
-                    // Highlight the active nav button
-                    var container = document.getElementById('tvNavBtns_' + pairId);
-                    if (container) {
-                        container.querySelectorAll('.tv-nav-btn').forEach(function(b) {
-                            b.classList.remove('btn-primary');
-                            b.classList.add('btn-secondary');
-                        });
+                body: 'action=broadcast_telestration&pair_id=' + vrPairId
+                    + '&canvas_data=' + encodeURIComponent(dataUrl)
+                    + '&csrf_token=' + encodeURIComponent(token)
+            }).catch(function() { /* best-effort */ });
+        }, 500);
+    }
+
+    // ── TV Viewer: receive telestration overlay ───────────────
+    if (vrPairId && vrIsTvViewer && teleCanvas && teleCtx) {
+        teleCanvas.style.display = 'block';
+        teleCanvas.style.pointerEvents = 'none';
+        var vrTeleSeq = 0;
+        function vrPollTelestration() {
+            fetch('/api_tv_pair_state.php?pair_id=' + vrPairId + '&include_telestration=1&_=' + Date.now())
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.telestration_seq && data.telestration_seq !== vrTeleSeq) {
+                        vrTeleSeq = data.telestration_seq;
+                        if (data.telestration_data) {
+                            var img = new Image();
+                            img.onload = function() {
+                                teleCtx.clearRect(0, 0, teleCanvas.width, teleCanvas.height);
+                                teleCtx.drawImage(img, 0, 0, teleCanvas.width, teleCanvas.height);
+                            };
+                            img.src = data.telestration_data;
+                        } else {
+                            teleCtx.clearRect(0, 0, teleCanvas.width, teleCanvas.height);
+                        }
                     }
-                    btn.classList.remove('btn-secondary');
-                    btn.classList.add('btn-primary');
-                }
-            }).catch(function() {
-                btn.disabled = false;
-                btn.style.opacity = '1';
-            });
-        });
-    });
+                }).catch(function() { /* retry next poll */ });
+        }
+        setInterval(vrPollTelestration, 2000);
+    }
 });
 </script>
-<?php endif; ?>

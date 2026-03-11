@@ -192,6 +192,10 @@ try {
         case 'navigate_pair':
             handleNavigatePair();
             break;
+
+        case 'broadcast_telestration':
+            handleBroadcastTelestration();
+            break;
             
         default:
             throw new Exception('Invalid action');
@@ -3346,6 +3350,61 @@ function handleNavigatePair() {
     $stmt->execute([$target_page, $pair_id]);
 
     echo json_encode(['success' => $stmt->rowCount() > 0, 'page' => $target_page]);
+    exit;
+}
+
+/**
+ * Broadcast telestration (drawing) data from controller to paired TV viewer.
+ * Stores the canvas data URL and increments the sequence counter so the TV
+ * can efficiently detect changes during polling.
+ */
+function handleBroadcastTelestration() {
+    global $pdo, $user_id, $user_role;
+
+    $allowed_roles = ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'];
+    if (!in_array($user_role, $allowed_roles)) {
+        echo json_encode(['success' => false, 'error' => 'Coach access required']);
+        exit;
+    }
+
+    $pair_id = filter_input(INPUT_POST, 'pair_id', FILTER_VALIDATE_INT);
+    if (!$pair_id) {
+        echo json_encode(['success' => false, 'error' => 'Invalid pair ID']);
+        exit;
+    }
+
+    // Validate canvas_data is a data URL (image/png base64) and within size limit
+    $canvas_data = $_POST['canvas_data'] ?? '';
+    if ($canvas_data !== '' && strpos($canvas_data, 'data:image/png;base64,') !== 0) {
+        echo json_encode(['success' => false, 'error' => 'Invalid canvas data format']);
+        exit;
+    }
+    // Reject oversized payloads (2MB max for canvas data URL)
+    if (strlen($canvas_data) > 2 * 1024 * 1024) {
+        echo json_encode(['success' => false, 'error' => 'Canvas data too large']);
+        exit;
+    }
+
+    // Only the creator or joined controllers can broadcast
+    $stmt = $pdo->prepare("
+        SELECT id FROM vr_device_pairs WHERE id = ? AND status IN ('paired', 'active')
+        AND (created_by = ? OR id IN (SELECT pair_id FROM vr_device_pair_controllers WHERE user_id = ?))
+    ");
+    $stmt->execute([$pair_id, $user_id, $user_id]);
+    if (!$stmt->fetch()) {
+        echo json_encode(['success' => false, 'error' => 'Not authorized']);
+        exit;
+    }
+
+    // Store telestration data and increment version counter
+    $stmt = $pdo->prepare("
+        UPDATE vr_device_pairs
+        SET telestration_data = ?, telestration_seq = telestration_seq + 1
+        WHERE id = ?
+    ");
+    $stmt->execute([$canvas_data ?: null, $pair_id]);
+
+    echo json_encode(['success' => true]);
     exit;
 }
 

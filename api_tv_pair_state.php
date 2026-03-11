@@ -3,7 +3,8 @@
  * API: TV Pair State Polling Endpoint
  *
  * Returns the current state of a device pair for the TV viewer to poll.
- * Lightweight JSON response: { active, is_frozen, controller_page }
+ * Lightweight JSON response: { active, is_frozen, controller_page, telestration_seq }
+ * Pass ?include_telestration=1 to also receive the full telestration_data (canvas drawing).
  */
 
 ini_set('display_errors', 0);
@@ -35,10 +36,18 @@ if (!$pair_id) {
 }
 
 try {
-    $stmt = $pdo->prepare("
-        SELECT status, is_frozen, controller_page
-        FROM vr_device_pairs WHERE id = ? AND status IN ('paired', 'active')
-    ");
+    $include_telestration = !empty($_GET['include_telestration']);
+    if ($include_telestration) {
+        $stmt = $pdo->prepare("
+            SELECT status, is_frozen, controller_page, telestration_seq, telestration_data
+            FROM vr_device_pairs WHERE id = ? AND status IN ('paired', 'active')
+        ");
+    } else {
+        $stmt = $pdo->prepare("
+            SELECT status, is_frozen, controller_page, telestration_seq
+            FROM vr_device_pairs WHERE id = ? AND status IN ('paired', 'active')
+        ");
+    }
     $stmt->execute([$pair_id]);
     $pair = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -47,11 +56,16 @@ try {
         exit;
     }
 
-    echo json_encode([
-        'active'          => true,
-        'is_frozen'       => (bool)$pair['is_frozen'],
-        'controller_page' => $pair['controller_page'] ?? 'home',
-    ]);
+    $response = [
+        'active'            => true,
+        'is_frozen'         => (bool)$pair['is_frozen'],
+        'controller_page'   => $pair['controller_page'] ?? 'home',
+        'telestration_seq'  => (int)($pair['telestration_seq'] ?? 0),
+    ];
+    if ($include_telestration && isset($pair['telestration_data'])) {
+        $response['telestration_data'] = $pair['telestration_data'];
+    }
+    echo json_encode($response);
 } catch (PDOException $e) {
     error_log('tv_pair_state: ' . $e->getMessage());
     echo json_encode(['active' => false]);
