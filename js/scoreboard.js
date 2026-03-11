@@ -765,7 +765,9 @@ function sbStartGame(e) {
         is_arctic_wolves_game: fd.get('is_arctic_wolves_game') || '0'
     }).then(function(d) {
         if (d.success) {
-            window.location.reload();
+            // Preserve custom period/OT duration settings across new game
+            sbClockSeconds = sbGetPeriodDuration(1);
+            sbSaveAndReload();
         } else {
             alert(d.message || 'Failed to start game');
         }
@@ -776,7 +778,11 @@ function sbStartGame(e) {
 function sbEndGame() {
     if (!confirm('End this game? The final score will be recorded.')) return;
     sbFetch('end_game').then(function(d) {
-        if (d.success) window.location.reload();
+        if (d.success) {
+            // Clear clock state – game is over
+            try { sessionStorage.removeItem('sb_clock_seconds'); sessionStorage.removeItem('sb_clock_running'); sessionStorage.removeItem('sb_clock_saved_at'); } catch (e) {}
+            window.location.reload();
+        }
     });
 }
 
@@ -924,6 +930,8 @@ function sbMusicPlay(url, title, artist, source) {
         sbMusicPlayer.audio.addEventListener('error', function() {
             sbUpdateNowPlaying(null, null, null);
             sbMusicPlayer.playing = false;
+            var btn = document.getElementById('sbMusicPlayPause');
+            if (btn) btn.innerHTML = '<i class="fas fa-play"></i>';
         });
     }
     sbMusicPlayer.audio.src = url;
@@ -932,6 +940,8 @@ function sbMusicPlay(url, title, artist, source) {
     sbMusicPlayer.currentTrack = { url: url, title: title, artist: artist, source: source };
     sbMusicPlayer.playing = true;
     sbUpdateNowPlaying(title, artist, source);
+    var btn = document.getElementById('sbMusicPlayPause');
+    if (btn) btn.innerHTML = '<i class="fas fa-pause"></i>';
 }
 
 function sbMusicPause() {
@@ -965,6 +975,8 @@ function sbMusicStop() {
     sbMusicPlayer.playing = false;
     sbMusicPlayer.currentTrack = null;
     sbUpdateNowPlaying(null, null, null);
+    var btn = document.getElementById('sbMusicPlayPause');
+    if (btn) btn.innerHTML = '<i class="fas fa-play"></i>';
 }
 
 function sbMusicNext() {
