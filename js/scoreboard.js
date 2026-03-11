@@ -50,6 +50,7 @@ var OVERTIME_PERIOD_SECS = 5 * 60;    // 300 seconds = 5 min OT (default)
 var sbClockSeconds = REGULATION_PERIOD_SECS;
 var sbClockRunning = false;
 var sbClockInterval = null;
+var sbClockLastTick = 0; // Wall-clock timestamp (ms) of last applied tick
 
 // ── Clock State Persistence (survives page reload / navigation) ──
 function sbSaveClockState() {
@@ -58,9 +59,11 @@ function sbSaveClockState() {
         sessionStorage.setItem('sb_clock_running', sbClockRunning ? '1' : '0');
         sessionStorage.setItem('sb_regulation_secs', REGULATION_PERIOD_SECS);
         sessionStorage.setItem('sb_overtime_secs', OVERTIME_PERIOD_SECS);
-        if (sbClockRunning) {
-            sessionStorage.setItem('sb_clock_saved_at', Date.now());
-        }
+        sessionStorage.setItem('sb_clock_saved_at', Date.now());
+        // Persist penalty timers so they survive reload
+        sbSavePenaltyState();
+        // Persist recurring buzzer state
+        sbSaveRecurringBuzzerState();
     } catch (e) { /* sessionStorage unavailable */ }
 }
 
@@ -75,12 +78,13 @@ function sbRestoreClockState() {
 
             var restored = parseInt(saved, 10);
             if (!isNaN(restored) && restored >= 0) {
-                // If clock was running, account for time elapsed during reload
                 var wasRunning = sessionStorage.getItem('sb_clock_running') === '1';
+                var elapsed = 0;
                 if (wasRunning) {
+                    // Account for time elapsed during reload
                     var savedAt = parseInt(sessionStorage.getItem('sb_clock_saved_at'), 10);
                     if (!isNaN(savedAt)) {
-                        var elapsed = Math.round((Date.now() - savedAt) / 1000);
+                        elapsed = Math.round((Date.now() - savedAt) / 1000);
                         restored = Math.max(0, restored - elapsed);
                     }
                 }
@@ -88,6 +92,14 @@ function sbRestoreClockState() {
                 sbUpdateClockDisplay();
                 // Sync period time select dropdown to match saved value
                 sbSyncPeriodTimeSelects();
+                // Restore penalty timer state (compensating for elapsed time)
+                sbRestorePenaltyState(wasRunning ? elapsed : 0);
+                // Restore recurring buzzer state
+                sbRestoreRecurringBuzzerState(wasRunning ? elapsed : 0);
+                // Auto-restart clock if it was running before reload
+                if (wasRunning && sbClockSeconds > 0) {
+                    sbClockStart();
+                }
                 return true;
             }
         }
@@ -172,14 +184,26 @@ function sbUpdateClockDisplay() {
 }
 
 function sbClockTick() {
+    // Timestamp-based: compute real elapsed seconds since last tick
+    var now = Date.now();
+    var delta = Math.floor((now - sbClockLastTick) / 1000);
+    if (delta < 1) return; // less than 1 second elapsed
+    sbClockLastTick += delta * 1000; // advance by whole seconds only
+
     if (sbClockSeconds > 0) {
-        sbClockSeconds--;
+        var tickCount = Math.min(delta, sbClockSeconds);
+        sbClockSeconds -= tickCount;
         sbUpdateClockDisplay();
         sbSaveClockState();
-        // Also tick penalty timers
-        sbTickPenaltyTimers();
-        // Tick recurring buzzer
-        sbTickRecurringBuzzer();
+        // Tick penalty timers by the same delta
+        sbTickPenaltyTimers(tickCount);
+        // Tick recurring buzzer by the same delta
+        sbTickRecurringBuzzer(tickCount);
+        if (sbClockSeconds <= 0) {
+            // Period ended
+            sbClockStop();
+            sbBuzzer(); // Auto-buzzer at end of period
+        }
     } else {
         // Period ended
         sbClockStop();
@@ -190,7 +214,9 @@ function sbClockTick() {
 function sbClockStart() {
     if (sbClockRunning) return;
     sbClockRunning = true;
-    sbClockInterval = setInterval(sbClockTick, 1000);
+    sbClockLastTick = Date.now();
+    // 200ms polling for responsiveness; actual ticks are timestamp-based (1s)
+    sbClockInterval = setInterval(sbClockTick, 200);
     var btn = document.getElementById('sbClockStart');
     if (btn) {
         btn.innerHTML = '<i class="fas fa-pause"></i> Stop';
@@ -257,12 +283,13 @@ function sbInitPenaltyTimers() {
     });
 }
 
-function sbTickPenaltyTimers() {
+function sbTickPenaltyTimers(delta) {
+    if (!delta) delta = 1;
     ['home', 'away'].forEach(function(team) {
         for (var i = 0; i < 2; i++) {
             var timer = sbPenaltyTimers[team][i];
             if (timer && timer.seconds > 0) {
-                timer.seconds--;
+                timer.seconds = Math.max(0, timer.seconds - delta);
                 timer.element.textContent = sbFormatClock(timer.seconds);
                 if (timer.seconds === 0) {
                     // Penalty expired
@@ -274,7 +301,7 @@ function sbTickPenaltyTimers() {
         }
     });
     // Also tick individual penalty item clocks in operator controls
-    sbTickPenaltyItemClocks();
+    sbTickPenaltyItemClocks(delta);
 }
 
 // ── Individual Penalty Item Clocks (in operator control list) ──
@@ -294,10 +321,11 @@ function sbInitPenaltyItemClocks() {
     });
 }
 
-function sbTickPenaltyItemClocks() {
+function sbTickPenaltyItemClocks(delta) {
+    if (!delta) delta = 1;
     sbPenaltyItemClocks.forEach(function(clock) {
         if (clock.seconds > 0) {
-            clock.seconds--;
+            clock.seconds = Math.max(0, clock.seconds - delta);
             clock.element.textContent = sbFormatClock(clock.seconds);
             clock.element.setAttribute('data-penalty-seconds', clock.seconds);
             if (clock.seconds === 0) {
@@ -314,6 +342,67 @@ if (document.getElementById('sbHomePenTime0')) {
 }
 // Init individual penalty item clocks on load
 sbInitPenaltyItemClocks();
+
+// ── Penalty State Persistence (survives page reload) ──────
+function sbSavePenaltyState() {
+    try {
+        var state = { home: [], away: [] };
+        ['home', 'away'].forEach(function(team) {
+            for (var i = 0; i < 2; i++) {
+                var timer = sbPenaltyTimers[team][i];
+                state[team].push(timer ? timer.seconds : null);
+            }
+        });
+        sessionStorage.setItem('sb_penalty_timers', JSON.stringify(state));
+        var itemState = [];
+        sbPenaltyItemClocks.forEach(function(clock) {
+            itemState.push(clock.seconds);
+        });
+        sessionStorage.setItem('sb_penalty_item_clocks', JSON.stringify(itemState));
+    } catch (e) { /* sessionStorage unavailable */ }
+}
+
+function sbRestorePenaltyState(elapsed) {
+    if (!elapsed) elapsed = 0;
+    try {
+        var raw = sessionStorage.getItem('sb_penalty_timers');
+        if (raw) {
+            var state = JSON.parse(raw);
+            ['home', 'away'].forEach(function(team) {
+                if (!state[team]) return;
+                for (var i = 0; i < 2; i++) {
+                    if (state[team][i] !== null && state[team][i] !== undefined) {
+                        var secs = Math.max(0, state[team][i] - elapsed);
+                        var el = document.getElementById('sb' + (team === 'home' ? 'Home' : 'Away') + 'PenTime' + i);
+                        if (el) {
+                            el.textContent = sbFormatClock(secs);
+                            if (secs > 0) {
+                                sbPenaltyTimers[team][i] = { seconds: secs, element: el };
+                            } else {
+                                sbPenaltyTimers[team][i] = null;
+                                var box = document.getElementById('sb' + (team === 'home' ? 'Home' : 'Away') + 'Pen' + i);
+                                if (box) box.classList.remove('active');
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        var rawItems = sessionStorage.getItem('sb_penalty_item_clocks');
+        if (rawItems) {
+            var itemState = JSON.parse(rawItems);
+            for (var j = 0; j < sbPenaltyItemClocks.length && j < itemState.length; j++) {
+                var restored = Math.max(0, itemState[j] - elapsed);
+                sbPenaltyItemClocks[j].seconds = restored;
+                sbPenaltyItemClocks[j].element.textContent = sbFormatClock(restored);
+                sbPenaltyItemClocks[j].element.setAttribute('data-penalty-seconds', restored);
+                if (restored === 0) {
+                    sbPenaltyItemClocks[j].element.classList.add('expired');
+                }
+            }
+        }
+    } catch (e) { /* sessionStorage unavailable or bad data */ }
+}
 
 // ══════════════════════════════════════════════════════════
 // PERIOD MANAGEMENT
@@ -683,9 +772,10 @@ function sbToggleRecurringBuzzer() {
     sbUpdateRecurringBuzzerDisplay();
 }
 
-function sbTickRecurringBuzzer() {
+function sbTickRecurringBuzzer(delta) {
+    if (!delta) delta = 1;
     if (!sbRecurringBuzzerActive || sbRecurringBuzzerInterval <= 0) return;
-    sbRecurringBuzzerCountdown--;
+    sbRecurringBuzzerCountdown -= delta;
     if (sbRecurringBuzzerCountdown <= 0) {
         sbBuzzer(); // Fire the buzzer
         sbRecurringBuzzerCountdown = sbRecurringBuzzerInterval; // Reset for next cycle
@@ -723,6 +813,34 @@ function sbUpdateRecurringBuzzerDisplay() {
             toggleBtn.classList.remove('active');
         }
     }
+}
+
+// ── Recurring Buzzer State Persistence ────────────────────
+function sbSaveRecurringBuzzerState() {
+    try {
+        sessionStorage.setItem('sb_recurring_buzzer', JSON.stringify({
+            interval: sbRecurringBuzzerInterval,
+            countdown: sbRecurringBuzzerCountdown,
+            active: sbRecurringBuzzerActive
+        }));
+    } catch (e) { /* sessionStorage unavailable */ }
+}
+
+function sbRestoreRecurringBuzzerState(elapsed) {
+    if (!elapsed) elapsed = 0;
+    try {
+        var raw = sessionStorage.getItem('sb_recurring_buzzer');
+        if (raw) {
+            var state = JSON.parse(raw);
+            sbRecurringBuzzerInterval = state.interval || 0;
+            sbRecurringBuzzerActive = !!state.active;
+            sbRecurringBuzzerCountdown = (state.countdown || 0) - elapsed;
+            if (sbRecurringBuzzerCountdown <= 0 && sbRecurringBuzzerInterval > 0) {
+                sbRecurringBuzzerCountdown = sbRecurringBuzzerInterval;
+            }
+            sbUpdateRecurringBuzzerDisplay();
+        }
+    } catch (e) { /* sessionStorage unavailable or bad data */ }
 }
 
 // ══════════════════════════════════════════════════════════
@@ -780,7 +898,7 @@ function sbEndGame() {
     sbFetch('end_game').then(function(d) {
         if (d.success) {
             // Clear clock state – game is over
-            try { sessionStorage.removeItem('sb_clock_seconds'); sessionStorage.removeItem('sb_clock_running'); sessionStorage.removeItem('sb_clock_saved_at'); } catch (e) {}
+            try { sessionStorage.removeItem('sb_clock_seconds'); sessionStorage.removeItem('sb_clock_running'); sessionStorage.removeItem('sb_clock_saved_at'); sessionStorage.removeItem('sb_penalty_timers'); sessionStorage.removeItem('sb_penalty_item_clocks'); sessionStorage.removeItem('sb_recurring_buzzer'); } catch (e) {}
             window.location.reload();
         }
     });
