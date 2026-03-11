@@ -128,6 +128,11 @@ function sbGetPeriodDuration(period) {
     return (period <= 3) ? REGULATION_PERIOD_SECS : OVERTIME_PERIOD_SECS;
 }
 
+function sbSaveAndReload() {
+    sbSaveClockState();
+    window.location.reload();
+}
+
 // ── Adjustable Period Times ───────────────────────────────
 function sbSetPeriodTime(minutes) {
     minutes = parseInt(minutes, 10);
@@ -531,8 +536,7 @@ function sbAddPenalty(e) {
             form.reset();
             var customInput = document.getElementById('sb-pen-duration-custom');
             if (customInput) customInput.style.display = 'none';
-            sbSaveClockState();
-            window.location.reload();
+            sbSaveAndReload();
         }
     });
     return false;
@@ -544,8 +548,7 @@ function sbClearPenalty(penaltyId) {
     if (!confirm('Clear this penalty?')) return;
     sbFetch('clear_penalty', { penalty_id: penaltyId }).then(function(d) {
         if (d.success) {
-            sbSaveClockState();
-            window.location.reload();
+            sbSaveAndReload();
         } else {
             alert(d.message || 'Failed to clear penalty');
         }
@@ -886,8 +889,7 @@ function sbAddGoalDetail(e) {
         if (d.success) {
             document.getElementById('sb-goal-detail-modal').classList.remove('active');
             form.reset();
-            sbSaveClockState();
-            window.location.reload();
+            sbSaveAndReload();
         }
     });
     return false;
@@ -1078,7 +1080,7 @@ function sbRenderSubsonicLibrary(container, artists, albums, songs) {
         html += '<div class="sb-ml-grid">';
         albums.forEach(function(album) {
             var coverUrl = album.cover || '';
-            html += '<div class="sb-ml-album-card" data-album-id="' + (album.id || '') + '" onclick="sbSubsonicLoadAlbum(\'' + (album.id || '').replace(/'/g, "\\'") + '\')" data-search="' + ((album.name || '') + ' ' + (album.artist || '')).replace(/"/g, '&quot;').toLowerCase() + '">' +
+            html += '<div class="sb-ml-album-card" data-album-id="' + (album.id || '').replace(/"/g, '&quot;') + '" data-search="' + ((album.name || '') + ' ' + (album.artist || '')).replace(/"/g, '&quot;').toLowerCase() + '">' +
                     (coverUrl ? '<img class="sb-ml-album-cover" src="' + coverUrl.replace(/"/g, '&quot;') + '" alt="">' : '<div class="sb-ml-album-cover sb-ml-no-art"><i class="fas fa-compact-disc"></i></div>') +
                     '<div class="sb-ml-album-name">' + (album.name || 'Unknown Album').replace(/</g, '&lt;') + '</div>' +
                     '<div class="sb-ml-album-artist">' + (album.artist || '').replace(/</g, '&lt;') + '</div>' +
@@ -1106,6 +1108,13 @@ function sbRenderSubsonicLibrary(container, artists, albums, songs) {
     }
 
     container.innerHTML = html;
+    // Event delegation for album cards
+    container.querySelectorAll('.sb-ml-album-card').forEach(function(card) {
+        card.addEventListener('click', function() {
+            var albumId = this.getAttribute('data-album-id');
+            if (albumId) sbSubsonicLoadAlbum(albumId);
+        });
+    });
 }
 
 function sbSubsonicLoadAlbum(albumId) {

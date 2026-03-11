@@ -889,7 +889,11 @@ try {
             // Fetch albums (getAlbumList2)
             $albumsUrl = $subUrl . '/rest/getAlbumList2?' . $baseParams . '&type=alphabeticalByName&size=100';
             $albums = [];
-            $albumsResp = @file_get_contents($albumsUrl);
+            $ctx = stream_context_create(['http' => ['timeout' => 10, 'ignore_errors' => true]]);
+            $albumsResp = file_get_contents($albumsUrl, false, $ctx);
+            if ($albumsResp === false) {
+                error_log('Subsonic: Failed to fetch album list from ' . parse_url($subUrl, PHP_URL_HOST));
+            }
             if ($albumsResp) {
                 $albumsData = json_decode($albumsResp, true);
                 $albumList = $albumsData['subsonic-response']['albumList2']['album'] ?? [];
@@ -906,7 +910,10 @@ try {
             // Fetch random songs
             $songsUrl = $subUrl . '/rest/getRandomSongs?' . $baseParams . '&size=50';
             $songs = [];
-            $songsResp = @file_get_contents($songsUrl);
+            $songsResp = file_get_contents($songsUrl, false, $ctx);
+            if ($songsResp === false) {
+                error_log('Subsonic: Failed to fetch songs from ' . parse_url($subUrl, PHP_URL_HOST));
+            }
             if ($songsResp) {
                 $songsData = json_decode($songsResp, true);
                 $songList = $songsData['subsonic-response']['randomSongs']['song'] ?? [];
@@ -955,7 +962,11 @@ try {
                 exit();
             }
             $albumUrl = $subUrl . '/rest/getAlbum?' . $baseParams . '&id=' . urlencode($albumId);
-            $albumResp = @file_get_contents($albumUrl);
+            $ctx = stream_context_create(['http' => ['timeout' => 10, 'ignore_errors' => true]]);
+            $albumResp = file_get_contents($albumUrl, false, $ctx);
+            if ($albumResp === false) {
+                error_log('Subsonic: Failed to fetch album ' . $albumId . ' from ' . parse_url($subUrl, PHP_URL_HOST));
+            }
             $album = [];
             $songs = [];
             if ($albumResp) {

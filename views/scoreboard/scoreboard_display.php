@@ -514,7 +514,7 @@ foreach ($away_penalties as $p) {
                 <?php endif; ?>
                 <label class="sb-ctrl-btn-secondary sb-ctrl-logo-btn" style="min-height:32px;font-size:11px;cursor:pointer;">
                     <i class="fas fa-camera"></i> <?= !empty($home_logo_url) ? 'Change' : 'Upload' ?> Logo
-                    <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" style="display:none;" onchange="sbQuickLogoUpload(this, 'home', <?= (int)($active_game['home_team_id'] ?? 0) ?>)">
+                    <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" style="display:none;" data-team="home" data-team-id="<?= (int)($active_game['home_team_id'] ?? 0) ?>" onchange="sbQuickLogoUpload(this)">
                 </label>
             </div>
             <?php endif; ?>
@@ -753,7 +753,7 @@ foreach ($away_penalties as $p) {
                 <?php endif; ?>
                 <label class="sb-ctrl-btn-secondary sb-ctrl-logo-btn" style="min-height:32px;font-size:11px;cursor:pointer;">
                     <i class="fas fa-camera"></i> <?= !empty($away_logo_url) ? 'Change' : 'Upload' ?> Logo
-                    <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" style="display:none;" onchange="sbQuickLogoUpload(this, 'away', <?= (int)($active_game['away_team_id'] ?? 0) ?>)">
+                    <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" style="display:none;" data-team="away" data-team-id="<?= (int)($active_game['away_team_id'] ?? 0) ?>" onchange="sbQuickLogoUpload(this)">
                 </label>
             </div>
             <?php endif; ?>
@@ -1168,8 +1168,9 @@ function sbToggleEmptyNet(team) {
 }
 
 // ── Quick logo upload from team controls ──────────────────
-function sbQuickLogoUpload(input, team, teamId) {
+function sbQuickLogoUpload(input) {
     if (!input.files || !input.files[0]) return;
+    var teamId = parseInt(input.getAttribute('data-team-id'), 10) || 0;
     if (!teamId || teamId <= 0) {
         alert('This team is not linked to a team record. Link the team when starting the game to upload logos.');
         return;
@@ -1186,8 +1187,7 @@ function sbQuickLogoUpload(input, team, teamId) {
     }).then(function(r) { return r.json(); })
     .then(function(d) {
         if (d.success) {
-            sbSaveClockState();
-            window.location.reload();
+            sbSaveAndReload();
         } else {
             alert(d.message || 'Logo upload failed');
         }
