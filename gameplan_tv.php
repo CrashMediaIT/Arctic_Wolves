@@ -405,6 +405,55 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('pwa-sw.js').catch(function() {});
 }
 </script>
+
+<?php if ($tv_paired): ?>
+<!-- ── Global Telestration Receive Overlay (TV Viewer) ──────── -->
+<canvas id="tvTeleCanvas" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:9000;pointer-events:none;"></canvas>
+<script>
+(function() {
+    var canvas = document.getElementById('tvTeleCanvas');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var pairId = <?= (int)$tv_pair_id ?>;
+    var teleSeq = 0;
+
+    function resizeCanvas() {
+        var w = window.innerWidth, h = window.innerHeight;
+        if (canvas.width !== w || canvas.height !== h) {
+            canvas.width = w; canvas.height = h;
+        }
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    function pollTelestration() {
+        fetch('/api_tv_pair_state.php?pair_id=' + pairId + '&include_telestration=1&_=' + Date.now())
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.telestration_seq && data.telestration_seq !== teleSeq) {
+                    teleSeq = data.telestration_seq;
+                    if (data.telestration_data) {
+                        var img = new Image();
+                        img.onload = function() {
+                            resizeCanvas();
+                            ctx.clearRect(0, 0, canvas.width, canvas.height);
+                            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        };
+                        img.src = data.telestration_data;
+                    } else {
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    }
+                }
+            })
+            .catch(function() { /* retry next poll */ });
+    }
+
+    setInterval(pollTelestration, 2000);
+    pollTelestration();
+})();
+</script>
+<?php endif; ?>
+
 <script src="js/app.js"></script>
 </body>
 </html>

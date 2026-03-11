@@ -57,6 +57,7 @@ try {
 // Auto-cast: sync current page to any active unfrozen pairs this user controls.
 // This makes TV pairing work like casting — the controller navigates normally and
 // the TV automatically follows without needing dedicated navigation buttons.
+$gp_pwa_active_pair_id = 0;
 if ($isAnyCoach && isset($gp_views[$gp_sub])) {
     try {
         $castStmt = $pdo->prepare("
@@ -70,6 +71,20 @@ if ($isAnyCoach && isset($gp_views[$gp_sub])) {
     } catch (PDOException $e) {
         // Silently ignore — casting is best-effort
     }
+}
+// Detect active pair for global telestration overlay
+if ($isAnyCoach) {
+    try {
+        $pwaPairDetect = $pdo->prepare("
+            SELECT id FROM vr_device_pairs
+            WHERE status IN ('paired', 'active')
+              AND (created_by = ? OR id IN (SELECT pair_id FROM vr_device_pair_controllers WHERE user_id = ?))
+            LIMIT 1
+        ");
+        $pwaPairDetect->execute([$user_id, $user_id]);
+        $pwaPairRow = $pwaPairDetect->fetch(PDO::FETCH_ASSOC);
+        if ($pwaPairRow) $gp_pwa_active_pair_id = (int)$pwaPairRow['id'];
+    } catch (PDOException $e) { /* ignore */ }
 }
 
 // Sub-page labels for the header
@@ -722,3 +737,123 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+
+<?php if ($gp_pwa_active_pair_id > 0): ?>
+<!-- ── Global Telestration Overlay (PWA gameplan) ──────────── -->
+<canvas id="gpTeleCanvas" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:9000;pointer-events:none;"></canvas>
+
+<div id="gpTeleControls" style="position:fixed;bottom:80px;right:16px;z-index:9010;display:flex;align-items:flex-end;gap:8px;flex-direction:column;">
+    <div id="gpTeleToolbar" style="display:none;background:var(--bg-card,#16161F);border:1px solid var(--border,#2D2D3F);border-radius:14px;padding:10px 14px;box-shadow:0 8px 32px rgba(0,0,0,.5);backdrop-filter:blur(12px);">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <div style="display:flex;gap:4px;">
+                <button class="gp-tele-tool active" data-tool="freehand" title="Freehand"><i class="fas fa-pencil"></i></button>
+                <button class="gp-tele-tool" data-tool="line" title="Line"><i class="fas fa-minus"></i></button>
+                <button class="gp-tele-tool" data-tool="arrow" title="Arrow"><i class="fas fa-arrow-right"></i></button>
+            </div>
+            <div style="width:1px;height:24px;background:var(--border,#2D2D3F);"></div>
+            <div style="display:flex;gap:4px;">
+                <button class="gp-tele-color active" data-color="#EF4444" style="background:#EF4444;"></button>
+                <button class="gp-tele-color" data-color="#3B82F6" style="background:#3B82F6;"></button>
+                <button class="gp-tele-color" data-color="#10B981" style="background:#10B981;"></button>
+                <button class="gp-tele-color" data-color="#F59E0B" style="background:#F59E0B;"></button>
+                <button class="gp-tele-color" data-color="#FFFFFF" style="background:#FFFFFF;"></button>
+            </div>
+            <div style="width:1px;height:24px;background:var(--border,#2D2D3F);"></div>
+            <input type="range" id="gpTeleWidth" min="1" max="8" value="3" style="width:60px;accent-color:var(--primary,#6B46C1);" title="Line width">
+            <button class="gp-tele-tool" id="gpTeleClear" title="Clear"><i class="fas fa-eraser"></i></button>
+        </div>
+    </div>
+    <button id="gpTeleDrawBtn" title="Toggle telestration drawing" style="width:56px;height:56px;border-radius:50%;border:2px solid var(--primary,#6B46C1);background:var(--bg-card,#16161F);color:var(--primary-light,#8B5CF6);font-size:20px;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;transition:all .2s;">
+        <i class="fas fa-pencil"></i>
+    </button>
+</div>
+
+<style>
+.gp-tele-tool { width:32px;height:32px;border-radius:8px;border:1px solid var(--border,#2D2D3F);background:transparent;color:var(--text-secondary,#ccc);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;transition:all .15s;padding:0; }
+.gp-tele-tool:hover { background:rgba(107,70,193,.15); color:#fff; }
+.gp-tele-tool.active { background:var(--primary,#6B46C1);color:#fff;border-color:var(--primary,#6B46C1); }
+.gp-tele-color { width:24px;height:24px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0;transition:border-color .15s; }
+.gp-tele-color.active { border-color:#fff; }
+#gpTeleDrawBtn.active { background:var(--primary,#6B46C1);color:#fff;border-color:var(--primary,#6B46C1);box-shadow:0 0 0 4px rgba(107,70,193,.3),0 4px 20px rgba(0,0,0,.4); }
+</style>
+
+<script>
+(function() {
+    var canvas = document.getElementById('gpTeleCanvas');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var pairId = <?= (int)$gp_pwa_active_pair_id ?>;
+    var toolbar = document.getElementById('gpTeleToolbar');
+    var drawBtn = document.getElementById('gpTeleDrawBtn');
+    var drawing = false, isDrawing = false;
+    var tool = 'freehand', color = '#EF4444', lineWidth = 3;
+    var startX, startY, snapshot = null;
+
+    function resizeCanvas() {
+        var w = window.innerWidth, h = window.innerHeight;
+        if (canvas.width !== w || canvas.height !== h) {
+            var imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            canvas.width = w; canvas.height = h;
+            ctx.putImageData(imgData, 0, 0);
+        }
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    drawBtn.addEventListener('click', function() {
+        drawing = !drawing;
+        drawBtn.classList.toggle('active', drawing);
+        toolbar.style.display = drawing ? 'block' : 'none';
+        canvas.style.pointerEvents = drawing ? 'auto' : 'none';
+        canvas.style.cursor = drawing ? 'crosshair' : 'default';
+    });
+
+    function getPos(e) { var t = e.touches ? e.touches[0] : e; return { x: t.clientX, y: t.clientY }; }
+    function onStart(e) {
+        if (!drawing) return; e.preventDefault(); isDrawing = true;
+        var pos = getPos(e); startX = pos.x; startY = pos.y;
+        if (tool === 'freehand') { ctx.beginPath(); ctx.moveTo(pos.x, pos.y); ctx.strokeStyle = color; ctx.lineWidth = lineWidth; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; }
+        else { snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height); }
+    }
+    function onMove(e) {
+        if (!isDrawing) return; e.preventDefault(); var pos = getPos(e);
+        if (tool === 'freehand') { ctx.lineTo(pos.x, pos.y); ctx.stroke(); }
+        else if (snapshot) { ctx.putImageData(snapshot, 0, 0); drawStraight(ctx, startX, startY, pos.x, pos.y, tool, color, lineWidth); }
+    }
+    function onEnd(e) {
+        if (!isDrawing) return; isDrawing = false;
+        if (tool !== 'freehand' && snapshot) { ctx.putImageData(snapshot, 0, 0); var pos = e.changedTouches ? { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY } : getPos(e); drawStraight(ctx, startX, startY, pos.x, pos.y, tool, color, lineWidth); }
+        snapshot = null; broadcastTelestration();
+    }
+    function drawStraight(ctx, x1, y1, x2, y2, t, c, w) {
+        ctx.strokeStyle = c; ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.setLineDash([]);
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+        if (t === 'arrow') { var angle = Math.atan2(y2 - y1, x2 - x1), headLen = w * 5; ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(x2, y2); ctx.lineTo(x2 - headLen * Math.cos(angle - Math.PI / 6), y2 - headLen * Math.sin(angle - Math.PI / 6)); ctx.lineTo(x2 - headLen * Math.cos(angle + Math.PI / 6), y2 - headLen * Math.sin(angle + Math.PI / 6)); ctx.closePath(); ctx.fill(); }
+    }
+    canvas.addEventListener('mousedown', onStart); canvas.addEventListener('mousemove', onMove);
+    canvas.addEventListener('mouseup', onEnd); canvas.addEventListener('mouseleave', onEnd);
+    canvas.addEventListener('touchstart', onStart, { passive: false }); canvas.addEventListener('touchmove', onMove, { passive: false }); canvas.addEventListener('touchend', onEnd);
+
+    document.querySelectorAll('.gp-tele-tool[data-tool]').forEach(function(btn) { btn.addEventListener('click', function() { document.querySelectorAll('.gp-tele-tool[data-tool]').forEach(function(b) { b.classList.remove('active'); }); btn.classList.add('active'); tool = btn.dataset.tool; }); });
+    document.querySelectorAll('.gp-tele-color').forEach(function(btn) { btn.addEventListener('click', function() { document.querySelectorAll('.gp-tele-color').forEach(function(b) { b.classList.remove('active'); }); btn.classList.add('active'); color = btn.dataset.color; }); });
+    var widthInput = document.getElementById('gpTeleWidth'); if (widthInput) widthInput.addEventListener('input', function() { lineWidth = parseInt(this.value) || 3; });
+    var clearBtn = document.getElementById('gpTeleClear'); if (clearBtn) clearBtn.addEventListener('click', function() { ctx.clearRect(0, 0, canvas.width, canvas.height); broadcastTelestration(); });
+
+    var broadcastTimer = null;
+    function broadcastTelestration() {
+        if (!pairId) return;
+        if (broadcastTimer) clearTimeout(broadcastTimer);
+        broadcastTimer = setTimeout(function() {
+            var dataUrl = canvas.toDataURL('image/png');
+            var csrf = document.querySelector('input[name="csrf_token"]') || document.querySelector('meta[name="csrf-token"]');
+            var token = csrf ? (csrf.value || csrf.content || '') : '';
+            if (!token) return;
+            fetch('/process_video.php', {
+                method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'action=broadcast_telestration&pair_id=' + pairId + '&canvas_data=' + encodeURIComponent(dataUrl) + '&csrf_token=' + encodeURIComponent(token)
+            }).catch(function() {});
+        }, 500);
+    }
+})();
+</script>
+<?php endif; ?>
