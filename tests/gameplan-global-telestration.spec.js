@@ -239,10 +239,24 @@ test.describe('TV viewer auto-update polling', () => {
     expect(content).toContain('window.location.reload()');
   });
 
+  test('should use seamless reload to avoid flicker on page transitions', () => {
+    const content = readFile('gameplan_tv.php');
+    expect(content).toContain('seamlessReload');
+    expect(content).toContain('tvTransitioning');
+    expect(content).toContain("style.opacity = '0'");
+  });
+
   test('should detect freeze state changes', () => {
     const content = readFile('gameplan_tv.php');
     expect(content).toContain('is_frozen');
     expect(content).toContain('isFrozen');
+  });
+
+  test('CSS should prevent white flash during page transitions', () => {
+    const css = readFile('css/gameplan-tv.css');
+    expect(css).toContain('html:has(body.tv-body)');
+    expect(css).toContain('tvFadeIn');
+    expect(css).toContain('.tv-content');
   });
 });
 

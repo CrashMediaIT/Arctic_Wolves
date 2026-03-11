@@ -364,6 +364,17 @@ $current_label = $page_labels[$page] ?? 'Game Plan';
     var pairId = <?= (int)$tv_pair_id ?>;
     var currentPage = '<?= htmlspecialchars($page, ENT_QUOTES) ?>';
     var isFrozen = <?= $tv_is_frozen ? 'true' : 'false' ?>;
+    var tvTransitioning = false;
+
+    // Fade-out then reload to avoid white-flash flicker on TV displays
+    function seamlessReload() {
+        if (tvTransitioning) return;
+        tvTransitioning = true;
+        var el = document.querySelector('.tv-main') || document.body;
+        el.style.transition = 'opacity 0.25s ease';
+        el.style.opacity = '0';
+        setTimeout(function() { window.location.reload(); }, 250);
+    }
 
     function pollPairState() {
         fetch('/api_tv_pair_state.php?pair_id=' + pairId + '&_=' + Date.now())
@@ -374,13 +385,13 @@ $current_label = $page_labels[$page] ?? 'Game Plan';
                     window.location.href = '/gameplan_tv.php';
                     return;
                 }
-                // If not frozen and controller changed page, reload
+                // If not frozen and controller changed page, seamless reload
                 if (!data.is_frozen && data.controller_page && data.controller_page !== currentPage) {
-                    window.location.reload();
+                    seamlessReload();
                 }
-                // If freeze state changed, reload to update UI
+                // If freeze state changed, seamless reload to update UI
                 if (data.is_frozen !== isFrozen) {
-                    window.location.reload();
+                    seamlessReload();
                 }
             })
             .catch(function() { /* retry on next poll */ });

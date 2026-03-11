@@ -13,6 +13,9 @@
 /* ── Base ──────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* Dark background on html prevents white flash during page transitions */
+html:has(body.tv-body) { background: var(--bg-main, #0A0A0F); }
+
 body.tv-body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   background: var(--bg-main, #0A0A0F);
@@ -613,7 +616,12 @@ button:focus-visible {
 }
 @media (prefers-reduced-motion: reduce) {
   .tv-frozen-badge { animation: none; }
+  .tv-content { animation: none; }
 }
+
+/* Smooth fade-in for content area on page load / seamless transitions */
+.tv-content { animation: tvFadeIn 0.3s ease; }
+@keyframes tvFadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 .tv-pair-badge {
   display: inline-flex;
