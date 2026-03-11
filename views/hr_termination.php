@@ -1078,7 +1078,7 @@ document.querySelectorAll('.view-details').forEach(function(btn) {
         document.getElementById('modal-name').textContent = data.name || 'N/A';
         document.getElementById('modal-email').textContent = data.email || 'N/A';
         document.getElementById('modal-role').textContent = data.role ? data.role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'N/A';
-        document.getElementById('modal-date').textContent = data.date ? new Date(data.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A';
+        document.getElementById('modal-date').textContent = data.date ? new Date(data.date).toLocaleDateString('en-US', { timeZone: window.APP_TIMEZONE, year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A';
         document.getElementById('modal-type').textContent = data.type ? data.type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'N/A';
         document.getElementById('modal-reason-category').textContent = data.reasonCategory ? data.reasonCategory.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'N/A';
         document.getElementById('modal-notice').textContent = data.notice ? data.notice + ' days' : 'Not specified';
@@ -1090,7 +1090,7 @@ document.querySelectorAll('.view-details').forEach(function(btn) {
         document.getElementById('modal-reason').textContent = data.reason || 'No details provided';
         document.getElementById('modal-final-comments').textContent = data.finalComments || 'No comments';
         document.getElementById('modal-processed-by').textContent = data.processedBy ? data.processedBy.trim() : 'N/A';
-        document.getElementById('modal-created').textContent = data.created ? new Date(data.created).toLocaleString() : 'N/A';
+        document.getElementById('modal-created').textContent = data.created ? new Date(data.created).toLocaleString([], {timeZone: window.APP_TIMEZONE}) : 'N/A';
         
         // Checklist
         const checklistContainer = document.getElementById('modal-checklist');

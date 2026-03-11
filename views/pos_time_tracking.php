@@ -510,7 +510,7 @@ function updateCurrentTime() {
     const now = new Date();
     const el = document.getElementById('current-time-display');
     if (el) {
-        el.textContent = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+        el.textContent = now.toLocaleTimeString('en-US', { timeZone: window.APP_TIMEZONE, hour: '2-digit', minute: '2-digit', hour12: true });
     }
 }
 

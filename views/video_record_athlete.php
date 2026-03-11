@@ -1004,7 +1004,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var uploadLogPre = document.getElementById('uploadLogPre');
     function uploadLog(msg) {
         if (uploadLogPre) {
-            uploadLogPre.textContent += '[' + new Date().toLocaleTimeString() + '] ' + msg + '\n';
+            uploadLogPre.textContent += '[' + new Date().toLocaleTimeString([], {timeZone: window.APP_TIMEZONE}) + '] ' + msg + '\n';
             uploadLogPre.scrollTop = uploadLogPre.scrollHeight;
         }
         console.log('[Upload] ' + msg);

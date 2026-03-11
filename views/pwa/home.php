@@ -924,7 +924,8 @@ try {
 </script>
 <script>
 (function() {
-    var h = new Date().getHours();
+    var tz = window.APP_TIMEZONE;
+    var h = parseInt(new Date().toLocaleString('en-US', {timeZone: tz, hour: 'numeric', hour12: false}));
     var timeOfDay = h < 12 ? 'Morning' : (h < 17 ? 'Afternoon' : 'Evening');
     var days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
     var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -941,7 +942,7 @@ try {
     }
     var dateEl = document.getElementById('pwa-greeting-date');
     if (dateEl) {
-        dateEl.textContent = days[now.getDay()] + ', ' + months[now.getMonth()] + ' ' + now.getDate();
+        dateEl.textContent = now.toLocaleDateString('en-US', {timeZone: tz, weekday: 'long', month: 'short', day: 'numeric'});
     }
 })();
 <?php if ($user_role === 'parent' && !empty($parentAthletes)): ?>

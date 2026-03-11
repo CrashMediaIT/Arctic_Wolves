@@ -1384,7 +1384,7 @@ function loadMovements(productId) {
                     var changeSign = m.quantity_change > 0 ? '+' : '';
                     
                     html += '<tr style="border-bottom: 1px solid var(--border);">' +
-                        '<td style="padding: 8px;">' + new Date(m.created_at).toLocaleDateString() + '</td>' +
+                        '<td style="padding: 8px;">' + new Date(m.created_at).toLocaleDateString([], {timeZone: window.APP_TIMEZONE}) + '</td>' +
                         '<td style="padding: 8px;"><span style="padding: 2px 8px; border-radius: 4px; font-size: 11px; background: rgba(107, 70, 193, 0.1); color: var(--primary-light);">' + escapeHtml(typeLabel) + '</span></td>' +
                         '<td style="padding: 8px;">' + escapeHtml(m.size || 'N/A') + '</td>' +
                         '<td style="padding: 8px; text-align: center;">' + m.quantity_before + '</td>' +
@@ -1430,7 +1430,7 @@ function loadAudits(productId) {
                         '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">' +
                         '<div>' +
                         '<strong>Audit #' + audit.id + '</strong>' +
-                        '<span style="margin-left: 12px; color: var(--text-dim);">' + new Date(audit.created_at).toLocaleString() + '</span>' +
+                        '<span style="margin-left: 12px; color: var(--text-dim);">' + new Date(audit.created_at).toLocaleString([], {timeZone: window.APP_TIMEZONE}) + '</span>' +
                         '</div>' +
                         '<span style="padding: 3px 10px; border-radius: 4px; font-size: 11px; background: ' + (hasDiscrepancies ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)') + '; color: ' + (hasDiscrepancies ? '#ef4444' : '#10b981') + ';">' +
                         (hasDiscrepancies ? 'Discrepancies Found' : 'All Matched') + '</span>' +

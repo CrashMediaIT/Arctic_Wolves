@@ -544,7 +544,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var frLogPre = document.getElementById('frUploadLogPre');
     function frLog(msg) {
         if (frLogPre) {
-            frLogPre.textContent += '[' + new Date().toLocaleTimeString() + '] ' + msg + '\n';
+            frLogPre.textContent += '[' + new Date().toLocaleTimeString([], {timeZone: window.APP_TIMEZONE}) + '] ' + msg + '\n';
             frLogPre.scrollTop = frLogPre.scrollHeight;
         }
         console.log('[FilmRoomUpload] ' + msg);

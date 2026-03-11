@@ -586,7 +586,7 @@ function displayLogs(logs) {
     
     logs.forEach(log => {
         html += '<tr>';
-        html += `<td>${new Date(log.trip_date).toLocaleDateString()}</td>`;
+        html += `<td>${new Date(log.trip_date).toLocaleDateString([], {timeZone: window.APP_TIMEZONE})}</td>`;
         html += `<td>${log.purpose}<br><small style="color: rgba(255,255,255,0.5)">${log.athlete_name || 'No athlete'}</small></td>`;
         html += `<td>${parseFloat(log.total_distance_km).toFixed(2)} km<br><small>${parseFloat(log.total_distance_miles).toFixed(2)} mi</small></td>`;
         html += `<td>$${parseFloat(log.reimbursement_amount).toFixed(2)}</td>`;

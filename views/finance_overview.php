@@ -640,7 +640,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const date = new Date();
         date.setDate(date.getDate() - i);
         const dateStr = date.toISOString().split('T')[0];
-        labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+        labels.push(date.toLocaleDateString('en-US', { timeZone: window.APP_TIMEZONE, month: 'short', day: 'numeric' }));
         
         const dayRevenue = revenueData.find(d => d.date === dateStr);
         const dayExpense = expenseData.find(d => d.date === dateStr);

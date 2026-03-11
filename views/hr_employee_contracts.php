@@ -1387,7 +1387,7 @@ function updateTemplatesTable(templates) {
     let html = '';
     templates.forEach(template => {
         if (template.id && template.name) {
-            const createdAt = template.created_at ? new Date(template.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-';
+            const createdAt = template.created_at ? new Date(template.created_at).toLocaleDateString('en-US', { timeZone: window.APP_TIMEZONE, month: 'short', day: 'numeric', year: 'numeric' }) : '-';
             const escapedName = escapeHtml(template.name);
             
             html += `
@@ -1503,7 +1503,7 @@ function viewTemplateDetails(templateId) {
                 ${template.created_at ? `
                 <div class="template-detail-section">
                     <h4>Created</h4>
-                    <p>${new Date(template.created_at).toLocaleString()}</p>
+                    <p>${new Date(template.created_at).toLocaleString([], {timeZone: window.APP_TIMEZONE})}</p>
                 </div>
                 ` : ''}
             `;

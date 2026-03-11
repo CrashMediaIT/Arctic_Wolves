@@ -1386,7 +1386,7 @@ function loadCampaignHistory() {
             
             data.campaigns.forEach(function(c) {
                 var statusColor = c.status === 'sent' ? '#10b981' : (c.status === 'failed' ? '#ef4444' : '#f59e0b');
-                var date = c.sent_at ? new Date(c.sent_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'N/A';
+                var date = c.sent_at ? new Date(c.sent_at).toLocaleDateString('en-US', { timeZone: window.APP_TIMEZONE, month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'N/A';
                 html += '<tr style="border-bottom: 1px solid #1e293b;">';
                 html += '<td style="padding: 12px; color: #e2e8f0; font-size: 14px;">' + escapeHtmlCampaign(c.subject) + '</td>';
                 html += '<td style="padding: 12px; color: #10b981; font-weight: 700;">' + (c.sent_count || 0) + '</td>';

@@ -2015,7 +2015,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const sessionsList = document.getElementById('panel-sessions-list');
         
         const dateObj = new Date(dateStr + 'T00:00:00');
-        const options = { weekday: 'long', month: 'long', day: 'numeric' };
+        const options = { timeZone: window.APP_TIMEZONE, weekday: 'long', month: 'long', day: 'numeric' };
         dateTitle.textContent = dateObj.toLocaleDateString('en-US', options);
         
         // Find sessions for this date

@@ -463,7 +463,7 @@ function renderChart(weeklyData) {
         const hours = parseFloat(week.total_hours) || 0;
         const heightPercent = (hours / maxHours) * 100;
         const weekStart = new Date(week.week_start);
-        const label = weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const label = weekStart.toLocaleDateString('en-US', { timeZone: window.APP_TIMEZONE, month: 'short', day: 'numeric' });
         
         html += `
             <div class="bar-wrapper">

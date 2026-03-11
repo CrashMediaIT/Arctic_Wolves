@@ -331,7 +331,7 @@
         // Update modal content
         const modalBody = document.getElementById('sessionModalBody');
         const dateStr = session.date instanceof Date ? 
-            session.date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) :
+            session.date.toLocaleDateString('en-US', { timeZone: window.APP_TIMEZONE, weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) :
             'Date TBD';
             
         modalBody.innerHTML = `

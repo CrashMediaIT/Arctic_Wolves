@@ -1472,7 +1472,7 @@ function loadEvaluationLibrary() {
                 card.className = 'card';
                 card.style.marginBottom = '0';
                 
-                var dateStr = ev.created_at ? new Date(ev.created_at).toLocaleDateString() : '';
+                var dateStr = ev.created_at ? new Date(ev.created_at).toLocaleDateString([], {timeZone: window.APP_TIMEZONE}) : '';
                 var categoriesStr = ev.category_names || 'No categories';
                 var sessionInfo = ev.session_count > 0 
                     ? '<span class="badge badge-success" style="font-size: 11px;">' + ev.session_count + ' session(s)</span>'
@@ -1559,12 +1559,12 @@ function openAssignToSessionModal(templateId, evalName) {
             data.sessions.forEach(function(s) {
                 var opt = document.createElement('option');
                 opt.value = s.id;
-                var dateStr = s.session_date ? new Date(s.session_date + 'T00:00:00').toLocaleDateString() : '';
+                var dateStr = s.session_date ? new Date(s.session_date + 'T00:00:00').toLocaleDateString([], {timeZone: window.APP_TIMEZONE}) : '';
                 var timeStr = '';
                 if (s.session_time) {
                     var parts = s.session_time.split(':');
                     var td = new Date(2000, 0, 1, parts[0], parts[1]);
-                    timeStr = ' ' + td.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    timeStr = ' ' + td.toLocaleTimeString([], {timeZone: window.APP_TIMEZONE, hour: '2-digit', minute:'2-digit'});
                 }
                 var label = (s.title || 'Session') + ' - ' + dateStr + timeStr + ' (' + s.location_name + ')';
                 if (s.package_names) {
@@ -1616,7 +1616,7 @@ function openEditEvaluationModal(templateId) {
             } else {
                 var html = '';
                 sessions.forEach(function(s) {
-                    var dateDisplay = s.session_date ? new Date(s.session_date + 'T00:00:00').toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'}) : 'N/A';
+                    var dateDisplay = s.session_date ? new Date(s.session_date + 'T00:00:00').toLocaleDateString('en-US', {timeZone: window.APP_TIMEZONE, month: 'short', day: 'numeric', year: 'numeric'}) : 'N/A';
                     html += '<div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; border-radius: 6px; background: var(--bg-main, #0A0A0F); margin-bottom: 4px;">';
                     html += '<span style="font-size: 13px; color: var(--text-white, #fff);"><i class="fas fa-calendar" style="color: var(--primary); margin-right: 8px;"></i>' + (s.session_title || 'Untitled') + ' <small style="color: var(--text-dim);">(' + dateDisplay + ')</small></span>';
                     html += '<button type="button" class="btn-action danger" style="padding: 4px 8px; font-size: 11px; background: rgba(239,68,68,0.1); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); border-radius: 4px; cursor: pointer;" onclick="removeEvalFromSession(' + s.session_eval_id + ', ' + templateId + ')"><i class="fas fa-unlink"></i> Remove</button>';

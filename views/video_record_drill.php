@@ -865,7 +865,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var drillLogPre = document.getElementById('drillUploadLogPre');
     function drillLog(msg) {
         if (drillLogPre) {
-            drillLogPre.textContent += '[' + new Date().toLocaleTimeString() + '] ' + msg + '\n';
+            drillLogPre.textContent += '[' + new Date().toLocaleTimeString([], {timeZone: window.APP_TIMEZONE}) + '] ' + msg + '\n';
             drillLogPre.scrollTop = drillLogPre.scrollHeight;
         }
         console.log('[DrillUpload] ' + msg);
