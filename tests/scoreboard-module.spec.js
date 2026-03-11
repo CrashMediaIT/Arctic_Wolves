@@ -2169,7 +2169,7 @@ test.describe('CSRF token in all settings AJAX requests', () => {
       content.indexOf('function sbSaveSettings'),
       content.indexOf('function sbUploadBuzzerSound')
     );
-    expect(saveSection).toContain("params.append('csrf_token', CSRF_TOKEN)");
+    expect(saveSection).toContain("fd.append('csrf_token', CSRF_TOKEN)");
   });
 
   test('upload functions include csrf_token in FormData', () => {
@@ -2373,5 +2373,112 @@ test.describe('Scoreboard settings styled upload zones', () => {
     expect(hornSection).toContain('style="display:none;"');
     const logoSection = content.substring(content.indexOf('sbLogoDropZone'), content.indexOf('sbLogoDropZone') + 500);
     expect(logoSection).toContain('style="display:none;"');
+  });
+});
+
+// =====================================================
+// Bug Fixes – Scoreboard Button Functionality
+// =====================================================
+
+test.describe('Save settings uses FormData (not URLSearchParams)', () => {
+  test('sbSaveSettings sends FormData body directly', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    const fn = content.substring(
+      content.indexOf('function sbSaveSettings'),
+      content.indexOf('function sbUploadBuzzerSound')
+    );
+    // Should use FormData directly, not URLSearchParams
+    expect(fn).toContain('new FormData(form)');
+    expect(fn).toContain("fd.append('action', 'save_settings')");
+    expect(fn).toContain('body: fd');
+    expect(fn).not.toContain('URLSearchParams');
+  });
+
+  test('sbSaveSettings has .catch() error handling', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    const fn = content.substring(
+      content.indexOf('function sbSaveSettings'),
+      content.indexOf('function sbUploadBuzzerSound')
+    );
+    expect(fn).toContain('.catch(');
+  });
+});
+
+test.describe('Penalty board elements have data-penalty-id for eye button', () => {
+  test('board penalty timer boxes have sb-board-pen-slot class', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sb-penalty-timer-box sb-board-pen-slot');
+  });
+
+  test('board penalty timer boxes have data-penalty-id attributes', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    // Home and away penalty slots should have data-penalty-id from PHP
+    const homeSection = content.substring(
+      content.indexOf('HOME PENALTY BOX'),
+      content.indexOf('CENTER CLOCK')
+    );
+    expect(homeSection).toContain('data-penalty-id');
+    const awaySection = content.substring(
+      content.indexOf('AWAY PENALTY BOX'),
+      content.indexOf('AWAY TEAM SIDE')
+    );
+    expect(awaySection).toContain('data-penalty-id');
+  });
+});
+
+test.describe('sbFetch has robust error handling', () => {
+  test('sbFetch handles non-ok responses', () => {
+    const content = readFile('js/scoreboard.js');
+    const fn = content.substring(
+      content.indexOf('function sbFetch('),
+      content.indexOf('// ═')
+    );
+    expect(fn).toContain('r.ok');
+    expect(fn).toContain('Server error');
+  });
+
+  test('sbFetch has .catch() returning failure object', () => {
+    const content = readFile('js/scoreboard.js');
+    const fn = content.substring(
+      content.indexOf('function sbFetch('),
+      content.indexOf('// ═')
+    );
+    expect(fn).toContain('.catch(');
+    expect(fn).toContain('Network error');
+    expect(fn).toContain('success: false');
+  });
+});
+
+test.describe('Team logos displayed on scoreboard board', () => {
+  test('scoreboard.php fetches logo_url from teams table', () => {
+    const content = readFile('scoreboard.php');
+    expect(content).toContain('logo_url');
+    expect(content).toContain('home_logo_url');
+    expect(content).toContain('away_logo_url');
+  });
+
+  test('display view renders team logo images', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sb-board-team-logo');
+    expect(content).toContain('home_logo_url');
+    expect(content).toContain('away_logo_url');
+  });
+
+  test('CSS has team logo styling', () => {
+    const content = readFile('css/scoreboard.css');
+    expect(content).toContain('.sb-board-team-logo');
+    expect(content).toContain('object-fit: contain');
+  });
+});
+
+test.describe('All settings fetch calls have error handling', () => {
+  test('all fetch() calls in settings have .catch()', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    // Count fetch calls and .catch calls in the script section
+    const scriptSection = content.substring(content.indexOf('<script>'));
+    const fetchCount = (scriptSection.match(/fetch\('process_scoreboard\.php'/g) || []).length;
+    const catchCount = (scriptSection.match(/\.catch\(/g) || []).length;
+    // Every fetch should have a .catch
+    expect(catchCount).toBeGreaterThanOrEqual(fetchCount);
   });
 });
