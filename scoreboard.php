@@ -401,8 +401,8 @@ if ($active_game) {
     <link rel="apple-touch-icon" href="<?= htmlspecialchars($site_favicon_url) ?>">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/style-guide.css">
-    <link rel="stylesheet" href="css/scoreboard.css">
+    <link rel="stylesheet" href="css/style-guide.css?v=<?= filemtime(__DIR__ . '/css/style-guide.css') ?>">
+    <link rel="stylesheet" href="css/scoreboard.css?v=<?= filemtime(__DIR__ . '/css/scoreboard.css') ?>">
 </head>
 <body class="sb-body">
 <script>document.documentElement.classList.add('sb-html');</script>
@@ -473,6 +473,6 @@ const IS_ADMIN = <?= $isAdmin ? 'true' : 'false' ?>;
     setInterval(updateClock, 1000);
 })();
 </script>
-<script src="js/scoreboard.js"></script>
+<script src="js/scoreboard.js?v=<?= filemtime(__DIR__ . '/js/scoreboard.js') ?>"></script>
 </body>
 </html>

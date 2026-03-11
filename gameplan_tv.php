@@ -214,6 +214,21 @@ $page_labels = [
     'permissions'     => 'Permissions',
 ];
 $current_label = $page_labels[$page] ?? 'Game Plan';
+
+// ── Partial rendering for AJAX content updates ────────────
+// When ?partial=1 is set, return only the view content (no header/footer)
+// Used by the TV viewer's AJAX polling to swap content without full page reload
+if (!empty($_GET['partial']) && $tv_paired) {
+    header('Content-Type: text/html; charset=UTF-8');
+    header('Cache-Control: no-cache, no-store, must-revalidate');
+    header('X-TV-Page: ' . htmlspecialchars($page));
+    if (file_exists($view_file)) {
+        include $view_file;
+    } else {
+        echo '<div class="tv-empty"><i class="fas fa-exclamation-triangle"></i><p>Module not available</p></div>';
+    }
+    exit;
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -221,6 +236,7 @@ $current_label = $page_labels[$page] ?? 'Game Plan';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#6B46C1">
+    <meta name="csrf-token" content="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES) ?>">
     <title>Game Plan TV – Arctic Wolves</title>
     <?php $__favType = getFaviconMimeType($site_favicon_url); ?>
     <link rel="icon" <?= $__favType ? 'type="' . $__favType . '"' : '' ?> href="<?= htmlspecialchars($site_favicon_url) ?>">
@@ -228,10 +244,10 @@ $current_label = $page_labels[$page] ?? 'Game Plan';
     <link rel="manifest" href="manifest-gameplan-tv.json">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/style-guide.css">
-    <link rel="stylesheet" href="css/components.css">
-    <link rel="stylesheet" href="views/shared_styles.css">
-    <link rel="stylesheet" href="css/gameplan-tv.css">
+    <link rel="stylesheet" href="css/style-guide.css?v=<?= filemtime(__DIR__ . '/css/style-guide.css') ?>">
+    <link rel="stylesheet" href="css/components.css?v=<?= filemtime(__DIR__ . '/css/components.css') ?>">
+    <link rel="stylesheet" href="views/shared_styles.css?v=<?= filemtime(__DIR__ . '/views/shared_styles.css') ?>">
+    <link rel="stylesheet" href="css/gameplan-tv.css?v=<?= filemtime(__DIR__ . '/css/gameplan-tv.css') ?>">
 </head>
 <body class="tv-body">
 
@@ -289,7 +305,7 @@ $current_label = $page_labels[$page] ?? 'Game Plan';
     <header class="tv-topbar">
         <div class="tv-topbar-title">
             <i class="fas fa-chess-board"></i>
-            <?= htmlspecialchars($current_label) ?>
+            <span class="tv-page-label"><?= htmlspecialchars($current_label) ?></span>
             <?php if ($tv_is_frozen): ?>
             <span class="tv-frozen-badge"><i class="fas fa-snowflake"></i> Frozen</span>
             <?php endif; ?>
@@ -366,14 +382,37 @@ $current_label = $page_labels[$page] ?? 'Game Plan';
     var isFrozen = <?= $tv_is_frozen ? 'true' : 'false' ?>;
     var tvTransitioning = false;
 
-    // Fade-out then reload to avoid white-flash flicker on TV displays
-    function seamlessReload() {
+    // AJAX content swap — fetch partial HTML and replace .tv-content
+    function swapContent(newPage) {
         if (tvTransitioning) return;
         tvTransitioning = true;
-        var el = document.querySelector('.tv-main') || document.body;
-        el.style.transition = 'opacity 0.25s ease';
-        el.style.opacity = '0';
-        setTimeout(function() { window.location.reload(); }, 250);
+        var container = document.querySelector('.tv-content');
+        if (!container) { tvTransitioning = false; window.location.reload(); return; }
+        container.style.transition = 'opacity 0.2s ease';
+        container.style.opacity = '0';
+        setTimeout(function() {
+            fetch('/gameplan_tv.php?partial=1&_=' + Date.now())
+                .then(function(r) {
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    return r.text();
+                })
+                .then(function(html) {
+                    container.innerHTML = html;
+                    container.style.opacity = '1';
+                    currentPage = newPage;
+                    tvTransitioning = false;
+                    // Update page label in topbar
+                    var label = document.querySelector('.tv-page-label');
+                    if (label) {
+                        var labels = <?= json_encode($page_labels) ?>;
+                        label.textContent = labels[newPage] || 'Game Plan';
+                    }
+                })
+                .catch(function() {
+                    // Fallback to full reload on AJAX failure
+                    window.location.reload();
+                });
+        }, 200);
     }
 
     function pollPairState() {
@@ -381,17 +420,17 @@ $current_label = $page_labels[$page] ?? 'Game Plan';
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (!data.active) {
-                    // Pair ended — reload to show pairing screen
+                    // Pair ended — redirect to show pairing screen
                     window.location.href = '/gameplan_tv.php';
                     return;
                 }
-                // If not frozen and controller changed page, seamless reload
+                // If not frozen and controller changed page, swap content via AJAX
                 if (!data.is_frozen && data.controller_page && data.controller_page !== currentPage) {
-                    seamlessReload();
+                    swapContent(data.controller_page);
                 }
-                // If freeze state changed, seamless reload to update UI
+                // If freeze state changed, update local state
                 if (data.is_frozen !== isFrozen) {
-                    seamlessReload();
+                    isFrozen = data.is_frozen;
                 }
             })
             .catch(function() { /* retry on next poll */ });
@@ -420,7 +459,7 @@ if ('serviceWorker' in navigator) {
 
 <?php if ($tv_paired): ?>
 <!-- ── Global Telestration Receive Overlay (TV Viewer) ──────── -->
-<canvas id="tvTeleCanvas" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:9000;pointer-events:none;"></canvas>
+<canvas id="tvTeleCanvas" style="position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9000;pointer-events:none;display:block;"></canvas>
 <script>
 (function() {
     var canvas = document.getElementById('tvTeleCanvas');
@@ -442,14 +481,18 @@ if ('serviceWorker' in navigator) {
         fetch('/api_tv_pair_state.php?pair_id=' + pairId + '&include_telestration=1&_=' + Date.now())
             .then(function(r) { return r.json(); })
             .then(function(data) {
-                if (data.telestration_seq && data.telestration_seq !== teleSeq) {
-                    teleSeq = data.telestration_seq;
+                var seq = parseInt(data.telestration_seq, 10) || 0;
+                if (seq > 0 && seq !== teleSeq) {
+                    teleSeq = seq;
                     if (data.telestration_data) {
                         var img = new Image();
                         img.onload = function() {
                             resizeCanvas();
                             ctx.clearRect(0, 0, canvas.width, canvas.height);
                             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        };
+                        img.onerror = function() {
+                            ctx.clearRect(0, 0, canvas.width, canvas.height);
                         };
                         img.src = data.telestration_data;
                     } else {
@@ -466,6 +509,6 @@ if ('serviceWorker' in navigator) {
 </script>
 <?php endif; ?>
 
-<script src="js/app.js"></script>
+<script src="js/app.js?v=<?= filemtime(__DIR__ . '/js/app.js') ?>"></script>
 </body>
 </html>

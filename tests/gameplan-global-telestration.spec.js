@@ -239,11 +239,12 @@ test.describe('TV viewer auto-update polling', () => {
     expect(content).toContain('window.location.reload()');
   });
 
-  test('should use seamless reload to avoid flicker on page transitions', () => {
+  test('should use seamless AJAX content swap to avoid flicker on page transitions', () => {
     const content = readFile('gameplan_tv.php');
-    expect(content).toContain('seamlessReload');
+    expect(content).toContain('swapContent');
     expect(content).toContain('tvTransitioning');
     expect(content).toContain("style.opacity = '0'");
+    expect(content).toContain('partial=1');
   });
 
   test('should detect freeze state changes', () => {
