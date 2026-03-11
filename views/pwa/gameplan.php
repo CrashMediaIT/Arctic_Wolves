@@ -792,9 +792,11 @@ document.addEventListener('DOMContentLoaded', function() {
     function resizeCanvas() {
         var w = window.innerWidth, h = window.innerHeight;
         if (canvas.width !== w || canvas.height !== h) {
-            var imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            var temp = document.createElement('canvas');
+            temp.width = canvas.width; temp.height = canvas.height;
+            temp.getContext('2d').drawImage(canvas, 0, 0);
             canvas.width = w; canvas.height = h;
-            ctx.putImageData(imgData, 0, 0);
+            ctx.drawImage(temp, 0, 0, temp.width, temp.height, 0, 0, w, h);
         }
     }
     resizeCanvas();
@@ -808,7 +810,7 @@ document.addEventListener('DOMContentLoaded', function() {
         canvas.style.cursor = drawing ? 'crosshair' : 'default';
     });
 
-    function getPos(e) { var t = e.touches ? e.touches[0] : e; return { x: t.clientX, y: t.clientY }; }
+    function getPos(e) { var t = e.touches ? e.touches[0] : (e.changedTouches ? e.changedTouches[0] : e); return { x: t.clientX, y: t.clientY }; }
     function onStart(e) {
         if (!drawing) return; e.preventDefault(); isDrawing = true;
         var pos = getPos(e); startX = pos.x; startY = pos.y;
@@ -822,7 +824,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     function onEnd(e) {
         if (!isDrawing) return; isDrawing = false;
-        if (tool !== 'freehand' && snapshot) { ctx.putImageData(snapshot, 0, 0); var pos = e.changedTouches ? { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY } : getPos(e); drawStraight(ctx, startX, startY, pos.x, pos.y, tool, color, lineWidth); }
+        if (tool !== 'freehand' && snapshot) { ctx.putImageData(snapshot, 0, 0); var pos = getPos(e); drawStraight(ctx, startX, startY, pos.x, pos.y, tool, color, lineWidth); }
         snapshot = null; broadcastTelestration();
     }
     function drawStraight(ctx, x1, y1, x2, y2, t, c, w) {

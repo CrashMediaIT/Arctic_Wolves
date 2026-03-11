@@ -568,9 +568,11 @@ try {
     function resizeCanvas() {
         var w = window.innerWidth, h = window.innerHeight;
         if (canvas.width !== w || canvas.height !== h) {
-            var imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            var temp = document.createElement('canvas');
+            temp.width = canvas.width; temp.height = canvas.height;
+            temp.getContext('2d').drawImage(canvas, 0, 0);
             canvas.width = w; canvas.height = h;
-            ctx.putImageData(imgData, 0, 0);
+            ctx.drawImage(temp, 0, 0, temp.width, temp.height, 0, 0, w, h);
         }
     }
     resizeCanvas();
@@ -587,7 +589,7 @@ try {
 
     // Canvas coordinates helper
     function getPos(e) {
-        var touch = e.touches ? e.touches[0] : e;
+        var touch = e.touches ? e.touches[0] : (e.changedTouches ? e.changedTouches[0] : e);
         return { x: touch.clientX, y: touch.clientY };
     }
 
@@ -621,7 +623,7 @@ try {
         isDrawing = false;
         if (tool !== 'freehand' && snapshot) {
             ctx.putImageData(snapshot, 0, 0);
-            var pos = e.changedTouches ? { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY } : getPos(e);
+            var pos = getPos(e);
             drawStraight(ctx, startX, startY, pos.x, pos.y, tool, color, lineWidth);
         }
         snapshot = null;
