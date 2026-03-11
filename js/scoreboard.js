@@ -28,7 +28,18 @@ function sbFetch(action, data) {
         method: 'POST',
         headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-Token': CSRF_TOKEN },
         body: fd
-    }).then(function(r) { return r.json(); });
+    }).then(function(r) {
+        if (!r.ok) {
+            return r.text().then(function(t) {
+                try { return JSON.parse(t); } catch (e) {
+                    return { success: false, message: 'Server error (' + r.status + ')' };
+                }
+            });
+        }
+        return r.json();
+    }).catch(function() {
+        return { success: false, message: 'Network error – please try again.' };
+    });
 }
 
 // ══════════════════════════════════════════════════════════

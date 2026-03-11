@@ -338,9 +338,25 @@ try {
 // ── Fetch teams for game setup ────────────────────────────
 $teams = [];
 try {
-    $stmt = $pdo->query("SELECT id, team_name FROM teams WHERE status = 'active' ORDER BY team_name");
+    $stmt = $pdo->query("SELECT id, team_name, logo_url FROM teams WHERE status = 'active' ORDER BY team_name");
     $teams = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { /* table may not exist */ }
+
+// ── Resolve team logos for active game ────────────────────
+$home_logo_url = '';
+$away_logo_url = '';
+if ($active_game) {
+    $homeTeamId = (int)($active_game['home_team_id'] ?? 0);
+    $awayTeamId = (int)($active_game['away_team_id'] ?? 0);
+    foreach ($teams as $t) {
+        if ($homeTeamId && (int)$t['id'] === $homeTeamId && !empty($t['logo_url'])) {
+            $home_logo_url = $t['logo_url'];
+        }
+        if ($awayTeamId && (int)$t['id'] === $awayTeamId && !empty($t['logo_url'])) {
+            $away_logo_url = $t['logo_url'];
+        }
+    }
+}
 
 // ── Music & audio settings ────────────────────────────────
 $spotify_configured = false;

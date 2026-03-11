@@ -131,6 +131,9 @@ foreach ($away_penalties as $p) {
                 <span class="sb-board-indicator" id="sbDelayedHome" style="display:none;background:#F59E0B;color:#000;">DEL</span>
                 <span class="sb-board-indicator" id="sbEmptyNetHome" style="display:none;background:#EF4444;">EN</span>
             </div>
+            <?php if (!empty($home_logo_url)): ?>
+            <img class="sb-board-team-logo" src="<?= htmlspecialchars($home_logo_url) ?>" alt="<?= htmlspecialchars($active_game['home_team_name'] ?? 'Home') ?>">
+            <?php endif; ?>
             <div class="sb-board-team-name"><?= htmlspecialchars($active_game['home_team_name'] ?? 'Home') ?></div>
             <div class="sb-board-score" id="sbHomeScore"><?= $home_score ?></div>
             <div class="sb-board-stats">
@@ -148,10 +151,13 @@ foreach ($away_penalties as $p) {
         <!-- HOME PENALTY BOX -->
         <div class="sb-board-penalty-stack home">
             <div class="sb-penalty-timer-label">HOME PENALTIES</div>
-            <?php for ($i = 0; $i < 2; $i++): ?>
-            <div class="sb-penalty-timer-box <?= isset($home_pen_display[$i]) ? 'active' : '' ?>" id="sbHomePen<?= $i ?>">
-                <span class="sb-pen-player"><?= isset($home_pen_display[$i]) ? '#' . htmlspecialchars($home_pen_display[$i]['player_number'] ?? '?') : '—' ?></span>
-                <span class="sb-pen-countdown" id="sbHomePenTime<?= $i ?>"><?= isset($home_pen_display[$i]) ? htmlspecialchars($home_pen_display[$i]['duration_minutes'] ?? '2') . ':00' : '--:--' ?></span>
+            <?php for ($i = 0; $i < 2; $i++):
+                $hp = $home_pen_display[$i] ?? null;
+                $hpId = $hp ? (int)($hp['id'] ?? 0) : 0;
+            ?>
+            <div class="sb-penalty-timer-box sb-board-pen-slot <?= $hp ? 'active' : '' ?>" id="sbHomePen<?= $i ?>"<?= $hp ? ' data-penalty-id="' . $hpId . '"' : '' ?>>
+                <span class="sb-pen-player"><?= $hp ? '#' . htmlspecialchars($hp['player_number'] ?? '?') : '—' ?></span>
+                <span class="sb-pen-countdown" id="sbHomePenTime<?= $i ?>"><?= $hp ? htmlspecialchars($hp['duration_minutes'] ?? '2') . ':00' : '--:--' ?></span>
             </div>
             <?php endfor; ?>
         </div>
@@ -174,10 +180,13 @@ foreach ($away_penalties as $p) {
         <!-- AWAY PENALTY BOX -->
         <div class="sb-board-penalty-stack away">
             <div class="sb-penalty-timer-label">AWAY PENALTIES</div>
-            <?php for ($i = 0; $i < 2; $i++): ?>
-            <div class="sb-penalty-timer-box <?= isset($away_pen_display[$i]) ? 'active' : '' ?>" id="sbAwayPen<?= $i ?>">
-                <span class="sb-pen-player"><?= isset($away_pen_display[$i]) ? '#' . htmlspecialchars($away_pen_display[$i]['player_number'] ?? '?') : '—' ?></span>
-                <span class="sb-pen-countdown" id="sbAwayPenTime<?= $i ?>"><?= isset($away_pen_display[$i]) ? htmlspecialchars($away_pen_display[$i]['duration_minutes'] ?? '2') . ':00' : '--:--' ?></span>
+            <?php for ($i = 0; $i < 2; $i++):
+                $ap = $away_pen_display[$i] ?? null;
+                $apId = $ap ? (int)($ap['id'] ?? 0) : 0;
+            ?>
+            <div class="sb-penalty-timer-box sb-board-pen-slot <?= $ap ? 'active' : '' ?>" id="sbAwayPen<?= $i ?>"<?= $ap ? ' data-penalty-id="' . $apId . '"' : '' ?>>
+                <span class="sb-pen-player"><?= $ap ? '#' . htmlspecialchars($ap['player_number'] ?? '?') : '—' ?></span>
+                <span class="sb-pen-countdown" id="sbAwayPenTime<?= $i ?>"><?= $ap ? htmlspecialchars($ap['duration_minutes'] ?? '2') . ':00' : '--:--' ?></span>
             </div>
             <?php endfor; ?>
         </div>
@@ -190,6 +199,9 @@ foreach ($away_penalties as $p) {
                 <span class="sb-board-indicator" id="sbEmptyNetAway" style="display:none;background:#EF4444;">EN</span>
                 <span class="sb-board-label">GUEST</span>
             </div>
+            <?php if (!empty($away_logo_url)): ?>
+            <img class="sb-board-team-logo" src="<?= htmlspecialchars($away_logo_url) ?>" alt="<?= htmlspecialchars($active_game['away_team_name'] ?? 'Away') ?>">
+            <?php endif; ?>
             <div class="sb-board-team-name"><?= htmlspecialchars($active_game['away_team_name'] ?? 'Away') ?></div>
             <div class="sb-board-score" id="sbAwayScore"><?= $away_score ?></div>
             <div class="sb-board-stats">
