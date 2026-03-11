@@ -199,12 +199,8 @@ function sbClockTick() {
         sbTickPenaltyTimers(tickCount);
         // Tick recurring buzzer by the same delta
         sbTickRecurringBuzzer(tickCount);
-        if (sbClockSeconds <= 0) {
-            // Period ended
-            sbClockStop();
-            sbBuzzer(); // Auto-buzzer at end of period
-        }
-    } else {
+    }
+    if (sbClockSeconds <= 0) {
         // Period ended
         sbClockStop();
         sbBuzzer(); // Auto-buzzer at end of period
@@ -834,7 +830,7 @@ function sbRestoreRecurringBuzzerState(elapsed) {
             var state = JSON.parse(raw);
             sbRecurringBuzzerInterval = state.interval || 0;
             sbRecurringBuzzerActive = !!state.active;
-            sbRecurringBuzzerCountdown = (state.countdown || 0) - elapsed;
+            sbRecurringBuzzerCountdown = (state.countdown != null ? state.countdown : 0) - elapsed;
             if (sbRecurringBuzzerCountdown <= 0 && sbRecurringBuzzerInterval > 0) {
                 sbRecurringBuzzerCountdown = sbRecurringBuzzerInterval;
             }
