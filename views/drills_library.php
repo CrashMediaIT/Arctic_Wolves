@@ -327,7 +327,7 @@ $is_demo_drills = false;
 
 .drills-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
     gap: 24px;
 }
 
@@ -337,7 +337,7 @@ $is_demo_drills = false;
     border-radius: 12px;
     overflow: hidden;
     transition: all 0.3s ease;
-    max-width: 380px;
+    max-width: 420px;
 }
 
 .drill-card:hover {
@@ -459,17 +459,19 @@ $is_demo_drills = false;
 }
 
 .drill-actions {
-    padding: 16px 20px;
+    padding: 12px 16px;
     background: var(--bg-main);
     border-top: 1px solid var(--border);
     display: flex;
-    gap: 8px;
+    gap: 6px;
     align-items: center;
+    flex-wrap: wrap;
 }
 
 .btn-icon {
-    width: 36px;
-    height: 36px;
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -479,6 +481,8 @@ $is_demo_drills = false;
     color: var(--text-white);
     cursor: pointer;
     transition: all 0.3s ease;
+    flex-shrink: 0;
+    font-size: 13px;
 }
 
 .btn-icon:hover {
@@ -534,6 +538,18 @@ $is_demo_drills = false;
     
     .drills-grid {
         grid-template-columns: 1fr;
+    }
+    
+    .drill-actions {
+        gap: 4px;
+        padding: 10px 12px;
+    }
+    
+    .btn-icon {
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
+        font-size: 12px;
     }
     
     .filter-row {

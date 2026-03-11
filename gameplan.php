@@ -151,7 +151,8 @@ try {
     <meta name="csrf-token" content="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES) ?>">
     <meta name="theme-color" content="#6B46C1">
     <title>Game Plan – Arctic Wolves</title>
-    <link rel="icon" type="image/png" href="<?= htmlspecialchars($site_favicon_url) ?>">
+    <?php $__favType = getFaviconMimeType($site_favicon_url); ?>
+    <link rel="icon" <?= $__favType ? 'type="' . $__favType . '"' : '' ?> href="<?= htmlspecialchars($site_favicon_url) ?>">
     <link rel="apple-touch-icon" href="<?= htmlspecialchars($site_favicon_url) ?>">
     <link rel="manifest" href="manifest.json">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">

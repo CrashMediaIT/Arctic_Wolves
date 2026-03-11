@@ -89,7 +89,8 @@ for ($i = 1; $i <= 4; $i++) {
     <title>Arctic Wolves | Player Development</title>
     <meta name="description" content="Professional hockey development for players and goalies.">
     
-    <link rel="icon" type="image/png" href="<?= htmlspecialchars($site_favicon_url) ?>">
+    <?php $__favType = getFaviconMimeType($site_favicon_url); ?>
+    <link rel="icon" <?= $__favType ? 'type="' . $__favType . '"' : '' ?> href="<?= htmlspecialchars($site_favicon_url) ?>">
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
