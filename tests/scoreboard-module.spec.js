@@ -2380,7 +2380,7 @@ test.describe('Scoreboard settings styled upload zones', () => {
 // Bug Fixes – Scoreboard Button Functionality
 // =====================================================
 
-test.describe('Save settings uses FormData (not URLSearchParams)', () => {
+test.describe('Save settings functionality', () => {
   test('sbSaveSettings sends FormData body directly', () => {
     const content = readFile('views/scoreboard/scoreboard_settings.php');
     const fn = content.substring(
