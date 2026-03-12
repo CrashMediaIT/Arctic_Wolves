@@ -161,6 +161,7 @@ if ($active_tab === 'warehouse') {
 
 // --- Incoming Packages (shipment movements) ---
 $incomingPackages = [];
+$inventoryProducts = [];
 
 if ($active_tab === 'incoming') {
     try {
@@ -185,6 +186,19 @@ if ($active_tab === 'incoming') {
         }
     } catch (PDOException $e) {
         error_log("Inventory incoming fetch error: " . $e->getMessage());
+    }
+
+    // Load products with inventory tracking for the Record Shipment form
+    try {
+        $prodStmt = $pdo->query("
+            SELECT id, name, sku
+            FROM merchandise_products
+            WHERE track_inventory = 1 AND is_active = 1
+            ORDER BY name ASC
+        ");
+        $inventoryProducts = $prodStmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        error_log("Inventory products fetch error: " . $e->getMessage());
     }
 }
 
@@ -521,8 +535,11 @@ if ($active_tab === 'outgoing') {
 </div>
 
 <div class="card">
-    <div class="card-header">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
         <h3><i class="fas fa-truck-loading"></i> Incoming Shipments</h3>
+        <button type="button" class="btn btn-primary" onclick="openModal('inv-shipment-modal')" style="padding: 8px 16px; font-size: 13px;">
+            <i class="fas fa-plus"></i> Record Shipment
+        </button>
     </div>
     <div class="card-body">
         <?php if (empty($incomingPackages)): ?>
@@ -572,6 +589,161 @@ if ($active_tab === 'outgoing') {
         <?php endif; ?>
     </div>
 </div>
+
+<!-- Record Shipment Modal -->
+<div id="inv-shipment-modal" class="modal">
+    <div class="modal-content" style="max-width: 650px;">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-truck"></i> Record Shipment</h2>
+            <button type="button" class="modal-close" aria-label="Close modal" onclick="closeModal('inv-shipment-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_merchandise_products.php" id="inv-shipment-form">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="record_shipment">
+            <input type="hidden" name="product_id" id="inv-shipment-product-id" value="">
+
+            <div class="modal-body">
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label class="form-label">Product</label>
+                    <select id="inv-shipment-product-select" class="form-input" onchange="invLoadShipmentSizes(this.value)" required>
+                        <option value="">Select a product...</option>
+                        <?php foreach ($inventoryProducts as $prod): ?>
+                            <option value="<?= (int)$prod['id'] ?>"><?= htmlspecialchars($prod['name']) ?><?= !empty($prod['sku']) ? ' (' . htmlspecialchars($prod['sku']) . ')' : '' ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                    <div class="form-group">
+                        <label class="form-label">Reference / PO Number</label>
+                        <input type="text" name="reference" class="form-input" placeholder="e.g., PO-2024-001">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Notes</label>
+                        <input type="text" name="notes" class="form-input" placeholder="Optional notes about this shipment">
+                    </div>
+                </div>
+
+                <div style="border-top: 1px solid var(--border); padding-top: 16px;">
+                    <div style="display: grid; grid-template-columns: 1fr 100px 120px; gap: 12px; margin-bottom: 8px; padding: 0 4px;">
+                        <span style="font-weight: 600; font-size: 12px; text-transform: uppercase; color: var(--text-dim);">Size</span>
+                        <span style="font-weight: 600; font-size: 12px; text-transform: uppercase; color: var(--text-dim);">Current Stock</span>
+                        <span style="font-weight: 600; font-size: 12px; text-transform: uppercase; color: var(--text-dim);">Qty Received</span>
+                    </div>
+                    <div id="inv-shipment-sizes-container">
+                        <p style="color: var(--text-dim); text-align: center; padding: 20px;">Select a product to see sizes.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('inv-shipment-modal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn btn-primary" id="inv-shipment-submit-btn"><i class="fas fa-truck"></i> Record Shipment</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function invLoadShipmentSizes(productId) {
+    document.getElementById('inv-shipment-product-id').value = productId;
+    var container = document.getElementById('inv-shipment-sizes-container');
+
+    if (!productId) {
+        container.innerHTML = '<p style="color: var(--text-dim); text-align: center; padding: 20px;">Select a product to see sizes.</p>';
+        return;
+    }
+
+    container.innerHTML = '<p style="color: var(--text-dim); text-align: center; padding: 20px;"><i class="fas fa-spinner fa-spin"></i> Loading sizes...</p>';
+
+    fetch('process_merchandise_products.php?action=get_sizes&product_id=' + encodeURIComponent(productId), {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        container.innerHTML = '';
+        if (data.sizes && data.sizes.length > 0) {
+            data.sizes.forEach(function(size) {
+                var row = document.createElement('div');
+                row.style.cssText = 'display: grid; grid-template-columns: 1fr 100px 120px; gap: 12px; margin-bottom: 8px; align-items: center;';
+
+                var sizeIdInput = document.createElement('input');
+                sizeIdInput.type = 'hidden';
+                sizeIdInput.name = 'size_ids[]';
+                sizeIdInput.value = size.id;
+
+                var sizeLabel = document.createElement('span');
+                sizeLabel.style.cssText = 'font-weight: 600; padding: 8px 12px; background: var(--bg); border-radius: 6px;';
+                sizeLabel.textContent = size.size;
+
+                var currentQty = document.createElement('span');
+                currentQty.style.cssText = 'text-align: center; padding: 8px; background: var(--bg); border-radius: 6px; color: var(--text-dim);';
+                currentQty.textContent = size.quantity;
+
+                var qtyInput = document.createElement('input');
+                qtyInput.type = 'number';
+                qtyInput.name = 'shipment_quantities[]';
+                qtyInput.className = 'form-input';
+                qtyInput.min = '0';
+                qtyInput.value = '0';
+                qtyInput.placeholder = '0';
+                qtyInput.style.textAlign = 'center';
+
+                row.appendChild(sizeIdInput);
+                row.appendChild(sizeLabel);
+                row.appendChild(currentQty);
+                row.appendChild(qtyInput);
+                container.appendChild(row);
+            });
+        } else {
+            container.innerHTML = '<p style="color: var(--text-dim); text-align: center; padding: 20px;">No sizes configured for this product. Add sizes first via Merchandise Products.</p>';
+        }
+    })
+    .catch(function() {
+        container.innerHTML = '<p style="color: var(--text-dim); text-align: center; padding: 20px;">Error loading sizes. Please try again.</p>';
+    });
+}
+
+document.getElementById('inv-shipment-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var form = this;
+    var btn = document.getElementById('inv-shipment-submit-btn');
+    var origText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Recording...';
+    btn.disabled = true;
+
+    fetch(form.getAttribute('action'), {
+        method: 'POST',
+        body: new FormData(form),
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        btn.innerHTML = origText;
+        btn.disabled = false;
+        if (data.success) {
+            closeModal('inv-shipment-modal');
+            if (typeof persistToast === 'function') {
+                persistToast(data.message || 'Shipment recorded successfully!', 'success');
+            } else if (typeof showNotification === 'function') {
+                showNotification(data.message || 'Shipment recorded successfully!', 'success');
+            }
+            location.reload();
+        } else {
+            if (typeof showNotification === 'function') {
+                showNotification('Error: ' + (data.message || 'Failed to record shipment'), 'error');
+            }
+        }
+    })
+    .catch(function() {
+        btn.innerHTML = origText;
+        btn.disabled = false;
+        if (typeof showNotification === 'function') {
+            showNotification('An error occurred. Please try again.', 'error');
+        }
+    });
+});
+</script>
 
 <?php elseif ($active_tab === 'outgoing'): ?>
 <!-- ============ Outgoing Packages Tab ============ -->
