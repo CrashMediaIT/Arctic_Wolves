@@ -30,7 +30,6 @@ $athlete_id = isset($_POST['athlete_id']) ? intval($_POST['athlete_id']) : 0;
 
 // If athlete_id is 0 or matches the parent's own ID, reset to parent's own view
 if ($athlete_id === 0 || $athlete_id === $user_id) {
-    $_SESSION['viewing_athlete_id'] = null;
     unset($_SESSION['viewing_athlete_id']);
     echo json_encode(['success' => true, 'message' => 'Switched to own view']);
     exit;
