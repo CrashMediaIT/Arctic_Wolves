@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Scoreboard viewer layout: full-screen WebView for displaying the
+  scoreboard. The WebView renders the scoreboard page while injected
+  CSS hides all operator controls, showing only the scoreboard board.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_main">
+
+    <!-- Main web content -->
+    <WebView
+        android:id="@+id/webView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- Status overlay (centred, hidden by default) -->
+    <FrameLayout
+        android:id="@+id/statusOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#CC0A0A0F"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/statusText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="@string/loading"
+            android:textSize="18sp"
+            android:textColor="@color/text_secondary" />
+    </FrameLayout>
+</FrameLayout>
