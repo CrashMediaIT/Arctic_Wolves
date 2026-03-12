@@ -671,7 +671,7 @@ function sbShowGoalAssignModal(team) {
     teamLabel.textContent = teamName;
     teamInput.value = team;
     form.reset();
-    teamInput.value = team; // reset clears hidden inputs
+    teamInput.value = team; // Restore team value after reset() clears all inputs
     // Pre-detect goal type based on penalty state
     var opposingTeam = (team === 'home') ? 'away' : 'home';
     var goalTypeSelect = document.getElementById('sbGoalAssignType');
