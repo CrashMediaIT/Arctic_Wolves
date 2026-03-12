@@ -412,7 +412,7 @@ $hasActiveFilters = !empty($filter_team) || !empty($filter_age_group) || !empty(
                         <a href="?page=stats&athlete_id=<?= (int)$a['id'] ?>" class="m-card-act-btn m-card-act-primary"><i class="fas fa-chart-line"></i> Stats</a>
                         <a href="?page=workouts&athlete_id=<?= (int)$a['id'] ?>" class="m-card-act-btn m-card-act-secondary"><i class="fas fa-dumbbell"></i> Workouts</a>
                         <a href="?page=nutrition&athlete_id=<?= (int)$a['id'] ?>" class="m-card-act-btn m-card-act-secondary"><i class="fas fa-apple-whole"></i> Nutrition</a>
-                        <a href="?page=manage_athletes&action=notes&id=<?= (int)$a['id'] ?>" class="m-card-act-btn m-card-act-secondary"><i class="fas fa-sticky-note"></i> Notes</a>
+                        <a href="?page=athlete_notes&athlete_id=<?= (int)$a['id'] ?>" class="m-card-act-btn m-card-act-secondary"><i class="fas fa-sticky-note"></i> Notes</a>
                         <a href="?page=athlete_detail&id=<?= (int)$a['id'] ?>" class="m-card-act-btn m-card-act-secondary"><i class="fas fa-user"></i> Profile</a>
                         <?php if ($is_coach && !$isInactive): ?>
                         <form method="POST" action="process_manage_athletes.php" data-confirm="Deactivate this athlete?" style="margin:0;">

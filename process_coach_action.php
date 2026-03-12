@@ -48,6 +48,9 @@ if ($action == 'assign_nutrition') {
 }
 
 // Redirect back to that specific athlete's page (or custom redirect)
-$redirect_page = isset($_POST['redirect']) ? $_POST['redirect'] : 'athlete_detail&id=' . $user_id;
+$redirect_page = 'athlete_detail&id=' . $user_id;
+if (isset($_POST['redirect']) && preg_match('/^[a-zA-Z0-9_&=]+$/', $_POST['redirect'])) {
+    $redirect_page = $_POST['redirect'];
+}
 header("Location: dashboard.php?page=" . $redirect_page . "&success=note_added&msg=success");
 ?>
