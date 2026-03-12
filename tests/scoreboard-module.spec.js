@@ -3219,3 +3219,153 @@ test.describe('Music search fix – server-side Subsonic search', () => {
     expect(content).toContain('400');
   });
 });
+
+// =====================================================
+// SyntaxError fix – json_encode for JS contexts
+// =====================================================
+test.describe('SyntaxError fix – json_encode for JS variable output', () => {
+  test('scoreboard.php uses json_encode for CUSTOM_BUZZER_URL', () => {
+    const content = readFile('scoreboard.php');
+    expect(content).toContain('CUSTOM_BUZZER_URL = <?= json_encode($custom_buzzer_url) ?>');
+    // Must NOT use htmlspecialchars for JS script context
+    expect(content).not.toContain("CUSTOM_BUZZER_URL = '<?= htmlspecialchars");
+  });
+
+  test('scoreboard.php uses json_encode for CUSTOM_HORN_URL', () => {
+    const content = readFile('scoreboard.php');
+    expect(content).toContain('CUSTOM_HORN_URL = <?= json_encode($custom_horn_url) ?>');
+    expect(content).not.toContain("CUSTOM_HORN_URL = '<?= htmlspecialchars");
+  });
+
+  test('scoreboard.php uses json_encode for CSRF_TOKEN', () => {
+    const content = readFile('scoreboard.php');
+    expect(content).toContain("CSRF_TOKEN = <?= json_encode(");
+    expect(content).not.toContain("CSRF_TOKEN = '<?= htmlspecialchars");
+  });
+
+  test('scoreboard.php uses json_encode for timezone', () => {
+    const content = readFile('scoreboard.php');
+    expect(content).toContain('sbTimezone = <?= json_encode(date_default_timezone_get()) ?>');
+    expect(content).not.toContain("sbTimezone = '<?= htmlspecialchars");
+  });
+
+  test('settings buzzer library onclick uses json_encode for URLs', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toContain("htmlspecialchars(json_encode($bi['url']");
+    expect(content).toContain("htmlspecialchars(json_encode($hi['url']");
+  });
+});
+
+// =====================================================
+// Music / audio state persistence across page navigation
+// =====================================================
+test.describe('Music and audio state persistence', () => {
+  test('JS has sbSaveMusicState function', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbSaveMusicState()');
+  });
+
+  test('JS has sbRestoreMusicState function', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbRestoreMusicState()');
+  });
+
+  test('sbSaveMusicState persists playlist queue in sessionStorage', () => {
+    const content = readFile('js/scoreboard.js');
+    const fnStart = content.indexOf('function sbSaveMusicState()');
+    const fn = content.substring(fnStart, fnStart + 600);
+    expect(fn).toContain('sb_music_state');
+    expect(fn).toContain('sbMusicPlayer.queue');
+    expect(fn).toContain('sbMusicPlayer.queueIndex');
+    expect(fn).toContain('sbMusicPlayer.currentTrack');
+  });
+
+  test('sbSaveMusicState persists autoplay and continuous flags', () => {
+    const content = readFile('js/scoreboard.js');
+    const fnStart = content.indexOf('function sbSaveMusicState()');
+    const fn = content.substring(fnStart, fnStart + 600);
+    expect(fn).toContain('sbMusicAutoplay');
+    expect(fn).toContain('sbMusicContinuous');
+  });
+
+  test('sbSaveMusicState persists volume setting', () => {
+    const content = readFile('js/scoreboard.js');
+    const fnStart = content.indexOf('function sbSaveMusicState()');
+    const fn = content.substring(fnStart, fnStart + 600);
+    expect(fn).toContain('volume');
+  });
+
+  test('sbRestoreMusicState restores playlist queue', () => {
+    const content = readFile('js/scoreboard.js');
+    const fnStart = content.indexOf('function sbRestoreMusicState()');
+    const fn = content.substring(fnStart, fnStart + 1200);
+    expect(fn).toContain('sb_music_state');
+    expect(fn).toContain('sbMusicPlayer.queue');
+    expect(fn).toContain('sbUpdatePlaylistCount');
+  });
+
+  test('sbRestoreMusicState restores autoplay button state', () => {
+    const content = readFile('js/scoreboard.js');
+    const fnStart = content.indexOf('function sbRestoreMusicState()');
+    const fn = content.substring(fnStart, fnStart + 1200);
+    expect(fn).toContain('sbMusicAutoplayBtn');
+    expect(fn).toContain('sbMusicAutoplay');
+  });
+
+  test('sbRestoreMusicState restores continuous button state', () => {
+    const content = readFile('js/scoreboard.js');
+    const fnStart = content.indexOf('function sbRestoreMusicState()');
+    const fn = content.substring(fnStart, fnStart + 1200);
+    expect(fn).toContain('sbMusicContinuousBtn');
+    expect(fn).toContain('sbMusicContinuous');
+  });
+
+  test('sbRestoreMusicState restores now-playing display', () => {
+    const content = readFile('js/scoreboard.js');
+    const fnStart = content.indexOf('function sbRestoreMusicState()');
+    const fn = content.substring(fnStart, fnStart + 2200);
+    expect(fn).toContain('sbUpdateNowPlaying');
+  });
+
+  test('sbSaveClockState calls sbSaveMusicState', () => {
+    const content = readFile('js/scoreboard.js');
+    const fnStart = content.indexOf('function sbSaveClockState()');
+    const fn = content.substring(fnStart, fnStart + 800);
+    expect(fn).toContain('sbSaveMusicState()');
+  });
+
+  test('sbRestoreClockState calls sbRestoreMusicState', () => {
+    const content = readFile('js/scoreboard.js');
+    const fnStart = content.indexOf('function sbRestoreClockState()');
+    const fn = content.substring(fnStart, fnStart + 1200);
+    expect(fn).toContain('sbRestoreMusicState()');
+  });
+
+  test('beforeunload listener saves all state', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('beforeunload');
+    expect(content).toContain('sbSaveClockState()');
+  });
+
+  test('sbEndGame clears sb_music_state from sessionStorage', () => {
+    const content = readFile('js/scoreboard.js');
+    const fnStart = content.indexOf('function sbEndGame()');
+    const fn = content.substring(fnStart, fnStart + 1000);
+    expect(fn).toContain("removeItem('sb_music_state')");
+  });
+
+  test('sbEndGame clears all sessionStorage keys including regulation/overtime', () => {
+    const content = readFile('js/scoreboard.js');
+    const fnStart = content.indexOf('function sbEndGame()');
+    const fn = content.substring(fnStart, fnStart + 1000);
+    expect(fn).toContain("removeItem('sb_clock_seconds')");
+    expect(fn).toContain("removeItem('sb_clock_running')");
+    expect(fn).toContain("removeItem('sb_clock_saved_at')");
+    expect(fn).toContain("removeItem('sb_penalty_timers')");
+    expect(fn).toContain("removeItem('sb_penalty_item_clocks')");
+    expect(fn).toContain("removeItem('sb_recurring_buzzer')");
+    expect(fn).toContain("removeItem('sb_regulation_secs')");
+    expect(fn).toContain("removeItem('sb_overtime_secs')");
+    expect(fn).toContain("removeItem('sb_music_state')");
+  });
+});
