@@ -129,7 +129,7 @@ try {
 }
 
 $isAdmin       = in_array('admin', $user_roles_list);
-$isCoach       = in_array('coach', $user_roles_list);
+$isCoach       = in_array('coach', $user_roles_list) || in_array('coach_plus', $user_roles_list);
 $isHealthCoach = in_array('health_coach', $user_roles_list);
 $isTeamCoach   = in_array('team_coach', $user_roles_list);
 $isParent      = in_array('parent', $user_roles_list);

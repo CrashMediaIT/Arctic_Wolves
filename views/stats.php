@@ -478,6 +478,18 @@ try {
         <span>Progress note added successfully!</span>
         <button type="button" onclick="document.getElementById('successWidget').style.display='none'" aria-label="Dismiss message">&times;</button>
     </div>
+    <?php elseif ($msg === 'stats_added'): ?>
+    <div class="success-message-widget" id="successWidget">
+        <i class="fas fa-check-circle"></i>
+        <span>Season stats saved successfully!</span>
+        <button type="button" onclick="document.getElementById('successWidget').style.display='none'" aria-label="Dismiss message">&times;</button>
+    </div>
+    <?php elseif ($msg === 'metric_added'): ?>
+    <div class="success-message-widget" id="successWidget">
+        <i class="fas fa-check-circle"></i>
+        <span>Performance metric saved successfully!</span>
+        <button type="button" onclick="document.getElementById('successWidget').style.display='none'" aria-label="Dismiss message">&times;</button>
+    </div>
     <?php endif; ?>
 
     <!-- TAB 1: Goal Tracker -->
@@ -603,6 +615,23 @@ try {
 
     <!-- TAB 2: Performance Stats -->
     <div class="tab-content <?php echo $active_tab === 'performance' ? 'active' : ''; ?>" id="performance-tab">
+        <?php if ($isCoach || $viewing_athlete_id == $user_id): ?>
+        <div class="filters-bar" style="margin-bottom: 24px;">
+            <div style="flex:1; color: var(--text-dim); font-size: 14px; display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-info-circle"></i>
+                <span>Season statistics, performance metrics, and skill progress</span>
+            </div>
+            <div class="filter-group filter-action" style="margin-left: auto; flex-direction: row; gap: 10px;">
+                <button type="button" class="btn btn-primary" onclick="openAddStatsModal()">
+                    <i class="fas fa-plus"></i> Add Season Stats
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="openAddMetricModal()">
+                    <i class="fas fa-bolt"></i> Add Metric
+                </button>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <!-- Team-based Performance Stats -->
         <?php if (count($userTeams) > 0): ?>
         <div class="card">
@@ -947,14 +976,184 @@ try {
             <i class="fas fa-chart-bar empty-icon"></i>
             <h3>No Performance Data Yet</h3>
             <p class="placeholder-text">
-                Add teams to your profile settings to start tracking performance statistics. 
-                Performance stats will be automatically organized based on your team history.
+                <?php if ($isCoach || $viewing_athlete_id == $user_id): ?>
+                    Use the <strong>Add Season Stats</strong> button above to record season statistics, or add metrics like lap times and shot speeds.
+                <?php else: ?>
+                    Your coach will record performance statistics here.
+                <?php endif; ?>
             </p>
-            <a href="?page=profile&tab=player" class="btn btn-primary">
-                <i class="fas fa-cog"></i> Go to Profile Settings
-            </a>
+            <?php if ($isCoach || $viewing_athlete_id == $user_id): ?>
+            <button type="button" class="btn btn-primary" onclick="openAddStatsModal()" style="margin-top: 8px;">
+                <i class="fas fa-plus"></i> Add Season Stats
+            </button>
+            <?php endif; ?>
         </div>
         <?php endif; ?>
+    </div>
+
+    <!-- Add Season Stats Modal -->
+    <div id="addStatsModal" class="modal" style="display: none;">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h2 class="modal-title"><i class="fas fa-chart-bar"></i> Add Season Stats</h2>
+                <button class="modal-close" aria-label="Close modal" onclick="closeAddStatsModal()">&times;</button>
+            </div>
+            <form id="addStatsForm" method="POST" action="process_goals.php">
+                <?php echo csrfTokenInput(); ?>
+                <input type="hidden" name="action" value="add_season_stats">
+                <input type="hidden" name="athlete_id" value="<?php echo $viewing_athlete_id; ?>">
+                <input type="hidden" name="is_goalie" id="isGoalieHidden" value="0">
+                <div class="modal-body">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Season *</label>
+                            <input type="text" name="season" class="form-input" required placeholder="e.g. 2024-25">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Team</label>
+                            <input type="text" name="team" class="form-input" placeholder="e.g. Arctic Wolves U18">
+                        </div>
+                    </div>
+                    <div id="skaterStatsFields">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Games Played</label>
+                                <input type="number" name="games_played" class="form-input" min="0" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Goals</label>
+                                <input type="number" name="goals" class="form-input" min="0" value="0">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Assists</label>
+                                <input type="number" name="assists" class="form-input" min="0" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">+/-</label>
+                                <input type="number" name="plus_minus" class="form-input" value="0">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Penalty Minutes</label>
+                                <input type="number" name="penalty_minutes" class="form-input" min="0" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Shots</label>
+                                <input type="number" name="shots" class="form-input" min="0" value="0">
+                            </div>
+                        </div>
+                    </div>
+                    <div id="goalieStatsFields" style="display:none;">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Games Played</label>
+                                <input type="number" name="gp_goalie" class="form-input" min="0" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Wins</label>
+                                <input type="number" name="wins" class="form-input" min="0" value="0">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Losses</label>
+                                <input type="number" name="losses" class="form-input" min="0" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Ties</label>
+                                <input type="number" name="ties" class="form-input" min="0" value="0">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Shots Against</label>
+                                <input type="number" name="shots_against" class="form-input" min="0" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Goals Against</label>
+                                <input type="number" name="goals_against" class="form-input" min="0" value="0">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Shutouts</label>
+                                <input type="number" name="shutouts" class="form-input" min="0" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">GAA</label>
+                                <input type="number" name="gaa" class="form-input" min="0" step="0.01" value="0.00">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-top:8px;">
+                        <label style="display:flex; align-items:center; gap:10px; cursor:pointer; color:var(--text-dim); font-size:14px;">
+                            <input type="checkbox" id="goalieToggle" onchange="toggleGoalieFields(this.checked)" style="width:16px;height:16px;">
+                            <span>Goalie stats</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeAddStatsModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Stats</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Performance Metric Modal -->
+    <div id="addMetricModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title"><i class="fas fa-bolt"></i> Add Performance Metric</h2>
+                <button class="modal-close" aria-label="Close modal" onclick="closeAddMetricModal()">&times;</button>
+            </div>
+            <form id="addMetricForm" method="POST" action="process_goals.php">
+                <?php echo csrfTokenInput(); ?>
+                <input type="hidden" name="action" value="add_performance_metric">
+                <input type="hidden" name="athlete_id" value="<?php echo $viewing_athlete_id; ?>">
+                <div class="modal-body">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Metric Type *</label>
+                            <select name="stat_type" class="form-input" required>
+                                <option value="">Select type</option>
+                                <option value="lap_time">Lap Time</option>
+                                <option value="shot_speed">Shot Speed</option>
+                                <option value="strength">Strength</option>
+                                <option value="endurance">Endurance</option>
+                                <option value="agility">Agility</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Date *</label>
+                            <input type="date" name="stat_date" class="form-input" required value="<?php echo date('Y-m-d'); ?>">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Value *</label>
+                            <input type="number" name="stat_value" class="form-input" required step="0.01" placeholder="e.g. 95.5">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Unit</label>
+                            <input type="text" name="stat_unit" class="form-input" placeholder="e.g. mph, s, lbs">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Notes</label>
+                        <textarea name="notes" class="form-textarea" rows="2" placeholder="Optional notes..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeAddMetricModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Metric</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <!-- Goal Creation/Edit Modal -->
@@ -2462,4 +2661,33 @@ document.addEventListener('DOMContentLoaded', function() {
         viewGoalDetail(parseInt(goalId, 10));
     }
 });
+
+// Add Season Stats modal
+function openAddStatsModal() {
+    document.getElementById('addStatsModal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeAddStatsModal() {
+    document.getElementById('addStatsModal').style.display = 'none';
+    document.body.style.overflow = '';
+}
+
+// Add Performance Metric modal
+function openAddMetricModal() {
+    document.getElementById('addMetricModal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeAddMetricModal() {
+    document.getElementById('addMetricModal').style.display = 'none';
+    document.body.style.overflow = '';
+}
+
+// Toggle goalie vs skater fields in Add Season Stats modal
+function toggleGoalieFields(isGoalie) {
+    document.getElementById('skaterStatsFields').style.display = isGoalie ? 'none' : 'block';
+    document.getElementById('goalieStatsFields').style.display = isGoalie ? 'block' : 'none';
+    document.getElementById('isGoalieHidden').value = isGoalie ? '1' : '0';
+}
 </script>

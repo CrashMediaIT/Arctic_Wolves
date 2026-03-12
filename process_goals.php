@@ -622,7 +622,129 @@ try {
             $pdo->commit();
             echo json_encode(['success' => true]);
             exit();
-            
+
+        case 'add_season_stats':
+            if (!$is_coach && intval($_POST['athlete_id'] ?? 0) != $user_id) {
+                throw new Exception('Permission denied');
+            }
+
+            $athlete_id   = intval($_POST['athlete_id']);
+            $season       = trim($_POST['season'] ?? '');
+            $team         = trim($_POST['team'] ?? '');
+            // Use explicit flag sent by the form's hidden input (set by toggleGoalieFields JS)
+            $is_goalie    = ($_POST['is_goalie'] ?? '0') === '1';
+
+            if ($season === '') {
+                throw new Exception('Season is required');
+            }
+
+            if ($is_goalie) {
+                $games_played    = intval($_POST['gp_goalie']     ?? 0);
+                $wins            = intval($_POST['wins']           ?? 0);
+                $losses          = intval($_POST['losses']         ?? 0);
+                $ties            = intval($_POST['ties']           ?? 0);
+                $shots_against   = intval($_POST['shots_against']  ?? 0);
+                $goals_against   = intval($_POST['goals_against']  ?? 0);
+                $shutouts        = intval($_POST['shutouts']       ?? 0);
+                $gaa             = floatval($_POST['gaa']          ?? 0);
+                $saves           = max(0, $shots_against - $goals_against);
+                $save_pct        = $shots_against > 0 ? round($saves / $shots_against, 3) : 0.000;
+
+                $stmt = $pdo->prepare("
+                    INSERT INTO athlete_stats
+                        (user_id, season, team, games_played, wins, losses, ties,
+                         shots_against, goals_against, saves, save_percentage, gaa,
+                         shutouts, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+                ");
+                $stmt->execute([
+                    $athlete_id, $season, $team, $games_played, $wins, $losses, $ties,
+                    $shots_against, $goals_against, $saves, $save_pct, $gaa, $shutouts
+                ]);
+            } else {
+                $games_played    = intval($_POST['games_played']   ?? 0);
+                $goals           = intval($_POST['goals']          ?? 0);
+                $assists         = intval($_POST['assists']        ?? 0);
+                $plus_minus      = intval($_POST['plus_minus']     ?? 0);
+                $penalty_minutes = intval($_POST['penalty_minutes']?? 0);
+                $shots           = intval($_POST['shots']          ?? 0);
+                $points          = $goals + $assists;
+
+                $stmt = $pdo->prepare("
+                    INSERT INTO athlete_stats
+                        (user_id, season, team, games_played, goals, assists, points,
+                         plus_minus, penalty_minutes, shots, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+                ");
+                $stmt->execute([
+                    $athlete_id, $season, $team, $games_played, $goals, $assists, $points,
+                    $plus_minus, $penalty_minutes, $shots
+                ]);
+            }
+
+            $stat_id = $pdo->lastInsertId();
+            Auditor::log($pdo, $user_id, 'create', 'athlete_stats', $stat_id, [
+                'action'     => 'Season stats added',
+                'athlete_id' => $athlete_id,
+                'season'     => $season,
+            ]);
+
+            $pdo->commit();
+            $athlete_qs = ($athlete_id != $user_id) ? '&athlete_id=' . $athlete_id : '';
+            header("Location: dashboard.php?page=stats&tab=performance{$athlete_qs}&msg=stats_added");
+            exit();
+
+        case 'add_performance_metric':
+            if (!$is_coach && intval($_POST['athlete_id'] ?? 0) != $user_id) {
+                throw new Exception('Permission denied');
+            }
+
+            $athlete_id = intval($_POST['athlete_id']);
+            $stat_type  = trim($_POST['stat_type']  ?? '');
+            $stat_date  = trim($_POST['stat_date']  ?? '');
+            $stat_value = $_POST['stat_value'] ?? '';
+            $stat_unit  = trim($_POST['stat_unit']  ?? '');
+            $notes      = trim($_POST['notes']      ?? '');
+
+            // Whitelist allowed metric types
+            $allowed_types = ['lap_time', 'shot_speed', 'strength', 'endurance', 'agility', 'other'];
+            if (!in_array($stat_type, $allowed_types, true)) {
+                throw new Exception('Invalid metric type');
+            }
+            if (empty($stat_type) || empty($stat_date) || $stat_value === '') {
+                throw new Exception('Metric type, date, and value are required');
+            }
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $stat_date) || !strtotime($stat_date)) {
+                throw new Exception('Invalid date');
+            }
+            // Reject future dates — metrics must be for past or present performance
+            if ($stat_date > date('Y-m-d')) {
+                throw new Exception('Date cannot be in the future');
+            }
+            $stat_value_float = floatval($stat_value);
+
+            $stmt = $pdo->prepare("
+                INSERT INTO performance_stats
+                    (athlete_id, stat_type, stat_date, stat_value, stat_unit, recorded_by, notes, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+            ");
+            $stmt->execute([
+                $athlete_id, $stat_type, $stat_date, $stat_value_float,
+                $stat_unit ?: null, $user_id, $notes ?: null
+            ]);
+
+            $metric_id = $pdo->lastInsertId();
+            Auditor::log($pdo, $user_id, 'create', 'performance_stats', $metric_id, [
+                'action'     => 'Performance metric added',
+                'athlete_id' => $athlete_id,
+                'stat_type'  => $stat_type,
+            ]);
+
+            $pdo->commit();
+            $athlete_qs = ($athlete_id != $user_id) ? '&athlete_id=' . $athlete_id : '';
+            header("Location: dashboard.php?page=stats&tab=performance{$athlete_qs}&msg=metric_added");
+            exit();
+
         default:
             throw new Exception('Invalid action');
     }

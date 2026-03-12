@@ -5078,3 +5078,45 @@ ALTER TABLE `development_program_videos` ADD COLUMN IF NOT EXISTS `thumbnail_pat
 
 -- Add thumbnail_path column to drills table for video thumbnails
 ALTER TABLE `drills` ADD COLUMN IF NOT EXISTS `thumbnail_path` VARCHAR(500) DEFAULT NULL COMMENT 'RustFS path to video thumbnail image' AFTER `video_upload_path`;
+
+-- =========================================================
+-- Evaluation Skills module migrations
+-- Fix: evaluation_scores missing columns (evaluation_id, public_notes, private_notes, updated_at)
+-- Fix: evaluation_scores NOT NULL constraints prevent new-style inserts (evaluation_id + skill_id only)
+-- =========================================================
+
+ALTER TABLE `evaluation_scores`
+  ADD COLUMN IF NOT EXISTS `evaluation_id` INT DEFAULT NULL COMMENT 'FK to athlete_evaluations' AFTER `id`,
+  ADD COLUMN IF NOT EXISTS `public_notes` TEXT DEFAULT NULL COMMENT 'Coach notes visible to athlete' AFTER `comments`,
+  ADD COLUMN IF NOT EXISTS `private_notes` TEXT DEFAULT NULL COMMENT 'Coach-only private notes' AFTER `public_notes`,
+  ADD COLUMN IF NOT EXISTS `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER `created_at`;
+
+-- Relax NOT NULL constraints so evaluation_scores rows can be inserted with only evaluation_id + skill_id
+ALTER TABLE `evaluation_scores`
+  MODIFY COLUMN `athlete_id` INT DEFAULT NULL,
+  MODIFY COLUMN `evaluator_id` INT DEFAULT NULL,
+  MODIFY COLUMN `score` DECIMAL(5,2) DEFAULT NULL,
+  MODIFY COLUMN `evaluation_date` DATE DEFAULT NULL;
+
+-- Add FK index for evaluation_id in evaluation_scores (if not already present)
+ALTER TABLE `evaluation_scores`
+  ADD INDEX IF NOT EXISTS `idx_eval_scores_evaluation_id` (`evaluation_id`);
+
+-- =========================================================
+-- evaluation_media migrations
+-- Fix: missing score_id, media_url, and created_at columns used by process_eval_skills.php
+-- =========================================================
+
+ALTER TABLE `evaluation_media`
+  ADD COLUMN IF NOT EXISTS `score_id` INT DEFAULT NULL COMMENT 'FK to evaluation_scores for per-skill media' AFTER `evaluation_id`,
+  ADD COLUMN IF NOT EXISTS `media_url` VARCHAR(500) DEFAULT NULL COMMENT 'URL or path to the uploaded media file' AFTER `file_path`,
+  ADD COLUMN IF NOT EXISTS `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP AFTER `uploaded_at`;
+
+-- =========================================================
+-- user_workouts migration
+-- Fix: missing coach_id column causes workouts.php fatal error on JOIN
+-- =========================================================
+
+ALTER TABLE `user_workouts`
+  ADD COLUMN IF NOT EXISTS `coach_id` INT DEFAULT NULL COMMENT 'Coach who assigned the workout' AFTER `workout_plan_id`,
+  ADD INDEX IF NOT EXISTS `idx_user_workouts_coach` (`coach_id`);
