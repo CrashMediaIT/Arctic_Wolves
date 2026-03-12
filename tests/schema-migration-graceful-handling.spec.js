@@ -558,3 +558,66 @@ test.describe('Schema Consolidation - All Columns in CREATE TABLE', () => {
     expect(setup).not.toContain('inline_migrations');
   });
 });
+
+// =====================================================
+// 8. Reliable Table/Column Existence Checks
+// =====================================================
+
+test.describe('DatabaseMigrator - Reliable Existence Checks', () => {
+
+  test('tableExists uses fetch() instead of unreliable rowCount()', () => {
+    const content = readFile('lib/database_migrator.php');
+    const fnStart = content.indexOf('function tableExists(');
+    const fnEnd = content.indexOf('\n    }', fnStart + 100);
+    const fn = content.substring(fnStart, fnEnd);
+    // Must use fetch() which is reliable for SHOW statements
+    expect(fn).toContain('->fetch()');
+    // Must NOT use rowCount() which is unreliable for SELECT/SHOW in PDO
+    expect(fn).not.toContain('rowCount()');
+  });
+
+  test('columnExists uses fetch() instead of unreliable rowCount()', () => {
+    const content = readFile('lib/database_migrator.php');
+    const fnStart = content.indexOf('function columnExists(');
+    const fnEnd = content.indexOf('\n    }', fnStart + 100);
+    const fn = content.substring(fnStart, fnEnd);
+    // Must use fetch() which is reliable for SHOW statements
+    expect(fn).toContain('->fetch()');
+    // Must NOT use rowCount() which is unreliable for SELECT/SHOW in PDO
+    expect(fn).not.toContain('rowCount()');
+  });
+
+  test('github_updater.php tracks created tables to avoid redundant creation', () => {
+    const content = readFile('lib/github_updater.php');
+    const fnStart = content.indexOf('function runSchemaCheck()');
+    const fnEnd = content.indexOf('}', content.indexOf("'Schema check failed:", fnStart));
+    const fn = content.substring(fnStart, fnEnd);
+    // Should track tables already created in the migration loop
+    expect(fn).toContain('tables_created');
+    // Should set tracking on successful creation
+    expect(fn).toContain("tables_created[$table_name] = true");
+    // Should check tracking before trying to create again
+    expect(fn).toContain("isset($tables_created[$table_name])");
+  });
+
+  test('setup.php tracks created tables to avoid redundant creation', () => {
+    const content = readFile('setup.php');
+    // Should track tables already created in the migration loop
+    expect(content).toContain('tables_created');
+    // Should set tracking on successful creation
+    expect(content).toContain("tables_created[$table_name] = true");
+    // Should check tracking before trying to create again
+    expect(content).toContain("isset($tables_created[$table_name])");
+  });
+
+  test('add_column fallback handles already-exists gracefully in github_updater.php', () => {
+    const content = readFile('lib/github_updater.php');
+    const fnStart = content.indexOf('function runSchemaCheck()');
+    const fnEnd = content.indexOf('}', content.indexOf("'Schema check failed:", fnStart));
+    const fn = content.substring(fnStart, fnEnd);
+    // The add_column fallback should handle "already exists" errors when creating tables
+    const addColumnSection = fn.substring(fn.indexOf("'add_column'"));
+    expect(addColumnSection).toContain('isAlreadyExists');
+    expect(addColumnSection).toContain('already exists');
+  });
+});

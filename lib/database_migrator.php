@@ -146,7 +146,7 @@ class DatabaseMigrator {
             $table_name = $this->sanitizeIdentifier($table_name);
             $stmt = $this->pdo->prepare("SHOW TABLES LIKE ?");
             $stmt->execute([$table_name]);
-            return $stmt->rowCount() > 0;
+            return $stmt->fetch() !== false;
         } catch (PDOException $e) {
             return false;
         }
@@ -161,7 +161,7 @@ class DatabaseMigrator {
             $column_name = $this->sanitizeIdentifier($column_name);
             $stmt = $this->pdo->prepare("SHOW COLUMNS FROM `$table_name` LIKE ?");
             $stmt->execute([$column_name]);
-            return $stmt->rowCount() > 0;
+            return $stmt->fetch() !== false;
         } catch (PDOException $e) {
             return false;
         }
