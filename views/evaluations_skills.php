@@ -18,6 +18,8 @@ $team_mode = isset($_GET['team_mode']) && $_GET['team_mode'] === '1' && $isAnyCo
 $viewing_athlete_id = $current_user_id;
 if ($isAnyCoach && isset($_GET['athlete_id'])) {
     $viewing_athlete_id = intval($_GET['athlete_id']);
+} elseif ($isParent && !empty($_SESSION['viewing_athlete_id'])) {
+    $viewing_athlete_id = intval($_SESSION['viewing_athlete_id']);
 }
 
 // Get athlete list for coaches (including non-system athletes in team mode)
@@ -74,15 +76,28 @@ $categories = [];
 
 if ($eval_id) {
     // Load evaluation
-    $eval_stmt = $pdo->prepare("
-        Select ae.*, u.first_name as creator_first_name, u.last_name as creator_last_name
-        FROM athlete_evaluations ae
-        LEFT JOIN users u ON ae.created_by = u.id
-        WHERE ae.id = ? AND ae.athlete_id = ?
-    ");
-    $eval_stmt->execute([$eval_id, $viewing_athlete_id]);
-    $evaluation = $eval_stmt->fetch();
-    $evaluation = decryptUserRow($evaluation);
+    try {
+        $eval_stmt = $pdo->prepare("
+            SELECT ae.*, u.first_name as creator_first_name, u.last_name as creator_last_name
+            FROM athlete_evaluations ae
+            LEFT JOIN users u ON ae.created_by = u.id
+            WHERE ae.id = ? AND ae.athlete_id = ?
+        ");
+        $eval_stmt->execute([$eval_id, $viewing_athlete_id]);
+        $evaluation = $eval_stmt->fetch();
+        $evaluation = decryptUserRow($evaluation);
+    } catch (PDOException $e) {
+        // Fallback: created_by column may not exist yet
+        error_log("evaluations_skills.php - created_by column missing, using fallback: " . $e->getMessage());
+        $eval_stmt = $pdo->prepare("
+            SELECT ae.*, NULL as creator_first_name, NULL as creator_last_name
+            FROM athlete_evaluations ae
+            WHERE ae.id = ? AND ae.athlete_id = ?
+        ");
+        $eval_stmt->execute([$eval_id, $viewing_athlete_id]);
+        $evaluation = $eval_stmt->fetch();
+        $evaluation = decryptUserRow($evaluation);
+    }
     
     if ($evaluation) {
         // Load scores
@@ -124,21 +139,39 @@ if ($eval_id) {
         });
         
         // Load media for this evaluation
-        $media_stmt = $pdo->prepare("
-            SELECT * FROM evaluation_media 
-            WHERE evaluation_id = ?
-            ORDER BY created_at DESC
-        ");
-        $media_stmt->execute([$eval_id]);
-        $media_items = $media_stmt->fetchAll();
+        try {
+            $media_stmt = $pdo->prepare("
+                SELECT * FROM evaluation_media 
+                WHERE evaluation_id = ?
+                ORDER BY created_at DESC
+            ");
+            $media_stmt->execute([$eval_id]);
+            $media_items = $media_stmt->fetchAll();
+        } catch (PDOException $e) {
+            // Fallback: created_at column may not exist yet (original table has uploaded_at)
+            error_log("evaluations_skills.php - evaluation_media.created_at missing, using fallback: " . $e->getMessage());
+            try {
+                $media_stmt = $pdo->prepare("
+                    SELECT * FROM evaluation_media 
+                    WHERE evaluation_id = ?
+                    ORDER BY uploaded_at DESC
+                ");
+                $media_stmt->execute([$eval_id]);
+                $media_items = $media_stmt->fetchAll();
+            } catch (PDOException $e2) {
+                error_log("evaluations_skills.php - evaluation_media fallback also failed: " . $e2->getMessage());
+                $media_items = [];
+            }
+        }
         
-        // Index media by score_id
+        // Index media by score_id (score_id may not exist on older schemas)
         $media_by_score = [];
         foreach ($media_items as $media) {
-            if (!isset($media_by_score[$media['score_id']])) {
-                $media_by_score[$media['score_id']] = [];
+            $score_key = $media['score_id'] ?? 0;
+            if (!isset($media_by_score[$score_key])) {
+                $media_by_score[$score_key] = [];
             }
-            $media_by_score[$media['score_id']][] = $media;
+            $media_by_score[$score_key][] = $media;
         }
     }
 }
@@ -159,21 +192,38 @@ try {
     $evaluations_list = $evals_stmt->fetchAll();
     $evaluations_list = decryptUserRows($evaluations_list);
 } catch (PDOException $e) {
-    // Fallback: evaluation_scores.evaluation_id column may not exist yet (pre-migration)
-    error_log("evaluations_skills.php - evaluation_id column missing, using fallback query: " . $e->getMessage());
-    $evals_stmt = $pdo->prepare("
-        SELECT ae.*, 
-               u.first_name as creator_first_name, u.last_name as creator_last_name,
-               0 as completed_scores,
-               0 as total_scores
-        FROM athlete_evaluations ae
-        LEFT JOIN users u ON ae.created_by = u.id
-        WHERE ae.athlete_id = ?
-        ORDER BY ae.evaluation_date DESC, ae.created_at DESC
-    ");
-    $evals_stmt->execute([$viewing_athlete_id]);
-    $evaluations_list = $evals_stmt->fetchAll();
-    $evaluations_list = decryptUserRows($evaluations_list);
+    // Fallback: evaluation_scores.evaluation_id or ae.created_by may not exist yet
+    error_log("evaluations_skills.php - primary eval list query failed, using fallback: " . $e->getMessage());
+    try {
+        $evals_stmt = $pdo->prepare("
+            SELECT ae.*, 
+                   u.first_name as creator_first_name, u.last_name as creator_last_name,
+                   0 as completed_scores,
+                   0 as total_scores
+            FROM athlete_evaluations ae
+            LEFT JOIN users u ON ae.created_by = u.id
+            WHERE ae.athlete_id = ?
+            ORDER BY ae.evaluation_date DESC, ae.created_at DESC
+        ");
+        $evals_stmt->execute([$viewing_athlete_id]);
+        $evaluations_list = $evals_stmt->fetchAll();
+        $evaluations_list = decryptUserRows($evaluations_list);
+    } catch (PDOException $e2) {
+        // Deep fallback: created_by column also missing
+        error_log("evaluations_skills.php - created_by also missing, using deep fallback: " . $e2->getMessage());
+        $evals_stmt = $pdo->prepare("
+            SELECT ae.*, 
+                   NULL as creator_first_name, NULL as creator_last_name,
+                   0 as completed_scores,
+                   0 as total_scores
+            FROM athlete_evaluations ae
+            WHERE ae.athlete_id = ?
+            ORDER BY ae.created_at DESC
+        ");
+        $evals_stmt->execute([$viewing_athlete_id]);
+        $evaluations_list = $evals_stmt->fetchAll();
+        $evaluations_list = decryptUserRows($evaluations_list);
+    }
 }
 
 // Get historical evaluations for comparison (if viewing evaluation)
