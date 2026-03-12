@@ -922,6 +922,15 @@ foreach ($away_penalties as $p) {
 </div>
 
 <!-- New Game Modal -->
+<?php
+// Filter opponent teams that don't already exist in the teams table
+$filtered_opponents = [];
+foreach ($opponent_teams as $opp) {
+    $found = false;
+    foreach ($teams as $t) { if (strcasecmp($t['team_name'], $opp) === 0) { $found = true; break; } }
+    if (!$found) $filtered_opponents[] = $opp;
+}
+?>
 <div class="sb-modal-overlay" id="sb-new-game-modal">
     <div class="sb-modal">
         <h2><i class="fas fa-hockey-puck"></i> New Game</h2>
@@ -932,13 +941,7 @@ foreach ($away_penalties as $p) {
                 <?php foreach ($teams as $t): ?>
                 <option value="<?= (int)$t['id'] ?>" data-team-name="<?= htmlspecialchars($t['team_name']) ?>"><?= htmlspecialchars($t['team_name']) ?></option>
                 <?php endforeach; ?>
-                <?php foreach ($opponent_teams as $opp): ?>
-                <?php
-                    // Skip if this opponent matches an existing team name
-                    $found = false;
-                    foreach ($teams as $t) { if (strcasecmp($t['team_name'], $opp) === 0) { $found = true; break; } }
-                    if ($found) continue;
-                ?>
+                <?php foreach ($filtered_opponents as $opp): ?>
                 <option value="" data-team-name="<?= htmlspecialchars($opp) ?>"><?= htmlspecialchars($opp) ?> (opponent)</option>
                 <?php endforeach; ?>
             </select>
@@ -950,12 +953,7 @@ foreach ($away_penalties as $p) {
                 <?php foreach ($teams as $t): ?>
                 <option value="<?= (int)$t['id'] ?>" data-team-name="<?= htmlspecialchars($t['team_name']) ?>"><?= htmlspecialchars($t['team_name']) ?></option>
                 <?php endforeach; ?>
-                <?php foreach ($opponent_teams as $opp): ?>
-                <?php
-                    $found = false;
-                    foreach ($teams as $t) { if (strcasecmp($t['team_name'], $opp) === 0) { $found = true; break; } }
-                    if ($found) continue;
-                ?>
+                <?php foreach ($filtered_opponents as $opp): ?>
                 <option value="" data-team-name="<?= htmlspecialchars($opp) ?>"><?= htmlspecialchars($opp) ?> (opponent)</option>
                 <?php endforeach; ?>
             </select>
