@@ -2853,3 +2853,142 @@ test.describe('Scoreboard team name display width', () => {
     expect(content).toContain('.sb-board-team-name { font-size: 12px; max-width: 240px; }');
   });
 });
+
+// =====================================================
+// Goal assignment modal and stat tracking toggle
+// =====================================================
+
+test.describe('Goal assignment modal on +1 Goal', () => {
+  test('scoreboard_display.php has goal assignment modal HTML', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sb-goal-assign-modal');
+    expect(content).toContain('sbGoalAssignForm');
+    expect(content).toContain('sbGoalAssignTeamLabel');
+    expect(content).toContain('sbGoalAssignTeam');
+  });
+
+  test('goal assignment modal has scorer, assist1, assist2 fields', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sbGoalAssignScorerNum');
+    expect(content).toContain('sbGoalAssignScorerName');
+    expect(content).toContain('sbGoalAssignAssist1Num');
+    expect(content).toContain('sbGoalAssignAssist1Name');
+    expect(content).toContain('sbGoalAssignAssist2Num');
+    expect(content).toContain('sbGoalAssignAssist2Name');
+  });
+
+  test('goal assignment modal has goal type dropdown', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sbGoalAssignType');
+    expect(content).toContain('Even Strength');
+    expect(content).toContain('Power Play');
+    expect(content).toContain('Short Handed');
+  });
+
+  test('goal assignment modal has skip and save buttons', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sbSkipGoalAssignment()');
+    expect(content).toContain('sbSubmitGoalAssignment(event)');
+  });
+
+  test('JS sbAddGoal shows goal assignment modal when stat tracking enabled', () => {
+    const content = readFile('js/scoreboard.js');
+    const fn = content.substring(
+      content.indexOf('function sbAddGoal('),
+      content.indexOf('function sbShowGoalAssignModal')
+    );
+    expect(fn).toContain('SB_STAT_TRACKING');
+    expect(fn).toContain('sbShowGoalAssignModal(team)');
+  });
+
+  test('JS has sbShowGoalAssignModal function', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbShowGoalAssignModal(team)');
+    expect(content).toContain('sb-goal-assign-modal');
+    expect(content).toContain('sbGoalAssignTeamLabel');
+  });
+
+  test('JS has sbSubmitGoalAssignment function that calls add_goal_detail', () => {
+    const content = readFile('js/scoreboard.js');
+    const fn = content.substring(
+      content.indexOf('function sbSubmitGoalAssignment'),
+      content.indexOf('function sbSkipGoalAssignment')
+    );
+    expect(fn).toContain('add_goal_detail');
+    expect(fn).toContain('sbGoalAssignForm');
+    expect(fn).toContain('sb-goal-assign-modal');
+  });
+
+  test('JS has sbSkipGoalAssignment function', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbSkipGoalAssignment()');
+    expect(content).toContain("document.getElementById('sb-goal-assign-modal').classList.remove('active')");
+  });
+
+  test('sbShowGoalAssignModal pre-detects goal type from penalty state', () => {
+    const content = readFile('js/scoreboard.js');
+    const fn = content.substring(
+      content.indexOf('function sbShowGoalAssignModal'),
+      content.indexOf('function sbSubmitGoalAssignment')
+    );
+    expect(fn).toContain('sbHasClearableMinor');
+    expect(fn).toContain("'Power Play'");
+    expect(fn).toContain("'Short Handed'");
+  });
+
+  test('sbSubmitGoalAssignment auto-fills period and game time from clock', () => {
+    const content = readFile('js/scoreboard.js');
+    const fn = content.substring(
+      content.indexOf('function sbSubmitGoalAssignment'),
+      content.indexOf('function sbSkipGoalAssignment')
+    );
+    expect(fn).toContain('sbCurrentPeriod');
+    expect(fn).toContain('sbFormatClock(sbClockSeconds)');
+  });
+});
+
+test.describe('Stat tracking toggle in New Game form', () => {
+  test('New Game modal has disable stat tracking checkbox', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sb-disable-stat-tracking');
+    expect(content).toContain('disable_stat_tracking');
+    expect(content).toContain('Disable stat tracking');
+  });
+
+  test('sbStartGame passes stat_tracking_enabled to backend', () => {
+    const content = readFile('js/scoreboard.js');
+    const fn = content.substring(
+      content.indexOf('function sbStartGame'),
+      content.indexOf('function sbEndGame')
+    );
+    expect(fn).toContain('stat_tracking_enabled');
+    expect(fn).toContain('sb-disable-stat-tracking');
+  });
+
+  test('process_scoreboard.php start_game saves stat_tracking_enabled', () => {
+    const content = readFile('process_scoreboard.php');
+    expect(content).toContain('stat_tracking_enabled');
+    const startSection = content.substring(
+      content.indexOf("case 'start_game':"),
+      content.indexOf("case 'update_status':")
+    );
+    expect(startSection).toContain('stat_tracking_enabled');
+  });
+
+  test('scoreboard.php outputs SB_STAT_TRACKING JS global', () => {
+    const content = readFile('scoreboard.php');
+    expect(content).toContain('SB_STAT_TRACKING');
+    expect(content).toContain('stat_tracking_enabled');
+  });
+
+  test('scoreboard.php outputs SB_HOME_TEAM_NAME and SB_AWAY_TEAM_NAME', () => {
+    const content = readFile('scoreboard.php');
+    expect(content).toContain('SB_HOME_TEAM_NAME');
+    expect(content).toContain('SB_AWAY_TEAM_NAME');
+  });
+
+  test('database_schema.sql has stat_tracking_enabled column', () => {
+    const content = readFile('database_schema.sql');
+    expect(content).toContain('stat_tracking_enabled');
+  });
+});

@@ -94,6 +94,7 @@ try {
             $home_team_id = !empty($_POST['home_team_id']) ? (int)$_POST['home_team_id'] : null;
             $away_team_id = !empty($_POST['away_team_id']) ? (int)$_POST['away_team_id'] : null;
             $is_aw_game = !empty($_POST['is_arctic_wolves_game']) ? 1 : 0;
+            $stat_tracking = isset($_POST['stat_tracking_enabled']) && $_POST['stat_tracking_enabled'] === '0' ? 0 : 1;
 
             if (empty($home_name) || empty($away_name)) {
                 echo json_encode(['success' => false, 'message' => 'Team names required']);
@@ -102,10 +103,10 @@ try {
 
             $stmt = $pdo->prepare("
                 INSERT INTO scoreboard_games (home_team_name, away_team_name, home_team_id, away_team_id,
-                    is_arctic_wolves_game, status, current_period, created_by)
-                VALUES (?, ?, ?, ?, ?, 'warmup', 1, ?)
+                    is_arctic_wolves_game, stat_tracking_enabled, status, current_period, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, 'warmup', 1, ?)
             ");
-            $stmt->execute([$home_name, $away_name, $home_team_id, $away_team_id, $is_aw_game, $user_id]);
+            $stmt->execute([$home_name, $away_name, $home_team_id, $away_team_id, $is_aw_game, $stat_tracking, $user_id]);
             $game_id = (int)$pdo->lastInsertId();
 
             Auditor::log($pdo, $user_id, 'create', 'scoreboard_games', $game_id, ['action' => 'Game started', 'home' => $home_name, 'away' => $away_name]);

@@ -964,6 +964,11 @@ foreach ($opponent_teams as $opp) {
                 This is an Arctic Wolves game (auto-sync stats)
             </label>
 
+            <label>
+                <input type="checkbox" id="sb-disable-stat-tracking" name="disable_stat_tracking" value="1">
+                Disable stat tracking (goals won't prompt for player assignment)
+            </label>
+
             <div class="sb-modal-actions">
                 <button type="button" class="sb-btn" onclick="document.getElementById('sb-new-game-modal').classList.remove('active')">Cancel</button>
                 <button type="submit" class="sb-btn sb-btn-primary"><i class="fas fa-play"></i> Start Game</button>
@@ -982,6 +987,44 @@ function sbTeamSelectFill(selectEl, inputId) {
     }
 }
 </script>
+
+<!-- Goal Assignment Modal (shown after +1 Goal when stat tracking is enabled) -->
+<div class="sb-modal-overlay" id="sb-goal-assign-modal">
+    <div class="sb-modal" style="max-width:460px;">
+        <h2><i class="fas fa-hockey-puck"></i> Goal Scored — <span id="sbGoalAssignTeamLabel">Home</span></h2>
+        <form id="sbGoalAssignForm" onsubmit="return sbSubmitGoalAssignment(event)">
+            <input type="hidden" id="sbGoalAssignTeam" value="">
+            <label>Scorer</label>
+            <div style="display:grid;grid-template-columns:60px 1fr;gap:8px;">
+                <input type="text" id="sbGoalAssignScorerNum" name="scorer_number" placeholder="#" maxlength="3">
+                <input type="text" id="sbGoalAssignScorerName" name="scorer_name" placeholder="Scorer name">
+            </div>
+            <label>Assist 1</label>
+            <div style="display:grid;grid-template-columns:60px 1fr;gap:8px;">
+                <input type="text" id="sbGoalAssignAssist1Num" name="assist1_number" placeholder="#" maxlength="3">
+                <input type="text" id="sbGoalAssignAssist1Name" name="assist1_name" placeholder="First assist">
+            </div>
+            <label>Assist 2</label>
+            <div style="display:grid;grid-template-columns:60px 1fr;gap:8px;">
+                <input type="text" id="sbGoalAssignAssist2Num" name="assist2_number" placeholder="#" maxlength="3">
+                <input type="text" id="sbGoalAssignAssist2Name" name="assist2_name" placeholder="Second assist">
+            </div>
+            <label>Goal Type</label>
+            <select name="goal_type" id="sbGoalAssignType">
+                <option value="Even Strength">Even Strength</option>
+                <option value="Power Play">Power Play</option>
+                <option value="Short Handed">Short Handed</option>
+                <option value="Empty Net">Empty Net</option>
+                <option value="Penalty Shot">Penalty Shot</option>
+                <option value="Overtime">Overtime</option>
+            </select>
+            <div class="sb-modal-actions" style="margin-top:12px;">
+                <button type="button" class="sb-btn" onclick="sbSkipGoalAssignment()">Skip</button>
+                <button type="submit" class="sb-btn sb-btn-primary"><i class="fas fa-check"></i> Save Goal Details</button>
+            </div>
+        </form>
+    </div>
+</div>
 
 <!-- Penalty Modal -->
 <div class="sb-modal-overlay" id="sb-penalty-modal">

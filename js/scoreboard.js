@@ -650,8 +650,90 @@ function sbAddGoal(team) {
                     sbClearPenaltyOnGoal(opposingTeam);
                 }
             }
+
+            // Show goal assignment modal if stat tracking is enabled
+            if (typeof SB_STAT_TRACKING !== 'undefined' && SB_STAT_TRACKING) {
+                sbShowGoalAssignModal(team);
+            }
         }
     });
+}
+
+// Show goal assignment modal pre-filled with team and current time
+function sbShowGoalAssignModal(team) {
+    var teamLabel = document.getElementById('sbGoalAssignTeamLabel');
+    var teamInput = document.getElementById('sbGoalAssignTeam');
+    var form = document.getElementById('sbGoalAssignForm');
+    if (!teamLabel || !teamInput || !form) return;
+    var teamName = (team === 'home')
+        ? (typeof SB_HOME_TEAM_NAME !== 'undefined' ? SB_HOME_TEAM_NAME : 'Home')
+        : (typeof SB_AWAY_TEAM_NAME !== 'undefined' ? SB_AWAY_TEAM_NAME : 'Away');
+    teamLabel.textContent = teamName;
+    teamInput.value = team;
+    form.reset();
+    teamInput.value = team; // reset clears hidden inputs
+    // Pre-detect goal type based on penalty state
+    var opposingTeam = (team === 'home') ? 'away' : 'home';
+    var goalTypeSelect = document.getElementById('sbGoalAssignType');
+    if (goalTypeSelect) {
+        if (sbHasClearableMinor(opposingTeam)) {
+            goalTypeSelect.value = 'Power Play';
+        } else if (sbHasClearableMinor(team)) {
+            goalTypeSelect.value = 'Short Handed';
+        } else {
+            goalTypeSelect.value = 'Even Strength';
+        }
+    }
+    document.getElementById('sb-goal-assign-modal').classList.add('active');
+}
+
+// Submit goal details from assignment modal
+function sbSubmitGoalAssignment(e) {
+    e.preventDefault();
+    var form = document.getElementById('sbGoalAssignForm');
+    var fd = new FormData(form);
+    var team = document.getElementById('sbGoalAssignTeam').value;
+    var goalData = {
+        period: String(sbCurrentPeriod <= 3 ? sbCurrentPeriod : 'OT'),
+        game_time: sbFormatClock(sbClockSeconds),
+        team: team,
+        scorer_number: fd.get('scorer_number'),
+        scorer_name: fd.get('scorer_name'),
+        assist1_number: fd.get('assist1_number'),
+        assist1_name: fd.get('assist1_name'),
+        assist2_number: fd.get('assist2_number'),
+        assist2_name: fd.get('assist2_name'),
+        goal_type: fd.get('goal_type')
+    };
+    sbFetch('add_goal_detail', goalData).then(function(d) {
+        if (d.success) {
+            document.getElementById('sb-goal-assign-modal').classList.remove('active');
+            // Also insert into scoresheet if visible
+            var goalRows = document.getElementById('sbGoalRows');
+            if (goalRows) {
+                var tr = document.createElement('tr');
+                var a1 = goalData.assist1_name ? ('#' + sbEscapeHtml(goalData.assist1_number || '') + ' ' + sbEscapeHtml(goalData.assist1_name)) : '—';
+                var a2 = goalData.assist2_name ? ('#' + sbEscapeHtml(goalData.assist2_number || '') + ' ' + sbEscapeHtml(goalData.assist2_name)) : '—';
+                tr.innerHTML =
+                    '<td>' + sbEscapeHtml(goalData.period || '') + '</td>' +
+                    '<td>' + sbEscapeHtml(goalData.game_time || '') + '</td>' +
+                    '<td>' + sbEscapeHtml(goalData.team || '') + '</td>' +
+                    '<td>#' + sbEscapeHtml(goalData.scorer_number || '') + ' ' + sbEscapeHtml(goalData.scorer_name || '') + '</td>' +
+                    '<td>' + a1 + '</td>' +
+                    '<td>' + a2 + '</td>' +
+                    '<td>' + sbEscapeHtml(goalData.goal_type || 'Even Strength') + '</td>';
+                goalRows.appendChild(tr);
+            }
+            form.reset();
+        }
+    });
+    return false;
+}
+
+// Skip goal assignment – just close the modal
+function sbSkipGoalAssignment() {
+    document.getElementById('sb-goal-assign-modal').classList.remove('active');
+    document.getElementById('sbGoalAssignForm').reset();
 }
 
 // Check if the given team has a clearable minor penalty (not major/misconduct)
@@ -1033,12 +1115,14 @@ function sbStartGame(e) {
     e.preventDefault();
     var form = document.getElementById('sbNewGameForm');
     var fd = new FormData(form);
+    var disableStats = document.getElementById('sb-disable-stat-tracking');
     sbFetch('start_game', {
         home_team_name: fd.get('home_team_name'),
         away_team_name: fd.get('away_team_name'),
         home_team_id: fd.get('home_team_id'),
         away_team_id: fd.get('away_team_id'),
-        is_arctic_wolves_game: fd.get('is_arctic_wolves_game') || '0'
+        is_arctic_wolves_game: fd.get('is_arctic_wolves_game') || '0',
+        stat_tracking_enabled: (disableStats && disableStats.checked) ? '0' : '1'
     }).then(function(d) {
         if (d.success) {
             // Preserve custom period/OT duration settings across new game
