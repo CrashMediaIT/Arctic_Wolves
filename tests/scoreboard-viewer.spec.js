@@ -6,7 +6,7 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, statSync } from 'fs';
 import { join } from 'path';
 
 const ROOT = join(__dirname, '..');
@@ -83,6 +83,10 @@ test.describe('Scoreboard Viewer – Project Structure', () => {
 
     test('build script exists and is executable', () => {
         expect(fileExists('scoreboard-viewer/build-apk.sh')).toBe(true);
+    });
+
+    test('built APK exists', () => {
+        expect(fileExists('scoreboard-viewer/scoreboard-viewer-debug.apk')).toBe(true);
     });
 
     test('README exists', () => {
@@ -408,5 +412,24 @@ test.describe('Scoreboard Viewer – README', () => {
         expect(content).toContain('assembleDebug');
         expect(content).toContain('assembleRelease');
         expect(content).toContain('build-apk.sh');
+    });
+});
+
+// ── Built APK ──────────────────────────────────────────────
+
+test.describe('Scoreboard Viewer – Built APK', () => {
+
+    test('APK file exists and is non-empty', () => {
+        const apkPath = join(ROOT, 'scoreboard-viewer/scoreboard-viewer-debug.apk');
+        expect(existsSync(apkPath)).toBe(true);
+        const stat = statSync(apkPath);
+        expect(stat.size).toBeGreaterThan(100000); // Should be >100KB
+    });
+
+    test('APK is a valid ZIP file (starts with PK header)', () => {
+        const apk = readFileSync(join(ROOT, 'scoreboard-viewer/scoreboard-viewer-debug.apk'));
+        // ZIP files start with PK (0x50, 0x4B)
+        expect(apk[0]).toBe(0x50);
+        expect(apk[1]).toBe(0x4B);
     });
 });
