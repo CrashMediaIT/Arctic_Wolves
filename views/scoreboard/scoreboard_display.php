@@ -926,27 +926,40 @@ foreach ($away_penalties as $p) {
     <div class="sb-modal">
         <h2><i class="fas fa-hockey-puck"></i> New Game</h2>
         <form id="sbNewGameForm" onsubmit="return sbStartGame(event)">
-            <label for="sb-home-team">Home Team</label>
-            <input type="text" id="sb-home-team" name="home_team_name" placeholder="Home team name" required>
-
-            <label for="sb-away-team">Away Team</label>
-            <input type="text" id="sb-away-team" name="away_team_name" placeholder="Away team name" required>
-
-            <label for="sb-home-team-id">Link to Team (Optional)</label>
-            <select id="sb-home-team-id" name="home_team_id">
-                <option value="">— Not linked —</option>
+            <label for="sb-home-team-id">Home Team</label>
+            <select id="sb-home-team-id" name="home_team_id" onchange="sbTeamSelectFill(this, 'sb-home-team')">
+                <option value="">— Select or type below —</option>
                 <?php foreach ($teams as $t): ?>
-                <option value="<?= (int)$t['id'] ?>"><?= htmlspecialchars($t['team_name']) ?></option>
+                <option value="<?= (int)$t['id'] ?>" data-team-name="<?= htmlspecialchars($t['team_name']) ?>"><?= htmlspecialchars($t['team_name']) ?></option>
+                <?php endforeach; ?>
+                <?php foreach ($opponent_teams as $opp): ?>
+                <?php
+                    // Skip if this opponent matches an existing team name
+                    $found = false;
+                    foreach ($teams as $t) { if (strcasecmp($t['team_name'], $opp) === 0) { $found = true; break; } }
+                    if ($found) continue;
+                ?>
+                <option value="" data-team-name="<?= htmlspecialchars($opp) ?>"><?= htmlspecialchars($opp) ?> (opponent)</option>
                 <?php endforeach; ?>
             </select>
+            <input type="text" id="sb-home-team" name="home_team_name" placeholder="Or type team name" required>
 
-            <label for="sb-away-team-id">Away Team Link (Optional)</label>
-            <select id="sb-away-team-id" name="away_team_id">
-                <option value="">— Not linked —</option>
+            <label for="sb-away-team-id">Away Team</label>
+            <select id="sb-away-team-id" name="away_team_id" onchange="sbTeamSelectFill(this, 'sb-away-team')">
+                <option value="">— Select or type below —</option>
                 <?php foreach ($teams as $t): ?>
-                <option value="<?= (int)$t['id'] ?>"><?= htmlspecialchars($t['team_name']) ?></option>
+                <option value="<?= (int)$t['id'] ?>" data-team-name="<?= htmlspecialchars($t['team_name']) ?>"><?= htmlspecialchars($t['team_name']) ?></option>
+                <?php endforeach; ?>
+                <?php foreach ($opponent_teams as $opp): ?>
+                <?php
+                    $found = false;
+                    foreach ($teams as $t) { if (strcasecmp($t['team_name'], $opp) === 0) { $found = true; break; } }
+                    if ($found) continue;
+                ?>
+                <option value="" data-team-name="<?= htmlspecialchars($opp) ?>"><?= htmlspecialchars($opp) ?> (opponent)</option>
                 <?php endforeach; ?>
             </select>
+            <input type="text" id="sb-away-team" name="away_team_name" placeholder="Or type team name" required>
 
             <label>
                 <input type="checkbox" id="sb-is-aw-game" name="is_arctic_wolves_game" value="1">
@@ -960,6 +973,17 @@ foreach ($away_penalties as $p) {
         </form>
     </div>
 </div>
+
+<script>
+// Auto-fill team name input when selecting from dropdown
+function sbTeamSelectFill(selectEl, inputId) {
+    var opt = selectEl.options[selectEl.selectedIndex];
+    var nameInput = document.getElementById(inputId);
+    if (opt && opt.getAttribute('data-team-name')) {
+        nameInput.value = opt.getAttribute('data-team-name');
+    }
+}
+</script>
 
 <!-- Penalty Modal -->
 <div class="sb-modal-overlay" id="sb-penalty-modal">

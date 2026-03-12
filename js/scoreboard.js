@@ -145,6 +145,159 @@ function sbSaveAndReload() {
     window.location.reload();
 }
 
+// ── Penalty type classification (mirrors PHP sbGetPenaltyType) ─
+function sbGetPenaltyTypeJS(durationMinutes) {
+    var d = parseInt(durationMinutes, 10) || 2;
+    if (d <= 2) return 'minor';
+    if (d === 4) return 'double_minor';
+    if (d === 5) return 'major';
+    if (d >= 10) return 'misconduct';
+    return 'minor';
+}
+
+// ── Dynamic penalty DOM insertion (no page reload needed) ──
+function sbInsertPenaltyDOM(team, penaltyId, playerNumber, playerName, infraction, durationMinutes) {
+    var penType = sbGetPenaltyTypeJS(durationMinutes);
+    var secs = parseInt(durationMinutes, 10) * 60;
+    var teamLabel = (team === 'home') ? 'Home' : 'Away';
+
+    // 1. Add penalty item to operator control list
+    var teamKey = team; // 'home' or 'away'
+    var lists = document.querySelectorAll('.sb-ctrl-penalty-list');
+    // Home list is the first, away list is the second
+    var listEl = null;
+    var controlPanels = document.querySelectorAll('.sb-ctrl-panel');
+    controlPanels.forEach(function(panel) {
+        var label = panel.querySelector('.sb-ctrl-panel-title');
+        if (!label) return;
+        if (teamKey === 'home' && label.textContent.indexOf('Home') !== -1) {
+            listEl = panel.querySelector('.sb-ctrl-penalty-list');
+        }
+        if (teamKey === 'away' && label.textContent.indexOf('Away') !== -1) {
+            listEl = panel.querySelector('.sb-ctrl-penalty-list');
+        }
+    });
+
+    if (listEl) {
+        // Remove empty placeholder if present
+        var emptyEl = listEl.querySelector('.sb-ctrl-penalty-empty');
+        if (emptyEl) emptyEl.remove();
+
+        // Count existing non-misconduct penalties for queue logic
+        var existingItems = listEl.querySelectorAll('.sb-ctrl-penalty-item');
+        var running = 0;
+        existingItems.forEach(function(item) {
+            var pt = item.getAttribute('data-penalty-type') || 'minor';
+            if (pt !== 'misconduct' && pt !== 'game_misconduct') running++;
+        });
+        var isQueued = (penType !== 'misconduct' && penType !== 'game_misconduct' && running >= 2);
+
+        var div = document.createElement('div');
+        div.className = 'sb-ctrl-penalty-item' + (isQueued ? ' sb-penalty-queued' : '');
+        div.setAttribute('data-team', team);
+        div.setAttribute('data-penalty-id', penaltyId);
+        div.setAttribute('data-penalty-type', penType);
+        div.setAttribute('data-duration', durationMinutes);
+        div.innerHTML =
+            '<span>#' + sbEscapeHtml(playerNumber || '?') + ' ' + sbEscapeHtml(playerName || '') + '</span>' +
+            '<span class="sb-ctrl-penalty-clock" data-penalty-clock="' + penaltyId + '" data-penalty-seconds="' + secs + '">' + sbFormatClock(secs) + '</span>' +
+            '<span class="sb-ctrl-penalty-info">' + sbEscapeHtml(infraction || '') + (penType === 'major' ? ' MAJ' : '') + (isQueued ? ' QUEUED' : '') + '</span>' +
+            '<span class="sb-ctrl-penalty-actions">' +
+                '<button class="sb-ctrl-penalty-vis-btn" data-penalty-id="' + penaltyId + '" onclick="sbTogglePenaltyItemVisibility(' + penaltyId + ')" title="Toggle board visibility"><i class="fas fa-eye"></i></button>' +
+                '<button class="sb-ctrl-penalty-clear-btn" onclick="sbClearPenalty(' + penaltyId + ')" title="Clear penalty"><i class="fas fa-times"></i></button>' +
+            '</span>';
+        listEl.appendChild(div);
+
+        // Re-init penalty item clocks to pick up the new clock element
+        sbInitPenaltyItemClocks();
+    }
+
+    // 2. Add to board penalty timer boxes if a slot is available
+    for (var i = 0; i < 2; i++) {
+        var box = document.getElementById('sb' + teamLabel + 'Pen' + i);
+        if (box && !box.classList.contains('active')) {
+            box.classList.add('active');
+            box.setAttribute('data-penalty-id', penaltyId);
+            var playerEl = box.querySelector('.sb-pen-player');
+            if (playerEl) playerEl.textContent = '#' + (playerNumber || '?');
+            var countdownEl = box.querySelector('.sb-pen-countdown');
+            if (countdownEl) {
+                countdownEl.textContent = sbFormatClock(secs);
+                // Register the penalty timer
+                sbPenaltyTimers[team][i] = { seconds: secs, element: countdownEl };
+            }
+            break;
+        }
+    }
+
+    // 3. Add to scoresheet penalty table if visible
+    var penRows = document.getElementById('sbPenaltyRows');
+    if (penRows) {
+        var tr = document.createElement('tr');
+        tr.innerHTML =
+            '<td>' + sbEscapeHtml(String(sbCurrentPeriod)) + '</td>' +
+            '<td>' + sbFormatClock(sbClockSeconds) + '</td>' +
+            '<td>' + sbEscapeHtml(team) + '</td>' +
+            '<td>#' + sbEscapeHtml(playerNumber || '') + ' ' + sbEscapeHtml(playerName || '') + '</td>' +
+            '<td>' + sbEscapeHtml(infraction || '') + '</td>' +
+            '<td>' + sbEscapeHtml(String(durationMinutes)) + '</td>';
+        penRows.appendChild(tr);
+    }
+
+    sbUpdatePenaltyQueueStatus();
+}
+
+// ── Dynamic penalty DOM removal (no page reload needed) ──
+function sbRemovePenaltyDOM(penaltyId) {
+    // Remove from operator control list
+    var ctrlItem = document.querySelector('.sb-ctrl-penalty-item[data-penalty-id="' + penaltyId + '"]');
+    var team = ctrlItem ? ctrlItem.getAttribute('data-team') : null;
+    if (ctrlItem) {
+        var list = ctrlItem.parentElement;
+        ctrlItem.remove();
+        // If list is now empty, add placeholder
+        if (list && list.querySelectorAll('.sb-ctrl-penalty-item').length === 0) {
+            var teamName = (team === 'home') ? 'home' : 'away';
+            var empty = document.createElement('div');
+            empty.className = 'sb-ctrl-penalty-empty';
+            empty.textContent = 'No ' + teamName + ' penalties';
+            list.appendChild(empty);
+        }
+    }
+
+    // Remove from board penalty timer boxes
+    var boardSlot = document.querySelector('.sb-board-pen-slot[data-penalty-id="' + penaltyId + '"]');
+    if (boardSlot) {
+        boardSlot.classList.remove('active');
+        boardSlot.removeAttribute('data-penalty-id');
+        var player = boardSlot.querySelector('.sb-pen-player');
+        if (player) player.textContent = '—';
+        var countdown = boardSlot.querySelector('.sb-pen-countdown');
+        if (countdown) countdown.textContent = '--:--';
+        // Clear the timer from sbPenaltyTimers
+        if (team) {
+            for (var i = 0; i < 2; i++) {
+                var boxId = 'sb' + (team === 'home' ? 'Home' : 'Away') + 'Pen' + i;
+                if (boardSlot.id === boxId) {
+                    sbPenaltyTimers[team][i] = null;
+                    break;
+                }
+            }
+        }
+    }
+
+    // Re-init penalty item clocks
+    sbInitPenaltyItemClocks();
+    sbUpdatePenaltyQueueStatus();
+}
+
+// ── Simple HTML escape helper ─────────────────────────────
+function sbEscapeHtml(str) {
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(str));
+    return div.innerHTML;
+}
+
 // ── Adjustable Period Times ───────────────────────────────
 function sbSetPeriodTime(minutes) {
     minutes = parseInt(minutes, 10);
@@ -618,10 +771,18 @@ function sbAddPenalty(e) {
     }).then(function(d) {
         if (d.success) {
             document.getElementById('sb-penalty-modal').classList.remove('active');
+            // Insert penalty into DOM without page reload (clock keeps running)
+            sbInsertPenaltyDOM(
+                fd.get('team'),
+                d.penalty_id,
+                fd.get('player_number'),
+                fd.get('player_name'),
+                fd.get('infraction'),
+                duration
+            );
             form.reset();
             var customInput = document.getElementById('sb-pen-duration-custom');
             if (customInput) customInput.style.display = 'none';
-            sbSaveAndReload();
         }
     });
     return false;
@@ -633,7 +794,8 @@ function sbClearPenalty(penaltyId) {
     if (!confirm('Clear this penalty?')) return;
     sbFetch('clear_penalty', { penalty_id: penaltyId }).then(function(d) {
         if (d.success) {
-            sbSaveAndReload();
+            // Remove penalty from DOM without page reload (clock keeps running)
+            sbRemovePenaltyDOM(penaltyId);
         } else {
             alert(d.message || 'Failed to clear penalty');
         }
@@ -994,7 +1156,7 @@ function sbAddGoalDetail(e) {
     e.preventDefault();
     var form = document.getElementById('sbGoalDetailForm');
     var fd = new FormData(form);
-    sbFetch('add_goal_detail', {
+    var goalData = {
         period: fd.get('period'),
         game_time: fd.get('game_time'),
         team: fd.get('team'),
@@ -1005,11 +1167,27 @@ function sbAddGoalDetail(e) {
         assist2_number: fd.get('assist2_number'),
         assist2_name: fd.get('assist2_name'),
         goal_type: fd.get('goal_type')
-    }).then(function(d) {
+    };
+    sbFetch('add_goal_detail', goalData).then(function(d) {
         if (d.success) {
             document.getElementById('sb-goal-detail-modal').classList.remove('active');
+            // Insert goal detail row into scoresheet without page reload
+            var goalRows = document.getElementById('sbGoalRows');
+            if (goalRows) {
+                var tr = document.createElement('tr');
+                var a1 = goalData.assist1_name ? ('#' + sbEscapeHtml(goalData.assist1_number || '') + ' ' + sbEscapeHtml(goalData.assist1_name)) : '—';
+                var a2 = goalData.assist2_name ? ('#' + sbEscapeHtml(goalData.assist2_number || '') + ' ' + sbEscapeHtml(goalData.assist2_name)) : '—';
+                tr.innerHTML =
+                    '<td>' + sbEscapeHtml(goalData.period || '') + '</td>' +
+                    '<td>' + sbEscapeHtml(goalData.game_time || '') + '</td>' +
+                    '<td>' + sbEscapeHtml(goalData.team || '') + '</td>' +
+                    '<td>#' + sbEscapeHtml(goalData.scorer_number || '') + ' ' + sbEscapeHtml(goalData.scorer_name || '') + '</td>' +
+                    '<td>' + a1 + '</td>' +
+                    '<td>' + a2 + '</td>' +
+                    '<td>' + sbEscapeHtml(goalData.goal_type || 'Even Strength') + '</td>';
+                goalRows.appendChild(tr);
+            }
             form.reset();
-            sbSaveAndReload();
         }
     });
     return false;

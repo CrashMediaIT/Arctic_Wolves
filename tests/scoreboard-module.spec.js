@@ -2604,3 +2604,131 @@ test.describe('Clock independence and timestamp-based timing', () => {
     expect(restorePenFn).toContain('Math.max(0');
   });
 });
+
+// =====================================================
+// No-reload DOM updates (clock never stops)
+// =====================================================
+
+test.describe('No-reload DOM updates for clock independence', () => {
+  test('JS sbAddPenalty uses sbInsertPenaltyDOM instead of sbSaveAndReload', () => {
+    const content = readFile('js/scoreboard.js');
+    const fn = content.substring(
+      content.indexOf('function sbAddPenalty('),
+      content.indexOf('function sbAddPenalty(') + 1200
+    );
+    expect(fn).toContain('sbInsertPenaltyDOM');
+    expect(fn).not.toContain('sbSaveAndReload');
+  });
+
+  test('JS sbClearPenalty uses sbRemovePenaltyDOM instead of sbSaveAndReload', () => {
+    const content = readFile('js/scoreboard.js');
+    const fn = content.substring(
+      content.indexOf('function sbClearPenalty('),
+      content.indexOf('function sbClearPenalty(') + 500
+    );
+    expect(fn).toContain('sbRemovePenaltyDOM');
+    expect(fn).not.toContain('sbSaveAndReload');
+  });
+
+  test('JS sbAddGoalDetail updates DOM without sbSaveAndReload', () => {
+    const content = readFile('js/scoreboard.js');
+    const fn = content.substring(
+      content.indexOf('function sbAddGoalDetail('),
+      content.indexOf('function sbAddGoalDetail(') + 2000
+    );
+    expect(fn).toContain('sbGoalRows');
+    expect(fn).not.toContain('sbSaveAndReload');
+  });
+
+  test('JS has sbInsertPenaltyDOM function', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbInsertPenaltyDOM(');
+    // Should create penalty item in control list
+    expect(content).toContain('sb-ctrl-penalty-item');
+    // Should update board penalty box
+    expect(content).toContain('sbPenaltyTimers');
+  });
+
+  test('JS has sbRemovePenaltyDOM function', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbRemovePenaltyDOM(');
+    // Should remove from control list and board
+    expect(content).toContain('sb-ctrl-penalty-empty');
+  });
+
+  test('JS has sbGetPenaltyTypeJS helper', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbGetPenaltyTypeJS(');
+    // Should classify like PHP helper
+    expect(content).toContain('minor');
+    expect(content).toContain('double_minor');
+    expect(content).toContain('major');
+    expect(content).toContain('misconduct');
+  });
+
+  test('JS has sbEscapeHtml helper', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbEscapeHtml(');
+  });
+
+  test('JS sbInsertPenaltyDOM adds scoresheet row', () => {
+    const content = readFile('js/scoreboard.js');
+    const fn = content.substring(
+      content.indexOf('function sbInsertPenaltyDOM('),
+      content.indexOf('function sbRemovePenaltyDOM(')
+    );
+    expect(fn).toContain('sbPenaltyRows');
+  });
+
+  test('JS sbAddGoalDetail inserts row into sbGoalRows', () => {
+    const content = readFile('js/scoreboard.js');
+    const fn = content.substring(
+      content.indexOf('function sbAddGoalDetail('),
+      content.indexOf('function sbAddGoalDetail(') + 2000
+    );
+    expect(fn).toContain('sbGoalRows');
+    expect(fn).toContain('appendChild');
+  });
+});
+
+// =====================================================
+// Team loading from gameplan module
+// =====================================================
+
+test.describe('Team loading from gameplan module', () => {
+  test('scoreboard.php uses correct column name (name not team_name) for teams query', () => {
+    const content = readFile('scoreboard.php');
+    expect(content).toContain('name AS team_name');
+    expect(content).toContain('is_active = 1');
+  });
+
+  test('scoreboard.php fetches opponent teams from game_schedules', () => {
+    const content = readFile('scoreboard.php');
+    expect(content).toContain('opponent_teams');
+    expect(content).toContain('game_schedules');
+    expect(content).toContain('opponent_team');
+  });
+
+  test('new game form includes opponent teams in dropdown', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('opponent_teams');
+    expect(content).toContain('(opponent)');
+  });
+
+  test('new game form has team select auto-fill for team name', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sbTeamSelectFill');
+    expect(content).toContain('data-team-name');
+  });
+
+  test('team select dropdown is placed before name input for both home and away', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    const homeSelectIdx = content.indexOf('id="sb-home-team-id"');
+    const homeInputIdx = content.indexOf('id="sb-home-team"');
+    const awaySelectIdx = content.indexOf('id="sb-away-team-id"');
+    const awayInputIdx = content.indexOf('id="sb-away-team"');
+    // Select should appear before input
+    expect(homeSelectIdx).toBeLessThan(homeInputIdx);
+    expect(awaySelectIdx).toBeLessThan(awayInputIdx);
+  });
+});
