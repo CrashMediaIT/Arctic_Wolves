@@ -10,10 +10,15 @@ require_once __DIR__ . '/../lib/image_helper.php';
 $athlete_id = isset($_GET['id']) ? intval($_GET['id']) : $user_id;
 
 // Get athlete details
-$athlete_stmt = $pdo->prepare("SELECT * FROM users WHERE id = ? AND role IN ('athlete', 'coach', 'coach_plus')");
-$athlete_stmt->execute([$athlete_id]);
-$athlete = $athlete_stmt->fetch();
-$athlete = $athlete ? decryptUserRow($athlete) : $athlete;
+try {
+    $athlete_stmt = $pdo->prepare("SELECT * FROM users WHERE id = ? AND role IN ('athlete', 'coach', 'coach_plus')");
+    $athlete_stmt->execute([$athlete_id]);
+    $athlete = $athlete_stmt->fetch(PDO::FETCH_ASSOC);
+    $athlete = $athlete ? decryptUserRow($athlete) : $athlete;
+} catch (PDOException $e) {
+    error_log("Athlete detail fetch error: " . $e->getMessage());
+    $athlete = null;
+}
 
 if (!$athlete) {
     echo "<div class='alert alert-error'>Athlete not found.</div>";
@@ -27,9 +32,20 @@ if ($isAdmin || $isCoach) {
 } elseif ($user_id == $athlete_id) {
     $can_view = true;
 } elseif ($isParent) {
-    $check = $pdo->prepare("SELECT id FROM managed_athletes WHERE parent_id = ? AND athlete_id = ?");
-    $check->execute([$user_id, $athlete_id]);
-    $can_view = ($check->rowCount() > 0);
+    try {
+        $check = $pdo->prepare("SELECT id FROM parent_athlete_relationships WHERE parent_id = ? AND athlete_id = ?");
+        $check->execute([$user_id, $athlete_id]);
+        if ($check->rowCount() > 0) {
+            $can_view = true;
+        } else {
+            $check2 = $pdo->prepare("SELECT id FROM managed_athletes WHERE parent_id = ? AND athlete_id = ?");
+            $check2->execute([$user_id, $athlete_id]);
+            $can_view = ($check2->rowCount() > 0);
+        }
+    } catch (PDOException $e) {
+        error_log("Athlete detail permission check error: " . $e->getMessage());
+        $can_view = false;
+    }
 }
 
 if (!$can_view) {
@@ -38,38 +54,102 @@ if (!$can_view) {
 }
 
 // Get athlete stats
-$stats_stmt = $pdo->prepare("SELECT * FROM athlete_stats WHERE user_id = ? ORDER BY created_at DESC LIMIT 10");
-$stats_stmt->execute([$athlete_id]);
-$stats = $stats_stmt->fetchAll();
+$stats = [];
+try {
+    $stats_stmt = $pdo->prepare("SELECT * FROM athlete_stats WHERE user_id = ? ORDER BY created_at DESC LIMIT 1");
+    $stats_stmt->execute([$athlete_id]);
+    $stats = $stats_stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log("Athlete stats fetch error: " . $e->getMessage());
+    $stats = [];
+}
 
 // Get recent evaluations
-$eval_stmt = $pdo->prepare("
-    SELECT ae.*, u.first_name, u.last_name 
-    FROM athlete_evaluations ae 
-    LEFT JOIN users u ON ae.evaluator_id = u.id
-    WHERE ae.athlete_id = ? 
-    ORDER BY ae.evaluation_date DESC 
-    LIMIT 5
-");
-$eval_stmt->execute([$athlete_id]);
-$evaluations = $eval_stmt->fetchAll();
-$evaluations = decryptUserRows($evaluations);
+$evaluations = [];
+try {
+    $eval_stmt = $pdo->prepare("
+        SELECT ae.id, ae.athlete_id, ae.evaluator_id, ae.skill_id, ae.rating,
+               ae.comments, ae.notes, ae.status,
+               COALESCE(ae.evaluation_date, ae.eval_date) as evaluation_date,
+               ae.created_at,
+               u.first_name as evaluator_first_name, u.last_name as evaluator_last_name
+        FROM athlete_evaluations ae 
+        LEFT JOIN users u ON ae.evaluator_id = u.id
+        WHERE ae.athlete_id = ? 
+        ORDER BY COALESCE(ae.evaluation_date, ae.eval_date) DESC 
+        LIMIT 5
+    ");
+    $eval_stmt->execute([$athlete_id]);
+    $evaluations = $eval_stmt->fetchAll(PDO::FETCH_ASSOC);
+    $evaluations = decryptUserRows($evaluations);
+} catch (PDOException $e) {
+    error_log("Athlete evaluations fetch error: " . $e->getMessage());
+    $evaluations = [];
+}
 
 // Get assigned teams (combine athlete_teams and team_roster for complete view)
-$teams_stmt = $pdo->prepare("
-    SELECT at.team_name, at.season, at.position, at.jersey_number, at.is_current, at.status, at.team_id
-    FROM athlete_teams at 
-    WHERE at.athlete_id = ? OR at.user_id = ?
-    UNION
-    SELECT t.name as team_name, s.name as season, tr.position, tr.jersey_number, 1 as is_current, 'active' as status, tr.team_id
-    FROM team_roster tr
-    INNER JOIN teams t ON tr.team_id = t.id
-    LEFT JOIN seasons s ON tr.season_id = s.id
-    WHERE tr.athlete_id = ?
-    ORDER BY is_current DESC, season DESC
-");
-$teams_stmt->execute([$athlete_id, $athlete_id, $athlete_id]);
-$teams = $teams_stmt->fetchAll();
+$teams = [];
+try {
+    $teams_stmt = $pdo->prepare("
+        SELECT at.team_name, at.season, at.position, at.jersey_number, at.is_current, at.status, at.team_id
+        FROM athlete_teams at 
+        WHERE at.athlete_id = ? OR at.user_id = ?
+        UNION
+        SELECT t.name as team_name, s.name as season, tr.position, tr.jersey_number, 1 as is_current, 'active' as status, tr.team_id
+        FROM team_roster tr
+        INNER JOIN teams t ON tr.team_id = t.id
+        LEFT JOIN seasons s ON tr.season_id = s.id
+        WHERE tr.athlete_id = ?
+        ORDER BY is_current DESC, season DESC
+    ");
+    $teams_stmt->execute([$athlete_id, $athlete_id, $athlete_id]);
+    $teams = $teams_stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log("Athlete teams fetch error: " . $e->getMessage());
+    $teams = [];
+}
+
+// Get recent workouts
+$workouts = [];
+try {
+    $workouts_stmt = $pdo->prepare("
+        SELECT uw.id, uw.title, uw.status, uw.duration_minutes,
+               COALESCE(uw.assigned_date, uw.workout_date) as workout_date,
+               uw.completed_at,
+               (SELECT COUNT(*) FROM user_workout_items WHERE user_workout_id = uw.id) as exercise_count,
+               (SELECT COUNT(*) FROM user_workout_items WHERE user_workout_id = uw.id AND completed_at IS NOT NULL) as completed_count
+        FROM user_workouts uw
+        WHERE uw.user_id = ?
+        ORDER BY COALESCE(uw.assigned_date, uw.workout_date) DESC
+        LIMIT 5
+    ");
+    $workouts_stmt->execute([$athlete_id]);
+    $workouts = $workouts_stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log("Athlete workouts fetch error: " . $e->getMessage());
+    $workouts = [];
+}
+
+// Get session evaluations for this athlete
+$session_evals = [];
+try {
+    $se_stmt = $pdo->prepare("
+        SELECT se.id as evaluation_id, se.name as evaluation_name, se.status as evaluation_status,
+               se.created_at as evaluation_created,
+               s.title as session_title, s.session_date
+        FROM session_evaluation_athletes sea
+        INNER JOIN session_evaluations se ON sea.session_evaluation_id = se.id
+        INNER JOIN sessions s ON se.session_id = s.id
+        WHERE sea.user_id = ?
+        ORDER BY s.session_date DESC
+        LIMIT 5
+    ");
+    $se_stmt->execute([$athlete_id]);
+    $session_evals = $se_stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log("Athlete session evaluations fetch error: " . $e->getMessage());
+    $session_evals = [];
+}
 ?>
 
 <style>
@@ -422,12 +502,22 @@ $initials = strtoupper(mb_substr($athlete['first_name'] ?? '', 0, 1) . mb_substr
         <h2>Statistics</h2>
     </div>
     <div class="ath-detail-card-body">
-        <?php if (count($stats) > 0): ?>
+        <?php if (count($stats) > 0):
+            $stat = $stats[0]; // Most recent stats record
+            $stat_items = [
+                'Games' => $stat['games_played'] ?? 0,
+                'Goals' => $stat['goals'] ?? 0,
+                'Assists' => $stat['assists'] ?? 0,
+                'Points' => $stat['points'] ?? 0,
+                'PIM' => $stat['penalty_minutes'] ?? 0,
+                '+/-' => $stat['plus_minus'] ?? 0,
+            ];
+        ?>
             <div class="ath-stat-grid">
-                <?php foreach ($stats as $stat): ?>
+                <?php foreach ($stat_items as $label => $value): ?>
                     <div class="ath-stat-item">
-                        <span class="ath-stat-value"><?= htmlspecialchars($stat['stat_value']) ?></span>
-                        <span class="ath-stat-label"><?= htmlspecialchars($stat['stat_name']) ?></span>
+                        <span class="ath-stat-value"><?= htmlspecialchars((string)$value) ?></span>
+                        <span class="ath-stat-label"><?= htmlspecialchars($label) ?></span>
                     </div>
                 <?php endforeach; ?>
             </div>
@@ -452,16 +542,18 @@ $initials = strtoupper(mb_substr($athlete['first_name'] ?? '', 0, 1) . mb_substr
                     <tr>
                         <th>Date</th>
                         <th>Evaluator</th>
-                        <th>Overall Rating</th>
+                        <th>Rating</th>
+                        <th>Status</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach ($evaluations as $eval): ?>
                         <tr>
-                            <td><?= date('M d, Y', strtotime($eval['evaluation_date'])) ?></td>
-                            <td><?= htmlspecialchars($eval['first_name'] . ' ' . $eval['last_name']) ?></td>
-                            <td><?= htmlspecialchars($eval['overall_rating']) ?>/10</td>
+                            <td><?= !empty($eval['evaluation_date']) ? date('M d, Y', strtotime($eval['evaluation_date'])) : 'N/A' ?></td>
+                            <td><?= htmlspecialchars(trim(($eval['evaluator_first_name'] ?? '') . ' ' . ($eval['evaluator_last_name'] ?? '')) ?: 'N/A') ?></td>
+                            <td><?= !empty($eval['rating']) ? htmlspecialchars($eval['rating']) . '/10' : 'N/A' ?></td>
+                            <td><span class="ath-badge <?= ($eval['status'] ?? '') === 'completed' ? 'ath-badge-active' : 'ath-badge-inactive' ?>"><?= ucfirst($eval['status'] ?? 'draft') ?></span></td>
                             <td>
                                 <a href="?page=evaluations_skills&athlete_id=<?= $athlete_id ?>" class="ath-table-btn"><i class="fas fa-eye"></i> View</a>
                             </td>
@@ -490,11 +582,15 @@ $initials = strtoupper(mb_substr($athlete['first_name'] ?? '', 0, 1) . mb_substr
             $team_ids = array_filter(array_unique(array_column($teams, 'team_id')));
             $team_logos = [];
             if (!empty($team_ids)) {
-                $placeholders = implode(',', array_fill(0, count($team_ids), '?'));
-                $logo_stmt = $pdo->prepare("SELECT id, logo_url FROM teams WHERE id IN ($placeholders)");
-                $logo_stmt->execute(array_values($team_ids));
-                foreach ($logo_stmt->fetchAll() as $lr) {
-                    $team_logos[$lr['id']] = $lr['logo_url'];
+                try {
+                    $placeholders = implode(',', array_fill(0, count($team_ids), '?'));
+                    $logo_stmt = $pdo->prepare("SELECT id, logo_url FROM teams WHERE id IN ($placeholders)");
+                    $logo_stmt->execute(array_values($team_ids));
+                    foreach ($logo_stmt->fetchAll(PDO::FETCH_ASSOC) as $lr) {
+                        $team_logos[$lr['id']] = $lr['logo_url'];
+                    }
+                } catch (PDOException $e) {
+                    error_log("Team logos fetch error: " . $e->getMessage());
                 }
             }
             ?>
@@ -542,6 +638,78 @@ $initials = strtoupper(mb_substr($athlete['first_name'] ?? '', 0, 1) . mb_substr
             <div class="ath-empty-state" style="padding: 24px;">
                 <i class="fas fa-users"></i>
                 No team assignments yet.
+            </div>
+        <?php endif; ?>
+    </div>
+</div>
+
+<div class="ath-detail-card">
+    <div class="ath-detail-card-header">
+        <i class="fas fa-dumbbell"></i>
+        <h2>Recent Workouts</h2>
+    </div>
+    <div class="ath-detail-card-body" style="padding: 0;">
+        <?php if (count($workouts) > 0): ?>
+            <table class="ath-detail-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Workout</th>
+                        <th>Exercises</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($workouts as $w): ?>
+                        <tr>
+                            <td><?= !empty($w['workout_date']) ? date('M d, Y', strtotime($w['workout_date'])) : 'N/A' ?></td>
+                            <td><?= htmlspecialchars($w['title'] ?? 'Workout') ?></td>
+                            <td><?= (int)($w['completed_count'] ?? 0) ?>/<?= (int)($w['exercise_count'] ?? 0) ?></td>
+                            <td><span class="ath-badge <?= ($w['status'] ?? '') === 'completed' ? 'ath-badge-active' : 'ath-badge-inactive' ?>"><?= ucfirst($w['status'] ?? 'scheduled') ?></span></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php else: ?>
+            <div class="ath-empty-state" style="padding: 24px;">
+                <i class="fas fa-dumbbell"></i>
+                No workouts assigned yet.
+            </div>
+        <?php endif; ?>
+    </div>
+</div>
+
+<div class="ath-detail-card">
+    <div class="ath-detail-card-header">
+        <i class="fas fa-clipboard-list"></i>
+        <h2>Session Evaluations</h2>
+    </div>
+    <div class="ath-detail-card-body" style="padding: 0;">
+        <?php if (count($session_evals) > 0): ?>
+            <table class="ath-detail-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Session</th>
+                        <th>Evaluation</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($session_evals as $se): ?>
+                        <tr>
+                            <td><?= !empty($se['session_date']) ? date('M d, Y', strtotime($se['session_date'])) : 'N/A' ?></td>
+                            <td><?= htmlspecialchars($se['session_title'] ?? 'Session') ?></td>
+                            <td><?= htmlspecialchars($se['evaluation_name'] ?? 'Evaluation') ?></td>
+                            <td><span class="ath-badge <?= ($se['evaluation_status'] ?? '') === 'completed' ? 'ath-badge-active' : 'ath-badge-inactive' ?>"><?= ucfirst($se['evaluation_status'] ?? 'draft') ?></span></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php else: ?>
+            <div class="ath-empty-state" style="padding: 24px;">
+                <i class="fas fa-clipboard-list"></i>
+                No session evaluations yet.
             </div>
         <?php endif; ?>
     </div>

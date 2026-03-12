@@ -403,22 +403,28 @@ try {
 <?php if($isParent): ?>
 <div style="padding:8px 16px;background:var(--bg-secondary);border-bottom:1px solid var(--border);">
     <select id="pwa-athlete-select" onchange="switchAthlete(this.value)" style="width:100%;padding:10px;background:var(--bg-main);border:1px solid var(--border);border-radius:8px;color:#fff;font-size:14px;font-family:Inter,sans-serif;">
-        <option value="">Select Athlete</option>
+        <?php $selfSelected = empty($_SESSION['viewing_athlete_id']) ? 'selected' : ''; ?>
+        <option value="<?= (int)$user_id ?>" <?= $selfSelected ?>><?= htmlspecialchars($user_name ?? 'Me') ?> (Me)</option>
         <?php
-        $stmt = $pdo->prepare("
-            SELECT u.id, u.first_name, u.last_name
-            FROM users u
-            INNER JOIN parent_athlete_relationships par ON u.id = par.athlete_id
-            WHERE par.parent_id = ? AND u.role = 'athlete'
-        ");
-        $stmt->execute([$user_id]);
-        while($athlete = $stmt->fetch()):
-            $athlete = decryptUserRow($athlete);
-            $athlete['name'] = trim(($athlete['first_name'] ?? '') . ' ' . ($athlete['last_name'] ?? ''));
-            $selected = (isset($_SESSION['viewing_athlete_id']) && $_SESSION['viewing_athlete_id'] == $athlete['id']) ? 'selected' : '';
+        try {
+            $stmt = $pdo->prepare("
+                SELECT u.id, u.first_name, u.last_name
+                FROM users u
+                INNER JOIN parent_athlete_relationships par ON u.id = par.athlete_id
+                WHERE par.parent_id = ?
+            ");
+            $stmt->execute([$user_id]);
+            while($athlete = $stmt->fetch(PDO::FETCH_ASSOC)):
+                $athlete = decryptUserRow($athlete);
+                $athlete['name'] = trim(($athlete['first_name'] ?? '') . ' ' . ($athlete['last_name'] ?? ''));
+                $selected = (isset($_SESSION['viewing_athlete_id']) && $_SESSION['viewing_athlete_id'] == $athlete['id']) ? 'selected' : '';
         ?>
-        <option value="<?= $athlete['id'] ?>" <?= $selected ?>><?= htmlspecialchars($athlete['name']) ?></option>
-        <?php endwhile; ?>
+        <option value="<?= (int)$athlete['id'] ?>" <?= $selected ?>><?= htmlspecialchars($athlete['name']) ?></option>
+        <?php endwhile;
+        } catch (PDOException $e) {
+            error_log("PWA parent athlete fetch error: " . $e->getMessage());
+        }
+        ?>
     </select>
 </div>
 <?php endif; ?>
@@ -469,15 +475,13 @@ try {
 <script>
 // Parent athlete switcher
 function switchAthlete(athleteId) {
-    if (athleteId) {
-        fetch('process_switch_athlete.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'athlete_id=' + athleteId
-        })
-        .then(r => r.json())
-        .then(data => { if (data.success) location.reload(); });
-    }
+    fetch('process_switch_athlete.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'athlete_id=' + encodeURIComponent(athleteId)
+    })
+    .then(r => r.json())
+    .then(data => { if (data.success) location.reload(); });
 }
 
 // Service worker registration (relative path for subdirectory deployments)
