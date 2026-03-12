@@ -1064,23 +1064,32 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
         <div class="athlete-selector">
             <label for="athlete-select">Viewing as:</label>
             <select id="athlete-select" onchange="switchAthlete(this.value)">
-                <option value="">Select Athlete</option>
+                <?php
+                // Parent's own name as default
+                $selfSelected = empty($_SESSION['viewing_athlete_id']) ? 'selected' : '';
+                ?>
+                <option value="<?= (int)$user_id ?>" <?= $selfSelected ?>><?= htmlspecialchars($user_name) ?> (Me)</option>
                 <?php
                 // Fetch parent's children/athletes from database
-                $stmt = $pdo->prepare("
-                    SELECT u.id, u.first_name, u.last_name
-                    FROM users u
-                    INNER JOIN parent_athlete_relationships par ON u.id = par.athlete_id
-                    WHERE par.parent_id = ? AND u.role = 'athlete'
-                ");
-                $stmt->execute([$user_id]);
-                while($athlete = $stmt->fetch()):
-                    $athlete = decryptUserRow($athlete);
-                    $athlete['name'] = trim(($athlete['first_name'] ?? '') . ' ' . ($athlete['last_name'] ?? ''));
-                    $selected = (isset($_SESSION['viewing_athlete_id']) && $_SESSION['viewing_athlete_id'] == $athlete['id']) ? 'selected' : '';
+                try {
+                    $stmt = $pdo->prepare("
+                        SELECT u.id, u.first_name, u.last_name
+                        FROM users u
+                        INNER JOIN parent_athlete_relationships par ON u.id = par.athlete_id
+                        WHERE par.parent_id = ?
+                    ");
+                    $stmt->execute([$user_id]);
+                    while($athlete = $stmt->fetch(PDO::FETCH_ASSOC)):
+                        $athlete = decryptUserRow($athlete);
+                        $athlete['name'] = trim(($athlete['first_name'] ?? '') . ' ' . ($athlete['last_name'] ?? ''));
+                        $selected = (isset($_SESSION['viewing_athlete_id']) && $_SESSION['viewing_athlete_id'] == $athlete['id']) ? 'selected' : '';
                 ?>
-                    <option value="<?= $athlete['id'] ?>" <?= $selected ?>><?= htmlspecialchars($athlete['name']) ?></option>
-                <?php endwhile; ?>
+                    <option value="<?= (int)$athlete['id'] ?>" <?= $selected ?>><?= htmlspecialchars($athlete['name']) ?></option>
+                <?php endwhile;
+                } catch (PDOException $e) {
+                    error_log("Dashboard parent athlete fetch error: " . $e->getMessage());
+                }
+                ?>
             </select>
         </div>
     </div>
@@ -1161,21 +1170,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Switch athlete for parent view
 function switchAthlete(athleteId) {
-    if (athleteId) {
-        fetch('process_switch_athlete.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'athlete_id=' + athleteId
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
+    fetch('process_switch_athlete.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'athlete_id=' + encodeURIComponent(athleteId)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            if (typeof showToast === 'function') {
                 showToast('Failed to switch athlete view', 'error');
             }
-        });
-    }
+        }
+    });
 }
 </script>
 

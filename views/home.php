@@ -883,99 +883,104 @@ document.addEventListener('DOMContentLoaded', function() {
         <!-- Parent Dashboard -->
         <?php
         // Get parent's associated athletes
-        $stmt = $pdo->prepare("
-            SELECT u.id, u.first_name, u.last_name, u.email
-            FROM users u
-            INNER JOIN parent_athlete_relationships par ON u.id = par.athlete_id
-            WHERE par.parent_id = ?
-            ORDER BY u.last_name ASC, u.first_name ASC
-        ");
-        $stmt->execute([$user_id]);
-        $athletes = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        $athletes = decryptUserRows($athletes);
+        try {
+            $stmt = $pdo->prepare("
+                SELECT u.id, u.first_name, u.last_name, u.email
+                FROM users u
+                INNER JOIN parent_athlete_relationships par ON u.id = par.athlete_id
+                WHERE par.parent_id = ?
+                ORDER BY u.last_name ASC, u.first_name ASC
+            ");
+            $stmt->execute([$user_id]);
+            $athletes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $athletes = decryptUserRows($athletes);
+        } catch (PDOException $e) {
+            error_log("Parent home athletes fetch error: " . $e->getMessage());
+            $athletes = [];
+        }
+
+        // Determine which athlete to show based on session
+        $viewing_id = $_SESSION['viewing_athlete_id'] ?? null;
+        $viewing_athlete_name = null;
+        if ($viewing_id) {
+            foreach ($athletes as $a) {
+                if ($a['id'] == $viewing_id) {
+                    $viewing_athlete_name = trim(($a['first_name'] ?? '') . ' ' . ($a['last_name'] ?? ''));
+                    break;
+                }
+            }
+        }
         ?>
         
         <div class="parent-dashboard">
-            <div class="athlete-selector-card">
-                <h3><i class="fas fa-users"></i> Select Athlete</h3>
-                <select class="form-input" id="athlete-selector" onchange="loadAthleteDashboard(this.value)">
-                    <option value="">-- Select an athlete --</option>
-                    <?php foreach ($athletes as $athlete): ?>
-                        <option value="<?php echo $athlete['id']; ?>">
-                            <?php echo htmlspecialchars(trim(($athlete['first_name'] ?? '') . ' ' . ($athlete['last_name'] ?? ''))); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
+            <?php if (!$viewing_id || !$viewing_athlete_name): ?>
+                <div class="ath-empty-state" style="padding: 40px 20px;">
+                    <i class="fas fa-users" style="font-size: 32px; display: block; margin-bottom: 12px; opacity: 0.4;"></i>
+                    <p style="color: #A8A8B8; font-size: 15px;">Use the <strong>Viewing as</strong> dropdown in the top bar to select one of your athletes.</p>
+                </div>
+            <?php else: ?>
+                <h3 style="color:#fff; margin-bottom: 16px;"><i class="fas fa-user" style="color: #8B5CF6;"></i> Viewing: <?= htmlspecialchars($viewing_athlete_name) ?></h3>
 
-            <div id="athlete-dashboard" style="display: none;">
-                <div class="dashboard-grid">
-                    <div class="dashboard-card">
-                        <div class="card-header">
-                            <h3><i class="fas fa-calendar-check"></i> Upcoming Sessions</h3>
+                <div id="athlete-dashboard">
+                    <div class="dashboard-grid">
+                        <div class="dashboard-card">
+                            <div class="card-header">
+                                <h3><i class="fas fa-calendar-check"></i> Upcoming Sessions</h3>
+                            </div>
+                            <div class="card-body" id="athlete-sessions">
+                                <p class="placeholder-text">Loading sessions...</p>
+                            </div>
                         </div>
-                        <div class="card-body" id="athlete-sessions">
-                            <p class="placeholder-text">Select an athlete to view their sessions.</p>
-                        </div>
-                    </div>
 
-                    <div class="dashboard-card">
-                        <div class="card-header">
-                            <h3><i class="fas fa-chart-line"></i> Progress Overview</h3>
-                        </div>
-                        <div class="card-body" id="athlete-progress">
-                            <p class="placeholder-text">Select an athlete to view their progress.</p>
+                        <div class="dashboard-card">
+                            <div class="card-header">
+                                <h3><i class="fas fa-chart-line"></i> Progress Overview</h3>
+                            </div>
+                            <div class="card-body" id="athlete-progress">
+                                <p class="placeholder-text">Loading progress...</p>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-        
-        <script>
-        function loadAthleteDashboard(athleteId) {
-            if (!athleteId) {
-                document.getElementById('athlete-dashboard').style.display = 'none';
-                return;
-            }
-            
-            document.getElementById('athlete-dashboard').style.display = 'block';
-            
-            // Fetch athlete sessions
-            fetch(`process_get_athlete_dashboard.php?athlete_id=${athleteId}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Populate sessions
-                        const sessionsHtml = data.sessions.length > 0
-                            ? data.sessions.map(s => `
-                                <div class="session-item">
-                                    <div class="session-info">
-                                        <strong>${s.type}</strong>
-                                        <span class="session-date">${s.date} at ${s.time}</span>
+                
+                <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    var athleteId = <?= json_encode((int)$viewing_id) ?>;
+                    fetch('process_get_athlete_dashboard.php?athlete_id=' + encodeURIComponent(athleteId))
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                const sessionsHtml = data.sessions.length > 0
+                                    ? data.sessions.map(s => `
+                                        <div class="session-item">
+                                            <div class="session-info">
+                                                <strong>${s.type}</strong>
+                                                <span class="session-date">${s.date} at ${s.time}</span>
+                                            </div>
+                                        </div>
+                                    `).join('')
+                                    : '<p class="placeholder-text">No upcoming sessions.</p>';
+                                document.getElementById('athlete-sessions').innerHTML = sessionsHtml;
+                                
+                                document.getElementById('athlete-progress').innerHTML = `
+                                    <div class="progress-stats">
+                                        <div class="stat-item">
+                                            <span class="stat-label">Sessions Attended</span>
+                                            <span class="stat-value">${data.stats.sessions_attended}</span>
+                                        </div>
+                                        <div class="stat-item">
+                                            <span class="stat-label">Goals Completed</span>
+                                            <span class="stat-value">${data.stats.goals_completed}</span>
+                                        </div>
                                     </div>
-                                </div>
-                            `).join('')
-                            : '<p class="placeholder-text">No upcoming sessions.</p>';
-                        document.getElementById('athlete-sessions').innerHTML = sessionsHtml;
-                        
-                        // Populate progress
-                        document.getElementById('athlete-progress').innerHTML = `
-                            <div class="progress-stats">
-                                <div class="stat-item">
-                                    <span class="stat-label">Sessions Attended</span>
-                                    <span class="stat-value">${data.stats.sessions_attended}</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">Goals Completed</span>
-                                    <span class="stat-value">${data.stats.goals_completed}</span>
-                                </div>
-                            </div>
-                        `;
-                    }
-                })
-                .catch(error => console.error('Error loading athlete data:', error));
-        }
-        </script>
+                                `;
+                            }
+                        })
+                        .catch(error => console.error('Error loading athlete data:', error));
+                });
+                </script>
+            <?php endif; ?>
+        </div>
     <?php endif; ?>
 
 </div>
