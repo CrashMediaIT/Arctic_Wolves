@@ -338,8 +338,20 @@ try {
 // ── Fetch teams for game setup ────────────────────────────
 $teams = [];
 try {
-    $stmt = $pdo->query("SELECT id, team_name, logo_url FROM teams WHERE status = 'active' ORDER BY team_name");
+    $stmt = $pdo->query("SELECT id, name AS team_name, logo_url FROM teams WHERE is_active = 1 ORDER BY name");
     $teams = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) { /* table may not exist */ }
+
+// ── Fetch opponent teams from game schedules (gameplan module) ──
+$opponent_teams = [];
+try {
+    $stmt = $pdo->query("
+        SELECT DISTINCT gs.opponent_team
+        FROM game_schedules gs
+        WHERE gs.opponent_team IS NOT NULL AND gs.opponent_team != ''
+        ORDER BY gs.opponent_team
+    ");
+    $opponent_teams = $stmt->fetchAll(PDO::FETCH_COLUMN);
 } catch (PDOException $e) { /* table may not exist */ }
 
 // ── Resolve team logos for active game ────────────────────

@@ -50,6 +50,7 @@ var OVERTIME_PERIOD_SECS = 5 * 60;    // 300 seconds = 5 min OT (default)
 var sbClockSeconds = REGULATION_PERIOD_SECS;
 var sbClockRunning = false;
 var sbClockInterval = null;
+var sbClockLastTick = 0; // Wall-clock timestamp (ms) of last applied tick
 
 // ── Clock State Persistence (survives page reload / navigation) ──
 function sbSaveClockState() {
@@ -58,9 +59,11 @@ function sbSaveClockState() {
         sessionStorage.setItem('sb_clock_running', sbClockRunning ? '1' : '0');
         sessionStorage.setItem('sb_regulation_secs', REGULATION_PERIOD_SECS);
         sessionStorage.setItem('sb_overtime_secs', OVERTIME_PERIOD_SECS);
-        if (sbClockRunning) {
-            sessionStorage.setItem('sb_clock_saved_at', Date.now());
-        }
+        sessionStorage.setItem('sb_clock_saved_at', Date.now());
+        // Persist penalty timers so they survive reload
+        sbSavePenaltyState();
+        // Persist recurring buzzer state
+        sbSaveRecurringBuzzerState();
     } catch (e) { /* sessionStorage unavailable */ }
 }
 
@@ -75,12 +78,13 @@ function sbRestoreClockState() {
 
             var restored = parseInt(saved, 10);
             if (!isNaN(restored) && restored >= 0) {
-                // If clock was running, account for time elapsed during reload
                 var wasRunning = sessionStorage.getItem('sb_clock_running') === '1';
+                var elapsed = 0;
                 if (wasRunning) {
+                    // Account for time elapsed during reload
                     var savedAt = parseInt(sessionStorage.getItem('sb_clock_saved_at'), 10);
                     if (!isNaN(savedAt)) {
-                        var elapsed = Math.round((Date.now() - savedAt) / 1000);
+                        elapsed = Math.round((Date.now() - savedAt) / 1000);
                         restored = Math.max(0, restored - elapsed);
                     }
                 }
@@ -88,6 +92,14 @@ function sbRestoreClockState() {
                 sbUpdateClockDisplay();
                 // Sync period time select dropdown to match saved value
                 sbSyncPeriodTimeSelects();
+                // Restore penalty timer state (compensating for elapsed time)
+                sbRestorePenaltyState(wasRunning ? elapsed : 0);
+                // Restore recurring buzzer state
+                sbRestoreRecurringBuzzerState(wasRunning ? elapsed : 0);
+                // Auto-restart clock if it was running before reload
+                if (wasRunning && sbClockSeconds > 0) {
+                    sbClockStart();
+                }
                 return true;
             }
         }
@@ -133,6 +145,159 @@ function sbSaveAndReload() {
     window.location.reload();
 }
 
+// ── Penalty type classification (mirrors PHP sbGetPenaltyType) ─
+function sbGetPenaltyTypeJS(durationMinutes) {
+    var d = parseInt(durationMinutes, 10) || 2;
+    if (d <= 2) return 'minor';
+    if (d === 4) return 'double_minor';
+    if (d === 5) return 'major';
+    if (d >= 10) return 'misconduct';
+    return 'minor';
+}
+
+// ── Dynamic penalty DOM insertion (no page reload needed) ──
+function sbInsertPenaltyDOM(team, penaltyId, playerNumber, playerName, infraction, durationMinutes) {
+    var penType = sbGetPenaltyTypeJS(durationMinutes);
+    var secs = parseInt(durationMinutes, 10) * 60;
+    var teamLabel = (team === 'home') ? 'Home' : 'Away';
+
+    // 1. Add penalty item to operator control list
+    var teamKey = team; // 'home' or 'away'
+    var lists = document.querySelectorAll('.sb-ctrl-penalty-list');
+    // Home list is the first, away list is the second
+    var listEl = null;
+    var controlPanels = document.querySelectorAll('.sb-ctrl-panel');
+    controlPanels.forEach(function(panel) {
+        var label = panel.querySelector('.sb-ctrl-panel-title');
+        if (!label) return;
+        if (teamKey === 'home' && label.textContent.indexOf('Home') !== -1) {
+            listEl = panel.querySelector('.sb-ctrl-penalty-list');
+        }
+        if (teamKey === 'away' && label.textContent.indexOf('Away') !== -1) {
+            listEl = panel.querySelector('.sb-ctrl-penalty-list');
+        }
+    });
+
+    if (listEl) {
+        // Remove empty placeholder if present
+        var emptyEl = listEl.querySelector('.sb-ctrl-penalty-empty');
+        if (emptyEl) emptyEl.remove();
+
+        // Count existing non-misconduct penalties for queue logic
+        var existingItems = listEl.querySelectorAll('.sb-ctrl-penalty-item');
+        var running = 0;
+        existingItems.forEach(function(item) {
+            var pt = item.getAttribute('data-penalty-type') || 'minor';
+            if (pt !== 'misconduct' && pt !== 'game_misconduct') running++;
+        });
+        var isQueued = (penType !== 'misconduct' && penType !== 'game_misconduct' && running >= 2);
+
+        var div = document.createElement('div');
+        div.className = 'sb-ctrl-penalty-item' + (isQueued ? ' sb-penalty-queued' : '');
+        div.setAttribute('data-team', team);
+        div.setAttribute('data-penalty-id', penaltyId);
+        div.setAttribute('data-penalty-type', penType);
+        div.setAttribute('data-duration', durationMinutes);
+        div.innerHTML =
+            '<span>#' + sbEscapeHtml(playerNumber || '?') + ' ' + sbEscapeHtml(playerName || '') + '</span>' +
+            '<span class="sb-ctrl-penalty-clock" data-penalty-clock="' + penaltyId + '" data-penalty-seconds="' + secs + '">' + sbFormatClock(secs) + '</span>' +
+            '<span class="sb-ctrl-penalty-info">' + sbEscapeHtml(infraction || '') + (penType === 'major' ? ' MAJ' : '') + (isQueued ? ' QUEUED' : '') + '</span>' +
+            '<span class="sb-ctrl-penalty-actions">' +
+                '<button class="sb-ctrl-penalty-vis-btn" data-penalty-id="' + penaltyId + '" onclick="sbTogglePenaltyItemVisibility(' + penaltyId + ')" title="Toggle board visibility"><i class="fas fa-eye"></i></button>' +
+                '<button class="sb-ctrl-penalty-clear-btn" onclick="sbClearPenalty(' + penaltyId + ')" title="Clear penalty"><i class="fas fa-times"></i></button>' +
+            '</span>';
+        listEl.appendChild(div);
+
+        // Re-init penalty item clocks to pick up the new clock element
+        sbInitPenaltyItemClocks();
+    }
+
+    // 2. Add to board penalty timer boxes if a slot is available
+    for (var i = 0; i < 2; i++) {
+        var box = document.getElementById('sb' + teamLabel + 'Pen' + i);
+        if (box && !box.classList.contains('active')) {
+            box.classList.add('active');
+            box.setAttribute('data-penalty-id', penaltyId);
+            var playerEl = box.querySelector('.sb-pen-player');
+            if (playerEl) playerEl.textContent = '#' + (playerNumber || '?');
+            var countdownEl = box.querySelector('.sb-pen-countdown');
+            if (countdownEl) {
+                countdownEl.textContent = sbFormatClock(secs);
+                // Register the penalty timer
+                sbPenaltyTimers[team][i] = { seconds: secs, element: countdownEl };
+            }
+            break;
+        }
+    }
+
+    // 3. Add to scoresheet penalty table if visible
+    var penRows = document.getElementById('sbPenaltyRows');
+    if (penRows) {
+        var tr = document.createElement('tr');
+        tr.innerHTML =
+            '<td>' + sbEscapeHtml(String(sbCurrentPeriod)) + '</td>' +
+            '<td>' + sbFormatClock(sbClockSeconds) + '</td>' +
+            '<td>' + sbEscapeHtml(team) + '</td>' +
+            '<td>#' + sbEscapeHtml(playerNumber || '') + ' ' + sbEscapeHtml(playerName || '') + '</td>' +
+            '<td>' + sbEscapeHtml(infraction || '') + '</td>' +
+            '<td>' + sbEscapeHtml(String(durationMinutes)) + '</td>';
+        penRows.appendChild(tr);
+    }
+
+    sbUpdatePenaltyQueueStatus();
+}
+
+// ── Dynamic penalty DOM removal (no page reload needed) ──
+function sbRemovePenaltyDOM(penaltyId) {
+    // Remove from operator control list
+    var ctrlItem = document.querySelector('.sb-ctrl-penalty-item[data-penalty-id="' + penaltyId + '"]');
+    var team = ctrlItem ? ctrlItem.getAttribute('data-team') : null;
+    if (ctrlItem) {
+        var list = ctrlItem.parentElement;
+        ctrlItem.remove();
+        // If list is now empty, add placeholder
+        if (list && list.querySelectorAll('.sb-ctrl-penalty-item').length === 0) {
+            var teamName = (team === 'home') ? 'home' : 'away';
+            var empty = document.createElement('div');
+            empty.className = 'sb-ctrl-penalty-empty';
+            empty.textContent = 'No ' + teamName + ' penalties';
+            list.appendChild(empty);
+        }
+    }
+
+    // Remove from board penalty timer boxes
+    var boardSlot = document.querySelector('.sb-board-pen-slot[data-penalty-id="' + penaltyId + '"]');
+    if (boardSlot) {
+        boardSlot.classList.remove('active');
+        boardSlot.removeAttribute('data-penalty-id');
+        var player = boardSlot.querySelector('.sb-pen-player');
+        if (player) player.textContent = '—';
+        var countdown = boardSlot.querySelector('.sb-pen-countdown');
+        if (countdown) countdown.textContent = '--:--';
+        // Clear the timer from sbPenaltyTimers
+        if (team) {
+            for (var i = 0; i < 2; i++) {
+                var boxId = 'sb' + (team === 'home' ? 'Home' : 'Away') + 'Pen' + i;
+                if (boardSlot.id === boxId) {
+                    sbPenaltyTimers[team][i] = null;
+                    break;
+                }
+            }
+        }
+    }
+
+    // Re-init penalty item clocks
+    sbInitPenaltyItemClocks();
+    sbUpdatePenaltyQueueStatus();
+}
+
+// ── Simple HTML escape helper ─────────────────────────────
+function sbEscapeHtml(str) {
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(str));
+    return div.innerHTML;
+}
+
 // ── Adjustable Period Times ───────────────────────────────
 function sbSetPeriodTime(minutes) {
     minutes = parseInt(minutes, 10);
@@ -172,15 +337,23 @@ function sbUpdateClockDisplay() {
 }
 
 function sbClockTick() {
+    // Timestamp-based: compute real elapsed seconds since last tick
+    var now = Date.now();
+    var delta = Math.floor((now - sbClockLastTick) / 1000);
+    if (delta < 1) return; // less than 1 second elapsed
+    sbClockLastTick += delta * 1000; // advance by whole seconds only
+
     if (sbClockSeconds > 0) {
-        sbClockSeconds--;
+        var tickCount = Math.min(delta, sbClockSeconds);
+        sbClockSeconds -= tickCount;
         sbUpdateClockDisplay();
         sbSaveClockState();
-        // Also tick penalty timers
-        sbTickPenaltyTimers();
-        // Tick recurring buzzer
-        sbTickRecurringBuzzer();
-    } else {
+        // Tick penalty timers by the same delta
+        sbTickPenaltyTimers(tickCount);
+        // Tick recurring buzzer by the same delta
+        sbTickRecurringBuzzer(tickCount);
+    }
+    if (sbClockSeconds <= 0) {
         // Period ended
         sbClockStop();
         sbBuzzer(); // Auto-buzzer at end of period
@@ -190,7 +363,9 @@ function sbClockTick() {
 function sbClockStart() {
     if (sbClockRunning) return;
     sbClockRunning = true;
-    sbClockInterval = setInterval(sbClockTick, 1000);
+    sbClockLastTick = Date.now();
+    // 200ms polling for responsiveness; actual ticks are timestamp-based (1s)
+    sbClockInterval = setInterval(sbClockTick, 200);
     var btn = document.getElementById('sbClockStart');
     if (btn) {
         btn.innerHTML = '<i class="fas fa-pause"></i> Stop';
@@ -257,12 +432,13 @@ function sbInitPenaltyTimers() {
     });
 }
 
-function sbTickPenaltyTimers() {
+function sbTickPenaltyTimers(delta) {
+    if (!delta) delta = 1;
     ['home', 'away'].forEach(function(team) {
         for (var i = 0; i < 2; i++) {
             var timer = sbPenaltyTimers[team][i];
             if (timer && timer.seconds > 0) {
-                timer.seconds--;
+                timer.seconds = Math.max(0, timer.seconds - delta);
                 timer.element.textContent = sbFormatClock(timer.seconds);
                 if (timer.seconds === 0) {
                     // Penalty expired
@@ -274,7 +450,7 @@ function sbTickPenaltyTimers() {
         }
     });
     // Also tick individual penalty item clocks in operator controls
-    sbTickPenaltyItemClocks();
+    sbTickPenaltyItemClocks(delta);
 }
 
 // ── Individual Penalty Item Clocks (in operator control list) ──
@@ -294,10 +470,11 @@ function sbInitPenaltyItemClocks() {
     });
 }
 
-function sbTickPenaltyItemClocks() {
+function sbTickPenaltyItemClocks(delta) {
+    if (!delta) delta = 1;
     sbPenaltyItemClocks.forEach(function(clock) {
         if (clock.seconds > 0) {
-            clock.seconds--;
+            clock.seconds = Math.max(0, clock.seconds - delta);
             clock.element.textContent = sbFormatClock(clock.seconds);
             clock.element.setAttribute('data-penalty-seconds', clock.seconds);
             if (clock.seconds === 0) {
@@ -314,6 +491,67 @@ if (document.getElementById('sbHomePenTime0')) {
 }
 // Init individual penalty item clocks on load
 sbInitPenaltyItemClocks();
+
+// ── Penalty State Persistence (survives page reload) ──────
+function sbSavePenaltyState() {
+    try {
+        var state = { home: [], away: [] };
+        ['home', 'away'].forEach(function(team) {
+            for (var i = 0; i < 2; i++) {
+                var timer = sbPenaltyTimers[team][i];
+                state[team].push(timer ? timer.seconds : null);
+            }
+        });
+        sessionStorage.setItem('sb_penalty_timers', JSON.stringify(state));
+        var itemState = [];
+        sbPenaltyItemClocks.forEach(function(clock) {
+            itemState.push(clock.seconds);
+        });
+        sessionStorage.setItem('sb_penalty_item_clocks', JSON.stringify(itemState));
+    } catch (e) { /* sessionStorage unavailable */ }
+}
+
+function sbRestorePenaltyState(elapsed) {
+    if (!elapsed) elapsed = 0;
+    try {
+        var raw = sessionStorage.getItem('sb_penalty_timers');
+        if (raw) {
+            var state = JSON.parse(raw);
+            ['home', 'away'].forEach(function(team) {
+                if (!state[team]) return;
+                for (var i = 0; i < 2; i++) {
+                    if (state[team][i] !== null && state[team][i] !== undefined) {
+                        var secs = Math.max(0, state[team][i] - elapsed);
+                        var el = document.getElementById('sb' + (team === 'home' ? 'Home' : 'Away') + 'PenTime' + i);
+                        if (el) {
+                            el.textContent = sbFormatClock(secs);
+                            if (secs > 0) {
+                                sbPenaltyTimers[team][i] = { seconds: secs, element: el };
+                            } else {
+                                sbPenaltyTimers[team][i] = null;
+                                var box = document.getElementById('sb' + (team === 'home' ? 'Home' : 'Away') + 'Pen' + i);
+                                if (box) box.classList.remove('active');
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        var rawItems = sessionStorage.getItem('sb_penalty_item_clocks');
+        if (rawItems) {
+            var itemState = JSON.parse(rawItems);
+            for (var j = 0; j < sbPenaltyItemClocks.length && j < itemState.length; j++) {
+                var restored = Math.max(0, itemState[j] - elapsed);
+                sbPenaltyItemClocks[j].seconds = restored;
+                sbPenaltyItemClocks[j].element.textContent = sbFormatClock(restored);
+                sbPenaltyItemClocks[j].element.setAttribute('data-penalty-seconds', restored);
+                if (restored === 0) {
+                    sbPenaltyItemClocks[j].element.classList.add('expired');
+                }
+            }
+        }
+    } catch (e) { /* sessionStorage unavailable or bad data */ }
+}
 
 // ══════════════════════════════════════════════════════════
 // PERIOD MANAGEMENT
@@ -533,10 +771,18 @@ function sbAddPenalty(e) {
     }).then(function(d) {
         if (d.success) {
             document.getElementById('sb-penalty-modal').classList.remove('active');
+            // Insert penalty into DOM without page reload (clock keeps running)
+            sbInsertPenaltyDOM(
+                fd.get('team'),
+                d.penalty_id,
+                fd.get('player_number'),
+                fd.get('player_name'),
+                fd.get('infraction'),
+                duration
+            );
             form.reset();
             var customInput = document.getElementById('sb-pen-duration-custom');
             if (customInput) customInput.style.display = 'none';
-            sbSaveAndReload();
         }
     });
     return false;
@@ -548,7 +794,8 @@ function sbClearPenalty(penaltyId) {
     if (!confirm('Clear this penalty?')) return;
     sbFetch('clear_penalty', { penalty_id: penaltyId }).then(function(d) {
         if (d.success) {
-            sbSaveAndReload();
+            // Remove penalty from DOM without page reload (clock keeps running)
+            sbRemovePenaltyDOM(penaltyId);
         } else {
             alert(d.message || 'Failed to clear penalty');
         }
@@ -683,9 +930,10 @@ function sbToggleRecurringBuzzer() {
     sbUpdateRecurringBuzzerDisplay();
 }
 
-function sbTickRecurringBuzzer() {
+function sbTickRecurringBuzzer(delta) {
+    if (!delta) delta = 1;
     if (!sbRecurringBuzzerActive || sbRecurringBuzzerInterval <= 0) return;
-    sbRecurringBuzzerCountdown--;
+    sbRecurringBuzzerCountdown -= delta;
     if (sbRecurringBuzzerCountdown <= 0) {
         sbBuzzer(); // Fire the buzzer
         sbRecurringBuzzerCountdown = sbRecurringBuzzerInterval; // Reset for next cycle
@@ -723,6 +971,34 @@ function sbUpdateRecurringBuzzerDisplay() {
             toggleBtn.classList.remove('active');
         }
     }
+}
+
+// ── Recurring Buzzer State Persistence ────────────────────
+function sbSaveRecurringBuzzerState() {
+    try {
+        sessionStorage.setItem('sb_recurring_buzzer', JSON.stringify({
+            interval: sbRecurringBuzzerInterval,
+            countdown: sbRecurringBuzzerCountdown,
+            active: sbRecurringBuzzerActive
+        }));
+    } catch (e) { /* sessionStorage unavailable */ }
+}
+
+function sbRestoreRecurringBuzzerState(elapsed) {
+    if (!elapsed) elapsed = 0;
+    try {
+        var raw = sessionStorage.getItem('sb_recurring_buzzer');
+        if (raw) {
+            var state = JSON.parse(raw);
+            sbRecurringBuzzerInterval = state.interval || 0;
+            sbRecurringBuzzerActive = !!state.active;
+            sbRecurringBuzzerCountdown = (state.countdown != null ? state.countdown : 0) - elapsed;
+            if (sbRecurringBuzzerCountdown <= 0 && sbRecurringBuzzerInterval > 0) {
+                sbRecurringBuzzerCountdown = sbRecurringBuzzerInterval;
+            }
+            sbUpdateRecurringBuzzerDisplay();
+        }
+    } catch (e) { /* sessionStorage unavailable or bad data */ }
 }
 
 // ══════════════════════════════════════════════════════════
@@ -780,7 +1056,7 @@ function sbEndGame() {
     sbFetch('end_game').then(function(d) {
         if (d.success) {
             // Clear clock state – game is over
-            try { sessionStorage.removeItem('sb_clock_seconds'); sessionStorage.removeItem('sb_clock_running'); sessionStorage.removeItem('sb_clock_saved_at'); } catch (e) {}
+            try { sessionStorage.removeItem('sb_clock_seconds'); sessionStorage.removeItem('sb_clock_running'); sessionStorage.removeItem('sb_clock_saved_at'); sessionStorage.removeItem('sb_penalty_timers'); sessionStorage.removeItem('sb_penalty_item_clocks'); sessionStorage.removeItem('sb_recurring_buzzer'); } catch (e) {}
             window.location.reload();
         }
     });
@@ -880,7 +1156,7 @@ function sbAddGoalDetail(e) {
     e.preventDefault();
     var form = document.getElementById('sbGoalDetailForm');
     var fd = new FormData(form);
-    sbFetch('add_goal_detail', {
+    var goalData = {
         period: fd.get('period'),
         game_time: fd.get('game_time'),
         team: fd.get('team'),
@@ -891,11 +1167,27 @@ function sbAddGoalDetail(e) {
         assist2_number: fd.get('assist2_number'),
         assist2_name: fd.get('assist2_name'),
         goal_type: fd.get('goal_type')
-    }).then(function(d) {
+    };
+    sbFetch('add_goal_detail', goalData).then(function(d) {
         if (d.success) {
             document.getElementById('sb-goal-detail-modal').classList.remove('active');
+            // Insert goal detail row into scoresheet without page reload
+            var goalRows = document.getElementById('sbGoalRows');
+            if (goalRows) {
+                var tr = document.createElement('tr');
+                var a1 = goalData.assist1_name ? ('#' + sbEscapeHtml(goalData.assist1_number || '') + ' ' + sbEscapeHtml(goalData.assist1_name)) : '—';
+                var a2 = goalData.assist2_name ? ('#' + sbEscapeHtml(goalData.assist2_number || '') + ' ' + sbEscapeHtml(goalData.assist2_name)) : '—';
+                tr.innerHTML =
+                    '<td>' + sbEscapeHtml(goalData.period || '') + '</td>' +
+                    '<td>' + sbEscapeHtml(goalData.game_time || '') + '</td>' +
+                    '<td>' + sbEscapeHtml(goalData.team || '') + '</td>' +
+                    '<td>#' + sbEscapeHtml(goalData.scorer_number || '') + ' ' + sbEscapeHtml(goalData.scorer_name || '') + '</td>' +
+                    '<td>' + a1 + '</td>' +
+                    '<td>' + a2 + '</td>' +
+                    '<td>' + sbEscapeHtml(goalData.goal_type || 'Even Strength') + '</td>';
+                goalRows.appendChild(tr);
+            }
             form.reset();
-            sbSaveAndReload();
         }
     });
     return false;

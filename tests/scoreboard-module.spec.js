@@ -543,8 +543,8 @@ test.describe('Game clock JavaScript (Nevco/Daktronics style)', () => {
 
   test('JS penalty timers tick when game clock runs', () => {
     const content = readFile('js/scoreboard.js');
-    // sbClockTick should call sbTickPenaltyTimers
-    expect(content).toContain('sbTickPenaltyTimers()');
+    // sbClockTick should call sbTickPenaltyTimers with elapsed delta
+    expect(content).toContain('sbTickPenaltyTimers(tickCount)');
   });
 
   test('JS has period management (next/prev/update)', () => {
@@ -577,7 +577,7 @@ test.describe('Game clock JavaScript (Nevco/Daktronics style)', () => {
     // When clock reaches 0, should fire buzzer
     const clockTickFn = content.substring(
       content.indexOf('function sbClockTick()'),
-      content.indexOf('function sbClockTick()') + 500
+      content.indexOf('function sbClockTick()') + 960
     );
     expect(clockTickFn).toContain('sbBuzzer()');
   });
@@ -678,8 +678,8 @@ test.describe('Recurring timed buzzer', () => {
     expect(content).toContain('function sbTickRecurringBuzzer(');
     // When countdown reaches 0, should fire sbBuzzer()
     const fn = content.substring(
-      content.indexOf('function sbTickRecurringBuzzer()'),
-      content.indexOf('function sbTickRecurringBuzzer()') + 400
+      content.indexOf('function sbTickRecurringBuzzer('),
+      content.indexOf('function sbTickRecurringBuzzer(') + 400
     );
     expect(fn).toContain('sbBuzzer()');
   });
@@ -688,9 +688,9 @@ test.describe('Recurring timed buzzer', () => {
     const content = readFile('js/scoreboard.js');
     const clockTickFn = content.substring(
       content.indexOf('function sbClockTick()'),
-      content.indexOf('function sbClockTick()') + 500
+      content.indexOf('function sbClockTick()') + 700
     );
-    expect(clockTickFn).toContain('sbTickRecurringBuzzer()');
+    expect(clockTickFn).toContain('sbTickRecurringBuzzer(tickCount)');
   });
 
   test('JS has sbUpdateRecurringBuzzerDisplay function', () => {
@@ -2231,7 +2231,7 @@ test.describe('Penalty countdown clocks in operator controls', () => {
       content.indexOf('function sbTickPenaltyTimers'),
       content.indexOf('function sbTickPenaltyItemClocks') || content.indexOf('var sbPenaltyItemClocks')
     );
-    expect(tickSection).toContain('sbTickPenaltyItemClocks()');
+    expect(tickSection).toContain('sbTickPenaltyItemClocks(delta)');
   });
 
   test('JS initializes penalty item clocks on load', () => {
@@ -2479,5 +2479,256 @@ test.describe('All settings fetch calls have error handling', () => {
     const catchCount = (scriptSection.match(/\.catch\(/g) || []).length;
     // Every fetch should have a .catch
     expect(catchCount).toBeGreaterThanOrEqual(fetchCount);
+  });
+});
+
+// =====================================================
+// Clock Independence (timestamp-based, survives reload)
+// =====================================================
+
+test.describe('Clock independence and timestamp-based timing', () => {
+  test('JS clock uses timestamp-based tick instead of simple decrement', () => {
+    const content = readFile('js/scoreboard.js');
+    // sbClockTick should compute real elapsed time via Date.now()
+    expect(content).toContain('sbClockLastTick');
+    const tickFn = content.substring(
+      content.indexOf('function sbClockTick()'),
+      content.indexOf('function sbClockStart()')
+    );
+    expect(tickFn).toContain('Date.now()');
+    expect(tickFn).toContain('sbClockLastTick');
+    // Should compute delta in seconds
+    expect(tickFn).toContain('delta');
+  });
+
+  test('JS clock start records wall-clock timestamp', () => {
+    const content = readFile('js/scoreboard.js');
+    const startFn = content.substring(
+      content.indexOf('function sbClockStart()'),
+      content.indexOf('function sbClockStop()')
+    );
+    expect(startFn).toContain('sbClockLastTick = Date.now()');
+  });
+
+  test('JS clock uses fast polling interval for responsiveness', () => {
+    const content = readFile('js/scoreboard.js');
+    // Should use a sub-second interval (200ms) for checking real time
+    expect(content).toContain('setInterval(sbClockTick, 200)');
+  });
+
+  test('JS clock auto-restarts after restore if it was running', () => {
+    const content = readFile('js/scoreboard.js');
+    const restoreFn = content.substring(
+      content.indexOf('function sbRestoreClockState()'),
+      content.indexOf('function sbSyncPeriodTimeSelects()')
+    );
+    expect(restoreFn).toContain('wasRunning');
+    expect(restoreFn).toContain('sbClockStart()');
+  });
+
+  test('JS penalty timers accept delta parameter for multi-second catch-up', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbTickPenaltyTimers(delta)');
+    expect(content).toContain('function sbTickPenaltyItemClocks(delta)');
+  });
+
+  test('JS recurring buzzer accepts delta parameter', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbTickRecurringBuzzer(delta)');
+  });
+
+  test('JS has penalty state save/restore functions', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbSavePenaltyState()');
+    expect(content).toContain('function sbRestorePenaltyState(');
+    expect(content).toContain('sb_penalty_timers');
+    expect(content).toContain('sb_penalty_item_clocks');
+  });
+
+  test('JS sbSaveClockState persists penalty and buzzer state', () => {
+    const content = readFile('js/scoreboard.js');
+    const saveFn = content.substring(
+      content.indexOf('function sbSaveClockState()'),
+      content.indexOf('function sbRestoreClockState()')
+    );
+    expect(saveFn).toContain('sbSavePenaltyState()');
+    expect(saveFn).toContain('sbSaveRecurringBuzzerState()');
+  });
+
+  test('JS sbRestoreClockState restores penalty and buzzer state', () => {
+    const content = readFile('js/scoreboard.js');
+    const restoreFn = content.substring(
+      content.indexOf('function sbRestoreClockState()'),
+      content.indexOf('function sbSyncPeriodTimeSelects()')
+    );
+    expect(restoreFn).toContain('sbRestorePenaltyState(');
+    expect(restoreFn).toContain('sbRestoreRecurringBuzzerState(');
+  });
+
+  test('JS has recurring buzzer state save/restore functions', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbSaveRecurringBuzzerState()');
+    expect(content).toContain('function sbRestoreRecurringBuzzerState(');
+    expect(content).toContain('sb_recurring_buzzer');
+  });
+
+  test('JS sbSaveClockState always saves timestamp for elapsed-time calculation', () => {
+    const content = readFile('js/scoreboard.js');
+    const saveFn = content.substring(
+      content.indexOf('function sbSaveClockState()'),
+      content.indexOf('function sbRestoreClockState()')
+    );
+    // Timestamp should always be saved (not conditionally based on running state)
+    expect(saveFn).toContain("sessionStorage.setItem('sb_clock_saved_at', Date.now())");
+  });
+
+  test('JS sbEndGame clears all state including penalty and buzzer keys', () => {
+    const content = readFile('js/scoreboard.js');
+    const endFn = content.substring(
+      content.indexOf('function sbEndGame()'),
+      content.indexOf('function sbEndGame()') + 600
+    );
+    expect(endFn).toContain("removeItem('sb_penalty_timers')");
+    expect(endFn).toContain("removeItem('sb_penalty_item_clocks')");
+    expect(endFn).toContain("removeItem('sb_recurring_buzzer')");
+  });
+
+  test('JS penalty restore compensates for elapsed time during reload', () => {
+    const content = readFile('js/scoreboard.js');
+    const restorePenFn = content.substring(
+      content.indexOf('function sbRestorePenaltyState('),
+      content.indexOf('function sbRestorePenaltyState(') + 1000
+    );
+    // Should subtract elapsed time from saved penalty seconds
+    expect(restorePenFn).toContain('elapsed');
+    expect(restorePenFn).toContain('Math.max(0');
+  });
+});
+
+// =====================================================
+// No-reload DOM updates (clock never stops)
+// =====================================================
+
+test.describe('No-reload DOM updates for clock independence', () => {
+  test('JS sbAddPenalty uses sbInsertPenaltyDOM instead of sbSaveAndReload', () => {
+    const content = readFile('js/scoreboard.js');
+    const fn = content.substring(
+      content.indexOf('function sbAddPenalty('),
+      content.indexOf('function sbAddPenalty(') + 1200
+    );
+    expect(fn).toContain('sbInsertPenaltyDOM');
+    expect(fn).not.toContain('sbSaveAndReload');
+  });
+
+  test('JS sbClearPenalty uses sbRemovePenaltyDOM instead of sbSaveAndReload', () => {
+    const content = readFile('js/scoreboard.js');
+    const fn = content.substring(
+      content.indexOf('function sbClearPenalty('),
+      content.indexOf('function sbClearPenalty(') + 500
+    );
+    expect(fn).toContain('sbRemovePenaltyDOM');
+    expect(fn).not.toContain('sbSaveAndReload');
+  });
+
+  test('JS sbAddGoalDetail updates DOM without sbSaveAndReload', () => {
+    const content = readFile('js/scoreboard.js');
+    const fn = content.substring(
+      content.indexOf('function sbAddGoalDetail('),
+      content.indexOf('function sbAddGoalDetail(') + 2000
+    );
+    expect(fn).toContain('sbGoalRows');
+    expect(fn).not.toContain('sbSaveAndReload');
+  });
+
+  test('JS has sbInsertPenaltyDOM function', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbInsertPenaltyDOM(');
+    // Should create penalty item in control list
+    expect(content).toContain('sb-ctrl-penalty-item');
+    // Should update board penalty box
+    expect(content).toContain('sbPenaltyTimers');
+  });
+
+  test('JS has sbRemovePenaltyDOM function', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbRemovePenaltyDOM(');
+    // Should remove from control list and board
+    expect(content).toContain('sb-ctrl-penalty-empty');
+  });
+
+  test('JS has sbGetPenaltyTypeJS helper', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbGetPenaltyTypeJS(');
+    // Should classify like PHP helper
+    expect(content).toContain('minor');
+    expect(content).toContain('double_minor');
+    expect(content).toContain('major');
+    expect(content).toContain('misconduct');
+  });
+
+  test('JS has sbEscapeHtml helper', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbEscapeHtml(');
+  });
+
+  test('JS sbInsertPenaltyDOM adds scoresheet row', () => {
+    const content = readFile('js/scoreboard.js');
+    const fn = content.substring(
+      content.indexOf('function sbInsertPenaltyDOM('),
+      content.indexOf('function sbRemovePenaltyDOM(')
+    );
+    expect(fn).toContain('sbPenaltyRows');
+  });
+
+  test('JS sbAddGoalDetail inserts row into sbGoalRows', () => {
+    const content = readFile('js/scoreboard.js');
+    const fn = content.substring(
+      content.indexOf('function sbAddGoalDetail('),
+      content.indexOf('function sbAddGoalDetail(') + 2000
+    );
+    expect(fn).toContain('sbGoalRows');
+    expect(fn).toContain('appendChild');
+  });
+});
+
+// =====================================================
+// Team loading from gameplan module
+// =====================================================
+
+test.describe('Team loading from gameplan module', () => {
+  test('scoreboard.php uses correct column name (name not team_name) for teams query', () => {
+    const content = readFile('scoreboard.php');
+    expect(content).toContain('name AS team_name');
+    expect(content).toContain('is_active = 1');
+  });
+
+  test('scoreboard.php fetches opponent teams from game_schedules', () => {
+    const content = readFile('scoreboard.php');
+    expect(content).toContain('opponent_teams');
+    expect(content).toContain('game_schedules');
+    expect(content).toContain('opponent_team');
+  });
+
+  test('new game form includes opponent teams in dropdown', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('opponent_teams');
+    expect(content).toContain('(opponent)');
+  });
+
+  test('new game form has team select auto-fill for team name', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sbTeamSelectFill');
+    expect(content).toContain('data-team-name');
+  });
+
+  test('team select dropdown is placed before name input for both home and away', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    const homeSelectIdx = content.indexOf('id="sb-home-team-id"');
+    const homeInputIdx = content.indexOf('id="sb-home-team"');
+    const awaySelectIdx = content.indexOf('id="sb-away-team-id"');
+    const awayInputIdx = content.indexOf('id="sb-away-team"');
+    // Select should appear before input
+    expect(homeSelectIdx).toBeLessThan(homeInputIdx);
+    expect(awaySelectIdx).toBeLessThan(awayInputIdx);
   });
 });
