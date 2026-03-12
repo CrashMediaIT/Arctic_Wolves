@@ -901,6 +901,9 @@ class GitHubUpdater {
             $schema_sql = file_get_contents($schema_file);
             $create_table_pattern_tpl = '/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?`?%s`?\s*\(.*?\)\s*ENGINE[^;]*;/is';
             
+            // Track tables already created in this run to avoid redundant attempts
+            $tables_created = [];
+            
             // Disable FK checks so tables can be created regardless of dependency order
             try { $this->pdo->exec('SET FOREIGN_KEY_CHECKS = 0'); } catch (\Exception $e) { error_log('Could not disable FK checks: ' . $e->getMessage()); }
             
@@ -913,10 +916,12 @@ class GitHubUpdater {
                                 try {
                                     $this->pdo->exec($match[0]);
                                     $results[] = "Created missing table: $table_name";
+                                    $tables_created[$table_name] = true;
                                 } catch (\Exception $ce) {
                                     $isAlreadyExists = ($ce->getCode() === '42S01' || strpos($ce->getMessage(), '1050') !== false || strpos($ce->getMessage(), 'already exists') !== false);
                                     if ($isAlreadyExists) {
                                         $results[] = "Table already exists: $table_name";
+                                        $tables_created[$table_name] = true;
                                     } else {
                                         $errors[] = "Could not create table $table_name: " . $ce->getMessage();
                                         error_log("Schema create table error for $table_name: " . $ce->getMessage());
@@ -931,14 +936,21 @@ class GitHubUpdater {
                             if (!empty($result['skipped']) && strpos($result['message'], 'does not exist') !== false) {
                                 // Table missing — attempt to create it from schema file, then retry
                                 $table_name = $migration['table'];
-                                $created = false;
-                                if (preg_match(sprintf($create_table_pattern_tpl, preg_quote($table_name, '/')), $schema_sql, $match)) {
+                                $created = isset($tables_created[$table_name]);
+                                if (!$created && preg_match(sprintf($create_table_pattern_tpl, preg_quote($table_name, '/')), $schema_sql, $match)) {
                                     try {
                                         $this->pdo->exec($match[0]);
                                         $results[] = "Created missing table: $table_name";
                                         $created = true;
+                                        $tables_created[$table_name] = true;
                                     } catch (\Exception $ce) {
-                                        $errors[] = "Could not create table $table_name: " . $ce->getMessage();
+                                        $isAlreadyExists = ($ce->getCode() === '42S01' || strpos($ce->getMessage(), '1050') !== false || strpos($ce->getMessage(), 'already exists') !== false);
+                                        if ($isAlreadyExists) {
+                                            $created = true;
+                                            $tables_created[$table_name] = true;
+                                        } else {
+                                            $errors[] = "Could not create table $table_name: " . $ce->getMessage();
+                                        }
                                     }
                                 }
                                 if ($created) {
