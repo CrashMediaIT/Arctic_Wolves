@@ -64,10 +64,14 @@ function sbSaveClockState() {
         sbSavePenaltyState();
         // Persist recurring buzzer state
         sbSaveRecurringBuzzerState();
+        // Persist music/audio state
+        sbSaveMusicState();
     } catch (e) { /* sessionStorage unavailable */ }
 }
 
 function sbRestoreClockState() {
+    // Always restore music state (independent of active clock)
+    sbRestoreMusicState();
     try {
         var saved = sessionStorage.getItem('sb_clock_seconds');
         if (saved !== null) {
@@ -1087,6 +1091,71 @@ function sbRestoreRecurringBuzzerState(elapsed) {
     } catch (e) { /* sessionStorage unavailable or bad data */ }
 }
 
+// ── Music / Audio State Persistence ───────────────────────
+function sbSaveMusicState() {
+    try {
+        sessionStorage.setItem('sb_music_state', JSON.stringify({
+            queue: sbMusicPlayer.queue,
+            queueIndex: sbMusicPlayer.queueIndex,
+            currentTrack: sbMusicPlayer.currentTrack,
+            playing: sbMusicPlayer.playing,
+            autoplay: sbMusicAutoplay,
+            continuous: sbMusicContinuous,
+            volume: window._sbMusicVolume || 0.8,
+            micDeviceId: window._sbMicDeviceId || ''
+        }));
+    } catch (e) { /* sessionStorage unavailable */ }
+}
+
+function sbRestoreMusicState() {
+    try {
+        var raw = sessionStorage.getItem('sb_music_state');
+        if (raw) {
+            var state = JSON.parse(raw);
+            if (Array.isArray(state.queue)) {
+                sbMusicPlayer.queue = state.queue;
+                sbMusicPlayer.queueIndex = (typeof state.queueIndex === 'number') ? state.queueIndex : -1;
+                sbMusicPlayer.currentTrack = state.currentTrack || null;
+                sbUpdatePlaylistCount();
+            }
+            if (typeof state.autoplay === 'boolean') {
+                sbMusicAutoplay = state.autoplay;
+                var autoBtn = document.getElementById('sbMusicAutoplayBtn');
+                if (autoBtn) {
+                    autoBtn.classList.toggle('active', sbMusicAutoplay);
+                    autoBtn.title = sbMusicAutoplay ? 'Auto-play ON: music plays when clock stops' : 'Auto-play OFF';
+                }
+                sbUpdateMusicAutoplayIndicator();
+            }
+            if (typeof state.continuous === 'boolean') {
+                sbMusicContinuous = state.continuous;
+                var contBtn = document.getElementById('sbMusicContinuousBtn');
+                if (contBtn) {
+                    contBtn.classList.toggle('active', sbMusicContinuous);
+                    contBtn.title = sbMusicContinuous ? 'Continuous: advance to next track' : 'Single: stop after current track';
+                }
+            }
+            if (typeof state.volume === 'number') {
+                window._sbMusicVolume = state.volume;
+            }
+            if (state.micDeviceId) {
+                window._sbMicDeviceId = state.micDeviceId;
+            }
+            // Restore now-playing display if there was a current track
+            if (state.currentTrack) {
+                sbUpdateNowPlaying(state.currentTrack.title, state.currentTrack.artist, state.currentTrack.source);
+            }
+        }
+    } catch (e) { /* sessionStorage unavailable or bad data */ }
+}
+
+// ── Save all state before page unload (navigation / close) ──
+if (typeof window !== 'undefined') {
+    window.addEventListener('beforeunload', function() {
+        sbSaveClockState();
+    });
+}
+
 // ══════════════════════════════════════════════════════════
 // PENALTY DISPLAY VISIBILITY TOGGLE
 // ══════════════════════════════════════════════════════════
@@ -1143,8 +1212,8 @@ function sbEndGame() {
     if (!confirm('End this game? The final score will be recorded.')) return;
     sbFetch('end_game').then(function(d) {
         if (d.success) {
-            // Clear clock state – game is over
-            try { sessionStorage.removeItem('sb_clock_seconds'); sessionStorage.removeItem('sb_clock_running'); sessionStorage.removeItem('sb_clock_saved_at'); sessionStorage.removeItem('sb_penalty_timers'); sessionStorage.removeItem('sb_penalty_item_clocks'); sessionStorage.removeItem('sb_recurring_buzzer'); } catch (e) {}
+            // Clear all scoreboard state – game is over
+            try { sessionStorage.removeItem('sb_clock_seconds'); sessionStorage.removeItem('sb_clock_running'); sessionStorage.removeItem('sb_clock_saved_at'); sessionStorage.removeItem('sb_penalty_timers'); sessionStorage.removeItem('sb_penalty_item_clocks'); sessionStorage.removeItem('sb_recurring_buzzer'); sessionStorage.removeItem('sb_regulation_secs'); sessionStorage.removeItem('sb_overtime_secs'); sessionStorage.removeItem('sb_music_state'); } catch (e) {}
             window.location.reload();
         }
     });

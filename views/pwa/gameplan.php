@@ -18,6 +18,7 @@ $gp_views = [
     'lines'           => 'views/gameplan/gp_lines.php',
     'roster'          => 'views/gameplan/gp_roster.php',
     'whiteboard'      => 'views/gameplan/gp_whiteboard.php',
+    'gamesheets'      => 'views/gameplan/gp_gamesheets.php',
 ];
 
 if ($isAdmin) {
@@ -523,6 +524,14 @@ $gp_is_sub = ($gp_sub !== 'home');
             </div>
             <div class="m-gp-nav-label">Video Review</div>
             <div class="m-gp-nav-count"><?= $gp_stats['videos'] ?> videos</div>
+        </a>
+
+        <a href="?page=gameplan&gp=gamesheets" class="m-gp-nav-card">
+            <div class="m-gp-nav-icon" style="background: rgba(245,158,11,.1); color: var(--warning, #F59E0B);">
+                <i class="fas fa-file-alt"></i>
+            </div>
+            <div class="m-gp-nav-label">Gamesheets</div>
+            <div class="m-gp-nav-count">Game records</div>
         </a>
 
         <?php if ($isAnyCoach): ?>
