@@ -549,51 +549,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     try { $pdo->exec('SET FOREIGN_KEY_CHECKS = 1'); } catch (Exception $e) { /* best-effort */ }
                 }
                 
-                // Run the inline migrations for columns that may not be detected by schema comparison
-                // (same as fresh install migrations)
-                $inline_migrations = [
-                    ["ALTER TABLE eval_categories ADD COLUMN display_order INT DEFAULT 0 AFTER description", "eval_categories.display_order"],
-                    ["ALTER TABLE eval_skills ADD COLUMN display_order INT DEFAULT 0 AFTER description", "eval_skills.display_order"],
-                    ["ALTER TABLE vr_game_plan_lines ADD COLUMN roster_player_id INT DEFAULT NULL COMMENT 'References roster_players.id for non-user players' AFTER athlete_id", "vr_game_plan_lines.roster_player_id"],
-                    ["ALTER TABLE vr_game_plan_lines ADD COLUMN game_id INT DEFAULT NULL COMMENT 'NULL = default/standard lineup, set = game-specific lines' AFTER team_id", "vr_game_plan_lines.game_id"],
-                    ["ALTER TABLE teams ADD COLUMN is_managed TINYINT(1) DEFAULT 1 COMMENT '1 = managed team (our teams), 0 = unmanaged (opponent teams)' AFTER is_demo", "teams.is_managed"],
-                    ["ALTER TABLE teams ADD COLUMN ical_url VARCHAR(1000) DEFAULT NULL COMMENT 'Stored iCal URL for calendar re-sync' AFTER is_managed", "teams.ical_url"],
-                    ["ALTER TABLE game_schedules ADD COLUMN ical_uid VARCHAR(500) DEFAULT NULL COMMENT 'UID from iCal event for sync/update tracking' AFTER season_id", "game_schedules.ical_uid"],
-                    ["ALTER TABLE users ADD COLUMN sip_wss_port INT DEFAULT 7443 COMMENT 'WebSocket Secure port for SIP/WSS connection to FusionPBX' AFTER sip_password", "users.sip_wss_port"],
-                    ["ALTER TABLE sessions ADD COLUMN enable_child_checkin TINYINT(1) DEFAULT 0 COMMENT 'Enable child check-in/check-out for this session/camp'", "sessions.enable_child_checkin"],
-                    ["ALTER TABLE sessions ADD COLUMN is_private TINYINT(1) DEFAULT 0 COMMENT 'Whether this is a private session'", "sessions.is_private"],
-                    ["ALTER TABLE sessions ADD COLUMN is_semi_private TINYINT(1) DEFAULT 0 COMMENT 'Whether this is a semi-private session'", "sessions.is_semi_private"],
-                    ["ALTER TABLE videos ADD COLUMN hls_url VARCHAR(500) DEFAULT NULL COMMENT 'HLS master playlist URL (api/media.php proxy path)' AFTER video_url", "videos.hls_url"],
-                    ["ALTER TABLE videos ADD COLUMN hls_status ENUM('pending', 'processing', 'ready', 'failed') DEFAULT NULL COMMENT 'HLS transcoding status' AFTER hls_url", "videos.hls_status"],
-                    ["ALTER TABLE videos ADD COLUMN hls_job_id VARCHAR(36) DEFAULT NULL COMMENT 'Companion server HLS transcode job ID' AFTER hls_status", "videos.hls_job_id"],
-                    ["ALTER TABLE videos ADD COLUMN hls_master_url VARCHAR(500) DEFAULT NULL COMMENT 'S3 key to master.m3u8 manifest' AFTER hls_job_id", "videos.hls_master_url"],
-                    ["ALTER TABLE videos ADD COLUMN hls_segments_path VARCHAR(500) DEFAULT NULL COMMENT 'S3 prefix containing HLS segments' AFTER hls_master_url", "videos.hls_segments_path"],
-                    ["ALTER TABLE videos ADD COLUMN dash_url VARCHAR(500) DEFAULT NULL COMMENT 'MPEG-DASH MPD manifest URL (api/media.php proxy path)' AFTER hls_segments_path", "videos.dash_url"],
-                    ["ALTER TABLE videos ADD COLUMN dash_manifest_url VARCHAR(500) DEFAULT NULL COMMENT 'S3 key to DASH manifest.mpd' AFTER dash_url", "videos.dash_manifest_url"],
-                    ["ALTER TABLE vr_video_sources ADD COLUMN nextcloud_path VARCHAR(500) DEFAULT NULL COMMENT 'Cloud storage path for gameplan video (RustFS URL)'", "vr_video_sources.nextcloud_path"],
-                    ["ALTER TABLE vr_video_sources ADD COLUMN hls_url VARCHAR(500) DEFAULT NULL COMMENT 'HLS master playlist URL (api/media.php proxy path)'", "vr_video_sources.hls_url"],
-                    ["ALTER TABLE vr_video_sources ADD COLUMN hls_status ENUM('pending', 'processing', 'ready', 'failed') DEFAULT NULL COMMENT 'HLS transcoding status'", "vr_video_sources.hls_status"],
-                    ["ALTER TABLE vr_video_sources ADD COLUMN hls_job_id VARCHAR(36) DEFAULT NULL COMMENT 'Companion server HLS transcode job ID'", "vr_video_sources.hls_job_id"],
-                    ["ALTER TABLE vr_video_sources ADD COLUMN hls_master_url VARCHAR(500) DEFAULT NULL COMMENT 'S3 key to master.m3u8 manifest'", "vr_video_sources.hls_master_url"],
-                    ["ALTER TABLE vr_video_sources ADD COLUMN hls_segments_path VARCHAR(500) DEFAULT NULL COMMENT 'S3 prefix containing HLS segments'", "vr_video_sources.hls_segments_path"],
-                    ["ALTER TABLE vr_video_sources ADD COLUMN dash_url VARCHAR(500) DEFAULT NULL COMMENT 'MPEG-DASH MPD manifest URL (api/media.php proxy path)'", "vr_video_sources.dash_url"],
-                    ["ALTER TABLE vr_video_sources ADD COLUMN dash_manifest_url VARCHAR(500) DEFAULT NULL COMMENT 'S3 key to DASH manifest.mpd'", "vr_video_sources.dash_manifest_url"],
-                ];
-                
-                foreach ($inline_migrations as $mig) {
-                    try {
-                        $pdo->exec($mig[0]);
-                        $migration_results[] = "Added column: " . $mig[1];
-                    } catch (PDOException $e) {
-                        $msg = $e->getMessage();
-                        $isDuplicateColumn = ($e->getCode() === '42S21' || strpos($msg, 'Duplicate column') !== false);
-                        $isTableNotFound = ($e->getCode() === '42S02' || strpos($msg, "doesn't exist") !== false || strpos($msg, 'does not exist') !== false);
-                        if (!$isDuplicateColumn && !$isTableNotFound) {
-                            $migration_errors[] = "Could not add " . $mig[1] . ": " . $msg;
-                        }
-                    }
-                }
-                
                 // Verify schema after migration — retry any tables still missing
                 $post_schema = $migrator->getCurrentSchema();
                 $remaining = $migrator->compareSchemas($post_schema, $expected_schema);

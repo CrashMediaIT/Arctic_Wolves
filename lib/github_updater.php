@@ -971,35 +971,6 @@ class GitHubUpdater {
                 try { $this->pdo->exec('SET FOREIGN_KEY_CHECKS = 1'); } catch (\Exception $e) { /* best-effort */ }
             }
             
-            // Run inline migrations for columns that may not be detected by schema comparison
-            $inline_migrations = [
-                ["ALTER TABLE eval_categories ADD COLUMN display_order INT DEFAULT 0 AFTER description", "eval_categories.display_order"],
-                ["ALTER TABLE eval_skills ADD COLUMN display_order INT DEFAULT 0 AFTER description", "eval_skills.display_order"],
-                ["ALTER TABLE vr_game_plan_lines ADD COLUMN roster_player_id INT DEFAULT NULL COMMENT 'References roster_players.id for non-user players' AFTER athlete_id", "vr_game_plan_lines.roster_player_id"],
-                ["ALTER TABLE vr_game_plan_lines ADD COLUMN game_id INT DEFAULT NULL COMMENT 'NULL = default/standard lineup, set = game-specific lines' AFTER team_id", "vr_game_plan_lines.game_id"],
-                ["ALTER TABLE teams ADD COLUMN is_managed TINYINT(1) DEFAULT 1 COMMENT '1 = managed team (our teams), 0 = unmanaged (opponent teams)' AFTER is_demo", "teams.is_managed"],
-                ["ALTER TABLE teams ADD COLUMN ical_url VARCHAR(1000) DEFAULT NULL COMMENT 'Stored iCal URL for calendar re-sync' AFTER is_managed", "teams.ical_url"],
-                ["ALTER TABLE game_schedules ADD COLUMN ical_uid VARCHAR(500) DEFAULT NULL COMMENT 'UID from iCal event for sync/update tracking' AFTER season_id", "game_schedules.ical_uid"],
-                ["ALTER TABLE users ADD COLUMN sip_wss_port INT DEFAULT 7443 COMMENT 'WebSocket Secure port for SIP/WSS connection to FusionPBX' AFTER sip_password", "users.sip_wss_port"],
-                ["ALTER TABLE sessions ADD COLUMN enable_child_checkin TINYINT(1) DEFAULT 0 COMMENT 'Enable child check-in/check-out for this session/camp'", "sessions.enable_child_checkin"],
-                ["ALTER TABLE sessions ADD COLUMN is_private TINYINT(1) DEFAULT 0 COMMENT 'Whether this is a private session'", "sessions.is_private"],
-                ["ALTER TABLE sessions ADD COLUMN is_semi_private TINYINT(1) DEFAULT 0 COMMENT 'Whether this is a semi-private session'", "sessions.is_semi_private"],
-            ];
-            
-            foreach ($inline_migrations as $mig) {
-                try {
-                    $this->pdo->exec($mig[0]);
-                    $results[] = "Ensured column: " . $mig[1];
-                } catch (\PDOException $e) {
-                    $msg = $e->getMessage();
-                    $isDuplicateColumn = ($e->getCode() === '42S21' || strpos($msg, 'Duplicate column') !== false);
-                    $isTableNotFound = ($e->getCode() === '42S02' || strpos($msg, "doesn't exist") !== false || strpos($msg, 'does not exist') !== false);
-                    if (!$isDuplicateColumn && !$isTableNotFound) {
-                        $errors[] = "Could not add " . $mig[1] . ": " . $msg;
-                    }
-                }
-            }
-            
             // Add foreign key constraints if missing
             try {
                 $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = 'expenses' AND CONSTRAINT_NAME = 'fk_expense_payee'");
