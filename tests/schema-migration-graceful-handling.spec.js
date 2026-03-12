@@ -568,7 +568,7 @@ test.describe('DatabaseMigrator - Reliable Existence Checks', () => {
   test('tableExists uses fetch() instead of unreliable rowCount()', () => {
     const content = readFile('lib/database_migrator.php');
     const fnStart = content.indexOf('function tableExists(');
-    const fnEnd = content.indexOf('\n    }', fnStart + 50);
+    const fnEnd = content.indexOf('\n    }', fnStart + 100);
     const fn = content.substring(fnStart, fnEnd);
     // Must use fetch() which is reliable for SHOW statements
     expect(fn).toContain('->fetch()');
@@ -579,7 +579,7 @@ test.describe('DatabaseMigrator - Reliable Existence Checks', () => {
   test('columnExists uses fetch() instead of unreliable rowCount()', () => {
     const content = readFile('lib/database_migrator.php');
     const fnStart = content.indexOf('function columnExists(');
-    const fnEnd = content.indexOf('\n    }', fnStart + 50);
+    const fnEnd = content.indexOf('\n    }', fnStart + 100);
     const fn = content.substring(fnStart, fnEnd);
     // Must use fetch() which is reliable for SHOW statements
     expect(fn).toContain('->fetch()');
