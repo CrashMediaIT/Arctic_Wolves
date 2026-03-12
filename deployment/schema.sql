@@ -1123,11 +1123,15 @@ CREATE TABLE IF NOT EXISTS `goal_steps` (
     INDEX `idx_completed` (`is_completed`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Managed athletes (coach-athlete relationships)
+-- Managed athletes (coach-athlete and parent-athlete relationships)
 CREATE TABLE IF NOT EXISTS `managed_athletes` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `coach_id` INT NOT NULL,
+    `coach_id` INT DEFAULT NULL,
     `athlete_id` INT NOT NULL,
+    `parent_id` INT DEFAULT NULL COMMENT 'Parent user who manages this athlete',
+    `relationship` VARCHAR(50) DEFAULT 'parent' COMMENT 'Relationship type: parent, grandparent, guardian, other',
+    `can_book` TINYINT(1) DEFAULT 1 COMMENT 'Whether this parent can book sessions for the athlete',
+    `can_view_stats` TINYINT(1) DEFAULT 1 COMMENT 'Whether this parent can view athlete stats',
     `start_date` DATE DEFAULT NULL,
     `end_date` DATE DEFAULT NULL,
     `status` ENUM('active', 'inactive', 'archived') DEFAULT 'active',
@@ -1135,9 +1139,11 @@ CREATE TABLE IF NOT EXISTS `managed_athletes` (
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`coach_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`athlete_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`parent_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     UNIQUE KEY `unique_coach_athlete` (`coach_id`, `athlete_id`),
     INDEX `idx_coach` (`coach_id`),
     INDEX `idx_athlete` (`athlete_id`),
+    INDEX `idx_parent` (`parent_id`),
     INDEX `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

@@ -159,6 +159,7 @@ if ($active_tab === 'warehouse') {
 
 // --- Incoming Packages (shipment movements) ---
 $incomingPackages = [];
+$inventoryProducts = [];
 
 if ($active_tab === 'incoming') {
     try {
@@ -183,6 +184,19 @@ if ($active_tab === 'incoming') {
         }
     } catch (PDOException $e) {
         error_log("Inventory incoming fetch error: " . $e->getMessage());
+    }
+
+    // Load products with inventory tracking for the Record Shipment form
+    try {
+        $prodStmt = $pdo->query("
+            SELECT id, name, sku
+            FROM merchandise_products
+            WHERE track_inventory = 1 AND is_active = 1
+            ORDER BY name ASC
+        ");
+        $inventoryProducts = $prodStmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        error_log("Inventory products fetch error: " . $e->getMessage());
     }
 }
 
@@ -636,8 +650,13 @@ if ($active_tab === 'outgoing') {
         <?php endif; ?>
     </div>
 
+    <div style="padding: 0 0 16px;">
+        <button class="m-inv-btn m-inv-btn-primary" style="width: 100%; padding: 14px; font-size: 15px; border-radius: 10px;" onclick="document.getElementById('mInvShipmentModal').classList.add('m-show')">
+            <i class="fas fa-plus"></i> Record Shipment
+        </button>
+    </div>
+
 <?php elseif ($active_tab === 'outgoing'): ?>
-    <!-- ============ Outgoing Packages Tab ============ -->
     <?php
     $shippedCount = count(array_filter($outgoingOrders, function($o) { return $o['status'] === 'shipped'; }));
     $processingCount = count(array_filter($outgoingOrders, function($o) { return $o['status'] === 'processing'; }));
@@ -775,6 +794,43 @@ if ($active_tab === 'outgoing') {
     </div>
 </div>
 
+<!-- Record Shipment Bottom-Sheet -->
+<div class="m-inv-overlay" id="mInvShipmentModal">
+    <div class="m-inv-sheet">
+        <div class="m-inv-handle"></div>
+        <div class="m-inv-sheet-title">Record Shipment</div>
+        <form method="POST" action="process_merchandise_products.php" id="mInvShipmentForm">
+            <?= csrfTokenInput() ?>
+            <input type="hidden" name="action" value="record_shipment">
+            <input type="hidden" name="product_id" id="mInvShipmentProductId" value="">
+            <div class="m-inv-field">
+                <label for="mInvShipmentProduct">Product</label>
+                <select id="mInvShipmentProduct" onchange="mInvLoadShipmentSizes(this.value)" required>
+                    <option value="">Select a product...</option>
+                    <?php foreach ($inventoryProducts as $prod): ?>
+                        <option value="<?= (int)$prod['id'] ?>"><?= htmlspecialchars($prod['name']) ?><?= !empty($prod['sku']) ? ' (' . htmlspecialchars($prod['sku']) . ')' : '' ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="m-inv-field">
+                <label for="mInvShipmentRef">Reference / PO Number</label>
+                <input type="text" name="reference" id="mInvShipmentRef" placeholder="e.g., PO-2024-001">
+            </div>
+            <div class="m-inv-field">
+                <label for="mInvShipmentNotes">Notes</label>
+                <input type="text" name="notes" id="mInvShipmentNotes" placeholder="Optional notes">
+            </div>
+            <div id="mInvShipmentSizes" style="margin-bottom: 12px;">
+                <p style="color: #94a3b8; font-size: 13px; text-align: center; padding: 12px;">Select a product to see sizes.</p>
+            </div>
+            <div class="m-inv-modal-actions">
+                <button type="button" class="m-inv-btn-cancel" onclick="mInvCloseModal('mInvShipmentModal')">Cancel</button>
+                <button type="submit" class="m-inv-btn-save" id="mInvShipmentSaveBtn">Record</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 document.getElementById('invViewSelect').addEventListener('change', function() {
     window.location.href = '?page=inventory_management&tab=' + this.value;
@@ -870,8 +926,43 @@ document.getElementById('invViewSelect').addEventListener('change', function() {
         document.getElementById('mInvFulfillModal').classList.add('m-show');
     };
 
+    // Record Shipment - load sizes for selected product
+    window.mInvLoadShipmentSizes = function(productId) {
+        document.getElementById('mInvShipmentProductId').value = productId;
+        var container = document.getElementById('mInvShipmentSizes');
+
+        if (!productId) {
+            container.innerHTML = '<p style="color: #94a3b8; font-size: 13px; text-align: center; padding: 12px;">Select a product to see sizes.</p>';
+            return;
+        }
+
+        container.innerHTML = '<div style="text-align:center;padding:16px;color:#6B6B7B;"><i class="fas fa-spinner fa-spin"></i> Loading sizes...</div>';
+
+        fetch('process_merchandise_products.php?action=get_sizes&product_id=' + productId, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success && data.sizes && data.sizes.length) {
+                var html = '';
+                data.sizes.forEach(function(s) {
+                    html += '<div class="m-inv-field-row">' +
+                        '<div class="m-inv-field" style="flex:1;"><label>' + escHtml(s.size) + ' (current: ' + s.quantity + ')</label>' +
+                        '<input type="hidden" name="size_ids[]" value="' + s.id + '">' +
+                        '<input type="number" name="shipment_quantities[]" value="0" min="0" inputmode="numeric" placeholder="Qty received" style="min-height:44px;"></div></div>';
+                });
+                container.innerHTML = html;
+            } else {
+                container.innerHTML = '<div style="text-align:center;padding:16px;color:#6B6B7B;">No sizes found. Add sizes via Merchandise Products.</div>';
+            }
+        })
+        .catch(function() {
+            container.innerHTML = '<div style="text-align:center;padding:16px;color:#EF4444;">Failed to load sizes.</div>';
+        });
+    };
+
     // AJAX form submissions
-    ['mInvAdjustForm', 'mInvTransferForm', 'mInvFulfillForm'].forEach(function(formId) {
+    ['mInvAdjustForm', 'mInvTransferForm', 'mInvFulfillForm', 'mInvShipmentForm'].forEach(function(formId) {
         var form = document.getElementById(formId);
         if (!form) return;
         form.addEventListener('submit', function(e) {

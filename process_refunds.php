@@ -400,6 +400,70 @@ try {
             ]);
             break;
             
+        case 'get_purchases':
+            $target_user_id = intval($_GET['user_id'] ?? 0);
+            if ($target_user_id <= 0) {
+                throw new Exception('Invalid user ID');
+            }
+            
+            $purchases = [];
+            
+            // Get recent bookings
+            try {
+                $stmt = $pdo->prepare("
+                    SELECT b.id, b.amount, b.booking_date, s.title as session_name
+                    FROM bookings b
+                    LEFT JOIN sessions s ON b.session_id = s.id
+                    WHERE b.user_id = ? AND b.status = 'confirmed'
+                    ORDER BY b.booking_date DESC
+                    LIMIT 20
+                ");
+                $stmt->execute([$target_user_id]);
+                $bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                foreach ($bookings as $b) {
+                    $purchases[] = [
+                        'description' => $b['session_name'] ?? 'Session Booking #' . $b['id'],
+                        'amount' => number_format(floatval($b['amount']), 2),
+                        'date' => date('M j, Y', strtotime($b['booking_date']))
+                    ];
+                }
+            } catch (PDOException $e) {
+                // bookings table may not have data
+            }
+            
+            // Get recent payments
+            try {
+                $stmt = $pdo->prepare("
+                    SELECT p.id, p.amount, p.payment_date, p.notes
+                    FROM payments p
+                    WHERE p.user_id = ? AND p.payment_status = 'completed'
+                    ORDER BY p.payment_date DESC
+                    LIMIT 20
+                ");
+                $stmt->execute([$target_user_id]);
+                $payments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                foreach ($payments as $p) {
+                    $purchases[] = [
+                        'description' => $p['notes'] ?? 'Payment #' . $p['id'],
+                        'amount' => number_format(floatval($p['amount']), 2),
+                        'date' => date('M j, Y', strtotime($p['payment_date']))
+                    ];
+                }
+            } catch (PDOException $e) {
+                // payments table may not have data
+            }
+            
+            // Sort by date descending
+            usort($purchases, function($a, $b) {
+                return strtotime($b['date']) - strtotime($a['date']);
+            });
+            
+            // Limit to most recent 20
+            $purchases = array_slice($purchases, 0, 20);
+            
+            echo json_encode(['success' => true, 'purchases' => $purchases]);
+            break;
+
         case 'list_refunds':
             $start_date = $_GET['start_date'] ?? date('Y-m-01');
             $end_date = $_GET['end_date'] ?? date('Y-m-t');
