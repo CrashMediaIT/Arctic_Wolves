@@ -2732,3 +2732,124 @@ test.describe('Team loading from gameplan module', () => {
     expect(awaySelectIdx).toBeLessThan(awayInputIdx);
   });
 });
+
+// =====================================================
+// Upload progress bars for scoreboard settings and display
+// =====================================================
+
+test.describe('Scoreboard upload progress bars', () => {
+  test('settings page has upload progress modal HTML', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toContain('sbUploadProgressOverlay');
+    expect(content).toContain('upload-progress-overlay');
+    expect(content).toContain('upload-progress-card');
+    expect(content).toContain('sbUploadProgressBar');
+    expect(content).toContain('sbUploadProgressPercent');
+    expect(content).toContain('sbUploadProgressStatus');
+  });
+
+  test('settings page has upload progress CSS', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toContain('.upload-progress-overlay');
+    expect(content).toContain('.upload-progress-card');
+    expect(content).toContain('.upload-progress-bar-container');
+    expect(content).toContain('.upload-progress-bar');
+    expect(content).toContain('.upload-progress-percent');
+    expect(content).toContain('.upload-progress-status');
+  });
+
+  test('settings page has progress helper functions', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toContain('function sbShowUploadProgress');
+    expect(content).toContain('function sbUpdateUploadProgress');
+    expect(content).toContain('function sbHideUploadProgress');
+    expect(content).toContain('function sbUploadWithProgress');
+  });
+
+  test('sbUploadBuzzerSound uses XHR with progress instead of fetch', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    const fn = content.substring(
+      content.indexOf('function sbUploadBuzzerSound'),
+      content.indexOf('function sbRemoveBuzzerSound')
+    );
+    expect(fn).toContain('sbUploadWithProgress');
+    expect(fn).not.toContain('fetch(');
+  });
+
+  test('sbUploadHornSound uses XHR with progress instead of fetch', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    const fn = content.substring(
+      content.indexOf('function sbUploadHornSound'),
+      content.indexOf('function sbRemoveHornSound')
+    );
+    expect(fn).toContain('sbUploadWithProgress');
+    expect(fn).not.toContain('fetch(');
+  });
+
+  test('sbUploadTeamLogo uses XHR with progress instead of fetch', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    const fn = content.substring(
+      content.indexOf('function sbUploadTeamLogo'),
+      content.indexOf('function sbAddSpeakerRow')
+    );
+    expect(fn).toContain('sbUploadWithProgress');
+    expect(fn).not.toContain('fetch(');
+  });
+
+  test('sbUploadWithProgress uses XMLHttpRequest with upload.onprogress', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    const fn = content.substring(
+      content.indexOf('function sbUploadWithProgress'),
+      content.indexOf('function sbSaveSettings')
+    );
+    expect(fn).toContain('new XMLHttpRequest');
+    expect(fn).toContain('xhr.upload.onprogress');
+    expect(fn).toContain('xhr.onload');
+    expect(fn).toContain('xhr.onerror');
+  });
+
+  test('display page has quick upload progress modal HTML', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sbQuickUploadOverlay');
+    expect(content).toContain('sbQuickUploadBar');
+    expect(content).toContain('sbQuickUploadPercent');
+    expect(content).toContain('sbQuickUploadStatus');
+  });
+
+  test('display page has upload progress CSS', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('.upload-progress-overlay');
+    expect(content).toContain('.upload-progress-card');
+    expect(content).toContain('.upload-progress-bar-container');
+    expect(content).toContain('.upload-progress-bar');
+  });
+
+  test('sbQuickLogoUpload uses XHR with progress instead of fetch', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    const fn = content.substring(
+      content.indexOf('function sbQuickLogoUpload'),
+      content.indexOf('</script>', content.indexOf('function sbQuickLogoUpload'))
+    );
+    expect(fn).toContain('new XMLHttpRequest');
+    expect(fn).toContain('xhr.upload.onprogress');
+    expect(fn).not.toContain('fetch(');
+  });
+});
+
+// =====================================================
+// Scoreboard team name max-width doubled
+// =====================================================
+
+test.describe('Scoreboard team name display width', () => {
+  test('team name max-width is at least 360px for full names', () => {
+    const content = readFile('css/scoreboard.css');
+    const match = content.match(/\.sb-board-team-name\s*\{[^}]*max-width:\s*(\d+)px/);
+    expect(match).not.toBeNull();
+    expect(parseInt(match[1], 10)).toBeGreaterThanOrEqual(360);
+  });
+
+  test('responsive team name max-width is at least 240px', () => {
+    const content = readFile('css/scoreboard.css');
+    expect(content).toContain('.sb-board-team-name { font-size: 12px; max-width: 240px; }');
+  });
+});

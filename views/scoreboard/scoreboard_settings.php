@@ -261,6 +261,20 @@ try {
         </div>
 
     </div><!-- /.sb-settings-content -->
+
+    <!-- Upload Progress Modal (standard pattern) -->
+    <div id="sbUploadProgressOverlay" class="upload-progress-overlay" style="display: none;">
+        <div class="upload-progress-card">
+            <div class="spinner" id="sbUploadSpinner"></div>
+            <h4 id="sbUploadTitle">Uploading...</h4>
+            <p class="upload-progress-text" id="sbUploadSubtext">Please do not close this page.</p>
+            <div class="upload-progress-bar-container">
+                <div class="upload-progress-bar" id="sbUploadProgressBar"></div>
+            </div>
+            <span class="upload-progress-percent" id="sbUploadProgressPercent">0%</span>
+            <span class="upload-progress-status" id="sbUploadProgressStatus">Preparing upload...</span>
+        </div>
+    </div>
 </div>
 
 <style>
@@ -566,9 +580,129 @@ try {
     flex: 1;
     min-width: 80px;
 }
+/* Upload Progress Overlay */
+.upload-progress-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+.upload-progress-card {
+    background: #0d1117;
+    border: 1px solid #1e293b;
+    border-radius: 12px;
+    padding: 40px;
+    text-align: center;
+    max-width: 420px;
+    width: 90%;
+}
+.upload-progress-card .spinner {
+    width: 36px;
+    height: 36px;
+    margin: 0 auto 16px;
+    border: 3px solid #1e293b;
+    border-top-color: #7c3aed;
+    border-radius: 50%;
+    animation: upload-spin 0.8s linear infinite;
+}
+@keyframes upload-spin {
+    to { transform: rotate(360deg); }
+}
+.upload-progress-card h4 {
+    color: #fff;
+    font-size: 18px;
+    margin-bottom: 8px;
+}
+.upload-progress-text {
+    color: #64748b;
+    font-size: 13px;
+    margin-bottom: 20px;
+}
+.upload-progress-bar-container {
+    width: 100%;
+    height: 8px;
+    background: #06080b;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+.upload-progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #7c3aed, #a78bfa);
+    border-radius: 4px;
+    transition: width 0.4s ease;
+}
+.upload-progress-percent {
+    display: block;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+.upload-progress-status {
+    color: #64748b;
+    font-size: 12px;
+}
 </style>
 
 <script>
+// ── Upload progress modal helpers ──────────────────
+function sbShowUploadProgress(title, subtext) {
+    var overlay = document.getElementById('sbUploadProgressOverlay');
+    document.getElementById('sbUploadTitle').textContent = title || 'Uploading...';
+    document.getElementById('sbUploadSubtext').textContent = subtext || 'Please do not close this page.';
+    document.getElementById('sbUploadProgressBar').style.width = '0%';
+    document.getElementById('sbUploadProgressPercent').textContent = '0%';
+    document.getElementById('sbUploadProgressStatus').textContent = 'Preparing upload...';
+    overlay.style.display = 'flex';
+}
+function sbUpdateUploadProgress(pct) {
+    document.getElementById('sbUploadProgressBar').style.width = pct + '%';
+    document.getElementById('sbUploadProgressPercent').textContent = pct + '%';
+    document.getElementById('sbUploadProgressStatus').textContent = pct < 100 ? 'Uploading... ' + pct + '%' : 'Finalizing...';
+}
+function sbHideUploadProgress() {
+    document.getElementById('sbUploadProgressOverlay').style.display = 'none';
+}
+function sbUploadWithProgress(fd, title, subtext, onSuccess, onError) {
+    sbShowUploadProgress(title, subtext);
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', 'process_scoreboard.php', true);
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+    xhr.setRequestHeader('X-CSRF-Token', CSRF_TOKEN);
+    xhr.upload.onprogress = function(ev) {
+        if (ev.lengthComputable) {
+            var pct = Math.round((ev.loaded / ev.total) * 100);
+            sbUpdateUploadProgress(pct);
+        }
+    };
+    xhr.onload = function() {
+        sbHideUploadProgress();
+        try {
+            var d = JSON.parse(xhr.responseText);
+            if (xhr.status >= 200 && xhr.status < 300 && d.success) {
+                onSuccess(d);
+            } else {
+                onError(d.message || 'Upload failed');
+            }
+        } catch (e) {
+            onError('Invalid server response');
+        }
+    };
+    xhr.onerror = function() {
+        sbHideUploadProgress();
+        onError('Network error – please try again.');
+    };
+    xhr.send(fd);
+}
+
 function sbSaveSettings(e, section) {
     e.preventDefault();
     var form = e.target;
@@ -609,23 +743,14 @@ function sbUploadBuzzerSound(e) {
         fd.append('buzzer_file[]', fileInput.files[i]);
     }
 
-    fetch('process_scoreboard.php', {
-        method: 'POST',
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRF-Token': CSRF_TOKEN
-        },
-        body: fd
-    }).then(function(r) { return r.json(); })
-    .then(function(d) {
-        if (d.success) {
+    sbUploadWithProgress(fd, 'Uploading Buzzer Sound...', 'Uploading your buzzer sound files. Please wait.',
+        function(d) {
             var msg = (d.count && d.count > 1) ? d.count + ' buzzer sounds uploaded!' : 'Buzzer sound uploaded!';
             alert(msg);
             window.location.reload();
-        } else {
-            alert(d.message || 'Upload failed');
-        }
-    }).catch(function() { alert('Network error – please try again.'); });
+        },
+        function(errMsg) { alert(errMsg); }
+    );
     return false;
 }
 
@@ -658,23 +783,14 @@ function sbUploadHornSound(e) {
         fd.append('horn_file[]', fileInput.files[i]);
     }
 
-    fetch('process_scoreboard.php', {
-        method: 'POST',
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRF-Token': CSRF_TOKEN
-        },
-        body: fd
-    }).then(function(r) { return r.json(); })
-    .then(function(d) {
-        if (d.success) {
+    sbUploadWithProgress(fd, 'Uploading Goal Horn...', 'Uploading your goal horn sound files. Please wait.',
+        function(d) {
             var msg = (d.count && d.count > 1) ? d.count + ' goal horn sounds uploaded!' : 'Goal horn sound uploaded!';
             alert(msg);
             window.location.reload();
-        } else {
-            alert(d.message || 'Upload failed');
-        }
-    }).catch(function() { alert('Network error – please try again.'); });
+        },
+        function(errMsg) { alert(errMsg); }
+    );
     return false;
 }
 
@@ -743,22 +859,13 @@ function sbUploadTeamLogo(e) {
     var newName = document.querySelector('[name="new_team_name"]');
     if (newName) fd.append('new_team_name', newName.value);
 
-    fetch('process_scoreboard.php', {
-        method: 'POST',
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRF-Token': CSRF_TOKEN
-        },
-        body: fd
-    }).then(function(r) { return r.json(); })
-    .then(function(d) {
-        if (d.success) {
+    sbUploadWithProgress(fd, 'Uploading Team Logo...', 'Uploading your team logo image. Please wait.',
+        function(d) {
             alert('Logo uploaded!');
             window.location.reload();
-        } else {
-            alert(d.message || 'Upload failed');
-        }
-    }).catch(function() { alert('Network error – please try again.'); });
+        },
+        function(errMsg) { alert(errMsg); }
+    );
     return false;
 }
 
