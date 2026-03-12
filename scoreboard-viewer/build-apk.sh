@@ -73,15 +73,18 @@ kotlinc \
 # ── DEX ──────────────────────────────────────────────────────
 echo "» Converting to DEX…"
 # shellcheck disable=SC2046
-# Note: Kotlin metadata warnings from d8 are harmless (version mismatch
-# between kotlinc and d8's bundled R8). They don't affect the APK.
+# The d8 tool emits "malformed kotlin.Metadata" warnings when the installed
+# kotlinc version is newer than d8's bundled R8. These warnings are cosmetic
+# and do not affect the output DEX or final APK. We log full output to
+# build-cmdline/d8.log and only display non-warning lines to keep the build
+# output clean.
 "$BT/d8" \
   --release \
   --min-api 21 \
   --output "$BUILD_DIR/dex" \
   --lib "$PLATFORM" \
   $(find "$BUILD_DIR/classes" -name "*.class") \
-  "$DEPS/kotlin-stdlib-1.9.22.jar" 2>&1 | grep -v "kotlin.Metadata\|kotlin metadata\|Should never be called\|com.android.tools.r8\|java.base/java.util.concurrent" || true
+  "$DEPS/kotlin-stdlib-1.9.22.jar" 2>&1 | tee "$BUILD_DIR/d8.log" | grep -v "kotlin.Metadata\|kotlin metadata\|Should never be called\|com.android.tools.r8\|java.base/java.util.concurrent" || true
 
 # ── Package APK ──────────────────────────────────────────────
 echo "» Packaging APK…"

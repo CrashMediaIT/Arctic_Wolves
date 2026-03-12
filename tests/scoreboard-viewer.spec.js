@@ -423,7 +423,10 @@ test.describe('Scoreboard Viewer – Built APK', () => {
         const apkPath = join(ROOT, 'scoreboard-viewer/scoreboard-viewer-debug.apk');
         expect(existsSync(apkPath)).toBe(true);
         const stat = statSync(apkPath);
-        expect(stat.size).toBeGreaterThan(100000); // Should be >100KB
+        // A minimal Android APK with compiled resources, DEX, and signing
+        // metadata is at least ~100KB. The current APK is ~600KB.
+        const MIN_APK_SIZE_BYTES = 100 * 1024;
+        expect(stat.size).toBeGreaterThan(MIN_APK_SIZE_BYTES);
     });
 
     test('APK is a valid ZIP file (starts with PK header)', () => {
