@@ -120,8 +120,8 @@ try {
                 <div class="sb-settings-library-item<?= ($bi['url'] ?? '') === ($settings['scoreboard_buzzer_url'] ?? '') ? ' active' : '' ?>">
                     <span><?= htmlspecialchars($bi['name'] ?? basename($bi['url'] ?? '')) ?></span>
                     <audio controls src="<?= htmlspecialchars($bi['url'] ?? '') ?>" style="height:28px;"></audio>
-                    <button type="button" class="sb-btn sb-btn-primary" onclick="sbSelectLibraryItem('buzzer','<?= htmlspecialchars($bi['url'] ?? '', ENT_QUOTES) ?>')" style="padding:4px 10px;font-size:12px;"><i class="fas fa-check"></i> Use</button>
-                    <button type="button" class="sb-btn sb-btn-danger" onclick="sbRemoveLibraryItem('buzzer','<?= htmlspecialchars($bi['url'] ?? '', ENT_QUOTES) ?>')" style="padding:4px 8px;font-size:12px;"><i class="fas fa-trash"></i></button>
+                    <button type="button" class="sb-btn sb-btn-primary" onclick="sbSelectLibraryItem('buzzer',<?= htmlspecialchars(json_encode($bi['url'] ?? ''), ENT_QUOTES) ?>)" style="padding:4px 10px;font-size:12px;"><i class="fas fa-check"></i> Use</button>
+                    <button type="button" class="sb-btn sb-btn-danger" onclick="sbRemoveLibraryItem('buzzer',<?= htmlspecialchars(json_encode($bi['url'] ?? ''), ENT_QUOTES) ?>)" style="padding:4px 8px;font-size:12px;"><i class="fas fa-trash"></i></button>
                 </div>
                 <?php endforeach; ?>
             </div>
@@ -159,8 +159,8 @@ try {
                 <div class="sb-settings-library-item<?= ($hi['url'] ?? '') === ($settings['scoreboard_horn_url'] ?? '') ? ' active' : '' ?>">
                     <span><?= htmlspecialchars($hi['name'] ?? basename($hi['url'] ?? '')) ?></span>
                     <audio controls src="<?= htmlspecialchars($hi['url'] ?? '') ?>" style="height:28px;"></audio>
-                    <button type="button" class="sb-btn sb-btn-primary" onclick="sbSelectLibraryItem('horn','<?= htmlspecialchars($hi['url'] ?? '', ENT_QUOTES) ?>')" style="padding:4px 10px;font-size:12px;"><i class="fas fa-check"></i> Use</button>
-                    <button type="button" class="sb-btn sb-btn-danger" onclick="sbRemoveLibraryItem('horn','<?= htmlspecialchars($hi['url'] ?? '', ENT_QUOTES) ?>')" style="padding:4px 8px;font-size:12px;"><i class="fas fa-trash"></i></button>
+                    <button type="button" class="sb-btn sb-btn-primary" onclick="sbSelectLibraryItem('horn',<?= htmlspecialchars(json_encode($hi['url'] ?? ''), ENT_QUOTES) ?>)" style="padding:4px 10px;font-size:12px;"><i class="fas fa-check"></i> Use</button>
+                    <button type="button" class="sb-btn sb-btn-danger" onclick="sbRemoveLibraryItem('horn',<?= htmlspecialchars(json_encode($hi['url'] ?? ''), ENT_QUOTES) ?>)" style="padding:4px 8px;font-size:12px;"><i class="fas fa-trash"></i></button>
                 </div>
                 <?php endforeach; ?>
             </div>

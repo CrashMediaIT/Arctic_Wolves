@@ -417,10 +417,10 @@ if ($active_game) {
     <link rel="stylesheet" href="css/scoreboard.css?v=<?= filemtime(__DIR__ . '/css/scoreboard.css') ?>">
     <script>
     // Constants must be defined before scoreboard.js executes (defer preserves order)
-    var CSRF_TOKEN = '<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES) ?>';
+    var CSRF_TOKEN = <?= json_encode($_SESSION['csrf_token'] ?? '') ?>;
     var ACTIVE_GAME_ID = <?= $active_game ? (int)$active_game['id'] : 'null' ?>;
-    var CUSTOM_BUZZER_URL = '<?= htmlspecialchars($custom_buzzer_url, ENT_QUOTES) ?>';
-    var CUSTOM_HORN_URL = '<?= htmlspecialchars($custom_horn_url, ENT_QUOTES) ?>';
+    var CUSTOM_BUZZER_URL = <?= json_encode($custom_buzzer_url) ?>;
+    var CUSTOM_HORN_URL = <?= json_encode($custom_horn_url) ?>;
     var IS_ADMIN = <?= $isAdmin ? 'true' : 'false' ?>;
     var SB_STAT_TRACKING = <?= ($active_game && !empty($active_game['stat_tracking_enabled'])) ? 'true' : 'false' ?>;
     var SB_HOME_TEAM_NAME = <?= json_encode($active_game['home_team_name'] ?? 'Home') ?>;
@@ -461,7 +461,7 @@ if ($active_game) {
 <script>
 // Live clock in topbar – anchored to server time & configured timezone
 (function() {
-    var sbTimezone = '<?= htmlspecialchars(date_default_timezone_get(), ENT_QUOTES) ?>';
+    var sbTimezone = <?= json_encode(date_default_timezone_get()) ?>;
     var sbServerTs = <?= (int)appTime() ?>;
     var sbPageLoad = Date.now();
 
