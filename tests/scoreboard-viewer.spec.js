@@ -436,3 +436,49 @@ test.describe('Scoreboard Viewer – Built APK', () => {
         expect(apk[1]).toBe(0x4B);
     });
 });
+
+// ── Build Workflow ─────────────────────────────────────────
+
+test.describe('Scoreboard Viewer – Build Workflow', () => {
+
+    test('build workflow file exists', () => {
+        expect(fileExists('.github/workflows/build-scoreboard-viewer.yml')).toBe(true);
+    });
+
+    test('build workflow triggers on scoreboard-viewer path changes', () => {
+        const content = readFile('.github/workflows/build-scoreboard-viewer.yml');
+        expect(content).toContain("'scoreboard-viewer/**'");
+        expect(content).toContain('push:');
+        expect(content).toContain('pull_request:');
+        expect(content).toContain('workflow_dispatch:');
+    });
+
+    test('build workflow sets up JDK 17 and Android SDK', () => {
+        const content = readFile('.github/workflows/build-scoreboard-viewer.yml');
+        expect(content).toContain("java-version: '17'");
+        expect(content).toContain('setup-android@v3');
+        expect(content).toContain('platforms;android-34');
+        expect(content).toContain('build-tools;34.0.0');
+    });
+
+    test('build workflow runs Gradle assembleDebug', () => {
+        const content = readFile('.github/workflows/build-scoreboard-viewer.yml');
+        expect(content).toContain('./gradlew assembleDebug');
+    });
+
+    test('build workflow uploads APK artifact', () => {
+        const content = readFile('.github/workflows/build-scoreboard-viewer.yml');
+        expect(content).toContain('upload-artifact@v4');
+        expect(content).toContain('scoreboard-viewer-debug');
+    });
+
+    test('build workflow uses read-only permissions', () => {
+        const content = readFile('.github/workflows/build-scoreboard-viewer.yml');
+        expect(content).toContain('contents: read');
+    });
+
+    test('build workflow runs in scoreboard-viewer directory', () => {
+        const content = readFile('.github/workflows/build-scoreboard-viewer.yml');
+        expect(content).toContain('working-directory: scoreboard-viewer');
+    });
+});
