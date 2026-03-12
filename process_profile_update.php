@@ -87,6 +87,53 @@ if ($action == 'update_info') {
 }
 
 // =========================================================
+// ACTION 2B: COACH/ADMIN UPDATE ATHLETE INFO
+// =========================================================
+if ($action == 'coach_update_athlete') {
+    $athlete_id = intval($_POST['athlete_id'] ?? 0);
+    
+    // Only admins and coaches can update athlete profiles
+    if ($role !== 'admin' && $role !== 'coach' && $role !== 'coach_plus') {
+        header("Location: dashboard.php?page=athlete_detail&id=$athlete_id&error=access_denied");
+        exit();
+    }
+    
+    if ($athlete_id <= 0) {
+        header("Location: dashboard.php?error=invalid_id");
+        exit();
+    }
+    
+    $first_name = trim($_POST['first_name'] ?? '');
+    $last_name = trim($_POST['last_name'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $position = $_POST['position'] ?? null;
+    $birth_date = !empty($_POST['birth_date']) ? $_POST['birth_date'] : null;
+    $shooting_hand = $_POST['shooting_hand'] ?? null;
+    
+    try {
+        // Encrypt PII fields if encryption is available
+        $enc_first = class_exists('FieldEncryption') ? FieldEncryption::encrypt($first_name) : $first_name;
+        $enc_last = class_exists('FieldEncryption') ? FieldEncryption::encrypt($last_name) : $last_name;
+        $enc_email = class_exists('FieldEncryption') ? FieldEncryption::encrypt($email) : $email;
+        
+        $stmt = $pdo->prepare("
+            UPDATE users SET first_name = ?, last_name = ?, email = ?, position = ?, birth_date = ?, shooting_hand = ?
+            WHERE id = ?
+        ");
+        $stmt->execute([$enc_first, $enc_last, $enc_email, $position, $birth_date, $shooting_hand, $athlete_id]);
+        
+        Auditor::log($pdo, $current_user_id, 'update', 'users', $athlete_id, ['action' => 'coach_updated_athlete_profile']);
+        
+        header("Location: dashboard.php?page=athlete_detail&id=$athlete_id&msg=success");
+        exit();
+    } catch (PDOException $e) {
+        ErrorLogger::error("Coach athlete profile update error: " . $e->getMessage());
+        header("Location: dashboard.php?page=athlete_detail&id=$athlete_id&edit=1&error=update_failed");
+        exit();
+    }
+}
+
+// =========================================================
 // ACTION 3: STANDARD PASSWORD CHANGE (Voluntary)
 // =========================================================
 if ($action == 'change_password') {

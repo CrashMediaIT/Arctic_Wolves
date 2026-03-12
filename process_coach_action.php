@@ -47,6 +47,7 @@ if ($action == 'assign_nutrition') {
     Auditor::log($pdo, $coach_id, 'create', 'nutrition_plans', $pdo->lastInsertId(), ['action' => 'Nutrition plan assigned', 'athlete_id' => $user_id]);
 }
 
-// Redirect back to that specific athlete's page
-header("Location: dashboard.php?page=athlete_detail&id=" . $user_id . "&msg=success");
+// Redirect back to that specific athlete's page (or custom redirect)
+$redirect_page = isset($_POST['redirect']) ? $_POST['redirect'] : 'athlete_detail&id=' . $user_id;
+header("Location: dashboard.php?page=" . $redirect_page . "&success=note_added&msg=success");
 ?>
