@@ -375,6 +375,8 @@ function sbClockStart() {
     // Update game status
     var statusEl = document.getElementById('sbStatus');
     if (statusEl) statusEl.textContent = 'IN PROGRESS';
+    // Music integration: pause music when clock starts
+    sbMusicOnClockStart();
 }
 
 function sbClockStop() {
@@ -389,6 +391,8 @@ function sbClockStop() {
         btn.classList.remove('running');
     }
     sbSaveClockState();
+    // Music integration: resume music when clock stops
+    sbMusicOnClockStop();
 }
 
 function sbClockToggle() {
@@ -650,8 +654,90 @@ function sbAddGoal(team) {
                     sbClearPenaltyOnGoal(opposingTeam);
                 }
             }
+
+            // Show goal assignment modal if stat tracking is enabled
+            if (typeof SB_STAT_TRACKING !== 'undefined' && SB_STAT_TRACKING) {
+                sbShowGoalAssignModal(team);
+            }
         }
     });
+}
+
+// Show goal assignment modal pre-filled with team and current time
+function sbShowGoalAssignModal(team) {
+    var teamLabel = document.getElementById('sbGoalAssignTeamLabel');
+    var teamInput = document.getElementById('sbGoalAssignTeam');
+    var form = document.getElementById('sbGoalAssignForm');
+    if (!teamLabel || !teamInput || !form) return;
+    var teamName = (team === 'home')
+        ? (typeof SB_HOME_TEAM_NAME !== 'undefined' ? SB_HOME_TEAM_NAME : 'Home')
+        : (typeof SB_AWAY_TEAM_NAME !== 'undefined' ? SB_AWAY_TEAM_NAME : 'Away');
+    teamLabel.textContent = teamName;
+    teamInput.value = team;
+    form.reset();
+    teamInput.value = team; // Restore team value after reset() clears all inputs
+    // Pre-detect goal type based on penalty state
+    var opposingTeam = (team === 'home') ? 'away' : 'home';
+    var goalTypeSelect = document.getElementById('sbGoalAssignType');
+    if (goalTypeSelect) {
+        if (sbHasClearableMinor(opposingTeam)) {
+            goalTypeSelect.value = 'Power Play';
+        } else if (sbHasClearableMinor(team)) {
+            goalTypeSelect.value = 'Short Handed';
+        } else {
+            goalTypeSelect.value = 'Even Strength';
+        }
+    }
+    document.getElementById('sb-goal-assign-modal').classList.add('active');
+}
+
+// Submit goal details from assignment modal
+function sbSubmitGoalAssignment(e) {
+    e.preventDefault();
+    var form = document.getElementById('sbGoalAssignForm');
+    var fd = new FormData(form);
+    var team = document.getElementById('sbGoalAssignTeam').value;
+    var goalData = {
+        period: String(sbCurrentPeriod <= 3 ? sbCurrentPeriod : 'OT'),
+        game_time: sbFormatClock(sbClockSeconds),
+        team: team,
+        scorer_number: fd.get('scorer_number'),
+        scorer_name: fd.get('scorer_name'),
+        assist1_number: fd.get('assist1_number'),
+        assist1_name: fd.get('assist1_name'),
+        assist2_number: fd.get('assist2_number'),
+        assist2_name: fd.get('assist2_name'),
+        goal_type: fd.get('goal_type')
+    };
+    sbFetch('add_goal_detail', goalData).then(function(d) {
+        if (d.success) {
+            document.getElementById('sb-goal-assign-modal').classList.remove('active');
+            // Also insert into scoresheet if visible
+            var goalRows = document.getElementById('sbGoalRows');
+            if (goalRows) {
+                var tr = document.createElement('tr');
+                var a1 = goalData.assist1_name ? ('#' + sbEscapeHtml(goalData.assist1_number || '') + ' ' + sbEscapeHtml(goalData.assist1_name)) : '—';
+                var a2 = goalData.assist2_name ? ('#' + sbEscapeHtml(goalData.assist2_number || '') + ' ' + sbEscapeHtml(goalData.assist2_name)) : '—';
+                tr.innerHTML =
+                    '<td>' + sbEscapeHtml(goalData.period || '') + '</td>' +
+                    '<td>' + sbEscapeHtml(goalData.game_time || '') + '</td>' +
+                    '<td>' + sbEscapeHtml(goalData.team || '') + '</td>' +
+                    '<td>#' + sbEscapeHtml(goalData.scorer_number || '') + ' ' + sbEscapeHtml(goalData.scorer_name || '') + '</td>' +
+                    '<td>' + a1 + '</td>' +
+                    '<td>' + a2 + '</td>' +
+                    '<td>' + sbEscapeHtml(goalData.goal_type || 'Even Strength') + '</td>';
+                goalRows.appendChild(tr);
+            }
+            form.reset();
+        }
+    });
+    return false;
+}
+
+// Skip goal assignment – just close the modal
+function sbSkipGoalAssignment() {
+    document.getElementById('sb-goal-assign-modal').classList.remove('active');
+    document.getElementById('sbGoalAssignForm').reset();
 }
 
 // Check if the given team has a clearable minor penalty (not major/misconduct)
@@ -1033,12 +1119,14 @@ function sbStartGame(e) {
     e.preventDefault();
     var form = document.getElementById('sbNewGameForm');
     var fd = new FormData(form);
+    var disableStats = document.getElementById('sb-disable-stat-tracking');
     sbFetch('start_game', {
         home_team_name: fd.get('home_team_name'),
         away_team_name: fd.get('away_team_name'),
         home_team_id: fd.get('home_team_id'),
         away_team_id: fd.get('away_team_id'),
-        is_arctic_wolves_game: fd.get('is_arctic_wolves_game') || '0'
+        is_arctic_wolves_game: fd.get('is_arctic_wolves_game') || '0',
+        stat_tracking_enabled: (disableStats && disableStats.checked) ? '0' : '1'
     }).then(function(d) {
         if (d.success) {
             // Preserve custom period/OT duration settings across new game
@@ -1213,11 +1301,94 @@ var sbMusicPlayer = {
     queueIndex: -1
 };
 
+// Music–clock integration flags
+var sbMusicAutoplay = false;    // When true, music auto-resumes when clock stops and auto-pauses when clock starts
+var sbMusicContinuous = true;   // When true, advance to next track on song end; when false, stop after current track
+
+function sbToggleMusicAutoplay() {
+    sbMusicAutoplay = !sbMusicAutoplay;
+    var btn = document.getElementById('sbMusicAutoplayBtn');
+    if (btn) {
+        btn.classList.toggle('active', sbMusicAutoplay);
+        btn.title = sbMusicAutoplay ? 'Auto-play ON: music plays when clock stops' : 'Auto-play OFF';
+    }
+    sbUpdateMusicAutoplayIndicator();
+}
+
+function sbUpdateMusicAutoplayIndicator() {
+    var indicator = document.getElementById('sbMusicAutoplayIndicator');
+    if (indicator) {
+        indicator.style.display = sbMusicAutoplay ? '' : 'none';
+    }
+}
+
+function sbToggleMusicContinuous() {
+    sbMusicContinuous = !sbMusicContinuous;
+    var btn = document.getElementById('sbMusicContinuousBtn');
+    if (btn) {
+        btn.classList.toggle('active', sbMusicContinuous);
+        btn.title = sbMusicContinuous ? 'Continuous: advance to next track' : 'Single: stop after current track';
+    }
+}
+
+// Add a track to the playlist queue without playing it
+function sbAddToPlaylist(url, title, artist, source) {
+    sbMusicPlayer.queue.push({
+        url: url,
+        title: title || 'Unknown',
+        artist: artist || '',
+        source: source || 'subsonic'
+    });
+    sbUpdatePlaylistCount();
+}
+
+function sbUpdatePlaylistCount() {
+    var badge = document.getElementById('sbPlaylistCount');
+    if (badge) {
+        var count = sbMusicPlayer.queue.length;
+        badge.textContent = count;
+        badge.style.display = count > 0 ? '' : 'none';
+    }
+}
+
+// Clock→music integration: called from sbClockStart / sbClockStop
+function sbMusicOnClockStart() {
+    if (!sbMusicAutoplay) return;
+    // Pause music when clock starts
+    if (sbMusicPlayer.playing) {
+        sbMusicPause();
+    }
+}
+
+function sbMusicOnClockStop() {
+    if (!sbMusicAutoplay) return;
+    // Resume music when clock stops (if there's a track loaded or queue available)
+    if (sbMusicPlayer.currentTrack && !sbMusicPlayer.playing) {
+        sbMusicResume();
+    } else if (!sbMusicPlayer.currentTrack && sbMusicPlayer.queue.length > 0) {
+        // Start from current queue position or beginning
+        var idx = sbMusicPlayer.queueIndex >= 0 ? sbMusicPlayer.queueIndex : 0;
+        if (idx >= sbMusicPlayer.queue.length) idx = 0;
+        sbMusicPlayer.queueIndex = idx;
+        var track = sbMusicPlayer.queue[idx];
+        sbMusicPlay(track.url, track.title, track.artist, track.source);
+    }
+}
+
 function sbMusicPlay(url, title, artist, source) {
     if (!sbMusicPlayer.audio) {
         sbMusicPlayer.audio = new Audio();
         sbMusicPlayer.audio.addEventListener('ended', function() {
-            sbMusicNext();
+            if (sbMusicContinuous) {
+                sbMusicNext();
+            } else {
+                // Single-track mode: stop after current track
+                sbMusicPlayer.playing = false;
+                sbMusicPlayer.currentTrack = null;
+                sbUpdateNowPlaying(null, null, null);
+                var btn = document.getElementById('sbMusicPlayPause');
+                if (btn) btn.innerHTML = '<i class="fas fa-play"></i>';
+            }
         });
         sbMusicPlayer.audio.addEventListener('error', function() {
             sbUpdateNowPlaying(null, null, null);
@@ -1410,6 +1581,7 @@ function sbRenderSubsonicLibrary(container, artists, albums, songs) {
                     '<div class="sb-ml-track-artist">' + (song.artist || '').replace(/</g, '&lt;') + (song.album ? ' — ' + song.album.replace(/</g, '&lt;') : '') + '</div>' +
                     '</div>' +
                     '<div class="sb-ml-track-duration">' + (song.duration || '') + '</div>' +
+                    '<button class="sb-ml-track-add" onclick="sbAddToPlaylistFromTrack(this.parentElement)" title="Add to Playlist"><i class="fas fa-plus"></i></button>' +
                     '<button class="sb-ml-track-play" onclick="sbPlaySubsonicTrack(this.parentElement)" title="Play"><i class="fas fa-play"></i></button>' +
                     '</div>';
         });
@@ -1443,6 +1615,7 @@ function sbSubsonicLoadAlbum(albumId) {
         html += '<div class="sb-ml-album-header-name">' + (album.name || 'Album').replace(/</g, '&lt;') + '</div>';
         html += '<div class="sb-ml-album-header-artist">' + (album.artist || '').replace(/</g, '&lt;') + '</div>';
         html += '<button class="sb-ml-play-all-btn" onclick="sbPlayAllSubsonicTracks()"><i class="fas fa-play"></i> Play All</button>';
+        html += ' <button class="sb-ml-play-all-btn" onclick="sbAddAllToPlaylist()" style="background:#2D2D3F;"><i class="fas fa-plus"></i> Add All to Playlist</button>';
         html += '</div></div>';
 
         var songs = d.songs || [];
@@ -1455,6 +1628,7 @@ function sbSubsonicLoadAlbum(albumId) {
                     '<div class="sb-ml-track-artist">' + (song.artist || '').replace(/</g, '&lt;') + '</div>' +
                     '</div>' +
                     '<div class="sb-ml-track-duration">' + (song.duration || '') + '</div>' +
+                    '<button class="sb-ml-track-add" onclick="sbAddToPlaylistFromTrack(this.parentElement)" title="Add to Playlist"><i class="fas fa-plus"></i></button>' +
                     '<button class="sb-ml-track-play" onclick="sbPlaySubsonicTrack(this.parentElement)" title="Play"><i class="fas fa-play"></i></button>' +
                     '</div>';
         });
@@ -1512,11 +1686,130 @@ function sbPlayAllSubsonicTracks() {
     sbHighlightActiveTrack();
 }
 
+// Add a single track from library to playlist without playing
+function sbAddToPlaylistFromTrack(trackEl) {
+    var url = trackEl.getAttribute('data-url');
+    var titleEl = trackEl.querySelector('.sb-ml-track-title');
+    var artistEl = trackEl.querySelector('.sb-ml-track-artist');
+    var title = titleEl ? titleEl.textContent : 'Unknown';
+    var artist = artistEl ? artistEl.textContent : '';
+    sbAddToPlaylist(url, title, artist, 'subsonic');
+    // Visual feedback: briefly flash the add button
+    var addBtn = trackEl.querySelector('.sb-ml-track-add');
+    if (addBtn) {
+        addBtn.innerHTML = '<i class="fas fa-check"></i>';
+        setTimeout(function() { addBtn.innerHTML = '<i class="fas fa-plus"></i>'; }, 800);
+    }
+}
+
+// Add all visible tracks in the library to the playlist
+function sbAddAllToPlaylist() {
+    var container = document.getElementById('sbMusicLibraryContent');
+    if (!container) return;
+    var allTracks = container.querySelectorAll('.sb-ml-track');
+    allTracks.forEach(function(t) {
+        var tUrl = t.getAttribute('data-url');
+        var tTitle = t.querySelector('.sb-ml-track-title');
+        var tArtist = t.querySelector('.sb-ml-track-artist');
+        sbAddToPlaylist(tUrl, tTitle ? tTitle.textContent : 'Unknown', tArtist ? tArtist.textContent : '', 'subsonic');
+    });
+}
+
+var _sbSearchTimer = null;
 function sbMusicLibraryFilter(query) {
     query = (query || '').toLowerCase().trim();
+    // Always apply instant client-side filter on already-loaded items
     document.querySelectorAll('.sb-ml-track, .sb-ml-album-card').forEach(function(el) {
         var search = el.getAttribute('data-search') || '';
         el.style.display = (!query || search.indexOf(query) >= 0) ? '' : 'none';
+    });
+    // For queries ≥2 chars, also do server-side search to find all library music
+    if (_sbSearchTimer) clearTimeout(_sbSearchTimer);
+    if (query.length >= 2) {
+        _sbSearchTimer = setTimeout(function() {
+            sbSubsonicServerSearch(query);
+        }, 400); // debounce 400ms
+    }
+}
+
+function sbSubsonicServerSearch(query) {
+    var container = document.getElementById('sbMusicLibraryContent');
+    if (!container) return;
+    // Show a subtle loading indicator
+    var existing = document.getElementById('sbSearchStatus');
+    if (!existing) {
+        var indicator = document.createElement('div');
+        indicator.id = 'sbSearchStatus';
+        indicator.style.cssText = 'font-size:11px;color:#6B46C1;padding:4px 0;text-align:center;';
+        indicator.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Searching entire library…';
+        var searchBar = container.querySelector('.sb-ml-search');
+        if (searchBar) searchBar.after(indicator);
+    } else {
+        existing.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Searching entire library…';
+        existing.style.display = '';
+    }
+    sbFetch('subsonic_search', { query: query }).then(function(d) {
+        var statusEl = document.getElementById('sbSearchStatus');
+        if (!d.success) {
+            if (statusEl) statusEl.style.display = 'none';
+            return;
+        }
+        var albums = d.albums || [];
+        var songs = d.songs || [];
+        // Remove existing search results section if present
+        var prevResults = container.querySelector('.sb-ml-search-results');
+        if (prevResults) prevResults.remove();
+        if (!albums.length && !songs.length) {
+            if (statusEl) {
+                statusEl.innerHTML = '<i class="fas fa-search"></i> No additional results found';
+                setTimeout(function() { if (statusEl) statusEl.style.display = 'none'; }, 2000);
+            }
+            return;
+        }
+        if (statusEl) {
+            statusEl.innerHTML = '<i class="fas fa-check"></i> Found ' + songs.length + ' songs, ' + albums.length + ' albums';
+            setTimeout(function() { if (statusEl) statusEl.style.display = 'none'; }, 3000);
+        }
+        // Build search results HTML
+        var html = '<div class="sb-ml-search-results">';
+        html += '<div class="sb-ml-section-title" style="color:#6B46C1;">Search Results</div>';
+        if (albums.length) {
+            html += '<div class="sb-ml-grid">';
+            albums.forEach(function(album) {
+                var coverUrl = album.cover || '';
+                html += '<div class="sb-ml-album-card" data-album-id="' + (album.id || '').replace(/"/g, '&quot;') + '" data-search="' + ((album.name || '') + ' ' + (album.artist || '')).replace(/"/g, '&quot;').toLowerCase() + '">' +
+                        (coverUrl ? '<img class="sb-ml-album-cover" src="' + coverUrl.replace(/"/g, '&quot;') + '" alt="">' : '<div class="sb-ml-album-cover sb-ml-no-art"><i class="fas fa-compact-disc"></i></div>') +
+                        '<div class="sb-ml-album-name">' + (album.name || 'Unknown Album').replace(/</g, '&lt;') + '</div>' +
+                        '<div class="sb-ml-album-artist">' + (album.artist || '').replace(/</g, '&lt;') + '</div>' +
+                        '</div>';
+            });
+            html += '</div>';
+        }
+        if (songs.length) {
+            html += '<div class="sb-ml-track-list">';
+            songs.forEach(function(song, idx) {
+                html += '<div class="sb-ml-track" data-url="' + (song.url || '').replace(/"/g, '&quot;') + '" data-search="' + ((song.title || '') + ' ' + (song.artist || '') + ' ' + (song.album || '')).replace(/"/g, '&quot;').toLowerCase() + '">' +
+                        '<div class="sb-ml-track-num">' + (idx + 1) + '</div>' +
+                        '<div class="sb-ml-track-info">' +
+                        '<div class="sb-ml-track-title">' + (song.title || 'Unknown').replace(/</g, '&lt;') + '</div>' +
+                        '<div class="sb-ml-track-artist">' + (song.artist || '').replace(/</g, '&lt;') + (song.album ? ' — ' + song.album.replace(/</g, '&lt;') : '') + '</div>' +
+                        '</div>' +
+                        '<div class="sb-ml-track-duration">' + (song.duration || '') + '</div>' +
+                        '<button class="sb-ml-track-add" onclick="sbAddToPlaylistFromTrack(this.parentElement)" title="Add to Playlist"><i class="fas fa-plus"></i></button>' +
+                        '<button class="sb-ml-track-play" onclick="sbPlaySubsonicTrack(this.parentElement)" title="Play"><i class="fas fa-play"></i></button>' +
+                        '</div>';
+            });
+            html += '</div>';
+        }
+        html += '</div>';
+        container.insertAdjacentHTML('beforeend', html);
+        // Wire up album card clicks in search results
+        container.querySelectorAll('.sb-ml-search-results .sb-ml-album-card').forEach(function(card) {
+            card.addEventListener('click', function() {
+                var albumId = this.getAttribute('data-album-id');
+                if (albumId) sbSubsonicLoadAlbum(albumId);
+            });
+        });
     });
 }
 

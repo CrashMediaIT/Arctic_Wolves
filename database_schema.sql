@@ -4989,6 +4989,7 @@ CREATE TABLE IF NOT EXISTS `scoreboard_games` (
     `current_period` VARCHAR(5) DEFAULT '1',
     `status` ENUM('warmup', 'in_progress', 'intermission', 'final') DEFAULT 'warmup',
     `is_arctic_wolves_game` TINYINT(1) DEFAULT 0 COMMENT 'If 1, sync scoresheet to Game Plan and player stats',
+    `stat_tracking_enabled` TINYINT(1) DEFAULT 1 COMMENT 'If 1, show goal assignment modal on +1 Goal; if 0, just update score',
     `synced_to_gameplan` TINYINT(1) DEFAULT 0,
     `created_by` INT DEFAULT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

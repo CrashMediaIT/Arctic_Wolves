@@ -2732,3 +2732,490 @@ test.describe('Team loading from gameplan module', () => {
     expect(awaySelectIdx).toBeLessThan(awayInputIdx);
   });
 });
+
+// =====================================================
+// Upload progress bars for scoreboard settings and display
+// =====================================================
+
+test.describe('Scoreboard upload progress bars', () => {
+  test('settings page has upload progress modal HTML', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toContain('sbUploadProgressOverlay');
+    expect(content).toContain('upload-progress-overlay');
+    expect(content).toContain('upload-progress-card');
+    expect(content).toContain('sbUploadProgressBar');
+    expect(content).toContain('sbUploadProgressPercent');
+    expect(content).toContain('sbUploadProgressStatus');
+  });
+
+  test('settings page has upload progress CSS', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toContain('.upload-progress-overlay');
+    expect(content).toContain('.upload-progress-card');
+    expect(content).toContain('.upload-progress-bar-container');
+    expect(content).toContain('.upload-progress-bar');
+    expect(content).toContain('.upload-progress-percent');
+    expect(content).toContain('.upload-progress-status');
+  });
+
+  test('settings page has progress helper functions', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    expect(content).toContain('function sbShowUploadProgress');
+    expect(content).toContain('function sbUpdateUploadProgress');
+    expect(content).toContain('function sbHideUploadProgress');
+    expect(content).toContain('function sbUploadWithProgress');
+  });
+
+  test('sbUploadBuzzerSound uses XHR with progress instead of fetch', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    const fn = content.substring(
+      content.indexOf('function sbUploadBuzzerSound'),
+      content.indexOf('function sbRemoveBuzzerSound')
+    );
+    expect(fn).toContain('sbUploadWithProgress');
+    expect(fn).not.toContain('fetch(');
+  });
+
+  test('sbUploadHornSound uses XHR with progress instead of fetch', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    const fn = content.substring(
+      content.indexOf('function sbUploadHornSound'),
+      content.indexOf('function sbRemoveHornSound')
+    );
+    expect(fn).toContain('sbUploadWithProgress');
+    expect(fn).not.toContain('fetch(');
+  });
+
+  test('sbUploadTeamLogo uses XHR with progress instead of fetch', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    const fn = content.substring(
+      content.indexOf('function sbUploadTeamLogo'),
+      content.indexOf('function sbAddSpeakerRow')
+    );
+    expect(fn).toContain('sbUploadWithProgress');
+    expect(fn).not.toContain('fetch(');
+  });
+
+  test('sbUploadWithProgress uses XMLHttpRequest with upload.onprogress', () => {
+    const content = readFile('views/scoreboard/scoreboard_settings.php');
+    const fn = content.substring(
+      content.indexOf('function sbUploadWithProgress'),
+      content.indexOf('function sbSaveSettings')
+    );
+    expect(fn).toContain('new XMLHttpRequest');
+    expect(fn).toContain('xhr.upload.onprogress');
+    expect(fn).toContain('xhr.onload');
+    expect(fn).toContain('xhr.onerror');
+  });
+
+  test('display page has quick upload progress modal HTML', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sbQuickUploadOverlay');
+    expect(content).toContain('sbQuickUploadBar');
+    expect(content).toContain('sbQuickUploadPercent');
+    expect(content).toContain('sbQuickUploadStatus');
+  });
+
+  test('display page has upload progress CSS', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('.upload-progress-overlay');
+    expect(content).toContain('.upload-progress-card');
+    expect(content).toContain('.upload-progress-bar-container');
+    expect(content).toContain('.upload-progress-bar');
+  });
+
+  test('sbQuickLogoUpload uses XHR with progress instead of fetch', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    const fn = content.substring(
+      content.indexOf('function sbQuickLogoUpload'),
+      content.indexOf('</script>', content.indexOf('function sbQuickLogoUpload'))
+    );
+    expect(fn).toContain('new XMLHttpRequest');
+    expect(fn).toContain('xhr.upload.onprogress');
+    expect(fn).not.toContain('fetch(');
+  });
+});
+
+// =====================================================
+// Scoreboard team name max-width doubled
+// =====================================================
+
+test.describe('Scoreboard team name display width', () => {
+  test('team name max-width is at least 360px for full names', () => {
+    const content = readFile('css/scoreboard.css');
+    const match = content.match(/\.sb-board-team-name\s*\{[^}]*max-width:\s*(\d+)px/);
+    expect(match).not.toBeNull();
+    expect(parseInt(match[1], 10)).toBeGreaterThanOrEqual(360);
+  });
+
+  test('responsive team name max-width is at least 240px', () => {
+    const content = readFile('css/scoreboard.css');
+    expect(content).toContain('.sb-board-team-name { font-size: 12px; max-width: 240px; }');
+  });
+});
+
+// =====================================================
+// Goal assignment modal and stat tracking toggle
+// =====================================================
+
+test.describe('Goal assignment modal on +1 Goal', () => {
+  test('scoreboard_display.php has goal assignment modal HTML', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sb-goal-assign-modal');
+    expect(content).toContain('sbGoalAssignForm');
+    expect(content).toContain('sbGoalAssignTeamLabel');
+    expect(content).toContain('sbGoalAssignTeam');
+  });
+
+  test('goal assignment modal has scorer, assist1, assist2 fields', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sbGoalAssignScorerNum');
+    expect(content).toContain('sbGoalAssignScorerName');
+    expect(content).toContain('sbGoalAssignAssist1Num');
+    expect(content).toContain('sbGoalAssignAssist1Name');
+    expect(content).toContain('sbGoalAssignAssist2Num');
+    expect(content).toContain('sbGoalAssignAssist2Name');
+  });
+
+  test('goal assignment modal has goal type dropdown', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sbGoalAssignType');
+    expect(content).toContain('Even Strength');
+    expect(content).toContain('Power Play');
+    expect(content).toContain('Short Handed');
+  });
+
+  test('goal assignment modal has skip and save buttons', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sbSkipGoalAssignment()');
+    expect(content).toContain('sbSubmitGoalAssignment(event)');
+  });
+
+  test('JS sbAddGoal shows goal assignment modal when stat tracking enabled', () => {
+    const content = readFile('js/scoreboard.js');
+    const fn = content.substring(
+      content.indexOf('function sbAddGoal('),
+      content.indexOf('function sbShowGoalAssignModal')
+    );
+    expect(fn).toContain('SB_STAT_TRACKING');
+    expect(fn).toContain('sbShowGoalAssignModal(team)');
+  });
+
+  test('JS has sbShowGoalAssignModal function', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbShowGoalAssignModal(team)');
+    expect(content).toContain('sb-goal-assign-modal');
+    expect(content).toContain('sbGoalAssignTeamLabel');
+  });
+
+  test('JS has sbSubmitGoalAssignment function that calls add_goal_detail', () => {
+    const content = readFile('js/scoreboard.js');
+    const fn = content.substring(
+      content.indexOf('function sbSubmitGoalAssignment'),
+      content.indexOf('function sbSkipGoalAssignment')
+    );
+    expect(fn).toContain('add_goal_detail');
+    expect(fn).toContain('sbGoalAssignForm');
+    expect(fn).toContain('sb-goal-assign-modal');
+  });
+
+  test('JS has sbSkipGoalAssignment function', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbSkipGoalAssignment()');
+    expect(content).toContain("document.getElementById('sb-goal-assign-modal').classList.remove('active')");
+  });
+
+  test('sbShowGoalAssignModal pre-detects goal type from penalty state', () => {
+    const content = readFile('js/scoreboard.js');
+    const fn = content.substring(
+      content.indexOf('function sbShowGoalAssignModal'),
+      content.indexOf('function sbSubmitGoalAssignment')
+    );
+    expect(fn).toContain('sbHasClearableMinor');
+    expect(fn).toContain("'Power Play'");
+    expect(fn).toContain("'Short Handed'");
+  });
+
+  test('sbSubmitGoalAssignment auto-fills period and game time from clock', () => {
+    const content = readFile('js/scoreboard.js');
+    const fn = content.substring(
+      content.indexOf('function sbSubmitGoalAssignment'),
+      content.indexOf('function sbSkipGoalAssignment')
+    );
+    expect(fn).toContain('sbCurrentPeriod');
+    expect(fn).toContain('sbFormatClock(sbClockSeconds)');
+  });
+});
+
+test.describe('Stat tracking toggle in New Game form', () => {
+  test('New Game modal has disable stat tracking checkbox', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sb-disable-stat-tracking');
+    expect(content).toContain('disable_stat_tracking');
+    expect(content).toContain('Disable stat tracking');
+  });
+
+  test('sbStartGame passes stat_tracking_enabled to backend', () => {
+    const content = readFile('js/scoreboard.js');
+    const fn = content.substring(
+      content.indexOf('function sbStartGame'),
+      content.indexOf('function sbEndGame')
+    );
+    expect(fn).toContain('stat_tracking_enabled');
+    expect(fn).toContain('sb-disable-stat-tracking');
+  });
+
+  test('process_scoreboard.php start_game saves stat_tracking_enabled', () => {
+    const content = readFile('process_scoreboard.php');
+    expect(content).toContain('stat_tracking_enabled');
+    const startSection = content.substring(
+      content.indexOf("case 'start_game':"),
+      content.indexOf("case 'update_status':")
+    );
+    expect(startSection).toContain('stat_tracking_enabled');
+  });
+
+  test('scoreboard.php outputs SB_STAT_TRACKING JS global', () => {
+    const content = readFile('scoreboard.php');
+    expect(content).toContain('SB_STAT_TRACKING');
+    expect(content).toContain('stat_tracking_enabled');
+  });
+
+  test('scoreboard.php outputs SB_HOME_TEAM_NAME and SB_AWAY_TEAM_NAME', () => {
+    const content = readFile('scoreboard.php');
+    expect(content).toContain('SB_HOME_TEAM_NAME');
+    expect(content).toContain('SB_AWAY_TEAM_NAME');
+  });
+
+  test('database_schema.sql has stat_tracking_enabled column', () => {
+    const content = readFile('database_schema.sql');
+    expect(content).toContain('stat_tracking_enabled');
+  });
+});
+
+// =====================================================
+// Music clock integration (auto-play/pause with clock)
+// =====================================================
+
+test.describe('Music auto-play/pause on clock start/stop', () => {
+  test('JS has sbMusicAutoplay flag and sbToggleMusicAutoplay function', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('var sbMusicAutoplay');
+    expect(content).toContain('function sbToggleMusicAutoplay()');
+  });
+
+  test('JS has sbMusicOnClockStart that pauses music when autoplay enabled', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbMusicOnClockStart()');
+    const fn = content.substring(
+      content.indexOf('function sbMusicOnClockStart()'),
+      content.indexOf('function sbMusicOnClockStop()')
+    );
+    expect(fn).toContain('sbMusicAutoplay');
+    expect(fn).toContain('sbMusicPause');
+  });
+
+  test('JS has sbMusicOnClockStop that resumes music when autoplay enabled', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbMusicOnClockStop()');
+    const fn = content.substring(
+      content.indexOf('function sbMusicOnClockStop()'),
+      content.indexOf('function sbMusicPlay(')
+    );
+    expect(fn).toContain('sbMusicAutoplay');
+    expect(fn).toContain('sbMusicResume');
+  });
+
+  test('sbClockStart calls sbMusicOnClockStart', () => {
+    const content = readFile('js/scoreboard.js');
+    const fn = content.substring(
+      content.indexOf('function sbClockStart()'),
+      content.indexOf('function sbClockStop()')
+    );
+    expect(fn).toContain('sbMusicOnClockStart()');
+  });
+
+  test('sbClockStop calls sbMusicOnClockStop', () => {
+    const content = readFile('js/scoreboard.js');
+    const fn = content.substring(
+      content.indexOf('function sbClockStop()'),
+      content.indexOf('function sbClockToggle()')
+    );
+    expect(fn).toContain('sbMusicOnClockStop()');
+  });
+
+  test('display view has autoplay toggle button', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sbMusicAutoplayBtn');
+    expect(content).toContain('sbToggleMusicAutoplay()');
+    expect(content).toContain('Auto-play');
+  });
+
+  test('display view has autoplay indicator', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sbMusicAutoplayIndicator');
+    expect(content).toContain('music will pause/resume with clock');
+  });
+});
+
+// =====================================================
+// Music continuous playback toggle
+// =====================================================
+
+test.describe('Music continuous playback toggle', () => {
+  test('JS has sbMusicContinuous flag', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('var sbMusicContinuous');
+  });
+
+  test('JS has sbToggleMusicContinuous function', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbToggleMusicContinuous()');
+  });
+
+  test('sbMusicPlay ended event respects sbMusicContinuous flag', () => {
+    const content = readFile('js/scoreboard.js');
+    const fn = content.substring(
+      content.indexOf('function sbMusicPlay('),
+      content.indexOf('function sbMusicPause()')
+    );
+    expect(fn).toContain('sbMusicContinuous');
+    expect(fn).toContain('sbMusicNext()');
+  });
+
+  test('display view has continuous playback toggle button', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sbMusicContinuousBtn');
+    expect(content).toContain('sbToggleMusicContinuous()');
+    expect(content).toContain('Continuous');
+  });
+});
+
+// =====================================================
+// Playlist management (add to queue without playing)
+// =====================================================
+
+test.describe('Playlist management', () => {
+  test('JS has sbAddToPlaylist function', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbAddToPlaylist(');
+    const fn = content.substring(
+      content.indexOf('function sbAddToPlaylist('),
+      content.indexOf('function sbUpdatePlaylistCount()')
+    );
+    expect(fn).toContain('sbMusicPlayer.queue.push');
+  });
+
+  test('JS has sbAddToPlaylistFromTrack function for library tracks', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbAddToPlaylistFromTrack(');
+  });
+
+  test('JS has sbAddAllToPlaylist function', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbAddAllToPlaylist()');
+  });
+
+  test('JS has sbUpdatePlaylistCount function', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbUpdatePlaylistCount()');
+    expect(content).toContain('sbPlaylistCount');
+  });
+
+  test('display view has playlist count badge', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sbPlaylistCount');
+  });
+
+  test('music library renders add-to-playlist buttons on tracks', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('sb-ml-track-add');
+    expect(content).toContain('sbAddToPlaylistFromTrack');
+    expect(content).toContain('Add to Playlist');
+  });
+
+  test('album view has Add All to Playlist button', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('sbAddAllToPlaylist()');
+    expect(content).toContain('Add All to Playlist');
+  });
+
+  test('CSS has add-to-playlist button styles', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('.sb-ml-track-add');
+  });
+});
+
+// =====================================================
+// Music search fix (server-side search via Subsonic search3)
+// =====================================================
+
+test.describe('Music search fix – server-side Subsonic search', () => {
+  test('process_scoreboard.php has subsonic_search action', () => {
+    const content = readFile('process_scoreboard.php');
+    expect(content).toContain("case 'subsonic_search':");
+    expect(content).toContain('search3');
+    expect(content).toContain('songCount');
+  });
+
+  test('subsonic_search uses search3 API with query parameter', () => {
+    const content = readFile('process_scoreboard.php');
+    const searchSection = content.substring(
+      content.indexOf("case 'subsonic_search':"),
+      content.indexOf("break;", content.indexOf("case 'subsonic_search':"))
+    );
+    expect(searchSection).toContain('/rest/search3?');
+    expect(searchSection).toContain('urlencode($query)');
+    expect(searchSection).toContain('searchResult3');
+  });
+
+  test('subsonic_search validates query length >= 2', () => {
+    const content = readFile('process_scoreboard.php');
+    const searchSection = content.substring(
+      content.indexOf("case 'subsonic_search':"),
+      content.indexOf("break;", content.indexOf("case 'subsonic_search':"))
+    );
+    expect(searchSection).toContain('strlen($query) < 2');
+  });
+
+  test('JS sbMusicLibraryFilter calls sbSubsonicServerSearch for queries >= 2 chars', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbSubsonicServerSearch(');
+    const filterFn = content.substring(
+      content.indexOf('function sbMusicLibraryFilter('),
+      content.indexOf('function sbSubsonicServerSearch(')
+    );
+    expect(filterFn).toContain('sbSubsonicServerSearch');
+    expect(filterFn).toContain('query.length >= 2');
+  });
+
+  test('JS sbSubsonicServerSearch calls subsonic_search action', () => {
+    const content = readFile('js/scoreboard.js');
+    const fn = content.substring(
+      content.indexOf('function sbSubsonicServerSearch('),
+      content.indexOf('function sbSpotifyConnect()')
+    );
+    expect(fn).toContain("sbFetch('subsonic_search'");
+    expect(fn).toContain('sb-ml-search-results');
+  });
+
+  test('album list size increased from 100 to 500', () => {
+    const content = readFile('process_scoreboard.php');
+    expect(content).toContain('getAlbumList2');
+    expect(content).toContain('size=500');
+  });
+
+  test('random songs size increased from 50 to 200', () => {
+    const content = readFile('process_scoreboard.php');
+    expect(content).toContain('getRandomSongs');
+    expect(content).toContain('size=200');
+  });
+
+  test('search uses debouncing (400ms) to avoid excessive requests', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('_sbSearchTimer');
+    expect(content).toContain('clearTimeout(_sbSearchTimer)');
+    expect(content).toContain('setTimeout');
+    expect(content).toContain('400');
+  });
+});

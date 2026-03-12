@@ -422,6 +422,9 @@ if ($active_game) {
     var CUSTOM_BUZZER_URL = '<?= htmlspecialchars($custom_buzzer_url, ENT_QUOTES) ?>';
     var CUSTOM_HORN_URL = '<?= htmlspecialchars($custom_horn_url, ENT_QUOTES) ?>';
     var IS_ADMIN = <?= $isAdmin ? 'true' : 'false' ?>;
+    var SB_STAT_TRACKING = <?= ($active_game && !empty($active_game['stat_tracking_enabled'])) ? 'true' : 'false' ?>;
+    var SB_HOME_TEAM_NAME = <?= json_encode($active_game['home_team_name'] ?? 'Home') ?>;
+    var SB_AWAY_TEAM_NAME = <?= json_encode($active_game['away_team_name'] ?? 'Away') ?>;
     </script>
     <script defer src="js/scoreboard.js?v=<?= filemtime(__DIR__ . '/js/scoreboard.js') ?>"></script>
 </head>

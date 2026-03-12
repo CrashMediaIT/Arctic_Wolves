@@ -177,7 +177,7 @@ body.sb-body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 180px;
+  max-width: 360px;
 }
 .sb-board-team-logo {
   width: clamp(40px, 5vw, 64px);
@@ -872,7 +872,7 @@ body.sb-body {
   .sb-board-penalty-stack.home { grid-column: 1; grid-row: 2; }
   .sb-board-penalty-stack.away { grid-column: 3; grid-row: 2; }
   .sb-board-team { min-width: 100px; }
-  .sb-board-team-name { font-size: 12px; max-width: 120px; }
+  .sb-board-team-name { font-size: 12px; max-width: 240px; }
   .sb-topbar { padding: 6px 16px; }
   .sb-topbar-actions { gap: 6px; }
   .sb-topbar-actions .sb-btn { padding: 5px 10px; font-size: 12px; }

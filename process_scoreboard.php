@@ -94,6 +94,7 @@ try {
             $home_team_id = !empty($_POST['home_team_id']) ? (int)$_POST['home_team_id'] : null;
             $away_team_id = !empty($_POST['away_team_id']) ? (int)$_POST['away_team_id'] : null;
             $is_aw_game = !empty($_POST['is_arctic_wolves_game']) ? 1 : 0;
+            $stat_tracking = isset($_POST['stat_tracking_enabled']) && $_POST['stat_tracking_enabled'] === '0' ? 0 : 1;
 
             if (empty($home_name) || empty($away_name)) {
                 echo json_encode(['success' => false, 'message' => 'Team names required']);
@@ -102,10 +103,10 @@ try {
 
             $stmt = $pdo->prepare("
                 INSERT INTO scoreboard_games (home_team_name, away_team_name, home_team_id, away_team_id,
-                    is_arctic_wolves_game, status, current_period, created_by)
-                VALUES (?, ?, ?, ?, ?, 'warmup', 1, ?)
+                    is_arctic_wolves_game, stat_tracking_enabled, status, current_period, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, 'warmup', 1, ?)
             ");
-            $stmt->execute([$home_name, $away_name, $home_team_id, $away_team_id, $is_aw_game, $user_id]);
+            $stmt->execute([$home_name, $away_name, $home_team_id, $away_team_id, $is_aw_game, $stat_tracking, $user_id]);
             $game_id = (int)$pdo->lastInsertId();
 
             Auditor::log($pdo, $user_id, 'create', 'scoreboard_games', $game_id, ['action' => 'Game started', 'home' => $home_name, 'away' => $away_name]);
@@ -887,7 +888,7 @@ try {
             $baseParams = 'u=' . urlencode($subUser) . '&t=' . urlencode($token) . '&s=' . urlencode($salt) . '&v=1.16.1&c=ArcticWolves&f=json';
 
             // Fetch albums (getAlbumList2)
-            $albumsUrl = $subUrl . '/rest/getAlbumList2?' . $baseParams . '&type=alphabeticalByName&size=100';
+            $albumsUrl = $subUrl . '/rest/getAlbumList2?' . $baseParams . '&type=alphabeticalByName&size=500';
             $albums = [];
             $ctx = stream_context_create(['http' => ['timeout' => 10, 'ignore_errors' => true]]);
             $albumsResp = file_get_contents($albumsUrl, false, $ctx);
@@ -908,8 +909,8 @@ try {
                     ];
                 }
             }
-            // Fetch random songs
-            $songsUrl = $subUrl . '/rest/getRandomSongs?' . $baseParams . '&size=50';
+            // Fetch random songs (initial browse; search3 used for full-library search)
+            $songsUrl = $subUrl . '/rest/getRandomSongs?' . $baseParams . '&size=200';
             $songs = [];
             $songsResp = file_get_contents($songsUrl, false, $ctx);
             if ($songsResp === false) {
@@ -997,6 +998,71 @@ try {
                 }
             }
             echo json_encode(['success' => true, 'album' => $album, 'songs' => $songs]);
+            break;
+
+        // ── Subsonic search (search3 – queries entire library) ──
+        case 'subsonic_search':
+            $query = trim($_POST['query'] ?? '');
+            if (strlen($query) < 2) {
+                echo json_encode(['success' => false, 'message' => 'Query too short']);
+                exit();
+            }
+            $subSettings = [];
+            $stmt = $pdo->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('subsonic_url', 'subsonic_username', 'subsonic_password')");
+            $stmt->execute();
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $s) {
+                $subSettings[$s['setting_key']] = $s['setting_value'] ?? '';
+            }
+            $subUrl = rtrim($subSettings['subsonic_url'] ?? '', '/');
+            $subUser = $subSettings['subsonic_username'] ?? '';
+            $subPass = $subSettings['subsonic_password'] ?? '';
+            if (empty($subUrl) || empty($subUser)) {
+                echo json_encode(['success' => false, 'message' => 'Subsonic not configured']);
+                exit();
+            }
+            if (!empty($subPass)) {
+                require_once __DIR__ . '/lib/encryption.php';
+                if (FieldEncryption::isConfigured()) {
+                    try { $subPass = decryptCredential($subPass); } catch (Exception $e) { /* use as-is */ }
+                }
+            }
+            $salt = bin2hex(random_bytes(8));
+            $token = md5($subPass . $salt);
+            $baseParams = 'u=' . urlencode($subUser) . '&t=' . urlencode($token) . '&s=' . urlencode($salt) . '&v=1.16.1&c=ArcticWolves&f=json';
+
+            $searchUrl = $subUrl . '/rest/search3?' . $baseParams . '&query=' . urlencode($query) . '&songCount=100&albumCount=50&artistCount=0';
+            $ctx = stream_context_create(['http' => ['timeout' => 10, 'ignore_errors' => true]]);
+            $searchResp = file_get_contents($searchUrl, false, $ctx);
+            $albums = [];
+            $songs = [];
+            if ($searchResp) {
+                $searchData = json_decode($searchResp, true);
+                $result = $searchData['subsonic-response']['searchResult3'] ?? [];
+                // Albums
+                foreach ($result['album'] ?? [] as $a) {
+                    $cover = !empty($a['coverArt']) ? $subUrl . '/rest/getCoverArt?' . $baseParams . '&id=' . urlencode($a['coverArt']) . '&size=200' : '';
+                    $albums[] = [
+                        'id' => $a['id'] ?? '',
+                        'name' => $a['name'] ?? $a['title'] ?? 'Unknown',
+                        'artist' => $a['artist'] ?? '',
+                        'cover' => $cover
+                    ];
+                }
+                // Songs
+                foreach ($result['song'] ?? [] as $s) {
+                    $durationSec = (int)($s['duration'] ?? 0);
+                    $durationStr = $durationSec > 0 ? sprintf('%d:%02d', floor($durationSec / 60), $durationSec % 60) : '';
+                    $songs[] = [
+                        'id' => $s['id'] ?? '',
+                        'title' => $s['title'] ?? 'Unknown',
+                        'artist' => $s['artist'] ?? '',
+                        'album' => $s['album'] ?? '',
+                        'duration' => $durationStr,
+                        'url' => $subUrl . '/rest/stream?' . $baseParams . '&id=' . urlencode($s['id'] ?? '')
+                    ];
+                }
+            }
+            echo json_encode(['success' => true, 'albums' => $albums, 'songs' => $songs]);
             break;
 
         default:

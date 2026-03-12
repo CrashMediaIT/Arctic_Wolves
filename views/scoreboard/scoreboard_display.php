@@ -716,12 +716,21 @@ foreach ($away_penalties as $p) {
                 <?php if ($spotify_configured || $subsonic_configured || $apple_music_configured): ?>
                 <button class="sb-ctrl-btn-primary" onclick="sbOpenMusicLibrary()" style="background:#1A1A24;border:1px solid #6B46C1;color:#E2E8F0;min-height:52px;">
                     <i class="fas fa-headphones"></i> Open Music Library
+                    <span id="sbPlaylistCount" style="display:none;background:#6B46C1;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:6px;">0</span>
                 </button>
                 <div class="sb-ctrl-music-player" id="sbMusicPlayerControls" style="display:flex;align-items:center;gap:6px;padding:4px 0;">
                     <button class="sb-ctrl-btn-secondary" onclick="sbMusicPrev()" style="min-height:36px;min-width:36px;padding:0;flex:0;"><i class="fas fa-step-backward"></i></button>
                     <button class="sb-ctrl-btn-secondary" id="sbMusicPlayPause" onclick="sbMusicToggle()" style="min-height:36px;min-width:36px;padding:0;flex:0;"><i class="fas fa-play"></i></button>
                     <button class="sb-ctrl-btn-secondary" onclick="sbMusicNext()" style="min-height:36px;min-width:36px;padding:0;flex:0;"><i class="fas fa-step-forward"></i></button>
                     <button class="sb-ctrl-btn-secondary" onclick="sbMusicStop()" style="min-height:36px;min-width:36px;padding:0;flex:0;"><i class="fas fa-stop"></i></button>
+                </div>
+                <div style="display:flex;gap:6px;padding:4px 0;">
+                    <button class="sb-ctrl-btn-secondary" id="sbMusicAutoplayBtn" onclick="sbToggleMusicAutoplay()" title="Auto-play OFF" style="min-height:34px;font-size:11px;flex:1;">
+                        <i class="fas fa-magic"></i> Auto-play
+                    </button>
+                    <button class="sb-ctrl-btn-secondary active" id="sbMusicContinuousBtn" onclick="sbToggleMusicContinuous()" title="Continuous: advance to next track" style="min-height:34px;font-size:11px;flex:1;">
+                        <i class="fas fa-redo"></i> Continuous
+                    </button>
                 </div>
                 <?php else: ?>
                 <div style="text-align:center;padding:12px;color:#555;font-size:12px;">No music sources configured<?php if ($isAdmin): ?> — <a href="?view=settings" style="color:#6B46C1;">Configure in Settings</a><?php endif; ?></div>
@@ -733,6 +742,9 @@ foreach ($away_penalties as $p) {
             <span class="sb-ctrl-section-label">Now Playing</span>
             <div class="sb-ctrl-now-playing" id="sbNowPlaying">
                 <i class="fas fa-music"></i> <strong>No music playing</strong>
+            </div>
+            <div id="sbMusicAutoplayIndicator" style="display:none;font-size:11px;color:#10B981;padding:2px 0;">
+                <i class="fas fa-magic"></i> Auto-play: music will pause/resume with clock
             </div>
 
             <hr class="sb-ctrl-divider">
@@ -964,6 +976,11 @@ foreach ($opponent_teams as $opp) {
                 This is an Arctic Wolves game (auto-sync stats)
             </label>
 
+            <label>
+                <input type="checkbox" id="sb-disable-stat-tracking" name="disable_stat_tracking" value="1">
+                Disable stat tracking (goals won't prompt for player assignment)
+            </label>
+
             <div class="sb-modal-actions">
                 <button type="button" class="sb-btn" onclick="document.getElementById('sb-new-game-modal').classList.remove('active')">Cancel</button>
                 <button type="submit" class="sb-btn sb-btn-primary"><i class="fas fa-play"></i> Start Game</button>
@@ -982,6 +999,44 @@ function sbTeamSelectFill(selectEl, inputId) {
     }
 }
 </script>
+
+<!-- Goal Assignment Modal (shown after +1 Goal when stat tracking is enabled) -->
+<div class="sb-modal-overlay" id="sb-goal-assign-modal">
+    <div class="sb-modal" style="max-width:460px;">
+        <h2><i class="fas fa-hockey-puck"></i> Goal Scored — <span id="sbGoalAssignTeamLabel">Home</span></h2>
+        <form id="sbGoalAssignForm" onsubmit="return sbSubmitGoalAssignment(event)">
+            <input type="hidden" id="sbGoalAssignTeam" value="">
+            <label>Scorer</label>
+            <div style="display:grid;grid-template-columns:60px 1fr;gap:8px;">
+                <input type="text" id="sbGoalAssignScorerNum" name="scorer_number" placeholder="#" maxlength="3">
+                <input type="text" id="sbGoalAssignScorerName" name="scorer_name" placeholder="Scorer name">
+            </div>
+            <label>Assist 1</label>
+            <div style="display:grid;grid-template-columns:60px 1fr;gap:8px;">
+                <input type="text" id="sbGoalAssignAssist1Num" name="assist1_number" placeholder="#" maxlength="3">
+                <input type="text" id="sbGoalAssignAssist1Name" name="assist1_name" placeholder="First assist">
+            </div>
+            <label>Assist 2</label>
+            <div style="display:grid;grid-template-columns:60px 1fr;gap:8px;">
+                <input type="text" id="sbGoalAssignAssist2Num" name="assist2_number" placeholder="#" maxlength="3">
+                <input type="text" id="sbGoalAssignAssist2Name" name="assist2_name" placeholder="Second assist">
+            </div>
+            <label>Goal Type</label>
+            <select name="goal_type" id="sbGoalAssignType">
+                <option value="Even Strength">Even Strength</option>
+                <option value="Power Play">Power Play</option>
+                <option value="Short Handed">Short Handed</option>
+                <option value="Empty Net">Empty Net</option>
+                <option value="Penalty Shot">Penalty Shot</option>
+                <option value="Overtime">Overtime</option>
+            </select>
+            <div class="sb-modal-actions" style="margin-top:12px;">
+                <button type="button" class="sb-btn" onclick="sbSkipGoalAssignment()">Skip</button>
+                <button type="submit" class="sb-btn sb-btn-primary"><i class="fas fa-check"></i> Save Goal Details</button>
+            </div>
+        </form>
+    </div>
+</div>
 
 <!-- Penalty Modal -->
 <div class="sb-modal-overlay" id="sb-penalty-modal">
@@ -1190,6 +1245,16 @@ function sbToggleEmptyNet(team) {
 }
 
 // ── Quick logo upload from team controls ──────────────────
+function sbShowQuickUploadProgress() {
+    var overlay = document.getElementById('sbQuickUploadOverlay');
+    document.getElementById('sbQuickUploadBar').style.width = '0%';
+    document.getElementById('sbQuickUploadPercent').textContent = '0%';
+    document.getElementById('sbQuickUploadStatus').textContent = 'Preparing upload...';
+    overlay.style.display = 'flex';
+}
+function sbHideQuickUploadProgress() {
+    document.getElementById('sbQuickUploadOverlay').style.display = 'none';
+}
 function sbQuickLogoUpload(input) {
     if (!input.files || !input.files[0]) return;
     var teamId = parseInt(input.getAttribute('data-team-id'), 10) || 0;
@@ -1202,20 +1267,54 @@ function sbQuickLogoUpload(input) {
     fd.append('csrf_token', CSRF_TOKEN);
     fd.append('team_id', teamId);
     fd.append('logo_file', input.files[0]);
-    fetch('/process_scoreboard.php', {
-        method: 'POST',
-        headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-Token': CSRF_TOKEN },
-        body: fd
-    }).then(function(r) { return r.json(); })
-    .then(function(d) {
-        if (d.success) {
-            sbSaveAndReload();
-        } else {
-            alert(d.message || 'Logo upload failed');
+
+    sbShowQuickUploadProgress();
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '/process_scoreboard.php', true);
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+    xhr.setRequestHeader('X-CSRF-Token', CSRF_TOKEN);
+    xhr.upload.onprogress = function(ev) {
+        if (ev.lengthComputable) {
+            var pct = Math.round((ev.loaded / ev.total) * 100);
+            document.getElementById('sbQuickUploadBar').style.width = pct + '%';
+            document.getElementById('sbQuickUploadPercent').textContent = pct + '%';
+            document.getElementById('sbQuickUploadStatus').textContent = pct < 100 ? 'Uploading... ' + pct + '%' : 'Finalizing...';
         }
-    }).catch(function() { alert('Network error uploading logo.'); });
+    };
+    xhr.onload = function() {
+        sbHideQuickUploadProgress();
+        try {
+            var d = JSON.parse(xhr.responseText);
+            if (xhr.status >= 200 && xhr.status < 300 && d.success) {
+                sbSaveAndReload();
+            } else {
+                alert(d.message || 'Logo upload failed');
+            }
+        } catch (e) {
+            alert('Invalid server response');
+        }
+    };
+    xhr.onerror = function() {
+        sbHideQuickUploadProgress();
+        alert('Network error uploading logo.');
+    };
+    xhr.send(fd);
 }
 </script>
+
+<!-- Quick Logo Upload Progress Modal -->
+<div id="sbQuickUploadOverlay" class="upload-progress-overlay" style="display: none;">
+    <div class="upload-progress-card">
+        <div class="spinner" id="sbQuickUploadSpinner"></div>
+        <h4>Uploading Team Logo...</h4>
+        <p class="upload-progress-text">Uploading your team logo. Please wait.</p>
+        <div class="upload-progress-bar-container">
+            <div class="upload-progress-bar" id="sbQuickUploadBar"></div>
+        </div>
+        <span class="upload-progress-percent" id="sbQuickUploadPercent">0%</span>
+        <span class="upload-progress-status" id="sbQuickUploadStatus">Preparing upload...</span>
+    </div>
+</div>
 
 <!-- Music Library Modal -->
 <div class="sb-modal-overlay" id="sb-music-library-modal">
@@ -1459,6 +1558,24 @@ function sbQuickLogoUpload(input) {
 }
 .sb-ml-track:hover .sb-ml-track-play { opacity: 1; }
 .sb-ml-track-play:hover { color: #6B46C1; }
+.sb-ml-track-add {
+    background: none;
+    border: none;
+    color: #8B8BA3;
+    font-size: 13px;
+    cursor: pointer;
+    padding: 4px 6px;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s;
+}
+.sb-ml-track:hover .sb-ml-track-add { opacity: 1; }
+.sb-ml-track-add:hover { color: #10B981; }
+.sb-ctrl-btn-secondary.active {
+    border-color: #6B46C1;
+    color: #6B46C1;
+    background: rgba(107, 70, 193, 0.1);
+}
 .sb-ml-back-btn {
     background: none;
     border: 1px solid #2D2D3F;
@@ -1529,5 +1646,75 @@ function sbQuickLogoUpload(input) {
     display: inline-flex !important;
     width: auto !important;
     min-width: auto !important;
+}
+/* Upload Progress Overlay */
+.upload-progress-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+.upload-progress-card {
+    background: #0d1117;
+    border: 1px solid #1e293b;
+    border-radius: 12px;
+    padding: 40px;
+    text-align: center;
+    max-width: 420px;
+    width: 90%;
+}
+.upload-progress-card .spinner {
+    width: 36px;
+    height: 36px;
+    margin: 0 auto 16px;
+    border: 3px solid #1e293b;
+    border-top-color: #7c3aed;
+    border-radius: 50%;
+    animation: upload-spin 0.8s linear infinite;
+}
+@keyframes upload-spin {
+    to { transform: rotate(360deg); }
+}
+.upload-progress-card h4 {
+    color: #fff;
+    font-size: 18px;
+    margin-bottom: 8px;
+}
+.upload-progress-text {
+    color: #64748b;
+    font-size: 13px;
+    margin-bottom: 20px;
+}
+.upload-progress-bar-container {
+    width: 100%;
+    height: 8px;
+    background: #06080b;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+.upload-progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #7c3aed, #a78bfa);
+    border-radius: 4px;
+    transition: width 0.4s ease;
+}
+.upload-progress-percent {
+    display: block;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+.upload-progress-status {
+    color: #64748b;
+    font-size: 12px;
 }
 </style>
