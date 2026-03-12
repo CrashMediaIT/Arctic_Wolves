@@ -375,6 +375,8 @@ function sbClockStart() {
     // Update game status
     var statusEl = document.getElementById('sbStatus');
     if (statusEl) statusEl.textContent = 'IN PROGRESS';
+    // Music integration: pause music when clock starts
+    sbMusicOnClockStart();
 }
 
 function sbClockStop() {
@@ -389,6 +391,8 @@ function sbClockStop() {
         btn.classList.remove('running');
     }
     sbSaveClockState();
+    // Music integration: resume music when clock stops
+    sbMusicOnClockStop();
 }
 
 function sbClockToggle() {
@@ -1297,11 +1301,94 @@ var sbMusicPlayer = {
     queueIndex: -1
 };
 
+// Music–clock integration flags
+var sbMusicAutoplay = false;    // When true, music auto-resumes when clock stops and auto-pauses when clock starts
+var sbMusicContinuous = true;   // When true, advance to next track on song end; when false, stop after current track
+
+function sbToggleMusicAutoplay() {
+    sbMusicAutoplay = !sbMusicAutoplay;
+    var btn = document.getElementById('sbMusicAutoplayBtn');
+    if (btn) {
+        btn.classList.toggle('active', sbMusicAutoplay);
+        btn.title = sbMusicAutoplay ? 'Auto-play ON: music plays when clock stops' : 'Auto-play OFF';
+    }
+    sbUpdateMusicAutoplayIndicator();
+}
+
+function sbUpdateMusicAutoplayIndicator() {
+    var indicator = document.getElementById('sbMusicAutoplayIndicator');
+    if (indicator) {
+        indicator.style.display = sbMusicAutoplay ? '' : 'none';
+    }
+}
+
+function sbToggleMusicContinuous() {
+    sbMusicContinuous = !sbMusicContinuous;
+    var btn = document.getElementById('sbMusicContinuousBtn');
+    if (btn) {
+        btn.classList.toggle('active', sbMusicContinuous);
+        btn.title = sbMusicContinuous ? 'Continuous: advance to next track' : 'Single: stop after current track';
+    }
+}
+
+// Add a track to the playlist queue without playing it
+function sbAddToPlaylist(url, title, artist, source) {
+    sbMusicPlayer.queue.push({
+        url: url,
+        title: title || 'Unknown',
+        artist: artist || '',
+        source: source || 'subsonic'
+    });
+    sbUpdatePlaylistCount();
+}
+
+function sbUpdatePlaylistCount() {
+    var badge = document.getElementById('sbPlaylistCount');
+    if (badge) {
+        var count = sbMusicPlayer.queue.length;
+        badge.textContent = count;
+        badge.style.display = count > 0 ? '' : 'none';
+    }
+}
+
+// Clock→music integration: called from sbClockStart / sbClockStop
+function sbMusicOnClockStart() {
+    if (!sbMusicAutoplay) return;
+    // Pause music when clock starts
+    if (sbMusicPlayer.playing) {
+        sbMusicPause();
+    }
+}
+
+function sbMusicOnClockStop() {
+    if (!sbMusicAutoplay) return;
+    // Resume music when clock stops (if there's a track loaded or queue available)
+    if (sbMusicPlayer.currentTrack && !sbMusicPlayer.playing) {
+        sbMusicResume();
+    } else if (!sbMusicPlayer.currentTrack && sbMusicPlayer.queue.length > 0) {
+        // Start from current queue position or beginning
+        var idx = sbMusicPlayer.queueIndex >= 0 ? sbMusicPlayer.queueIndex : 0;
+        if (idx >= sbMusicPlayer.queue.length) idx = 0;
+        sbMusicPlayer.queueIndex = idx;
+        var track = sbMusicPlayer.queue[idx];
+        sbMusicPlay(track.url, track.title, track.artist, track.source);
+    }
+}
+
 function sbMusicPlay(url, title, artist, source) {
     if (!sbMusicPlayer.audio) {
         sbMusicPlayer.audio = new Audio();
         sbMusicPlayer.audio.addEventListener('ended', function() {
-            sbMusicNext();
+            if (sbMusicContinuous) {
+                sbMusicNext();
+            } else {
+                // Single-track mode: stop after current track
+                sbMusicPlayer.playing = false;
+                sbMusicPlayer.currentTrack = null;
+                sbUpdateNowPlaying(null, null, null);
+                var btn = document.getElementById('sbMusicPlayPause');
+                if (btn) btn.innerHTML = '<i class="fas fa-play"></i>';
+            }
         });
         sbMusicPlayer.audio.addEventListener('error', function() {
             sbUpdateNowPlaying(null, null, null);
@@ -1494,6 +1581,7 @@ function sbRenderSubsonicLibrary(container, artists, albums, songs) {
                     '<div class="sb-ml-track-artist">' + (song.artist || '').replace(/</g, '&lt;') + (song.album ? ' — ' + song.album.replace(/</g, '&lt;') : '') + '</div>' +
                     '</div>' +
                     '<div class="sb-ml-track-duration">' + (song.duration || '') + '</div>' +
+                    '<button class="sb-ml-track-add" onclick="sbAddToPlaylistFromTrack(this.parentElement)" title="Add to Playlist"><i class="fas fa-plus"></i></button>' +
                     '<button class="sb-ml-track-play" onclick="sbPlaySubsonicTrack(this.parentElement)" title="Play"><i class="fas fa-play"></i></button>' +
                     '</div>';
         });
@@ -1527,6 +1615,7 @@ function sbSubsonicLoadAlbum(albumId) {
         html += '<div class="sb-ml-album-header-name">' + (album.name || 'Album').replace(/</g, '&lt;') + '</div>';
         html += '<div class="sb-ml-album-header-artist">' + (album.artist || '').replace(/</g, '&lt;') + '</div>';
         html += '<button class="sb-ml-play-all-btn" onclick="sbPlayAllSubsonicTracks()"><i class="fas fa-play"></i> Play All</button>';
+        html += ' <button class="sb-ml-play-all-btn" onclick="sbAddAllToPlaylist()" style="background:#2D2D3F;"><i class="fas fa-plus"></i> Add All to Playlist</button>';
         html += '</div></div>';
 
         var songs = d.songs || [];
@@ -1539,6 +1628,7 @@ function sbSubsonicLoadAlbum(albumId) {
                     '<div class="sb-ml-track-artist">' + (song.artist || '').replace(/</g, '&lt;') + '</div>' +
                     '</div>' +
                     '<div class="sb-ml-track-duration">' + (song.duration || '') + '</div>' +
+                    '<button class="sb-ml-track-add" onclick="sbAddToPlaylistFromTrack(this.parentElement)" title="Add to Playlist"><i class="fas fa-plus"></i></button>' +
                     '<button class="sb-ml-track-play" onclick="sbPlaySubsonicTrack(this.parentElement)" title="Play"><i class="fas fa-play"></i></button>' +
                     '</div>';
         });
@@ -1594,6 +1684,35 @@ function sbPlayAllSubsonicTracks() {
     var first = sbMusicPlayer.queue[0];
     sbMusicPlay(first.url, first.title, first.artist, 'subsonic');
     sbHighlightActiveTrack();
+}
+
+// Add a single track from library to playlist without playing
+function sbAddToPlaylistFromTrack(trackEl) {
+    var url = trackEl.getAttribute('data-url');
+    var titleEl = trackEl.querySelector('.sb-ml-track-title');
+    var artistEl = trackEl.querySelector('.sb-ml-track-artist');
+    var title = titleEl ? titleEl.textContent : 'Unknown';
+    var artist = artistEl ? artistEl.textContent : '';
+    sbAddToPlaylist(url, title, artist, 'subsonic');
+    // Visual feedback: briefly flash the add button
+    var addBtn = trackEl.querySelector('.sb-ml-track-add');
+    if (addBtn) {
+        addBtn.innerHTML = '<i class="fas fa-check"></i>';
+        setTimeout(function() { addBtn.innerHTML = '<i class="fas fa-plus"></i>'; }, 800);
+    }
+}
+
+// Add all visible tracks in the library to the playlist
+function sbAddAllToPlaylist() {
+    var container = document.getElementById('sbMusicLibraryContent');
+    if (!container) return;
+    var allTracks = container.querySelectorAll('.sb-ml-track');
+    allTracks.forEach(function(t) {
+        var tUrl = t.getAttribute('data-url');
+        var tTitle = t.querySelector('.sb-ml-track-title');
+        var tArtist = t.querySelector('.sb-ml-track-artist');
+        sbAddToPlaylist(tUrl, tTitle ? tTitle.textContent : 'Unknown', tArtist ? tArtist.textContent : '', 'subsonic');
+    });
 }
 
 function sbMusicLibraryFilter(query) {

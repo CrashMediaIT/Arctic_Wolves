@@ -716,12 +716,21 @@ foreach ($away_penalties as $p) {
                 <?php if ($spotify_configured || $subsonic_configured || $apple_music_configured): ?>
                 <button class="sb-ctrl-btn-primary" onclick="sbOpenMusicLibrary()" style="background:#1A1A24;border:1px solid #6B46C1;color:#E2E8F0;min-height:52px;">
                     <i class="fas fa-headphones"></i> Open Music Library
+                    <span id="sbPlaylistCount" style="display:none;background:#6B46C1;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:6px;">0</span>
                 </button>
                 <div class="sb-ctrl-music-player" id="sbMusicPlayerControls" style="display:flex;align-items:center;gap:6px;padding:4px 0;">
                     <button class="sb-ctrl-btn-secondary" onclick="sbMusicPrev()" style="min-height:36px;min-width:36px;padding:0;flex:0;"><i class="fas fa-step-backward"></i></button>
                     <button class="sb-ctrl-btn-secondary" id="sbMusicPlayPause" onclick="sbMusicToggle()" style="min-height:36px;min-width:36px;padding:0;flex:0;"><i class="fas fa-play"></i></button>
                     <button class="sb-ctrl-btn-secondary" onclick="sbMusicNext()" style="min-height:36px;min-width:36px;padding:0;flex:0;"><i class="fas fa-step-forward"></i></button>
                     <button class="sb-ctrl-btn-secondary" onclick="sbMusicStop()" style="min-height:36px;min-width:36px;padding:0;flex:0;"><i class="fas fa-stop"></i></button>
+                </div>
+                <div style="display:flex;gap:6px;padding:4px 0;">
+                    <button class="sb-ctrl-btn-secondary" id="sbMusicAutoplayBtn" onclick="sbToggleMusicAutoplay()" title="Auto-play OFF" style="min-height:34px;font-size:11px;flex:1;">
+                        <i class="fas fa-magic"></i> Auto-play
+                    </button>
+                    <button class="sb-ctrl-btn-secondary active" id="sbMusicContinuousBtn" onclick="sbToggleMusicContinuous()" title="Continuous: advance to next track" style="min-height:34px;font-size:11px;flex:1;">
+                        <i class="fas fa-redo"></i> Continuous
+                    </button>
                 </div>
                 <?php else: ?>
                 <div style="text-align:center;padding:12px;color:#555;font-size:12px;">No music sources configured<?php if ($isAdmin): ?> — <a href="?view=settings" style="color:#6B46C1;">Configure in Settings</a><?php endif; ?></div>
@@ -733,6 +742,9 @@ foreach ($away_penalties as $p) {
             <span class="sb-ctrl-section-label">Now Playing</span>
             <div class="sb-ctrl-now-playing" id="sbNowPlaying">
                 <i class="fas fa-music"></i> <strong>No music playing</strong>
+            </div>
+            <div id="sbMusicAutoplayIndicator" style="display:none;font-size:11px;color:#10B981;padding:2px 0;">
+                <i class="fas fa-magic"></i> Auto-play: music will pause/resume with clock
             </div>
 
             <hr class="sb-ctrl-divider">
