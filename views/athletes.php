@@ -481,7 +481,7 @@ $age_groups = $age_groups_stmt->fetchAll();
                     <a href="?page=stats&athlete_id=<?= $athlete['id'] ?>" class="btn-action">
                         <i class="fas fa-chart-line"></i> View Stats
                     </a>
-                    <a href="?page=manage_athletes&action=notes&id=<?= $athlete['id'] ?>" class="btn-action secondary">
+                    <a href="?page=athlete_notes&athlete_id=<?= $athlete['id'] ?>" class="btn-action secondary">
                         <i class="fas fa-sticky-note"></i> Notes
                     </a>
                     <a href="?page=workouts&athlete_id=<?= $athlete['id'] ?>" class="btn-action secondary">

@@ -18,12 +18,12 @@ if ($is_coach && isset($_GET['athlete_id'])) {
 $workouts_stmt = $pdo->prepare("
     SELECT uw.*, u.first_name, u.last_name, coach.first_name as coach_first, coach.last_name as coach_last,
            (SELECT COUNT(*) FROM user_workout_items WHERE user_workout_id = uw.id) as exercise_count,
-           (SELECT COUNT(*) FROM user_workout_items WHERE user_workout_id = uw.id AND is_completed = 1) as completed_count
+           (SELECT COUNT(*) FROM user_workout_items WHERE user_workout_id = uw.id AND completed_at IS NOT NULL) as completed_count
     FROM user_workouts uw
     INNER JOIN users u ON uw.user_id = u.id
     LEFT JOIN users coach ON uw.coach_id = coach.id
     WHERE uw.user_id = ?
-    ORDER BY uw.assigned_date DESC
+    ORDER BY COALESCE(uw.assigned_date, uw.workout_date) DESC
 ");
 $workouts_stmt->execute([$viewing_user_id]);
 $workouts = $workouts_stmt->fetchAll();
@@ -263,9 +263,10 @@ $simple_workouts = decryptUserRows($simple_workouts);
                 <div class="exercise-list" id="exercises_<?= $workout['id'] ?>" style="display: none;">
                     <?php
                     $exercises_stmt = $pdo->prepare("
-                        SELECT uwi.*, e.name, e.target_area, e.description
+                        SELECT uwi.*, e.name, e.category as target_area, e.description,
+                               uwi.sets_completed as sets, uwi.reps_completed as reps, uwi.weight_used as weight
                         FROM user_workout_items uwi
-                        INNER JOIN exercises e ON uwi.exercise_id = e.id
+                        INNER JOIN exercise_library e ON uwi.exercise_id = e.id
                         WHERE uwi.user_workout_id = ?
                         ORDER BY uwi.id
                     ");
@@ -274,7 +275,7 @@ $simple_workouts = decryptUserRows($simple_workouts);
                     
                     foreach ($exercises as $exercise):
                     ?>
-                        <div class="exercise-item <?= $exercise['is_completed'] ? 'completed' : '' ?>">
+                        <div class="exercise-item <?= $exercise['completed_at'] ? 'completed' : '' ?>">
                             <div>
                                 <div class="exercise-name"><?= htmlspecialchars($exercise['name']) ?></div>
                                 <div class="exercise-details">
@@ -288,7 +289,7 @@ $simple_workouts = decryptUserRows($simple_workouts);
                                 </div>
                             </div>
                             <input type="checkbox" class="exercise-checkbox" 
-                                   <?= $exercise['is_completed'] ? 'checked' : '' ?>
+                                   <?= $exercise['completed_at'] ? 'checked' : '' ?>
                                    onchange="toggleExercise(<?= $exercise['id'] ?>, this.checked)">
                         </div>
                     <?php endforeach; ?>
@@ -312,7 +313,7 @@ $simple_workouts = decryptUserRows($simple_workouts);
                         <?= date('M d, Y', strtotime($workout['created_at'])) ?>
                     </div>
                 </div>
-                <?php if ($workout['is_completed']): ?>
+                <?php if (($workout['status'] ?? '') === 'completed'): ?>
                     <span class="completed-badge">
                         <i class="fas fa-check-circle"></i> COMPLETED
                     </span>

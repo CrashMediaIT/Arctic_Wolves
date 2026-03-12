@@ -346,6 +346,54 @@ $initials = strtoupper(mb_substr($athlete['first_name'] ?? '', 0, 1) . mb_substr
         <h2>Profile Information</h2>
     </div>
     <div class="ath-detail-card-body">
+        <?php if (isset($_GET['edit']) && $_GET['edit'] == '1' && ($isAdmin || $isCoach)): ?>
+        <!-- Edit Mode -->
+        <form method="POST" action="process_profile_update.php" style="max-width: 600px;">
+            <?= csrfTokenInput() ?>
+            <input type="hidden" name="action" value="coach_update_athlete">
+            <input type="hidden" name="athlete_id" value="<?= $athlete_id ?>">
+            <div class="ath-profile-grid">
+                <div class="ath-profile-item">
+                    <label class="ath-label" for="edit_first_name">First Name</label>
+                    <input type="text" id="edit_first_name" name="first_name" class="form-input" value="<?= htmlspecialchars($athlete['first_name'] ?? '') ?>" required style="background:#06080b;border:1px solid #1e293b;color:#fff;padding:8px 12px;border-radius:6px;width:100%;font-size:14px;">
+                </div>
+                <div class="ath-profile-item">
+                    <label class="ath-label" for="edit_last_name">Last Name</label>
+                    <input type="text" id="edit_last_name" name="last_name" class="form-input" value="<?= htmlspecialchars($athlete['last_name'] ?? '') ?>" required style="background:#06080b;border:1px solid #1e293b;color:#fff;padding:8px 12px;border-radius:6px;width:100%;font-size:14px;">
+                </div>
+                <div class="ath-profile-item">
+                    <label class="ath-label" for="edit_email">Email</label>
+                    <input type="email" id="edit_email" name="email" class="form-input" value="<?= htmlspecialchars($athlete['email'] ?? '') ?>" required style="background:#06080b;border:1px solid #1e293b;color:#fff;padding:8px 12px;border-radius:6px;width:100%;font-size:14px;">
+                </div>
+                <div class="ath-profile-item">
+                    <label class="ath-label" for="edit_position">Position</label>
+                    <select id="edit_position" name="position" style="background:#06080b;border:1px solid #1e293b;color:#fff;padding:8px 12px;border-radius:6px;width:100%;font-size:14px;">
+                        <option value="">Select Position</option>
+                        <option value="Forward" <?= ($athlete['position'] ?? '') === 'Forward' ? 'selected' : '' ?>>Forward</option>
+                        <option value="Defense" <?= ($athlete['position'] ?? '') === 'Defense' ? 'selected' : '' ?>>Defense</option>
+                        <option value="Goalie" <?= ($athlete['position'] ?? '') === 'Goalie' ? 'selected' : '' ?>>Goalie</option>
+                    </select>
+                </div>
+                <div class="ath-profile-item">
+                    <label class="ath-label" for="edit_birth_date">Birth Date</label>
+                    <input type="date" id="edit_birth_date" name="birth_date" value="<?= htmlspecialchars($athlete['birth_date'] ?? '') ?>" max="<?= date('Y-m-d') ?>" style="background:#06080b;border:1px solid #1e293b;color:#fff;padding:8px 12px;border-radius:6px;width:100%;font-size:14px;">
+                </div>
+                <div class="ath-profile-item">
+                    <label class="ath-label" for="edit_shooting_hand">Shooting Hand</label>
+                    <select id="edit_shooting_hand" name="shooting_hand" style="background:#06080b;border:1px solid #1e293b;color:#fff;padding:8px 12px;border-radius:6px;width:100%;font-size:14px;">
+                        <option value="">Select</option>
+                        <option value="left" <?= ($athlete['shooting_hand'] ?? '') === 'left' ? 'selected' : '' ?>>Left</option>
+                        <option value="right" <?= ($athlete['shooting_hand'] ?? '') === 'right' ? 'selected' : '' ?>>Right</option>
+                    </select>
+                </div>
+            </div>
+            <div style="margin-top: 16px; display: flex; gap: 12px;">
+                <button type="submit" class="ath-action-btn ath-action-primary" style="border:none;"><i class="fas fa-save"></i> Save Changes</button>
+                <a href="?page=athlete_detail&id=<?= $athlete_id ?>" class="ath-action-btn"><i class="fas fa-times"></i> Cancel</a>
+            </div>
+        </form>
+        <?php else: ?>
+        <!-- View Mode -->
         <div class="ath-profile-grid">
             <div class="ath-profile-item">
                 <span class="ath-label">Email</span>
@@ -364,6 +412,7 @@ $initials = strtoupper(mb_substr($athlete['first_name'] ?? '', 0, 1) . mb_substr
                 <span class="ath-value"><?= ucfirst($athlete['shooting_hand'] ?? 'N/A') ?></span>
             </div>
         </div>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -506,12 +555,12 @@ $initials = strtoupper(mb_substr($athlete['first_name'] ?? '', 0, 1) . mb_substr
         </div>
         <div class="ath-detail-card-body">
             <div class="ath-actions-grid">
-                <a href="?page=manage_athletes&id=<?= $athlete_id ?>" class="ath-action-btn ath-action-primary"><i class="fas fa-user-edit"></i> Edit Profile</a>
+                <a href="?page=athlete_detail&id=<?= $athlete_id ?>&edit=1" class="ath-action-btn ath-action-primary"><i class="fas fa-user-edit"></i> Edit Profile</a>
                 <a href="?page=evaluations_skills&athlete_id=<?= $athlete_id ?>" class="ath-action-btn"><i class="fas fa-clipboard-check"></i> New Evaluation</a>
                 <a href="?page=stats&athlete_id=<?= $athlete_id ?>" class="ath-action-btn"><i class="fas fa-chart-line"></i> Update Stats</a>
                 <a href="?page=workouts&athlete_id=<?= $athlete_id ?>" class="ath-action-btn"><i class="fas fa-dumbbell"></i> Workouts</a>
                 <a href="?page=nutrition&athlete_id=<?= $athlete_id ?>" class="ath-action-btn"><i class="fas fa-utensils"></i> Nutrition</a>
-                <a href="?page=manage_athletes&action=notes&id=<?= $athlete_id ?>" class="ath-action-btn"><i class="fas fa-sticky-note"></i> Notes</a>
+                <a href="?page=athlete_notes&athlete_id=<?= $athlete_id ?>" class="ath-action-btn"><i class="fas fa-sticky-note"></i> Notes</a>
                 <a href="?page=messages&user_id=<?= $athlete_id ?>" class="ath-action-btn"><i class="fas fa-comments"></i> Message</a>
             </div>
         </div>

@@ -843,4 +843,19 @@ document.getElementById('assignPlanForm')?.addEventListener('submit', function(e
 document.getElementById('privateSessionForm')?.addEventListener('submit', function(e) {
     // Form validation is handled by HTML5 required attributes
 });
+
+// Auto-open private session modal and pre-select athlete if schedule_athlete_id is in URL
+(function() {
+    var params = new URLSearchParams(window.location.search);
+    var scheduleAthleteId = params.get('schedule_athlete_id');
+    if (scheduleAthleteId) {
+        openPrivateSessionModal();
+        var checkboxes = document.querySelectorAll('#privateSessionForm input[name="athlete_ids[]"]');
+        checkboxes.forEach(function(cb) {
+            if (cb.value === scheduleAthleteId) {
+                cb.checked = true;
+            }
+        });
+    }
+})();
 </script>

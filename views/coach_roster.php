@@ -173,7 +173,7 @@ $programs = $pdo->query("SELECT id, name FROM programs WHERE is_active = 1 ORDER
                             $age = !empty($athlete['date_of_birth']) ? date_diff(date_create($athlete['date_of_birth']), date_create('today'))->y : null;
                             $session_progress = $athlete['package_sessions'] > 0 ? ($athlete['total_sessions'] / $athlete['package_sessions']) * 100 : 0;
                         ?>
-                        <tr data-athlete-id="<?= $athlete['id'] ?>">
+                        <tr data-athlete-id="<?= $athlete['id'] ?>" onclick="window.location='?page=athlete_detail&id=<?= $athlete['id'] ?>'" style="cursor: pointer;">
                             <td>
                                 <div class="athlete-cell">
                                     <div class="athlete-avatar-small">
@@ -197,15 +197,23 @@ $programs = $pdo->query("SELECT id, name FROM programs WHERE is_active = 1 ORDER
                             </td>
                             <td><?= $athlete['last_session'] ? date('M d, Y', strtotime($athlete['last_session'])) : 'Never' ?></td>
                             <td>
-                                <span class="progress-badge <?= $session_progress >= 70 ? 'excellent' : ($session_progress >= 40 ? 'good' : 'needs-attention') ?>">
-                                    <?= $session_progress >= 70 ? 'Excellent' : ($session_progress >= 40 ? 'Good' : 'Needs Attention') ?>
-                                </span>
+                                <?php if ($session_progress >= 70): ?>
+                                    <span class="progress-badge excellent">Excellent (<?= round($session_progress) ?>%)</span>
+                                <?php elseif ($session_progress >= 40): ?>
+                                    <span class="progress-badge good">Good (<?= round($session_progress) ?>%)</span>
+                                <?php elseif ($athlete['package_sessions'] == 0): ?>
+                                    <span class="progress-badge needs-attention">No Package</span>
+                                <?php elseif (!$athlete['last_session']): ?>
+                                    <span class="progress-badge needs-attention">No Sessions Yet</span>
+                                <?php else: ?>
+                                    <span class="progress-badge needs-attention">Low Activity (<?= round($session_progress) ?>%)</span>
+                                <?php endif; ?>
                             </td>
                             <td>
-                                <div class="table-actions">
+                                <div class="table-actions" onclick="event.stopPropagation();">
                                     <a href="?page=athlete_detail&id=<?= $athlete['id'] ?>" class="btn-icon" title="View Profile"><i class="fas fa-eye"></i></a>
                                     <a href="?page=stats&tab=goals&athlete_id=<?= $athlete['id'] ?>" class="btn-icon" title="Manage Goals"><i class="fas fa-bullseye"></i></a>
-                                    <a href="?page=coach_calendar" class="btn-icon" title="Schedule Session"><i class="fas fa-calendar-plus"></i></a>
+                                    <a href="?page=coach_calendar&schedule_athlete_id=<?= $athlete['id'] ?>" class="btn-icon" title="Schedule Session"><i class="fas fa-calendar-plus"></i></a>
                                     <a href="?page=messages&user_id=<?= $athlete['id'] ?>" class="btn-icon" title="Message"><i class="fas fa-envelope"></i></a>
                                 </div>
                             </td>
@@ -220,7 +228,7 @@ $programs = $pdo->query("SELECT id, name FROM programs WHERE is_active = 1 ORDER
                         $age = !empty($athlete['date_of_birth']) ? date_diff(date_create($athlete['date_of_birth']), date_create('today'))->y : null;
                         $session_progress = $athlete['package_sessions'] > 0 ? ($athlete['total_sessions'] / $athlete['package_sessions']) * 100 : 0;
                     ?>
-                    <div class="athlete-grid-card" data-athlete-id="<?= $athlete['id'] ?>">
+                    <div class="athlete-grid-card" data-athlete-id="<?= $athlete['id'] ?>" onclick="window.location='?page=athlete_detail&id=<?= $athlete['id'] ?>'" style="cursor: pointer;">
                         <div class="athlete-grid-avatar">
                             <i class="fas fa-user"></i>
                         </div>
@@ -236,10 +244,10 @@ $programs = $pdo->query("SELECT id, name FROM programs WHERE is_active = 1 ORDER
                                 <div class="mini-progress-bar" style="width: <?= min($session_progress, 100) ?>%;"></div>
                             </div>
                         </div>
-                        <div class="athlete-grid-actions">
+                        <div class="athlete-grid-actions" onclick="event.stopPropagation();">
                             <a href="?page=athlete_detail&id=<?= $athlete['id'] ?>" class="btn-icon" title="View Profile"><i class="fas fa-eye"></i></a>
                             <a href="?page=stats&tab=goals&athlete_id=<?= $athlete['id'] ?>" class="btn-icon" title="Manage Goals"><i class="fas fa-bullseye"></i></a>
-                            <a href="?page=coach_calendar" class="btn-icon" title="Schedule Session"><i class="fas fa-calendar-plus"></i></a>
+                            <a href="?page=coach_calendar&schedule_athlete_id=<?= $athlete['id'] ?>" class="btn-icon" title="Schedule Session"><i class="fas fa-calendar-plus"></i></a>
                             <a href="?page=messages&user_id=<?= $athlete['id'] ?>" class="btn-icon" title="Message"><i class="fas fa-envelope"></i></a>
                         </div>
                     </div>
