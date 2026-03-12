@@ -1,0 +1,49 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'ca.arcticwolves.scoreboard.viewer'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "ca.arcticwolves.scoreboard.viewer"
+        minSdk 21
+        targetSdk 34
+        versionCode 1
+        versionName "1.0.0"
+
+        // Default server base URL (overridden per build type)
+        buildConfigField "String", "DEFAULT_SERVER_URL", "\"https://scoreboard.arcticwolves.ca\""
+    }
+
+    buildTypes {
+        debug {
+            buildConfigField "String", "DEFAULT_SERVER_URL", "\"http://10.0.2.2/Arctic_Wolves\""
+        }
+        release {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    buildFeatures {
+        viewBinding true
+        buildConfig true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+}
+
+dependencies {
+    // Testing
+    testImplementation 'junit:junit:4.13.2'
+}

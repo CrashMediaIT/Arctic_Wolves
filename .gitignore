@@ -70,6 +70,17 @@ android-tv/.cxx/
 android-tv/build-cmdline/
 android-tv/*.idsig
 
+# Scoreboard Viewer build artifacts
+scoreboard-viewer/.gradle/
+scoreboard-viewer/build/
+scoreboard-viewer/app/build/
+scoreboard-viewer/local.properties
+scoreboard-viewer/captures/
+scoreboard-viewer/.externalNativeBuild/
+scoreboard-viewer/.cxx/
+scoreboard-viewer/build-cmdline/
+scoreboard-viewer/*.idsig
+
 # Update system deferred files
 .update_deferred.json
 *.pending

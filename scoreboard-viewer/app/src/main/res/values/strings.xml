@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Scoreboard Viewer</string>
+
+    <!-- Setup screen -->
+    <string name="setup_subtitle">Enter the URL of your Arctic Wolves scoreboard server to connect this display.</string>
+    <string name="server_url_label">SCOREBOARD SERVER URL</string>
+    <string name="server_url_hint">https://scoreboard.arcticwolves.ca</string>
+    <string name="open_scoreboard">Open Scoreboard</string>
+    <string name="error_empty_url">Please enter the server URL.</string>
+    <string name="error_invalid_url">Invalid URL. Must start with http:// or https://</string>
+
+    <!-- Instructions -->
+    <string name="setup_step_1">1. Enter your scoreboard server URL above</string>
+    <string name="setup_step_2">2. Log in with your staff PIN or credentials</string>
+    <string name="setup_step_3">3. The scoreboard will display in full screen</string>
+
+    <!-- Viewer -->
+    <string name="loading">Loading scoreboard…</string>
+    <string name="disconnected">Connection lost</string>
+</resources>
