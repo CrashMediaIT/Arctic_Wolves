@@ -218,7 +218,7 @@ try {
                    0 as total_scores
             FROM athlete_evaluations ae
             WHERE ae.athlete_id = ?
-            ORDER BY ae.created_at DESC
+            ORDER BY ae.id DESC
         ");
         $evals_stmt->execute([$viewing_athlete_id]);
         $evaluations_list = $evals_stmt->fetchAll();
