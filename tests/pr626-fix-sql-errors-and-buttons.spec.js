@@ -4,8 +4,8 @@ import * as path from 'path';
 
 /**
  * Tests for PR 626 fixes:
- * 1. evaluations_skills.php - SQL error with evaluation_id wrapped in try-catch
- * 2. workouts.php - SQL error with coach_id wrapped in try-catch
+ * 1. evaluations_skills.php - Direct SQL queries use correct columns (created_by, evaluation_id)
+ * 2. workouts.php - Direct SQL query uses correct columns (coach_id, assigned_date)
  * 3. stats.php - $isAnyCoach used instead of $isCoach for button visibility
  * 4. evaluations_skills.php - $isAnyCoach used instead of $isCoach for coach actions
  * 5. athlete_goals.php - Add button JavaScript handler added
@@ -18,90 +18,96 @@ function readFile(relativePath) {
 }
 
 // =====================================================
-// 1. evaluations_skills.php - SQL error with evaluation_id
+// 1. evaluations_skills.php - SQL queries use correct columns
 // =====================================================
 
-test.describe('evaluations_skills.php - evaluation_id SQL fix', () => {
-  test('evaluations list query is wrapped in try-catch', () => {
-    const content = readFile('views/evaluations_skills.php');
-    // Find the section with the evaluations list query
-    const evalListSection = content.substring(
-      content.indexOf('// Get all evaluations list'),
-      content.indexOf('// Get historical evaluations')
-    );
-    expect(evalListSection).toContain('try {');
-    expect(evalListSection).toContain('} catch (PDOException $e) {');
-  });
-
-  test('evaluations list fallback query does not reference evaluation_id', () => {
+test.describe('evaluations_skills.php - SQL queries use correct schema columns', () => {
+  test('evaluations list query uses created_by and evaluation_id directly', () => {
     const content = readFile('views/evaluations_skills.php');
     const evalListSection = content.substring(
       content.indexOf('// Get all evaluations list'),
       content.indexOf('// Get historical evaluations')
     );
-    // Should have a fallback with 0 as completed_scores and total_scores
-    expect(evalListSection).toContain('0 as completed_scores');
-    expect(evalListSection).toContain('0 as total_scores');
+    expect(evalListSection).toContain('ae.created_by');
+    expect(evalListSection).toContain('evaluation_id');
+    expect(evalListSection).toContain('completed_scores');
+    expect(evalListSection).toContain('total_scores');
   });
 
-  test('scores query is wrapped in try-catch', () => {
+  test('evaluations list query has no PDO fallback', () => {
+    const content = readFile('views/evaluations_skills.php');
+    const evalListSection = content.substring(
+      content.indexOf('// Get all evaluations list'),
+      content.indexOf('// Get historical evaluations')
+    );
+    expect(evalListSection).not.toContain('catch (PDOException');
+    expect(evalListSection).not.toContain('fallback');
+  });
+
+  test('scores query uses evaluation_id directly', () => {
     const content = readFile('views/evaluations_skills.php');
     const scoresSection = content.substring(
       content.indexOf('// Load scores'),
       content.indexOf('// Group by category')
     );
-    expect(scoresSection).toContain('try {');
-    expect(scoresSection).toContain('} catch (PDOException $e) {');
+    expect(scoresSection).toContain('es.evaluation_id');
+    expect(scoresSection).not.toContain('catch (PDOException');
   });
 
-  test('historical query is wrapped in try-catch', () => {
+  test('historical query uses evaluation_id directly', () => {
     const content = readFile('views/evaluations_skills.php');
     const histSection = content.substring(
       content.indexOf('// Get historical evaluations'),
       content.indexOf('?>')
     );
-    expect(histSection).toContain('try {');
-    expect(histSection).toContain('} catch (PDOException $e) {');
+    expect(histSection).toContain('es.evaluation_id');
+    expect(histSection).not.toContain('catch (PDOException');
+  });
+
+  test('eval load query uses created_by directly', () => {
+    const content = readFile('views/evaluations_skills.php');
+    const evalLoadSection = content.substring(
+      content.indexOf('// Load evaluation'),
+      content.indexOf('if ($evaluation) {')
+    );
+    expect(evalLoadSection).toContain('ae.created_by');
+    expect(evalLoadSection).not.toContain('catch (PDOException');
+  });
+
+  test('media query uses created_at directly', () => {
+    const content = readFile('views/evaluations_skills.php');
+    const mediaSection = content.substring(
+      content.indexOf('// Load media for this evaluation'),
+      content.indexOf('// Index media by score_id')
+    );
+    expect(mediaSection).toContain('ORDER BY created_at DESC');
+    expect(mediaSection).not.toContain('catch (PDOException');
   });
 });
 
 // =====================================================
-// 2. workouts.php - SQL error with coach_id
+// 2. workouts.php - SQL query uses correct columns
 // =====================================================
 
-test.describe('workouts.php - coach_id SQL fix', () => {
-  test('workouts query is wrapped in try-catch', () => {
+test.describe('workouts.php - SQL query uses correct schema columns', () => {
+  test('workouts query uses coach_id and assigned_date directly', () => {
     const content = readFile('views/workouts.php');
     const workoutsSection = content.substring(
       content.indexOf('// Get workouts'),
       content.indexOf('// Get simple workouts')
     );
-    expect(workoutsSection).toContain('try {');
-    expect(workoutsSection).toContain('} catch (PDOException $e) {');
+    expect(workoutsSection).toContain('uw.coach_id');
+    expect(workoutsSection).toContain('uw.assigned_date');
   });
 
-  test('fallback query does not reference coach_id', () => {
+  test('workouts query has no PDO fallback', () => {
     const content = readFile('views/workouts.php');
     const workoutsSection = content.substring(
       content.indexOf('// Get workouts'),
       content.indexOf('// Get simple workouts')
     );
-    // The fallback should use NULL as coach_first/last
-    expect(workoutsSection).toContain('NULL as coach_first');
-    expect(workoutsSection).toContain('NULL as coach_last');
-  });
-
-  test('fallback query does not JOIN on coach_id', () => {
-    const content = readFile('views/workouts.php');
-    const workoutsSection = content.substring(
-      content.indexOf('// Get workouts'),
-      content.indexOf('// Get simple workouts')
-    );
-    // Extract the fallback query (after the catch)
-    const fallbackSection = workoutsSection.substring(
-      workoutsSection.indexOf('catch (PDOException')
-    );
-    expect(fallbackSection).not.toContain('LEFT JOIN users coach ON uw.coach_id');
+    expect(workoutsSection).not.toContain('catch (PDOException');
+    expect(workoutsSection).not.toContain('fallback');
   });
 });
 

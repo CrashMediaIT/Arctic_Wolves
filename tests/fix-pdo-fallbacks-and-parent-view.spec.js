@@ -3,14 +3,11 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 /**
- * Tests for PDO fallback fixes and parent "View As" support:
- * 1. evaluations_skills.php - Deep fallback for created_by column
- * 2. evaluations_skills.php - Eval load query wrapped in try-catch
- * 3. evaluations_skills.php - Media query fallback for created_at/uploaded_at
- * 4. evaluations_skills.php - Safe media score_id access with null coalescing
- * 5. workouts.php - Deep fallback for assigned_date column
- * 6. evaluations_skills.php - Parent viewing_athlete_id support
- * 7. workouts.php - Parent viewing_athlete_id support
+ * Tests for:
+ * 1. evaluations_skills.php - Direct SQL queries (no PDO fallbacks)
+ * 2. workouts.php - Direct SQL queries (no PDO fallbacks)
+ * 3. evaluations_skills.php - Parent viewing_athlete_id support
+ * 4. workouts.php - Parent viewing_athlete_id support
  */
 
 const ROOT = path.resolve(__dirname, '..');
@@ -20,133 +17,65 @@ function readFile(relativePath) {
 }
 
 // =====================================================
-// 1. evaluations_skills.php - Deep fallback for created_by
+// 1. evaluations_skills.php - No PDO fallbacks
 // =====================================================
 
-test.describe('evaluations_skills.php - created_by deep fallback', () => {
-  test('evaluations list has nested try-catch for created_by fallback', () => {
+test.describe('evaluations_skills.php - no PDO fallback patterns', () => {
+  test('no PDO fallback try-catch in PHP query section', () => {
     const content = readFile('views/evaluations_skills.php');
-    const evalListSection = content.substring(
-      content.indexOf('// Get all evaluations list'),
-      content.indexOf('// Get historical evaluations')
-    );
-    // Should have a deep fallback that doesn't use created_by
-    expect(evalListSection).toContain('Deep fallback: created_by');
-    expect(evalListSection).toContain('NULL as creator_first_name');
-    expect(evalListSection).toContain('NULL as creator_last_name');
+    // Extract PHP section (before the HTML/CSS)
+    const phpSection = content.substring(0, content.indexOf('?>'));
+    // Should not have any PDOException catch blocks with fallback queries
+    expect(phpSection).not.toContain('using fallback');
+    expect(phpSection).not.toContain('Deep fallback');
+    expect(phpSection).not.toContain('column missing');
+    expect(phpSection).not.toContain('may not exist');
   });
 
-  test('deep fallback query does not reference created_by', () => {
+  test('queries reference correct schema columns directly', () => {
     const content = readFile('views/evaluations_skills.php');
-    const evalListSection = content.substring(
-      content.indexOf('// Get all evaluations list'),
-      content.indexOf('// Get historical evaluations')
-    );
-    // Find the deep fallback section (after the second catch)
-    const deepFallbackIdx = evalListSection.indexOf('Deep fallback');
-    const deepFallback = evalListSection.substring(deepFallbackIdx);
-    expect(deepFallback).not.toContain('ae.created_by');
-    expect(deepFallback).not.toContain('LEFT JOIN users u');
-  });
-});
-
-// =====================================================
-// 2. evaluations_skills.php - Eval load query try-catch
-// =====================================================
-
-test.describe('evaluations_skills.php - eval load query protection', () => {
-  test('evaluation load query is wrapped in try-catch', () => {
-    const content = readFile('views/evaluations_skills.php');
-    const evalLoadSection = content.substring(
-      content.indexOf('// Load evaluation'),
-      content.indexOf('if ($evaluation) {')
-    );
-    expect(evalLoadSection).toContain('try {');
-    expect(evalLoadSection).toContain('} catch (PDOException $e) {');
+    const phpSection = content.substring(0, content.indexOf('?>'));
+    // Should use the actual schema column names
+    expect(phpSection).toContain('ae.created_by');
+    expect(phpSection).toContain('es.evaluation_id');
+    expect(phpSection).toContain('ORDER BY created_at DESC');
   });
 
-  test('evaluation load fallback does not use created_by', () => {
+  test('score_id null coalesce handles nullable column', () => {
     const content = readFile('views/evaluations_skills.php');
-    const evalLoadSection = content.substring(
-      content.indexOf('// Load evaluation'),
-      content.indexOf('if ($evaluation) {')
-    );
-    // The fallback should not reference created_by
-    const fallbackSection = evalLoadSection.substring(
-      evalLoadSection.indexOf('catch (PDOException')
-    );
-    expect(fallbackSection).not.toContain('ae.created_by');
-    expect(fallbackSection).toContain('NULL as creator_first_name');
-  });
-});
-
-// =====================================================
-// 3. evaluations_skills.php - Media query fallback
-// =====================================================
-
-test.describe('evaluations_skills.php - media query fallback', () => {
-  test('media query is wrapped in try-catch', () => {
-    const content = readFile('views/evaluations_skills.php');
-    const mediaSection = content.substring(
-      content.indexOf('// Load media for this evaluation'),
-      content.indexOf('// Index media by score_id')
-    );
-    expect(mediaSection).toContain('try {');
-    expect(mediaSection).toContain('} catch (PDOException $e) {');
-  });
-
-  test('media query has fallback using uploaded_at', () => {
-    const content = readFile('views/evaluations_skills.php');
-    const mediaSection = content.substring(
-      content.indexOf('// Load media for this evaluation'),
-      content.indexOf('// Index media by score_id')
-    );
-    expect(mediaSection).toContain('ORDER BY created_at DESC');
-    expect(mediaSection).toContain('ORDER BY uploaded_at DESC');
-  });
-});
-
-// =====================================================
-// 4. evaluations_skills.php - Safe score_id access
-// =====================================================
-
-test.describe('evaluations_skills.php - safe score_id access', () => {
-  test('score_id access uses null coalescing operator', () => {
-    const content = readFile('views/evaluations_skills.php');
-    // The media indexing should safely handle missing score_id column
+    // score_id can be NULL by design (nullable FK), so ?? 0 is correct
     expect(content).toContain("$media['score_id'] ?? 0");
   });
 });
 
 // =====================================================
-// 5. workouts.php - Deep fallback for assigned_date
+// 2. workouts.php - No PDO fallbacks
 // =====================================================
 
-test.describe('workouts.php - assigned_date deep fallback', () => {
-  test('workouts query has nested try-catch for assigned_date fallback', () => {
+test.describe('workouts.php - no PDO fallback patterns', () => {
+  test('no PDO fallback try-catch in PHP query section', () => {
+    const content = readFile('views/workouts.php');
+    const phpSection = content.substring(0, content.indexOf('?>'));
+    expect(phpSection).not.toContain('catch (PDOException');
+    expect(phpSection).not.toContain('using fallback');
+    expect(phpSection).not.toContain('Deep fallback');
+    expect(phpSection).not.toContain('column missing');
+  });
+
+  test('query references correct schema columns directly', () => {
     const content = readFile('views/workouts.php');
     const workoutsSection = content.substring(
       content.indexOf('// Get workouts'),
       content.indexOf('// Get simple workouts')
     );
-    // Should have a deep fallback that doesn't use assigned_date in the SQL
-    expect(workoutsSection).toContain('Deep fallback');
-    // Deep fallback SQL should use workout_date only, not assigned_date in ORDER BY
-    const deepFallbackIdx = workoutsSection.indexOf('Deep fallback');
-    const deepFallback = workoutsSection.substring(deepFallbackIdx);
-    expect(deepFallback).toContain('ORDER BY uw.workout_date DESC');
-    expect(deepFallback).not.toContain('COALESCE(uw.assigned_date');
-  });
-
-  test('template uses null coalescing for assigned_date display', () => {
-    const content = readFile('views/workouts.php');
-    // The date display should handle missing assigned_date
-    expect(content).toContain("['assigned_date'] ?? ");
+    expect(workoutsSection).toContain('uw.coach_id');
+    expect(workoutsSection).toContain('uw.assigned_date');
+    expect(workoutsSection).toContain('LEFT JOIN users coach ON uw.coach_id = coach.id');
   });
 });
 
 // =====================================================
-// 6. evaluations_skills.php - Parent View As support
+// 3. evaluations_skills.php - Parent View As support
 // =====================================================
 
 test.describe('evaluations_skills.php - parent View As support', () => {
@@ -168,7 +97,7 @@ test.describe('evaluations_skills.php - parent View As support', () => {
 });
 
 // =====================================================
-// 7. workouts.php - Parent View As support
+// 4. workouts.php - Parent View As support
 // =====================================================
 
 test.describe('workouts.php - parent View As support', () => {
