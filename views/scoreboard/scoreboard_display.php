@@ -1558,6 +1558,24 @@ function sbQuickLogoUpload(input) {
 }
 .sb-ml-track:hover .sb-ml-track-play { opacity: 1; }
 .sb-ml-track-play:hover { color: #6B46C1; }
+.sb-ml-track-add {
+    background: none;
+    border: none;
+    color: #8B8BA3;
+    font-size: 13px;
+    cursor: pointer;
+    padding: 4px 6px;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s;
+}
+.sb-ml-track:hover .sb-ml-track-add { opacity: 1; }
+.sb-ml-track-add:hover { color: #10B981; }
+.sb-ctrl-btn-secondary.active {
+    border-color: #6B46C1;
+    color: #6B46C1;
+    background: rgba(107, 70, 193, 0.1);
+}
 .sb-ml-back-btn {
     background: none;
     border: 1px solid #2D2D3F;

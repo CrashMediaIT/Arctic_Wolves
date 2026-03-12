@@ -888,7 +888,7 @@ try {
             $baseParams = 'u=' . urlencode($subUser) . '&t=' . urlencode($token) . '&s=' . urlencode($salt) . '&v=1.16.1&c=ArcticWolves&f=json';
 
             // Fetch albums (getAlbumList2)
-            $albumsUrl = $subUrl . '/rest/getAlbumList2?' . $baseParams . '&type=alphabeticalByName&size=100';
+            $albumsUrl = $subUrl . '/rest/getAlbumList2?' . $baseParams . '&type=alphabeticalByName&size=500';
             $albums = [];
             $ctx = stream_context_create(['http' => ['timeout' => 10, 'ignore_errors' => true]]);
             $albumsResp = file_get_contents($albumsUrl, false, $ctx);
@@ -909,8 +909,8 @@ try {
                     ];
                 }
             }
-            // Fetch random songs
-            $songsUrl = $subUrl . '/rest/getRandomSongs?' . $baseParams . '&size=50';
+            // Fetch random songs (initial browse; search3 used for full-library search)
+            $songsUrl = $subUrl . '/rest/getRandomSongs?' . $baseParams . '&size=200';
             $songs = [];
             $songsResp = file_get_contents($songsUrl, false, $ctx);
             if ($songsResp === false) {
@@ -998,6 +998,71 @@ try {
                 }
             }
             echo json_encode(['success' => true, 'album' => $album, 'songs' => $songs]);
+            break;
+
+        // ── Subsonic search (search3 – queries entire library) ──
+        case 'subsonic_search':
+            $query = trim($_POST['query'] ?? '');
+            if (strlen($query) < 2) {
+                echo json_encode(['success' => false, 'message' => 'Query too short']);
+                exit();
+            }
+            $subSettings = [];
+            $stmt = $pdo->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('subsonic_url', 'subsonic_username', 'subsonic_password')");
+            $stmt->execute();
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $s) {
+                $subSettings[$s['setting_key']] = $s['setting_value'] ?? '';
+            }
+            $subUrl = rtrim($subSettings['subsonic_url'] ?? '', '/');
+            $subUser = $subSettings['subsonic_username'] ?? '';
+            $subPass = $subSettings['subsonic_password'] ?? '';
+            if (empty($subUrl) || empty($subUser)) {
+                echo json_encode(['success' => false, 'message' => 'Subsonic not configured']);
+                exit();
+            }
+            if (!empty($subPass)) {
+                require_once __DIR__ . '/lib/encryption.php';
+                if (FieldEncryption::isConfigured()) {
+                    try { $subPass = decryptCredential($subPass); } catch (Exception $e) { /* use as-is */ }
+                }
+            }
+            $salt = bin2hex(random_bytes(8));
+            $token = md5($subPass . $salt);
+            $baseParams = 'u=' . urlencode($subUser) . '&t=' . urlencode($token) . '&s=' . urlencode($salt) . '&v=1.16.1&c=ArcticWolves&f=json';
+
+            $searchUrl = $subUrl . '/rest/search3?' . $baseParams . '&query=' . urlencode($query) . '&songCount=100&albumCount=50&artistCount=0';
+            $ctx = stream_context_create(['http' => ['timeout' => 10, 'ignore_errors' => true]]);
+            $searchResp = file_get_contents($searchUrl, false, $ctx);
+            $albums = [];
+            $songs = [];
+            if ($searchResp) {
+                $searchData = json_decode($searchResp, true);
+                $result = $searchData['subsonic-response']['searchResult3'] ?? [];
+                // Albums
+                foreach ($result['album'] ?? [] as $a) {
+                    $cover = !empty($a['coverArt']) ? $subUrl . '/rest/getCoverArt?' . $baseParams . '&id=' . urlencode($a['coverArt']) . '&size=200' : '';
+                    $albums[] = [
+                        'id' => $a['id'] ?? '',
+                        'name' => $a['name'] ?? $a['title'] ?? 'Unknown',
+                        'artist' => $a['artist'] ?? '',
+                        'cover' => $cover
+                    ];
+                }
+                // Songs
+                foreach ($result['song'] ?? [] as $s) {
+                    $durationSec = (int)($s['duration'] ?? 0);
+                    $durationStr = $durationSec > 0 ? sprintf('%d:%02d', floor($durationSec / 60), $durationSec % 60) : '';
+                    $songs[] = [
+                        'id' => $s['id'] ?? '',
+                        'title' => $s['title'] ?? 'Unknown',
+                        'artist' => $s['artist'] ?? '',
+                        'album' => $s['album'] ?? '',
+                        'duration' => $durationStr,
+                        'url' => $subUrl . '/rest/stream?' . $baseParams . '&id=' . urlencode($s['id'] ?? '')
+                    ];
+                }
+            }
+            echo json_encode(['success' => true, 'albums' => $albums, 'songs' => $songs]);
             break;
 
         default:

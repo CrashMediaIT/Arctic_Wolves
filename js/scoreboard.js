@@ -1715,11 +1715,101 @@ function sbAddAllToPlaylist() {
     });
 }
 
+var _sbSearchTimer = null;
 function sbMusicLibraryFilter(query) {
     query = (query || '').toLowerCase().trim();
+    // Always apply instant client-side filter on already-loaded items
     document.querySelectorAll('.sb-ml-track, .sb-ml-album-card').forEach(function(el) {
         var search = el.getAttribute('data-search') || '';
         el.style.display = (!query || search.indexOf(query) >= 0) ? '' : 'none';
+    });
+    // For queries ≥2 chars, also do server-side search to find all library music
+    if (_sbSearchTimer) clearTimeout(_sbSearchTimer);
+    if (query.length >= 2) {
+        _sbSearchTimer = setTimeout(function() {
+            sbSubsonicServerSearch(query);
+        }, 400); // debounce 400ms
+    }
+}
+
+function sbSubsonicServerSearch(query) {
+    var container = document.getElementById('sbMusicLibraryContent');
+    if (!container) return;
+    // Show a subtle loading indicator
+    var existing = document.getElementById('sbSearchStatus');
+    if (!existing) {
+        var indicator = document.createElement('div');
+        indicator.id = 'sbSearchStatus';
+        indicator.style.cssText = 'font-size:11px;color:#6B46C1;padding:4px 0;text-align:center;';
+        indicator.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Searching entire library…';
+        var searchBar = container.querySelector('.sb-ml-search');
+        if (searchBar) searchBar.after(indicator);
+    } else {
+        existing.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Searching entire library…';
+        existing.style.display = '';
+    }
+    sbFetch('subsonic_search', { query: query }).then(function(d) {
+        var statusEl = document.getElementById('sbSearchStatus');
+        if (!d.success) {
+            if (statusEl) statusEl.style.display = 'none';
+            return;
+        }
+        var albums = d.albums || [];
+        var songs = d.songs || [];
+        // Remove existing search results section if present
+        var prevResults = container.querySelector('.sb-ml-search-results');
+        if (prevResults) prevResults.remove();
+        if (!albums.length && !songs.length) {
+            if (statusEl) {
+                statusEl.innerHTML = '<i class="fas fa-search"></i> No additional results found';
+                setTimeout(function() { if (statusEl) statusEl.style.display = 'none'; }, 2000);
+            }
+            return;
+        }
+        if (statusEl) {
+            statusEl.innerHTML = '<i class="fas fa-check"></i> Found ' + songs.length + ' songs, ' + albums.length + ' albums';
+            setTimeout(function() { if (statusEl) statusEl.style.display = 'none'; }, 3000);
+        }
+        // Build search results HTML
+        var html = '<div class="sb-ml-search-results">';
+        html += '<div class="sb-ml-section-title" style="color:#6B46C1;">Search Results</div>';
+        if (albums.length) {
+            html += '<div class="sb-ml-grid">';
+            albums.forEach(function(album) {
+                var coverUrl = album.cover || '';
+                html += '<div class="sb-ml-album-card" data-album-id="' + (album.id || '').replace(/"/g, '&quot;') + '" data-search="' + ((album.name || '') + ' ' + (album.artist || '')).replace(/"/g, '&quot;').toLowerCase() + '">' +
+                        (coverUrl ? '<img class="sb-ml-album-cover" src="' + coverUrl.replace(/"/g, '&quot;') + '" alt="">' : '<div class="sb-ml-album-cover sb-ml-no-art"><i class="fas fa-compact-disc"></i></div>') +
+                        '<div class="sb-ml-album-name">' + (album.name || 'Unknown Album').replace(/</g, '&lt;') + '</div>' +
+                        '<div class="sb-ml-album-artist">' + (album.artist || '').replace(/</g, '&lt;') + '</div>' +
+                        '</div>';
+            });
+            html += '</div>';
+        }
+        if (songs.length) {
+            html += '<div class="sb-ml-track-list">';
+            songs.forEach(function(song, idx) {
+                html += '<div class="sb-ml-track" data-url="' + (song.url || '').replace(/"/g, '&quot;') + '" data-search="' + ((song.title || '') + ' ' + (song.artist || '') + ' ' + (song.album || '')).replace(/"/g, '&quot;').toLowerCase() + '">' +
+                        '<div class="sb-ml-track-num">' + (idx + 1) + '</div>' +
+                        '<div class="sb-ml-track-info">' +
+                        '<div class="sb-ml-track-title">' + (song.title || 'Unknown').replace(/</g, '&lt;') + '</div>' +
+                        '<div class="sb-ml-track-artist">' + (song.artist || '').replace(/</g, '&lt;') + (song.album ? ' — ' + song.album.replace(/</g, '&lt;') : '') + '</div>' +
+                        '</div>' +
+                        '<div class="sb-ml-track-duration">' + (song.duration || '') + '</div>' +
+                        '<button class="sb-ml-track-add" onclick="sbAddToPlaylistFromTrack(this.parentElement)" title="Add to Playlist"><i class="fas fa-plus"></i></button>' +
+                        '<button class="sb-ml-track-play" onclick="sbPlaySubsonicTrack(this.parentElement)" title="Play"><i class="fas fa-play"></i></button>' +
+                        '</div>';
+            });
+            html += '</div>';
+        }
+        html += '</div>';
+        container.insertAdjacentHTML('beforeend', html);
+        // Wire up album card clicks in search results
+        container.querySelectorAll('.sb-ml-search-results .sb-ml-album-card').forEach(function(card) {
+            card.addEventListener('click', function() {
+                var albumId = this.getAttribute('data-album-id');
+                if (albumId) sbSubsonicLoadAlbum(albumId);
+            });
+        });
     });
 }
 

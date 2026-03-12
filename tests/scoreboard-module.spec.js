@@ -2992,3 +2992,230 @@ test.describe('Stat tracking toggle in New Game form', () => {
     expect(content).toContain('stat_tracking_enabled');
   });
 });
+
+// =====================================================
+// Music clock integration (auto-play/pause with clock)
+// =====================================================
+
+test.describe('Music auto-play/pause on clock start/stop', () => {
+  test('JS has sbMusicAutoplay flag and sbToggleMusicAutoplay function', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('var sbMusicAutoplay');
+    expect(content).toContain('function sbToggleMusicAutoplay()');
+  });
+
+  test('JS has sbMusicOnClockStart that pauses music when autoplay enabled', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbMusicOnClockStart()');
+    const fn = content.substring(
+      content.indexOf('function sbMusicOnClockStart()'),
+      content.indexOf('function sbMusicOnClockStop()')
+    );
+    expect(fn).toContain('sbMusicAutoplay');
+    expect(fn).toContain('sbMusicPause');
+  });
+
+  test('JS has sbMusicOnClockStop that resumes music when autoplay enabled', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbMusicOnClockStop()');
+    const fn = content.substring(
+      content.indexOf('function sbMusicOnClockStop()'),
+      content.indexOf('function sbMusicPlay(')
+    );
+    expect(fn).toContain('sbMusicAutoplay');
+    expect(fn).toContain('sbMusicResume');
+  });
+
+  test('sbClockStart calls sbMusicOnClockStart', () => {
+    const content = readFile('js/scoreboard.js');
+    const fn = content.substring(
+      content.indexOf('function sbClockStart()'),
+      content.indexOf('function sbClockStop()')
+    );
+    expect(fn).toContain('sbMusicOnClockStart()');
+  });
+
+  test('sbClockStop calls sbMusicOnClockStop', () => {
+    const content = readFile('js/scoreboard.js');
+    const fn = content.substring(
+      content.indexOf('function sbClockStop()'),
+      content.indexOf('function sbClockToggle()')
+    );
+    expect(fn).toContain('sbMusicOnClockStop()');
+  });
+
+  test('display view has autoplay toggle button', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sbMusicAutoplayBtn');
+    expect(content).toContain('sbToggleMusicAutoplay()');
+    expect(content).toContain('Auto-play');
+  });
+
+  test('display view has autoplay indicator', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sbMusicAutoplayIndicator');
+    expect(content).toContain('music will pause/resume with clock');
+  });
+});
+
+// =====================================================
+// Music continuous playback toggle
+// =====================================================
+
+test.describe('Music continuous playback toggle', () => {
+  test('JS has sbMusicContinuous flag', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('var sbMusicContinuous');
+  });
+
+  test('JS has sbToggleMusicContinuous function', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbToggleMusicContinuous()');
+  });
+
+  test('sbMusicPlay ended event respects sbMusicContinuous flag', () => {
+    const content = readFile('js/scoreboard.js');
+    const fn = content.substring(
+      content.indexOf('function sbMusicPlay('),
+      content.indexOf('function sbMusicPause()')
+    );
+    expect(fn).toContain('sbMusicContinuous');
+    expect(fn).toContain('sbMusicNext()');
+  });
+
+  test('display view has continuous playback toggle button', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sbMusicContinuousBtn');
+    expect(content).toContain('sbToggleMusicContinuous()');
+    expect(content).toContain('Continuous');
+  });
+});
+
+// =====================================================
+// Playlist management (add to queue without playing)
+// =====================================================
+
+test.describe('Playlist management', () => {
+  test('JS has sbAddToPlaylist function', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbAddToPlaylist(');
+    const fn = content.substring(
+      content.indexOf('function sbAddToPlaylist('),
+      content.indexOf('function sbUpdatePlaylistCount()')
+    );
+    expect(fn).toContain('sbMusicPlayer.queue.push');
+  });
+
+  test('JS has sbAddToPlaylistFromTrack function for library tracks', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbAddToPlaylistFromTrack(');
+  });
+
+  test('JS has sbAddAllToPlaylist function', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbAddAllToPlaylist()');
+  });
+
+  test('JS has sbUpdatePlaylistCount function', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbUpdatePlaylistCount()');
+    expect(content).toContain('sbPlaylistCount');
+  });
+
+  test('display view has playlist count badge', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('sbPlaylistCount');
+  });
+
+  test('music library renders add-to-playlist buttons on tracks', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('sb-ml-track-add');
+    expect(content).toContain('sbAddToPlaylistFromTrack');
+    expect(content).toContain('Add to Playlist');
+  });
+
+  test('album view has Add All to Playlist button', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('sbAddAllToPlaylist()');
+    expect(content).toContain('Add All to Playlist');
+  });
+
+  test('CSS has add-to-playlist button styles', () => {
+    const content = readFile('views/scoreboard/scoreboard_display.php');
+    expect(content).toContain('.sb-ml-track-add');
+  });
+});
+
+// =====================================================
+// Music search fix (server-side search via Subsonic search3)
+// =====================================================
+
+test.describe('Music search fix – server-side Subsonic search', () => {
+  test('process_scoreboard.php has subsonic_search action', () => {
+    const content = readFile('process_scoreboard.php');
+    expect(content).toContain("case 'subsonic_search':");
+    expect(content).toContain('search3');
+    expect(content).toContain('songCount');
+  });
+
+  test('subsonic_search uses search3 API with query parameter', () => {
+    const content = readFile('process_scoreboard.php');
+    const searchSection = content.substring(
+      content.indexOf("case 'subsonic_search':"),
+      content.indexOf("break;", content.indexOf("case 'subsonic_search':"))
+    );
+    expect(searchSection).toContain('/rest/search3?');
+    expect(searchSection).toContain('urlencode($query)');
+    expect(searchSection).toContain('searchResult3');
+  });
+
+  test('subsonic_search validates query length >= 2', () => {
+    const content = readFile('process_scoreboard.php');
+    const searchSection = content.substring(
+      content.indexOf("case 'subsonic_search':"),
+      content.indexOf("break;", content.indexOf("case 'subsonic_search':"))
+    );
+    expect(searchSection).toContain('strlen($query) < 2');
+  });
+
+  test('JS sbMusicLibraryFilter calls sbSubsonicServerSearch for queries >= 2 chars', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('function sbSubsonicServerSearch(');
+    const filterFn = content.substring(
+      content.indexOf('function sbMusicLibraryFilter('),
+      content.indexOf('function sbSubsonicServerSearch(')
+    );
+    expect(filterFn).toContain('sbSubsonicServerSearch');
+    expect(filterFn).toContain('query.length >= 2');
+  });
+
+  test('JS sbSubsonicServerSearch calls subsonic_search action', () => {
+    const content = readFile('js/scoreboard.js');
+    const fn = content.substring(
+      content.indexOf('function sbSubsonicServerSearch('),
+      content.indexOf('function sbSpotifyConnect()')
+    );
+    expect(fn).toContain("sbFetch('subsonic_search'");
+    expect(fn).toContain('sb-ml-search-results');
+  });
+
+  test('album list size increased from 100 to 500', () => {
+    const content = readFile('process_scoreboard.php');
+    expect(content).toContain('getAlbumList2');
+    expect(content).toContain('size=500');
+  });
+
+  test('random songs size increased from 50 to 200', () => {
+    const content = readFile('process_scoreboard.php');
+    expect(content).toContain('getRandomSongs');
+    expect(content).toContain('size=200');
+  });
+
+  test('search uses debouncing (400ms) to avoid excessive requests', () => {
+    const content = readFile('js/scoreboard.js');
+    expect(content).toContain('_sbSearchTimer');
+    expect(content).toContain('clearTimeout(_sbSearchTimer)');
+    expect(content).toContain('setTimeout');
+    expect(content).toContain('400');
+  });
+});
