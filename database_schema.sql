@@ -207,12 +207,12 @@ CREATE TABLE IF NOT EXISTS `session_types` (
     `description` TEXT DEFAULT NULL,
     `default_price` DECIMAL(10,2) DEFAULT 0.00,
     `duration_minutes` INT DEFAULT 60,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `max_participants` INT DEFAULT NULL COMMENT 'Maximum participants for this session type',
     `is_active` TINYINT(1) DEFAULT 1 COMMENT 'Whether this session type is active',
     `show_on_landing` TINYINT(1) DEFAULT 0 COMMENT 'Whether to show on landing page',
     `session_type` ENUM('on_ice', 'off_ice', 'nutrition', 'meeting', 'other') DEFAULT 'on_ice' COMMENT 'Type of session',
-    `is_template` TINYINT(1) DEFAULT 0 COMMENT 'Whether this is a reusable template',
+    `is_template` TINYINT(1) DEFAULT 0 COMMENT 'Whether this is a reusable template'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Sessions
@@ -408,11 +408,11 @@ CREATE TABLE IF NOT EXISTS `discount_codes` (
     `valid_from` DATE DEFAULT NULL,
     `valid_until` DATE DEFAULT NULL,
     `is_active` TINYINT(1) DEFAULT 1,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `store_credit_value` DECIMAL(10,2) DEFAULT NULL COMMENT 'Store credit amount for store_credit type',
     `auto_generate_type` ENUM('none', 'new_registration', 'time_based', 'referral') DEFAULT 'none' COMMENT 'Type of auto-generated code',
     `days_since_registration` INT DEFAULT NULL COMMENT 'Trigger days for time_based codes',
-    `description` VARCHAR(255) DEFAULT NULL COMMENT 'User-friendly description of the discount',
+    `description` VARCHAR(255) DEFAULT NULL COMMENT 'User-friendly description of the discount'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Video uploads
