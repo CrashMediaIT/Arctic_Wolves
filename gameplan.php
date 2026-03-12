@@ -110,6 +110,7 @@ $allowed_pages = [
     'lines'            => 'views/gameplan/gp_lines.php',
     'roster'           => 'views/gameplan/gp_roster.php',
     'whiteboard'       => 'views/gameplan/gp_whiteboard.php',
+    'gamesheets'       => 'views/gameplan/gp_gamesheets.php',
 ];
 
 // Admin-only pages
@@ -415,6 +416,9 @@ try {
     </a>
     <a href="/gameplan.php?page=video_review" class="gp-nav-link <?= $page === 'video_review' ? 'active' : '' ?>">
         <i class="fas fa-film"></i> Video Review
+    </a>
+    <a href="/gameplan.php?page=gamesheets" class="gp-nav-link <?= $page === 'gamesheets' ? 'active' : '' ?>">
+        <i class="fas fa-file-alt"></i> Gamesheets
     </a>
     <?php if ($isAnyCoach): ?>
     <a href="/gameplan.php?page=calendar" class="gp-nav-link <?= $page === 'calendar' ? 'active' : '' ?>">
