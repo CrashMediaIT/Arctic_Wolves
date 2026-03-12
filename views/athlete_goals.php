@@ -405,6 +405,16 @@ function openModal(modalId) {
     }
 }
 
+// Handle add goal buttons
+document.querySelectorAll('[data-action="add"][data-modal="add-goal-modal"]').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        var form = document.getElementById('add-goal-form');
+        if (form) form.reset();
+        openModal('add-goal-modal');
+    });
+});
+
 // Handle edit buttons
 document.querySelectorAll('[data-action="edit"][data-modal="edit-goal-modal"]').forEach(function(btn) {
     btn.addEventListener('click', function(e) {

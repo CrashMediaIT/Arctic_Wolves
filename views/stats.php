@@ -14,7 +14,7 @@ $active_tab = $_GET['tab'] ?? 'goals';
 
 // Get athlete list for coaches
 $athletes = [];
-if ($isCoach) {
+if ($isAnyCoach) {
     try {
         $athletes_query = "
             SELECT DISTINCT u.id, u.first_name, u.last_name, u.email
@@ -60,7 +60,7 @@ if ($viewing_athlete_id != $user_id) {
         </p>
     </div>
     <div class="page-header-actions">
-        <?php if ($isCoach && count($athletes) > 0): ?>
+        <?php if ($isAnyCoach && count($athletes) > 0): ?>
             <select class="athlete-selector" onchange="window.location.href='?page=stats&tab=<?php echo $active_tab; ?>&athlete_id=' + this.value">
                 <option value="">Select Athlete</option>
                 <?php foreach ($athletes as $athlete): ?>
@@ -525,7 +525,7 @@ try {
                     </select>
                 </div>
             <?php endif; ?>
-            <?php if ($isCoach || $viewing_athlete_id == $user_id): ?>
+            <?php if ($isAnyCoach || $viewing_athlete_id == $user_id): ?>
             <div class="filter-group filter-action">
                 <button type="button" class="btn btn-primary" onclick="openCreateGoalModal()">
                     <i class="fas fa-plus"></i> Create Goal
@@ -579,7 +579,7 @@ try {
                             <button class="btn-goal-action btn-view" onclick="viewGoalDetail(<?php echo $goal['id']; ?>)">
                                 <i class="fas fa-eye"></i> View
                             </button>
-                            <?php if ($isCoach || $viewing_athlete_id == $user_id): ?>
+                            <?php if ($isAnyCoach || $viewing_athlete_id == $user_id): ?>
                                 <button class="btn-goal-action btn-edit" onclick="editGoal(<?php echo $goal['id']; ?>)">
                                     <i class="fas fa-edit"></i> Edit
                                 </button>
@@ -598,13 +598,13 @@ try {
                 <i class="fas fa-bullseye empty-icon"></i>
                 <h3>No Goals Found</h3>
                 <p class="placeholder-text">
-                    <?php if ($isCoach || $viewing_athlete_id == $user_id): ?>
+                    <?php if ($isAnyCoach || $viewing_athlete_id == $user_id): ?>
                         Create a goal to start tracking progress
                     <?php else: ?>
                         Your coach will create goals for you to work towards
                     <?php endif; ?>
                 </p>
-                <?php if ($isCoach || $viewing_athlete_id == $user_id): ?>
+                <?php if ($isAnyCoach || $viewing_athlete_id == $user_id): ?>
                 <button type="button" class="btn btn-primary" onclick="openCreateGoalModal()">
                     <i class="fas fa-plus"></i> Create Your First Goal
                 </button>
@@ -615,7 +615,7 @@ try {
 
     <!-- TAB 2: Performance Stats -->
     <div class="tab-content <?php echo $active_tab === 'performance' ? 'active' : ''; ?>" id="performance-tab">
-        <?php if ($isCoach || $viewing_athlete_id == $user_id): ?>
+        <?php if ($isAnyCoach || $viewing_athlete_id == $user_id): ?>
         <div class="filters-bar" style="margin-bottom: 24px;">
             <div style="flex:1; color: var(--text-dim); font-size: 14px; display: flex; align-items: center; gap: 8px;">
                 <i class="fas fa-info-circle"></i>
@@ -976,13 +976,13 @@ try {
             <i class="fas fa-chart-bar empty-icon"></i>
             <h3>No Performance Data Yet</h3>
             <p class="placeholder-text">
-                <?php if ($isCoach || $viewing_athlete_id == $user_id): ?>
+                <?php if ($isAnyCoach || $viewing_athlete_id == $user_id): ?>
                     Use the <strong>Add Season Stats</strong> button above to record season statistics, or add metrics like lap times and shot speeds.
                 <?php else: ?>
                     Your coach will record performance statistics here.
                 <?php endif; ?>
             </p>
-            <?php if ($isCoach || $viewing_athlete_id == $user_id): ?>
+            <?php if ($isAnyCoach || $viewing_athlete_id == $user_id): ?>
             <button type="button" class="btn btn-primary" onclick="openAddStatsModal()" style="margin-top: 8px;">
                 <i class="fas fa-plus"></i> Add Season Stats
             </button>
@@ -2325,7 +2325,7 @@ try {
 
 <script>
 let stepCounter = 0;
-const isCoach = <?php echo json_encode($isCoach); ?>;
+const isCoach = <?php echo json_encode($isAnyCoach); ?>;
 const viewingAthleteId = <?php echo json_encode($viewing_athlete_id); ?>;
 const currentUserId = <?php echo json_encode($user_id); ?>;
 const canManageGoals = isCoach || viewingAthleteId === currentUserId;

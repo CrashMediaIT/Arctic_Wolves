@@ -15,19 +15,37 @@ if ($is_coach && isset($_GET['athlete_id'])) {
 }
 
 // Get workouts
-$workouts_stmt = $pdo->prepare("
-    SELECT uw.*, u.first_name, u.last_name, coach.first_name as coach_first, coach.last_name as coach_last,
-           (SELECT COUNT(*) FROM user_workout_items WHERE user_workout_id = uw.id) as exercise_count,
-           (SELECT COUNT(*) FROM user_workout_items WHERE user_workout_id = uw.id AND completed_at IS NOT NULL) as completed_count
-    FROM user_workouts uw
-    INNER JOIN users u ON uw.user_id = u.id
-    LEFT JOIN users coach ON uw.coach_id = coach.id
-    WHERE uw.user_id = ?
-    ORDER BY COALESCE(uw.assigned_date, uw.workout_date) DESC
-");
-$workouts_stmt->execute([$viewing_user_id]);
-$workouts = $workouts_stmt->fetchAll();
-$workouts = decryptUserRows($workouts);
+try {
+    $workouts_stmt = $pdo->prepare("
+        SELECT uw.*, u.first_name, u.last_name, coach.first_name as coach_first, coach.last_name as coach_last,
+               (SELECT COUNT(*) FROM user_workout_items WHERE user_workout_id = uw.id) as exercise_count,
+               (SELECT COUNT(*) FROM user_workout_items WHERE user_workout_id = uw.id AND completed_at IS NOT NULL) as completed_count
+        FROM user_workouts uw
+        INNER JOIN users u ON uw.user_id = u.id
+        LEFT JOIN users coach ON uw.coach_id = coach.id
+        WHERE uw.user_id = ?
+        ORDER BY COALESCE(uw.assigned_date, uw.workout_date) DESC
+    ");
+    $workouts_stmt->execute([$viewing_user_id]);
+    $workouts = $workouts_stmt->fetchAll();
+    $workouts = decryptUserRows($workouts);
+} catch (PDOException $e) {
+    // Fallback: user_workouts.coach_id column may not exist yet (pre-migration)
+    error_log("workouts.php - coach_id column missing, using fallback query: " . $e->getMessage());
+    $workouts_stmt = $pdo->prepare("
+        SELECT uw.*, u.first_name, u.last_name,
+               NULL as coach_first, NULL as coach_last,
+               (SELECT COUNT(*) FROM user_workout_items WHERE user_workout_id = uw.id) as exercise_count,
+               (SELECT COUNT(*) FROM user_workout_items WHERE user_workout_id = uw.id AND completed_at IS NOT NULL) as completed_count
+        FROM user_workouts uw
+        INNER JOIN users u ON uw.user_id = u.id
+        WHERE uw.user_id = ?
+        ORDER BY COALESCE(uw.assigned_date, uw.workout_date) DESC
+    ");
+    $workouts_stmt->execute([$viewing_user_id]);
+    $workouts = $workouts_stmt->fetchAll();
+    $workouts = decryptUserRows($workouts);
+}
 
 // Get simple workouts (legacy)
 $simple_workouts_stmt = $pdo->prepare("

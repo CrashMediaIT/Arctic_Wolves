@@ -12,17 +12,17 @@ $current_user_id = $user_id;
 $current_user_role = $user_role;
 
 // Team Evaluation Mode toggle
-$team_mode = isset($_GET['team_mode']) && $_GET['team_mode'] === '1' && $isCoach;
+$team_mode = isset($_GET['team_mode']) && $_GET['team_mode'] === '1' && $isAnyCoach;
 
 // Determine viewing athlete
 $viewing_athlete_id = $current_user_id;
-if ($isCoach && isset($_GET['athlete_id'])) {
+if ($isAnyCoach && isset($_GET['athlete_id'])) {
     $viewing_athlete_id = intval($_GET['athlete_id']);
 }
 
 // Get athlete list for coaches (including non-system athletes in team mode)
 $athletes = [];
-if ($isCoach) {
+if ($isAnyCoach) {
     $athletes = $pdo->query("
         SELECT id, first_name, last_name, email
         FROM users
@@ -86,19 +86,24 @@ if ($eval_id) {
     
     if ($evaluation) {
         // Load scores
-        $scores_stmt = $pdo->prepare("
-            SELECT es.*, 
-                   evs.id as skill_id, evs.name as skill_name, evs.description as skill_description,
-                   evs.criteria, evs.category_id,
-                   ec.name as category_name, ec.display_order as category_order
-            FROM evaluation_scores es
-            JOIN eval_skills evs ON es.skill_id = evs.id
-            JOIN eval_categories ec ON evs.category_id = ec.id
-            WHERE es.evaluation_id = ?
-            ORDER BY ec.display_order, evs.display_order
-        ");
-        $scores_stmt->execute([$eval_id]);
-        $scores = $scores_stmt->fetchAll();
+        try {
+            $scores_stmt = $pdo->prepare("
+                SELECT es.*, 
+                       evs.id as skill_id, evs.name as skill_name, evs.description as skill_description,
+                       evs.criteria, evs.category_id,
+                       ec.name as category_name, ec.display_order as category_order
+                FROM evaluation_scores es
+                JOIN eval_skills evs ON es.skill_id = evs.id
+                JOIN eval_categories ec ON evs.category_id = ec.id
+                WHERE es.evaluation_id = ?
+                ORDER BY ec.display_order, evs.display_order
+            ");
+            $scores_stmt->execute([$eval_id]);
+            $scores = $scores_stmt->fetchAll();
+        } catch (PDOException $e) {
+            error_log("evaluations_skills.php - scores query failed (evaluation_id may be missing): " . $e->getMessage());
+            $scores = [];
+        }
         
         // Group by category
         foreach ($scores as $score) {
@@ -139,44 +144,66 @@ if ($eval_id) {
 }
 
 // Get all evaluations list
-$evals_stmt = $pdo->prepare("
-    SELECT ae.*, 
-           u.first_name as creator_first_name, u.last_name as creator_last_name,
-           (SELECT COUNT(*) FROM evaluation_scores WHERE evaluation_id = ae.id AND score IS NOT NULL) as completed_scores,
-           (SELECT COUNT(*) FROM evaluation_scores WHERE evaluation_id = ae.id) as total_scores
-    FROM athlete_evaluations ae
-    LEFT JOIN users u ON ae.created_by = u.id
-    WHERE ae.athlete_id = ?
-    ORDER BY ae.evaluation_date DESC, ae.created_at DESC
-");
-$evals_stmt->execute([$viewing_athlete_id]);
-$evaluations_list = $evals_stmt->fetchAll();
-$evaluations_list = decryptUserRows($evaluations_list);
+try {
+    $evals_stmt = $pdo->prepare("
+        SELECT ae.*, 
+               u.first_name as creator_first_name, u.last_name as creator_last_name,
+               (SELECT COUNT(*) FROM evaluation_scores WHERE evaluation_id = ae.id AND score IS NOT NULL) as completed_scores,
+               (SELECT COUNT(*) FROM evaluation_scores WHERE evaluation_id = ae.id) as total_scores
+        FROM athlete_evaluations ae
+        LEFT JOIN users u ON ae.created_by = u.id
+        WHERE ae.athlete_id = ?
+        ORDER BY ae.evaluation_date DESC, ae.created_at DESC
+    ");
+    $evals_stmt->execute([$viewing_athlete_id]);
+    $evaluations_list = $evals_stmt->fetchAll();
+    $evaluations_list = decryptUserRows($evaluations_list);
+} catch (PDOException $e) {
+    // Fallback: evaluation_scores.evaluation_id column may not exist yet (pre-migration)
+    error_log("evaluations_skills.php - evaluation_id column missing, using fallback query: " . $e->getMessage());
+    $evals_stmt = $pdo->prepare("
+        SELECT ae.*, 
+               u.first_name as creator_first_name, u.last_name as creator_last_name,
+               0 as completed_scores,
+               0 as total_scores
+        FROM athlete_evaluations ae
+        LEFT JOIN users u ON ae.created_by = u.id
+        WHERE ae.athlete_id = ?
+        ORDER BY ae.evaluation_date DESC, ae.created_at DESC
+    ");
+    $evals_stmt->execute([$viewing_athlete_id]);
+    $evaluations_list = $evals_stmt->fetchAll();
+    $evaluations_list = decryptUserRows($evaluations_list);
+}
 
 // Get historical evaluations for comparison (if viewing evaluation)
 $historical = [];
 if ($eval_id && $evaluation) {
-    $hist_stmt = $pdo->prepare("
-        SELECT ae.id, ae.evaluation_date, ae.title,
-               es.skill_id, es.score
-        FROM athlete_evaluations ae
-        JOIN evaluation_scores es ON ae.id = es.evaluation_id
-        WHERE ae.athlete_id = ? AND ae.id != ? AND ae.status = 'completed'
-        ORDER BY ae.evaluation_date DESC
-        LIMIT 3
-    ");
-    $hist_stmt->execute([$viewing_athlete_id, $eval_id]);
-    $hist_scores = $hist_stmt->fetchAll();
-    
-    foreach ($hist_scores as $hs) {
-        if (!isset($historical[$hs['id']])) {
-            $historical[$hs['id']] = [
-                'date' => $hs['evaluation_date'],
-                'title' => $hs['title'],
-                'scores' => []
-            ];
+    try {
+        $hist_stmt = $pdo->prepare("
+            SELECT ae.id, ae.evaluation_date, ae.title,
+                   es.skill_id, es.score
+            FROM athlete_evaluations ae
+            JOIN evaluation_scores es ON ae.id = es.evaluation_id
+            WHERE ae.athlete_id = ? AND ae.id != ? AND ae.status = 'completed'
+            ORDER BY ae.evaluation_date DESC
+            LIMIT 3
+        ");
+        $hist_stmt->execute([$viewing_athlete_id, $eval_id]);
+        $hist_scores = $hist_stmt->fetchAll();
+        
+        foreach ($hist_scores as $hs) {
+            if (!isset($historical[$hs['id']])) {
+                $historical[$hs['id']] = [
+                    'date' => $hs['evaluation_date'],
+                    'title' => $hs['title'],
+                    'scores' => []
+                ];
+            }
+            $historical[$hs['id']]['scores'][$hs['skill_id']] = $hs['score'];
         }
-        $historical[$hs['id']]['scores'][$hs['skill_id']] = $hs['score'];
+    } catch (PDOException $e) {
+        error_log("evaluations_skills.php - historical query failed (evaluation_id may be missing): " . $e->getMessage());
     }
 }
 ?>
@@ -841,7 +868,7 @@ if ($eval_id && $evaluation) {
                 </h1>
             </div>
             <div class="header-actions">
-                <?php if ($isCoach): ?>
+                <?php if ($isAnyCoach): ?>
                     <!-- Team Mode Toggle -->
                     <label style="display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer;">
                         <input 
@@ -855,7 +882,7 @@ if ($eval_id && $evaluation) {
                     
                     <div class="athlete-selector" id="eval-detail-athlete-typeahead" style="min-width: 220px;"></div>
                 <?php endif; ?>
-                <a href="?page=evaluations_skills<?= $isCoach && $viewing_athlete_id != $current_user_id ? '&athlete_id=' . $viewing_athlete_id : '' ?><?= $team_mode ? '&team_mode=1' : '' ?>" class="btn-back">
+                <a href="?page=evaluations_skills<?= $isAnyCoach && $viewing_athlete_id != $current_user_id ? '&athlete_id=' . $viewing_athlete_id : '' ?><?= $team_mode ? '&team_mode=1' : '' ?>" class="btn-back">
                     <i class="fas fa-arrow-left"></i> Back to List
                 </a>
             </div>
@@ -874,12 +901,12 @@ if ($eval_id && $evaluation) {
                     </div>
                 </div>
                 <div class="eval-actions">
-                    <?php if ($isCoach && $evaluation['status'] === 'draft'): ?>
+                    <?php if ($isAnyCoach && $evaluation['status'] === 'draft'): ?>
                         <button class="btn-complete" onclick="completeEvaluation(<?= $eval_id ?>)">
                             <i class="fas fa-check"></i> Mark Complete
                         </button>
                     <?php endif; ?>
-                    <?php if ($isCoach): ?>
+                    <?php if ($isAnyCoach): ?>
                         <button class="btn-share" onclick="generateShareLink(<?= $eval_id ?>)">
                             <i class="fas fa-share-alt"></i> Share
                         </button>
@@ -937,7 +964,7 @@ if ($eval_id && $evaluation) {
                 <?php endforeach; ?>
                 
                 <!-- Save Button for Team Mode -->
-                <?php if ($isCoach): ?>
+                <?php if ($isAnyCoach): ?>
                     <div style="margin-top: 24px; padding: 20px; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px;">
                         <label style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px; font-size: 14px; font-weight: 600;">
                             <input 
@@ -981,7 +1008,7 @@ if ($eval_id && $evaluation) {
                                         value="<?= $skill['score'] ?? '' ?>"
                                         placeholder="—"
                                         data-score-id="<?= $skill['id'] ?>"
-                                        <?= $isCoach ? 'onchange="saveScore(' . $skill['id'] . ', this.value)"' : 'readonly' ?>
+                                        <?= $isAnyCoach ? 'onchange="saveScore(' . $skill['id'] . ', this.value)"' : 'readonly' ?>
                                     >
                                     <span class="score-scale">/ 10</span>
                                 </div>
@@ -998,11 +1025,11 @@ if ($eval_id && $evaluation) {
                                             placeholder="Notes visible to athlete..."
                                             data-score-id="<?= $skill['id'] ?>"
                                             data-type="public"
-                                            <?= $isCoach ? 'onchange="saveNotes(' . $skill['id'] . ', \'public\', this.value)"' : 'readonly' ?>
+                                            <?= $isAnyCoach ? 'onchange="saveNotes(' . $skill['id'] . ', \'public\', this.value)"' : 'readonly' ?>
                                         ><?= htmlspecialchars($skill['public_notes'] ?? '') ?></textarea>
                                     </div>
                                     
-                                    <?php if ($isCoach): ?>
+                                    <?php if ($isAnyCoach): ?>
                                         <div class="note-group">
                                             <div class="note-label">
                                                 <i class="fas fa-lock"></i> Private Notes (Coach only)
@@ -1031,7 +1058,7 @@ if ($eval_id && $evaluation) {
                                                     <?php else: ?>
                                                         <video src="<?= htmlspecialchars(resolveRustfsUrl($pdo, $media['media_url'])) ?>" controls></video>
                                                     <?php endif; ?>
-                                                    <?php if ($isCoach): ?>
+                                                    <?php if ($isAnyCoach): ?>
                                                         <button class="media-delete" onclick="deleteMedia(<?= $media['id'] ?>)">
                                                             <i class="fas fa-times"></i>
                                                         </button>
@@ -1040,7 +1067,7 @@ if ($eval_id && $evaluation) {
                                             <?php endforeach; ?>
                                         <?php endif; ?>
                                     </div>
-                                    <?php if ($isCoach): ?>
+                                    <?php if ($isAnyCoach): ?>
                                         <label class="upload-button">
                                             <i class="fas fa-upload"></i> Upload Media
                                             <input type="file" accept="image/*,video/*" onchange="uploadMedia(<?= $skill['id'] ?>, this.files[0])">
@@ -1123,7 +1150,7 @@ if ($eval_id && $evaluation) {
                 <?php endif; ?>
             </h1>
             <div class="header-actions">
-                <?php if ($isCoach): ?>
+                <?php if ($isAnyCoach): ?>
                     <div id="eval-list-athlete-typeahead" style="min-width: 220px;"></div>
                     <button class="btn-create" onclick="openCreateModal()">
                         <i class="fas fa-plus"></i> New Evaluation
@@ -1137,7 +1164,7 @@ if ($eval_id && $evaluation) {
                 <i class="fas fa-clipboard-check"></i>
                 <h2 style="font-size: 24px; color: #fff; margin-bottom: 10px;">No Evaluations</h2>
                 <p style="color: #64748b;">
-                    <?php if ($isCoach): ?>
+                    <?php if ($isAnyCoach): ?>
                         Create your first skills evaluation to get started
                     <?php else: ?>
                         Your coach hasn't created any skills evaluations yet
@@ -1147,7 +1174,7 @@ if ($eval_id && $evaluation) {
         <?php else: ?>
             <div class="evaluations-grid">
                 <?php foreach ($evaluations_list as $eval): ?>
-                    <div class="eval-card" onclick="window.location='?page=evaluations_skills&eval_id=<?= $eval['id'] ?><?= $isCoach && $viewing_athlete_id != $current_user_id ? '&athlete_id=' . $viewing_athlete_id : '' ?>'">
+                    <div class="eval-card" onclick="window.location='?page=evaluations_skills&eval_id=<?= $eval['id'] ?><?= $isAnyCoach && $viewing_athlete_id != $current_user_id ? '&athlete_id=' . $viewing_athlete_id : '' ?>'">
                         <div class="eval-card-header">
                             <div>
                                 <div class="eval-card-title">
@@ -1554,7 +1581,7 @@ async function saveTeamEvaluation() {
 }
 </script>
 <script>
-<?php if ($isCoach): ?>
+<?php if ($isAnyCoach): ?>
 // Detail view athlete switcher (with eval_id context)
 <?php if (isset($eval_id) && $eval_id): ?>
 (function() {
