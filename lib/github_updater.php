@@ -995,15 +995,16 @@ class GitHubUpdater {
                 // Non-critical — FK may already exist or tables may not be ready
             }
             
-            // Verify schema after migration — retry any tables still missing
+            // Verify schema after migration — retry any tables or columns still missing
             try {
                 $post_schema = $migrator->getCurrentSchema();
                 $remaining = $migrator->compareSchemas($post_schema, $expected_schema);
-                $remaining_tables = array_filter($remaining, function($m) { return $m['type'] === 'create_table'; });
-                if (!empty($remaining_tables)) {
+                if (!empty($remaining)) {
                     try { $this->pdo->exec('SET FOREIGN_KEY_CHECKS = 0'); } catch (\Exception $e) { /* best-effort */ }
                     try {
-                        foreach ($remaining_tables as $rm) {
+                        // First pass: create missing tables
+                        foreach ($remaining as $rm) {
+                            if ($rm['type'] !== 'create_table') continue;
                             $table_name = $rm['table'];
                             if (preg_match(sprintf($create_table_pattern_tpl, preg_quote($table_name, '/')), $schema_sql, $match)) {
                                 try {
@@ -1018,12 +1019,43 @@ class GitHubUpdater {
                                 }
                             }
                         }
+                        // Second pass: add missing columns
+                        foreach ($remaining as $rm) {
+                            if ($rm['type'] !== 'add_column') continue;
+                            try {
+                                $col_result = $migrator->executeMigration($rm);
+                                if (empty($col_result['skipped'])) {
+                                    $results[] = $col_result['message'] . ' (retry)';
+                                }
+                            } catch (\Exception $ce) {
+                                $errors[] = "Retry: could not add column to {$rm['table']}: " . $ce->getMessage();
+                                error_log("Schema retry add column error for {$rm['table']}: " . $ce->getMessage());
+                            }
+                        }
                     } finally {
                         try { $this->pdo->exec('SET FOREIGN_KEY_CHECKS = 1'); } catch (\Exception $e) { /* best-effort */ }
                     }
                 }
             } catch (\Exception $e) {
                 error_log("Post-migration verification error: " . $e->getMessage());
+            }
+            
+            // Execute ALTER TABLE MODIFY/ADD INDEX statements from schema file.
+            // These are needed for column type changes and index additions that
+            // are not handled by the CREATE TABLE / add_column migration system.
+            try {
+                if (preg_match_all('/ALTER\s+TABLE\s+[^;]+;/i', $schema_sql, $alter_matches)) {
+                    foreach ($alter_matches[0] as $alter_sql) {
+                        try {
+                            $this->pdo->exec($alter_sql);
+                        } catch (\Exception $ae) {
+                            // Non-critical: column/index may already be in desired state
+                            error_log("ALTER TABLE statement (non-critical): " . $ae->getMessage());
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                error_log("ALTER TABLE execution error: " . $e->getMessage());
             }
             
             return [

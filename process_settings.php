@@ -767,8 +767,52 @@ try {
             // while this request is still using them.
             $base_dir = __DIR__;
             if (!empty($result['has_deferred'])) {
-                register_shutdown_function(function() use ($base_dir) {
+                register_shutdown_function(function() use ($base_dir, $pdo) {
                     GitHubUpdater::applyDeferredUpdates($base_dir);
+                    
+                    // Re-run schema check after deferred files are applied.
+                    // DatabaseMigrator (lib/database_migrator.php) is NOT deferred,
+                    // so it was already updated to the new version during the update.
+                    // This catches any missing tables/columns that the initial schema
+                    // check could not handle because github_updater.php was deferred.
+                    try {
+                        $migrator_file = $base_dir . '/lib/database_migrator.php';
+                        $schema_file = $base_dir . '/database_schema.sql';
+                        if (file_exists($migrator_file) && file_exists($schema_file)) {
+                            require_once $migrator_file;
+                            $migrator = new DatabaseMigrator($pdo, $base_dir);
+                            $expected = $migrator->parseSchemaFile($schema_file);
+                            $current = $migrator->getCurrentSchema();
+                            $remaining = $migrator->compareSchemas($current, $expected);
+                            
+                            if (!empty($remaining)) {
+                                $schema_sql = file_get_contents($schema_file);
+                                $tpl = '/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?`?%s`?\s*\(.*?\)\s*ENGINE[^;]*;/is';
+                                
+                                try { $pdo->exec('SET FOREIGN_KEY_CHECKS = 0'); } catch (Exception $e) {}
+                                try {
+                                    foreach ($remaining as $m) {
+                                        try {
+                                            if ($m['type'] === 'create_table') {
+                                                $tn = $m['table'];
+                                                if (preg_match(sprintf($tpl, preg_quote($tn, '/')), $schema_sql, $match)) {
+                                                    $pdo->exec($match[0]);
+                                                }
+                                            } elseif ($m['type'] === 'add_column') {
+                                                $migrator->executeMigration($m);
+                                            }
+                                        } catch (Exception $e) {
+                                            error_log('Deferred schema fix: ' . $e->getMessage());
+                                        }
+                                    }
+                                } finally {
+                                    try { $pdo->exec('SET FOREIGN_KEY_CHECKS = 1'); } catch (Exception $e) {}
+                                }
+                            }
+                        }
+                    } catch (Exception $e) {
+                        error_log('Post-deferred schema check error: ' . $e->getMessage());
+                    }
                 });
             }
             

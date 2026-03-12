@@ -561,15 +561,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     try { $pdo->exec('SET FOREIGN_KEY_CHECKS = 1'); } catch (Exception $e) { /* best-effort */ }
                 }
                 
-                // Verify schema after migration — retry any tables still missing
+                // Verify schema after migration — retry any tables or columns still missing
                 $post_schema = $migrator->getCurrentSchema();
                 $remaining = $migrator->compareSchemas($post_schema, $expected_schema);
-                $remaining_tables = array_filter($remaining, function($m) { return $m['type'] === 'create_table'; });
                 
-                if (!empty($remaining_tables)) {
+                if (!empty($remaining)) {
                     try { $pdo->exec('SET FOREIGN_KEY_CHECKS = 0'); } catch (Exception $e) { /* best-effort */ }
                     try {
-                        foreach ($remaining_tables as $rm) {
+                        // First pass: create missing tables
+                        foreach ($remaining as $rm) {
+                            if ($rm['type'] !== 'create_table') continue;
                             $table_name = $rm['table'];
                             if (preg_match(sprintf($create_table_pattern_tpl, preg_quote($table_name, '/')), $schema_sql, $match)) {
                                 try {
@@ -583,19 +584,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 }
                             }
                         }
+                        // Second pass: add missing columns
+                        foreach ($remaining as $rm) {
+                            if ($rm['type'] !== 'add_column') continue;
+                            try {
+                                $col_result = $migrator->executeMigration($rm);
+                                if (empty($col_result['skipped'])) {
+                                    $migration_results[] = $col_result['message'] . ' (retry)';
+                                }
+                            } catch (Exception $ce) {
+                                $migration_errors[] = "Retry: could not add column to {$rm['table']}: " . $ce->getMessage();
+                            }
+                        }
                     } finally {
                         try { $pdo->exec('SET FOREIGN_KEY_CHECKS = 1'); } catch (Exception $e) { /* best-effort */ }
                     }
                     // Re-verify after retry
                     $post_schema = $migrator->getCurrentSchema();
                     $remaining = $migrator->compareSchemas($post_schema, $expected_schema);
-                    $remaining_tables = array_filter($remaining, function($m) { return $m['type'] === 'create_table'; });
+                    $remaining_issues = array_filter($remaining, function($m) { return $m['type'] === 'create_table' || $m['type'] === 'add_column'; });
+                } else {
+                    $remaining_issues = [];
+                }
+                
+                // Execute ALTER TABLE MODIFY/ADD INDEX statements from schema file.
+                // These handle column type changes and index additions not covered by
+                // the CREATE TABLE / add_column migration system.
+                try {
+                    if (preg_match_all('/ALTER\s+TABLE\s+[^;]+;/i', $schema_sql, $alter_matches)) {
+                        foreach ($alter_matches[0] as $alter_sql) {
+                            try {
+                                $pdo->exec($alter_sql);
+                            } catch (Exception $ae) {
+                                // Non-critical: column/index may already be in desired state
+                            }
+                        }
+                    }
+                } catch (Exception $e) {
+                    error_log("Setup ALTER TABLE execution error: " . $e->getMessage());
                 }
                 
                 $_SESSION['setup']['schema_migration'] = [
                     'results' => $migration_results,
                     'errors' => $migration_errors,
-                    'remaining_issues' => count($remaining_tables)
+                    'remaining_issues' => count($remaining_issues)
                 ];
                 
                 $_SESSION['setup']['schema_migrated'] = true;
