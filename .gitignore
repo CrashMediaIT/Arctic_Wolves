@@ -76,3 +76,4 @@ android-tv/*.idsig
 node_modules/
 test-results/
 node_modules/
+test_output.txt
