@@ -34,6 +34,8 @@ CREATE TABLE IF NOT EXISTS `users` (
     `promotional_opt_in` TINYINT(1) DEFAULT 1 COMMENT 'Whether user opts in to promotional material usage',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `two_factor_required` TINYINT(1) DEFAULT 0,
+    `nextcloud_image_path` VARCHAR(500) DEFAULT NULL COMMENT 'Cloud storage path for profile image (RustFS URL)',
     FOREIGN KEY (`assigned_coach_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
     FOREIGN KEY (`created_by_coach_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
     INDEX `idx_role` (`role`),
@@ -88,6 +90,7 @@ CREATE TABLE IF NOT EXISTS `teams` (
     `ical_url` VARCHAR(1000) DEFAULT NULL COMMENT 'Stored iCal URL for calendar re-sync',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `nextcloud_logo_path` VARCHAR(500) DEFAULT NULL COMMENT 'Cloud storage path for team logo (RustFS URL)',
     FOREIGN KEY (`coach_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
     FOREIGN KEY (`assistant_coach_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
     INDEX `idx_active` (`is_active`),
@@ -204,7 +207,12 @@ CREATE TABLE IF NOT EXISTS `session_types` (
     `description` TEXT DEFAULT NULL,
     `default_price` DECIMAL(10,2) DEFAULT 0.00,
     `duration_minutes` INT DEFAULT 60,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `max_participants` INT DEFAULT NULL COMMENT 'Maximum participants for this session type',
+    `is_active` TINYINT(1) DEFAULT 1 COMMENT 'Whether this session type is active',
+    `show_on_landing` TINYINT(1) DEFAULT 0 COMMENT 'Whether to show on landing page',
+    `session_type` ENUM('on_ice', 'off_ice', 'nutrition', 'meeting', 'other') DEFAULT 'on_ice' COMMENT 'Type of session',
+    `is_template` TINYINT(1) DEFAULT 0 COMMENT 'Whether this is a reusable template'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Sessions
@@ -230,6 +238,11 @@ CREATE TABLE IF NOT EXISTS `sessions` (
     `status` ENUM('scheduled', 'completed', 'cancelled') DEFAULT 'scheduled',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `show_on_landing` TINYINT(1) DEFAULT 0 COMMENT 'Whether to show on landing page',
+    `session_type_category` ENUM('all_players', 'players', 'goalies') DEFAULT 'all_players',
+    `enable_child_checkin` TINYINT(1) DEFAULT 0 COMMENT 'Enable child check-in/check-out for this session/camp',
+    `is_private` TINYINT(1) DEFAULT 0 COMMENT 'Whether this is a private session',
+    `is_semi_private` TINYINT(1) DEFAULT 0 COMMENT 'Whether this is a semi-private session',
     FOREIGN KEY (`session_type_id`) REFERENCES `session_types`(`id`) ON DELETE SET NULL,
     FOREIGN KEY (`location_id`) REFERENCES `locations`(`id`) ON DELETE SET NULL,
     FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON DELETE SET NULL,
@@ -316,6 +329,9 @@ CREATE TABLE IF NOT EXISTS `drills` (
     `version` INT DEFAULT 1,
     `parent_drill_id` INT DEFAULT NULL,
     `share_token` VARCHAR(64) DEFAULT NULL,
+    `video_upload_path` VARCHAR(500) DEFAULT NULL COMMENT 'Path to uploaded video file',
+    `nextcloud_image_path` VARCHAR(500) DEFAULT NULL COMMENT 'Cloud storage path for drill media (RustFS URL)',
+    `thumbnail_path` VARCHAR(500) DEFAULT NULL COMMENT 'RustFS path to video thumbnail image',
     FOREIGN KEY (`category_id`) REFERENCES `drill_categories`(`id`) ON DELETE SET NULL,
     FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`parent_drill_id`) REFERENCES `drills`(`id`) ON DELETE SET NULL,
@@ -350,6 +366,17 @@ CREATE TABLE IF NOT EXISTS `packages` (
     `valid_days` INT DEFAULT NULL,
     `is_active` TINYINT(1) DEFAULT 1,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `store_credit` DECIMAL(10,2) DEFAULT 0.00 COMMENT 'Store credit value included in package',
+    `show_on_landing` TINYINT(1) DEFAULT 0 COMMENT 'Whether to show on landing page',
+    `package_type` VARCHAR(50) DEFAULT 'credits' COMMENT 'Type of package: credits, bundled, dollar_value',
+    `enable_child_checkin` TINYINT(1) DEFAULT 0 COMMENT 'Enable child check-in/check-out for sessions in this package',
+    `camp_start_date` DATE DEFAULT NULL COMMENT 'Camp start date',
+    `camp_end_date` DATE DEFAULT NULL COMMENT 'Camp end date',
+    `daily_start_time` TIME DEFAULT NULL COMMENT 'Default daily start time',
+    `daily_end_time` TIME DEFAULT NULL COMMENT 'Default daily end time',
+    `age_group_id` INT DEFAULT NULL COMMENT 'Optional age group restriction',
+    `skill_level_id` INT DEFAULT NULL COMMENT 'Optional skill level restriction',
+    `allow_individual_sessions` TINYINT(1) DEFAULT 0 COMMENT 'Allow purchasing individual sessions from multi-week program',
     FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -381,7 +408,11 @@ CREATE TABLE IF NOT EXISTS `discount_codes` (
     `valid_from` DATE DEFAULT NULL,
     `valid_until` DATE DEFAULT NULL,
     `is_active` TINYINT(1) DEFAULT 1,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `store_credit_value` DECIMAL(10,2) DEFAULT NULL COMMENT 'Store credit amount for store_credit type',
+    `auto_generate_type` ENUM('none', 'new_registration', 'time_based', 'referral') DEFAULT 'none' COMMENT 'Type of auto-generated code',
+    `days_since_registration` INT DEFAULT NULL COMMENT 'Trigger days for time_based codes',
+    `description` VARCHAR(255) DEFAULT NULL COMMENT 'User-friendly description of the discount'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Video uploads
@@ -441,6 +472,7 @@ CREATE TABLE IF NOT EXISTS `exercise_library` (
     `image_url` VARCHAR(255) DEFAULT NULL,
     `created_by` INT DEFAULT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `nextcloud_image_path` VARCHAR(500) DEFAULT NULL COMMENT 'Cloud storage path for exercise image (RustFS URL)',
     FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
     INDEX `idx_category` (`category`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -685,6 +717,17 @@ CREATE TABLE IF NOT EXISTS `expenses` (
     `approved_by` INT DEFAULT NULL,
     `approved_at` TIMESTAMP NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `vendor_name` VARCHAR(255) DEFAULT NULL,
+    `subtotal` DECIMAL(10,2) DEFAULT NULL,
+    `tax_amount` DECIMAL(10,2) DEFAULT 0.00,
+    `total_amount` DECIMAL(10,2) DEFAULT NULL,
+    `payment_method` VARCHAR(50) DEFAULT NULL,
+    `reference_number` VARCHAR(100) DEFAULT NULL,
+    `nextcloud_path` VARCHAR(500) DEFAULT NULL,
+    `ocr_data` JSON DEFAULT NULL,
+    `ocr_processed` TINYINT(1) DEFAULT 0,
+    `currency` VARCHAR(3) DEFAULT 'CAD',
+    `payee_id` INT DEFAULT NULL,
     FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`approved_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
     INDEX `idx_user` (`user_id`),
@@ -767,6 +810,7 @@ CREATE TABLE IF NOT EXISTS `eval_skills` (
     `display_order` INT DEFAULT 0,
     `is_active` TINYINT(1) DEFAULT 1,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `has_stopwatch` TINYINT(1) DEFAULT 0 COMMENT 'Whether this skill uses a stopwatch for timed evaluation',
     FOREIGN KEY (`category_id`) REFERENCES `eval_categories`(`id`) ON DELETE CASCADE,
     INDEX `idx_active` (`is_active`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -1195,6 +1239,10 @@ CREATE TABLE IF NOT EXISTS `evaluation_media` (
     `mime_type` VARCHAR(100) DEFAULT NULL,
     `uploaded_by` INT NOT NULL,
     `uploaded_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `nextcloud_path` VARCHAR(500) DEFAULT NULL COMMENT 'Cloud storage path for persistent media (RustFS URL)',
+    `score_id` INT DEFAULT NULL COMMENT 'FK to evaluation_scores for per-skill media',
+    `media_url` VARCHAR(500) DEFAULT NULL COMMENT 'URL or path to the uploaded media file',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`evaluation_id`) REFERENCES `athlete_evaluations`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`uploaded_by`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     INDEX `idx_evaluation` (`evaluation_id`),
@@ -1215,6 +1263,8 @@ CREATE TABLE IF NOT EXISTS `evaluation_scores` (
     `session_id` INT DEFAULT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `public_notes` TEXT DEFAULT NULL COMMENT 'Coach notes visible to athlete',
+    `private_notes` TEXT DEFAULT NULL COMMENT 'Coach-only private notes',
     FOREIGN KEY (`evaluation_id`) REFERENCES `athlete_evaluations`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`athlete_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`evaluator_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
@@ -1277,6 +1327,7 @@ CREATE TABLE IF NOT EXISTS `expense_categories` (
     `description` TEXT DEFAULT NULL,
     `is_active` TINYINT(1) DEFAULT 1,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `display_order` INT DEFAULT 0,
     INDEX `idx_active` (`is_active`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -1364,6 +1415,7 @@ CREATE TABLE IF NOT EXISTS `goal_eval_progress` (
     `notes` TEXT DEFAULT NULL,
     `recorded_by` INT NOT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `nextcloud_path` VARCHAR(500) DEFAULT NULL COMMENT 'Cloud storage path for eval goal media (RustFS URL)',
     FOREIGN KEY (`goal_evaluation_id`) REFERENCES `goal_evaluations`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`recorded_by`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     INDEX `idx_goal_eval` (`goal_evaluation_id`),
@@ -2357,6 +2409,7 @@ CREATE TABLE IF NOT EXISTS `login_history` (
     `user_agent` TEXT DEFAULT NULL,
     `login_status` ENUM('success', 'failed', 'blocked') DEFAULT 'success',
     `failure_reason` VARCHAR(255) DEFAULT NULL,
+    `last_activity` TIMESTAMP NULL,
     FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     INDEX `idx_user` (`user_id`),
     INDEX `idx_login_time` (`login_time`),
@@ -2479,30 +2532,6 @@ CREATE OR REPLACE VIEW `programs` AS SELECT * FROM `training_programs`;
 -- =========================================================
 
 -- Add missing athlete profile fields to athlete_stats table
-ALTER TABLE `athlete_stats` 
-ADD COLUMN IF NOT EXISTS `height` INT DEFAULT NULL COMMENT 'Height in inches',
-ADD COLUMN IF NOT EXISTS `weight` INT DEFAULT NULL COMMENT 'Weight in pounds',
-ADD COLUMN IF NOT EXISTS `handedness` ENUM('left', 'right') DEFAULT NULL COMMENT 'Shoots left or right',
-ADD COLUMN IF NOT EXISTS `catching_hand` ENUM('left', 'right') DEFAULT NULL COMMENT 'Goalie catching hand',
-ADD COLUMN IF NOT EXISTS `jersey_number` INT DEFAULT NULL COMMENT 'Jersey number',
-ADD COLUMN IF NOT EXISTS `team` VARCHAR(255) DEFAULT NULL COMMENT 'Current team name',
-ADD COLUMN IF NOT EXISTS `league` VARCHAR(255) DEFAULT NULL COMMENT 'League name';
-
--- =========================================================
--- SCHEMA UPDATES - Added Jan 26 2026
--- Missing tables and columns for profile, goals, and preferences
--- =========================================================
-
--- Add missing columns to athlete_teams table for profile team history
-ALTER TABLE `athlete_teams` 
-ADD COLUMN IF NOT EXISTS `user_id` INT DEFAULT NULL COMMENT 'Alternative user reference for backward compatibility',
-ADD COLUMN IF NOT EXISTS `team_name` VARCHAR(255) DEFAULT NULL COMMENT 'Team name string for backward compatibility',
-ADD COLUMN IF NOT EXISTS `season_year` VARCHAR(10) DEFAULT NULL COMMENT 'Season year (e.g., 2024)',
-ADD COLUMN IF NOT EXISTS `season_type` VARCHAR(50) DEFAULT NULL COMMENT 'Season type (e.g., Fall, Winter, Spring)',
-ADD COLUMN IF NOT EXISTS `is_current` TINYINT(1) DEFAULT 0 COMMENT 'Whether this is the current team',
-ADD COLUMN IF NOT EXISTS `league` VARCHAR(100) DEFAULT NULL COMMENT 'League name (e.g., CSSHL, BCMML)';
-
--- Create user_preferences table for notification preferences
 CREATE TABLE IF NOT EXISTS `user_preferences` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `user_id` INT NOT NULL,
@@ -2526,6 +2555,7 @@ CREATE TABLE IF NOT EXISTS `session_evaluations` (
     `created_by` INT NOT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `template_id` INT DEFAULT NULL COMMENT 'Reference to evaluation template used',
     FOREIGN KEY (`session_id`) REFERENCES `sessions`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     INDEX `idx_session` (`session_id`),
@@ -2972,14 +3002,6 @@ ON DUPLICATE KEY UPDATE rate_percentage = VALUES(rate_percentage), max_pensionab
 -- =========================================================
 
 -- Enhance session_types table with additional fields
-ALTER TABLE `session_types`
-ADD COLUMN IF NOT EXISTS `max_participants` INT DEFAULT NULL COMMENT 'Maximum participants for this session type',
-ADD COLUMN IF NOT EXISTS `is_active` TINYINT(1) DEFAULT 1 COMMENT 'Whether this session type is active',
-ADD COLUMN IF NOT EXISTS `show_on_landing` TINYINT(1) DEFAULT 0 COMMENT 'Whether to show on landing page',
-ADD COLUMN IF NOT EXISTS `session_type` ENUM('on_ice', 'off_ice', 'nutrition', 'meeting', 'other') DEFAULT 'on_ice' COMMENT 'Type of session',
-ADD COLUMN IF NOT EXISTS `is_template` TINYINT(1) DEFAULT 0 COMMENT 'Whether this is a reusable template';
-
--- Training Session Templates - Reusable session configurations
 CREATE TABLE IF NOT EXISTS `training_session_templates` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `name` VARCHAR(255) NOT NULL,
@@ -3063,12 +3085,6 @@ CREATE TABLE IF NOT EXISTS `session_date_athletes` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Enhance packages table with store credit and landing page options
-ALTER TABLE `packages`
-ADD COLUMN IF NOT EXISTS `store_credit` DECIMAL(10,2) DEFAULT 0.00 COMMENT 'Store credit value included in package',
-ADD COLUMN IF NOT EXISTS `show_on_landing` TINYINT(1) DEFAULT 0 COMMENT 'Whether to show on landing page',
-ADD COLUMN IF NOT EXISTS `package_type` VARCHAR(50) DEFAULT 'credits' COMMENT 'Type of package: credits, bundled, dollar_value';
-
--- Package Sessions - Link packages to specific sessions
 CREATE TABLE IF NOT EXISTS `package_sessions` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `package_id` INT NOT NULL,
@@ -3085,13 +3101,6 @@ CREATE TABLE IF NOT EXISTS `package_sessions` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Enhance discount_codes table with store credit and dynamic code options
-ALTER TABLE `discount_codes`
-ADD COLUMN IF NOT EXISTS `store_credit_value` DECIMAL(10,2) DEFAULT NULL COMMENT 'Store credit amount for store_credit type',
-ADD COLUMN IF NOT EXISTS `auto_generate_type` ENUM('none', 'new_registration', 'time_based', 'referral') DEFAULT 'none' COMMENT 'Type of auto-generated code',
-ADD COLUMN IF NOT EXISTS `days_since_registration` INT DEFAULT NULL COMMENT 'Trigger after X days for time_based codes',
-ADD COLUMN IF NOT EXISTS `description` VARCHAR(255) DEFAULT NULL COMMENT 'User-friendly description of the discount';
-
--- Update discount_type enum to include store_credit option
 ALTER TABLE `discount_codes`
 MODIFY COLUMN `discount_type` ENUM('percentage', 'fixed', 'store_credit') DEFAULT 'percentage';
 
@@ -3135,29 +3144,6 @@ CREATE TABLE IF NOT EXISTS `session_registration_intents` (
     INDEX `idx_expires` (`expires_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Add show_on_landing to sessions table if not exists
-ALTER TABLE `sessions`
-ADD COLUMN IF NOT EXISTS `show_on_landing` TINYINT(1) DEFAULT 0 COMMENT 'Whether to show on landing page',
-ADD COLUMN IF NOT EXISTS `session_type_category` ENUM('all_players', 'players', 'goalies') DEFAULT 'all_players';
-
--- =====================================================
--- ENHANCED EXPENSES SYSTEM TABLES (CRA Best Practices)
--- =====================================================
-
--- Enhanced Expenses table with CRA-compliant fields
-ALTER TABLE `expenses`
-ADD COLUMN IF NOT EXISTS `vendor_name` VARCHAR(255) DEFAULT NULL AFTER `category`,
-ADD COLUMN IF NOT EXISTS `subtotal` DECIMAL(10,2) DEFAULT NULL AFTER `amount`,
-ADD COLUMN IF NOT EXISTS `tax_amount` DECIMAL(10,2) DEFAULT 0.00 AFTER `subtotal`,
-ADD COLUMN IF NOT EXISTS `total_amount` DECIMAL(10,2) DEFAULT NULL AFTER `tax_amount`,
-ADD COLUMN IF NOT EXISTS `payment_method` VARCHAR(50) DEFAULT NULL AFTER `total_amount`,
-ADD COLUMN IF NOT EXISTS `reference_number` VARCHAR(100) DEFAULT NULL AFTER `payment_method`,
-ADD COLUMN IF NOT EXISTS `nextcloud_path` VARCHAR(500) DEFAULT NULL AFTER `receipt_url`,
-ADD COLUMN IF NOT EXISTS `ocr_data` JSON DEFAULT NULL AFTER `nextcloud_path`,
-ADD COLUMN IF NOT EXISTS `ocr_processed` TINYINT(1) DEFAULT 0 AFTER `ocr_data`,
-ADD COLUMN IF NOT EXISTS `currency` VARCHAR(3) DEFAULT 'CAD' AFTER `ocr_processed`;
-
--- Expense line items (individual itemized list with prices)
 CREATE TABLE IF NOT EXISTS `expense_line_items` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `expense_id` INT NOT NULL,
@@ -3211,17 +3197,6 @@ CREATE TABLE IF NOT EXISTS `payees` (
 
 -- Link expenses to payees
 -- First add the column (idempotent with IF NOT EXISTS)
-ALTER TABLE `expenses`
-ADD COLUMN IF NOT EXISTS `payee_id` INT DEFAULT NULL AFTER `vendor_name`;
-
--- Note: The foreign key constraint fk_expense_payee is added via setup.php
--- to ensure idempotent behavior (constraint is only added if it doesn't exist)
-
--- =====================================================
--- BATCH PAYMENTS
--- =====================================================
-
--- Batch payment groups
 CREATE TABLE IF NOT EXISTS `payment_batches` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `batch_name` VARCHAR(255) NOT NULL,
@@ -3350,15 +3325,6 @@ INSERT IGNORE INTO `system_activation` (`id`, `activation_year`, `activation_dat
 VALUES (1, 2026, '2026-01-01');
 
 -- Add display_order to expense_categories if not exists
-ALTER TABLE `expense_categories`
-ADD COLUMN IF NOT EXISTS `display_order` INT DEFAULT 0 AFTER `is_active`;
-
--- =====================================================
--- MERCHANDISE MANAGEMENT - CATEGORIES AND PRODUCTS
--- For POS system integration
--- =====================================================
-
--- Merchandise Categories
 CREATE TABLE IF NOT EXISTS `merchandise_categories` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `name` VARCHAR(255) NOT NULL,
@@ -3369,6 +3335,9 @@ CREATE TABLE IF NOT EXISTS `merchandise_categories` (
     `created_by` INT DEFAULT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `parent_id` INT DEFAULT NULL,
+    `slug` VARCHAR(255) DEFAULT NULL,
+    `nextcloud_image_path` VARCHAR(500) DEFAULT NULL COMMENT 'Cloud storage path for category image (RustFS URL)',
     FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
     INDEX `idx_active` (`is_active`),
     INDEX `idx_display_order` (`display_order`)
@@ -3389,6 +3358,7 @@ CREATE TABLE IF NOT EXISTS `merchandise_products` (
     `created_by` INT DEFAULT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `nextcloud_image_path` VARCHAR(500) DEFAULT NULL COMMENT 'Cloud storage path for product image (RustFS URL)',
     FOREIGN KEY (`category_id`) REFERENCES `merchandise_categories`(`id`) ON DELETE SET NULL,
     FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
     INDEX `idx_category` (`category_id`),
@@ -3483,11 +3453,6 @@ CREATE TABLE IF NOT EXISTS `merchandise_stock_audit_items` (
 -- =====================================================
 
 -- Alter merchandise_categories to add parent_id for subcategories
-ALTER TABLE `merchandise_categories`
-ADD COLUMN IF NOT EXISTS `parent_id` INT DEFAULT NULL AFTER `id`,
-ADD COLUMN IF NOT EXISTS `slug` VARCHAR(255) DEFAULT NULL AFTER `name`,
-ADD INDEX IF NOT EXISTS `idx_parent` (`parent_id`),
-ADD INDEX IF NOT EXISTS `idx_slug` (`slug`);
 
 -- Shop Orders (for guest and logged-in user purchases)
 CREATE TABLE IF NOT EXISTS `shop_orders` (
@@ -3523,6 +3488,12 @@ CREATE TABLE IF NOT EXISTS `shop_orders` (
     `notes` TEXT DEFAULT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `shipping_carrier` VARCHAR(100) DEFAULT NULL,
+    `tracking_number` VARCHAR(255) DEFAULT NULL,
+    `tracking_url` VARCHAR(500) DEFAULT NULL,
+    `shipped_at` TIMESTAMP NULL DEFAULT NULL,
+    `delivered_at` TIMESTAMP NULL DEFAULT NULL,
+    `fulfillment_notes` TEXT DEFAULT NULL,
     FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
     INDEX `idx_user` (`user_id`),
     INDEX `idx_email` (`customer_email`),
@@ -3533,14 +3504,6 @@ CREATE TABLE IF NOT EXISTS `shop_orders` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Add shipping/fulfillment tracking fields to shop_orders
-ALTER TABLE `shop_orders`
-ADD COLUMN IF NOT EXISTS `shipping_carrier` VARCHAR(100) DEFAULT NULL AFTER `notes`,
-ADD COLUMN IF NOT EXISTS `tracking_number` VARCHAR(255) DEFAULT NULL AFTER `shipping_carrier`,
-ADD COLUMN IF NOT EXISTS `tracking_url` VARCHAR(500) DEFAULT NULL AFTER `tracking_number`,
-ADD COLUMN IF NOT EXISTS `shipped_at` TIMESTAMP NULL DEFAULT NULL AFTER `tracking_url`,
-ADD COLUMN IF NOT EXISTS `delivered_at` TIMESTAMP NULL DEFAULT NULL AFTER `shipped_at`,
-ADD COLUMN IF NOT EXISTS `fulfillment_notes` TEXT DEFAULT NULL AFTER `delivered_at`,
-ADD INDEX IF NOT EXISTS `idx_tracking` (`tracking_number`);
 
 -- Shop Order Items
 CREATE TABLE IF NOT EXISTS `shop_order_items` (
@@ -3772,10 +3735,8 @@ CREATE TABLE IF NOT EXISTS `hr_complaint_documents` (
 
 
 -- Add video upload support to drills table
-ALTER TABLE `drills` ADD COLUMN IF NOT EXISTS `video_upload_path` VARCHAR(500) DEFAULT NULL COMMENT 'Path to uploaded video file' AFTER `video_url`;
 
 -- Add video upload support to personal_drills table
-ALTER TABLE `personal_drills` ADD COLUMN IF NOT EXISTS `video_upload_path` VARCHAR(500) DEFAULT NULL COMMENT 'Path to uploaded video file' AFTER `video_url`;
 
 -- =========================================================
 -- Evaluation Templates - Saved evaluation configurations
@@ -3806,9 +3767,6 @@ CREATE TABLE IF NOT EXISTS `evaluation_template_categories` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Add template_id to session_evaluations to link saved evaluations to sessions
-ALTER TABLE `session_evaluations`
-ADD COLUMN IF NOT EXISTS `template_id` INT DEFAULT NULL COMMENT 'Reference to evaluation template used',
-ADD INDEX IF NOT EXISTS `idx_template` (`template_id`);
 
 -- Fix locations image_url column to support long Google Places API photo URLs
 ALTER TABLE `locations` MODIFY COLUMN `image_url` TEXT DEFAULT NULL;
@@ -3831,10 +3789,8 @@ CREATE TABLE IF NOT EXISTS `two_factor_auth` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Add two_factor_required flag to users (admin can force 2FA)
-ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `two_factor_required` TINYINT(1) DEFAULT 0;
 
 -- Add last_activity tracking to login_history for online status
-ALTER TABLE `login_history` ADD COLUMN IF NOT EXISTS `last_activity` TIMESTAMP NULL;
 
 -- Error logs table for comprehensive error tracking
 CREATE TABLE IF NOT EXISTS `error_logs` (
@@ -4015,6 +3971,11 @@ CREATE TABLE IF NOT EXISTS `recurring_expenses` (
     `created_by` INT DEFAULT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `contact_name` VARCHAR(512) DEFAULT NULL COMMENT 'Point of contact name for the contract',
+    `contact_email` VARCHAR(255) DEFAULT NULL COMMENT 'Point of contact email',
+    `contact_phone` VARCHAR(512) DEFAULT NULL COMMENT 'Point of contact phone number',
+    `company_phone` VARCHAR(50) DEFAULT NULL COMMENT 'Company general phone number',
+    `company_email` VARCHAR(255) DEFAULT NULL COMMENT 'Company general email address',
     FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
     INDEX `idx_vendor` (`vendor_name`),
     INDEX `idx_status` (`status`),
@@ -4044,16 +4005,6 @@ CREATE TABLE IF NOT EXISTS `recurring_expense_documents` (
 
 -- =========================================================
 -- RECURRING EXPENSES - Contact fields for point of contact
--- =========================================================
-ALTER TABLE `recurring_expenses`
-    ADD COLUMN IF NOT EXISTS `contact_name` VARCHAR(512) DEFAULT NULL COMMENT 'Point of contact name for the contract',
-    ADD COLUMN IF NOT EXISTS `contact_email` VARCHAR(255) DEFAULT NULL COMMENT 'Point of contact email',
-    ADD COLUMN IF NOT EXISTS `contact_phone` VARCHAR(512) DEFAULT NULL COMMENT 'Point of contact phone number',
-    ADD COLUMN IF NOT EXISTS `company_phone` VARCHAR(50) DEFAULT NULL COMMENT 'Company general phone number',
-    ADD COLUMN IF NOT EXISTS `company_email` VARCHAR(255) DEFAULT NULL COMMENT 'Company general email address';
-
--- =========================================================
--- BUSINESS PARTNERS (Admin-managed partnership tracking)
 -- =========================================================
 CREATE TABLE IF NOT EXISTS `business_partners` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -4105,11 +4056,7 @@ CREATE TABLE IF NOT EXISTS `partner_contracts` (
 
 -- Extend managed_athletes for parent use (parent_id, relationship, permissions)
 ALTER TABLE `managed_athletes`
-MODIFY COLUMN `coach_id` INT DEFAULT NULL,
-ADD COLUMN IF NOT EXISTS `parent_id` INT DEFAULT NULL COMMENT 'Parent user who manages this athlete',
-ADD COLUMN IF NOT EXISTS `relationship` VARCHAR(50) DEFAULT 'parent' COMMENT 'Relationship type: parent, grandparent, guardian, other',
-ADD COLUMN IF NOT EXISTS `can_book` TINYINT(1) DEFAULT 1 COMMENT 'Whether this parent can book sessions for the athlete',
-ADD COLUMN IF NOT EXISTS `can_view_stats` TINYINT(1) DEFAULT 1 COMMENT 'Whether this parent can view athlete stats';
+MODIFY COLUMN `coach_id` INT DEFAULT NULL;
 
 -- Parent invitation system for inviting additional parents/grandparents
 CREATE TABLE IF NOT EXISTS `parent_invitations` (
@@ -4145,15 +4092,6 @@ CREATE TABLE IF NOT EXISTS `parent_invitation_athletes` (
 -- =========================================================
 
 -- Add check-in/check-out toggle to sessions and packages
-ALTER TABLE `sessions`
-ADD COLUMN IF NOT EXISTS `enable_child_checkin` TINYINT(1) DEFAULT 0 COMMENT 'Enable child check-in/check-out for this session/camp',
-ADD COLUMN IF NOT EXISTS `is_private` TINYINT(1) DEFAULT 0 COMMENT 'Whether this is a private session',
-ADD COLUMN IF NOT EXISTS `is_semi_private` TINYINT(1) DEFAULT 0 COMMENT 'Whether this is a semi-private session';
-
-ALTER TABLE `packages`
-ADD COLUMN IF NOT EXISTS `enable_child_checkin` TINYINT(1) DEFAULT 0 COMMENT 'Enable child check-in/check-out for sessions in this package';
-
--- Camp check-in/check-out codes (QR codes for drop-off and pickup)
 CREATE TABLE IF NOT EXISTS `camp_checkin_codes` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `booking_id` INT NOT NULL COMMENT 'Booking this code is associated with',
@@ -4187,16 +4125,6 @@ CREATE TABLE IF NOT EXISTS `camp_checkin_codes` (
 -- =========================================================
 
 -- Add camp and multi-week program fields to packages table
-ALTER TABLE `packages`
-ADD COLUMN IF NOT EXISTS `camp_start_date` DATE DEFAULT NULL COMMENT 'Camp start date',
-ADD COLUMN IF NOT EXISTS `camp_end_date` DATE DEFAULT NULL COMMENT 'Camp end date',
-ADD COLUMN IF NOT EXISTS `daily_start_time` TIME DEFAULT NULL COMMENT 'Default daily start time',
-ADD COLUMN IF NOT EXISTS `daily_end_time` TIME DEFAULT NULL COMMENT 'Default daily end time',
-ADD COLUMN IF NOT EXISTS `age_group_id` INT DEFAULT NULL COMMENT 'Optional age group restriction',
-ADD COLUMN IF NOT EXISTS `skill_level_id` INT DEFAULT NULL COMMENT 'Optional skill level restriction',
-ADD COLUMN IF NOT EXISTS `allow_individual_sessions` TINYINT(1) DEFAULT 0 COMMENT 'Allow purchasing individual sessions from multi-week program';
-
--- Camp daily schedules
 CREATE TABLE IF NOT EXISTS `camp_daily_schedules` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `package_id` INT NOT NULL COMMENT 'Camp package this schedule belongs to',
@@ -4330,10 +4258,6 @@ CREATE TABLE IF NOT EXISTS `stopwatch_times` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Add stopwatch flag to eval_skills
-ALTER TABLE `eval_skills`
-ADD COLUMN IF NOT EXISTS `has_stopwatch` TINYINT(1) DEFAULT 0 COMMENT 'Whether this skill uses a stopwatch for timed evaluation';
-
--- Stallion Express shipping labels
 CREATE TABLE IF NOT EXISTS `stallion_shipping_labels` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `order_id` INT NOT NULL,
@@ -4366,8 +4290,6 @@ CREATE TABLE IF NOT EXISTS `ndi_cameras` (
     INDEX `idx_active` (`is_active`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Add logo_url column to teams table (migration for existing databases)
-ALTER TABLE `teams` ADD COLUMN IF NOT EXISTS `logo_url` VARCHAR(500) DEFAULT NULL AFTER `assistant_coach_id`;
 
 -- =========================================================
 -- GAME PLAN MODULE TABLES (Video Review & Planning System)
@@ -4636,13 +4558,6 @@ INSERT IGNORE INTO `vr_tags` (`name`, `category`, `color`) VALUES
 -- Add location/place to camp schedules and multi-week dates
 -- =========================================================
 
-ALTER TABLE `camp_daily_schedules`
-ADD COLUMN IF NOT EXISTS `location` VARCHAR(255) DEFAULT NULL COMMENT 'Location/place for this day';
-
-ALTER TABLE `multiweek_program_dates`
-ADD COLUMN IF NOT EXISTS `location` VARCHAR(255) DEFAULT NULL COMMENT 'Location/place for this session';
-
--- Marketing email campaigns for packages/camps/programs
 CREATE TABLE IF NOT EXISTS `marketing_email_campaigns` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `subject` VARCHAR(255) NOT NULL,
@@ -4661,66 +4576,7 @@ CREATE TABLE IF NOT EXISTS `marketing_email_campaigns` (
     INDEX `idx_created_by` (`created_by`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Add show_on_landing to packages if not exists (for camps/programs landing page display)
-ALTER TABLE `packages`
-ADD COLUMN IF NOT EXISTS `show_on_landing` TINYINT(1) DEFAULT 0 COMMENT 'Whether to show on public landing page';
 
--- Add stripe_session_id to user_packages for payment tracking and idempotency
-ALTER TABLE `user_packages`
-ADD COLUMN IF NOT EXISTS `stripe_session_id` VARCHAR(255) DEFAULT NULL COMMENT 'Stripe checkout session ID for payment tracking',
-ADD INDEX IF NOT EXISTS `idx_stripe_session` (`stripe_session_id`);
-
--- Add cloud storage path to users for persistent profile image storage
-ALTER TABLE `users`
-ADD COLUMN IF NOT EXISTS `nextcloud_image_path` VARCHAR(500) DEFAULT NULL COMMENT 'Cloud storage path for profile image (RustFS URL)';
-
--- Add cloud storage path to evaluation_media for persistent media storage
-ALTER TABLE `evaluation_media`
-ADD COLUMN IF NOT EXISTS `nextcloud_path` VARCHAR(500) DEFAULT NULL COMMENT 'Cloud storage path for persistent media (RustFS URL)';
-
--- (Nextcloud images directory setting removed — all storage uses RustFS S3)
-
--- (Nextcloud persistent path setting removed — all storage uses RustFS S3)
-
--- Add cloud storage path to exercise_library for persistent exercise image storage
-ALTER TABLE `exercise_library`
-ADD COLUMN IF NOT EXISTS `nextcloud_image_path` VARCHAR(500) DEFAULT NULL COMMENT 'Cloud storage path for exercise image (RustFS URL)';
-
--- Add cloud storage path to merchandise_products for persistent product image storage
-ALTER TABLE `merchandise_products`
-ADD COLUMN IF NOT EXISTS `nextcloud_image_path` VARCHAR(500) DEFAULT NULL COMMENT 'Cloud storage path for product image (RustFS URL)';
-
--- Add cloud storage path to merchandise_categories for persistent category image storage
-ALTER TABLE `merchandise_categories`
-ADD COLUMN IF NOT EXISTS `nextcloud_image_path` VARCHAR(500) DEFAULT NULL COMMENT 'Cloud storage path for category image (RustFS URL)';
-
--- Add cloud storage path to drills for persistent drill video/image storage
-ALTER TABLE `drills`
-ADD COLUMN IF NOT EXISTS `nextcloud_image_path` VARCHAR(500) DEFAULT NULL COMMENT 'Cloud storage path for drill media (RustFS URL)';
-
--- Add cloud storage path to goal_eval_progress for persistent eval goal media storage
-ALTER TABLE `goal_eval_progress`
-ADD COLUMN IF NOT EXISTS `nextcloud_path` VARCHAR(500) DEFAULT NULL COMMENT 'Cloud storage path for eval goal media (RustFS URL)';
-
--- Add cloud storage path to teams for persistent team logo storage
-ALTER TABLE `teams`
-ADD COLUMN IF NOT EXISTS `nextcloud_logo_path` VARCHAR(500) DEFAULT NULL COMMENT 'Cloud storage path for team logo (RustFS URL)';
-
--- Add cloud storage path to vr_video_sources for persistent gameplan video storage
-ALTER TABLE `vr_video_sources`
-ADD COLUMN IF NOT EXISTS `nextcloud_path` VARCHAR(500) DEFAULT NULL COMMENT 'Cloud storage path for gameplan video (RustFS URL)';
-
--- Add HLS transcoding columns to vr_video_sources for adaptive streaming
-ALTER TABLE `vr_video_sources`
-ADD COLUMN IF NOT EXISTS `hls_url` VARCHAR(500) DEFAULT NULL COMMENT 'HLS master playlist URL (api/media.php proxy path)',
-ADD COLUMN IF NOT EXISTS `hls_status` ENUM('pending', 'processing', 'ready', 'failed') DEFAULT NULL COMMENT 'HLS transcoding status',
-ADD COLUMN IF NOT EXISTS `hls_job_id` VARCHAR(36) DEFAULT NULL COMMENT 'Companion server HLS transcode job ID',
-ADD COLUMN IF NOT EXISTS `hls_master_url` VARCHAR(500) DEFAULT NULL COMMENT 'S3 key to master.m3u8 manifest',
-ADD COLUMN IF NOT EXISTS `hls_segments_path` VARCHAR(500) DEFAULT NULL COMMENT 'S3 prefix containing HLS segments',
-ADD COLUMN IF NOT EXISTS `dash_url` VARCHAR(500) DEFAULT NULL COMMENT 'MPEG-DASH MPD manifest URL (api/media.php proxy path)',
-ADD COLUMN IF NOT EXISTS `dash_manifest_url` VARCHAR(500) DEFAULT NULL COMMENT 'S3 key to DASH manifest.mpd';
-
--- Default RustFS S3 storage settings
 INSERT IGNORE INTO `system_settings` (`setting_key`, `setting_value`, `setting_type`, `description`) VALUES
 ('rustfs_endpoint',   NULL, 'text',     'RustFS S3-compatible endpoint URL (e.g., https://rustfs.example.com)'),
 ('rustfs_access_key', NULL, 'text',     'RustFS S3 access key ID'),
@@ -4730,21 +4586,6 @@ INSERT IGNORE INTO `system_settings` (`setting_key`, `setting_value`, `setting_t
 ('rustfs_use_ssl',    '1', 'boolean',  'Use SSL/HTTPS for RustFS connections'),
 ('rustfs_path_style', '1', 'boolean',  'Use path-style access (recommended for self-hosted RustFS)');
 
--- Add file_path column to backup_history for storing RustFS URLs
-ALTER TABLE `backup_history`
-ADD COLUMN IF NOT EXISTS `file_path` VARCHAR(500) DEFAULT NULL COMMENT 'RustFS URL or local path for the backup file' AFTER `filename`;
-
--- Add HLS transcoding columns to videos table for adaptive streaming
-ALTER TABLE `videos`
-ADD COLUMN IF NOT EXISTS `hls_url` VARCHAR(500) DEFAULT NULL COMMENT 'HLS master playlist URL (api/media.php proxy path)' AFTER `video_url`,
-ADD COLUMN IF NOT EXISTS `hls_status` ENUM('pending', 'processing', 'ready', 'failed') DEFAULT NULL COMMENT 'HLS transcoding status' AFTER `hls_url`,
-ADD COLUMN IF NOT EXISTS `hls_job_id` VARCHAR(36) DEFAULT NULL COMMENT 'Companion server HLS transcode job ID' AFTER `hls_status`,
-ADD COLUMN IF NOT EXISTS `hls_master_url` VARCHAR(500) DEFAULT NULL COMMENT 'S3 key to master.m3u8 manifest' AFTER `hls_job_id`,
-ADD COLUMN IF NOT EXISTS `hls_segments_path` VARCHAR(500) DEFAULT NULL COMMENT 'S3 prefix containing HLS segments' AFTER `hls_master_url`,
-ADD COLUMN IF NOT EXISTS `dash_url` VARCHAR(500) DEFAULT NULL COMMENT 'MPEG-DASH MPD manifest URL (api/media.php proxy path)' AFTER `hls_segments_path`,
-ADD COLUMN IF NOT EXISTS `dash_manifest_url` VARCHAR(500) DEFAULT NULL COMMENT 'S3 key to DASH manifest.mpd' AFTER `dash_url`;
-
--- Companion server settings for HLS transcoding (keys match process_gameplan_settings.php)
 INSERT IGNORE INTO `system_settings` (`setting_key`, `setting_value`, `setting_type`, `description`) VALUES
 ('gameplan_companion_url', NULL, 'text', 'Video companion server URL (e.g., http://companion:5100)'),
 ('gameplan_companion_api_key', NULL, 'password', 'Video companion server API key'),
@@ -5067,31 +4908,13 @@ CREATE TABLE IF NOT EXISTS `scoreboard_shots` (
     UNIQUE KEY `unique_game_period_team` (`game_id`, `period`, `team`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Add position field to personal_drills for player/goalie drill thumbnails
-ALTER TABLE `personal_drills` ADD COLUMN IF NOT EXISTS `position` ENUM('player', 'goalie') DEFAULT 'player' COMMENT 'Target position for the drill' AFTER `video_upload_path`;
-
--- Add thumbnail_path column to personal_drills for video thumbnails
-ALTER TABLE `personal_drills` ADD COLUMN IF NOT EXISTS `thumbnail_path` VARCHAR(500) DEFAULT NULL COMMENT 'RustFS path to video thumbnail image' AFTER `position`;
-
--- Add thumbnail_path column to development_program_videos for video thumbnails
-ALTER TABLE `development_program_videos` ADD COLUMN IF NOT EXISTS `thumbnail_path` VARCHAR(500) DEFAULT NULL COMMENT 'RustFS path to video thumbnail image' AFTER `video_upload_path`;
-
--- Add thumbnail_path column to drills table for video thumbnails
-ALTER TABLE `drills` ADD COLUMN IF NOT EXISTS `thumbnail_path` VARCHAR(500) DEFAULT NULL COMMENT 'RustFS path to video thumbnail image' AFTER `video_upload_path`;
 
 -- =========================================================
 -- Evaluation Skills module migrations
--- Fix: evaluation_scores missing columns (evaluation_id, public_notes, private_notes, updated_at)
--- Fix: evaluation_scores NOT NULL constraints prevent new-style inserts (evaluation_id + skill_id only)
+-- Relax NOT NULL constraints so evaluation_scores rows can be inserted
+-- with only evaluation_id + skill_id (new-style inserts)
 -- =========================================================
 
-ALTER TABLE `evaluation_scores`
-  ADD COLUMN IF NOT EXISTS `evaluation_id` INT DEFAULT NULL COMMENT 'FK to athlete_evaluations' AFTER `id`,
-  ADD COLUMN IF NOT EXISTS `public_notes` TEXT DEFAULT NULL COMMENT 'Coach notes visible to athlete' AFTER `comments`,
-  ADD COLUMN IF NOT EXISTS `private_notes` TEXT DEFAULT NULL COMMENT 'Coach-only private notes' AFTER `public_notes`,
-  ADD COLUMN IF NOT EXISTS `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER `created_at`;
-
--- Relax NOT NULL constraints so evaluation_scores rows can be inserted with only evaluation_id + skill_id
 ALTER TABLE `evaluation_scores`
   MODIFY COLUMN `athlete_id` INT DEFAULT NULL,
   MODIFY COLUMN `evaluator_id` INT DEFAULT NULL,
@@ -5102,21 +4925,3 @@ ALTER TABLE `evaluation_scores`
 ALTER TABLE `evaluation_scores`
   ADD INDEX IF NOT EXISTS `idx_eval_scores_evaluation_id` (`evaluation_id`);
 
--- =========================================================
--- evaluation_media migrations
--- Fix: missing score_id, media_url, and created_at columns used by process_eval_skills.php
--- =========================================================
-
-ALTER TABLE `evaluation_media`
-  ADD COLUMN IF NOT EXISTS `score_id` INT DEFAULT NULL COMMENT 'FK to evaluation_scores for per-skill media' AFTER `evaluation_id`,
-  ADD COLUMN IF NOT EXISTS `media_url` VARCHAR(500) DEFAULT NULL COMMENT 'URL or path to the uploaded media file' AFTER `file_path`,
-  ADD COLUMN IF NOT EXISTS `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP AFTER `uploaded_at`;
-
--- =========================================================
--- user_workouts migration
--- Fix: missing coach_id column causes workouts.php fatal error on JOIN
--- =========================================================
-
-ALTER TABLE `user_workouts`
-  ADD COLUMN IF NOT EXISTS `coach_id` INT DEFAULT NULL COMMENT 'Coach who assigned the workout' AFTER `workout_plan_id`,
-  ADD INDEX IF NOT EXISTS `idx_user_workouts_coach` (`coach_id`);

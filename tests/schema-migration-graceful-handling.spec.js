@@ -3,8 +3,10 @@
  *
  * Verifies that DatabaseMigrator methods gracefully skip operations
  * when target tables don't exist (returning skipped results instead of throwing),
- * and that inline migrations in github_updater.php and setup.php handle
- * missing table errors (SQLSTATE 42S02) alongside duplicate column errors.
+ * and that the update process (github_updater.php and setup.php) relies on
+ * compareSchemas for column detection rather than inline ALTER TABLE migrations.
+ * Also verifies that database_schema.sql has all columns in CREATE TABLE
+ * definitions with no redundant ALTER TABLE ADD COLUMN IF NOT EXISTS statements.
  */
 
 import { test, expect } from '@playwright/test';
@@ -131,51 +133,47 @@ test.describe('DatabaseMigrator - Graceful Missing Table Handling', () => {
 });
 
 // =====================================================
-// 2. Inline Migrations - Missing Table Error Handling
+// 2. Schema Comparison - No Inline Migrations Needed
 // =====================================================
 
-test.describe('Inline Migrations - Missing Table Error Handling', () => {
+test.describe('Schema Comparison - No Inline Migrations', () => {
 
-  test('github_updater.php inline migrations handle table-not-found errors', () => {
+  test('github_updater.php runSchemaCheck uses compareSchemas instead of inline migrations', () => {
     const content = readFile('lib/github_updater.php');
     const fnStart = content.indexOf('function runSchemaCheck()');
     const fnEnd = content.indexOf('}', content.indexOf("'Schema check failed:", fnStart));
     const fn = content.substring(fnStart, fnEnd);
-    // Should handle SQLSTATE 42S02 (Base table or view not found)
-    expect(fn).toContain('42S02');
-    // Should still handle duplicate column
-    expect(fn).toContain('42S21');
-    expect(fn).toContain('Duplicate column');
+    // Should use compareSchemas to detect missing columns/tables
+    expect(fn).toContain('compareSchemas');
+    expect(fn).toContain('executeMigration');
+    // Should NOT have inline ALTER TABLE migrations
+    expect(fn).not.toContain('inline_migrations');
   });
 
-  test('setup.php inline migrations handle table-not-found errors', () => {
+  test('setup.php uses compareSchemas instead of inline migrations', () => {
     const content = readFile('setup.php');
-    // Should handle SQLSTATE 42S02 (Base table or view not found)
-    expect(content).toContain('42S02');
-    // Should still handle duplicate column
-    expect(content).toContain('42S21');
-    expect(content).toContain('Duplicate column');
+    // Should use compareSchemas
+    expect(content).toContain('compareSchemas');
+    expect(content).toContain('executeMigration');
+    // Should NOT have inline ALTER TABLE migrations
+    expect(content).not.toContain('inline_migrations');
   });
 
-  test('github_updater.php checks for "does not exist" and "doesn\'t exist" MySQL messages', () => {
+  test('github_updater.php handles migration errors in schema comparison flow', () => {
     const content = readFile('lib/github_updater.php');
     const fnStart = content.indexOf('function runSchemaCheck()');
     const fnEnd = content.indexOf('}', content.indexOf("'Schema check failed:", fnStart));
     const fn = content.substring(fnStart, fnEnd);
-    expect(fn).toContain("doesn't exist");
+    // Should still handle table-already-exists and missing table errors in the comparison flow
+    expect(fn).toContain('already exists');
     expect(fn).toContain('does not exist');
-    // Error categorization should use readable helper variables
-    expect(fn).toContain('isTableNotFound');
-    expect(fn).toContain('isDuplicateColumn');
   });
 
-  test('setup.php checks for "does not exist" and "doesn\'t exist" MySQL messages', () => {
+  test('setup.php handles migration errors in schema comparison flow', () => {
     const content = readFile('setup.php');
-    expect(content).toContain("doesn't exist");
+    // Should still handle table-already-exists and missing table errors in the comparison flow
+    expect(content).toContain('already exists');
     expect(content).toContain('does not exist');
-    // Error categorization should use readable helper variables
-    expect(content).toContain('isTableNotFound');
-    expect(content).toContain('isDuplicateColumn');
   });
 });
 
@@ -465,5 +463,98 @@ test.describe('SVG Icon CSS - inline data URLs', () => {
     expect(goalieSvg).toContain('fill="black"');
     expect(goalieSvg).not.toContain('freesvg.org');
     expect(goalieSvg).not.toContain('Source:');
+  });
+});
+
+// =====================================================
+// 8. Schema Consolidation - No Redundant ALTER TABLE ADD COLUMN
+// =====================================================
+
+test.describe('Schema Consolidation - All Columns in CREATE TABLE', () => {
+
+  test('database_schema.sql has no active ALTER TABLE ADD COLUMN IF NOT EXISTS', () => {
+    const schema = readFile('database_schema.sql');
+    // Only commented-out ALTER TABLE ADD COLUMN should remain
+    const lines = schema.split('\n');
+    const activeAddColumn = lines.filter(l => {
+      const stripped = l.trim();
+      return stripped.includes('ADD COLUMN IF NOT EXISTS') && !stripped.startsWith('--');
+    });
+    expect(activeAddColumn).toHaveLength(0);
+  });
+
+  test('key columns are in CREATE TABLE definitions, not ALTER TABLE', () => {
+    const schema = readFile('database_schema.sql');
+    
+    // evaluation_scores columns should be in CREATE TABLE
+    const evalScoresCreate = schema.substring(
+      schema.indexOf('CREATE TABLE IF NOT EXISTS `evaluation_scores`'),
+      schema.indexOf('ENGINE=', schema.indexOf('CREATE TABLE IF NOT EXISTS `evaluation_scores`'))
+    );
+    expect(evalScoresCreate).toContain('`evaluation_id`');
+    expect(evalScoresCreate).toContain('`public_notes`');
+    expect(evalScoresCreate).toContain('`private_notes`');
+    expect(evalScoresCreate).toContain('`updated_at`');
+
+    // evaluation_media columns should be in CREATE TABLE
+    const evalMediaCreate = schema.substring(
+      schema.indexOf('CREATE TABLE IF NOT EXISTS `evaluation_media`'),
+      schema.indexOf('ENGINE=', schema.indexOf('CREATE TABLE IF NOT EXISTS `evaluation_media`'))
+    );
+    expect(evalMediaCreate).toContain('`score_id`');
+    expect(evalMediaCreate).toContain('`media_url`');
+    expect(evalMediaCreate).toContain('`created_at`');
+    expect(evalMediaCreate).toContain('`nextcloud_path`');
+
+    // user_workouts columns should be in CREATE TABLE
+    const userWorkoutsCreate = schema.substring(
+      schema.indexOf('CREATE TABLE IF NOT EXISTS `user_workouts`'),
+      schema.indexOf('ENGINE=', schema.indexOf('CREATE TABLE IF NOT EXISTS `user_workouts`'))
+    );
+    expect(userWorkoutsCreate).toContain('`coach_id`');
+    expect(userWorkoutsCreate).toContain('`assigned_date`');
+  });
+
+  test('sessions table has all required columns in CREATE TABLE', () => {
+    const schema = readFile('database_schema.sql');
+    const sessionsCreate = schema.substring(
+      schema.indexOf('CREATE TABLE IF NOT EXISTS `sessions`'),
+      schema.indexOf('ENGINE=', schema.indexOf('CREATE TABLE IF NOT EXISTS `sessions`'))
+    );
+    expect(sessionsCreate).toContain('`enable_child_checkin`');
+    expect(sessionsCreate).toContain('`is_private`');
+    expect(sessionsCreate).toContain('`is_semi_private`');
+    expect(sessionsCreate).toContain('`show_on_landing`');
+    expect(sessionsCreate).toContain('`session_type_category`');
+  });
+
+  test('teams table has all required columns in CREATE TABLE', () => {
+    const schema = readFile('database_schema.sql');
+    const teamsCreate = schema.substring(
+      schema.indexOf('CREATE TABLE IF NOT EXISTS `teams`'),
+      schema.indexOf('ENGINE=', schema.indexOf('CREATE TABLE IF NOT EXISTS `teams`'))
+    );
+    expect(teamsCreate).toContain('`is_managed`');
+    expect(teamsCreate).toContain('`ical_url`');
+    expect(teamsCreate).toContain('`nextcloud_logo_path`');
+    expect(teamsCreate).toContain('`logo_url`');
+  });
+
+  test('users table has all required columns in CREATE TABLE', () => {
+    const schema = readFile('database_schema.sql');
+    const usersCreate = schema.substring(
+      schema.indexOf('CREATE TABLE IF NOT EXISTS `users`'),
+      schema.indexOf('ENGINE=', schema.indexOf('CREATE TABLE IF NOT EXISTS `users`'))
+    );
+    expect(usersCreate).toContain('`sip_wss_port`');
+    expect(usersCreate).toContain('`two_factor_required`');
+    expect(usersCreate).toContain('`nextcloud_image_path`');
+  });
+
+  test('no inline_migrations array in update process files', () => {
+    const updater = readFile('lib/github_updater.php');
+    const setup = readFile('setup.php');
+    expect(updater).not.toContain('inline_migrations');
+    expect(setup).not.toContain('inline_migrations');
   });
 });

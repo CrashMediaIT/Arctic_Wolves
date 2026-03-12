@@ -12,40 +12,24 @@ $viewing_user_id = $user_id;
 // Allow coaches to view athlete workouts
 if ($is_coach && isset($_GET['athlete_id'])) {
     $viewing_user_id = intval($_GET['athlete_id']);
+} elseif ($isParent && !empty($_SESSION['viewing_athlete_id'])) {
+    $viewing_user_id = intval($_SESSION['viewing_athlete_id']);
 }
 
 // Get workouts
-try {
-    $workouts_stmt = $pdo->prepare("
-        SELECT uw.*, u.first_name, u.last_name, coach.first_name as coach_first, coach.last_name as coach_last,
-               (SELECT COUNT(*) FROM user_workout_items WHERE user_workout_id = uw.id) as exercise_count,
-               (SELECT COUNT(*) FROM user_workout_items WHERE user_workout_id = uw.id AND completed_at IS NOT NULL) as completed_count
-        FROM user_workouts uw
-        INNER JOIN users u ON uw.user_id = u.id
-        LEFT JOIN users coach ON uw.coach_id = coach.id
-        WHERE uw.user_id = ?
-        ORDER BY COALESCE(uw.assigned_date, uw.workout_date) DESC
-    ");
-    $workouts_stmt->execute([$viewing_user_id]);
-    $workouts = $workouts_stmt->fetchAll();
-    $workouts = decryptUserRows($workouts);
-} catch (PDOException $e) {
-    // Fallback: user_workouts.coach_id column may not exist yet (pre-migration)
-    error_log("workouts.php - coach_id column missing, using fallback query: " . $e->getMessage());
-    $workouts_stmt = $pdo->prepare("
-        SELECT uw.*, u.first_name, u.last_name,
-               NULL as coach_first, NULL as coach_last,
-               (SELECT COUNT(*) FROM user_workout_items WHERE user_workout_id = uw.id) as exercise_count,
-               (SELECT COUNT(*) FROM user_workout_items WHERE user_workout_id = uw.id AND completed_at IS NOT NULL) as completed_count
-        FROM user_workouts uw
-        INNER JOIN users u ON uw.user_id = u.id
-        WHERE uw.user_id = ?
-        ORDER BY COALESCE(uw.assigned_date, uw.workout_date) DESC
-    ");
-    $workouts_stmt->execute([$viewing_user_id]);
-    $workouts = $workouts_stmt->fetchAll();
-    $workouts = decryptUserRows($workouts);
-}
+$workouts_stmt = $pdo->prepare("
+    SELECT uw.*, u.first_name, u.last_name, coach.first_name as coach_first, coach.last_name as coach_last,
+           (SELECT COUNT(*) FROM user_workout_items WHERE user_workout_id = uw.id) as exercise_count,
+           (SELECT COUNT(*) FROM user_workout_items WHERE user_workout_id = uw.id AND completed_at IS NOT NULL) as completed_count
+    FROM user_workouts uw
+    INNER JOIN users u ON uw.user_id = u.id
+    LEFT JOIN users coach ON uw.coach_id = coach.id
+    WHERE uw.user_id = ?
+    ORDER BY COALESCE(uw.assigned_date, uw.workout_date) DESC
+");
+$workouts_stmt->execute([$viewing_user_id]);
+$workouts = $workouts_stmt->fetchAll();
+$workouts = decryptUserRows($workouts);
 
 // Get simple workouts (legacy)
 $simple_workouts_stmt = $pdo->prepare("
@@ -248,7 +232,7 @@ $simple_workouts = decryptUserRows($simple_workouts);
                     <h3 class="workout-title"><?= htmlspecialchars($workout['title']) ?></h3>
                     <div class="workout-meta">
                         <i class="fas fa-calendar"></i>
-                        Assigned: <?= date('M d, Y', strtotime($workout['assigned_date'])) ?>
+                        Assigned: <?= date('M d, Y', strtotime($workout['assigned_date'] ?? $workout['workout_date'] ?? $workout['created_at'])) ?>
                     </div>
                     <?php if ($workout['coach_first']): ?>
                         <div class="workout-meta">

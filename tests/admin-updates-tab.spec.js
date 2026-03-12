@@ -580,28 +580,25 @@ test.describe('Database schema check during update process', () => {
     expect(fn).toContain('executeMigration');
   });
 
-  test('runSchemaCheck should run inline migrations matching setup.php', () => {
+  test('runSchemaCheck should rely on compareSchemas for column detection', () => {
     const content = readFile('lib/github_updater.php');
     const fnStart = content.indexOf('function runSchemaCheck()');
     const fnEnd = content.indexOf('}', content.indexOf("'Schema check failed:", fnStart));
     const fn = content.substring(fnStart, fnEnd);
-    expect(fn).toContain('inline_migrations');
-    expect(fn).toContain('eval_categories');
-    expect(fn).toContain('eval_skills');
-    expect(fn).toContain('vr_game_plan_lines');
-    expect(fn).toContain('teams');
-    expect(fn).toContain('game_schedules');
-    expect(fn).toContain('users');
-    expect(fn).toContain('sip_wss_port');
+    // Should use compareSchemas to detect missing columns rather than inline ALTER TABLE migrations
+    expect(fn).toContain('compareSchemas');
+    expect(fn).toContain('executeMigration');
+    expect(fn).not.toContain('inline_migrations');
   });
 
-  test('runSchemaCheck should handle duplicate column errors gracefully', () => {
+  test('runSchemaCheck should handle errors in schema migration gracefully', () => {
     const content = readFile('lib/github_updater.php');
     const fnStart = content.indexOf('function runSchemaCheck()');
     const fnEnd = content.indexOf('}', content.indexOf("'Schema check failed:", fnStart));
     const fn = content.substring(fnStart, fnEnd);
-    expect(fn).toContain('Duplicate column');
-    expect(fn).toContain('42S21');
+    // Should handle table-already-exists and other migration errors
+    expect(fn).toContain('already exists');
+    expect(fn).toContain('Could not create table');
   });
 
   test('runSchemaCheck should return structured results', () => {
