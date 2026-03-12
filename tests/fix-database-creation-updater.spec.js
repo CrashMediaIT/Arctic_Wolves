@@ -182,6 +182,7 @@ test.describe('Post-deferred schema check in process_settings.php', () => {
     );
     // Should run schema check after deferred updates
     expect(applySection).toContain('applyDeferredUpdates');
+    expect(applySection).toContain('require_once $migrator_file');
     expect(applySection).toContain('DatabaseMigrator');
     expect(applySection).toContain('parseSchemaFile');
     expect(applySection).toContain('getCurrentSchema');

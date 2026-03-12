@@ -778,7 +778,8 @@ try {
                     try {
                         $migrator_file = $base_dir . '/lib/database_migrator.php';
                         $schema_file = $base_dir . '/database_schema.sql';
-                        if (class_exists('DatabaseMigrator') && file_exists($schema_file)) {
+                        if (file_exists($migrator_file) && file_exists($schema_file)) {
+                            require_once $migrator_file;
                             $migrator = new DatabaseMigrator($pdo, $base_dir);
                             $expected = $migrator->parseSchemaFile($schema_file);
                             $current = $migrator->getCurrentSchema();
