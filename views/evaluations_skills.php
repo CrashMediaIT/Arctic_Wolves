@@ -202,38 +202,65 @@ if ($eval_id && $evaluation) {
         max-width: 1600px;
         margin: 0 auto;
     }
-    
-    .page-header {
+
+    /* Page Header - Financial Reports Hub Style */
+    .evaluations-page-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 24px;
+        margin-bottom: 32px;
+        padding-bottom: 24px;
+        border-bottom: 1px solid var(--border);
         flex-wrap: wrap;
-        gap: 15px;
+        gap: 20px;
     }
-    
-    .page-title {
-        font-size: 28px;
-        font-weight: 900;
+    .evaluations-page-header .page-header-content {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
+    .evaluations-page-header .page-header-icon {
+        width: 56px;
+        height: 56px;
+        background: linear-gradient(135deg, var(--primary), #5a0080);
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
         color: #fff;
+        box-shadow: 0 8px 24px rgba(107, 70, 193, 0.3);
+        flex-shrink: 0;
     }
-    
-    .header-actions {
+    .evaluations-page-header .page-title {
+        font-size: 28px;
+        font-weight: 800;
+        color: #fff;
+        margin: 0 0 4px 0;
+        letter-spacing: -0.5px;
+    }
+    .evaluations-page-header .page-description {
+        font-size: 14px;
+        color: var(--text-light);
+        margin: 0;
+    }
+    .evaluations-page-header .header-actions {
         display: flex;
         gap: 12px;
         align-items: center;
+        flex-wrap: wrap;
     }
     
     .athlete-selector {
         padding: 10px 16px;
         background: var(--bg-dark);
         border: 1px solid var(--border);
-        border-radius: 6px;
+        border-radius: 8px;
         color: #fff;
         font-size: 14px;
         font-weight: 600;
         cursor: pointer;
-        transition: all 0.2s;
+        transition: all 0.3s;
     }
     
     .athlete-selector:hover {
@@ -244,18 +271,22 @@ if ($eval_id && $evaluation) {
         background: var(--primary);
         color: #fff;
         padding: 12px 24px;
-        border-radius: 6px;
+        border-radius: 8px;
         border: none;
         font-weight: 700;
         font-size: 14px;
         cursor: pointer;
-        transition: all 0.2s;
+        transition: all 0.3s;
         text-decoration: none;
-        display: inline-block;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
     }
     
     .btn-create:hover {
         background: var(--primary-hover);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(107, 70, 193, 0.3);
     }
     
     .btn-back {
@@ -263,16 +294,20 @@ if ($eval_id && $evaluation) {
         color: var(--text-light);
         padding: 10px 20px;
         border: 1px solid var(--border);
-        border-radius: 6px;
+        border-radius: 8px;
         text-decoration: none;
         font-size: 14px;
         font-weight: 600;
-        transition: all 0.2s;
+        transition: all 0.3s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
     }
     
     .btn-back:hover {
         border-color: var(--primary);
         color: #fff;
+        transform: translateY(-2px);
     }
     
     .evaluations-grid {
@@ -284,15 +319,16 @@ if ($eval_id && $evaluation) {
     .eval-card {
         background: var(--bg-dark);
         border: 1px solid var(--border);
-        border-radius: 8px;
-        padding: 20px;
+        border-radius: 12px;
+        padding: 24px;
         cursor: pointer;
-        transition: all 0.2s;
+        transition: all 0.3s;
     }
     
     .eval-card:hover {
         border-color: var(--primary);
         transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(107, 70, 193, 0.15);
     }
     
     .eval-card-header {
@@ -316,15 +352,16 @@ if ($eval_id && $evaluation) {
     
     .eval-status {
         padding: 4px 12px;
-        border-radius: 12px;
+        border-radius: 20px;
         font-size: 12px;
         font-weight: 700;
         text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
     
-    .status-draft { background: rgba(148, 163, 184, 0.2); color: #94a3b8; }
-    .status-completed { background: rgba(16, 185, 129, 0.2); color: #10b981; }
-    .status-archived { background: rgba(100, 116, 139, 0.2); color: #64748b; }
+    .status-draft { background: rgba(148, 163, 184, 0.15); color: #94a3b8; }
+    .status-completed { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+    .status-archived { background: rgba(100, 116, 139, 0.15); color: #64748b; }
     
     .eval-card-progress {
         margin-top: 12px;
@@ -342,7 +379,7 @@ if ($eval_id && $evaluation) {
     
     .progress-fill {
         height: 100%;
-        background: var(--primary);
+        background: linear-gradient(90deg, var(--primary), #a78bfa);
         transition: width 0.3s;
     }
     
@@ -356,8 +393,8 @@ if ($eval_id && $evaluation) {
     .eval-detail {
         background: var(--bg-dark);
         border: 1px solid var(--border);
-        border-radius: 8px;
-        padding: 24px;
+        border-radius: 12px;
+        padding: 28px;
         margin-bottom: 24px;
     }
     
@@ -367,14 +404,17 @@ if ($eval_id && $evaluation) {
         align-items: start;
         margin-bottom: 24px;
         padding-bottom: 20px;
-        border-bottom: 2px solid var(--border);
+        border-bottom: 1px solid var(--border);
+        flex-wrap: wrap;
+        gap: 16px;
     }
     
     .eval-detail-title {
         font-size: 24px;
-        font-weight: 900;
+        font-weight: 800;
         color: #fff;
         margin-bottom: 10px;
+        letter-spacing: -0.5px;
     }
     
     .eval-detail-meta {
@@ -385,21 +425,30 @@ if ($eval_id && $evaluation) {
     .eval-actions {
         display: flex;
         gap: 10px;
+        flex-wrap: wrap;
     }
     
     .btn-complete, .btn-archive, .btn-share {
         padding: 10px 20px;
-        border-radius: 6px;
+        border-radius: 8px;
         border: none;
         font-weight: 600;
         font-size: 14px;
         cursor: pointer;
-        transition: all 0.2s;
+        transition: all 0.3s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
     }
     
     .btn-complete {
         background: var(--success);
         color: #fff;
+    }
+    
+    .btn-complete:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
     }
     
     .btn-archive {
@@ -408,39 +457,55 @@ if ($eval_id && $evaluation) {
         color: var(--text-light);
     }
     
+    .btn-archive:hover {
+        border-color: var(--text-light);
+        transform: translateY(-2px);
+    }
+    
     .btn-share {
         background: var(--primary);
         color: #fff;
+    }
+    
+    .btn-share:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(107, 70, 193, 0.3);
     }
     
     /* Skills Grid */
     .skills-category {
         background: var(--bg-darker);
         border: 1px solid var(--border);
-        border-radius: 8px;
+        border-radius: 12px;
         padding: 24px;
         margin-bottom: 24px;
     }
     
     .category-header {
         font-size: 20px;
-        font-weight: 900;
+        font-weight: 800;
         color: var(--primary);
         margin-bottom: 20px;
         padding-bottom: 15px;
         border-bottom: 2px solid var(--primary);
+        letter-spacing: -0.3px;
     }
     
     .skill-item {
         background: var(--bg-dark);
         border: 1px solid var(--border);
-        border-radius: 6px;
+        border-radius: 8px;
         padding: 20px;
-        margin-bottom: 20px;
+        margin-bottom: 16px;
+        transition: border-color 0.3s;
     }
     
     .skill-item:last-child {
         margin-bottom: 0;
+    }
+
+    .skill-item:hover {
+        border-color: rgba(107, 70, 193, 0.3);
     }
     
     .skill-header {
@@ -484,22 +549,23 @@ if ($eval_id && $evaluation) {
         padding: 10px;
         background: var(--bg-dark);
         border: 2px solid var(--border);
-        border-radius: 6px;
+        border-radius: 8px;
         color: #fff;
         font-size: 18px;
         font-weight: 700;
         text-align: center;
-        transition: all 0.2s;
+        transition: all 0.3s;
     }
     
     .score-input:focus {
         outline: none;
         border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(107, 70, 193, 0.15);
     }
     
     .score-input.has-score {
         border-color: var(--primary);
-        background: rgba(112, 0, 164, 0.1);
+        background: rgba(107, 70, 193, 0.08);
     }
     
     .score-scale {
@@ -541,7 +607,7 @@ if ($eval_id && $evaluation) {
         padding: 12px;
         background: var(--bg-darker);
         border: 1px solid var(--border);
-        border-radius: 6px;
+        border-radius: 8px;
         color: #fff;
         font-size: 14px;
         resize: vertical;
@@ -551,6 +617,7 @@ if ($eval_id && $evaluation) {
     .note-textarea:focus {
         outline: none;
         border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(107, 70, 193, 0.15);
     }
     
     .media-section {
@@ -602,17 +669,18 @@ if ($eval_id && $evaluation) {
         padding: 10px;
         background: var(--bg-darker);
         border: 1px dashed var(--border);
-        border-radius: 6px;
+        border-radius: 8px;
         color: var(--text-light);
         font-size: 14px;
         cursor: pointer;
-        transition: all 0.2s;
+        transition: all 0.3s;
         text-align: center;
     }
     
     .upload-button:hover {
         border-color: var(--primary);
         color: var(--primary);
+        background: rgba(107, 70, 193, 0.05);
     }
     
     .upload-button input {
@@ -623,16 +691,17 @@ if ($eval_id && $evaluation) {
     .comparison-section {
         background: var(--bg-dark);
         border: 1px solid var(--border);
-        border-radius: 8px;
+        border-radius: 12px;
         padding: 24px;
         margin-bottom: 24px;
     }
     
     .comparison-header {
         font-size: 20px;
-        font-weight: 900;
+        font-weight: 800;
         color: #fff;
         margin-bottom: 20px;
+        letter-spacing: -0.3px;
     }
     
     .comparison-grid {
@@ -644,8 +713,13 @@ if ($eval_id && $evaluation) {
     .comparison-card {
         background: var(--bg-darker);
         border: 1px solid var(--border);
-        border-radius: 6px;
+        border-radius: 8px;
         padding: 16px;
+        transition: border-color 0.3s;
+    }
+
+    .comparison-card:hover {
+        border-color: rgba(107, 70, 193, 0.3);
     }
     
     .comparison-date {
@@ -702,8 +776,8 @@ if ($eval_id && $evaluation) {
     .modal-content {
         background: var(--bg-dark);
         border: 1px solid var(--border);
-        border-radius: 8px;
-        padding: 24px;
+        border-radius: 12px;
+        padding: 28px;
         max-width: 500px;
         width: 90%;
         max-height: 90vh;
@@ -749,7 +823,7 @@ if ($eval_id && $evaluation) {
         padding: 12px;
         background: var(--bg-darker);
         border: 1px solid var(--border);
-        border-radius: 6px;
+        border-radius: 8px;
         color: #fff;
         font-size: 14px;
     }
@@ -757,6 +831,7 @@ if ($eval_id && $evaluation) {
     .form-input:focus, .form-select:focus {
         outline: none;
         border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(107, 70, 193, 0.15);
     }
     
     .btn-submit {
@@ -765,14 +840,21 @@ if ($eval_id && $evaluation) {
         background: var(--primary);
         color: #fff;
         border: none;
-        border-radius: 6px;
+        border-radius: 8px;
         font-weight: 700;
         cursor: pointer;
         font-size: 14px;
+        transition: all 0.3s;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
     }
     
     .btn-submit:hover {
         background: var(--primary-hover);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(107, 70, 193, 0.3);
     }
     
     .empty-state {
@@ -780,12 +862,12 @@ if ($eval_id && $evaluation) {
         padding: 60px 20px;
         background: var(--bg-dark);
         border: 1px solid var(--border);
-        border-radius: 8px;
+        border-radius: 12px;
     }
     
     .empty-state i {
         font-size: 64px;
-        color: #64748b;
+        color: var(--primary);
         opacity: 0.3;
         margin-bottom: 20px;
     }
@@ -793,7 +875,7 @@ if ($eval_id && $evaluation) {
     .share-link-display {
         background: var(--bg-darker);
         padding: 12px;
-        border-radius: 6px;
+        border-radius: 8px;
         border: 1px solid var(--border);
         margin-top: 12px;
         display: flex;
@@ -814,10 +896,16 @@ if ($eval_id && $evaluation) {
         background: var(--primary);
         color: #fff;
         border: none;
-        border-radius: 4px;
+        border-radius: 6px;
         cursor: pointer;
         font-size: 12px;
         font-weight: 600;
+        transition: all 0.3s;
+    }
+
+    .btn-copy:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(107, 70, 193, 0.3);
     }
     
     @media (max-width: 768px) {
@@ -828,25 +916,43 @@ if ($eval_id && $evaluation) {
         .evaluations-grid {
             grid-template-columns: 1fr;
         }
+
+        .evaluations-page-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .evaluations-page-header .header-actions {
+            width: 100%;
+        }
     }
 </style>
 
 <div class="evaluations-container">
     <?php if ($eval_id && $evaluation): ?>
         <!-- Evaluation Detail View -->
-        <div class="page-header">
-            <div>
-                <h1 class="page-title">
-                    <i class="fas fa-clipboard-check"></i> Skills Evaluation
-                    <?php if ($team_mode): ?>
-                        <span style="font-size: 14px; font-weight: 600; color: var(--primary); margin-left: 10px;">(Team Mode)</span>
-                    <?php endif; ?>
-                </h1>
+        <div class="evaluations-page-header">
+            <div class="page-header-content">
+                <div class="page-header-icon">
+                    <i class="fas fa-clipboard-check"></i>
+                </div>
+                <div class="page-header-text">
+                    <h1 class="page-title">
+                        Skills Evaluation
+                        <?php if ($team_mode): ?>
+                            <span style="font-size: 14px; font-weight: 600; color: var(--primary); margin-left: 10px;">(Team Mode)</span>
+                        <?php endif; ?>
+                    </h1>
+                    <p class="page-description">
+                        <?= htmlspecialchars($athlete_info['first_name'] . ' ' . $athlete_info['last_name']) ?>
+                        • <?= $evaluation['title'] ? htmlspecialchars($evaluation['title']) : 'Skills Evaluation' ?>
+                    </p>
+                </div>
             </div>
             <div class="header-actions">
                 <?php if ($isAnyCoach): ?>
                     <!-- Team Mode Toggle -->
-                    <label style="display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer;">
+                    <label style="display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer;">
                         <input 
                             type="checkbox" 
                             <?= $team_mode ? 'checked' : '' ?>
@@ -1118,13 +1224,22 @@ if ($eval_id && $evaluation) {
         
     <?php else: ?>
         <!-- List View -->
-        <div class="page-header">
-            <h1 class="page-title">
-                <i class="fas fa-clipboard-check"></i> Skills Evaluations
-                <?php if ($athlete_info): ?>
-                    - <?= htmlspecialchars($athlete_info['first_name'] . ' ' . $athlete_info['last_name']) ?>
-                <?php endif; ?>
-            </h1>
+        <div class="evaluations-page-header">
+            <div class="page-header-content">
+                <div class="page-header-icon">
+                    <i class="fas fa-clipboard-check"></i>
+                </div>
+                <div class="page-header-text">
+                    <h1 class="page-title">Skills Evaluations</h1>
+                    <p class="page-description">
+                        <?php if ($athlete_info): ?>
+                            Evaluations for <?= htmlspecialchars($athlete_info['first_name'] . ' ' . $athlete_info['last_name']) ?>
+                        <?php else: ?>
+                            Comprehensive skill evaluations with scoring and assessments
+                        <?php endif; ?>
+                    </p>
+                </div>
+            </div>
             <div class="header-actions">
                 <?php if ($isAnyCoach): ?>
                     <div id="eval-list-athlete-typeahead" style="min-width: 220px;"></div>
