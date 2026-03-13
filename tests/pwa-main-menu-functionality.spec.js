@@ -92,14 +92,14 @@ test.describe('PWA views have correct permission checks', () => {
     expect(content).toMatch(/in_array\(\$user_role.*\[.*'coach'.*'admin'.*\]\)/s);
   });
 
-  test('library_nutrition.php checks for health_coach/coach/admin role', () => {
+  test('library_nutrition.php checks for canAccessHealthManagement permission', () => {
     const content = readPwaFile('library_nutrition.php');
-    expect(content).toMatch(/in_array\(\$user_role.*\[.*'health_coach'.*'coach'.*'admin'.*\]\)/s);
+    expect(content).toMatch(/\$canAccessHealthManagement/);
   });
 
-  test('library_workouts.php checks for health_coach/coach/admin role', () => {
+  test('library_workouts.php checks for canAccessHealthManagement permission', () => {
     const content = readPwaFile('library_workouts.php');
-    expect(content).toMatch(/in_array\(\$user_role.*\[.*'health_coach'.*'coach'.*'admin'.*\]\)/s);
+    expect(content).toMatch(/\$canAccessHealthManagement/);
   });
 
   test('session_templates.php checks for coach/admin role', () => {
