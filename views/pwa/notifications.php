@@ -247,6 +247,7 @@ function mGetNotifIcon($type) {
         <h2 class="m-notifs-title">Notifications</h2>
         <?php if ($unreadCount > 0): ?>
         <form method="post" action="process_notifications.php" style="margin:0;">
+            <?= csrfTokenInput() ?>
             <input type="hidden" name="action" value="mark_all_read">
             <button type="submit" class="m-mark-read-btn">
                 <i class="fas fa-check-double"></i> Mark all read

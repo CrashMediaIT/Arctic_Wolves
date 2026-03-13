@@ -54,6 +54,7 @@ try {
     </div>
 
     <form method="post" action="process_create_session.php">
+        <?= csrfTokenInput() ?>
         <div class="m-form-group">
             <label class="m-form-label">Session Title</label>
             <input type="text" name="title" class="m-form-input" placeholder="e.g. Morning Skills" required>

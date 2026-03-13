@@ -82,6 +82,7 @@ $totalEntries = count($entries);
     <div class="m-mileage-form">
         <h3 class="m-mileage-form-title">New Entry</h3>
         <form method="post" action="process_mileage.php">
+            <?= csrfTokenInput() ?>
             <div class="m-form-group">
                 <label class="m-form-label">Date</label>
                 <input type="date" name="trip_date" class="m-form-input" value="<?= date('Y-m-d') ?>" required>
