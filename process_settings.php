@@ -791,18 +791,25 @@ try {
                                 
                                 try { $pdo->exec('SET FOREIGN_KEY_CHECKS = 0'); } catch (Exception $e) {}
                                 try {
+                                    // First pass: create all missing tables
                                     foreach ($remaining as $m) {
+                                        if ($m['type'] !== 'create_table') continue;
                                         try {
-                                            if ($m['type'] === 'create_table') {
-                                                $tn = $m['table'];
-                                                if (preg_match(sprintf($tpl, preg_quote($tn, '/')), $schema_sql, $match)) {
-                                                    $pdo->exec($match[0]);
-                                                }
-                                            } elseif ($m['type'] === 'add_column') {
-                                                $migrator->executeMigration($m);
+                                            $tn = $m['table'];
+                                            if (preg_match(sprintf($tpl, preg_quote($tn, '/')), $schema_sql, $match)) {
+                                                $pdo->exec($match[0]);
                                             }
                                         } catch (Exception $e) {
-                                            error_log('Deferred schema fix: ' . $e->getMessage());
+                                            error_log('Deferred schema fix (create): ' . $e->getMessage());
+                                        }
+                                    }
+                                    // Second pass: add all missing columns
+                                    foreach ($remaining as $m) {
+                                        if ($m['type'] !== 'add_column') continue;
+                                        try {
+                                            $migrator->executeMigration($m);
+                                        } catch (Exception $e) {
+                                            error_log('Deferred schema fix (column): ' . $e->getMessage());
                                         }
                                     }
                                 } finally {

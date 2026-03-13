@@ -140,11 +140,14 @@ class DatabaseMigrator {
     
     /**
      * Check if table exists
+     * Uses information_schema for reliable detection with server-side prepared statements
      */
     public function tableExists($table_name) {
         try {
             $table_name = $this->sanitizeIdentifier($table_name);
-            $stmt = $this->pdo->prepare("SHOW TABLES LIKE ?");
+            $stmt = $this->pdo->prepare(
+                "SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?"
+            );
             $stmt->execute([$table_name]);
             return $stmt->fetch() !== false;
         } catch (PDOException $e) {
@@ -154,13 +157,16 @@ class DatabaseMigrator {
     
     /**
      * Check if column exists in table
+     * Uses information_schema for reliable detection with server-side prepared statements
      */
     public function columnExists($table_name, $column_name) {
         try {
             $table_name = $this->sanitizeIdentifier($table_name);
             $column_name = $this->sanitizeIdentifier($column_name);
-            $stmt = $this->pdo->prepare("SHOW COLUMNS FROM `$table_name` LIKE ?");
-            $stmt->execute([$column_name]);
+            $stmt = $this->pdo->prepare(
+                "SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?"
+            );
+            $stmt->execute([$table_name, $column_name]);
             return $stmt->fetch() !== false;
         } catch (PDOException $e) {
             return false;

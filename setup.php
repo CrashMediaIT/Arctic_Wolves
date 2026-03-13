@@ -484,37 +484,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Track tables already created in this run to avoid redundant attempts
                 $tables_created = [];
                 
+                // Two-pass processing: create ALL tables first, then add ALL columns.
+                $create_migrations = [];
+                $column_migrations = [];
+                foreach ($migrations as $migration) {
+                    if ($migration['type'] === 'create_table') {
+                        $create_migrations[] = $migration;
+                    } else {
+                        $column_migrations[] = $migration;
+                    }
+                }
+                
                 // Disable FK checks so tables can be created regardless of dependency order
                 try { $pdo->exec('SET FOREIGN_KEY_CHECKS = 0'); } catch (Exception $e) { error_log('Could not disable FK checks: ' . $e->getMessage()); }
                 
                 try {
-                    foreach ($migrations as $migration) {
+                    // First pass: create all missing tables
+                    foreach ($create_migrations as $migration) {
                         try {
-                            if ($migration['type'] === 'create_table') {
-                                // For missing tables, extract the CREATE TABLE from the schema file
-                                $table_name = $migration['table'];
-                                
-                                // Extract the full CREATE TABLE statement from the schema file
-                                if (preg_match(sprintf($create_table_pattern_tpl, preg_quote($table_name, '/')), $schema_sql, $match)) {
-                                    try {
-                                        $pdo->exec($match[0]);
-                                        $migration_results[] = "Created missing table: $table_name";
+                            $table_name = $migration['table'];
+                            if (preg_match(sprintf($create_table_pattern_tpl, preg_quote($table_name, '/')), $schema_sql, $match)) {
+                                try {
+                                    $pdo->exec($match[0]);
+                                    $migration_results[] = "Created missing table: $table_name";
+                                    $tables_created[$table_name] = true;
+                                } catch (Exception $ce) {
+                                    $isAlreadyExists = ($ce->getCode() === '42S01' || strpos($ce->getMessage(), '1050') !== false || strpos($ce->getMessage(), 'already exists') !== false);
+                                    if ($isAlreadyExists) {
+                                        $migration_results[] = "Table already exists: $table_name";
                                         $tables_created[$table_name] = true;
-                                    } catch (Exception $ce) {
-                                        $isAlreadyExists = ($ce->getCode() === '42S01' || strpos($ce->getMessage(), '1050') !== false || strpos($ce->getMessage(), 'already exists') !== false);
-                                        if ($isAlreadyExists) {
-                                            $migration_results[] = "Table already exists: $table_name";
-                                            $tables_created[$table_name] = true;
-                                        } else {
-                                            $migration_errors[] = "Could not create table $table_name: " . $ce->getMessage();
-                                            error_log("Setup create table error for $table_name: " . $ce->getMessage());
-                                        }
+                                    } else {
+                                        $migration_errors[] = "Could not create table $table_name: " . $ce->getMessage();
+                                        error_log("Setup create table error for $table_name: " . $ce->getMessage());
                                     }
-                                } else {
-                                    $migration_errors[] = "Could not extract CREATE TABLE statement for $table_name from schema file";
-                                    error_log("Setup schema regex failed for table: $table_name");
                                 }
-                            } elseif ($migration['type'] === 'add_column') {
+                            } else {
+                                $migration_errors[] = "Could not extract CREATE TABLE statement for $table_name from schema file";
+                                error_log("Setup schema regex failed for table: $table_name");
+                            }
+                        } catch (Exception $e) {
+                            $migration_errors[] = "Migration error: " . $e->getMessage();
+                            error_log("Setup migration error: " . $e->getMessage());
+                        }
+                    }
+                    
+                    // Second pass: add all missing columns
+                    foreach ($column_migrations as $migration) {
+                        try {
+                            if ($migration['type'] === 'add_column') {
                                 $result = $migrator->executeMigration($migration);
                                 if (!empty($result['skipped']) && strpos($result['message'], 'does not exist') !== false) {
                                     // Table missing — attempt to create it from schema file, then retry

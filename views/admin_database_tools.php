@@ -42,6 +42,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['csrf_token'])) {
             case 'analyze_performance':
                 $results = analyzePerformance();
                 break;
+            case 'rebuild_schema':
+                require_once __DIR__ . '/../lib/github_updater.php';
+                $updater = new GitHubUpdater($pdo);
+                $schema_result = $updater->runSchemaCheck();
+                $changes = $schema_result['changes_applied'] ?? 0;
+                $schema_errors = $schema_result['errors'] ?? [];
+                $details = $schema_result['results'] ?? [];
+                $results = [
+                    'status' => ($schema_result['success'] ?? false) ? 'success' : 'error',
+                    'details' => '<h4>Schema Rebuild Results</h4><p>' . $changes . ' change(s) applied.</p>'
+                        . (!empty($details) ? '<ul><li>' . implode('</li><li>', array_map('htmlspecialchars', $details)) . '</li></ul>' : '')
+                        . (!empty($schema_errors) ? '<h4>Errors</h4><ul><li>' . implode('</li><li>', array_map('htmlspecialchars', $schema_errors)) . '</li></ul>' : '')
+                ];
+                break;
         }
         
         // Log the action
@@ -624,6 +638,21 @@ function analyzePerformance() {
             <input type="hidden" name="maintenance_action" value="repair_foreign_keys">
             <button type="submit" class="btn btn-primary">
                 <i class="fas fa-magic"></i> Repair Foreign Keys
+            </button>
+        </form>
+    </div>
+    
+    <div class="tool-card">
+        <div class="tool-icon"><i class="fas fa-sync-alt"></i></div>
+        <div class="tool-title">Rebuild Schema</div>
+        <div class="tool-desc">
+            Check the database against the schema file and create any missing tables or columns.
+        </div>
+        <form method="POST" action="">
+            <?= csrfTokenInput() ?>
+            <input type="hidden" name="maintenance_action" value="rebuild_schema">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-sync-alt"></i> Rebuild Schema
             </button>
         </form>
     </div>

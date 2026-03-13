@@ -904,34 +904,65 @@ class GitHubUpdater {
             // Track tables already created in this run to avoid redundant attempts
             $tables_created = [];
             
+            // Two-pass processing: create ALL tables first, then add ALL columns.
+            // This ensures referenced tables exist before columns are added.
+            $create_migrations = [];
+            $column_migrations = [];
+            foreach ($migrations as $migration) {
+                if ($migration['type'] === 'create_table') {
+                    $create_migrations[] = $migration;
+                } else {
+                    $column_migrations[] = $migration;
+                }
+            }
+            
             // Disable FK checks so tables can be created regardless of dependency order
             try { $this->pdo->exec('SET FOREIGN_KEY_CHECKS = 0'); } catch (\Exception $e) { error_log('Could not disable FK checks: ' . $e->getMessage()); }
             
             try {
-                foreach ($migrations as $migration) {
+                // First pass: create all missing tables
+                foreach ($create_migrations as $migration) {
                     try {
-                        if ($migration['type'] === 'create_table') {
-                            $table_name = $migration['table'];
-                            if (preg_match(sprintf($create_table_pattern_tpl, preg_quote($table_name, '/')), $schema_sql, $match)) {
-                                try {
-                                    $this->pdo->exec($match[0]);
+                        $table_name = $migration['table'];
+                        if (preg_match(sprintf($create_table_pattern_tpl, preg_quote($table_name, '/')), $schema_sql, $match)) {
+                            try {
+                                $this->pdo->exec($match[0]);
+                                // Verify the table was actually created
+                                if ($migrator->tableExists($table_name)) {
                                     $results[] = "Created missing table: $table_name";
                                     $tables_created[$table_name] = true;
-                                } catch (\Exception $ce) {
-                                    $isAlreadyExists = ($ce->getCode() === '42S01' || strpos($ce->getMessage(), '1050') !== false || strpos($ce->getMessage(), 'already exists') !== false);
-                                    if ($isAlreadyExists) {
-                                        $results[] = "Table already exists: $table_name";
-                                        $tables_created[$table_name] = true;
-                                    } else {
-                                        $errors[] = "Could not create table $table_name: " . $ce->getMessage();
-                                        error_log("Schema create table error for $table_name: " . $ce->getMessage());
-                                    }
+                                } else {
+                                    $errors[] = "CREATE TABLE executed but table $table_name not found — possible driver issue";
+                                    error_log("Schema create table verify failed for $table_name");
                                 }
-                            } else {
-                                $errors[] = "Could not extract CREATE TABLE statement for $table_name from schema file";
-                                error_log("Schema regex failed for table: $table_name");
+                            } catch (\Exception $ce) {
+                                $isAlreadyExists = ($ce->getCode() === '42S01' || strpos($ce->getMessage(), '1050') !== false || strpos($ce->getMessage(), 'already exists') !== false);
+                                if ($isAlreadyExists) {
+                                    $results[] = "Table already exists: $table_name";
+                                    $tables_created[$table_name] = true;
+                                } else {
+                                    $errors[] = "Could not create table $table_name: " . $ce->getMessage();
+                                    error_log("Schema create table error for $table_name: " . $ce->getMessage());
+                                }
                             }
-                        } elseif ($migration['type'] === 'add_column') {
+                        } else {
+                            $errors[] = "Could not extract CREATE TABLE statement for $table_name from schema file";
+                            error_log("Schema regex failed for table: $table_name");
+                        }
+                    } catch (\Exception $e) {
+                        if (strpos($e->getMessage(), '1061') !== false || strpos($e->getMessage(), 'Duplicate key name') !== false) {
+                            // Non-critical: index already exists on table
+                        } else {
+                            $errors[] = "Schema migration error: " . $e->getMessage();
+                            error_log("Update schema check error: " . $e->getMessage());
+                        }
+                    }
+                }
+                
+                // Second pass: add all missing columns
+                foreach ($column_migrations as $migration) {
+                    try {
+                        if ($migration['type'] === 'add_column') {
                             $result = $migrator->executeMigration($migration);
                             if (!empty($result['skipped']) && strpos($result['message'], 'does not exist') !== false) {
                                 // Table missing — attempt to create it from schema file, then retry
@@ -940,9 +971,11 @@ class GitHubUpdater {
                                 if (!$created && preg_match(sprintf($create_table_pattern_tpl, preg_quote($table_name, '/')), $schema_sql, $match)) {
                                     try {
                                         $this->pdo->exec($match[0]);
-                                        $results[] = "Created missing table: $table_name";
-                                        $created = true;
-                                        $tables_created[$table_name] = true;
+                                        if ($migrator->tableExists($table_name)) {
+                                            $results[] = "Created missing table: $table_name";
+                                            $created = true;
+                                            $tables_created[$table_name] = true;
+                                        }
                                     } catch (\Exception $ce) {
                                         $isAlreadyExists = ($ce->getCode() === '42S01' || strpos($ce->getMessage(), '1050') !== false || strpos($ce->getMessage(), 'already exists') !== false);
                                         if ($isAlreadyExists) {

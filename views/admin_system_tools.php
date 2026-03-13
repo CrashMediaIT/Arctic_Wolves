@@ -1676,6 +1676,18 @@ foreach ($url_keys as $uk) {
                             <i class="fas fa-upload"></i> Restore
                         </a>
                     </div>
+                    
+                    <!-- Rebuild Schema -->
+                    <div style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 24px; text-align: center;">
+                        <div style="font-size: 36px; color: #8b5cf6; margin-bottom: 12px;">
+                            <i class="fas fa-sync-alt"></i>
+                        </div>
+                        <h4 style="margin-bottom: 8px; color: var(--text-white);">Rebuild Schema</h4>
+                        <p style="color: var(--text-dim); font-size: 13px; margin-bottom: 16px;">Create missing tables and add missing columns</p>
+                        <button type="button" class="btn btn-secondary" id="btn-rebuild-schema" onclick="runRebuildSchema(this)">
+                            <i class="fas fa-sync-alt"></i> Rebuild Schema
+                        </button>
+                    </div>
                 </div>
                 
                 <!-- Info Box -->
@@ -1687,6 +1699,7 @@ foreach ($url_keys as $uk) {
                             <li><strong>Backup</strong> - Creates a SQL dump of all tables saved to the backups folder</li>
                             <li><strong>Optimize</strong> - Runs CHECK, REPAIR, OPTIMIZE and ANALYZE on all tables</li>
                             <li><strong>Clear Cache</strong> - Removes temporary files from cache and tmp directories</li>
+                            <li><strong>Rebuild Schema</strong> - Re-checks the database against the schema file and creates any missing tables or columns</li>
                         </ul>
                     </div>
                 </div>
@@ -3303,6 +3316,49 @@ async function runClearCache(btn) {
         btn.innerHTML = originalText;
         showDbStatus(error.message || 'Network error: Failed to clear cache', 'error');
         console.error('Clear cache error:', error);
+    });
+}
+
+async function runRebuildSchema(btn) {
+    if (!await showConfirmModal('This will check the database schema and create any missing tables or columns. Continue?')) return;
+    
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Rebuilding...';
+    
+    fetch('process_database_backup.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `action=rebuild_schema&csrf_token=${encodeURIComponent(getCsrfToken())}`
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`Server error: ${response.status}`);
+        }
+        return response.text();
+    })
+    .then(text => {
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            console.error('Response was not JSON:', text);
+            throw new Error('Invalid server response');
+        }
+    })
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        let msg = data.message || (data.success ? 'Schema rebuild complete' : 'Schema rebuild failed');
+        if (data.details && data.details.length > 0) {
+            msg += '<br><small style="color:var(--text-dim)">' + data.details.join('<br>') + '</small>';
+        }
+        showDbStatus(msg, data.success ? 'success' : 'error');
+    })
+    .catch(error => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        showDbStatus(error.message || 'Network error: Failed to rebuild schema', 'error');
+        console.error('Rebuild schema error:', error);
     });
 }
 
