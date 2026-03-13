@@ -139,7 +139,7 @@ test.describe('No implicit event global usage in any PWA view', () => {
       const content = readFileSync(filepath, 'utf-8');
       if (content.trim().match(/^<\?php\s+include\s+/)) continue;
 
-      const scriptBlocks = content.match(/<script[^>]*>([\s\S]*?)<\/script>/gi) || [];
+      const scriptBlocks = content.match(/<script[^>]*>([\s\S]*?)<\/script[^>]*>/gi) || [];
       for (const script of scriptBlocks) {
         // Check named functions (not anonymous callbacks in addEventListener)
         const namedFuncs = script.matchAll(/function\s+(\w+)\s*\(([^)]*)\)\s*\{/g);
