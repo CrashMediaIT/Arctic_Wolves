@@ -38,6 +38,26 @@ if ($sessionId > 0) {
             }
         } catch (PDOException $e) { /* no booking */ }
     }
+
+    // Coach: load practice plan, evaluation, and plan options
+    $sdPracticePlan = null;
+    $sdEvaluation = null;
+    $sdPracticePlans = [];
+    if ($session && $isAnyCoach) {
+        try {
+            $pp_stmt = $pdo->prepare("SELECT pp.id, pp.name FROM session_practice_plans spp JOIN practice_plans pp ON spp.practice_plan_id = pp.id WHERE spp.session_id = ? LIMIT 1");
+            $pp_stmt->execute([$sessionId]);
+            $sdPracticePlan = $pp_stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {}
+        try {
+            $ev_stmt = $pdo->prepare("SELECT id, name, status FROM session_evaluations WHERE session_id = ? LIMIT 1");
+            $ev_stmt->execute([$sessionId]);
+            $sdEvaluation = $ev_stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {}
+        try {
+            $sdPracticePlans = $pdo->query("SELECT id, COALESCE(title, name) as name FROM practice_plans ORDER BY created_at DESC LIMIT 50")->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {}
+    }
 }
 ?>
 <style>
@@ -89,6 +109,61 @@ if ($sessionId > 0) {
 .m-empty-state { text-align: center; padding: 40px 20px; color: #6B6B7B; }
 .m-empty-state i { font-size: 32px; display: block; margin-bottom: 12px; }
 .m-empty-state p { font-size: 14px; margin: 0; }
+/* Coach action section */
+.m-sd-coach-section {
+    background: #16161F; border: 1px solid #2D2D3F; border-radius: 16px;
+    padding: 16px; margin-bottom: 16px;
+}
+.m-sd-coach-section h3 { font-size: 14px; font-weight: 700; color: #8B5CF6; margin: 0 0 12px; }
+.m-sd-plan-info {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; padding: 10px 12px; border-radius: 10px;
+    margin-bottom: 10px;
+}
+.m-sd-plan-info.has-plan { background: rgba(16,185,129,0.1); color: #10B981; }
+.m-sd-plan-info.no-plan { background: rgba(251,191,36,0.1); color: #FBBF24; }
+.m-sd-eval-info {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; padding: 10px 12px; border-radius: 10px;
+    background: rgba(59,130,246,0.1); color: #3B82F6; margin-bottom: 10px;
+}
+.m-sd-coach-actions {
+    display: flex; flex-wrap: wrap; gap: 8px;
+}
+.m-sd-coach-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 10px 14px; border-radius: 10px; font-size: 13px; font-weight: 600;
+    border: none; cursor: pointer; font-family: Inter, sans-serif;
+    min-height: 44px; text-decoration: none;
+    background: rgba(107,70,193,0.12); color: #8B5CF6;
+    -webkit-tap-highlight-color: transparent; flex: 1; min-width: 120px;
+}
+.m-sd-coach-btn:active { background: rgba(107,70,193,0.2); }
+/* Bottom sheet for assign plan from session detail */
+.m-sd-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1001; }
+.m-sd-overlay.m-active { display: block; }
+.m-sd-sheet {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 1002;
+    background: #1A1A2E; border-radius: 16px 16px 0 0;
+    padding: 20px 16px 32px; transform: translateY(100%); transition: transform .3s ease;
+}
+.m-sd-overlay.m-active .m-sd-sheet { transform: translateY(0); }
+.m-sd-sheet-handle { width: 36px; height: 4px; background: #3D3D4F; border-radius: 2px; margin: 0 auto 16px; }
+.m-sd-sheet-title { font-size: 16px; font-weight: 700; color: #fff; margin: 0 0 16px; text-align: center; }
+.m-sd-sheet-field { margin-bottom: 14px; }
+.m-sd-sheet-field label { display: block; font-size: 12px; font-weight: 600; color: #A8A8B8; margin-bottom: 6px; text-transform: uppercase; }
+.m-sd-sheet-field select {
+    width: 100%; padding: 12px; background: #16161F; border: 1px solid #2D2D3F;
+    border-radius: 10px; color: #fff; font-size: 14px; font-family: Inter, sans-serif;
+    min-height: 44px; appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236B6B7B' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center;
+}
+.m-sd-sheet-actions { display: flex; gap: 10px; margin-top: 16px; }
+.m-sd-sheet-actions button { flex: 1; padding: 14px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; font-family: Inter, sans-serif; min-height: 48px; }
+.m-sd-sheet-cancel { background: #2D2D3F; color: #A8A8B8; }
+.m-sd-sheet-save { background: #6B46C1; color: #fff; }
+.m-sd-sheet-save:disabled { opacity: 0.5; }
 </style>
 
 <div class="m-session-detail">
@@ -194,6 +269,99 @@ if ($sessionId > 0) {
                     </a>
                 <?php endif; ?>
             </div>
+        <?php endif; ?>
+
+        <!-- Coach action section -->
+        <?php if ($isAnyCoach && $session): ?>
+        <div class="m-sd-coach-section">
+            <h3><i class="fas fa-chalkboard-user"></i> Coach Actions</h3>
+
+            <?php if ($sdPracticePlan): ?>
+            <div class="m-sd-plan-info has-plan"><i class="fas fa-clipboard-list"></i> Plan: <?= htmlspecialchars($sdPracticePlan['name']) ?></div>
+            <?php else: ?>
+            <div class="m-sd-plan-info no-plan"><i class="fas fa-exclamation-circle"></i> No practice plan assigned</div>
+            <?php endif; ?>
+
+            <?php if ($sdEvaluation): ?>
+            <div class="m-sd-eval-info"><i class="fas fa-clipboard-check"></i> <?= htmlspecialchars($sdEvaluation['name'] ?: 'Evaluation') ?> (<?= ucfirst($sdEvaluation['status'] ?? 'draft') ?>)</div>
+            <?php endif; ?>
+
+            <div class="m-sd-coach-actions">
+                <button type="button" class="m-sd-coach-btn" onclick="mSdOpenAssignPlan()">
+                    <i class="fas fa-clipboard-list"></i> <?= $sdPracticePlan ? 'Change Plan' : 'Add Plan' ?>
+                </button>
+                <?php if ($sdEvaluation): ?>
+                <a href="?page=session_evaluation_form&evaluation_id=<?= (int)$sdEvaluation['id'] ?>" class="m-sd-coach-btn" style="text-decoration:none;">
+                    <i class="fas fa-clipboard-check"></i> Continue Evaluation
+                </a>
+                <?php else: ?>
+                <a href="?page=coach_calendar" class="m-sd-coach-btn" style="text-decoration:none;">
+                    <i class="fas fa-clipboard-check"></i> Start Evaluation
+                </a>
+                <?php endif; ?>
+                <a href="?page=record_drill_video&session_id=<?= $sessionId ?>" class="m-sd-coach-btn" style="text-decoration:none;">
+                    <i class="fas fa-video"></i> Record Drill
+                </a>
+            </div>
+        </div>
+
+        <!-- Assign Plan Bottom Sheet -->
+        <div class="m-sd-overlay" id="mSdPlanOverlay" onclick="mSdClosePlanSheet()">
+            <div class="m-sd-sheet" onclick="event.stopPropagation()">
+                <div class="m-sd-sheet-handle"></div>
+                <h3 class="m-sd-sheet-title">Assign Practice Plan</h3>
+                <form id="mSdAssignPlanForm" style="display:none;">
+                    <?= csrfTokenInput() ?>
+                </form>
+                <div class="m-sd-sheet-field">
+                    <label>Practice Plan</label>
+                    <select id="mSdPlanSelect" required>
+                        <option value="">— Select Plan —</option>
+                        <?php foreach ($sdPracticePlans as $plan): ?>
+                        <option value="<?= (int)$plan['id'] ?>"<?= ($sdPracticePlan && $sdPracticePlan['id'] == $plan['id']) ? ' selected' : '' ?>><?= htmlspecialchars($plan['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="m-sd-sheet-actions">
+                    <button type="button" class="m-sd-sheet-cancel" onclick="mSdClosePlanSheet()">Cancel</button>
+                    <button type="button" class="m-sd-sheet-save" id="mSdPlanSaveBtn" onclick="mSdSubmitAssignPlan()">Assign Plan</button>
+                </div>
+            </div>
+        </div>
+
+        <script>
+        function mSdOpenAssignPlan() {
+            document.getElementById('mSdPlanOverlay').classList.add('m-active');
+        }
+        function mSdClosePlanSheet() {
+            document.getElementById('mSdPlanOverlay').classList.remove('m-active');
+        }
+        function mSdSubmitAssignPlan() {
+            var btn = document.getElementById('mSdPlanSaveBtn');
+            var planId = document.getElementById('mSdPlanSelect').value;
+            if (!planId) { return; }
+            btn.disabled = true;
+            btn.textContent = 'Saving...';
+            var csrf = document.querySelector('#mSdAssignPlanForm input[name="csrf_token"]').value;
+            var form = new FormData();
+            form.append('action', 'assign_practice_plan');
+            form.append('session_id', <?= json_encode($sessionId) ?>);
+            form.append('practice_plan_id', planId);
+            form.append('csrf_token', csrf);
+            fetch('process_edit_session.php', {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: form
+            })
+            .then(function(r) { return r.text(); })
+            .then(function() { location.reload(); })
+            .catch(function() {
+                if (typeof showToast === 'function') showToast('Failed to assign plan', 'error');
+                btn.disabled = false;
+                btn.textContent = 'Assign Plan';
+            });
+        }
+        </script>
         <?php endif; ?>
     <?php endif; ?>
 </div>
