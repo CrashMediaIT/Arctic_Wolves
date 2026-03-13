@@ -4,6 +4,16 @@
  * Purpose-built for mobile phones.
  */
 
+// Mark all notifications as read
+if (isset($_GET['mark_all_read'])) {
+    try {
+        $stmt = $pdo->prepare("UPDATE notifications SET read_status = 1 WHERE user_id = ?");
+        $stmt->execute([$user_id]);
+    } catch (PDOException $e) { /* silently fail */ }
+    header("Location: pwa.php?page=notifications");
+    exit();
+}
+
 // Mark individual notification as read
 if (isset($_GET['mark_read'])) {
     $notif_id = intval($_GET['mark_read']);
@@ -246,13 +256,9 @@ function mGetNotifIcon($type) {
     <div class="m-notifs-header">
         <h2 class="m-notifs-title">Notifications</h2>
         <?php if ($unreadCount > 0): ?>
-        <form method="post" action="process_notifications.php" style="margin:0;">
-            <?= csrfTokenInput() ?>
-            <input type="hidden" name="action" value="mark_all_read">
-            <button type="submit" class="m-mark-read-btn">
-                <i class="fas fa-check-double"></i> Mark all read
-            </button>
-        </form>
+        <a href="?page=notifications&mark_all_read=1" class="m-mark-read-btn">
+            <i class="fas fa-check-double"></i> Mark all read
+        </a>
         <?php endif; ?>
     </div>
 
