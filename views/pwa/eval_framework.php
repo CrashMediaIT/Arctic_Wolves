@@ -181,8 +181,8 @@ foreach ($grouped as $items) { $totalSkills += count($items); }
     <?php endif; ?>
 
     <div class="m-evalfw-tabs">
-        <button class="m-evalfw-tab m-active" onclick="mEvalTab('categories')"><i class="fas fa-clipboard-list"></i> Categories</button>
-        <button class="m-evalfw-tab" onclick="mEvalTab('skills')"><i class="fas fa-star"></i> Skills</button>
+        <button class="m-evalfw-tab m-active" onclick="mEvalTab('categories', this)"><i class="fas fa-clipboard-list"></i> Categories</button>
+        <button class="m-evalfw-tab" onclick="mEvalTab('skills', this)"><i class="fas fa-star"></i> Skills</button>
     </div>
 
     <!-- Categories Panel -->
@@ -271,27 +271,35 @@ foreach ($grouped as $items) { $totalSkills += count($items); }
     </form>
 </div>
 
-<!-- Edit Skill Sheet -->
+<!-- Add/Edit Skill Sheet -->
 <div class="m-evalfw-sheet" id="mEvalSkillSheet">
     <div class="m-evalfw-sheet-title">
-        <span id="mEvalSkillSheetLabel"><i class="fas fa-edit"></i> Edit Skill</span>
+        <span id="mEvalSkillSheetLabel"><i class="fas fa-plus-circle"></i> Add Skill</span>
         <button class="m-evalfw-sheet-close" onclick="mEvalClose()">&times;</button>
     </div>
     <form method="POST" action="process_eval_framework.php" id="mEvalSkillForm">
         <?= csrfTokenInput() ?>
-        <input type="hidden" name="action" value="update_skill">
+        <input type="hidden" name="action" id="mEvalSkillAction" value="create_skill">
         <input type="hidden" name="skill_id" id="mEvalSkillEditId" value="">
-        <input type="hidden" name="category_id" id="mEvalSkillCatId" value="">
 
         <div class="m-evalfw-form-group">
+            <label class="m-evalfw-form-label">Category *</label>
+            <select name="category_id" id="mEvalSkillCatId" class="m-evalfw-form-input" required>
+                <option value="">Select category...</option>
+                <?php foreach ($evalCategories as $catId => $cat): ?>
+                <option value="<?= (int)$catId ?>"><?= htmlspecialchars($cat['name'] ?? '') ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <div class="m-evalfw-form-group">
             <label class="m-evalfw-form-label">Skill Name *</label>
-            <input type="text" name="name" id="mEvalSkillName" class="m-evalfw-form-input" required>
+            <input type="text" name="name" id="mEvalSkillName" class="m-evalfw-form-input" required placeholder="e.g., Edge Control">
         </div>
         <div class="m-evalfw-form-group">
             <label class="m-evalfw-form-label">Description</label>
-            <textarea name="description" id="mEvalSkillDesc" class="m-evalfw-form-input" style="resize:vertical;min-height:60px;" rows="3"></textarea>
+            <textarea name="description" id="mEvalSkillDesc" class="m-evalfw-form-input" style="resize:vertical;min-height:60px;" rows="3" placeholder="Describe this evaluation skill..."></textarea>
         </div>
-        <button type="submit" class="m-evalfw-submit"><i class="fas fa-save"></i> Update Skill</button>
+        <button type="submit" class="m-evalfw-submit" id="mEvalSkillSubmitBtn"><i class="fas fa-save"></i> Create Skill</button>
     </form>
 </div>
 
@@ -310,20 +318,20 @@ foreach ($grouped as $items) { $totalSkills += count($items); }
 <script>
 var mEvalCurrentPanel = 'categories';
 
-function mEvalTab(tab) {
+function mEvalTab(tab, btn) {
     mEvalCurrentPanel = tab;
     document.querySelectorAll('.m-evalfw-tab').forEach(function(t) { t.classList.remove('m-active'); });
     document.querySelectorAll('.m-evalfw-panel').forEach(function(p) { p.classList.remove('m-active'); });
     document.getElementById('m-evalfw-' + tab).classList.add('m-active');
-    event.currentTarget.classList.add('m-active');
+    if (btn) btn.classList.add('m-active');
     // Update FAB action based on tab
     var fab = document.getElementById('mEvalFab');
     if (tab === 'categories') {
         fab.setAttribute('onclick', 'mEvalAddCategory()');
         fab.setAttribute('title', 'Add Category');
     } else {
-        fab.setAttribute('onclick', 'mEvalAddCategory()');
-        fab.setAttribute('title', 'Add Category');
+        fab.setAttribute('onclick', 'mEvalAddSkill()');
+        fab.setAttribute('title', 'Add Skill');
     }
 }
 
@@ -349,9 +357,24 @@ function mEvalEditCat(cat) {
     document.getElementById('mEvalOverlay').classList.add('m-active');
 }
 
+function mEvalAddSkill() {
+    document.getElementById('mEvalSkillAction').value = 'create_skill';
+    document.getElementById('mEvalSkillEditId').value = '';
+    document.getElementById('mEvalSkillSheetLabel').innerHTML = '<i class="fas fa-plus-circle"></i> Add Skill';
+    document.getElementById('mEvalSkillSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Create Skill';
+    document.getElementById('mEvalSkillCatId').value = '';
+    document.getElementById('mEvalSkillName').value = '';
+    document.getElementById('mEvalSkillDesc').value = '';
+    document.getElementById('mEvalSkillSheet').classList.add('m-active');
+    document.getElementById('mEvalOverlay').classList.add('m-active');
+}
+
 function mEvalEditSkill(s) {
+    document.getElementById('mEvalSkillAction').value = 'update_skill';
     document.getElementById('mEvalSkillEditId').value = s.id || '';
     document.getElementById('mEvalSkillCatId').value = s.category_id || '';
+    document.getElementById('mEvalSkillSheetLabel').innerHTML = '<i class="fas fa-edit"></i> Edit Skill';
+    document.getElementById('mEvalSkillSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Update Skill';
     document.getElementById('mEvalSkillName').value = s.name || '';
     document.getElementById('mEvalSkillDesc').value = s.description || '';
     document.getElementById('mEvalSkillSheet').classList.add('m-active');

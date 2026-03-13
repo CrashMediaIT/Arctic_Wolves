@@ -480,7 +480,7 @@ test.describe('PWA HR/Admin views have all handlers defined', () => {
     const matches = content.matchAll(/onclick="([^"]+)"/g);
     const fns = new Set();
     for (const m of matches) {
-      const calls = m[1].matchAll(/([a-zA-Z_$][a-zA-Z0-9_$]*)\s*\(/g);
+      const calls = m[1].matchAll(/(?<![.\w])([a-zA-Z_$][a-zA-Z0-9_$]*)\s*\(/g);
       for (const c of calls) {
         const fn = c[1];
         // Skip built-in/common JS functions and PHP functions that appear in <?= ?> tags
@@ -603,6 +603,228 @@ test.describe('HR/Admin CSRF comprehensive audit', () => {
       if (fetches.length > 0) {
         const hasCSRF = content.includes('csrf_token') || content.includes('csrf-token');
         expect(hasCSRF, `${file} has fetch POST calls but no CSRF protection`).toBe(true);
+      }
+    }
+  });
+});
+
+// ── ONCLICK HANDLER FUNCTIONALITY DEEP CHECKS ───────────────────────
+
+test.describe('HR/Admin onclick handler functionality', () => {
+
+  test('eval_framework.php FAB switches to mEvalAddSkill on Skills tab', () => {
+    const content = readPwaFile('eval_framework.php');
+    // The mEvalTab function must update FAB to call mEvalAddSkill for skills tab
+    expect(content).toContain("fab.setAttribute('onclick', 'mEvalAddSkill()')");
+    expect(content).toContain("fab.setAttribute('title', 'Add Skill')");
+  });
+
+  test('eval_framework.php has mEvalAddSkill function defined', () => {
+    const content = readPwaFile('eval_framework.php');
+    expect(content).toMatch(/function mEvalAddSkill\s*\(/);
+  });
+
+  test('eval_framework.php mEvalAddSkill sets action to create_skill', () => {
+    const content = readPwaFile('eval_framework.php');
+    // Extract the mEvalAddSkill function body
+    const match = content.match(/function mEvalAddSkill\s*\(\)\s*\{([^}]+(?:\{[^}]*\}[^}]*)*)\}/);
+    expect(match).not.toBeNull();
+    const fnBody = match[1];
+    expect(fnBody).toContain("'create_skill'");
+    expect(fnBody).toContain('mEvalSkillAction');
+    expect(fnBody).toContain('mEvalSkillSheet');
+  });
+
+  test('eval_framework.php mEvalEditSkill sets action to update_skill', () => {
+    const content = readPwaFile('eval_framework.php');
+    const match = content.match(/function mEvalEditSkill\s*\(s\)\s*\{([^}]+(?:\{[^}]*\}[^}]*)*)\}/);
+    expect(match).not.toBeNull();
+    const fnBody = match[1];
+    expect(fnBody).toContain("'update_skill'");
+    expect(fnBody).toContain('mEvalSkillAction');
+  });
+
+  test('eval_framework.php skill sheet has category selector', () => {
+    const content = readPwaFile('eval_framework.php');
+    // The skill sheet should have a select for category_id
+    expect(content).toMatch(/<select[^>]*name="category_id"[^>]*id="mEvalSkillCatId"/);
+  });
+
+  test('eval_framework.php skill sheet action is dynamic (not hardcoded)', () => {
+    const content = readPwaFile('eval_framework.php');
+    // The action field should have an id so JS can change it
+    expect(content).toMatch(/id="mEvalSkillAction"/);
+  });
+
+  test('eval_framework.php mEvalTab passes button reference (no implicit event)', () => {
+    const content = readPwaFile('eval_framework.php');
+    // Onclick should pass 'this' to the function
+    expect(content).toMatch(/onclick="mEvalTab\('categories',\s*this\)"/);
+    expect(content).toMatch(/onclick="mEvalTab\('skills',\s*this\)"/);
+    // Function should accept btn parameter
+    expect(content).toMatch(/function mEvalTab\(tab,\s*btn\)/);
+    // Should use btn instead of event.currentTarget
+    expect(content).not.toContain('event.currentTarget');
+  });
+
+  test('admin_permissions.php mPermsTab passes button reference (no implicit event)', () => {
+    const content = readPwaFile('admin_permissions.php');
+    // Onclick should pass 'this' to the function
+    expect(content).toMatch(/onclick="mPermsTab\('roles',\s*this\)"/);
+    expect(content).toMatch(/onclick="mPermsTab\('manage',\s*this\)"/);
+    // Function should accept btn parameter
+    expect(content).toMatch(/function mPermsTab\(tab,\s*btn\)/);
+    // Should use btn instead of event.currentTarget
+    expect(content).not.toContain('event.currentTarget');
+  });
+
+  test('eval_framework.php tab buttons pass this as second arg', () => {
+    const content = readPwaFile('eval_framework.php');
+    // Both tab buttons should pass this
+    const tabButtonMatches = content.match(/onclick="mEvalTab\([^"]+\)"/g) || [];
+    expect(tabButtonMatches.length).toBeGreaterThanOrEqual(2);
+    for (const match of tabButtonMatches) {
+      expect(match).toContain(', this)');
+    }
+  });
+
+  test('admin_permissions.php tab buttons pass this as second arg', () => {
+    const content = readPwaFile('admin_permissions.php');
+    // Both tab buttons should pass this
+    const tabButtonMatches = content.match(/onclick="mPermsTab\([^"]+\)"/g) || [];
+    expect(tabButtonMatches.length).toBeGreaterThanOrEqual(2);
+    for (const match of tabButtonMatches) {
+      expect(match).toContain(', this)');
+    }
+  });
+});
+
+// ── EXPANDED HANDLER VERIFICATION FOR ADDITIONAL ADMIN VIEWS ────────
+
+test.describe('PWA additional admin views handler verification', () => {
+
+  function extractOnclickFunctions(content) {
+    const matches = content.matchAll(/onclick="([^"]+)"/g);
+    const fns = new Set();
+    for (const m of matches) {
+      const calls = m[1].matchAll(/(?<![.\w])([a-zA-Z_$][a-zA-Z0-9_$]*)\s*\(/g);
+      for (const c of calls) {
+        const fn = c[1];
+        if (!['event', 'this', 'if', 'return', 'confirm', 'alert', 'window', 'document',
+              'location', 'history', 'parseInt', 'parseFloat', 'encodeURIComponent',
+              'decodeURIComponent', 'String', 'Number', 'JSON', 'Array', 'Object',
+              'console', 'setTimeout', 'setInterval', 'clearTimeout', 'clearInterval',
+              'showToast', 'showConfirmModal', 'stopPropagation', 'preventDefault',
+              'closest', 'querySelector', 'querySelectorAll', 'getAttribute', 'setAttribute',
+              'classList', 'remove', 'appendChild', 'insertBefore', 'replaceChild',
+              'htmlspecialchars', 'json_encode', 'urlencode', 'intval', 'number_format',
+              'date', 'time', 'trim', 'strtolower', 'strtoupper', 'ucfirst', 'ucwords',
+              'isset', 'empty', 'is_null', 'is_array', 'is_string', 'is_int', 'is_float',
+              'count', 'strlen', 'substr', 'strpos', 'str_replace', 'preg_replace',
+              'nl2br', 'sprintf', 'round', 'floor', 'ceil', 'abs', 'max', 'min',
+              'array_key_exists', 'in_array', 'array_merge', 'array_map'
+        ].includes(fn)) {
+          fns.add(fn);
+        }
+      }
+    }
+    return fns;
+  }
+
+  function verifyHandlers(filename) {
+    const content = readPwaFile(filename);
+    const fns = extractOnclickFunctions(content);
+    for (const fn of fns) {
+      const patterns = [
+        `function ${fn}(`,
+        `function ${fn} (`,
+        `window.${fn} = function`,
+        `window.${fn} = async function`,
+        `window.${fn}= function`,
+        `window.${fn}=function`,
+        `window.${fn}=async function`,
+        `async function ${fn}(`,
+      ];
+      const defined = patterns.some(p => content.includes(p)) ||
+                      new RegExp(`(var|let|const)\\s+${fn}\\s*=\\s*(async\\s+)?function`).test(content);
+      expect(defined, `${filename}: onclick handler '${fn}' not defined`).toBe(true);
+    }
+  }
+
+  test('admin_discounts.php all onclick handlers defined', () => {
+    verifyHandlers('admin_discounts.php');
+  });
+
+  test('admin_locations.php all onclick handlers defined', () => {
+    verifyHandlers('admin_locations.php');
+  });
+
+  test('admin_packages.php all onclick handlers defined', () => {
+    verifyHandlers('admin_packages.php');
+  });
+
+  test('admin_session_types.php all onclick handlers defined', () => {
+    verifyHandlers('admin_session_types.php');
+  });
+
+  test('admin_plan_categories.php all onclick handlers defined', () => {
+    verifyHandlers('admin_plan_categories.php');
+  });
+
+  test('admin_team_coaches.php all onclick handlers defined', () => {
+    verifyHandlers('admin_team_coaches.php');
+  });
+
+  test('admin_theme_settings.php all onclick handlers defined', () => {
+    verifyHandlers('admin_theme_settings.php');
+  });
+
+  test('admin_coach_termination.php all onclick handlers defined', () => {
+    verifyHandlers('admin_coach_termination.php');
+  });
+
+  test('admin_business_partners.php all onclick handlers defined', () => {
+    verifyHandlers('admin_business_partners.php');
+  });
+
+  test('admin_permissions.php all onclick handlers defined', () => {
+    verifyHandlers('admin_permissions.php');
+  });
+
+  test('merchandise_categories.php all onclick handlers defined', () => {
+    verifyHandlers('merchandise_categories.php');
+  });
+});
+
+// ── NO IMPLICIT EVENT GLOBAL IN ANY VIEW ────────────────────────────
+
+test.describe('No implicit event global usage in HR/Admin views', () => {
+
+  const viewFiles = [
+    'eval_framework.php', 'admin_permissions.php', 'categories.php',
+    'all_users.php', 'hr_complaints.php', 'hr_time_tracking.php',
+    'hr_employee_contracts.php', 'hr_onboarding.php', 'termination.php',
+    'admin_discounts.php', 'admin_locations.php', 'admin_packages.php',
+    'admin_session_types.php', 'admin_plan_categories.php',
+    'admin_team_coaches.php', 'admin_theme_settings.php',
+    'admin_wishlist.php', 'marketing.php', 'admin_coach_termination.php',
+    'admin_business_partners.php', 'admin_staff_scheduling.php',
+  ];
+
+  test('no view uses implicit event.currentTarget', () => {
+    for (const file of viewFiles) {
+      const content = readPwaFile(file);
+      // Check script blocks don't use event.currentTarget outside of addEventListener callbacks
+      const scriptMatch = content.match(/<script>([\s\S]*?)<\/script>/g) || [];
+      for (const script of scriptMatch) {
+        // If there's event.currentTarget, it must be inside an addEventListener callback, not a named function
+        if (script.includes('event.currentTarget')) {
+          // This is only OK inside addEventListener(... function(event) { ... event.currentTarget ... })
+          // Named functions called via onclick should NOT use event.currentTarget
+          const namedFnRegex = /function\s+\w+\s*\([^)]*\)\s*\{[^}]*event\.currentTarget/g;
+          const badMatches = script.match(namedFnRegex) || [];
+          expect(badMatches.length, `${file}: named function uses implicit event.currentTarget`).toBe(0);
+        }
       }
     }
   });
