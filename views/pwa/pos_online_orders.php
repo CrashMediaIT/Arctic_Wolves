@@ -176,7 +176,7 @@ function toggleOnlineOrderDetail(id) {
 
 function updateOnlineOrderStatus(orderId) {
     var newStatus = document.getElementById('mOOStatus-' + orderId).value;
-    fetch('dashboard.php?page=pos_online_orders', {
+    fetch('pwa.php?page=pos_online_orders', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: 'update_status=1&order_id=' + orderId + '&new_status=' + encodeURIComponent(newStatus) + '&csrf_token=' + encodeURIComponent(mOOCsrf)

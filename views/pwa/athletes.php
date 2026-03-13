@@ -5,6 +5,16 @@
  * Includes filter bar, stats summary, detailed athlete info, and action buttons.
  */
 
+// Permission check — match desktop views/athletes.php
+if (!in_array($user_role, ['coach', 'coach_plus', 'admin'])) {
+    echo '<div style="text-align:center;padding:60px 20px;color:#6B6B7B;font-family:Inter,sans-serif;">';
+    echo '<i class="fas fa-lock" style="font-size:48px;display:block;margin-bottom:16px;opacity:0.5;"></i>';
+    echo '<h3 style="color:#fff;">Access Denied</h3>';
+    echo '<p style="font-size:14px;">Coach or admin access required.</p>';
+    echo '</div>';
+    return;
+}
+
 $is_coach = in_array(($user_role ?? ''), ['coach', 'coach_plus', 'admin']);
 
 /**
@@ -268,7 +278,7 @@ $hasActiveFilters = !empty($filter_team) || !empty($filter_age_group) || !empty(
             <i class="fas fa-chevron-down m-filter-chevron"></i>
         </button>
         <div class="m-filter-body">
-            <form method="GET" action="dashboard.php" id="mFilterForm">
+            <form method="GET" action="pwa.php" id="mFilterForm">
                 <input type="hidden" name="page" value="athletes">
                 <div class="m-filter-field">
                     <label>Team</label>
@@ -299,7 +309,7 @@ $hasActiveFilters = !empty($filter_team) || !empty($filter_age_group) || !empty(
                 </div>
                 <div class="m-filter-actions">
                     <button type="submit" class="m-filter-apply"><i class="fas fa-search"></i> Apply</button>
-                    <a href="dashboard.php?page=athletes" class="m-filter-clear"><i class="fas fa-times"></i> Clear</a>
+                    <a href="?page=athletes" class="m-filter-clear"><i class="fas fa-times"></i> Clear</a>
                 </div>
             </form>
         </div>

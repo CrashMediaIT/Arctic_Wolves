@@ -3,6 +3,16 @@
  * PWA Testing - Mobile-native testing/sandbox page
  * Purpose-built for mobile phones.
  */
+
+// Permission check — match desktop views/testing.php
+if (!$isAdmin) {
+    echo '<div style="text-align:center;padding:60px 20px;color:#6B6B7B;font-family:Inter,sans-serif;">';
+    echo '<i class="fas fa-lock" style="font-size:48px;display:block;margin-bottom:16px;opacity:0.5;"></i>';
+    echo '<h3 style="color:#fff;">Access Denied</h3>';
+    echo '<p style="font-size:14px;">Admin privileges required.</p>';
+    echo '</div>';
+    return;
+}
 ?>
 <style>
 .m-testing { padding: 16px; font-family: Inter, sans-serif; }

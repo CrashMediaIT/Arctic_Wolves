@@ -247,7 +247,7 @@ function toggleShopOrderDetail(id) {
 
 function updateShopOrderStatus(orderId) {
     var newStatus = document.getElementById('mSOStatus-' + orderId).value;
-    fetch('dashboard.php?page=shop_orders', {
+    fetch('pwa.php?page=shop_orders', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: 'update_status=1&order_id=' + orderId + '&new_status=' + encodeURIComponent(newStatus) + '&csrf_token=' + encodeURIComponent(mSOCsrf)
