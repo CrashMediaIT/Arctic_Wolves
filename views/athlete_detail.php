@@ -414,7 +414,7 @@ $initials = strtoupper(mb_substr($athlete['first_name'] ?? '', 0, 1) . mb_substr
 <div class="ath-quick-links" style="margin-bottom: 20px;">
     <a href="?page=stats&athlete_id=<?= $athlete_id ?>" class="ath-action-btn"><i class="fas fa-chart-line"></i> Stats</a>
     <a href="?page=evaluations_skills&athlete_id=<?= $athlete_id ?>" class="ath-action-btn"><i class="fas fa-clipboard-check"></i> Evaluations</a>
-    <a href="?page=workouts&athlete_id=<?= $athlete_id ?>" class="ath-action-btn"><i class="fas fa-dumbbell"></i> Workouts</a>
+    <a href="?page=strength_conditioning&athlete_id=<?= $athlete_id ?>" class="ath-action-btn"><i class="fas fa-dumbbell"></i> Strength &amp; Conditioning</a>
     <a href="?page=nutrition&athlete_id=<?= $athlete_id ?>" class="ath-action-btn"><i class="fas fa-utensils"></i> Nutrition</a>
     <a href="?page=messages&user_id=<?= $athlete_id ?>" class="ath-action-btn"><i class="fas fa-comments"></i> Message</a>
 </div>
@@ -726,7 +726,7 @@ $initials = strtoupper(mb_substr($athlete['first_name'] ?? '', 0, 1) . mb_substr
                 <a href="?page=athlete_detail&id=<?= $athlete_id ?>&edit=1" class="ath-action-btn ath-action-primary"><i class="fas fa-user-edit"></i> Edit Profile</a>
                 <a href="?page=evaluations_skills&athlete_id=<?= $athlete_id ?>" class="ath-action-btn"><i class="fas fa-clipboard-check"></i> New Evaluation</a>
                 <a href="?page=stats&athlete_id=<?= $athlete_id ?>" class="ath-action-btn"><i class="fas fa-chart-line"></i> Update Stats</a>
-                <a href="?page=workouts&athlete_id=<?= $athlete_id ?>" class="ath-action-btn"><i class="fas fa-dumbbell"></i> Workouts</a>
+                <a href="?page=strength_conditioning&athlete_id=<?= $athlete_id ?>" class="ath-action-btn"><i class="fas fa-dumbbell"></i> Strength &amp; Conditioning</a>
                 <a href="?page=nutrition&athlete_id=<?= $athlete_id ?>" class="ath-action-btn"><i class="fas fa-utensils"></i> Nutrition</a>
                 <a href="?page=athlete_notes&athlete_id=<?= $athlete_id ?>" class="ath-action-btn"><i class="fas fa-sticky-note"></i> Notes</a>
                 <a href="?page=messages&user_id=<?= $athlete_id ?>" class="ath-action-btn"><i class="fas fa-comments"></i> Message</a>
