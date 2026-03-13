@@ -815,7 +815,7 @@ test.describe('No implicit event global usage in HR/Admin views', () => {
     for (const file of viewFiles) {
       const content = readPwaFile(file);
       // Check script blocks don't use event.currentTarget outside of addEventListener callbacks
-      const scriptMatch = content.match(/<script>([\s\S]*?)<\/script>/g) || [];
+      const scriptMatch = content.match(/<script>([\s\S]*?)<\/script>/gi) || [];
       for (const script of scriptMatch) {
         // If there's event.currentTarget, it must be inside an addEventListener callback, not a named function
         if (script.includes('event.currentTarget')) {
