@@ -152,7 +152,7 @@ $totalEvals = $eval_stats['total'];
         <h2 class="m-coach-evals-title">My Evaluations</h2>
         <p class="m-coach-evals-sub"><?= $totalEvals ?> evaluation<?= $totalEvals !== 1 ? 's' : '' ?> performed</p>
         <?php if ($isAdminUser): ?>
-        <a href="dashboard.php?page=admin_eval_framework" class="m-admin-link">
+        <a href="?page=eval_framework" class="m-admin-link">
             <i class="fas fa-cog"></i> Eval Framework
         </a>
         <?php endif; ?>

@@ -269,6 +269,7 @@ $allowed_pages = [
     'testing'                 => 'views/testing.php',
     'parent_home'             => 'views/parent_home.php',
     'athlete_detail'          => 'views/athlete_detail.php',
+    'athlete_notes'           => 'views/athlete_notes.php',
     'camp_checkin'            => 'views/parent_camp_checkin.php',
     'library_workouts'        => 'views/library_workouts.php',
     'library_nutrition'       => 'views/library_nutrition.php',

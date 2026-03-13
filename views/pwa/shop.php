@@ -338,6 +338,8 @@ function mShopAddToCart(productId, btn) {
     formData.append('action', 'add_to_cart');
     formData.append('size', '');
     formData.append('quantity', '1');
+    var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    if (csrfMeta) formData.append('csrf_token', csrfMeta.content);
     fetch('shop_product.php?id=' + productId, {
         method: 'POST',
         body: formData

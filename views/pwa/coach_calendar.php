@@ -64,8 +64,13 @@ try {
     $stmt = $pdo->prepare("
         SELECT s.id, s.title, s.session_date, s.session_time, s.duration_minutes,
                s.status, s.arena, s.session_type,
+               pp.name as practice_plan_name, pp.id as practice_plan_id,
+               se.id as evaluation_id, se.name as evaluation_name, se.status as evaluation_status,
                (SELECT COUNT(*) FROM bookings b WHERE b.session_id = s.id AND b.status = 'confirmed') as athlete_count
         FROM sessions s
+        LEFT JOIN session_practice_plans spp ON spp.session_id = s.id
+        LEFT JOIN practice_plans pp ON spp.practice_plan_id = pp.id
+        LEFT JOIN session_evaluations se ON se.session_id = s.id
         WHERE s.coach_id = ? AND $dateCondition $filterWhere
         ORDER BY s.session_date ASC, s.session_time ASC
         LIMIT 50
@@ -73,6 +78,38 @@ try {
     $stmt->execute($filterParams);
     $sessions = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { $sessions = []; }
+
+// Fetch practice plans for the Assign Plan bottom sheet
+$calPracticePlans = [];
+try {
+    $calPracticePlans = $pdo->query("SELECT id, COALESCE(title, name) as name FROM practice_plans ORDER BY created_at DESC LIMIT 50")->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {}
+
+// Fetch evaluation templates for the Start Evaluation bottom sheet
+$calEvalTemplates = [];
+try {
+    $et_stmt = $pdo->query("
+        SELECT et.id, et.title,
+               GROUP_CONCAT(ec.name ORDER BY etc2.display_order SEPARATOR ', ') as category_names
+        FROM evaluation_templates et
+        LEFT JOIN evaluation_template_categories etc2 ON et.id = etc2.template_id
+        LEFT JOIN eval_categories ec ON etc2.category_id = ec.id
+        GROUP BY et.id
+        ORDER BY et.title
+    ");
+    $calEvalTemplates = $et_stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {}
+
+// Fetch athletes assigned to this coach
+$calAssignedAthletes = [];
+try {
+    $aa_stmt = $pdo->prepare("SELECT u.id, u.first_name, u.last_name FROM users u WHERE u.is_active = 1 AND u.role = 'athlete' AND (u.assigned_coach_id = ? OR u.created_by_coach_id = ?) ORDER BY u.last_name, u.first_name");
+    $aa_stmt->execute([$user_id, $user_id]);
+    $calAssignedAthletes = $aa_stmt->fetchAll(PDO::FETCH_ASSOC);
+    if (function_exists('decryptUserRows')) {
+        $calAssignedAthletes = decryptUserRows($calAssignedAthletes);
+    }
+} catch (PDOException $e) {}
 
 // Fetch template sessions (training_session_dates not yet linked to actual sessions)
 try {
@@ -250,6 +287,60 @@ foreach ($sessions as $s) {
     transition: background 0.2s;
 }
 .m-cal-fab:active { background: #8B5CF6; }
+/* Session action bar (Assign Plan, Evaluate, Record) */
+.m-cal-coach-actions {
+    display: flex; gap: 6px; margin-top: 8px; padding-top: 8px;
+    border-top: 1px solid #2D2D3F; flex-wrap: wrap;
+}
+.m-cal-coach-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 7px 10px; border-radius: 8px; font-size: 11px; font-weight: 600;
+    border: none; cursor: pointer; font-family: Inter, sans-serif;
+    min-height: 34px; text-decoration: none; color: #8B5CF6;
+    background: rgba(107,70,193,0.1);
+    -webkit-tap-highlight-color: transparent;
+}
+.m-cal-coach-btn:active { background: rgba(107,70,193,0.2); }
+.m-cal-plan-tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; padding: 2px 8px; border-radius: 5px; font-weight: 500; margin-top: 4px;
+}
+.m-cal-plan-tag.has-plan { background: rgba(16,185,129,0.12); color: #10B981; }
+.m-cal-plan-tag.no-plan { background: rgba(251,191,36,0.12); color: #FBBF24; }
+.m-cal-eval-tag { background: rgba(59,130,246,0.12); color: #3B82F6; }
+/* Bottom sheet modal */
+.m-cal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1001; -webkit-tap-highlight-color: transparent; }
+.m-cal-overlay.m-active { display: block; }
+.m-cal-sheet {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 1002;
+    background: #1A1A2E; border-radius: 16px 16px 0 0;
+    padding: 20px 16px 32px; padding-bottom: calc(32px + env(safe-area-inset-bottom, 0px));
+    transform: translateY(100%); transition: transform .3s ease;
+    max-height: 80vh; overflow-y: auto;
+}
+.m-cal-overlay.m-active .m-cal-sheet { transform: translateY(0); }
+.m-cal-sheet-handle { width: 36px; height: 4px; background: #3D3D4F; border-radius: 2px; margin: 0 auto 16px; }
+.m-cal-sheet-title { font-size: 16px; font-weight: 700; color: #fff; margin: 0 0 16px; text-align: center; }
+.m-cal-sheet-field { margin-bottom: 14px; }
+.m-cal-sheet-field label { display: block; font-size: 12px; font-weight: 600; color: #A8A8B8; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+.m-cal-sheet-field select, .m-cal-sheet-field input, .m-cal-sheet-field textarea {
+    width: 100%; padding: 12px; background: #16161F; border: 1px solid #2D2D3F;
+    border-radius: 10px; color: #fff; font-size: 14px; font-family: Inter, sans-serif;
+    box-sizing: border-box; min-height: 44px;
+}
+.m-cal-sheet-field select { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236B6B7B' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
+.m-cal-athlete-grid { display: flex; flex-direction: column; gap: 6px; max-height: 200px; overflow-y: auto; }
+.m-cal-athlete-check {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+    background: #16161F; border: 1px solid #2D2D3F; border-radius: 10px;
+    font-size: 14px; color: #fff; cursor: pointer; min-height: 44px;
+}
+.m-cal-athlete-check input[type="checkbox"] { width: 20px; height: 20px; accent-color: #6B46C1; flex-shrink: 0; }
+.m-cal-sheet-actions { display: flex; gap: 10px; margin-top: 16px; }
+.m-cal-sheet-actions button { flex: 1; padding: 14px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; font-family: Inter, sans-serif; min-height: 48px; }
+.m-cal-sheet-cancel { background: #2D2D3F; color: #A8A8B8; }
+.m-cal-sheet-save { background: #6B46C1; color: #fff; }
+.m-cal-sheet-save:disabled { opacity: 0.5; }
 </style>
 
 <div class="m-calendar">
@@ -349,6 +440,37 @@ foreach ($sessions as $s) {
                     <span class="m-cal-badge m-cal-badge-<?= $badgeClass ?>"><?= htmlspecialchars(ucfirst($status)) ?></span>
                 </a>
                 <?php endif; ?>
+                <?php if (empty($sess['is_template_session']) && empty($sess['is_dev_appointment'])): ?>
+                <!-- Plan & Evaluation tags -->
+                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;padding:0 2px;">
+                    <?php if (!empty($sess['practice_plan_name'])): ?>
+                    <span class="m-cal-plan-tag has-plan"><i class="fas fa-clipboard-list"></i> <?= htmlspecialchars($sess['practice_plan_name']) ?></span>
+                    <?php else: ?>
+                    <span class="m-cal-plan-tag no-plan"><i class="fas fa-exclamation-circle"></i> No Plan</span>
+                    <?php endif; ?>
+                    <?php if (!empty($sess['evaluation_id'])): ?>
+                    <span class="m-cal-plan-tag m-cal-eval-tag"><i class="fas fa-clipboard-check"></i> <?= htmlspecialchars($sess['evaluation_name'] ?: 'Evaluation') ?> (<?= ucfirst($sess['evaluation_status'] ?? 'draft') ?>)</span>
+                    <?php endif; ?>
+                </div>
+                <!-- Coach action buttons -->
+                <div class="m-cal-coach-actions">
+                    <button type="button" class="m-cal-coach-btn" onclick="mCalOpenAssignPlan(<?= (int)$sess['id'] ?>, <?= htmlspecialchars(json_encode($sess['practice_plan_id'] ?? ''), ENT_QUOTES) ?>)">
+                        <i class="fas fa-clipboard-list"></i> <?= !empty($sess['practice_plan_name']) ? 'Change Plan' : 'Add Plan' ?>
+                    </button>
+                    <?php if (!empty($sess['evaluation_id'])): ?>
+                    <a href="?page=session_evaluation_form&evaluation_id=<?= (int)$sess['evaluation_id'] ?>" class="m-cal-coach-btn" style="text-decoration:none;">
+                        <i class="fas fa-clipboard-check"></i> Continue Eval
+                    </a>
+                    <?php else: ?>
+                    <button type="button" class="m-cal-coach-btn" onclick="mCalOpenStartEval(<?= (int)$sess['id'] ?>)">
+                        <i class="fas fa-clipboard-check"></i> Evaluate
+                    </button>
+                    <?php endif; ?>
+                    <a href="?page=record_drill_video&session_id=<?= (int)$sess['id'] ?>" class="m-cal-coach-btn" style="text-decoration:none;">
+                        <i class="fas fa-video"></i> Record
+                    </a>
+                </div>
+                <?php endif; ?>
                 <?php if ($status === 'scheduled' && empty($sess['is_template_session']) && empty($sess['is_dev_appointment'])): ?>
                 <div class="m-cal-actions">
                     <a href="?page=create_session&edit_id=<?= (int)$sess['id'] ?>" class="m-cal-act-btn m-cal-act-edit" style="text-decoration:none;">
@@ -370,6 +492,70 @@ foreach ($sessions as $s) {
 
     <!-- Create Session FAB -->
     <a href="?page=create_session" class="m-cal-fab" title="Create Session"><i class="fas fa-plus"></i></a>
+</div>
+
+<!-- Assign Practice Plan Bottom Sheet -->
+<div class="m-cal-overlay" id="mCalAssignPlanOverlay" onclick="mCalClosePlanSheet()">
+    <div class="m-cal-sheet" onclick="event.stopPropagation()">
+        <div class="m-cal-sheet-handle"></div>
+        <h3 class="m-cal-sheet-title">Assign Practice Plan</h3>
+        <form id="mCalAssignPlanForm" onsubmit="return mCalSubmitAssignPlan(event)">
+            <input type="hidden" name="action" value="assign_practice_plan">
+            <input type="hidden" name="session_id" id="mCalPlanSessionId" value="">
+            <div class="m-cal-sheet-field">
+                <label>Practice Plan</label>
+                <select name="practice_plan_id" id="mCalPlanSelect" required>
+                    <option value="">— Select Plan —</option>
+                    <?php foreach ($calPracticePlans as $plan): ?>
+                    <option value="<?= (int)$plan['id'] ?>"><?= htmlspecialchars($plan['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="m-cal-sheet-actions">
+                <button type="button" class="m-cal-sheet-cancel" onclick="mCalClosePlanSheet()">Cancel</button>
+                <button type="submit" class="m-cal-sheet-save" id="mCalPlanSaveBtn">Assign Plan</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Start Evaluation Bottom Sheet -->
+<div class="m-cal-overlay" id="mCalStartEvalOverlay" onclick="mCalCloseEvalSheet()">
+    <div class="m-cal-sheet" onclick="event.stopPropagation()">
+        <div class="m-cal-sheet-handle"></div>
+        <h3 class="m-cal-sheet-title">Start Evaluation</h3>
+        <input type="hidden" id="mCalEvalSessionId" value="">
+        <div class="m-cal-sheet-field">
+            <label>Evaluation Template</label>
+            <select id="mCalEvalTemplateSelect">
+                <option value="">— No Template (all categories) —</option>
+                <?php foreach ($calEvalTemplates as $tpl): ?>
+                <option value="<?= (int)$tpl['id'] ?>"><?= htmlspecialchars($tpl['title']) ?><?= !empty($tpl['category_names']) ? ' (' . htmlspecialchars($tpl['category_names']) . ')' : '' ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <div class="m-cal-sheet-field">
+            <label>Evaluation Name (optional)</label>
+            <input type="text" id="mCalEvalName" placeholder="Auto-generated if blank">
+        </div>
+        <?php if (!empty($calAssignedAthletes)): ?>
+        <div class="m-cal-sheet-field">
+            <label>Select Athletes</label>
+            <div class="m-cal-athlete-grid" id="mCalEvalAthleteGrid">
+                <?php foreach ($calAssignedAthletes as $ath): ?>
+                <label class="m-cal-athlete-check">
+                    <input type="checkbox" name="eval_athlete_ids[]" value="<?= (int)$ath['id'] ?>">
+                    <?= htmlspecialchars(($ath['first_name'] ?? '') . ' ' . ($ath['last_name'] ?? '')) ?>
+                </label>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+        <div class="m-cal-sheet-actions">
+            <button type="button" class="m-cal-sheet-cancel" onclick="mCalCloseEvalSheet()">Cancel</button>
+            <button type="button" class="m-cal-sheet-save" id="mCalEvalStartBtn" onclick="mCalSubmitStartEval()">Start Evaluation</button>
+        </div>
+    </div>
 </div>
 
 <!-- Hidden CSRF token source -->
@@ -424,5 +610,104 @@ async function mCalCancel(sessionId, btn) {
             }
         })
         .catch(function() { showToast('Network error. Please try again.', 'error'); btn.disabled = false; });
+}
+
+/* ── Assign Practice Plan ── */
+function mCalGetCsrf() {
+    return document.querySelector('#m-cal-csrf-form input[name="csrf_token"]').value;
+}
+
+function mCalOpenAssignPlan(sessionId, currentPlanId) {
+    document.getElementById('mCalPlanSessionId').value = sessionId;
+    var sel = document.getElementById('mCalPlanSelect');
+    if (currentPlanId) { sel.value = currentPlanId; } else { sel.selectedIndex = 0; }
+    document.getElementById('mCalAssignPlanOverlay').classList.add('m-active');
+}
+
+function mCalClosePlanSheet() {
+    document.getElementById('mCalAssignPlanOverlay').classList.remove('m-active');
+}
+
+function mCalSubmitAssignPlan(e) {
+    e.preventDefault();
+    var btn = document.getElementById('mCalPlanSaveBtn');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+    var form = new FormData();
+    form.append('action', 'assign_practice_plan');
+    form.append('session_id', document.getElementById('mCalPlanSessionId').value);
+    form.append('practice_plan_id', document.getElementById('mCalPlanSelect').value);
+    form.append('csrf_token', mCalGetCsrf());
+    fetch('process_edit_session.php', {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: form
+    })
+    .then(function(r) { return r.text(); })
+    .then(function() {
+        mCalClosePlanSheet();
+        location.reload();
+    })
+    .catch(function() {
+        showToast('Failed to assign plan. Try again.', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Assign Plan';
+    });
+    return false;
+}
+
+/* ── Start Evaluation ── */
+function mCalOpenStartEval(sessionId) {
+    document.getElementById('mCalEvalSessionId').value = sessionId;
+    document.getElementById('mCalEvalName').value = '';
+    var tplSel = document.getElementById('mCalEvalTemplateSelect');
+    if (tplSel) tplSel.selectedIndex = 0;
+    var grid = document.getElementById('mCalEvalAthleteGrid');
+    if (grid) grid.querySelectorAll('input[type="checkbox"]').forEach(function(cb) { cb.checked = false; });
+    document.getElementById('mCalStartEvalOverlay').classList.add('m-active');
+}
+
+function mCalCloseEvalSheet() {
+    document.getElementById('mCalStartEvalOverlay').classList.remove('m-active');
+}
+
+function mCalSubmitStartEval() {
+    var sessionId = document.getElementById('mCalEvalSessionId').value;
+    if (!sessionId) return;
+    var btn = document.getElementById('mCalEvalStartBtn');
+    btn.disabled = true;
+    btn.textContent = 'Starting...';
+    var templateId = document.getElementById('mCalEvalTemplateSelect').value;
+    var name = document.getElementById('mCalEvalName').value.trim();
+    var athleteIds = [];
+    var grid = document.getElementById('mCalEvalAthleteGrid');
+    if (grid) grid.querySelectorAll('input[type="checkbox"]:checked').forEach(function(cb) { athleteIds.push(cb.value); });
+    var form = new FormData();
+    form.append('action', 'start_evaluation');
+    form.append('session_id', sessionId);
+    form.append('csrf_token', mCalGetCsrf());
+    if (templateId) form.append('template_id', templateId);
+    if (name) form.append('name', name);
+    athleteIds.forEach(function(id) { form.append('athlete_ids[]', id); });
+    fetch('process_session_evaluations.php', {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: form
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success && data.evaluation_id) {
+            window.location.href = '?page=session_evaluation_form&evaluation_id=' + data.evaluation_id;
+        } else {
+            showToast(data.message || 'Failed to start evaluation', 'error');
+            btn.disabled = false;
+            btn.textContent = 'Start Evaluation';
+        }
+    })
+    .catch(function() {
+        showToast('Network error. Please try again.', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Start Evaluation';
+    });
 }
 </script>

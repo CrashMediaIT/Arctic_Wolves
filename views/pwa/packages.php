@@ -4,6 +4,16 @@
  * Purpose-built for mobile phones.
  */
 
+// Permission check — match desktop views/packages.php
+if (!isset($_SESSION['user_id'])) {
+    echo '<div style="text-align:center;padding:60px 20px;color:#6B6B7B;font-family:Inter,sans-serif;">';
+    echo '<i class="fas fa-lock" style="font-size:48px;display:block;margin-bottom:16px;opacity:0.5;"></i>';
+    echo '<h3 style="color:#fff;">Access Denied</h3>';
+    echo '<p style="font-size:14px;">Please log in to view packages.</p>';
+    echo '</div>';
+    return;
+}
+
 $packages = [];
 try {
     $stmt = $pdo->prepare("SELECT id, name, description, price, sessions_included, validity_days, is_active FROM packages WHERE is_active = 1 ORDER BY price ASC");

@@ -80,11 +80,13 @@ try {
             </div>
             <div class="m-checkin-actions">
                 <form method="post" action="process_camp_checkin.php" style="flex:1;">
+                    <?= csrfTokenInput() ?>
                     <input type="hidden" name="athlete_id" value="<?= (int)$c['id'] ?>">
                     <input type="hidden" name="action" value="checkin">
                     <button type="submit" class="m-checkin-btn m-checkin-btn-in"><i class="fas fa-sign-in-alt"></i> Check In</button>
                 </form>
                 <form method="post" action="process_camp_checkin.php" style="flex:1;">
+                    <?= csrfTokenInput() ?>
                     <input type="hidden" name="athlete_id" value="<?= (int)$c['id'] ?>">
                     <input type="hidden" name="action" value="checkout">
                     <button type="submit" class="m-checkin-btn m-checkin-btn-out"><i class="fas fa-sign-out-alt"></i> Check Out</button>

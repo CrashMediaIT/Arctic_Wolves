@@ -4,6 +4,16 @@
  * Purpose-built for mobile phones.
  */
 
+// Permission check — health coaches and admins
+if (!$canAccessHealthManagement) {
+    echo '<div style="text-align:center;padding:60px 20px;color:#6B6B7B;font-family:Inter,sans-serif;">';
+    echo '<i class="fas fa-lock" style="font-size:48px;display:block;margin-bottom:16px;opacity:0.5;"></i>';
+    echo '<h3 style="color:#fff;">Access Denied</h3>';
+    echo '<p style="font-size:14px;">Health management access required.</p>';
+    echo '</div>';
+    return;
+}
+
 $mealPlans = [];
 try {
     $stmt = $pdo->prepare("

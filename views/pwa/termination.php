@@ -4,10 +4,10 @@
  * Purpose-built for mobile phones.
  */
 
-if (!$isAdmin) {
+if (!$canAccessHR) {
     echo '<div style="text-align:center;padding:40px 20px;color:#6B6B7B;font-family:Inter,sans-serif;">';
     echo '<i class="fas fa-lock" style="font-size:32px;display:block;margin-bottom:12px;"></i>';
-    echo '<p style="font-size:14px;">Admin access required.</p>';
+    echo '<p style="font-size:14px;">HR access required.</p>';
     echo '</div>';
     return;
 }

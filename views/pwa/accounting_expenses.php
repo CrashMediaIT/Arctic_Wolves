@@ -5,8 +5,8 @@
  * Includes: Expenses tab with OCR camera scanning, Recurring Expenses tab
  */
 
-if (!$isAdmin) {
-    echo '<div style="padding:40px 20px;text-align:center;color:#EF4444;font-family:Inter,sans-serif;"><i class="fas fa-lock" style="font-size:32px;display:block;margin-bottom:12px;"></i>Admin access required</div>';
+if (!$canAccessAccounting) {
+    echo '<div style="padding:40px 20px;text-align:center;color:#EF4444;font-family:Inter,sans-serif;"><i class="fas fa-lock" style="font-size:32px;display:block;margin-bottom:12px;"></i>Accounting access required</div>';
     return;
 }
 

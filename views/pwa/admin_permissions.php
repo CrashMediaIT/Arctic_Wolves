@@ -112,8 +112,8 @@ foreach ($dbRoles as $dbRole) {
     <?php endif; ?>
 
     <div class="m-perms-tabs">
-        <button class="m-perms-tab m-active" onclick="mPermsTab('roles')"><i class="fas fa-user-tag"></i> Roles</button>
-        <button class="m-perms-tab" onclick="mPermsTab('manage')"><i class="fas fa-sliders-h"></i> Manage</button>
+        <button class="m-perms-tab m-active" onclick="mPermsTab('roles', this)"><i class="fas fa-user-tag"></i> Roles</button>
+        <button class="m-perms-tab" onclick="mPermsTab('manage', this)"><i class="fas fa-sliders-h"></i> Manage</button>
     </div>
 
     <div id="m-perms-roles" class="m-perms-panel m-active">
@@ -177,10 +177,10 @@ foreach ($dbRoles as $dbRole) {
 </div>
 
 <script>
-function mPermsTab(tab) {
+function mPermsTab(tab, btn) {
     document.querySelectorAll('.m-perms-tab').forEach(function(t) { t.classList.remove('m-active'); });
     document.querySelectorAll('.m-perms-panel').forEach(function(p) { p.classList.remove('m-active'); });
     document.getElementById('m-perms-' + tab).classList.add('m-active');
-    event.currentTarget.classList.add('m-active');
+    if (btn) btn.classList.add('m-active');
 }
 </script>

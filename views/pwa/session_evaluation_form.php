@@ -103,6 +103,7 @@ if ($session_id > 0) {
             </div>
         <?php else: ?>
             <form method="post" action="process_session_evaluations.php">
+                <?= csrfTokenInput() ?>
                 <input type="hidden" name="session_id" value="<?= (int)$session['id'] ?>">
                 <div class="m-sesseval-form-group">
                     <label class="m-sesseval-label">Athlete Scores (1-10)</label>
