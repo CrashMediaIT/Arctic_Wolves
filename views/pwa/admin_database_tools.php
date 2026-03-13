@@ -36,6 +36,19 @@ $tools = [
 .m-dbtool-label { font-size: 14px; font-weight: 600; color: #fff; }
 .m-dbtool-desc { font-size: 12px; color: #A8A8B8; margin-top: 2px; }
 .m-dbtool-arrow { color: #6B6B7B; font-size: 14px; flex-shrink: 0; }
+.m-dbtool-btn {
+    display: flex; align-items: center; gap: 14px;
+    background: #16161F; border: 1px solid #2D2D3F; border-radius: 14px;
+    padding: 16px; margin-bottom: 10px; min-height: 60px;
+    transition: border-color 0.2s; width: 100%; cursor: pointer;
+    -webkit-appearance: none; appearance: none;
+}
+.m-dbtool-btn:active { border-color: #6B46C1; }
+.m-dbtool-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.m-schema-status { font-size: 12px; color: #A8A8B8; margin-top: 8px; padding: 10px; border-radius: 10px; display: none; }
+.m-schema-status.m-show { display: block; }
+.m-schema-status.m-ok { background: #10B98120; color: #10B981; }
+.m-schema-status.m-err { background: #EF444420; color: #EF4444; }
 </style>
 
 <div class="m-dbtools">
@@ -56,4 +69,47 @@ $tools = [
         <div class="m-dbtool-arrow"><i class="fas fa-chevron-right"></i></div>
     </a>
     <?php endforeach; ?>
+
+    <!-- Rebuild Schema action button -->
+    <button type="button" class="m-dbtool-btn" id="m-btn-rebuild-schema" onclick="mRebuildSchema(this)">
+        <div class="m-dbtool-icon" style="background:#8B5CF620;color:#8B5CF6;">
+            <i class="fas fa-sync-alt"></i>
+        </div>
+        <div class="m-dbtool-body">
+            <div class="m-dbtool-label">Rebuild Schema</div>
+            <div class="m-dbtool-desc">Create missing tables and add missing columns</div>
+        </div>
+        <div class="m-dbtool-arrow"><i class="fas fa-chevron-right"></i></div>
+    </button>
+    <div id="m-schema-status" class="m-schema-status"></div>
 </div>
+
+<script>
+async function mRebuildSchema(btn) {
+    if (!confirm('This will check the database schema and create any missing tables or columns. Continue?')) return;
+    const origHTML = btn.querySelector('.m-dbtool-label').textContent;
+    btn.disabled = true;
+    btn.querySelector('.m-dbtool-label').textContent = 'Rebuilding...';
+    btn.querySelector('.m-dbtool-icon i').className = 'fas fa-spinner fa-spin';
+    const statusEl = document.getElementById('m-schema-status');
+    statusEl.className = 'm-schema-status';
+    statusEl.style.display = 'none';
+    try {
+        const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+        const resp = await fetch('process_database_backup.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: 'action=rebuild_schema&csrf_token=' + encodeURIComponent(csrf)
+        });
+        const data = await resp.json();
+        statusEl.textContent = data.message || (data.success ? 'Schema rebuild complete' : 'Schema rebuild failed');
+        statusEl.className = 'm-schema-status m-show ' + (data.success ? 'm-ok' : 'm-err');
+    } catch (e) {
+        statusEl.textContent = 'Network error: ' + (e.message || 'Failed to rebuild schema');
+        statusEl.className = 'm-schema-status m-show m-err';
+    }
+    btn.disabled = false;
+    btn.querySelector('.m-dbtool-label').textContent = origHTML;
+    btn.querySelector('.m-dbtool-icon i').className = 'fas fa-sync-alt';
+}
+</script>

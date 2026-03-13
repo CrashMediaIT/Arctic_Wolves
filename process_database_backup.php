@@ -361,6 +361,35 @@ try {
             ]);
             break;
             
+        case 'rebuild_schema':
+            $updater_file = __DIR__ . '/lib/github_updater.php';
+            if (!file_exists($updater_file)) {
+                throw new Exception('GitHubUpdater not found');
+            }
+            require_once $updater_file;
+            $updater = new GitHubUpdater($pdo);
+            $schema_result = $updater->runSchemaCheck();
+            
+            $changes = $schema_result['changes_applied'] ?? 0;
+            $schema_errors = $schema_result['errors'] ?? [];
+            $details = $schema_result['results'] ?? [];
+            
+            logAction($pdo, $user_id, 'schema_rebuild', 'Schema rebuild: ' . $changes . ' changes applied');
+            
+            $msg = "Schema rebuild complete: $changes change(s) applied.";
+            if (!empty($schema_errors)) {
+                $msg .= ' ' . count($schema_errors) . ' error(s) occurred.';
+            }
+            
+            echo json_encode([
+                'success' => $schema_result['success'] ?? false,
+                'message' => $msg,
+                'changes_applied' => $changes,
+                'details' => $details,
+                'errors' => $schema_errors
+            ]);
+            break;
+            
         default:
             throw new Exception('Invalid action');
     }
