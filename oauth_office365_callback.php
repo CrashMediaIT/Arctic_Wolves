@@ -135,6 +135,24 @@ if (!empty($tokenData['id_token'])) {
     }
 }
 
+// Fallback: if id_token didn't yield an email, call Microsoft Graph /me endpoint
+if (empty($connectedEmail)) {
+    $graphCtx = stream_context_create([
+        'http' => [
+            'method'        => 'GET',
+            'header'        => "Authorization: Bearer {$accessToken}\r\n",
+            'ignore_errors' => true,
+            'timeout'       => 10,
+        ],
+        'ssl' => ['verify_peer' => true, 'verify_peer_name' => true],
+    ]);
+    $graphResponse = @file_get_contents('https://graph.microsoft.com/v1.0/me?$select=mail,userPrincipalName', false, $graphCtx);
+    if ($graphResponse) {
+        $graphData = json_decode($graphResponse, true);
+        $connectedEmail = $graphData['mail'] ?? $graphData['userPrincipalName'] ?? '';
+    }
+}
+
 // ── Persist tokens ────────────────────────────────────────────────────────────
 $upsert = $pdo->prepare("
     INSERT INTO system_settings (setting_key, setting_value)
