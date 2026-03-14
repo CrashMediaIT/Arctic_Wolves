@@ -167,6 +167,7 @@ try {
             $o365_client_id  = trim($_POST['office365_client_id']  ?? '');
             $o365_tenant_id  = trim($_POST['office365_tenant_id']  ?? '');
             $o365_client_sec = trim($_POST['office365_client_secret'] ?? '');
+            $o365_smtp_alias = trim($_POST['office365_smtp_alias'] ?? '');
 
             updateSetting($pdo, 'smtp_host', $smtp_host);
             updateSetting($pdo, 'smtp_port', $smtp_port);
@@ -182,6 +183,7 @@ try {
             if (!empty($o365_client_id))  updateSetting($pdo, 'office365_client_id',  $o365_client_id);
             if (!empty($o365_tenant_id))  updateSetting($pdo, 'office365_tenant_id',  $o365_tenant_id);
             if (!empty($o365_client_sec)) updateSetting($pdo, 'office365_client_secret', encryptPassword($o365_client_sec));
+            updateSetting($pdo, 'office365_smtp_alias', $o365_smtp_alias);
 
             Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
                 'action' => 'update_smtp',

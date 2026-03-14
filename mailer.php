@@ -80,7 +80,18 @@ class SmtpMailer {
         $fromEmail = !empty($config['smtp_from_email']) ? $config['smtp_from_email'] : $user;
         $fromName  = !empty($config['smtp_from_name'])  ? $config['smtp_from_name']  : 'Arctic Wolves System';
 
-        $this->sendCommand("MAIL FROM: <$user>"); // Neo often requires Envelope From to match Login
+        // When using OAuth (XOAUTH2) with a configured send-as alias, use it as the
+        // MAIL FROM envelope sender (requires "Send As" permission on the alias in Exchange Online).
+        // It also becomes the From: display address unless smtp_from_email is explicitly set.
+        $envelopeFrom = $user;
+        if (!empty($oauthToken) && !empty($config['office365_smtp_alias'])) {
+            $envelopeFrom = trim($config['office365_smtp_alias']);
+            if (empty($config['smtp_from_email'])) {
+                $fromEmail = $envelopeFrom;
+            }
+        }
+
+        $this->sendCommand("MAIL FROM: <$envelopeFrom>");
         $this->sendCommand("RCPT TO: <$to>");
         $this->sendCommand("DATA");
 

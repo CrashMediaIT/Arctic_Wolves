@@ -639,6 +639,15 @@ foreach ($url_keys as $uk) {
                                    value="<?php echo htmlspecialchars($settings['smtp_from_email'] ?? ''); ?>"
                                    placeholder="noreply@example.com">
                         </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>OAuth Send-As Alias</h4>
+                                <p>When sending via Office 365 OAuth, use this address as the envelope sender (<code>MAIL FROM</code>) instead of the authenticated account. Requires <em>Send As</em> permission on the alias in Exchange Online. Also used as <em>From:</em> if the From Email field above is left blank.</p>
+                            </div>
+                            <input type="email" name="office365_smtp_alias" class="form-input"
+                                   value="<?php echo htmlspecialchars($settings['office365_smtp_alias'] ?? ''); ?>"
+                                   placeholder="shared@yourdomain.com (optional, OAuth only)">
+                        </div>
                     </div>
 
                     <!-- Office 365 Azure App Configuration (collapsed by default when already set) -->

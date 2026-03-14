@@ -725,6 +725,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $o365_client_id  = trim($_POST['office365_client_id']  ?? '');
                 $o365_tenant_id  = trim($_POST['office365_tenant_id']  ?? '');
                 $o365_client_sec = $_POST['office365_client_secret']   ?? '';
+                $o365_smtp_alias = trim($_POST['office365_smtp_alias'] ?? '');
                 
                 // Encrypt SMTP password before storage
                 require_once __DIR__ . '/security.php';
@@ -759,6 +760,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $enc_o365_secret = function_exists('encryptPassword') ? encryptPassword($o365_client_sec) : $o365_client_sec;
                 $stmt = $pdo->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?");
                 $stmt->execute(['office365_client_secret', $enc_o365_secret, $enc_o365_secret]);
+            }
+            if (!empty($o365_smtp_alias)) {
+                $stmt = $pdo->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?");
+                $stmt->execute(['office365_smtp_alias', $o365_smtp_alias, $o365_smtp_alias]);
             }
             
             // Test SMTP connection (optional)
@@ -1204,6 +1209,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <div class="form-group">
                             <label>Azure Tenant ID <span style="font-weight:400; color:#64748b;">(Directory ID, or <code>common</code> for multi-tenant)</span></label>
                             <input type="text" name="office365_tenant_id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+                        </div>
+                        <div class="form-group">
+                            <label>OAuth Send-As Alias <span style="font-weight:400; color:#64748b;">(optional)</span></label>
+                            <input type="email" name="office365_smtp_alias" placeholder="shared@yourdomain.com">
+                            <small style="color:#64748b; margin-top:4px; display:block;">When sending via OAuth, use this address as the <code>MAIL FROM</code> envelope sender (e.g. a shared mailbox). Requires <em>Send As</em> permission on the alias in Exchange Online.</small>
                         </div>
                     </div>
                 </details>
