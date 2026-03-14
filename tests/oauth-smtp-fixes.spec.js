@@ -65,14 +65,20 @@ test.describe('OAuth SMTP - admin_system_tools.php UI changes', () => {
   });
 
   test('SMTP username field is hidden when OAuth is connected', () => {
-    // The username field should be inside a conditional block
-    expect(content).toContain('<?php if (!$o365SmtpConnected): ?>');
-    // The block should contain the SMTP Username field
-    const conditionalStart = content.indexOf('<?php if (!$o365SmtpConnected): ?>');
-    const conditionalEnd = content.indexOf('<?php else: ?>', conditionalStart);
-    const conditionalBlock = content.substring(conditionalStart, conditionalEnd);
-    expect(conditionalBlock).toContain('SMTP Username');
-    expect(conditionalBlock).toContain('SMTP Password');
+    // The outer structure is: if ($o365SmtpConnected) { OAuth block } else { basic auth block }
+    // Basic auth fields (username, password, host, port, encryption) are in the else block
+    expect(content).toContain('<?php if ($o365SmtpConnected): ?>');
+    // The outer else separates OAuth from basic auth
+    // Find the outer else (the one after the OAuth hidden fields section)
+    const oauthStart = content.indexOf('<?php if ($o365SmtpConnected): ?>');
+    // Find the else that leads to basic auth — it's the one containing 'Basic Authentication'
+    const basicAuthElse = content.indexOf('Basic Authentication', oauthStart);
+    expect(basicAuthElse).toBeGreaterThan(-1);
+    // Basic auth block contains username and password
+    const endifAfterBasic = content.indexOf('<?php endif; ?>', basicAuthElse);
+    const basicBlock = content.substring(basicAuthElse, endifAfterBasic);
+    expect(basicBlock).toContain('SMTP Username');
+    expect(basicBlock).toContain('SMTP Password');
   });
 
   test('shows authenticated account when OAuth is connected', () => {
@@ -94,19 +100,17 @@ test.describe('OAuth SMTP - admin_system_tools.php UI changes', () => {
   });
 
   test('basic auth fields are not shown when OAuth is connected', () => {
-    // Verify the conditional structure: username/password only when NOT connected
+    // Verify the conditional structure: username/password only in the else block (not connected)
     const smtpUserIdx = content.indexOf('name="smtp_user"');
     const smtpPassIdx = content.indexOf('name="smtp_pass"');
     expect(smtpUserIdx).toBeGreaterThan(-1);
     expect(smtpPassIdx).toBeGreaterThan(-1);
     
-    // Both should be after the "if not connected" check
-    const notConnectedIdx = content.indexOf('if (!$o365SmtpConnected)');
-    const elseIdx = content.indexOf('<?php else: ?>', notConnectedIdx);
-    expect(smtpUserIdx).toBeGreaterThan(notConnectedIdx);
-    expect(smtpUserIdx).toBeLessThan(elseIdx);
-    expect(smtpPassIdx).toBeGreaterThan(notConnectedIdx);
-    expect(smtpPassIdx).toBeLessThan(elseIdx);
+    // Both should be after the else block (i.e., in the non-OAuth section)
+    const oauthStart = content.indexOf('if ($o365SmtpConnected)');
+    const elseIdx = content.indexOf('<?php else: ?>', oauthStart);
+    expect(smtpUserIdx).toBeGreaterThan(elseIdx);
+    expect(smtpPassIdx).toBeGreaterThan(elseIdx);
   });
 
   test('shows reconnect warning when OAuth connected but email is missing', () => {

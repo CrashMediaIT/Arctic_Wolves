@@ -170,6 +170,11 @@ if ($type === 'smtp') {
     }
     $upsert->execute(['office365_smtp_connected_email', $connectedEmail, $connectedEmail]);
 
+    // Auto-configure SMTP settings for Office 365 XOAUTH2 (requires port 587 + TLS)
+    $upsert->execute(['smtp_host',       'smtp.office365.com', 'smtp.office365.com']);
+    $upsert->execute(['smtp_port',       '587',                '587']);
+    $upsert->execute(['smtp_encryption', 'tls',                'tls']);
+
     Auditor::log($pdo, $userId, 'create', 'system_settings', null, [
         'action' => 'office365_smtp_connected',
         'email'  => $connectedEmail,

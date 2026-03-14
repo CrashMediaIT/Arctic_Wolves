@@ -9,6 +9,7 @@ require_once __DIR__ . '/security.php';
  */
 class SmtpMailer {
     private $conn;
+    private $serverAuthMechanisms = [];
 
     public function send($to, $subject, $body, $config) {
         // 1. CONFIGURATION & SANITIZATION
@@ -34,6 +35,17 @@ class SmtpMailer {
 
         // Check for Office 365 OAuth tokens (takes priority over password auth)
         $oauthToken = getOffice365SmtpAccessToken($config);
+
+        // Office 365 XOAUTH2 requires port 587 with STARTTLS.  Direct SSL on
+        // port 465 does NOT advertise AUTH XOAUTH2 and will reject the mechanism.
+        // Auto-correct the settings when OAuth is active on an Office 365 host.
+        // See: https://learn.microsoft.com/en-us/exchange/clients-and-mobile-in-exchange-online/authenticated-client-smtp-submission
+        if (!empty($oauthToken) && preg_match('/\boffice365\.com$/i', $host)) {
+            if ($enc === 'ssl' || (int)$port === 465) {
+                $enc  = 'tls';
+                $port = '587';
+            }
+        }
         
         // 2. DETERMINE PROTOCOL
         // SSL connects securely immediately. TLS starts plain and upgrades later.
@@ -46,21 +58,53 @@ class SmtpMailer {
         }
         $this->readResponse(); // Initial 220 banner
 
+        // Safe EHLO hostname – fall back to 'localhost' when SERVER_NAME is unset (e.g. CLI)
+        // Sanitize to alphanumeric/dots/hyphens to prevent injection via SERVER_NAME
+        $ehloHost = !empty($_SERVER['SERVER_NAME']) ? $_SERVER['SERVER_NAME'] : 'localhost';
+        $ehloHost = preg_replace('/[^a-zA-Z0-9.\-]/', '', $ehloHost) ?: 'localhost';
+
         // 4. HANDSHAKE
-        $this->sendCommand("EHLO " . $_SERVER['SERVER_NAME']);
+        $ehloResponse = $this->sendCommandGetResponse("EHLO " . $ehloHost);
 
         // 5. STARTTLS (If Encryption is TLS)
         if ($enc == 'tls') {
             $this->sendCommand("STARTTLS");
-            if (!stream_socket_enable_crypto($this->conn, true, STREAM_CRYPTO_METHOD_TLS_CLIENT)) {
+            // Prefer TLS 1.2+ as required by Office 365 and other modern mail servers
+            $cryptoMethod = STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT;
+            if (defined('STREAM_CRYPTO_METHOD_TLSv1_3_CLIENT')) {
+                $cryptoMethod |= STREAM_CRYPTO_METHOD_TLSv1_3_CLIENT;
+            }
+            if (!stream_socket_enable_crypto($this->conn, true, $cryptoMethod)) {
                 throw new Exception("TLS Handshake Failed");
             }
-            $this->sendCommand("EHLO " . $_SERVER['SERVER_NAME']);
+            // Re-issue EHLO after STARTTLS — the new response lists mechanisms
+            // available over the encrypted channel (e.g. AUTH XOAUTH2).
+            $ehloResponse = $this->sendCommandGetResponse("EHLO " . $ehloHost);
+        }
+
+        // Parse AUTH mechanisms advertised by the server in the EHLO response
+        $this->serverAuthMechanisms = [];
+        if (preg_match('/^250[- ]AUTH\s+(.+)$/mi', $ehloResponse, $authMatch)) {
+            $this->serverAuthMechanisms = array_map('strtoupper', preg_split('/\s+/', trim($authMatch[1])));
         }
 
         // 6. AUTHENTICATION
         if (!empty($oauthToken)) {
             // XOAUTH2 (Office 365 OAuth) — preferred when tokens are available
+            // Verify the server actually advertises XOAUTH2 before attempting it
+            if (!in_array('XOAUTH2', $this->serverAuthMechanisms)) {
+                $mechList = !empty($this->serverAuthMechanisms)
+                    ? implode(', ', $this->serverAuthMechanisms)
+                    : 'none';
+                throw new Exception(
+                    "Office 365 OAuth requires the XOAUTH2 authentication mechanism, but the server "
+                    . "only advertises: {$mechList}. "
+                    . "Ensure SMTP settings use port 587 with TLS encryption, and that SMTP AUTH is "
+                    . "enabled for this mailbox in Exchange Online "
+                    . "(Set-CASMailbox -Identity user@domain -SmtpClientAuthenticationDisabled \$false)."
+                );
+            }
+
             // Use the OAuth connected email as the mailbox identity; fall back to smtp_user
             $oauthUser = trim((string)($config['office365_smtp_connected_email'] ?? ''));
             if (empty($oauthUser)) {
@@ -135,6 +179,11 @@ class SmtpMailer {
     private function sendCommand($cmd) {
         fputs($this->conn, $cmd . "\r\n");
         $this->readResponse();
+    }
+
+    private function sendCommandGetResponse($cmd) {
+        fputs($this->conn, $cmd . "\r\n");
+        return $this->readResponse();
     }
     
     private function expectCode($code, $errorMsg) {
