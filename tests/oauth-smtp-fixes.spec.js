@@ -155,4 +155,23 @@ test.describe('OAuth SMTP - oauth_office365_callback.php token exchange', () => 
     // Verify the scope selection is based on the OAuth type
     expect(content).toContain("$scope = $type === 'smtp'");
   });
+
+  test('connection fails if mailbox email cannot be extracted', () => {
+    // Empty connectedEmail must abort before storing tokens
+    expect(content).toContain("if (empty($connectedEmail))");
+    // Should redirect with error, not silently continue
+    expect(content).toContain("Could not determine the mailbox email address from Microsoft");
+  });
+
+  test('SMTP tokens are never stored without the connected email', () => {
+    // The connected_email upsert must NOT be inside an if(!empty()) guard
+    // It should be unconditional since we already validated above
+    const smtpBlock = content.substring(
+      content.indexOf("if ($type === 'smtp')"),
+      content.indexOf("// Calendar:")
+    );
+    // The email storage should be unconditional (no if-guard around it)
+    expect(smtpBlock).toContain("$upsert->execute(['office365_smtp_connected_email', $connectedEmail, $connectedEmail]);");
+    expect(smtpBlock).not.toMatch(/if\s*\(\s*!empty\(\$connectedEmail\)\s*\)\s*\{\s*\n\s*\$upsert->execute\(\['office365_smtp_connected_email'/);
+  });
 });

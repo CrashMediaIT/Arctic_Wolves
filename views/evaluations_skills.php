@@ -156,6 +156,22 @@ $evals_stmt->execute([$viewing_athlete_id]);
 $evaluations_list = $evals_stmt->fetchAll();
 $evaluations_list = decryptUserRows($evaluations_list);
 
+// Compute summary stats for the list view
+$evalStats = ['total' => 0, 'completed' => 0, 'draft' => 0, 'archived' => 0, 'avg_completion' => 0];
+if (!empty($evaluations_list)) {
+    $evalStats['total'] = count($evaluations_list);
+    $totalCompletion = 0;
+    foreach ($evaluations_list as $ev) {
+        if ($ev['status'] === 'completed') $evalStats['completed']++;
+        elseif ($ev['status'] === 'draft') $evalStats['draft']++;
+        elseif ($ev['status'] === 'archived') $evalStats['archived']++;
+        if ($ev['total_scores'] > 0) {
+            $totalCompletion += ($ev['completed_scores'] / $ev['total_scores']) * 100;
+        }
+    }
+    $evalStats['avg_completion'] = $evalStats['total'] > 0 ? round($totalCompletion / $evalStats['total']) : 0;
+}
+
 // Get historical evaluations for comparison (if viewing evaluation)
 $historical = [];
 if ($eval_id && $evaluation) {
@@ -185,32 +201,20 @@ if ($eval_id && $evaluation) {
 ?>
 
 <style>
-    :root {
-        --primary: #6B46C1;
-        --primary-hover: #5a0083;
-        --danger: #ef4444;
-        --success: #10b981;
-        --warning: #f59e0b;
-        --bg-dark: #0d1117;
-        --bg-darker: #06080b;
-        --border: #1e293b;
-        --text-light: #94a3b8;
-    }
-    
     .evaluations-container {
         padding: 20px;
         max-width: 1600px;
         margin: 0 auto;
     }
 
-    /* Page Header - Financial Reports Hub Style */
+    /* Page Header */
     .evaluations-page-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
         margin-bottom: 32px;
         padding-bottom: 24px;
-        border-bottom: 1px solid var(--border);
+        border-bottom: 1px solid var(--border, #2D2D3F);
         flex-wrap: wrap;
         gap: 20px;
     }
@@ -222,7 +226,7 @@ if ($eval_id && $evaluation) {
     .evaluations-page-header .page-header-icon {
         width: 56px;
         height: 56px;
-        background: linear-gradient(135deg, var(--primary), #5a0080);
+        background: linear-gradient(135deg, var(--primary, #6B46C1), #5a0080);
         border-radius: 16px;
         display: flex;
         align-items: center;
@@ -241,7 +245,7 @@ if ($eval_id && $evaluation) {
     }
     .evaluations-page-header .page-description {
         font-size: 14px;
-        color: var(--text-light);
+        color: var(--text-dim, #A8A8B8);
         margin: 0;
     }
     .evaluations-page-header .header-actions {
@@ -251,24 +255,8 @@ if ($eval_id && $evaluation) {
         flex-wrap: wrap;
     }
     
-    .athlete-selector {
-        padding: 10px 16px;
-        background: var(--bg-dark);
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        color: #fff;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.3s;
-    }
-    
-    .athlete-selector:hover {
-        border-color: var(--primary);
-    }
-    
     .btn-create {
-        background: var(--primary);
+        background: var(--primary, #6B46C1);
         color: #fff;
         padding: 12px 24px;
         border-radius: 8px;
@@ -284,16 +272,16 @@ if ($eval_id && $evaluation) {
     }
     
     .btn-create:hover {
-        background: var(--primary-hover);
+        background: var(--primary-hover, #7C3AED);
         transform: translateY(-2px);
         box-shadow: 0 8px 16px rgba(107, 70, 193, 0.3);
     }
     
     .btn-back {
         background: transparent;
-        color: var(--text-light);
+        color: var(--text-dim, #A8A8B8);
         padding: 10px 20px;
-        border: 1px solid var(--border);
+        border: 1px solid var(--border, #2D2D3F);
         border-radius: 8px;
         text-decoration: none;
         font-size: 14px;
@@ -305,11 +293,71 @@ if ($eval_id && $evaluation) {
     }
     
     .btn-back:hover {
-        border-color: var(--primary);
+        border-color: var(--primary, #6B46C1);
         color: #fff;
         transform: translateY(-2px);
     }
-    
+
+    /* Summary Stats Cards */
+    .eval-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 28px;
+    }
+
+    .eval-stat-card {
+        background: var(--bg-card, #16161F);
+        border: 1px solid var(--border, #2D2D3F);
+        border-radius: 12px;
+        padding: 20px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        transition: all 0.3s;
+    }
+
+    .eval-stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    }
+
+    .eval-stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        flex-shrink: 0;
+    }
+
+    .eval-stat-icon.purple { background: rgba(139, 92, 246, 0.15); color: #8B5CF6; }
+    .eval-stat-icon.green  { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+    .eval-stat-icon.yellow { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+    .eval-stat-icon.blue   { background: rgba(59, 130, 246, 0.15); color: #3B82F6; }
+
+    .eval-stat-info {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .eval-stat-value {
+        font-size: 24px;
+        font-weight: 800;
+        color: var(--text-white, #fff);
+    }
+
+    .eval-stat-label {
+        font-size: 12px;
+        color: var(--text-dim, #A8A8B8);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-top: 2px;
+    }
+
+    /* Evaluations Grid */
     .evaluations-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
@@ -317,16 +365,18 @@ if ($eval_id && $evaluation) {
     }
     
     .eval-card {
-        background: var(--bg-dark);
-        border: 1px solid var(--border);
+        background: var(--bg-card, #16161F);
+        border: 1px solid var(--border, #2D2D3F);
         border-radius: 12px;
         padding: 24px;
         cursor: pointer;
         transition: all 0.3s;
+        display: flex;
+        flex-direction: column;
     }
     
     .eval-card:hover {
-        border-color: var(--primary);
+        border-color: var(--primary, #6B46C1);
         transform: translateY(-2px);
         box-shadow: 0 8px 24px rgba(107, 70, 193, 0.15);
     }
@@ -336,63 +386,91 @@ if ($eval_id && $evaluation) {
         justify-content: space-between;
         align-items: start;
         margin-bottom: 12px;
+        gap: 12px;
     }
     
     .eval-card-title {
-        font-size: 18px;
+        font-size: 17px;
         font-weight: 700;
         color: #fff;
         margin-bottom: 5px;
     }
     
     .eval-card-date {
-        font-size: 14px;
-        color: var(--text-light);
+        font-size: 13px;
+        color: var(--text-dim, #A8A8B8);
     }
     
     .eval-status {
         padding: 4px 12px;
         border-radius: 20px;
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.5px;
+        flex-shrink: 0;
     }
     
-    .status-draft { background: rgba(148, 163, 184, 0.15); color: #94a3b8; }
+    .status-draft { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
     .status-completed { background: rgba(16, 185, 129, 0.15); color: #10b981; }
     .status-archived { background: rgba(100, 116, 139, 0.15); color: #64748b; }
+
+    .eval-card-meta {
+        font-size: 13px;
+        color: var(--text-dim, #A8A8B8);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 16px;
+    }
+
+    .eval-card-meta i {
+        font-size: 12px;
+        opacity: 0.6;
+    }
     
     .eval-card-progress {
-        margin-top: 12px;
-        padding-top: 15px;
-        border-top: 1px solid var(--border);
+        margin-top: auto;
+        padding-top: 16px;
+        border-top: 1px solid var(--border, #2D2D3F);
     }
-    
-    .progress-bar {
-        height: 6px;
-        background: var(--bg-darker);
-        border-radius: 3px;
-        overflow: hidden;
-        margin-top: 8px;
-    }
-    
-    .progress-fill {
-        height: 100%;
-        background: linear-gradient(90deg, var(--primary), #a78bfa);
-        transition: width 0.3s;
+
+    .progress-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
     }
     
     .progress-text {
         font-size: 12px;
-        color: var(--text-light);
-        margin-bottom: 5px;
+        color: var(--text-dim, #A8A8B8);
+    }
+
+    .progress-pct {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--accent, #8B5CF6);
+    }
+    
+    .progress-bar {
+        height: 6px;
+        background: var(--bg-main, #0A0A0F);
+        border-radius: 3px;
+        overflow: hidden;
+    }
+    
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--primary, #6B46C1), #a78bfa);
+        border-radius: 3px;
+        transition: width 0.3s;
     }
     
     /* Evaluation Detail View */
     .eval-detail {
-        background: var(--bg-dark);
-        border: 1px solid var(--border);
+        background: var(--bg-card, #16161F);
+        border: 1px solid var(--border, #2D2D3F);
         border-radius: 12px;
         padding: 28px;
         margin-bottom: 24px;
@@ -404,7 +482,7 @@ if ($eval_id && $evaluation) {
         align-items: start;
         margin-bottom: 24px;
         padding-bottom: 20px;
-        border-bottom: 1px solid var(--border);
+        border-bottom: 1px solid var(--border, #2D2D3F);
         flex-wrap: wrap;
         gap: 16px;
     }
@@ -419,7 +497,7 @@ if ($eval_id && $evaluation) {
     
     .eval-detail-meta {
         font-size: 14px;
-        color: var(--text-light);
+        color: var(--text-dim, #A8A8B8);
     }
     
     .eval-actions {
@@ -442,7 +520,7 @@ if ($eval_id && $evaluation) {
     }
     
     .btn-complete {
-        background: var(--success);
+        background: #10b981;
         color: #fff;
     }
     
@@ -453,17 +531,17 @@ if ($eval_id && $evaluation) {
     
     .btn-archive {
         background: transparent;
-        border: 1px solid var(--border);
-        color: var(--text-light);
+        border: 1px solid var(--border, #2D2D3F);
+        color: var(--text-dim, #A8A8B8);
     }
     
     .btn-archive:hover {
-        border-color: var(--text-light);
+        border-color: var(--text-dim, #A8A8B8);
         transform: translateY(-2px);
     }
     
     .btn-share {
-        background: var(--primary);
+        background: var(--primary, #6B46C1);
         color: #fff;
     }
     
@@ -474,8 +552,8 @@ if ($eval_id && $evaluation) {
     
     /* Skills Grid */
     .skills-category {
-        background: var(--bg-darker);
-        border: 1px solid var(--border);
+        background: var(--bg-main, #0A0A0F);
+        border: 1px solid var(--border, #2D2D3F);
         border-radius: 12px;
         padding: 24px;
         margin-bottom: 24px;
@@ -484,16 +562,16 @@ if ($eval_id && $evaluation) {
     .category-header {
         font-size: 20px;
         font-weight: 800;
-        color: var(--primary);
+        color: var(--primary, #6B46C1);
         margin-bottom: 20px;
         padding-bottom: 15px;
-        border-bottom: 2px solid var(--primary);
+        border-bottom: 2px solid var(--primary, #6B46C1);
         letter-spacing: -0.3px;
     }
     
     .skill-item {
-        background: var(--bg-dark);
-        border: 1px solid var(--border);
+        background: var(--bg-card, #16161F);
+        border: 1px solid var(--border, #2D2D3F);
         border-radius: 8px;
         padding: 20px;
         margin-bottom: 16px;
@@ -524,18 +602,18 @@ if ($eval_id && $evaluation) {
     
     .skill-description {
         font-size: 14px;
-        color: var(--text-light);
+        color: var(--text-dim, #A8A8B8);
         line-height: 1.5;
     }
     
     .skill-criteria {
         font-size: 12px;
-        color: var(--text-light);
-        background: var(--bg-darker);
+        color: var(--text-dim, #A8A8B8);
+        background: var(--bg-main, #0A0A0F);
         padding: 10px;
         border-radius: 4px;
         margin-top: 10px;
-        border-left: 3px solid var(--primary);
+        border-left: 3px solid var(--primary, #6B46C1);
     }
     
     .score-input-wrapper {
@@ -547,8 +625,8 @@ if ($eval_id && $evaluation) {
     .score-input {
         width: 80px;
         padding: 10px;
-        background: var(--bg-dark);
-        border: 2px solid var(--border);
+        background: var(--bg-card, #16161F);
+        border: 2px solid var(--border, #2D2D3F);
         border-radius: 8px;
         color: #fff;
         font-size: 18px;
@@ -559,18 +637,18 @@ if ($eval_id && $evaluation) {
     
     .score-input:focus {
         outline: none;
-        border-color: var(--primary);
+        border-color: var(--primary, #6B46C1);
         box-shadow: 0 0 0 3px rgba(107, 70, 193, 0.15);
     }
     
     .score-input.has-score {
-        border-color: var(--primary);
+        border-color: var(--primary, #6B46C1);
         background: rgba(107, 70, 193, 0.08);
     }
     
     .score-scale {
         font-size: 12px;
-        color: var(--text-light);
+        color: var(--text-dim, #A8A8B8);
     }
     
     .skill-body {
@@ -593,7 +671,7 @@ if ($eval_id && $evaluation) {
     .note-label {
         font-size: 12px;
         font-weight: 700;
-        color: var(--text-light);
+        color: var(--text-dim, #A8A8B8);
         margin-bottom: 8px;
         text-transform: uppercase;
         display: flex;
@@ -605,8 +683,8 @@ if ($eval_id && $evaluation) {
         width: 100%;
         min-height: 80px;
         padding: 12px;
-        background: var(--bg-darker);
-        border: 1px solid var(--border);
+        background: var(--bg-main, #0A0A0F);
+        border: 1px solid var(--border, #2D2D3F);
         border-radius: 8px;
         color: #fff;
         font-size: 14px;
@@ -616,7 +694,7 @@ if ($eval_id && $evaluation) {
     
     .note-textarea:focus {
         outline: none;
-        border-color: var(--primary);
+        border-color: var(--primary, #6B46C1);
         box-shadow: 0 0 0 3px rgba(107, 70, 193, 0.15);
     }
     
@@ -637,7 +715,7 @@ if ($eval_id && $evaluation) {
         aspect-ratio: 1;
         border-radius: 6px;
         overflow: hidden;
-        border: 1px solid var(--border);
+        border: 1px solid var(--border, #2D2D3F);
     }
     
     .media-item img, .media-item video {
@@ -667,10 +745,10 @@ if ($eval_id && $evaluation) {
     
     .upload-button {
         padding: 10px;
-        background: var(--bg-darker);
-        border: 1px dashed var(--border);
+        background: var(--bg-main, #0A0A0F);
+        border: 1px dashed var(--border, #2D2D3F);
         border-radius: 8px;
-        color: var(--text-light);
+        color: var(--text-dim, #A8A8B8);
         font-size: 14px;
         cursor: pointer;
         transition: all 0.3s;
@@ -678,8 +756,8 @@ if ($eval_id && $evaluation) {
     }
     
     .upload-button:hover {
-        border-color: var(--primary);
-        color: var(--primary);
+        border-color: var(--primary, #6B46C1);
+        color: var(--primary, #6B46C1);
         background: rgba(107, 70, 193, 0.05);
     }
     
@@ -689,8 +767,8 @@ if ($eval_id && $evaluation) {
     
     /* Historical Comparison */
     .comparison-section {
-        background: var(--bg-dark);
-        border: 1px solid var(--border);
+        background: var(--bg-card, #16161F);
+        border: 1px solid var(--border, #2D2D3F);
         border-radius: 12px;
         padding: 24px;
         margin-bottom: 24px;
@@ -711,8 +789,8 @@ if ($eval_id && $evaluation) {
     }
     
     .comparison-card {
-        background: var(--bg-darker);
-        border: 1px solid var(--border);
+        background: var(--bg-main, #0A0A0F);
+        border: 1px solid var(--border, #2D2D3F);
         border-radius: 8px;
         padding: 16px;
         transition: border-color 0.3s;
@@ -725,7 +803,7 @@ if ($eval_id && $evaluation) {
     .comparison-date {
         font-size: 14px;
         font-weight: 700;
-        color: var(--text-light);
+        color: var(--text-dim, #A8A8B8);
         margin-bottom: 10px;
     }
     
@@ -742,17 +820,17 @@ if ($eval_id && $evaluation) {
     
     .score-change.positive {
         background: rgba(16, 185, 129, 0.2);
-        color: var(--success);
+        color: #10b981;
     }
     
     .score-change.negative {
         background: rgba(239, 68, 68, 0.2);
-        color: var(--danger);
+        color: #ef4444;
     }
     
     .score-change.neutral {
         background: rgba(148, 163, 184, 0.2);
-        color: var(--text-light);
+        color: var(--text-dim, #A8A8B8);
     }
     
     /* Modal */
@@ -774,8 +852,8 @@ if ($eval_id && $evaluation) {
     }
     
     .modal-content {
-        background: var(--bg-dark);
-        border: 1px solid var(--border);
+        background: var(--bg-card, #16161F);
+        border: 1px solid var(--border, #2D2D3F);
         border-radius: 12px;
         padding: 28px;
         max-width: 500px;
@@ -800,7 +878,7 @@ if ($eval_id && $evaluation) {
     .modal-close {
         background: none;
         border: none;
-        color: var(--text-light);
+        color: var(--text-dim, #A8A8B8);
         font-size: 24px;
         cursor: pointer;
     }
@@ -813,7 +891,7 @@ if ($eval_id && $evaluation) {
         display: block;
         font-size: 12px;
         font-weight: 700;
-        color: var(--text-light);
+        color: var(--text-dim, #A8A8B8);
         margin-bottom: 8px;
         text-transform: uppercase;
     }
@@ -821,8 +899,8 @@ if ($eval_id && $evaluation) {
     .form-input, .form-select {
         width: 100%;
         padding: 12px;
-        background: var(--bg-darker);
-        border: 1px solid var(--border);
+        background: var(--bg-main, #0A0A0F);
+        border: 1px solid var(--border, #2D2D3F);
         border-radius: 8px;
         color: #fff;
         font-size: 14px;
@@ -830,14 +908,14 @@ if ($eval_id && $evaluation) {
     
     .form-input:focus, .form-select:focus {
         outline: none;
-        border-color: var(--primary);
+        border-color: var(--primary, #6B46C1);
         box-shadow: 0 0 0 3px rgba(107, 70, 193, 0.15);
     }
     
     .btn-submit {
         width: 100%;
         padding: 12px;
-        background: var(--primary);
+        background: var(--primary, #6B46C1);
         color: #fff;
         border: none;
         border-radius: 8px;
@@ -852,31 +930,45 @@ if ($eval_id && $evaluation) {
     }
     
     .btn-submit:hover {
-        background: var(--primary-hover);
+        background: var(--primary-hover, #7C3AED);
         transform: translateY(-2px);
         box-shadow: 0 8px 16px rgba(107, 70, 193, 0.3);
     }
     
     .empty-state {
         text-align: center;
-        padding: 60px 20px;
-        background: var(--bg-dark);
-        border: 1px solid var(--border);
+        padding: 80px 20px;
+        background: var(--bg-card, #16161F);
+        border: 1px solid var(--border, #2D2D3F);
         border-radius: 12px;
     }
     
     .empty-state i {
         font-size: 64px;
-        color: var(--primary);
+        color: var(--primary, #6B46C1);
         opacity: 0.3;
         margin-bottom: 20px;
     }
+
+    .empty-state h2 {
+        font-size: 24px;
+        color: #fff;
+        margin-bottom: 10px;
+    }
+
+    .empty-state p {
+        color: var(--text-dim, #A8A8B8);
+        font-size: 15px;
+        max-width: 400px;
+        margin: 0 auto;
+        line-height: 1.5;
+    }
     
     .share-link-display {
-        background: var(--bg-darker);
+        background: var(--bg-main, #0A0A0F);
         padding: 12px;
         border-radius: 8px;
-        border: 1px solid var(--border);
+        border: 1px solid var(--border, #2D2D3F);
         margin-top: 12px;
         display: flex;
         align-items: center;
@@ -885,7 +977,7 @@ if ($eval_id && $evaluation) {
     
     .share-link-url {
         flex: 1;
-        color: var(--primary);
+        color: var(--accent, #8B5CF6);
         font-size: 14px;
         font-family: monospace;
         word-break: break-all;
@@ -893,7 +985,7 @@ if ($eval_id && $evaluation) {
     
     .btn-copy {
         padding: 8px 16px;
-        background: var(--primary);
+        background: var(--primary, #6B46C1);
         color: #fff;
         border: none;
         border-radius: 6px;
@@ -917,6 +1009,10 @@ if ($eval_id && $evaluation) {
             grid-template-columns: 1fr;
         }
 
+        .eval-stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
         .evaluations-page-header {
             flex-direction: column;
             align-items: flex-start;
@@ -924,6 +1020,12 @@ if ($eval_id && $evaluation) {
 
         .evaluations-page-header .header-actions {
             width: 100%;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .eval-stats-grid {
+            grid-template-columns: 1fr;
         }
     }
 </style>
