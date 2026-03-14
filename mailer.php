@@ -2,6 +2,7 @@
 // mailer.php
 require_once 'db_config.php';
 require_once __DIR__ . '/security.php';
+require_once __DIR__ . '/lib/image_helper.php';
 
 /**
  * Custom SMTP Class to handle direct server communication.
@@ -316,7 +317,22 @@ function getThemeSettings() {
     ];
     try {
         $rows = $pdo->query("SELECT setting_name, setting_value FROM theme_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
-        return array_merge($defaults, $rows);
+        $settings = array_merge($defaults, $rows);
+
+        // Resolve logo URL through media proxy so RustFS-uploaded logos work in emails
+        if (!empty($settings['logo_url']) && function_exists('resolveRustfsUrl')) {
+            $resolved = resolveRustfsUrl($pdo, $settings['logo_url']);
+            if (!empty($resolved)) {
+                // Email clients need absolute URLs — prepend base URL if relative
+                if ($resolved && strpos($resolved, 'http') !== 0) {
+                    $baseUrl = rtrim(getenv('APP_URL') ?: 'https://arcticwolves.ca', '/');
+                    $resolved = $baseUrl . '/' . ltrim($resolved, '/');
+                }
+                $settings['logo_url'] = $resolved;
+            }
+        }
+
+        return $settings;
     } catch (Exception $e) {
         return $defaults;
     }
