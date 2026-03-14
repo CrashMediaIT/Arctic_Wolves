@@ -84,7 +84,7 @@ $tokenUrl = "https://login.microsoftonline.com/{$tenantId}/oauth2/v2.0/token";
 // Scope must match the authorization request (SMTP or Calendar).
 // Include openid so the response contains an id_token with the user's email.
 $scope = $type === 'smtp'
-    ? 'https://outlook.office365.com/SMTP.Send offline_access openid email profile'
+    ? 'https://outlook.office.com/SMTP.Send offline_access openid email profile'
     : 'https://graph.microsoft.com/Calendars.ReadWrite offline_access openid email profile';
 
 $postData = http_build_query([

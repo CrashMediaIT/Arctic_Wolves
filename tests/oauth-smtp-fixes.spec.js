@@ -53,7 +53,7 @@ test.describe('OAuth SMTP - mailer.php fixes', () => {
   });
 
   test('refresh token scope includes openid email profile', () => {
-    expect(content).toContain("'scope'         => 'https://outlook.office365.com/SMTP.Send offline_access openid email profile'");
+    expect(content).toContain("'scope'         => 'https://outlook.office.com/SMTP.Send offline_access openid email profile'");
   });
 });
 
@@ -123,7 +123,7 @@ test.describe('OAuth SMTP - process_settings.php scope fixes', () => {
   });
 
   test('SMTP OAuth authorization scope includes openid email profile', () => {
-    expect(content).toContain("'scope'         => 'https://outlook.office365.com/SMTP.Send offline_access openid email profile'");
+    expect(content).toContain("'scope'         => 'https://outlook.office.com/SMTP.Send offline_access openid email profile'");
   });
 
   test('Calendar OAuth authorization scope includes openid email profile', () => {
@@ -144,7 +144,7 @@ test.describe('OAuth SMTP - oauth_office365_callback.php token exchange', () => 
   });
 
   test('SMTP scope for token exchange includes SMTP.Send openid email profile', () => {
-    expect(content).toContain("'https://outlook.office365.com/SMTP.Send offline_access openid email profile'");
+    expect(content).toContain("'https://outlook.office.com/SMTP.Send offline_access openid email profile'");
   });
 
   test('Calendar scope for token exchange includes Calendars.ReadWrite openid email profile', () => {
