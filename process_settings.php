@@ -307,6 +307,7 @@ try {
                         'refresh_token' => $refreshToken,
                         'redirect_uri'  => $redirectUri,
                         'grant_type'    => 'refresh_token',
+                        'scope'         => 'https://graph.microsoft.com/Calendars.ReadWrite offline_access openid email profile',
                     ]);
                     $ctx = stream_context_create([
                         'http' => ['method' => 'POST', 'header' => "Content-Type: application/x-www-form-urlencoded\r\n", 'content' => $postData, 'ignore_errors' => true, 'timeout' => 15],
