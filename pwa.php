@@ -584,8 +584,9 @@ window.pwaRequestCamera = function(videoElement) {
         // Also check inline style in the embedded <style> tag
         // FABs may have position:fixed from their view's CSS, not inline
         var classes = el.className.split(/\s+/);
+        var fixedPattern = /fab$|overlay$|sheet$|modal$/i;
         var looksLikeFixedElement = classes.some(function(c) {
-            return c.match(/fab$|overlay$|sheet$|modal$/i);
+            return fixedPattern.test(c);
         });
         
         if (isFixed || hasFixedInCSS || looksLikeFixedElement) {
