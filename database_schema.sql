@@ -243,6 +243,7 @@ CREATE TABLE IF NOT EXISTS `sessions` (
     `enable_child_checkin` TINYINT(1) DEFAULT 0 COMMENT 'Enable child check-in/check-out for this session/camp',
     `is_private` TINYINT(1) DEFAULT 0 COMMENT 'Whether this is a private session',
     `is_semi_private` TINYINT(1) DEFAULT 0 COMMENT 'Whether this is a semi-private session',
+    `o365_event_id` VARCHAR(512) DEFAULT NULL COMMENT 'Office 365 iCalUId for sync dedup',
     FOREIGN KEY (`session_type_id`) REFERENCES `session_types`(`id`) ON DELETE SET NULL,
     FOREIGN KEY (`location_id`) REFERENCES `locations`(`id`) ON DELETE SET NULL,
     FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON DELETE SET NULL,
@@ -250,7 +251,8 @@ CREATE TABLE IF NOT EXISTS `sessions` (
     INDEX `idx_date` (`session_date`),
     INDEX `idx_time` (`session_time`),
     INDEX `idx_status` (`status`),
-    INDEX `idx_coach_date` (`coach_id`, `session_date`)
+    INDEX `idx_coach_date` (`coach_id`, `session_date`),
+    UNIQUE INDEX `idx_o365_event_id` (`o365_event_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Session Coaches - Multiple coaches per session

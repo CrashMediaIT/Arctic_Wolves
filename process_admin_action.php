@@ -2199,6 +2199,52 @@ if ($action == 'toggle_user_status') {
 }
 
 // =========================================================
+// MODULE 8.4b: DELETE USER
+// =========================================================
+if ($action == 'delete_user') {
+    header('Content-Type: application/json');
+    
+    try {
+        $user_id_to_delete = intval($_POST['id']);
+        
+        // Don't allow deleting own account
+        if ($user_id_to_delete == $_SESSION['user_id']) {
+            echo json_encode(['success' => false, 'message' => 'Cannot delete your own account']);
+            exit();
+        }
+        
+        // Check user exists
+        $stmt = $pdo->prepare("SELECT id, first_name, last_name FROM users WHERE id = ?");
+        $stmt->execute([$user_id_to_delete]);
+        $target_user = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$target_user) {
+            echo json_encode(['success' => false, 'message' => 'User not found']);
+            exit();
+        }
+        $target_user = decryptUserRow($target_user);
+        
+        // Delete user and let cascading foreign keys clean up related records
+        $stmt = $pdo->prepare("DELETE FROM users WHERE id = ?");
+        $stmt->execute([$user_id_to_delete]);
+        
+        Auditor::log($pdo, $user_id, 'delete', 'users', $user_id_to_delete, [
+            'action' => 'delete_user',
+            'deleted_name' => $target_user['first_name'] . ' ' . $target_user['last_name']
+        ]);
+        
+        echo json_encode([
+            'success' => true, 
+            'message' => "User {$target_user['first_name']} {$target_user['last_name']} has been deleted"
+        ]);
+    } catch (PDOException $e) {
+        ErrorLogger::error("Delete user error: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Database error occurred. The user may have related records that prevent deletion.']);
+    }
+    exit();
+}
+
+// =========================================================
 // MODULE 8.5: RESET USER PASSWORD
 // =========================================================
 if ($action == 'reset_user_password') {

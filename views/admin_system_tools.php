@@ -5077,38 +5077,8 @@ document.getElementById('test-stallion')?.addEventListener('click', function() {
 </style>
 
 <script>
-// SMTP Connection Test
-function testSmtpConnection() {
-    const btn = event.target;
-    const originalText = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
-    btn.disabled = true;
-    
-    const formData = new FormData(document.getElementById('smtp-form'));
-    formData.append('action', 'test_smtp');
-    
-    fetch('process_settings.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        btn.innerHTML = originalText;
-        btn.disabled = false;
-        
-        if (data.success) {
-            showToast('Success: SMTP Connection Successful! Test email sent successfully.', 'success');
-        } else {
-            showToast('Error: SMTP Connection Failed. ' + (data.message || 'Could not connect to SMTP server'), 'error');
-        }
-    })
-    .catch(error => {
-        btn.innerHTML = originalText;
-        btn.disabled = false;
-        showToast('Error testing SMTP connection', 'error');
-        console.error('Error:', error);
-    });
-}
+// SMTP Connection Test - opens the test email modal
+// (main implementation defined in the SMTP tab section above)
 
 // Test Paperless-NGX Connection
 function testPaperlessConnection() {
