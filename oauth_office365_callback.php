@@ -80,12 +80,20 @@ $redirectUri = $scheme . '://' . $_SERVER['HTTP_HOST'] . '/oauth_office365_callb
 
 // ── Exchange authorization code for tokens ───────────────────────────────────
 $tokenUrl = "https://login.microsoftonline.com/{$tenantId}/oauth2/v2.0/token";
+
+// Scope must match the authorization request (SMTP or Calendar).
+// Include openid so the response contains an id_token with the user's email.
+$scope = $type === 'smtp'
+    ? 'https://outlook.office365.com/SMTP.Send offline_access openid'
+    : 'https://graph.microsoft.com/Calendars.ReadWrite offline_access openid';
+
 $postData = http_build_query([
     'client_id'     => $clientId,
     'client_secret' => $clientSecret,
     'code'          => $_GET['code'],
     'redirect_uri'  => $redirectUri,
     'grant_type'    => 'authorization_code',
+    'scope'         => $scope,
 ]);
 
 $ctx = stream_context_create([

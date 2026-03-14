@@ -59,9 +59,17 @@ class SmtpMailer {
         }
 
         // 6. AUTHENTICATION
-        if (!empty($oauthToken) && !empty($user)) {
+        if (!empty($oauthToken)) {
             // XOAUTH2 (Office 365 OAuth) — preferred when tokens are available
-            $xoauth2 = base64_encode("user={$user}\x01auth=Bearer {$oauthToken}\x01\x01");
+            // Use the OAuth connected email as the mailbox identity; fall back to smtp_user
+            $oauthUser = trim((string)($config['office365_smtp_connected_email'] ?? ''));
+            if (empty($oauthUser)) {
+                $oauthUser = $user;
+            }
+            if (empty($oauthUser)) {
+                throw new Exception("OAuth is configured but no mailbox email is available. Please reconnect Office 365 or set the SMTP Username.");
+            }
+            $xoauth2 = base64_encode("user={$oauthUser}\x01auth=Bearer {$oauthToken}\x01\x01");
             fputs($this->conn, "AUTH XOAUTH2 {$xoauth2}\r\n");
             $this->expectCode(235, "Office 365 OAuth Authentication Failed");
         } elseif (!empty($user) && !empty($pass)) {
@@ -77,13 +85,17 @@ class SmtpMailer {
         }
 
         // 7. ENVELOPE
-        $fromEmail = !empty($config['smtp_from_email']) ? $config['smtp_from_email'] : $user;
+        // When OAuth is active, use the connected email as the default sender identity
+        $oauthConnectedEmail = trim((string)($config['office365_smtp_connected_email'] ?? ''));
+        $defaultSender = (!empty($oauthToken) && !empty($oauthConnectedEmail)) ? $oauthConnectedEmail : $user;
+
+        $fromEmail = !empty($config['smtp_from_email']) ? $config['smtp_from_email'] : $defaultSender;
         $fromName  = !empty($config['smtp_from_name'])  ? $config['smtp_from_name']  : 'Arctic Wolves System';
 
         // When using OAuth (XOAUTH2) with a configured send-as alias, use it as the
         // MAIL FROM envelope sender (requires "Send As" permission on the alias in Exchange Online).
         // It also becomes the From: display address unless smtp_from_email is explicitly set.
-        $envelopeFrom = $user;
+        $envelopeFrom = $defaultSender;
         if (!empty($oauthToken) && !empty($config['office365_smtp_alias'])) {
             $envelopeFrom = trim($config['office365_smtp_alias']);
             if (empty($config['smtp_from_email'])) {
@@ -102,7 +114,7 @@ class SmtpMailer {
         $headers .= "To: <$to>\r\n";
         $headers .= "Subject: $subject\r\n";
         $headers .= "Date: " . date("r") . "\r\n";
-        $headers .= "Sender: $user\r\n"; // Helps deliverability
+        $headers .= "Sender: $defaultSender\r\n"; // Helps deliverability
         
         $this->sendCommand($headers . "\r\n" . $body . "\r\n.\r\n");
         $this->sendCommand("QUIT");
@@ -185,7 +197,7 @@ function getOffice365SmtpAccessToken($config) {
         'refresh_token' => $refreshToken,
         'redirect_uri'  => $redirectUri,
         'grant_type'    => 'refresh_token',
-        'scope'         => 'https://outlook.office365.com/SMTP.Send offline_access',
+        'scope'         => 'https://outlook.office365.com/SMTP.Send offline_access openid',
     ]);
 
     $ctx = stream_context_create([

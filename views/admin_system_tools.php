@@ -595,6 +595,19 @@ foreach ($url_keys as $uk) {
                         </div>
                         <div class="setting-item">
                             <div class="setting-info">
+                                <h4>Encryption</h4>
+                                <p>Connection security protocol</p>
+                            </div>
+                            <select name="smtp_encryption" class="form-input">
+                                <option value="tls" <?php echo ($settings['smtp_encryption'] ?? 'tls') === 'tls' ? 'selected' : ''; ?>>TLS</option>
+                                <option value="ssl" <?php echo ($settings['smtp_encryption'] ?? '') === 'ssl' ? 'selected' : ''; ?>>SSL</option>
+                                <option value="none" <?php echo ($settings['smtp_encryption'] ?? '') === 'none' ? 'selected' : ''; ?>>None</option>
+                            </select>
+                        </div>
+                        <?php if (!$o365SmtpConnected): ?>
+                        <!-- Basic Authentication (hidden when OAuth is connected) -->
+                        <div class="setting-item">
+                            <div class="setting-info">
                                 <h4>SMTP Username</h4>
                                 <p>Email account username or address</p>
                             </div>
@@ -610,17 +623,18 @@ foreach ($url_keys as $uk) {
                             <input type="password" name="smtp_pass" class="form-input" 
                                    placeholder="<?php echo !empty($settings['smtp_pass']) ? 'Leave blank to keep current password' : 'Enter password'; ?>">
                         </div>
+                        <?php else: ?>
+                        <!-- OAuth is connected: show authenticated account instead of basic auth -->
                         <div class="setting-item">
                             <div class="setting-info">
-                                <h4>Encryption</h4>
-                                <p>Connection security protocol</p>
+                                <h4>Authenticated Account</h4>
+                                <p>Emails are sent via Office 365 OAuth (XOAUTH2) using this account</p>
                             </div>
-                            <select name="smtp_encryption" class="form-input">
-                                <option value="tls" <?php echo ($settings['smtp_encryption'] ?? 'tls') === 'tls' ? 'selected' : ''; ?>>TLS</option>
-                                <option value="ssl" <?php echo ($settings['smtp_encryption'] ?? '') === 'ssl' ? 'selected' : ''; ?>>SSL</option>
-                                <option value="none" <?php echo ($settings['smtp_encryption'] ?? '') === 'none' ? 'selected' : ''; ?>>None</option>
-                            </select>
+                            <input type="text" class="form-input" disabled
+                                   value="<?php echo $o365ConnectedEmail ?: '(OAuth connected)'; ?>"
+                                   style="background:var(--card-bg,#16161F);opacity:.8;">
                         </div>
+                        <?php endif; ?>
                         <div class="setting-item">
                             <div class="setting-info">
                                 <h4>From Name</h4>
@@ -633,21 +647,23 @@ foreach ($url_keys as $uk) {
                         <div class="setting-item">
                             <div class="setting-info">
                                 <h4>From Email</h4>
-                                <p>Sender email address</p>
+                                <p>Sender email address<?php echo $o365SmtpConnected ? ' (defaults to authenticated account if left blank)' : ''; ?></p>
                             </div>
                             <input type="email" name="smtp_from_email" class="form-input" 
                                    value="<?php echo htmlspecialchars($settings['smtp_from_email'] ?? ''); ?>"
                                    placeholder="noreply@example.com">
                         </div>
+                        <?php if ($o365SmtpConnected): ?>
                         <div class="setting-item">
                             <div class="setting-info">
-                                <h4>OAuth Send-As Alias</h4>
-                                <p>When sending via Office 365 OAuth, use this address as the envelope sender (<code>MAIL FROM</code>) instead of the authenticated account. Requires <em>Send As</em> permission on the alias in Exchange Online. Also used as <em>From:</em> if the From Email field above is left blank.</p>
+                                <h4>Send-As Alias</h4>
+                                <p>Use a different address as the envelope sender (<code>MAIL FROM</code>) instead of the authenticated account. Requires <em>Send As</em> permission on the alias in Exchange Online. Also used as <em>From:</em> if the From Email field above is left blank.</p>
                             </div>
                             <input type="email" name="office365_smtp_alias" class="form-input"
                                    value="<?php echo htmlspecialchars($settings['office365_smtp_alias'] ?? ''); ?>"
-                                   placeholder="shared@yourdomain.com (optional, OAuth only)">
+                                   placeholder="shared@yourdomain.com (optional)">
                         </div>
+                        <?php endif; ?>
                     </div>
 
                     <!-- Office 365 Azure App Configuration (collapsed by default when already set) -->
