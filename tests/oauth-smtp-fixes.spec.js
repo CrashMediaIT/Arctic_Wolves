@@ -44,7 +44,8 @@ test.describe('OAuth SMTP - mailer.php fixes', () => {
 
   test('envelope sender uses OAuth connected email as default', () => {
     expect(content).toContain('$defaultSender');
-    expect(content).toMatch(/\$defaultSender\s*=\s*\(!empty\(\$oauthToken\)\s*&&\s*!empty\(\$oauthConnectedEmail\)\)/);
+    // Check the ternary that picks oauthConnectedEmail when OAuth is active, otherwise smtp_user
+    expect(content).toContain("$defaultSender = (!empty($oauthToken) && !empty($oauthConnectedEmail)) ? $oauthConnectedEmail : $user;");
   });
 
   test('Sender header uses defaultSender instead of raw smtp_user', () => {
@@ -146,6 +147,7 @@ test.describe('OAuth SMTP - oauth_office365_callback.php token exchange', () => 
   });
 
   test('scope is determined based on OAuth type (smtp vs calendar)', () => {
-    expect(content).toMatch(/\$scope\s*=\s*\$type\s*===\s*'smtp'/);
+    // Verify the scope selection is based on the OAuth type
+    expect(content).toContain("$scope = $type === 'smtp'");
   });
 });
