@@ -13,6 +13,21 @@ if (!in_array($user_role, $allowed_roles)) {
     exit;
 }
 
+// ── Office 365 Calendar OAuth status for the current user ────────────────────
+$o365CalConnected   = false;
+$o365CalEmail       = '';
+$o365AppConfigured  = false;
+try {
+    $o365AppConfigured = !empty($pdo->query("SELECT setting_value FROM system_settings WHERE setting_key='office365_client_id'")->fetchColumn());
+    $calTokRow = $pdo->prepare("SELECT connected_email FROM user_oauth_tokens WHERE user_id = ? AND provider = 'office365_calendar' LIMIT 1");
+    $calTokRow->execute([$user_id]);
+    $calTok = $calTokRow->fetch(PDO::FETCH_ASSOC);
+    if ($calTok) {
+        $o365CalConnected = true;
+        $o365CalEmail     = htmlspecialchars($calTok['connected_email'] ?? '');
+    }
+} catch (Exception $e) { /* table may not exist on fresh install */ }
+
 // Get filter parameters
 $filter_coach = $_GET['filter_coach'] ?? 'all';
 $filter_location = $_GET['filter_location'] ?? 'all';
@@ -281,9 +296,45 @@ $is_demo_data = false;
                 <a href="?page=coach_calendar&view=list&filter_coach=<?= $filter_coach ?>&filter_location=<?= $filter_location ?>" class="view-btn <?= $view_mode === 'list' ? 'active' : '' ?>"><i class="fas fa-list"></i></a>
                 <a href="?page=coach_calendar&view=calendar&filter_coach=<?= $filter_coach ?>&filter_location=<?= $filter_location ?>" class="view-btn <?= $view_mode === 'calendar' ? 'active' : '' ?>"><i class="fas fa-calendar"></i></a>
             </div>
+            <?php if ($o365CalConnected): ?>
+                <button class="btn btn-secondary" id="o365SyncBtn" onclick="syncOffice365Calendar(this)">
+                    <i class="fab fa-microsoft" style="color:#0078d4;"></i> Sync to Office 365
+                </button>
+            <?php elseif ($o365AppConfigured): ?>
+                <form method="POST" action="process_settings.php" style="display:inline;">
+                    <?php echo csrfTokenInput(); ?>
+                    <input type="hidden" name="action" value="initiate_office365_calendar_oauth">
+                    <button type="submit" class="btn btn-secondary">
+                        <i class="fab fa-microsoft" style="color:#0078d4;"></i> Connect Office 365 Calendar
+                    </button>
+                </form>
+            <?php endif; ?>
             <button class="btn btn-primary" onclick="openPrivateSessionModal()"><i class="fas fa-plus"></i> Create Private Session</button>
         </div>
     </div>
+
+    <?php if ($o365CalConnected): ?>
+    <div class="alert alert-success" style="margin:0 0 16px 0;display:flex;align-items:center;gap:10px;">
+        <i class="fab fa-microsoft" style="color:#0078d4;font-size:18px;"></i>
+        <span>Office 365 Calendar connected<?= $o365CalEmail ? " as <strong>{$o365CalEmail}</strong>" : '' ?>.</span>
+        <form method="POST" action="process_settings.php" style="margin-left:auto;">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="disconnect_office365_calendar">
+            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Disconnect your Office 365 calendar?')">
+                <i class="fas fa-unlink"></i> Disconnect
+            </button>
+        </form>
+    </div>
+    <?php elseif (isset($_GET['oauth_error'])): ?>
+    <div class="alert alert-danger" style="margin:0 0 16px 0;">
+        <i class="fas fa-exclamation-triangle"></i>
+        Office 365 authorization failed: <?= htmlspecialchars($_GET['oauth_error']) ?>
+    </div>
+    <?php elseif (isset($_GET['oauth_success'])): ?>
+    <div class="alert alert-success" style="margin:0 0 16px 0;">
+        <i class="fas fa-check-circle"></i> Office 365 Calendar connected successfully!
+    </div>
+    <?php endif; ?>
 
     <?php if ($view_mode === 'calendar'): ?>
     <div class="sessions-calendar">
@@ -598,6 +649,41 @@ $is_demo_data = false;
 
 <script>
 var isAdmin = <?= ($user_role === 'admin') ? 'true' : 'false' ?>;
+
+function syncOffice365Calendar(btn) {
+    var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    var csrf = csrfMeta ? csrfMeta.content : '';
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Syncing...';
+    fetch('process_settings.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'action=sync_office365_calendar&csrf_token=' + encodeURIComponent(csrf)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fab fa-microsoft" style="color:#0078d4;"></i> Sync to Office 365';
+        var cls = data.success ? 'alert-success' : 'alert-danger';
+        var icon = data.success ? 'fa-check-circle' : 'fa-exclamation-triangle';
+        var banner = document.getElementById('o365SyncResult');
+        if (!banner) {
+            banner = document.createElement('div');
+            banner.id = 'o365SyncResult';
+            btn.closest('.calendar-content, .page-content, .container, body').prepend(banner);
+        }
+        banner.className = 'alert ' + cls;
+        banner.style.cssText = 'margin:0 0 16px 0;';
+        banner.innerHTML = '<i class="fas ' + icon + '"></i> ' + (data.message || '');
+        setTimeout(function() { if (banner) banner.remove(); }, 6000);
+    })
+    .catch(function() {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fab fa-microsoft" style="color:#0078d4;"></i> Sync to Office 365';
+        alert('Sync request failed. Please try again.');
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     let currentMonth = new Date().getMonth(), currentYear = new Date().getFullYear();
     const sessionsData = [];
