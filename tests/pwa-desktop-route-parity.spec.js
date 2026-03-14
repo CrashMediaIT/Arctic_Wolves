@@ -227,17 +227,21 @@ test.describe('PWA View Override and Feature Parity', () => {
     expect(content).not.toContain('page=audit_log');
   });
 
-  test('pwa/system_tools.php includes all desktop system_tools tabs', () => {
+  test('pwa/system_tools.php includes all desktop system_tools tabs or dedicated pages', () => {
     const content = readFileSync(join(ROOT, 'views', 'pwa', 'system_tools.php'), 'utf-8');
-    const desktopTabs = [
-      'settings', 'mileage', 'smtp', 'rustfs', 'docuseal', 'payments',
+    // Tabs that remain as system_tools tab links
+    const tabLinks = [
+      'smtp', 'rustfs', 'docuseal', 'payments',
       'stallion', 'paperless', 'encryption', 'landing', 'updates',
-      'api_keys', 'ndi_cameras', 'gameplan'
+      'api_keys', 'ndi_cameras'
     ];
-    for (const tab of desktopTabs) {
-      // Check the PHP array values: 'tab' => 'tabname'
+    for (const tab of tabLinks) {
       expect(content, `Missing system_tools tab: ${tab}`).toContain(`'tab' => '${tab}'`);
     }
+    // These now link to dedicated PWA pages instead of system_tools tabs
+    expect(content, 'Settings should link to dedicated page').toContain("'page' => 'settings'");
+    expect(content, 'Mileage should link to dedicated page').toContain("'page' => 'mileage_tracker'");
+    expect(content, 'Game Plan should link to dedicated page').toContain("'page' => 'gameplan_settings'");
   });
 
   test('pwa/system_tools.php includes separate-page tools', () => {

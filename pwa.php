@@ -134,12 +134,7 @@ if ($page === 'home' && $isFrontDesk) {
     $page = 'front_desk_home';
 }
 if ($page === 'admin_settings') {
-    header("Location: pwa.php?page=system_tools&tab=landing");
-    exit();
-}
-if ($page === 'gameplan_settings') {
-    header("Location: pwa.php?page=system_tools&tab=gameplan");
-    exit();
+    $page = 'settings';
 }
 
 // Full routing table (identical to dashboard.php)

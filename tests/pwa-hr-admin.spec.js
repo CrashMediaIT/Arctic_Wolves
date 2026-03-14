@@ -612,11 +612,12 @@ test.describe('HR/Admin CSRF comprehensive audit', () => {
 
 test.describe('HR/Admin onclick handler functionality', () => {
 
-  test('eval_framework.php FAB switches to mEvalAddSkill on Skills tab', () => {
+  test('eval_framework.php FAB opens action picker with category and skill options', () => {
     const content = readPwaFile('eval_framework.php');
-    // The mEvalTab function must update FAB to call mEvalAddSkill for skills tab
-    expect(content).toContain("fab.setAttribute('onclick', 'mEvalAddSkill()')");
-    expect(content).toContain("fab.setAttribute('title', 'Add Skill')");
+    // The FAB now opens a picker instead of switching based on tab
+    expect(content).toContain('mEvalFabAction');
+    expect(content).toContain('mEvalAddCategory()');
+    expect(content).toContain('mEvalAddSkill()');
   });
 
   test('eval_framework.php has mEvalAddSkill function defined', () => {
@@ -656,46 +657,44 @@ test.describe('HR/Admin onclick handler functionality', () => {
     expect(content).toMatch(/id="mEvalSkillAction"/);
   });
 
-  test('eval_framework.php mEvalTab passes button reference (no implicit event)', () => {
+  test('eval_framework.php uses collapsible sections instead of tabs', () => {
     const content = readPwaFile('eval_framework.php');
-    // Onclick should pass 'this' to the function
-    expect(content).toMatch(/onclick="mEvalTab\('categories',\s*this\)"/);
-    expect(content).toMatch(/onclick="mEvalTab\('skills',\s*this\)"/);
-    // Function should accept btn parameter
-    expect(content).toMatch(/function mEvalTab\(tab,\s*btn\)/);
-    // Should use btn instead of event.currentTarget
-    expect(content).not.toContain('event.currentTarget');
+    // Should use collapsible sections with addEventListener
+    expect(content).toContain('m-evalfw-collapse-hdr');
+    expect(content).toContain('m-evalfw-collapse-body');
+    expect(content).toContain("classList.toggle('m-open')");
+    // Should NOT use old tab pattern
+    expect(content).not.toContain('onclick="mEvalTab');
+    expect(content).not.toContain('function mEvalTab');
   });
 
-  test('admin_permissions.php mPermsTab passes button reference (no implicit event)', () => {
+  test('admin_permissions.php uses collapsible sections instead of tabs', () => {
     const content = readPwaFile('admin_permissions.php');
-    // Onclick should pass 'this' to the function
-    expect(content).toMatch(/onclick="mPermsTab\('roles',\s*this\)"/);
-    expect(content).toMatch(/onclick="mPermsTab\('manage',\s*this\)"/);
-    // Function should accept btn parameter
-    expect(content).toMatch(/function mPermsTab\(tab,\s*btn\)/);
-    // Should use btn instead of event.currentTarget
-    expect(content).not.toContain('event.currentTarget');
+    // Should use collapsible sections with addEventListener
+    expect(content).toContain('m-perms-collapse-hdr');
+    expect(content).toContain('m-perms-collapse-body');
+    expect(content).toContain("classList.toggle('m-open')");
+    // Should NOT use old tab pattern
+    expect(content).not.toContain('onclick="mPermsTab');
+    expect(content).not.toContain('function mPermsTab');
   });
 
-  test('eval_framework.php tab buttons pass this as second arg', () => {
+  test('eval_framework.php collapsible sections contain categories and skills', () => {
     const content = readPwaFile('eval_framework.php');
-    // Both tab buttons should pass this
-    const tabButtonMatches = content.match(/onclick="mEvalTab\([^"]+\)"/g) || [];
-    expect(tabButtonMatches.length).toBeGreaterThanOrEqual(2);
-    for (const match of tabButtonMatches) {
-      expect(match).toContain(', this)');
-    }
+    // Both sections should have collapse headers with proper icons
+    expect(content).toContain('fa-clipboard-list');
+    expect(content).toContain('fa-star');
+    expect(content).toContain('Categories');
+    expect(content).toContain('Skills');
   });
 
-  test('admin_permissions.php tab buttons pass this as second arg', () => {
+  test('admin_permissions.php collapsible sections contain roles and manage', () => {
     const content = readPwaFile('admin_permissions.php');
-    // Both tab buttons should pass this
-    const tabButtonMatches = content.match(/onclick="mPermsTab\([^"]+\)"/g) || [];
-    expect(tabButtonMatches.length).toBeGreaterThanOrEqual(2);
-    for (const match of tabButtonMatches) {
-      expect(match).toContain(', this)');
-    }
+    // Both sections should have collapse headers with proper icons
+    expect(content).toContain('fa-user-tag');
+    expect(content).toContain('fa-sliders-h');
+    expect(content).toContain('Roles');
+    expect(content).toContain('Manage Permissions');
   });
 });
 

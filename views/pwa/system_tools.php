@@ -10,7 +10,7 @@ if (!$isAdmin) {
 }
 
 $tools = [
-    ['icon' => 'fa-cog', 'label' => 'Settings', 'page' => 'system_tools', 'tab' => 'settings', 'color' => '#6B46C1'],
+    ['icon' => 'fa-cog', 'label' => 'Settings', 'page' => 'settings', 'color' => '#6B46C1'],
     ['icon' => 'fa-database', 'label' => 'Database Tools', 'page' => 'admin_database_tools', 'color' => '#3B82F6'],
     ['icon' => 'fa-heartbeat', 'label' => 'System Check', 'page' => 'admin_system_check', 'color' => '#10B981'],
     ['icon' => 'fa-download', 'label' => 'Database Backup', 'page' => 'admin_database_backup', 'color' => '#8B5CF6'],
@@ -19,7 +19,7 @@ $tools = [
     ['icon' => 'fa-clock', 'label' => 'Cron Jobs', 'page' => 'cron_jobs', 'color' => '#3B82F6'],
     ['icon' => 'fa-file-import', 'label' => 'Feature Import', 'page' => 'admin_feature_import', 'color' => '#10B981'],
     ['icon' => 'fa-palette', 'label' => 'Theme Settings', 'page' => 'admin_theme_settings', 'color' => '#8B5CF6'],
-    ['icon' => 'fa-car', 'label' => 'Mileage', 'page' => 'system_tools', 'tab' => 'mileage', 'color' => '#10B981'],
+    ['icon' => 'fa-car', 'label' => 'Mileage', 'page' => 'mileage_tracker', 'color' => '#10B981'],
     ['icon' => 'fa-envelope', 'label' => 'SMTP', 'page' => 'system_tools', 'tab' => 'smtp', 'color' => '#3B82F6'],
     ['icon' => 'fa-server', 'label' => 'RustFS Storage', 'page' => 'system_tools', 'tab' => 'rustfs', 'color' => '#F59E0B'],
     ['icon' => 'fa-file-contract', 'label' => 'DocuSeal', 'page' => 'system_tools', 'tab' => 'docuseal', 'color' => '#6B46C1'],
@@ -31,7 +31,7 @@ $tools = [
     ['icon' => 'fa-sync-alt', 'label' => 'Updates', 'page' => 'system_tools', 'tab' => 'updates', 'color' => '#6B46C1'],
     ['icon' => 'fa-key', 'label' => 'API Keys', 'page' => 'system_tools', 'tab' => 'api_keys', 'color' => '#10B981'],
     ['icon' => 'fa-video', 'label' => 'NDI Cameras', 'page' => 'system_tools', 'tab' => 'ndi_cameras', 'color' => '#3B82F6'],
-    ['icon' => 'fa-chess-board', 'label' => 'Game Plan', 'page' => 'system_tools', 'tab' => 'gameplan', 'color' => '#EF4444'],
+    ['icon' => 'fa-chess-board', 'label' => 'Game Plan', 'page' => 'gameplan_settings', 'color' => '#EF4444'],
 ];
 ?>
 <style>
