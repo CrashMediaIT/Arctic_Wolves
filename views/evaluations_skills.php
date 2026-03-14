@@ -1111,7 +1111,7 @@ if ($eval_id && $evaluation) {
                         <div class="category-header">
                             <i class="fas fa-folder"></i> <?= htmlspecialchars($category['name']) ?>
                             <?php if ($category['description']): ?>
-                                <span style="font-size: 14px; font-weight: 400; margin-left: 10px; color: var(--text-light);">
+                                <span style="font-size: 14px; font-weight: 400; margin-left: 10px; color: var(--text-dim, #A8A8B8);">
                                     <?= htmlspecialchars($category['description']) ?>
                                 </span>
                             <?php endif; ?>
@@ -1278,10 +1278,10 @@ if ($eval_id && $evaluation) {
                             <div class="comparison-date">
                                 <?= date('M j, Y', strtotime($hist_eval['date'])) ?>
                                 <?php if ($hist_eval['title']): ?>
-                                    <br><small style="color: var(--text-light);"><?= htmlspecialchars($hist_eval['title']) ?></small>
+                                    <br><small style="color: var(--text-dim, #A8A8B8);"><?= htmlspecialchars($hist_eval['title']) ?></small>
                                 <?php endif; ?>
                             </div>
-                            <div style="font-size: 12px; color: var(--text-light); margin-top: 10px;">
+                            <div style="font-size: 12px; color: var(--text-dim, #A8A8B8); margin-top: 10px;">
                                 <?php
                                 $comparison_count = 0;
                                 foreach ($categories as $category):
@@ -1351,22 +1351,58 @@ if ($eval_id && $evaluation) {
                 <?php endif; ?>
             </div>
         </div>
+
+        <!-- Summary Stats -->
+        <?php if (!empty($evaluations_list)): ?>
+        <div class="eval-stats-grid">
+            <div class="eval-stat-card">
+                <div class="eval-stat-icon purple"><i class="fas fa-clipboard-list"></i></div>
+                <div class="eval-stat-info">
+                    <span class="eval-stat-value"><?= $evalStats['total'] ?></span>
+                    <span class="eval-stat-label">Total Evaluations</span>
+                </div>
+            </div>
+            <div class="eval-stat-card">
+                <div class="eval-stat-icon green"><i class="fas fa-check-circle"></i></div>
+                <div class="eval-stat-info">
+                    <span class="eval-stat-value"><?= $evalStats['completed'] ?></span>
+                    <span class="eval-stat-label">Completed</span>
+                </div>
+            </div>
+            <div class="eval-stat-card">
+                <div class="eval-stat-icon yellow"><i class="fas fa-edit"></i></div>
+                <div class="eval-stat-info">
+                    <span class="eval-stat-value"><?= $evalStats['draft'] ?></span>
+                    <span class="eval-stat-label">In Progress</span>
+                </div>
+            </div>
+            <div class="eval-stat-card">
+                <div class="eval-stat-icon blue"><i class="fas fa-chart-line"></i></div>
+                <div class="eval-stat-info">
+                    <span class="eval-stat-value"><?= $evalStats['avg_completion'] ?>%</span>
+                    <span class="eval-stat-label">Avg Completion</span>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
         
         <?php if (empty($evaluations_list)): ?>
             <div class="empty-state">
                 <i class="fas fa-clipboard-check"></i>
-                <h2 style="font-size: 24px; color: #fff; margin-bottom: 10px;">No Evaluations</h2>
-                <p style="color: #64748b;">
+                <h2>No Evaluations Yet</h2>
+                <p>
                     <?php if ($isAnyCoach): ?>
-                        Create your first skills evaluation to get started
+                        Create your first skills evaluation to start tracking athlete development and progress.
                     <?php else: ?>
-                        Your coach hasn't created any skills evaluations yet
+                        Your coach hasn't created any skills evaluations yet. Check back later for your performance assessments.
                     <?php endif; ?>
                 </p>
             </div>
         <?php else: ?>
             <div class="evaluations-grid">
-                <?php foreach ($evaluations_list as $eval): ?>
+                <?php foreach ($evaluations_list as $eval):
+                    $pct = $eval['total_scores'] > 0 ? round($eval['completed_scores'] / $eval['total_scores'] * 100) : 0;
+                ?>
                     <div class="eval-card" onclick="window.location='?page=evaluations_skills&eval_id=<?= $eval['id'] ?><?= $isAnyCoach && $viewing_athlete_id != $current_user_id ? '&athlete_id=' . $viewing_athlete_id : '' ?>'">
                         <div class="eval-card-header">
                             <div>
@@ -1374,22 +1410,23 @@ if ($eval_id && $evaluation) {
                                     <?= $eval['title'] ? htmlspecialchars($eval['title']) : 'Skills Evaluation' ?>
                                 </div>
                                 <div class="eval-card-date">
-                                    <?= date('F j, Y', strtotime($eval['evaluation_date'])) ?>
+                                    <i class="fas fa-calendar-alt"></i> <?= date('F j, Y', strtotime($eval['evaluation_date'])) ?>
                                 </div>
                             </div>
                             <span class="eval-status status-<?= $eval['status'] ?>">
                                 <?= $eval['status'] ?>
                             </span>
                         </div>
-                        <div style="font-size: 14px; color: var(--text-light); margin-top: 10px;">
-                            Created by <?= htmlspecialchars(trim(($eval['creator_first_name'] ?? '') . ' ' . ($eval['creator_last_name'] ?? ''))) ?>
+                        <div class="eval-card-meta">
+                            <i class="fas fa-user"></i> Created by <?= htmlspecialchars(trim(($eval['creator_first_name'] ?? '') . ' ' . ($eval['creator_last_name'] ?? ''))) ?>
                         </div>
                         <div class="eval-card-progress">
-                            <div class="progress-text">
-                                <?= $eval['completed_scores'] ?> / <?= $eval['total_scores'] ?> skills scored
+                            <div class="progress-row">
+                                <span class="progress-text"><?= $eval['completed_scores'] ?> / <?= $eval['total_scores'] ?> skills scored</span>
+                                <span class="progress-pct"><?= $pct ?>%</span>
                             </div>
                             <div class="progress-bar">
-                                <div class="progress-fill" style="width: <?= $eval['total_scores'] > 0 ? ($eval['completed_scores'] / $eval['total_scores'] * 100) : 0 ?>%"></div>
+                                <div class="progress-fill" style="width: <?= $pct ?>%"></div>
                             </div>
                         </div>
                     </div>
@@ -1664,7 +1701,7 @@ async function generateShareLink(evalId) {
         if (data.success) {
             const content = document.getElementById('shareLinkContent');
             content.innerHTML = `
-                <p style="color: var(--text-light); margin-bottom: 12px;">
+                <p style="color: var(--text-dim, #A8A8B8); margin-bottom: 12px;">
                     Share this link to allow external viewing of the evaluation (public notes only).
                 </p>
                 <div class="share-link-display">
