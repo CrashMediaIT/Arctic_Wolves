@@ -84,8 +84,8 @@ $tokenUrl = "https://login.microsoftonline.com/{$tenantId}/oauth2/v2.0/token";
 // Scope must match the authorization request (SMTP or Calendar).
 // Include openid so the response contains an id_token with the user's email.
 $scope = $type === 'smtp'
-    ? 'https://outlook.office365.com/SMTP.Send offline_access openid'
-    : 'https://graph.microsoft.com/Calendars.ReadWrite offline_access openid';
+    ? 'https://outlook.office365.com/SMTP.Send offline_access openid email profile'
+    : 'https://graph.microsoft.com/Calendars.ReadWrite offline_access openid email profile';
 
 $postData = http_build_query([
     'client_id'     => $clientId,
@@ -124,7 +124,10 @@ $refreshToken = $tokenData['refresh_token'] ?? '';
 $expiresIn    = (int)($tokenData['expires_in'] ?? 3600);
 $expiresAt    = time() + $expiresIn;
 
-// Decode id_token to get the signed-in email
+// Decode id_token to get the signed-in email.
+// The 'email' and 'profile' OIDC scopes (requested alongside 'openid') ensure
+// the id_token contains 'preferred_username' and/or 'email' claims.
+// See: https://learn.microsoft.com/en-us/entra/identity-platform/scopes-oidc
 $connectedEmail = '';
 if (!empty($tokenData['id_token'])) {
     $parts = explode('.', $tokenData['id_token']);
@@ -133,6 +136,19 @@ if (!empty($tokenData['id_token'])) {
         $payload = json_decode(base64_decode($padded), true);
         $connectedEmail = $payload['preferred_username'] ?? $payload['email'] ?? $payload['upn'] ?? '';
     }
+}
+
+// The mailbox email is required for XOAUTH2 SMTP authentication and for
+// identifying the calendar owner.  Never store tokens without it — doing so
+// leaves the system in a broken state where OAuth appears connected but email
+// sending fails.
+// See: https://learn.microsoft.com/en-us/exchange/client-developer/legacy-protocols/how-to-authenticate-an-imap-pop-smtp-application-by-using-oauth
+if (empty($connectedEmail)) {
+    $dest = $type === 'smtp'
+        ? 'dashboard.php?page=system_tools&tab=smtp&oauth_error='
+        : 'dashboard.php?page=coach_calendar&oauth_error=';
+    header('Location: ' . $dest . urlencode('Could not determine the mailbox email address from Microsoft. Please ensure the Azure app has the openid, email, and profile permissions and try again.'));
+    exit;
 }
 
 // ── Persist tokens ────────────────────────────────────────────────────────────
@@ -152,9 +168,7 @@ if ($type === 'smtp') {
     if (!empty($encRefresh)) {
         $upsert->execute(['office365_smtp_refresh_token', $encRefresh, $encRefresh]);
     }
-    if (!empty($connectedEmail)) {
-        $upsert->execute(['office365_smtp_connected_email', $connectedEmail, $connectedEmail]);
-    }
+    $upsert->execute(['office365_smtp_connected_email', $connectedEmail, $connectedEmail]);
 
     Auditor::log($pdo, $userId, 'create', 'system_settings', null, [
         'action' => 'office365_smtp_connected',

@@ -625,15 +625,22 @@ foreach ($url_keys as $uk) {
                         </div>
                         <?php else: ?>
                         <!-- OAuth is connected: show authenticated account instead of basic auth -->
+                        <?php if (empty($o365ConnectedEmail)): ?>
+                        <div class="alert alert-warning" style="margin-bottom:12px;">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            OAuth is connected but the mailbox email was not captured. Please <strong>disconnect and reconnect</strong> Office 365 below to fix this.
+                        </div>
+                        <?php else: ?>
                         <div class="setting-item">
                             <div class="setting-info">
                                 <h4>Authenticated Account</h4>
                                 <p>Emails are sent via Office 365 OAuth (XOAUTH2) using this account</p>
                             </div>
                             <input type="text" class="form-input" disabled
-                                   value="<?php echo $o365ConnectedEmail ?: '(OAuth connected)'; ?>"
+                                   value="<?php echo $o365ConnectedEmail; ?>"
                                    style="background:var(--card-bg,#16161F);opacity:.8;">
                         </div>
+                        <?php endif; ?>
                         <?php endif; ?>
                         <div class="setting-item">
                             <div class="setting-info">

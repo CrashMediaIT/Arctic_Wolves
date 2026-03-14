@@ -52,8 +52,8 @@ test.describe('OAuth SMTP - mailer.php fixes', () => {
     expect(content).toContain('$headers .= "Sender: $defaultSender\\r\\n"');
   });
 
-  test('refresh token scope includes openid', () => {
-    expect(content).toContain("'scope'         => 'https://outlook.office365.com/SMTP.Send offline_access openid'");
+  test('refresh token scope includes openid email profile', () => {
+    expect(content).toContain("'scope'         => 'https://outlook.office365.com/SMTP.Send offline_access openid email profile'");
   });
 });
 
@@ -108,6 +108,11 @@ test.describe('OAuth SMTP - admin_system_tools.php UI changes', () => {
     expect(smtpPassIdx).toBeGreaterThan(notConnectedIdx);
     expect(smtpPassIdx).toBeLessThan(elseIdx);
   });
+
+  test('shows reconnect warning when OAuth connected but email is missing', () => {
+    expect(content).toContain('if (empty($o365ConnectedEmail))');
+    expect(content).toContain('disconnect and reconnect');
+  });
 });
 
 test.describe('OAuth SMTP - process_settings.php scope fixes', () => {
@@ -117,12 +122,12 @@ test.describe('OAuth SMTP - process_settings.php scope fixes', () => {
     content = readFile('process_settings.php');
   });
 
-  test('SMTP OAuth authorization scope includes openid', () => {
-    expect(content).toContain("'scope'         => 'https://outlook.office365.com/SMTP.Send offline_access openid'");
+  test('SMTP OAuth authorization scope includes openid email profile', () => {
+    expect(content).toContain("'scope'         => 'https://outlook.office365.com/SMTP.Send offline_access openid email profile'");
   });
 
-  test('Calendar OAuth authorization scope includes openid', () => {
-    expect(content).toContain("'scope'         => 'https://graph.microsoft.com/Calendars.ReadWrite offline_access openid'");
+  test('Calendar OAuth authorization scope includes openid email profile', () => {
+    expect(content).toContain("'scope'         => 'https://graph.microsoft.com/Calendars.ReadWrite offline_access openid email profile'");
   });
 });
 
@@ -138,16 +143,35 @@ test.describe('OAuth SMTP - oauth_office365_callback.php token exchange', () => 
     expect(content).toContain("'scope'         => $scope,");
   });
 
-  test('SMTP scope for token exchange includes SMTP.Send and openid', () => {
-    expect(content).toContain("'https://outlook.office365.com/SMTP.Send offline_access openid'");
+  test('SMTP scope for token exchange includes SMTP.Send openid email profile', () => {
+    expect(content).toContain("'https://outlook.office365.com/SMTP.Send offline_access openid email profile'");
   });
 
-  test('Calendar scope for token exchange includes Calendars.ReadWrite and openid', () => {
-    expect(content).toContain("'https://graph.microsoft.com/Calendars.ReadWrite offline_access openid'");
+  test('Calendar scope for token exchange includes Calendars.ReadWrite openid email profile', () => {
+    expect(content).toContain("'https://graph.microsoft.com/Calendars.ReadWrite offline_access openid email profile'");
   });
 
   test('scope is determined based on OAuth type (smtp vs calendar)', () => {
     // Verify the scope selection is based on the OAuth type
     expect(content).toContain("$scope = $type === 'smtp'");
+  });
+
+  test('connection fails if mailbox email cannot be extracted', () => {
+    // Empty connectedEmail must abort before storing tokens
+    expect(content).toContain("if (empty($connectedEmail))");
+    // Should redirect with error, not silently continue
+    expect(content).toContain("Could not determine the mailbox email address from Microsoft");
+  });
+
+  test('SMTP tokens are never stored without the connected email', () => {
+    // The connected_email upsert must NOT be inside an if(!empty()) guard
+    // It should be unconditional since we already validated above
+    const smtpBlock = content.substring(
+      content.indexOf("if ($type === 'smtp')"),
+      content.indexOf("// Calendar:")
+    );
+    // The email storage should be unconditional (no if-guard around it)
+    expect(smtpBlock).toContain("$upsert->execute(['office365_smtp_connected_email', $connectedEmail, $connectedEmail]);");
+    expect(smtpBlock).not.toMatch(/if\s*\(\s*!empty\(\$connectedEmail\)\s*\)\s*\{\s*\n\s*\$upsert->execute\(\['office365_smtp_connected_email'/);
   });
 });

@@ -197,7 +197,7 @@ function getOffice365SmtpAccessToken($config) {
         'refresh_token' => $refreshToken,
         'redirect_uri'  => $redirectUri,
         'grant_type'    => 'refresh_token',
-        'scope'         => 'https://outlook.office365.com/SMTP.Send offline_access openid',
+        'scope'         => 'https://outlook.office365.com/SMTP.Send offline_access openid email profile',
     ]);
 
     $ctx = stream_context_create([
