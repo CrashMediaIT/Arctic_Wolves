@@ -31,6 +31,9 @@ class SmtpMailer {
         if (!empty($pass) && function_exists('decryptCredential')) {
             $pass = decryptCredential($pass);
         }
+
+        // Check for Office 365 OAuth tokens (takes priority over password auth)
+        $oauthToken = getOffice365SmtpAccessToken($config);
         
         // 2. DETERMINE PROTOCOL
         // SSL connects securely immediately. TLS starts plain and upgrades later.
@@ -55,8 +58,14 @@ class SmtpMailer {
             $this->sendCommand("EHLO " . $_SERVER['SERVER_NAME']);
         }
 
-        // 6. AUTHENTICATION (Manual Step-by-Step Sync)
-        if (!empty($user) && !empty($pass)) {
+        // 6. AUTHENTICATION
+        if (!empty($oauthToken) && !empty($user)) {
+            // XOAUTH2 (Office 365 OAuth) — preferred when tokens are available
+            $xoauth2 = base64_encode("user={$user}\x01auth=Bearer {$oauthToken}\x01\x01");
+            fputs($this->conn, "AUTH XOAUTH2 {$xoauth2}\r\n");
+            $this->expectCode(235, "Office 365 OAuth Authentication Failed");
+        } elseif (!empty($user) && !empty($pass)) {
+            // Traditional AUTH LOGIN (password-based)
             fputs($this->conn, "AUTH LOGIN\r\n");
             $this->expectCode(334, "Auth Request Failed");
 
@@ -114,6 +123,98 @@ class SmtpMailer {
 }
 
 // === HELPER FUNCTIONS ===
+
+/**
+ * Retrieve (and if necessary refresh) the Office 365 OAuth access token for SMTP.
+ * Returns an empty string when OAuth tokens are not configured.
+ */
+function getOffice365SmtpAccessToken($config) {
+    // Only attempt OAuth when tokens are stored
+    if (empty($config['office365_smtp_access_token'])) {
+        return '';
+    }
+
+    $expiresAt = (int)($config['office365_smtp_expires_at'] ?? 0);
+
+    // Use the stored token when it still has more than 5 minutes of life
+    if ($expiresAt > time() + 300) {
+        $token = function_exists('decryptCredential')
+            ? decryptCredential($config['office365_smtp_access_token'])
+            : $config['office365_smtp_access_token'];
+        if (!empty($token)) {
+            return $token;
+        }
+    }
+
+    // Token is expired (or about to) – attempt a refresh
+    if (empty($config['office365_smtp_refresh_token'])) {
+        return '';
+    }
+
+    $refreshToken = function_exists('decryptCredential')
+        ? decryptCredential($config['office365_smtp_refresh_token'])
+        : $config['office365_smtp_refresh_token'];
+
+    $clientId     = $config['office365_client_id']     ?? '';
+    $clientSecret = !empty($config['office365_client_secret'])
+        ? (function_exists('decryptCredential') ? decryptCredential($config['office365_client_secret']) : $config['office365_client_secret'])
+        : '';
+    $tenantId     = $config['office365_tenant_id']     ?? 'common';
+
+    if (empty($clientId) || empty($clientSecret) || empty($refreshToken)) {
+        return '';
+    }
+
+    $scheme      = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $redirectUri = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/oauth_office365_callback.php';
+
+    $postData = http_build_query([
+        'client_id'     => $clientId,
+        'client_secret' => $clientSecret,
+        'refresh_token' => $refreshToken,
+        'redirect_uri'  => $redirectUri,
+        'grant_type'    => 'refresh_token',
+        'scope'         => 'https://outlook.office365.com/SMTP.Send offline_access',
+    ]);
+
+    $ctx = stream_context_create([
+        'http' => [
+            'method'        => 'POST',
+            'header'        => "Content-Type: application/x-www-form-urlencoded\r\n",
+            'content'       => $postData,
+            'ignore_errors' => true,
+            'timeout'       => 10,
+        ],
+        'ssl' => ['verify_peer' => true, 'verify_peer_name' => true],
+    ]);
+
+    $tokenUrl  = "https://login.microsoftonline.com/{$tenantId}/oauth2/v2.0/token";
+    $response  = @file_get_contents($tokenUrl, false, $ctx);
+    $tokenData = $response ? json_decode($response, true) : [];
+
+    if (empty($tokenData['access_token'])) {
+        return '';
+    }
+
+    // Persist the refreshed tokens back to DB
+    try {
+        global $pdo;
+        if (isset($pdo) && $pdo) {
+            $newAccess    = $tokenData['access_token'];
+            $newExpiresAt = time() + (int)($tokenData['expires_in'] ?? 3600);
+            $encAccess    = function_exists('encryptPassword') ? encryptPassword($newAccess) : $newAccess;
+            $upsert       = $pdo->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES (?,?) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value)");
+            $upsert->execute(['office365_smtp_access_token', $encAccess]);
+            $upsert->execute(['office365_smtp_expires_at',   $newExpiresAt]);
+            if (!empty($tokenData['refresh_token'])) {
+                $encRefresh = function_exists('encryptPassword') ? encryptPassword($tokenData['refresh_token']) : $tokenData['refresh_token'];
+                $upsert->execute(['office365_smtp_refresh_token', $encRefresh]);
+            }
+        }
+    } catch (Exception $e) { /* non-fatal */ }
+
+    return $tokenData['access_token'];
+}
 
 function getEmailConfig() {
     global $pdo;

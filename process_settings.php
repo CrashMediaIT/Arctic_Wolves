@@ -19,7 +19,7 @@ $action = $_POST['action'] ?? '';
 $user_id = $_SESSION['user_id'] ?? 0;
 
 // Determine if we should return JSON or redirect
-$json_actions = ['test_smtp', 'test_github', 'check_updates', 'apply_updates', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library', 'test_docuseal', 'test_stallion', 'test_google_maps', 'create_restriction', 'remove_restriction', 'add_blocklist_entry', 'remove_blocklist_entry', 'add_pos_whitelist_entry', 'remove_pos_whitelist_entry', 'toggle_pos_whitelist_entry', 'get_ndi_camera', 'update_ndi_camera', 'delete_ndi_camera', 'toggle_ndi_camera', 'get_cluster_status', 'test_cluster_node', 'add_cluster_node', 'remove_cluster_node', 'save_cluster_settings', 'test_paperless', 'test_rustfs', 'test_upload_api'];
+$json_actions = ['test_smtp', 'test_github', 'check_updates', 'apply_updates', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library', 'test_docuseal', 'test_stallion', 'test_google_maps', 'create_restriction', 'remove_restriction', 'add_blocklist_entry', 'remove_blocklist_entry', 'add_pos_whitelist_entry', 'remove_pos_whitelist_entry', 'toggle_pos_whitelist_entry', 'get_ndi_camera', 'update_ndi_camera', 'delete_ndi_camera', 'toggle_ndi_camera', 'get_cluster_status', 'test_cluster_node', 'add_cluster_node', 'remove_cluster_node', 'save_cluster_settings', 'test_paperless', 'test_rustfs', 'test_upload_api', 'sync_office365_calendar'];
 $is_json = in_array($action, $json_actions);
 
 if ($is_json) {
@@ -162,7 +162,12 @@ try {
             $smtp_pass = trim($_POST['smtp_pass']);
             $smtp_from_email = trim($_POST['smtp_from_email']);
             $smtp_from_name = trim($_POST['smtp_from_name']);
-            
+
+            // Office365 Azure app config (saved alongside SMTP settings)
+            $o365_client_id  = trim($_POST['office365_client_id']  ?? '');
+            $o365_tenant_id  = trim($_POST['office365_tenant_id']  ?? '');
+            $o365_client_sec = trim($_POST['office365_client_secret'] ?? '');
+
             updateSetting($pdo, 'smtp_host', $smtp_host);
             updateSetting($pdo, 'smtp_port', $smtp_port);
             updateSetting($pdo, 'smtp_encryption', $smtp_encryption);
@@ -172,17 +177,227 @@ try {
             }
             updateSetting($pdo, 'smtp_from_email', $smtp_from_email);
             updateSetting($pdo, 'smtp_from_name', $smtp_from_name);
-            
+
+            // Save Azure app config (client secret only if a new value was provided)
+            if (!empty($o365_client_id))  updateSetting($pdo, 'office365_client_id',  $o365_client_id);
+            if (!empty($o365_tenant_id))  updateSetting($pdo, 'office365_tenant_id',  $o365_tenant_id);
+            if (!empty($o365_client_sec)) updateSetting($pdo, 'office365_client_secret', encryptPassword($o365_client_sec));
+
             Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
                 'action' => 'update_smtp',
                 'settings' => ['smtp_host' => $smtp_host, 'smtp_port' => $smtp_port, 'smtp_encryption' => $smtp_encryption, 'smtp_user' => $smtp_user, 'smtp_from_email' => $smtp_from_email, 'smtp_from_name' => $smtp_from_name]
             ]);
-            
+
             // Redirect back to the appropriate page
             $redirect_page = isset($_POST['redirect_page']) ? $_POST['redirect_page'] : 'system_tools';
             header('Location: dashboard.php?page=system_tools&tab=smtp&success=1');
             exit;
-            
+
+        // ── Office 365 OAuth: initiate SMTP authorization ─────────────────────
+        case 'initiate_office365_smtp_oauth':
+            if ($user_id === 'admin' || $_SESSION['user_role'] === 'admin') { /* admin already checked at top */ }
+            $state = bin2hex(random_bytes(16));
+            $_SESSION['office365_oauth_state'] = $state;
+            $_SESSION['office365_oauth_type']  = 'smtp';
+
+            $clientId = trim($pdo->query("SELECT setting_value FROM system_settings WHERE setting_key='office365_client_id'")->fetchColumn() ?: '');
+            $tenantId = trim($pdo->query("SELECT setting_value FROM system_settings WHERE setting_key='office365_tenant_id'")->fetchColumn() ?: 'common');
+
+            $scheme      = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+            $redirectUri = $scheme . '://' . $_SERVER['HTTP_HOST'] . '/oauth_office365_callback.php';
+
+            $params = http_build_query([
+                'client_id'     => $clientId,
+                'response_type' => 'code',
+                'redirect_uri'  => $redirectUri,
+                'scope'         => 'https://outlook.office365.com/SMTP.Send offline_access',
+                'state'         => $state,
+                'prompt'        => 'consent',
+            ]);
+            header('Location: https://login.microsoftonline.com/' . urlencode($tenantId) . '/oauth2/v2.0/authorize?' . $params);
+            exit;
+
+        // ── Office 365 OAuth: disconnect SMTP ────────────────────────────────
+        case 'disconnect_office365_smtp':
+            $keys = ['office365_smtp_access_token', 'office365_smtp_refresh_token',
+                     'office365_smtp_expires_at', 'office365_smtp_connected_email'];
+            $placeholders = implode(',', array_fill(0, count($keys), '?'));
+            $pdo->prepare("DELETE FROM system_settings WHERE setting_key IN ($placeholders)")->execute($keys);
+            Auditor::log($pdo, $user_id, 'delete', 'system_settings', null, ['action' => 'office365_smtp_disconnected']);
+            header('Location: dashboard.php?page=system_tools&tab=smtp&success=1');
+            exit;
+
+        // ── Office 365 OAuth: initiate Calendar authorization ─────────────────
+        case 'initiate_office365_calendar_oauth':
+            $allowedCalRoles = ['admin', 'coach', 'coach_plus', 'health_coach', 'team_coach'];
+            if (!in_array($_SESSION['user_role'] ?? '', $allowedCalRoles)) {
+                header('Location: dashboard.php?page=coach_calendar&error=Access+denied');
+                exit;
+            }
+            $state = bin2hex(random_bytes(16));
+            $_SESSION['office365_oauth_state'] = $state;
+            $_SESSION['office365_oauth_type']  = 'calendar';
+
+            $clientId = trim($pdo->query("SELECT setting_value FROM system_settings WHERE setting_key='office365_client_id'")->fetchColumn() ?: '');
+            $tenantId = trim($pdo->query("SELECT setting_value FROM system_settings WHERE setting_key='office365_tenant_id'")->fetchColumn() ?: 'common');
+
+            $scheme      = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+            $redirectUri = $scheme . '://' . $_SERVER['HTTP_HOST'] . '/oauth_office365_callback.php';
+
+            $params = http_build_query([
+                'client_id'     => $clientId,
+                'response_type' => 'code',
+                'redirect_uri'  => $redirectUri,
+                'scope'         => 'https://graph.microsoft.com/Calendars.ReadWrite offline_access',
+                'state'         => $state,
+                'prompt'        => 'consent',
+            ]);
+            header('Location: https://login.microsoftonline.com/' . urlencode($tenantId) . '/oauth2/v2.0/authorize?' . $params);
+            exit;
+
+        // ── Office 365 OAuth: disconnect Calendar ────────────────────────────
+        case 'disconnect_office365_calendar':
+            $allowedCalRoles = ['admin', 'coach', 'coach_plus', 'health_coach', 'team_coach'];
+            if (!in_array($_SESSION['user_role'] ?? '', $allowedCalRoles)) {
+                http_response_code(403);
+                exit;
+            }
+            $pdo->prepare("DELETE FROM user_oauth_tokens WHERE user_id = ? AND provider = 'office365_calendar'")->execute([$user_id]);
+            Auditor::log($pdo, $user_id, 'delete', 'user_oauth_tokens', null, ['action' => 'office365_calendar_disconnected']);
+            header('Location: dashboard.php?page=coach_calendar&success=1');
+            exit;
+
+        // ── Office 365 Calendar: push sessions to Microsoft Calendar ─────────
+        case 'sync_office365_calendar':
+            header('Content-Type: application/json');
+            $allowedCalRoles = ['admin', 'coach', 'coach_plus', 'health_coach', 'team_coach'];
+            if (!in_array($_SESSION['user_role'] ?? '', $allowedCalRoles)) {
+                echo json_encode(['success' => false, 'message' => 'Access denied']);
+                exit;
+            }
+
+            // Load user's calendar token
+            $tokRow = $pdo->prepare("SELECT * FROM user_oauth_tokens WHERE user_id = ? AND provider = 'office365_calendar' LIMIT 1");
+            $tokRow->execute([$user_id]);
+            $tokData = $tokRow->fetch(PDO::FETCH_ASSOC);
+
+            if (!$tokData) {
+                echo json_encode(['success' => false, 'message' => 'Office 365 calendar not connected']);
+                exit;
+            }
+
+            // Refresh token if expiring within 5 minutes
+            $accessToken = decryptCredential($tokData['access_token']);
+            $expiresAt   = strtotime($tokData['expires_at'] ?? '');
+            if ($expiresAt && $expiresAt < time() + 300) {
+                $refreshToken = decryptCredential($tokData['refresh_token'] ?? '');
+                if (!empty($refreshToken)) {
+                    $clientId     = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key='office365_client_id'")->fetchColumn() ?: '';
+                    $clientSecret = decryptCredential($pdo->query("SELECT setting_value FROM system_settings WHERE setting_key='office365_client_secret'")->fetchColumn() ?: '');
+                    $tenantId     = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key='office365_tenant_id'")->fetchColumn() ?: 'common';
+
+                    $scheme      = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+                    $redirectUri = $scheme . '://' . $_SERVER['HTTP_HOST'] . '/oauth_office365_callback.php';
+
+                    $postData = http_build_query([
+                        'client_id'     => $clientId,
+                        'client_secret' => $clientSecret,
+                        'refresh_token' => $refreshToken,
+                        'redirect_uri'  => $redirectUri,
+                        'grant_type'    => 'refresh_token',
+                    ]);
+                    $ctx = stream_context_create([
+                        'http' => ['method' => 'POST', 'header' => "Content-Type: application/x-www-form-urlencoded\r\n", 'content' => $postData, 'ignore_errors' => true, 'timeout' => 15],
+                        'ssl'  => ['verify_peer' => true, 'verify_peer_name' => true],
+                    ]);
+                    $tokenUrl  = "https://login.microsoftonline.com/{$tenantId}/oauth2/v2.0/token";
+                    $resp      = @file_get_contents($tokenUrl, false, $ctx);
+                    $newTokens = $resp ? json_decode($resp, true) : [];
+                    if (!empty($newTokens['access_token'])) {
+                        $accessToken    = $newTokens['access_token'];
+                        $newExpiry      = time() + (int)($newTokens['expires_in'] ?? 3600);
+                        $encNewAccess   = encryptPassword($accessToken);
+                        $encNewRefresh  = !empty($newTokens['refresh_token']) ? encryptPassword($newTokens['refresh_token']) : $tokData['refresh_token'];
+                        $pdo->prepare("UPDATE user_oauth_tokens SET access_token=?, refresh_token=?, expires_at=?, updated_at=NOW() WHERE id=?")
+                            ->execute([$encNewAccess, $encNewRefresh, date('Y-m-d H:i:s', $newExpiry), $tokData['id']]);
+                    }
+                }
+            }
+
+            if (empty($accessToken)) {
+                echo json_encode(['success' => false, 'message' => 'Could not obtain a valid access token – please reconnect Office 365']);
+                exit;
+            }
+
+            // Fetch upcoming sessions for this coach
+            $sessStmt = $pdo->prepare("
+                SELECT s.id, s.title, s.session_date, s.session_time, s.duration_minutes,
+                       s.description, l.name AS location_name
+                FROM sessions s
+                LEFT JOIN locations l ON s.location_id = l.id
+                WHERE (s.coach_id = ? OR s.id IN (
+                    SELECT session_id FROM session_coaches WHERE user_id = ?
+                ))
+                AND s.session_date >= CURDATE()
+                ORDER BY s.session_date, s.session_time
+                LIMIT 100
+            ");
+            $sessStmt->execute([$user_id, $user_id]);
+            $sessions = $sessStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $pushed = 0;
+            $errors = [];
+            foreach ($sessions as $session) {
+                $dateStr  = $session['session_date'];
+                $timeStr  = $session['session_time'] ?: '00:00:00';
+                $duration = (int)($session['duration_minutes'] ?? 60);
+                $startDt  = date('Y-m-d\TH:i:s', strtotime($dateStr . ' ' . $timeStr));
+                $endDt    = date('Y-m-d\TH:i:s', strtotime($dateStr . ' ' . $timeStr) + $duration * 60);
+                $title    = $session['title'] ?: 'Training Session';
+
+                $eventBody = json_encode([
+                    'subject' => $title,
+                    'body'    => ['contentType' => 'text', 'content' => $session['description'] ?? ''],
+                    'start'   => ['dateTime' => $startDt, 'timeZone' => 'UTC'],
+                    'end'     => ['dateTime' => $endDt,   'timeZone' => 'UTC'],
+                    'location'=> ['displayName' => $session['location_name'] ?? ''],
+                    'categories' => ['Arctic Wolves'],
+                ]);
+
+                $graphCtx = stream_context_create([
+                    'http' => [
+                        'method'        => 'POST',
+                        'header'        => "Authorization: Bearer {$accessToken}\r\nContent-Type: application/json\r\nContent-Length: " . strlen($eventBody) . "\r\n",
+                        'content'       => $eventBody,
+                        'ignore_errors' => true,
+                        'timeout'       => 15,
+                    ],
+                    'ssl' => ['verify_peer' => true, 'verify_peer_name' => true],
+                ]);
+                $graphResp = @file_get_contents('https://graph.microsoft.com/v1.0/me/events', false, $graphCtx);
+                $graphData = $graphResp ? json_decode($graphResp, true) : [];
+
+                if (!empty($graphData['id'])) {
+                    $pushed++;
+                } else {
+                    $errMsg = $graphData['error']['message'] ?? 'Unknown error';
+                    $errors[] = "Session #{$session['id']}: {$errMsg}";
+                }
+            }
+
+            Auditor::log($pdo, $user_id, 'create', 'user_oauth_tokens', null, [
+                'action'  => 'office365_calendar_sync',
+                'pushed'  => $pushed,
+                'total'   => count($sessions),
+            ]);
+
+            if (!empty($errors) && $pushed === 0) {
+                echo json_encode(['success' => false, 'message' => 'Sync failed: ' . $errors[0]]);
+            } else {
+                echo json_encode(['success' => true, 'message' => "Synced {$pushed} of " . count($sessions) . " sessions to your Office 365 calendar"]);
+            }
+            exit;
+
         case 'test_smtp':
             $test_email = trim($_POST['test_email']);
             require_once __DIR__ . '/mailer.php';

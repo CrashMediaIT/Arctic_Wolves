@@ -4925,3 +4925,20 @@ ALTER TABLE `evaluation_scores`
 ALTER TABLE `evaluation_scores`
   ADD INDEX IF NOT EXISTS `idx_eval_scores_evaluation_id` (`evaluation_id`);
 
+-- Per-user OAuth tokens (e.g. Office365 calendar sync per coach)
+CREATE TABLE IF NOT EXISTS `user_oauth_tokens` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT NOT NULL,
+    `provider` VARCHAR(50) NOT NULL COMMENT 'e.g. office365_calendar',
+    `access_token` TEXT NOT NULL,
+    `refresh_token` TEXT DEFAULT NULL,
+    `expires_at` DATETIME DEFAULT NULL,
+    `connected_email` VARCHAR(255) DEFAULT NULL,
+    `scope` VARCHAR(500) DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY `unique_user_provider` (`user_id`, `provider`),
+    INDEX `idx_user_id` (`user_id`),
+    INDEX `idx_provider` (`provider`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+

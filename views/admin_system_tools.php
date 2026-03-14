@@ -171,6 +171,22 @@ foreach ($url_keys as $uk) {
         <button type="button" onclick="this.parentElement.remove()" style="margin-left: auto; background: none; border: none; color: inherit; cursor: pointer; font-size: 18px;">&times;</button>
     </div>
     <?php endif; ?>
+
+    <?php if (isset($_GET['oauth_success'])): ?>
+    <div class="alert alert-success" style="margin-bottom: 24px;">
+        <i class="fab fa-microsoft" style="color:#0078d4;"></i>
+        <span>Office 365 connected successfully!</span>
+        <button type="button" onclick="this.parentElement.remove()" style="margin-left: auto; background: none; border: none; color: inherit; cursor: pointer; font-size: 18px;">&times;</button>
+    </div>
+    <?php endif; ?>
+
+    <?php if (isset($_GET['oauth_error'])): ?>
+    <div class="alert alert-error" style="margin-bottom: 24px;">
+        <i class="fas fa-exclamation-circle"></i>
+        <span>Office 365 authorization failed: <?php echo htmlspecialchars($_GET['oauth_error']); ?></span>
+        <button type="button" onclick="this.parentElement.remove()" style="margin-left: auto; background: none; border: none; color: inherit; cursor: pointer; font-size: 18px;">&times;</button>
+    </div>
+    <?php endif; ?>
     
     <?php if (isset($_GET['error'])): ?>
     <div class="alert alert-error" style="margin-bottom: 24px;">
@@ -542,6 +558,13 @@ foreach ($url_keys as $uk) {
 
     <!-- SMTP Settings Tab -->
     <div class="tab-content <?php echo $activeTab === 'smtp' ? 'active' : ''; ?>" id="smtp-tab">
+        <?php
+        $o365SmtpConnected = !empty($settings['office365_smtp_access_token']);
+        $o365ConnectedEmail = htmlspecialchars($settings['office365_smtp_connected_email'] ?? '');
+        $o365ClientId  = htmlspecialchars($settings['office365_client_id'] ?? '');
+        $o365TenantId  = htmlspecialchars($settings['office365_tenant_id'] ?? '');
+        $o365AppReady  = !empty($settings['office365_client_id']) && !empty($settings['office365_tenant_id']) && !empty($settings['office365_client_secret']);
+        ?>
         <div class="card">
             <div class="card-header">
                 <h3><i class="fas fa-envelope"></i> SMTP Email Settings</h3>
@@ -555,7 +578,7 @@ foreach ($url_keys as $uk) {
                         <div class="setting-item">
                             <div class="setting-info">
                                 <h4>SMTP Host</h4>
-                                <p>Mail server hostname (e.g., smtp.gmail.com)</p>
+                                <p>Mail server hostname (e.g., smtp.gmail.com or smtp.office365.com)</p>
                             </div>
                             <input type="text" name="smtp_host" class="form-input" 
                                    value="<?php echo htmlspecialchars($settings['smtp_host'] ?? ''); ?>"
@@ -617,6 +640,53 @@ foreach ($url_keys as $uk) {
                                    placeholder="noreply@example.com">
                         </div>
                     </div>
+
+                    <!-- Office 365 Azure App Configuration (collapsed by default when already set) -->
+                    <details <?php echo $o365AppReady ? '' : 'open'; ?> style="margin-top:24px;">
+                        <summary style="cursor:pointer;font-weight:600;padding:8px 0;color:var(--text-muted,#A8A8B8);">
+                            <i class="fab fa-microsoft" style="color:#0078d4;"></i>
+                            Office 365 Azure App Configuration
+                            <?php if ($o365AppReady): ?>
+                                <span class="badge badge-success" style="margin-left:8px;font-size:11px;">Configured</span>
+                            <?php endif; ?>
+                        </summary>
+                        <div class="settings-list" style="margin-top:12px;">
+                            <p style="color:var(--text-muted,#A8A8B8);font-size:13px;margin-bottom:12px;">
+                                Register an app in <a href="https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps" target="_blank" rel="noopener" style="color:#0078d4;">Azure Active Directory</a> and add
+                                <code style="background:rgba(255,255,255,.08);padding:1px 5px;border-radius:3px;"><?php
+                                    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+                                    echo htmlspecialchars($scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'yourdomain.com') . '/oauth_office365_callback.php');
+                                ?></code> as a Redirect URI. Grant <em>SMTP.Send</em> and <em>Calendars.ReadWrite</em> delegated permissions.
+                            </p>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4>Client ID</h4>
+                                    <p>Azure app Application (client) ID</p>
+                                </div>
+                                <input type="text" name="office365_client_id" class="form-input"
+                                       value="<?php echo $o365ClientId; ?>"
+                                       placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4>Client Secret</h4>
+                                    <p>Azure app client secret value<?php echo $o365AppReady ? ' (currently set)' : ''; ?></p>
+                                </div>
+                                <input type="password" name="office365_client_secret" class="form-input"
+                                       placeholder="<?php echo $o365AppReady ? 'Leave blank to keep current secret' : 'Enter client secret'; ?>">
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4>Tenant ID</h4>
+                                    <p>Azure Directory (tenant) ID, or <code>common</code> for multi-tenant</p>
+                                </div>
+                                <input type="text" name="office365_tenant_id" class="form-input"
+                                       value="<?php echo $o365TenantId; ?>"
+                                       placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+                            </div>
+                        </div>
+                    </details>
+
                     <div class="form-actions">
                         <button type="button" class="btn btn-secondary" onclick="testSmtpConnection()">
                             <i class="fas fa-vial"></i> Test Connection
@@ -628,7 +698,54 @@ foreach ($url_keys as $uk) {
                 </form>
             </div>
         </div>
+
+        <!-- Office 365 OAuth Connect Card -->
+        <div class="card" style="margin-top:20px;">
+            <div class="card-header">
+                <h3><i class="fab fa-microsoft" style="color:#0078d4;"></i> Office 365 Authentication</h3>
+                <?php if ($o365SmtpConnected): ?>
+                    <span class="badge badge-success"><i class="fas fa-check-circle"></i> Connected</span>
+                <?php else: ?>
+                    <span class="badge badge-secondary">Not connected</span>
+                <?php endif; ?>
+            </div>
+            <div class="card-body">
+                <?php if ($o365SmtpConnected): ?>
+                    <div class="alert alert-success" style="margin-bottom:16px;">
+                        <i class="fas fa-check-circle"></i>
+                        Office 365 OAuth is active<?php echo $o365ConnectedEmail ? " — signed in as <strong>{$o365ConnectedEmail}</strong>" : ''; ?>.
+                        Emails will be sent using XOAUTH2 instead of password authentication.
+                    </div>
+                    <form method="POST" action="process_settings.php" style="display:inline;">
+                        <?php echo csrfTokenInput(); ?>
+                        <input type="hidden" name="action" value="disconnect_office365_smtp">
+                        <button type="submit" class="btn btn-danger" onclick="return confirm('Disconnect Office 365 OAuth? SMTP will fall back to password authentication.')">
+                            <i class="fas fa-unlink"></i> Disconnect Office 365
+                        </button>
+                    </form>
+                <?php else: ?>
+                    <p style="color:var(--text-muted,#A8A8B8);margin-bottom:16px;">
+                        Connect your Office 365 account to send emails via OAuth 2.0 (XOAUTH2) — no stored passwords required.
+                        The authorization covers your entire organization.
+                    </p>
+                    <?php if (!$o365AppReady): ?>
+                        <div class="alert alert-warning" style="margin-bottom:16px;">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            Complete the <strong>Azure App Configuration</strong> above and save before connecting.
+                        </div>
+                    <?php endif; ?>
+                    <form method="POST" action="process_settings.php">
+                        <?php echo csrfTokenInput(); ?>
+                        <input type="hidden" name="action" value="initiate_office365_smtp_oauth">
+                        <button type="submit" class="btn btn-primary" <?php echo $o365AppReady ? '' : 'disabled'; ?>>
+                            <i class="fab fa-microsoft"></i> Connect with Office 365
+                        </button>
+                    </form>
+                <?php endif; ?>
+            </div>
+        </div>
     </div>
+
 
     <!-- RustFS S3 Storage Tab -->
     <div class="tab-content <?php echo $activeTab === 'rustfs' ? 'active' : ''; ?>" id="rustfs-tab">

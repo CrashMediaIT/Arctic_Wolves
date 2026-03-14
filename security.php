@@ -851,6 +851,9 @@ function getEncryptedSettingKeys() {
         'spotify_client_secret',
         'apple_music_token',
         'subsonic_password',
+        'office365_client_secret',
+        'office365_smtp_access_token',
+        'office365_smtp_refresh_token',
     ];
 }
 
