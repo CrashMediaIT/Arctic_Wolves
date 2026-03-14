@@ -358,22 +358,18 @@ try {
                 $pullData = $pullResp ? json_decode($pullResp, true) : [];
 
                 if (!empty($pullData['value']) && is_array($pullData['value'])) {
-                    // Check if o365_event_id column exists on sessions table
-                    $colCheck = $pdo->prepare("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sessions' AND COLUMN_NAME = 'o365_event_id'");
-                    $colCheck->execute();
-                    $hasO365Col = (int)$colCheck->fetchColumn() > 0;
-
-                    if (!$hasO365Col) {
-                        try {
-                            $pdo->exec("ALTER TABLE sessions ADD COLUMN o365_event_id VARCHAR(512) DEFAULT NULL COMMENT 'Office 365 iCalUId for sync dedup'");
-                            $pdo->exec("ALTER TABLE sessions ADD UNIQUE INDEX idx_o365_event_id (o365_event_id)");
-                            $hasO365Col = true;
-                        } catch (PDOException $ae) {
-                            if (strpos($ae->getMessage(), 'Duplicate column') === false && strpos($ae->getMessage(), '42S21') === false) {
-                                $pullErrors[] = 'Could not prepare sessions table for sync: ' . $ae->getMessage();
-                            } else {
-                                $hasO365Col = true;
-                            }
+                    // Ensure o365_event_id column exists (auto-migration, idempotent)
+                    $hasO365Col = true;
+                    try {
+                        $pdo->exec("ALTER TABLE sessions ADD COLUMN o365_event_id VARCHAR(512) DEFAULT NULL COMMENT 'Office 365 iCalUId for sync dedup'");
+                        $pdo->exec("ALTER TABLE sessions ADD UNIQUE INDEX idx_o365_event_id (o365_event_id)");
+                    } catch (PDOException $ae) {
+                        // Column/index already exists — expected on subsequent syncs
+                        if (strpos($ae->getMessage(), 'Duplicate column') === false
+                            && strpos($ae->getMessage(), '42S21') === false
+                            && strpos($ae->getMessage(), 'Duplicate key name') === false) {
+                            $pullErrors[] = 'Could not prepare sessions table for sync: ' . $ae->getMessage();
+                            $hasO365Col = false;
                         }
                     }
 
@@ -403,7 +399,7 @@ try {
                             $endTs    = $endRaw ? strtotime($endRaw) : ($startTs + 3600);
                             $sessDate = date('Y-m-d', $startTs);
                             $sessTime = date('H:i:s', $startTs);
-                            $duration = max(15, round(($endTs - $startTs) / 60));
+                            $duration = max(15, round(($endTs - $startTs) / 60)); // min 15 minutes
 
                             $desc = $o365Event['bodyPreview'] ?? '';
                             $locName = $o365Event['location']['displayName'] ?? '';
