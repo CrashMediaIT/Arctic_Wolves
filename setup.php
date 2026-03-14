@@ -720,6 +720,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $smtp_user = trim($_POST['smtp_user']);
                 $smtp_pass = $_POST['smtp_pass'];
                 $smtp_from = trim($_POST['smtp_from']);
+
+                // Optional Office 365 Azure app config
+                $o365_client_id  = trim($_POST['office365_client_id']  ?? '');
+                $o365_tenant_id  = trim($_POST['office365_tenant_id']  ?? '');
+                $o365_client_sec = $_POST['office365_client_secret']   ?? '';
                 
                 // Encrypt SMTP password before storage
                 require_once __DIR__ . '/security.php';
@@ -738,6 +743,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             foreach ($settings as $setting) {
                 $stmt = $pdo->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?");
                 $stmt->execute([$setting[0], $setting[1], $setting[1]]);
+            }
+
+            // Save optional Office 365 Azure app configuration
+            if (!empty($o365_client_id)) {
+                $stmt = $pdo->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?");
+                $stmt->execute(['office365_client_id', $o365_client_id, $o365_client_id]);
+            }
+            if (!empty($o365_tenant_id)) {
+                $stmt = $pdo->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?");
+                $stmt->execute(['office365_tenant_id', $o365_tenant_id, $o365_tenant_id]);
+            }
+            if (!empty($o365_client_sec)) {
+                require_once __DIR__ . '/security.php';
+                $enc_o365_secret = function_exists('encryptPassword') ? encryptPassword($o365_client_sec) : $o365_client_sec;
+                $stmt = $pdo->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?");
+                $stmt->execute(['office365_client_secret', $enc_o365_secret, $enc_o365_secret]);
             }
             
             // Test SMTP connection (optional)
@@ -1153,6 +1174,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <label>From Email Address</label>
                     <input type="email" name="smtp_from" required>
                 </div>
+
+                <!-- Optional: Office 365 Azure App Configuration -->
+                <details style="margin-top: 24px; margin-bottom: 8px;">
+                    <summary style="cursor: pointer; font-weight: 600; color: #94a3b8; padding: 8px 0; list-style: none; display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-brands fa-microsoft" style="color: #0078d4;"></i>
+                        Office 365 OAuth Configuration <span style="font-weight:400; font-size:12px; margin-left:4px;">(optional)</span>
+                        <i class="fa-solid fa-chevron-down" style="margin-left:auto; font-size:11px;"></i>
+                    </summary>
+                    <div style="padding: 16px 0 4px 0;">
+                        <div class="step-info" style="margin-bottom: 16px;">
+                            <i class="fa-solid fa-circle-info"></i>
+                            Fill these in if you want to use <strong>Office 365 OAuth</strong> to send email (XOAUTH2) and to allow coaches to sync their calendar. You can also configure this later in <em>System Tools → SMTP</em>.<br>
+                            Register an app in <a href="https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps" target="_blank" rel="noopener" style="color:#0078d4;">Azure Active Directory</a> and grant <em>SMTP.Send</em> and <em>Calendars.ReadWrite</em> delegated permissions.
+                        </div>
+                        <div class="form-group">
+                            <label>Azure Client ID <span style="font-weight:400; color:#64748b;">(Application ID)</span></label>
+                            <input type="text" name="office365_client_id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+                        </div>
+                        <div class="form-group">
+                            <label>Azure Client Secret</label>
+                            <div style="position: relative; display: flex; align-items: center;">
+                                <input type="password" name="office365_client_secret" id="o365_secret" placeholder="Enter client secret value" style="flex: 1; padding-right: 40px;">
+                                <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('o365_secret', this)" aria-label="Toggle password visibility" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; color: #64748b; padding: 5px;">
+                                    <i class="fa-solid fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Azure Tenant ID <span style="font-weight:400; color:#64748b;">(Directory ID, or <code>common</code> for multi-tenant)</span></label>
+                            <input type="text" name="office365_tenant_id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+                        </div>
+                    </div>
+                </details>
+
                 <button type="submit" class="btn-primary">Continue to Step 5</button>
             </form>
         <?php elseif ($step == 5): ?>
