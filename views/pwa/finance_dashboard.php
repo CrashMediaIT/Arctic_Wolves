@@ -144,28 +144,22 @@ try {
 .m-empty-state { text-align: center; padding: 32px 20px; color: #6B6B7B; font-size: 13px; }
 .m-empty-state i { font-size: 28px; display: block; margin-bottom: 10px; }
 
-/* Tab navigation */
-.m-finance-tabs {
-    display: flex; gap: 4px; margin-bottom: 20px;
-    overflow-x: auto; -webkit-overflow-scrolling: touch;
-    scrollbar-width: none; padding-bottom: 2px;
+/* Collapsible sections */
+.m-collapse-section { margin-bottom: 12px; }
+.m-collapse-header {
+    display: flex; align-items: center; justify-content: space-between;
+    background: none; border: none; border-radius: 12px;
+    padding: 14px 16px; cursor: pointer; -webkit-tap-highlight-color: transparent;
+    min-height: 44px; font-family: Inter, sans-serif;
+    width: 100%; text-align: left;
 }
-.m-finance-tabs::-webkit-scrollbar { display: none; }
-.m-finance-tab {
-    flex-shrink: 0; padding: 10px 16px; border-radius: 10px;
-    background: #16161F; border: 1px solid #2D2D3F;
-    color: #A8A8B8; font-size: 12px; font-weight: 600;
-    font-family: Inter, sans-serif; cursor: pointer;
-    display: flex; align-items: center; gap: 6px;
-    min-height: 44px; white-space: nowrap;
-    text-decoration: none; transition: all 0.2s;
-}
-.m-finance-tab.active {
-    background: #6B46C1; border-color: #6B46C1; color: #fff;
-}
-.m-finance-tab i { font-size: 12px; }
-.m-finance-tab-content { display: none; }
-.m-finance-tab-content.active { display: block; }
+.m-collapse-header.m-open { border-radius: 12px 12px 0 0; }
+.m-collapse-title { font-size: 14px; font-weight: 600; color: #fff; display: flex; align-items: center; gap: 8px; }
+.m-collapse-title i { font-size: 14px; color: #8B5CF6; }
+.m-collapse-chevron { font-size: 12px; color: #6B6B7B; transition: transform 0.3s; }
+.m-collapse-header.m-open .m-collapse-chevron { transform: rotate(180deg); }
+.m-collapse-body { display: none; padding: 0 16px 16px; }
+.m-collapse-body.m-open { display: block; }
 
 /* Billing card styles */
 .m-invoice-card {
@@ -268,24 +262,13 @@ try {
         <p class="m-finance-sub">Revenue &amp; payment overview</p>
     </div>
 
-    <!-- Tab Navigation -->
-    <div class="m-finance-tabs">
-        <button class="m-finance-tab active" onclick="switchFinanceTab('overview', this)">
-            <i class="fas fa-chart-line"></i> Overview
-        </button>
-        <button class="m-finance-tab" onclick="switchFinanceTab('billing', this)">
-            <i class="fas fa-file-invoice-dollar"></i> Billing
-        </button>
-        <button class="m-finance-tab" onclick="switchFinanceTab('pos', this)">
-            <i class="fas fa-receipt"></i> POS
-        </button>
-        <button class="m-finance-tab" onclick="switchFinanceTab('orders', this)">
-            <i class="fas fa-shopping-bag"></i> Orders
-        </button>
-    </div>
-
-    <!-- Overview Tab -->
-    <div class="m-finance-tab-content active" id="mFinTab-overview">
+    <!-- Overview Section -->
+    <div class="m-collapse-section">
+    <button class="m-collapse-header m-open" type="button">
+        <span class="m-collapse-title"><i class="fas fa-chart-line"></i> Overview</span>
+        <i class="fas fa-chevron-down m-collapse-chevron"></i>
+    </button>
+    <div class="m-collapse-body m-open">
     <div class="m-finance-kpi">
         <div class="m-finance-stat">
             <div class="m-finance-stat-icon" style="color:#10B981;"><i class="fas fa-dollar-sign"></i></div>
@@ -361,10 +344,16 @@ try {
         </div>
         <?php endforeach; ?>
     <?php endif; ?>
-    </div><!-- /overview tab -->
+    </div><!-- /overview body -->
+    </div><!-- /overview section -->
 
-    <!-- Billing Tab -->
-    <div class="m-finance-tab-content" id="mFinTab-billing">
+    <!-- Billing Section -->
+    <div class="m-collapse-section">
+    <button class="m-collapse-header" type="button">
+        <span class="m-collapse-title"><i class="fas fa-file-invoice-dollar"></i> Billing</span>
+        <i class="fas fa-chevron-down m-collapse-chevron"></i>
+    </button>
+    <div class="m-collapse-body">
         <div class="m-tab-kpi">
             <div class="m-tab-stat">
                 <div class="m-tab-stat-value" style="color:#10B981;">$<?= number_format((float)($invoiceStats['invoice_paid'] ?? 0), 0) ?></div>
@@ -425,10 +414,16 @@ try {
             <?php endforeach; ?>
         <?php endif; ?>
         <a href="?page=billing_dashboard" class="m-view-all">View All Billing <i class="fas fa-arrow-right"></i></a>
-    </div><!-- /billing tab -->
+    </div><!-- /billing body -->
+    </div><!-- /billing section -->
 
-    <!-- POS Transactions Tab -->
-    <div class="m-finance-tab-content" id="mFinTab-pos">
+    <!-- POS Transactions Section -->
+    <div class="m-collapse-section">
+    <button class="m-collapse-header" type="button">
+        <span class="m-collapse-title"><i class="fas fa-receipt"></i> POS Transactions</span>
+        <i class="fas fa-chevron-down m-collapse-chevron"></i>
+    </button>
+    <div class="m-collapse-body">
         <h3 class="m-section-title">Recent POS Transactions</h3>
         <?php if (empty($recentPOS)): ?>
             <div class="m-empty-state">
@@ -472,10 +467,16 @@ try {
             <?php endforeach; ?>
         <?php endif; ?>
         <a href="?page=pos_transactions" class="m-view-all">View All POS Transactions <i class="fas fa-arrow-right"></i></a>
-    </div><!-- /pos tab -->
+    </div><!-- /pos body -->
+    </div><!-- /pos section -->
 
-    <!-- Shop Orders Tab -->
-    <div class="m-finance-tab-content" id="mFinTab-orders">
+    <!-- Shop Orders Section -->
+    <div class="m-collapse-section">
+    <button class="m-collapse-header" type="button">
+        <span class="m-collapse-title"><i class="fas fa-shopping-bag"></i> Shop Orders</span>
+        <i class="fas fa-chevron-down m-collapse-chevron"></i>
+    </button>
+    <div class="m-collapse-body">
         <h3 class="m-section-title">Recent Shop Orders</h3>
         <?php if (empty($recentShopOrders)): ?>
             <div class="m-empty-state">
@@ -518,15 +519,16 @@ try {
             <?php endforeach; ?>
         <?php endif; ?>
         <a href="?page=shop_orders" class="m-view-all">View All Shop Orders <i class="fas fa-arrow-right"></i></a>
-    </div><!-- /orders tab -->
+    </div><!-- /orders body -->
+    </div><!-- /orders section -->
 </div>
 
 <script>
-function switchFinanceTab(tabId, btn) {
-    document.querySelectorAll('.m-finance-tab-content').forEach(function(el) { el.classList.remove('active'); });
-    document.querySelectorAll('.m-finance-tab').forEach(function(el) { el.classList.remove('active'); });
-    document.getElementById('mFinTab-' + tabId).classList.add('active');
-    btn.classList.add('active');
-    btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-}
+document.querySelectorAll('.m-collapse-header').forEach(function(h) {
+    h.addEventListener('click', function() {
+        this.classList.toggle('m-open');
+        var body = this.nextElementSibling;
+        if (body) body.classList.toggle('m-open');
+    });
+});
 </script>
