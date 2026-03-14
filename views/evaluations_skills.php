@@ -198,6 +198,23 @@ if ($eval_id && $evaluation) {
         $historical[$hs['id']]['scores'][$hs['skill_id']] = $hs['score'];
     }
 }
+
+// Get evaluation templates for the create modal
+$eval_templates = [];
+try {
+    $et_stmt = $pdo->query("
+        SELECT et.id, et.title, et.description,
+               GROUP_CONCAT(ec.name ORDER BY etc2.display_order SEPARATOR ', ') as category_names
+        FROM evaluation_templates et
+        LEFT JOIN evaluation_template_categories etc2 ON et.id = etc2.template_id
+        LEFT JOIN eval_categories ec ON etc2.category_id = ec.id
+        GROUP BY et.id
+        ORDER BY et.title
+    ");
+    $eval_templates = $et_stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    // Table may not exist yet
+}
 ?>
 
 <style>
@@ -1329,7 +1346,7 @@ if ($eval_id && $evaluation) {
         <div class="evaluations-page-header">
             <div class="page-header-content">
                 <div class="page-header-icon">
-                    <i class="fas fa-clipboard-check"></i>
+                    <i class="fas fa-chart-bar"></i>
                 </div>
                 <div class="page-header-text">
                     <h1 class="page-title">Skills Evaluations</h1>
@@ -1344,13 +1361,18 @@ if ($eval_id && $evaluation) {
             </div>
             <div class="header-actions">
                 <?php if ($isAnyCoach): ?>
-                    <div id="eval-list-athlete-typeahead" style="min-width: 220px;"></div>
                     <button class="btn-create" onclick="openCreateModal()">
                         <i class="fas fa-plus"></i> New Evaluation
                     </button>
                 <?php endif; ?>
             </div>
         </div>
+        
+        <?php if ($isAnyCoach): ?>
+        <div class="eval-filter-bar" style="margin-bottom: 24px;">
+            <div id="eval-list-athlete-typeahead" style="min-width: 220px; max-width: 360px;"></div>
+        </div>
+        <?php endif; ?>
 
         <!-- Summary Stats -->
         <?php if (!empty($evaluations_list)): ?>
@@ -1449,6 +1471,17 @@ if ($eval_id && $evaluation) {
                 <label class="form-label">Athlete</label>
                 <div id="eval-create-athlete-typeahead"></div>
             </div>
+            <?php if (!empty($eval_templates)): ?>
+            <div class="form-group">
+                <label class="form-label">Evaluation Template</label>
+                <select name="template_id" class="form-input">
+                    <option value="">-- All Skills (No Template) --</option>
+                    <?php foreach ($eval_templates as $tpl): ?>
+                        <option value="<?= (int)$tpl['id'] ?>"><?= htmlspecialchars($tpl['title']) ?><?= !empty($tpl['category_names']) ? ' (' . htmlspecialchars($tpl['category_names']) . ')' : '' ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <?php endif; ?>
             <div class="form-group">
                 <label class="form-label">Evaluation Date</label>
                 <input type="date" name="evaluation_date" class="form-input" value="<?= date('Y-m-d') ?>" required>

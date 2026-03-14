@@ -56,6 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $athlete_id = intval($_POST['athlete_id']);
                 $evaluation_date = $_POST['evaluation_date'];
                 $title = trim($_POST['title'] ?? '');
+                $template_id = intval($_POST['template_id'] ?? 0);
                 
                 // Validate date
                 if (!strtotime($evaluation_date)) {
@@ -69,12 +70,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ");
                 $stmt->execute([$athlete_id, $user_id, $evaluation_date, $title]);
                 $eval_id = $pdo->lastInsertId();
-                Auditor::log($pdo, $user_id, 'create', 'athlete_evaluations', $eval_id, ['action' => 'Created skills evaluation', 'title' => $title]);
+                Auditor::log($pdo, $user_id, 'create', 'athlete_evaluations', $eval_id, ['action' => 'Created skills evaluation', 'title' => $title, 'template_id' => $template_id]);
                 
-                // Create evaluation_scores for all active skills
-                $skills = $pdo->query("
-                    SELECT id FROM eval_skills WHERE is_active = 1
-                ")->fetchAll(PDO::FETCH_COLUMN);
+                // Create evaluation_scores for skills (filtered by template if selected)
+                if ($template_id > 0) {
+                    $skills_stmt = $pdo->prepare("
+                        SELECT es.id FROM eval_skills es
+                        JOIN eval_categories ec ON es.category_id = ec.id
+                        JOIN evaluation_template_categories etc2 ON ec.id = etc2.category_id
+                        WHERE etc2.template_id = ? AND es.is_active = 1
+                    ");
+                    $skills_stmt->execute([$template_id]);
+                    $skills = $skills_stmt->fetchAll(PDO::FETCH_COLUMN);
+                } else {
+                    $skills = $pdo->query("
+                        SELECT id FROM eval_skills WHERE is_active = 1
+                    ")->fetchAll(PDO::FETCH_COLUMN);
+                }
                 
                 if (!empty($skills)) {
                     $placeholders = implode(',', array_fill(0, count($skills), '(?, ?, NOW(), NOW())'));

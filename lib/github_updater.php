@@ -1061,8 +1061,13 @@ class GitHubUpdater {
                                     $results[] = $col_result['message'] . ' (retry)';
                                 }
                             } catch (\Exception $ce) {
-                                $errors[] = "Retry: could not add column to {$rm['table']}: " . $ce->getMessage();
-                                error_log("Schema retry add column error for {$rm['table']}: " . $ce->getMessage());
+                                // Ignore "Duplicate key name" errors (MySQL 1061) — index already exists
+                                if (strpos($ce->getMessage(), '1061') !== false || strpos($ce->getMessage(), 'Duplicate key name') !== false) {
+                                    // Non-critical: index already exists on table
+                                } else {
+                                    $errors[] = "Retry: could not add column to {$rm['table']}: " . $ce->getMessage();
+                                    error_log("Schema retry add column error for {$rm['table']}: " . $ce->getMessage());
+                                }
                             }
                         }
                     } finally {

@@ -298,7 +298,7 @@ $is_demo_data = false;
             </div>
             <?php if ($o365CalConnected): ?>
                 <button class="btn btn-secondary" id="o365SyncBtn" onclick="syncOffice365Calendar(this)">
-                    <i class="fab fa-microsoft" style="color:#0078d4;"></i> Sync to Office 365
+                    <i class="fab fa-microsoft" style="color:#0078d4;"></i> Sync with Office 365
                 </button>
             <?php elseif ($o365AppConfigured): ?>
                 <form method="POST" action="process_settings.php" style="display:inline;">
@@ -663,7 +663,7 @@ function syncOffice365Calendar(btn) {
     .then(function(r) { return r.json(); })
     .then(function(data) {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fab fa-microsoft" style="color:#0078d4;"></i> Sync to Office 365';
+        btn.innerHTML = '<i class="fab fa-microsoft" style="color:#0078d4;"></i> Sync with Office 365';
         var cls = data.success ? 'alert-success' : 'alert-danger';
         var icon = data.success ? 'fa-check-circle' : 'fa-exclamation-triangle';
         var banner = document.getElementById('o365SyncResult');
@@ -675,11 +675,12 @@ function syncOffice365Calendar(btn) {
         banner.className = 'alert ' + cls;
         banner.style.cssText = 'margin:0 0 16px 0;';
         banner.innerHTML = '<i class="fas ' + icon + '"></i> ' + (data.message || '');
-        setTimeout(function() { if (banner) banner.remove(); }, 6000);
+        if (data.success) setTimeout(function() { location.reload(); }, 2000);
+        else setTimeout(function() { if (banner) banner.remove(); }, 6000);
     })
     .catch(function() {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fab fa-microsoft" style="color:#0078d4;"></i> Sync to Office 365';
+        btn.innerHTML = '<i class="fab fa-microsoft" style="color:#0078d4;"></i> Sync with Office 365';
         alert('Sync request failed. Please try again.');
     });
 }

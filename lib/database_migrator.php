@@ -71,8 +71,8 @@ class DatabaseMigrator {
             $line = trim($line);
             if (empty($line) || $line === ',') continue;
             
-            // Skip constraints
-            if (preg_match('/^(PRIMARY KEY|FOREIGN KEY|UNIQUE KEY|INDEX|KEY|CONSTRAINT)/i', $line)) {
+            // Skip constraints and index definitions
+            if (preg_match('/^(PRIMARY\s+KEY|FOREIGN\s+KEY|UNIQUE|INDEX|KEY|CONSTRAINT)/i', $line)) {
                 continue;
             }
             

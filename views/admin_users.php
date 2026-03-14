@@ -444,6 +444,9 @@ foreach ($users as $u) {
                                                 <button class="btn-icon <?php echo $user['is_verified'] ? 'danger' : 'success'; ?>" data-action="toggle-status" data-id="<?php echo $user['id']; ?>" data-type="user" title="<?php echo $user['is_verified'] ? 'Disable' : 'Enable'; ?>">
                                                     <i class="fas fa-<?php echo $user['is_verified'] ? 'ban' : 'check'; ?>"></i>
                                                 </button>
+                                                <button class="btn-icon danger" data-action="delete-user" data-id="<?php echo $user['id']; ?>" data-name="<?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?>" title="Delete User">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
                                             <?php endif; ?>
                                         </div>
                                     </td>
@@ -511,6 +514,39 @@ document.addEventListener('DOMContentLoaded', function() {
                     location.reload();
                 } else {
                     showNotification('Error: ' + (data.message || 'Failed to update status'), 'error');
+                }
+            })
+            .catch(function(error) {
+                console.error('Error:', error);
+                showNotification('An error occurred. Please try again.', 'error');
+            });
+        });
+    });
+    
+    // Handle delete-user buttons
+    document.querySelectorAll('[data-action="delete-user"]').forEach(function(btn) {
+        btn.addEventListener('click', async function(e) {
+            e.preventDefault();
+            var userId = this.getAttribute('data-id');
+            var userName = this.getAttribute('data-name');
+            
+            if (!await showConfirmModal('Are you sure you want to permanently delete ' + userName + '? This action cannot be undone.')) return;
+            
+            fetch('process_admin_action.php', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: 'action=delete_user&id=' + encodeURIComponent(userId) + '&csrf_token=' + encodeURIComponent(csrfToken)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    persistToast(data.message || 'User deleted successfully!', 'success');
+                    location.reload();
+                } else {
+                    showNotification('Error: ' + (data.message || 'Failed to delete user'), 'error');
                 }
             })
             .catch(function(error) {
