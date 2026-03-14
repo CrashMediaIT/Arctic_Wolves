@@ -628,17 +628,7 @@ foreach ($url_keys as $uk) {
                         <?php if (empty($o365ConnectedEmail)): ?>
                         <div class="alert alert-warning" style="margin-bottom:12px;">
                             <i class="fas fa-exclamation-triangle"></i>
-                            OAuth is connected but the mailbox email was not captured. Enter the Office 365 email address below or <strong>reconnect</strong> to resolve this.
-                        </div>
-                        <div class="setting-item">
-                            <div class="setting-info">
-                                <h4>Mailbox Email</h4>
-                                <p>The Office 365 email address used for SMTP authentication</p>
-                            </div>
-                            <input type="email" name="office365_smtp_connected_email" class="form-input"
-                                   value=""
-                                   placeholder="user@yourdomain.com"
-                                   required>
+                            OAuth is connected but the mailbox email was not captured. Please <strong>disconnect and reconnect</strong> Office 365 below to fix this.
                         </div>
                         <?php else: ?>
                         <div class="setting-item">

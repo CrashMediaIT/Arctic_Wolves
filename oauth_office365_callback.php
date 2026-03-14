@@ -84,8 +84,8 @@ $tokenUrl = "https://login.microsoftonline.com/{$tenantId}/oauth2/v2.0/token";
 // Scope must match the authorization request (SMTP or Calendar).
 // Include openid so the response contains an id_token with the user's email.
 $scope = $type === 'smtp'
-    ? 'https://outlook.office365.com/SMTP.Send offline_access openid'
-    : 'https://graph.microsoft.com/Calendars.ReadWrite offline_access openid';
+    ? 'https://outlook.office365.com/SMTP.Send offline_access openid email profile'
+    : 'https://graph.microsoft.com/Calendars.ReadWrite offline_access openid email profile';
 
 $postData = http_build_query([
     'client_id'     => $clientId,
@@ -124,7 +124,9 @@ $refreshToken = $tokenData['refresh_token'] ?? '';
 $expiresIn    = (int)($tokenData['expires_in'] ?? 3600);
 $expiresAt    = time() + $expiresIn;
 
-// Decode id_token to get the signed-in email
+// Decode id_token to get the signed-in email.
+// The 'email' and 'profile' scopes (requested alongside 'openid') ensure the
+// id_token contains 'preferred_username' and/or 'email' claims.
 $connectedEmail = '';
 if (!empty($tokenData['id_token'])) {
     $parts = explode('.', $tokenData['id_token']);
@@ -132,24 +134,6 @@ if (!empty($tokenData['id_token'])) {
         $padded  = str_pad(strtr($parts[1], '-_', '+/'), strlen($parts[1]) + (4 - strlen($parts[1]) % 4) % 4, '=');
         $payload = json_decode(base64_decode($padded), true);
         $connectedEmail = $payload['preferred_username'] ?? $payload['email'] ?? $payload['upn'] ?? '';
-    }
-}
-
-// Fallback: if id_token didn't yield an email, call Microsoft Graph /me endpoint
-if (empty($connectedEmail)) {
-    $graphCtx = stream_context_create([
-        'http' => [
-            'method'        => 'GET',
-            'header'        => "Authorization: Bearer {$accessToken}\r\n",
-            'ignore_errors' => true,
-            'timeout'       => 10,
-        ],
-        'ssl' => ['verify_peer' => true, 'verify_peer_name' => true],
-    ]);
-    $graphResponse = @file_get_contents('https://graph.microsoft.com/v1.0/me?$select=mail,userPrincipalName', false, $graphCtx);
-    if ($graphResponse) {
-        $graphData = json_decode($graphResponse, true);
-        $connectedEmail = $graphData['mail'] ?? $graphData['userPrincipalName'] ?? '';
     }
 }
 
