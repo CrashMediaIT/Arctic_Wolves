@@ -59,7 +59,9 @@ class SmtpMailer {
         $this->readResponse(); // Initial 220 banner
 
         // Safe EHLO hostname – fall back to 'localhost' when SERVER_NAME is unset (e.g. CLI)
+        // Sanitize to alphanumeric/dots/hyphens to prevent injection via SERVER_NAME
         $ehloHost = !empty($_SERVER['SERVER_NAME']) ? $_SERVER['SERVER_NAME'] : 'localhost';
+        $ehloHost = preg_replace('/[^a-zA-Z0-9.\-]/', '', $ehloHost) ?: 'localhost';
 
         // 4. HANDSHAKE
         $ehloResponse = $this->sendCommandGetResponse("EHLO " . $ehloHost);
