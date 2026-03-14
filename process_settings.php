@@ -212,7 +212,7 @@ try {
                 'client_id'     => $clientId,
                 'response_type' => 'code',
                 'redirect_uri'  => $redirectUri,
-                'scope'         => 'https://outlook.office365.com/SMTP.Send offline_access openid email profile',
+                'scope'         => 'https://outlook.office.com/SMTP.Send offline_access openid email profile',
                 'state'         => $state,
                 'prompt'        => 'consent',
             ]);
