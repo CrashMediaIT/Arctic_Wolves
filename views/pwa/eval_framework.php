@@ -155,17 +155,21 @@ foreach ($grouped as $items) { $totalSkills += count($items); }
     padding: 10px 12px; border-radius: 10px; margin-bottom: 12px; font-size: 12px;
     background: rgba(16,185,129,0.15); color: #10B981; border: 1px solid rgba(16,185,129,0.3);
 }
-.m-evalfw-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
-.m-evalfw-tab {
-    flex: 1; padding: 10px 8px; background: #16161F; border: 1px solid #2D2D3F;
-    border-radius: 10px; color: #A8A8B8; font-size: 12px; font-weight: 600;
-    text-align: center; cursor: pointer; min-height: 44px;
-    display: flex; align-items: center; justify-content: center; gap: 4px;
-    font-family: Inter, sans-serif;
+.m-evalfw-collapse { margin-bottom: 12px; }
+.m-evalfw-collapse-hdr {
+    display: flex; align-items: center; justify-content: space-between;
+    background: #1E1E2E; border: 1px solid #2D2D3F; border-radius: 12px;
+    padding: 14px 16px; cursor: pointer; -webkit-tap-highlight-color: transparent;
+    min-height: 44px; font-family: Inter, sans-serif; width: 100%; text-align: left;
+    color: inherit;
 }
-.m-evalfw-tab.m-active { background: rgba(107,70,193,0.2); color: #8B5CF6; border-color: #6B46C1; }
-.m-evalfw-panel { display: none; }
-.m-evalfw-panel.m-active { display: block; }
+.m-evalfw-collapse-hdr.m-open { border-radius: 12px 12px 0 0; border-bottom-color: transparent; }
+.m-evalfw-collapse-title { font-size: 14px; font-weight: 600; color: #fff; display: flex; align-items: center; gap: 8px; }
+.m-evalfw-collapse-title i { font-size: 14px; color: #8B5CF6; }
+.m-evalfw-collapse-chevron { font-size: 12px; color: #6B6B7B; transition: transform 0.3s; }
+.m-evalfw-collapse-hdr.m-open .m-evalfw-collapse-chevron { transform: rotate(180deg); }
+.m-evalfw-collapse-body { display: none; background: #16161F; border: 1px solid #2D2D3F; border-top: none; border-radius: 0 0 12px 12px; padding: 16px; }
+.m-evalfw-collapse-body.m-open { display: block; }
 </style>
 
 <div class="m-evalfw">
@@ -180,13 +184,13 @@ foreach ($grouped as $items) { $totalSkills += count($items); }
     <div class="m-evalfw-alert"><i class="fas fa-check-circle"></i> <?= htmlspecialchars($_GET['message'] ?? 'Operation completed!') ?></div>
     <?php endif; ?>
 
-    <div class="m-evalfw-tabs">
-        <button class="m-evalfw-tab m-active" onclick="mEvalTab('categories', this)"><i class="fas fa-clipboard-list"></i> Categories</button>
-        <button class="m-evalfw-tab" onclick="mEvalTab('skills', this)"><i class="fas fa-star"></i> Skills</button>
-    </div>
-
-    <!-- Categories Panel -->
-    <div id="m-evalfw-categories" class="m-evalfw-panel m-active">
+    <!-- Categories Section -->
+    <div class="m-evalfw-collapse">
+        <button class="m-evalfw-collapse-hdr m-open" type="button">
+            <span class="m-evalfw-collapse-title"><i class="fas fa-clipboard-list"></i> Categories (<?= count($evalCategories) ?>)</span>
+            <i class="fas fa-chevron-down m-evalfw-collapse-chevron"></i>
+        </button>
+        <div class="m-evalfw-collapse-body m-open" id="m-evalfw-categories">
         <?php if (empty($evalCategories)): ?>
             <div class="m-empty-state">
                 <i class="fas fa-clipboard-list"></i>
@@ -209,10 +213,16 @@ foreach ($grouped as $items) { $totalSkills += count($items); }
             </div>
             <?php endforeach; ?>
         <?php endif; ?>
+        </div>
     </div>
 
-    <!-- Skills Panel -->
-    <div id="m-evalfw-skills" class="m-evalfw-panel">
+    <!-- Skills Section -->
+    <div class="m-evalfw-collapse">
+        <button class="m-evalfw-collapse-hdr" type="button">
+            <span class="m-evalfw-collapse-title"><i class="fas fa-star"></i> Skills (<?= $totalSkills ?>)</span>
+            <i class="fas fa-chevron-down m-evalfw-collapse-chevron"></i>
+        </button>
+        <div class="m-evalfw-collapse-body" id="m-evalfw-skills">
         <?php if (empty($skills) && empty($grouped)): ?>
             <div class="m-empty-state">
                 <i class="fas fa-clipboard-list"></i>
@@ -237,6 +247,7 @@ foreach ($grouped as $items) { $totalSkills += count($items); }
                 <?php endforeach; ?>
             <?php endforeach; ?>
         <?php endif; ?>
+        </div>
     </div>
 
     <a href="?page=eval_framework&desktop=1" class="m-evalfw-desktop">
@@ -244,7 +255,18 @@ foreach ($grouped as $items) { $totalSkills += count($items); }
     </a>
 </div>
 
-<button class="m-evalfw-fab" id="mEvalFab" onclick="mEvalAddCategory()" title="Add Category"><i class="fas fa-plus"></i></button>
+<button class="m-evalfw-fab" id="mEvalFab" onclick="mEvalFabAction()" title="Add"><i class="fas fa-plus"></i></button>
+
+<!-- FAB Action Picker -->
+<div class="m-evalfw-overlay" id="mEvalFabPickerOverlay" onclick="mEvalClosePicker()" style="display:none;"></div>
+<div class="m-evalfw-sheet" id="mEvalFabPickerSheet" style="display:none;">
+    <div style="padding:20px 16px 8px;font-size:15px;font-weight:600;color:#fff;text-align:center;">What would you like to add?</div>
+    <div style="display:flex;flex-direction:column;gap:8px;padding:12px 16px 20px;">
+        <button type="button" onclick="mEvalClosePicker();mEvalAddCategory();" style="width:100%;padding:14px;background:#6B46C1;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;min-height:44px;cursor:pointer;font-family:Inter,sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;"><i class="fas fa-clipboard-list"></i> Add Category</button>
+        <button type="button" onclick="mEvalClosePicker();mEvalAddSkill();" style="width:100%;padding:14px;background:#16161F;color:#8B5CF6;border:1px solid #6B46C1;border-radius:10px;font-size:14px;font-weight:600;min-height:44px;cursor:pointer;font-family:Inter,sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;"><i class="fas fa-star"></i> Add Skill</button>
+        <button type="button" onclick="mEvalClosePicker();" style="width:100%;padding:12px;background:transparent;color:#A8A8B8;border:1px solid #2D2D3F;border-radius:10px;font-size:13px;min-height:44px;cursor:pointer;font-family:Inter,sans-serif;">Cancel</button>
+    </div>
+</div>
 
 <div class="m-evalfw-overlay" id="mEvalOverlay" onclick="mEvalClose()"></div>
 
@@ -316,23 +338,28 @@ foreach ($grouped as $items) { $totalSkills += count($items); }
 </form>
 
 <script>
-var mEvalCurrentPanel = 'categories';
+/* Collapsible sections */
+document.querySelectorAll('.m-evalfw-collapse-hdr').forEach(function(h) {
+    h.addEventListener('click', function() {
+        this.classList.toggle('m-open');
+        var body = this.nextElementSibling;
+        if (body) body.classList.toggle('m-open');
+    });
+});
 
-function mEvalTab(tab, btn) {
-    mEvalCurrentPanel = tab;
-    document.querySelectorAll('.m-evalfw-tab').forEach(function(t) { t.classList.remove('m-active'); });
-    document.querySelectorAll('.m-evalfw-panel').forEach(function(p) { p.classList.remove('m-active'); });
-    document.getElementById('m-evalfw-' + tab).classList.add('m-active');
-    if (btn) btn.classList.add('m-active');
-    // Update FAB action based on tab
-    var fab = document.getElementById('mEvalFab');
-    if (tab === 'categories') {
-        fab.setAttribute('onclick', 'mEvalAddCategory()');
-        fab.setAttribute('title', 'Add Category');
-    } else {
-        fab.setAttribute('onclick', 'mEvalAddSkill()');
-        fab.setAttribute('title', 'Add Skill');
-    }
+function mEvalFabAction() {
+    document.getElementById('mEvalFabPickerOverlay').style.display = '';
+    document.getElementById('mEvalFabPickerOverlay').classList.add('m-active');
+    document.getElementById('mEvalFabPickerSheet').style.display = '';
+    document.getElementById('mEvalFabPickerSheet').classList.add('m-active');
+}
+function mEvalClosePicker() {
+    document.getElementById('mEvalFabPickerOverlay').classList.remove('m-active');
+    document.getElementById('mEvalFabPickerSheet').classList.remove('m-active');
+    setTimeout(function() {
+        document.getElementById('mEvalFabPickerOverlay').style.display = 'none';
+        document.getElementById('mEvalFabPickerSheet').style.display = 'none';
+    }, 300);
 }
 
 function mEvalAddCategory() {
