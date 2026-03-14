@@ -59,17 +59,21 @@ foreach ($dbRoles as $dbRole) {
     font-size: 13px; font-weight: 600; text-decoration: none; min-height: 44px;
     line-height: 20px;
 }
-.m-perms-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
-.m-perms-tab {
-    flex: 1; padding: 10px 8px; background: #16161F; border: 1px solid #2D2D3F;
-    border-radius: 10px; color: #A8A8B8; font-size: 12px; font-weight: 600;
-    text-align: center; cursor: pointer; min-height: 44px;
-    display: flex; align-items: center; justify-content: center; gap: 4px;
-    font-family: Inter, sans-serif;
+.m-perms-collapse { margin-bottom: 12px; }
+.m-perms-collapse-hdr {
+    display: flex; align-items: center; justify-content: space-between;
+    background: #1E1E2E; border: 1px solid #2D2D3F; border-radius: 12px;
+    padding: 14px 16px; cursor: pointer; -webkit-tap-highlight-color: transparent;
+    min-height: 44px; font-family: Inter, sans-serif; width: 100%; text-align: left;
+    color: inherit;
 }
-.m-perms-tab.m-active { background: rgba(107,70,193,0.2); color: #8B5CF6; border-color: #6B46C1; }
-.m-perms-panel { display: none; }
-.m-perms-panel.m-active { display: block; }
+.m-perms-collapse-hdr.m-open { border-radius: 12px 12px 0 0; border-bottom-color: transparent; }
+.m-perms-collapse-title { font-size: 14px; font-weight: 600; color: #fff; display: flex; align-items: center; gap: 8px; }
+.m-perms-collapse-title i { font-size: 14px; color: #8B5CF6; }
+.m-perms-collapse-chevron { font-size: 12px; color: #6B6B7B; transition: transform 0.3s; }
+.m-perms-collapse-hdr.m-open .m-perms-collapse-chevron { transform: rotate(180deg); }
+.m-perms-collapse-body { display: none; background: #16161F; border: 1px solid #2D2D3F; border-top: none; border-radius: 0 0 12px 12px; padding: 16px; }
+.m-perms-collapse-body.m-open { display: block; }
 .m-perms-cat-title {
     font-size: 13px; font-weight: 600; color: #8B5CF6; margin: 16px 0 8px;
     text-transform: uppercase; letter-spacing: 0.5px;
@@ -111,12 +115,13 @@ foreach ($dbRoles as $dbRole) {
     <div class="m-perms-alert"><i class="fas fa-check-circle"></i> Permissions updated successfully!</div>
     <?php endif; ?>
 
-    <div class="m-perms-tabs">
-        <button class="m-perms-tab m-active" onclick="mPermsTab('roles', this)"><i class="fas fa-user-tag"></i> Roles</button>
-        <button class="m-perms-tab" onclick="mPermsTab('manage', this)"><i class="fas fa-sliders-h"></i> Manage</button>
-    </div>
-
-    <div id="m-perms-roles" class="m-perms-panel m-active">
+    <!-- Roles Section -->
+    <div class="m-perms-collapse">
+        <button class="m-perms-collapse-hdr m-open" type="button">
+            <span class="m-perms-collapse-title"><i class="fas fa-user-tag"></i> Roles (<?= count($roles) ?>)</span>
+            <i class="fas fa-chevron-down m-perms-collapse-chevron"></i>
+        </button>
+        <div class="m-perms-collapse-body m-open" id="m-perms-roles">
         <?php foreach ($roles as $r): ?>
         <div class="m-perm-card">
             <div class="m-perm-icon" style="background:<?= $r['color'] ?>20;color:<?= $r['color'] ?>;">
@@ -128,9 +133,16 @@ foreach ($dbRoles as $dbRole) {
             </div>
         </div>
         <?php endforeach; ?>
+        </div>
     </div>
 
-    <div id="m-perms-manage" class="m-perms-panel">
+    <!-- Manage Permissions Section -->
+    <div class="m-perms-collapse">
+        <button class="m-perms-collapse-hdr" type="button">
+            <span class="m-perms-collapse-title"><i class="fas fa-sliders-h"></i> Manage Permissions</span>
+            <i class="fas fa-chevron-down m-perms-collapse-chevron"></i>
+        </button>
+        <div class="m-perms-collapse-body" id="m-perms-manage">
         <?php if (empty($dbPermissions)): ?>
             <div style="text-align:center;padding:30px 20px;color:#6B6B7B;">
                 <i class="fas fa-shield-halved" style="font-size:28px;display:block;margin-bottom:10px;"></i>
@@ -169,6 +181,7 @@ foreach ($dbRoles as $dbRole) {
             </div>
         </form>
         <?php endif; ?>
+        </div>
     </div>
 
     <a href="?page=admin_permissions&desktop=1" class="m-perms-desktop">
@@ -177,10 +190,11 @@ foreach ($dbRoles as $dbRole) {
 </div>
 
 <script>
-function mPermsTab(tab, btn) {
-    document.querySelectorAll('.m-perms-tab').forEach(function(t) { t.classList.remove('m-active'); });
-    document.querySelectorAll('.m-perms-panel').forEach(function(p) { p.classList.remove('m-active'); });
-    document.getElementById('m-perms-' + tab).classList.add('m-active');
-    if (btn) btn.classList.add('m-active');
-}
+document.querySelectorAll('.m-perms-collapse-hdr').forEach(function(h) {
+    h.addEventListener('click', function() {
+        this.classList.toggle('m-open');
+        var body = this.nextElementSibling;
+        if (body) body.classList.toggle('m-open');
+    });
+});
 </script>

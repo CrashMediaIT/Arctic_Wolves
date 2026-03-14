@@ -134,12 +134,7 @@ if ($page === 'home' && $isFrontDesk) {
     $page = 'front_desk_home';
 }
 if ($page === 'admin_settings') {
-    header("Location: pwa.php?page=system_tools&tab=landing");
-    exit();
-}
-if ($page === 'gameplan_settings') {
-    header("Location: pwa.php?page=system_tools&tab=gameplan");
-    exit();
+    $page = 'settings';
 }
 
 // Full routing table (identical to dashboard.php)
@@ -554,6 +549,58 @@ window.pwaRequestCamera = function(videoElement) {
 
 <!-- Main Application JavaScript -->
 <script src="js/app.js"></script>
+
+<!-- FAB Elevator: move fixed-position FABs/overlays/sheets out of .pwa-content -->
+<!-- so they're in the same stacking context as the tab bar (fixes iOS Safari) -->
+<script>
+(function() {
+    var content = document.getElementById('pwaContent');
+    if (!content) return;
+    var tabBar = document.querySelector('.pwa-tab-bar');
+    if (!tabBar) return;
+    
+    // Collect elements to elevate: FAB buttons, overlays, and bottom sheets
+    // These all use position:fixed and need to be siblings of .pwa-tab-bar
+    var selectors = [
+        '[class*="-fab"]',      // m-ath-fab, m-wk-fab, m-cat-fab, etc.
+        '.m-fab',               // generic mobile FAB class
+        '[class*="-overlay"]',  // m-ath-overlay, m-wk-overlay, etc.
+        '.m-overlay',           // generic mobile overlay class
+        '[class*="-sheet"]',    // m-ath-sheet, m-wk-sheet, etc.
+        '.m-sheet',             // generic mobile sheet class
+        '[class*="-modal"]',    // modal dialogs
+        '.m-modal'              // generic modal
+    ];
+    
+    var elements = content.querySelectorAll(selectors.join(','));
+    var elevated = [];
+    
+    elements.forEach(function(el) {
+        // Only elevate elements that are position:fixed (or meant to be)
+        var computed = window.getComputedStyle(el);
+        var isFixed = computed.position === 'fixed';
+        var hasFixedInCSS = el.style.position === 'fixed';
+        
+        // Also check inline style in the embedded <style> tag
+        // FABs may have position:fixed from their view's CSS, not inline
+        var classes = el.className.split(/\s+/);
+        var fixedPattern = /fab$|overlay$|sheet$|modal$/i;
+        var looksLikeFixedElement = classes.some(function(c) {
+            return fixedPattern.test(c);
+        });
+        
+        if (isFixed || hasFixedInCSS || looksLikeFixedElement) {
+            el.setAttribute('data-pwa-elevated', '1');
+            elevated.push(el);
+        }
+    });
+    
+    // Move elements to body, just before the tab bar
+    elevated.forEach(function(el) {
+        document.body.insertBefore(el, tabBar);
+    });
+})();
+</script>
 
 </body>
 </html>

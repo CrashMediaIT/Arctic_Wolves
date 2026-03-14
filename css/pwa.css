@@ -83,7 +83,6 @@ body.pwa-body {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
   padding: 16px;
   padding-bottom: 80px; /* Space for bottom nav */
@@ -438,7 +437,6 @@ body.pwa-body .page-header-actions .btn {
 body.pwa-body .page-tabs {
   display: flex;
   overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   gap: 6px;
   padding: 4px 0 10px;
@@ -549,7 +547,6 @@ body.pwa-body .btn-group .btn {
 body.pwa-body .table-wrapper,
 body.pwa-body .table-container {
   overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
   border-radius: 10px;
   margin: 0 -2px;
 }
@@ -1061,7 +1058,6 @@ body.pwa-body .chart-container,
 body.pwa-body .chart-wrapper {
   width: 100%;
   overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
 }
 body.pwa-body canvas {
   max-width: 100%;
@@ -1273,7 +1269,6 @@ body.pwa-body .profile-role {
 body.pwa-body .profile-tabs {
   display: flex;
   overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   gap: 4px;
   padding: 4px 0;
@@ -1323,7 +1318,6 @@ body.pwa-body .pos-products {
 body.pwa-body .pos-categories {
   display: flex;
   overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   gap: 6px;
   padding: 8px;
@@ -1594,7 +1588,6 @@ body.pwa-body .package-card .package-features {
 body.pwa-body .payment-table-wrapper,
 body.pwa-body .refund-table-wrapper {
   overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
   border-radius: 10px;
 }
 
@@ -1611,7 +1604,6 @@ body.pwa-body .athlete-detail-stats {
 }
 body.pwa-body .athlete-detail-tabs {
   overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   flex-wrap: nowrap;
 }
@@ -1637,7 +1629,6 @@ body.pwa-body .note-item {
 /* ── 30. Stats Tabs ────────────────────────────────────── */
 body.pwa-body .stats-tabs-wrapper {
   overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
 body.pwa-body .stats-tabs-wrapper::-webkit-scrollbar {
@@ -1855,7 +1846,6 @@ body.pwa-body .import-section {
 }
 body.pwa-body .import-preview {
   overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
 }
 
 /* Drill designer / Practice builder */
@@ -1866,7 +1856,6 @@ body.pwa-body .practice-form-container {
 body.pwa-body .ice-canvas-container {
   width: 100%;
   overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
 }
 
 /* Time tracking */
@@ -2209,8 +2198,8 @@ body.pwa-body .pwa-content {
   overflow-x: hidden;
 }
 
-/* Contain all direct children in the content area */
-body.pwa-body .pwa-content > * {
+/* Contain all direct children in the content area (skip FABs/overlays that get elevated to body) */
+body.pwa-body .pwa-content > *:not([data-pwa-elevated]) {
   max-width: 100% !important;
   overflow-x: hidden;
   box-sizing: border-box;
@@ -2271,7 +2260,6 @@ body.pwa-body .card-body,
 body.pwa-body .card-content {
   max-width: 100%;
   overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
 }
 
 /* Fix form actions row to stack on mobile */
@@ -2489,6 +2477,27 @@ body.pwa-body .floating-btn,
 body.pwa-body .action-fab {
   bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
 }
+
+/* ── F2. PWA Mobile FAB safe positioning ──────────────── */
+/* Ensure all PWA mobile FABs clear the tab bar + safe area */
+/* and paint above the tab bar (z-index: 100)               */
+body.pwa-body [data-pwa-elevated][class*="-fab"],
+body.pwa-body [data-pwa-elevated].m-fab {
+  z-index: 999 !important;
+  bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
+}
+/* Elevated overlays and sheets must be above the tab bar   */
+body.pwa-body [data-pwa-elevated][class*="-overlay"],
+body.pwa-body [data-pwa-elevated].m-overlay {
+  z-index: 1000 !important;
+}
+body.pwa-body [data-pwa-elevated][class*="-sheet"],
+body.pwa-body [data-pwa-elevated].m-sheet,
+body.pwa-body [data-pwa-elevated][class*="-modal"],
+body.pwa-body [data-pwa-elevated].m-modal {
+  z-index: 1001 !important;
+}
+
 /* Tooltips & popovers should stay above the tab bar        */
 body.pwa-body .tooltip,
 body.pwa-body .popover {
@@ -2605,7 +2614,6 @@ body.pwa-body .widget-body {
 body.pwa-body .page-tabs {
   display: flex !important;
   overflow-x: auto !important;
-  -webkit-overflow-scrolling: touch !important;
   scrollbar-width: none !important;
   gap: 6px !important;
   padding: 4px 0 10px !important;
