@@ -91,7 +91,7 @@ try {
     ?>
     <div class="m-pdrills-card">
         <?php if ($thumb): ?>
-        <img class="m-pdrills-card-thumb" src="<?= $thumb ?>" alt="" loading="lazy" onerror="this.style.display='none'">
+        <img class="m-pdrills-card-thumb" src="<?= $thumb ?>" alt="<?= htmlspecialchars($pd['title'] ?? 'Drill thumbnail') ?>" loading="lazy" onerror="this.style.display='none'">
         <?php endif; ?>
         <div class="m-pdrills-card-body">
             <div class="m-pdrills-card-title"><?= htmlspecialchars($pd['title'] ?? 'Untitled') ?></div>
