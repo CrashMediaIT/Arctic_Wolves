@@ -429,7 +429,7 @@ try {
                 FROM sessions s
                 LEFT JOIN locations l ON s.location_id = l.id
                 WHERE (s.coach_id = ? OR s.id IN (
-                    SELECT session_id FROM session_coaches WHERE user_id = ?
+                    SELECT session_id FROM session_coaches WHERE coach_id = ?
                 ))
                 AND s.session_date >= CURDATE()
                 ORDER BY s.session_date, s.session_time
