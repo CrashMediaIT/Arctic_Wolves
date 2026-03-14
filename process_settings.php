@@ -212,7 +212,7 @@ try {
                 'client_id'     => $clientId,
                 'response_type' => 'code',
                 'redirect_uri'  => $redirectUri,
-                'scope'         => 'https://outlook.office365.com/SMTP.Send offline_access',
+                'scope'         => 'https://outlook.office365.com/SMTP.Send offline_access openid',
                 'state'         => $state,
                 'prompt'        => 'consent',
             ]);
@@ -250,7 +250,7 @@ try {
                 'client_id'     => $clientId,
                 'response_type' => 'code',
                 'redirect_uri'  => $redirectUri,
-                'scope'         => 'https://graph.microsoft.com/Calendars.ReadWrite offline_access',
+                'scope'         => 'https://graph.microsoft.com/Calendars.ReadWrite offline_access openid',
                 'state'         => $state,
                 'prompt'        => 'consent',
             ]);
