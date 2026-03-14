@@ -575,6 +575,39 @@ foreach ($url_keys as $uk) {
                     <input type="hidden" name="action" value="update_smtp">
                     <input type="hidden" name="redirect_page" value="system_tools">
                     <div class="settings-list">
+                        <?php if ($o365SmtpConnected): ?>
+                        <!-- OAuth connected: hide all basic SMTP/auth fields, show OAuth summary -->
+                        <?php if (empty($o365ConnectedEmail)): ?>
+                        <div class="alert alert-warning" style="margin-bottom:12px;">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            OAuth is connected but the mailbox email was not captured. Please <strong>disconnect and reconnect</strong> Office 365 below to fix this.
+                        </div>
+                        <?php else: ?>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Authenticated Account</h4>
+                                <p>Emails are sent via Office 365 OAuth (XOAUTH2) using this account</p>
+                            </div>
+                            <input type="text" class="form-input" disabled
+                                   value="<?php echo $o365ConnectedEmail; ?>"
+                                   style="background:var(--card-bg,#16161F);opacity:.8;">
+                        </div>
+                        <?php endif; ?>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>SMTP Server</h4>
+                                <p>Managed automatically by Office 365 OAuth</p>
+                            </div>
+                            <input type="text" class="form-input" disabled
+                                   value="smtp.office365.com — Port 587 / TLS (auto-configured)"
+                                   style="background:var(--card-bg,#16161F);opacity:.8;">
+                        </div>
+                        <!-- Persist correct OAuth SMTP settings as hidden fields -->
+                        <input type="hidden" name="smtp_host" value="smtp.office365.com">
+                        <input type="hidden" name="smtp_port" value="587">
+                        <input type="hidden" name="smtp_encryption" value="tls">
+                        <?php else: ?>
+                        <!-- Basic Authentication: full SMTP server + credential fields -->
                         <div class="setting-item">
                             <div class="setting-info">
                                 <h4>SMTP Host</h4>
@@ -604,8 +637,6 @@ foreach ($url_keys as $uk) {
                                 <option value="none" <?php echo ($settings['smtp_encryption'] ?? '') === 'none' ? 'selected' : ''; ?>>None</option>
                             </select>
                         </div>
-                        <?php if (!$o365SmtpConnected): ?>
-                        <!-- Basic Authentication (hidden when OAuth is connected) -->
                         <div class="setting-item">
                             <div class="setting-info">
                                 <h4>SMTP Username</h4>
@@ -623,24 +654,6 @@ foreach ($url_keys as $uk) {
                             <input type="password" name="smtp_pass" class="form-input" 
                                    placeholder="<?php echo !empty($settings['smtp_pass']) ? 'Leave blank to keep current password' : 'Enter password'; ?>">
                         </div>
-                        <?php else: ?>
-                        <!-- OAuth is connected: show authenticated account instead of basic auth -->
-                        <?php if (empty($o365ConnectedEmail)): ?>
-                        <div class="alert alert-warning" style="margin-bottom:12px;">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            OAuth is connected but the mailbox email was not captured. Please <strong>disconnect and reconnect</strong> Office 365 below to fix this.
-                        </div>
-                        <?php else: ?>
-                        <div class="setting-item">
-                            <div class="setting-info">
-                                <h4>Authenticated Account</h4>
-                                <p>Emails are sent via Office 365 OAuth (XOAUTH2) using this account</p>
-                            </div>
-                            <input type="text" class="form-input" disabled
-                                   value="<?php echo $o365ConnectedEmail; ?>"
-                                   style="background:var(--card-bg,#16161F);opacity:.8;">
-                        </div>
-                        <?php endif; ?>
                         <?php endif; ?>
                         <div class="setting-item">
                             <div class="setting-info">
@@ -747,6 +760,13 @@ foreach ($url_keys as $uk) {
                         <i class="fas fa-check-circle"></i>
                         Office 365 OAuth is active<?php echo $o365ConnectedEmail ? " — signed in as <strong>{$o365ConnectedEmail}</strong>" : ''; ?>.
                         Emails will be sent using XOAUTH2 instead of password authentication.
+                        SMTP server settings are auto-configured (smtp.office365.com, port 587, TLS).
+                    </div>
+                    <div class="alert alert-info" style="margin-bottom:16px;font-size:13px;">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Requirement:</strong> SMTP AUTH must be enabled for the mailbox in Exchange Online.
+                        If sending fails, run in PowerShell:
+                        <code style="background:rgba(0,0,0,0.2);padding:2px 6px;border-radius:3px;">Set-CASMailbox -Identity <?php echo $o365ConnectedEmail ?: 'user@domain'; ?> -SmtpClientAuthenticationDisabled $false</code>
                     </div>
                     <form method="POST" action="process_settings.php" style="display:inline;">
                         <?php echo csrfTokenInput(); ?>
