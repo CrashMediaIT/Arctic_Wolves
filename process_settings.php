@@ -19,7 +19,7 @@ $action = $_POST['action'] ?? '';
 $user_id = $_SESSION['user_id'] ?? 0;
 
 // Determine if we should return JSON or redirect
-$json_actions = ['test_smtp', 'test_github', 'check_updates', 'apply_updates', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library', 'test_docuseal', 'test_stallion', 'test_google_maps', 'create_restriction', 'remove_restriction', 'add_blocklist_entry', 'remove_blocklist_entry', 'add_pos_whitelist_entry', 'remove_pos_whitelist_entry', 'toggle_pos_whitelist_entry', 'get_ndi_camera', 'update_ndi_camera', 'delete_ndi_camera', 'toggle_ndi_camera', 'get_cluster_status', 'test_cluster_node', 'add_cluster_node', 'remove_cluster_node', 'save_cluster_settings', 'test_paperless', 'test_rustfs', 'test_upload_api', 'sync_office365_calendar'];
+$json_actions = ['test_smtp', 'test_github', 'check_updates', 'apply_updates', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library', 'test_docuseal', 'test_stallion', 'test_google_maps', 'create_restriction', 'remove_restriction', 'add_blocklist_entry', 'remove_blocklist_entry', 'add_pos_whitelist_entry', 'remove_pos_whitelist_entry', 'toggle_pos_whitelist_entry', 'get_ndi_camera', 'update_ndi_camera', 'delete_ndi_camera', 'toggle_ndi_camera', 'get_cluster_status', 'test_cluster_node', 'add_cluster_node', 'remove_cluster_node', 'save_cluster_settings', 'test_paperless', 'test_rustfs', 'test_upload_api', 'sync_office365_calendar', 'save_valkey_settings', 'test_valkey', 'flush_valkey'];
 $is_json = in_array($action, $json_actions);
 
 if ($is_json) {
@@ -2174,6 +2174,91 @@ try {
             exit;
 
         // ---- End Cluster Management ---------------------------------------------------
+
+        // ---- Valkey Cache Management --------------------------------------------------
+
+        case 'save_valkey_settings':
+            $valkey_enabled  = ($_POST['valkey_enabled'] ?? '0') === '1' ? '1' : '0';
+            $valkey_host     = trim($_POST['valkey_host'] ?? '127.0.0.1');
+            $valkey_port     = intval($_POST['valkey_port'] ?? 6379);
+            $valkey_password = $_POST['valkey_password'] ?? '';
+            $valkey_database = intval($_POST['valkey_database'] ?? 0);
+            $valkey_prefix   = trim($_POST['valkey_prefix'] ?? 'aw:');
+
+            // Validate host: alphanumeric, dots, hyphens, colons (IPv6)
+            if (!preg_match('/^[a-zA-Z0-9._:\-]+$/', $valkey_host)) {
+                echo json_encode(['success' => false, 'message' => 'Invalid host address. Use a valid hostname or IP address.']);
+                exit;
+            }
+            // Validate port range
+            if ($valkey_port < 1 || $valkey_port > 65535) {
+                echo json_encode(['success' => false, 'message' => 'Port must be between 1 and 65535.']);
+                exit;
+            }
+            // Validate database index
+            if ($valkey_database < 0 || $valkey_database > 15) {
+                echo json_encode(['success' => false, 'message' => 'Database index must be between 0 and 15.']);
+                exit;
+            }
+            // Validate prefix: alphanumeric, colons, underscores, hyphens
+            if (!preg_match('/^[a-zA-Z0-9_:\-]+$/', $valkey_prefix)) {
+                echo json_encode(['success' => false, 'message' => 'Invalid prefix. Use only letters, numbers, underscores, colons, and hyphens.']);
+                exit;
+            }
+
+            updateSetting($pdo, 'valkey_enabled', $valkey_enabled);
+            updateSetting($pdo, 'valkey_host', $valkey_host);
+            updateSetting($pdo, 'valkey_port', (string)$valkey_port);
+            updateSetting($pdo, 'valkey_password', $valkey_password);
+            updateSetting($pdo, 'valkey_database', (string)$valkey_database);
+            updateSetting($pdo, 'valkey_prefix', $valkey_prefix);
+
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
+                'action' => 'save_valkey_settings',
+                'valkey_enabled' => $valkey_enabled,
+                'valkey_host' => $valkey_host,
+                'valkey_port' => $valkey_port
+            ]);
+
+            echo json_encode(['success' => true, 'message' => 'Valkey settings saved successfully.']);
+            exit;
+
+        case 'test_valkey':
+            require_once __DIR__ . '/lib/valkey_cache.php';
+
+            $host     = trim($_POST['valkey_host'] ?? '127.0.0.1');
+            $port     = intval($_POST['valkey_port'] ?? 6379);
+            $password = $_POST['valkey_password'] ?? '';
+            $database = intval($_POST['valkey_database'] ?? 0);
+
+            $result = ValkeyCache::testConnection($host, $port, $password, $database);
+
+            echo json_encode([
+                'success' => $result['success'],
+                'message' => $result['message'],
+                'info'    => $result['info']
+            ]);
+            exit;
+
+        case 'flush_valkey':
+            require_once __DIR__ . '/lib/valkey_cache.php';
+
+            ValkeyCache::init($pdo);
+            if (!ValkeyCache::isEnabled()) {
+                echo json_encode(['success' => false, 'message' => 'Valkey is not enabled or not connected.']);
+                exit;
+            }
+            $flushed = ValkeyCache::flushPrefix();
+
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
+                'action' => 'flush_valkey_cache',
+                'keys_deleted' => $flushed
+            ]);
+
+            echo json_encode(['success' => true, 'message' => "Cache flushed successfully. $flushed keys removed."]);
+            exit;
+
+        // ---- End Valkey Cache Management -----------------------------------------------
 
         default:
             throw new Exception('Invalid action');
