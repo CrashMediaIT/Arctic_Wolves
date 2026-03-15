@@ -332,96 +332,6 @@ try {
                 exit;
             }
 
-            // ── PULL: Fetch events FROM Office 365 into local sessions ─────────
-            $pulled = 0;
-            $pullErrors = [];
-            try {
-                $startDate = date('Y-m-d\TH:i:s', strtotime('-1 day'));
-                $endDate   = date('Y-m-d\TH:i:s', strtotime('+90 days'));
-                $calViewUrl = 'https://graph.microsoft.com/v1.0/me/calendarView'
-                    . '?startDateTime=' . urlencode($startDate)
-                    . '&endDateTime=' . urlencode($endDate)
-                    . '&$top=200'
-                    . '&$select=id,subject,start,end,location,bodyPreview,categories,iCalUId';
-
-                $pullCtx = stream_context_create([
-                    'http' => [
-                        'method'        => 'GET',
-                        'header'        => "Authorization: Bearer {$accessToken}\r\nContent-Type: application/json\r\n",
-                        'ignore_errors' => true,
-                        'timeout'       => 30,
-                    ],
-                    'ssl' => ['verify_peer' => true, 'verify_peer_name' => true],
-                ]);
-
-                $pullResp = @file_get_contents($calViewUrl, false, $pullCtx);
-                $pullData = $pullResp ? json_decode($pullResp, true) : [];
-
-                if (!empty($pullData['value']) && is_array($pullData['value'])) {
-                    // Ensure o365_event_id column exists (auto-migration, idempotent)
-                    $hasO365Col = true;
-                    try {
-                        $pdo->exec("ALTER TABLE sessions ADD COLUMN o365_event_id VARCHAR(512) DEFAULT NULL COMMENT 'Office 365 iCalUId for sync dedup'");
-                        $pdo->exec("ALTER TABLE sessions ADD UNIQUE INDEX idx_o365_event_id (o365_event_id)");
-                    } catch (PDOException $ae) {
-                        // Column/index already exists — expected on subsequent syncs
-                        if (strpos($ae->getMessage(), 'Duplicate column') === false
-                            && strpos($ae->getMessage(), '42S21') === false
-                            && strpos($ae->getMessage(), 'Duplicate key name') === false) {
-                            $pullErrors[] = 'Could not prepare sessions table for sync: ' . $ae->getMessage();
-                            $hasO365Col = false;
-                        }
-                    }
-
-                    if ($hasO365Col) {
-                        $upsertStmt = $pdo->prepare("
-                            INSERT INTO sessions (title, session_date, session_time, duration_minutes, description, coach_id, o365_event_id, created_at, updated_at)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
-                            ON DUPLICATE KEY UPDATE
-                                title = VALUES(title),
-                                session_date = VALUES(session_date),
-                                session_time = VALUES(session_time),
-                                duration_minutes = VALUES(duration_minutes),
-                                description = VALUES(description),
-                                updated_at = NOW()
-                        ");
-
-                        foreach ($pullData['value'] as $o365Event) {
-                            $subject  = $o365Event['subject'] ?? 'Office 365 Event';
-                            $icalUid  = $o365Event['iCalUId'] ?? $o365Event['id'] ?? null;
-                            if (empty($icalUid)) continue;
-
-                            $startRaw = $o365Event['start']['dateTime'] ?? null;
-                            $endRaw   = $o365Event['end']['dateTime'] ?? null;
-                            if (!$startRaw) continue;
-
-                            $startTs  = strtotime($startRaw);
-                            $endTs    = $endRaw ? strtotime($endRaw) : ($startTs + 3600);
-                            $sessDate = date('Y-m-d', $startTs);
-                            $sessTime = date('H:i:s', $startTs);
-                            $duration = max(15, round(($endTs - $startTs) / 60)); // min 15 minutes
-
-                            $desc = $o365Event['bodyPreview'] ?? '';
-                            $locName = $o365Event['location']['displayName'] ?? '';
-                            if ($locName) {
-                                $desc = ($desc ? $desc . "\n" : '') . 'Location: ' . $locName;
-                            }
-
-                            try {
-                                $upsertStmt->execute([$subject, $sessDate, $sessTime, $duration, $desc, $user_id, $icalUid]);
-                                $pulled++;
-                            } catch (PDOException $ie) {
-                                $pullErrors[] = "Event '{$subject}': " . $ie->getMessage();
-                            }
-                        }
-                    }
-                } elseif (!empty($pullData['error'])) {
-                    $pullErrors[] = $pullData['error']['message'] ?? 'Graph API error during pull';
-                }
-            } catch (Exception $pe) {
-                $pullErrors[] = 'Pull error: ' . $pe->getMessage();
-            }
-
             // ── PUSH: Send local sessions TO Office 365 ──────────────────────
             $sessStmt = $pdo->prepare("
                 SELECT s.id, s.title, s.session_date, s.session_time, s.duration_minutes,
@@ -478,21 +388,17 @@ try {
                 }
             }
 
-            $allErrors = array_merge($pullErrors, $pushErrors);
-
             Auditor::log($pdo, $user_id, 'create', 'user_oauth_tokens', null, [
                 'action'  => 'office365_calendar_sync',
                 'pushed'  => $pushed,
-                'pulled'  => $pulled,
                 'total'   => count($sessions),
             ]);
 
-            if (!empty($allErrors) && $pushed === 0 && $pulled === 0) {
-                echo json_encode(['success' => false, 'message' => 'Sync failed: ' . $allErrors[0]]);
+            if (!empty($pushErrors) && $pushed === 0) {
+                echo json_encode(['success' => false, 'message' => 'Sync failed: ' . $pushErrors[0]]);
             } else {
                 $parts = [];
                 if ($pushed > 0) $parts[] = "pushed {$pushed} session" . ($pushed !== 1 ? 's' : '');
-                if ($pulled > 0) $parts[] = "pulled {$pulled} event" . ($pulled !== 1 ? 's' : '');
                 if (empty($parts)) $parts[] = 'calendars are in sync';
                 echo json_encode(['success' => true, 'message' => 'Sync complete: ' . implode(', ', $parts)]);
             }
