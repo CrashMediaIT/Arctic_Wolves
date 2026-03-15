@@ -501,13 +501,14 @@ test.describe('process_settings.php - Valkey Handlers', () => {
     expect(saveHandler).toMatch(/=== '1' \? '1' : '0'/);
   });
 
-  test('save_valkey_settings should cast port to integer', () => {
+  test('save_valkey_settings should cast port to integer using filter_var', () => {
     const content = readFile('process_settings.php');
     const saveHandler = content.substring(
       content.indexOf("case 'save_valkey_settings':"),
       content.indexOf("case 'test_valkey':")
     );
-    expect(saveHandler).toContain('intval');
+    expect(saveHandler).toContain('filter_var');
+    expect(saveHandler).toContain('FILTER_VALIDATE_INT');
   });
 });
 
@@ -563,6 +564,14 @@ test.describe('Valkey Settings Integration', () => {
     const content = readFile('lib/valkey_cache.php');
     expect(content).not.toContain('flushAll');
     expect(content).not.toContain('flushDB');
+  });
+
+  test('ValkeyCache should use SCAN instead of KEYS for non-blocking iteration', () => {
+    const content = readFile('lib/valkey_cache.php');
+    // flushPrefix and getStats should use scan, not keys
+    expect(content).toContain('->scan(');
+    // Should not use ->keys() anywhere (blocking command)
+    expect(content).not.toMatch(/->keys\(/);
   });
 
   test('ValkeyCache should support both Valkey and Redis version strings', () => {

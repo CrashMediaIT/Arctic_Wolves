@@ -2180,10 +2180,24 @@ try {
         case 'save_valkey_settings':
             $valkey_enabled  = ($_POST['valkey_enabled'] ?? '0') === '1' ? '1' : '0';
             $valkey_host     = trim($_POST['valkey_host'] ?? '127.0.0.1');
-            $valkey_port     = intval($_POST['valkey_port'] ?? 6379);
             $valkey_password = $_POST['valkey_password'] ?? '';
-            $valkey_database = intval($_POST['valkey_database'] ?? 0);
             $valkey_prefix   = trim($_POST['valkey_prefix'] ?? 'aw:');
+
+            // Validate and parse port
+            $raw_port = $_POST['valkey_port'] ?? '6379';
+            $valkey_port = filter_var($raw_port, FILTER_VALIDATE_INT);
+            if ($valkey_port === false) {
+                echo json_encode(['success' => false, 'message' => 'Port must be a valid number.']);
+                exit;
+            }
+
+            // Validate and parse database index
+            $raw_db = $_POST['valkey_database'] ?? '0';
+            $valkey_database = filter_var($raw_db, FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
+            if ($valkey_database === false) {
+                echo json_encode(['success' => false, 'message' => 'Database index must be a valid number.']);
+                exit;
+            }
 
             // Validate host: alphanumeric, dots, hyphens, colons (IPv6)
             if (!preg_match('/^[a-zA-Z0-9._:\-]+$/', $valkey_host)) {

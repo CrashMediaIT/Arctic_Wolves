@@ -222,17 +222,25 @@ class ValkeyCache {
 
     /**
      * Flush all keys with our prefix (safe — does not flush other apps' keys).
+     * Uses SCAN instead of KEYS to avoid blocking the server.
      *
      * @return int  Number of keys deleted
      */
     public static function flushPrefix() {
         if (!self::$enabled || !self::$connection) return 0;
         try {
-            $keys = self::$connection->keys(self::$prefix . '*');
-            if (!empty($keys)) {
-                return self::$connection->del($keys);
+            $deleted = 0;
+            $iterator = null;
+            $pattern = self::$prefix . '*';
+            while (true) {
+                $keys = self::$connection->scan($iterator, $pattern, 100);
+                if ($keys === false) break;
+                if (!empty($keys)) {
+                    $deleted += self::$connection->del($keys);
+                }
+                if ($iterator === 0) break;
             }
-            return 0;
+            return $deleted;
         } catch (\Exception $e) {
             error_log('[VALKEY] FLUSH error: ' . $e->getMessage());
             return 0;
@@ -469,6 +477,7 @@ class ValkeyCache {
 
     /**
      * Get cache statistics for the admin dashboard.
+     * Uses SCAN instead of KEYS to avoid blocking the server.
      *
      * @return array|null
      */
@@ -476,13 +485,22 @@ class ValkeyCache {
         if (!self::$enabled || !self::$connection) return null;
         try {
             $info = self::$connection->info();
-            $keys = self::$connection->keys(self::$prefix . '*');
+            // Count app keys using SCAN (non-blocking)
+            $appKeyCount = 0;
+            $iterator = null;
+            $pattern = self::$prefix . '*';
+            while (true) {
+                $keys = self::$connection->scan($iterator, $pattern, 100);
+                if ($keys === false) break;
+                $appKeyCount += count($keys);
+                if ($iterator === 0) break;
+            }
             return [
                 'connected'        => true,
                 'version'          => $info['redis_version'] ?? ($info['valkey_version'] ?? 'Unknown'),
                 'memory_used'      => $info['used_memory_human'] ?? 'Unknown',
                 'uptime'           => isset($info['uptime_in_seconds']) ? self::formatUptime((int)$info['uptime_in_seconds']) : 'Unknown',
-                'app_keys'         => count($keys),
+                'app_keys'         => $appKeyCount,
                 'hit_rate'         => isset($info['keyspace_hits'], $info['keyspace_misses'])
                     ? round($info['keyspace_hits'] / max(1, $info['keyspace_hits'] + $info['keyspace_misses']) * 100, 1) . '%'
                     : 'N/A',
