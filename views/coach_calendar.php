@@ -254,7 +254,7 @@ if ($o365CalConnected) {
         $o365Stmt = $pdo->prepare("
             SELECT id, title, event_date, event_time, duration_minutes, description, location_name
             FROM o365_calendar_events
-            WHERE user_id = ? AND event_date >= CURDATE() - INTERVAL 30 DAY
+            WHERE user_id = ? AND event_date >= CURDATE() - INTERVAL 30 DAY AND event_date <= CURDATE() + INTERVAL 90 DAY
             ORDER BY event_date, event_time
         ");
         $o365Stmt->execute([$user_id]);
