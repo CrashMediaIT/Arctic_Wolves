@@ -332,7 +332,7 @@ try {
                 exit;
             }
 
-            // ── PULL: Fetch events FROM Office 365 into local sessions ─────────
+            // ── PULL: Fetch events FROM Office 365 (read-only, not sessions) ──
             $pulled = 0;
             $pullErrors = [];
             try {
@@ -358,32 +358,40 @@ try {
                 $pullData = $pullResp ? json_decode($pullResp, true) : [];
 
                 if (!empty($pullData['value']) && is_array($pullData['value'])) {
-                    // Ensure o365_event_id column exists (auto-migration, idempotent)
-                    $hasO365Col = true;
+                    // Ensure o365_calendar_events table exists (auto-migration, idempotent)
+                    $hasTable = true;
                     try {
-                        $pdo->exec("ALTER TABLE sessions ADD COLUMN o365_event_id VARCHAR(512) DEFAULT NULL COMMENT 'Office 365 iCalUId for sync dedup'");
-                        $pdo->exec("ALTER TABLE sessions ADD UNIQUE INDEX idx_o365_event_id (o365_event_id)");
+                        $pdo->exec("
+                            CREATE TABLE IF NOT EXISTS `o365_calendar_events` (
+                                `id` INT AUTO_INCREMENT PRIMARY KEY,
+                                `user_id` INT NOT NULL,
+                                `o365_event_id` VARCHAR(512) NOT NULL,
+                                `title` VARCHAR(255) NOT NULL DEFAULT 'Office 365 Event',
+                                `event_date` DATE NOT NULL,
+                                `event_time` TIME DEFAULT NULL,
+                                `duration_minutes` INT DEFAULT 60,
+                                `description` TEXT DEFAULT NULL,
+                                `location_name` VARCHAR(255) DEFAULT NULL,
+                                `synced_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                UNIQUE KEY `unique_user_event` (`user_id`, `o365_event_id`),
+                                INDEX `idx_user_date` (`user_id`, `event_date`),
+                                INDEX `idx_event_date` (`event_date`)
+                            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                        ");
                     } catch (PDOException $ae) {
-                        // Column/index already exists — expected on subsequent syncs
-                        if (strpos($ae->getMessage(), 'Duplicate column') === false
-                            && strpos($ae->getMessage(), '42S21') === false
-                            && strpos($ae->getMessage(), 'Duplicate key name') === false) {
-                            $pullErrors[] = 'Could not prepare sessions table for sync: ' . $ae->getMessage();
-                            $hasO365Col = false;
+                        if (strpos($ae->getMessage(), 'already exists') === false) {
+                            $pullErrors[] = 'Could not prepare o365_calendar_events table: ' . $ae->getMessage();
+                            $hasTable = false;
                         }
                     }
 
-                    if ($hasO365Col) {
+                    if ($hasTable) {
+                        // Clear stale events for this user before reinserting fresh data
+                        $pdo->prepare("DELETE FROM o365_calendar_events WHERE user_id = ?")->execute([$user_id]);
+
                         $upsertStmt = $pdo->prepare("
-                            INSERT INTO sessions (title, session_date, session_time, duration_minutes, description, coach_id, o365_event_id, created_at, updated_at)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
-                            ON DUPLICATE KEY UPDATE
-                                title = VALUES(title),
-                                session_date = VALUES(session_date),
-                                session_time = VALUES(session_time),
-                                duration_minutes = VALUES(duration_minutes),
-                                description = VALUES(description),
-                                updated_at = NOW()
+                            INSERT INTO o365_calendar_events (user_id, o365_event_id, title, event_date, event_time, duration_minutes, description, location_name, synced_at)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
                         ");
 
                         foreach ($pullData['value'] as $o365Event) {
@@ -397,9 +405,9 @@ try {
 
                             $startTs  = strtotime($startRaw);
                             $endTs    = $endRaw ? strtotime($endRaw) : ($startTs + 3600);
-                            $sessDate = date('Y-m-d', $startTs);
-                            $sessTime = date('H:i:s', $startTs);
-                            $duration = max(15, round(($endTs - $startTs) / 60)); // min 15 minutes
+                            $evtDate  = date('Y-m-d', $startTs);
+                            $evtTime  = date('H:i:s', $startTs);
+                            $duration = max(15, round(($endTs - $startTs) / 60));
 
                             $desc = $o365Event['bodyPreview'] ?? '';
                             $locName = $o365Event['location']['displayName'] ?? '';
@@ -408,7 +416,7 @@ try {
                             }
 
                             try {
-                                $upsertStmt->execute([$subject, $sessDate, $sessTime, $duration, $desc, $user_id, $icalUid]);
+                                $upsertStmt->execute([$user_id, $icalUid, $subject, $evtDate, $evtTime, $duration, $desc, $locName]);
                                 $pulled++;
                             } catch (PDOException $ie) {
                                 $pullErrors[] = "Event '{$subject}': " . $ie->getMessage();

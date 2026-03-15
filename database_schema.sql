@@ -4944,3 +4944,20 @@ CREATE TABLE IF NOT EXISTS `user_oauth_tokens` (
     INDEX `idx_provider` (`provider`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Office 365 Calendar Events - Read-only events pulled from Outlook (not sessions)
+CREATE TABLE IF NOT EXISTS `o365_calendar_events` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT NOT NULL COMMENT 'Coach who synced this event',
+    `o365_event_id` VARCHAR(512) NOT NULL COMMENT 'Office 365 iCalUId for dedup',
+    `title` VARCHAR(255) NOT NULL DEFAULT 'Office 365 Event',
+    `event_date` DATE NOT NULL,
+    `event_time` TIME DEFAULT NULL,
+    `duration_minutes` INT DEFAULT 60,
+    `description` TEXT DEFAULT NULL,
+    `location_name` VARCHAR(255) DEFAULT NULL,
+    `synced_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY `unique_user_event` (`user_id`, `o365_event_id`),
+    INDEX `idx_user_date` (`user_id`, `event_date`),
+    INDEX `idx_event_date` (`event_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
