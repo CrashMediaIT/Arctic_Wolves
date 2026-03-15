@@ -247,6 +247,24 @@ try {
     error_log("Evaluation templates fetch note: " . $e->getMessage());
 }
 
+// Fetch Office 365 calendar events (read-only, not sessions)
+$o365Events = [];
+if ($o365CalConnected) {
+    try {
+        $o365Stmt = $pdo->prepare("
+            SELECT id, title, event_date, event_time, duration_minutes, description, location_name
+            FROM o365_calendar_events
+            WHERE user_id = ? AND event_date >= CURDATE() - INTERVAL 30 DAY
+            ORDER BY event_date, event_time
+        ");
+        $o365Stmt->execute([$user_id]);
+        $o365Events = $o365Stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        // Table may not exist yet (before first sync)
+        error_log("O365 calendar events fetch note: " . $e->getMessage());
+    }
+}
+
 // No demo data - show actual data from database only
 $is_demo_data = false;
 ?>
@@ -362,6 +380,17 @@ $is_demo_data = false;
         <div class="session-data" data-session-id="<?= $session['id'] ?>" data-date="<?= date('Y-m-d', $dt) ?>" data-time="<?= $timeStr ?>" data-title="<?= htmlspecialchars($session['session_type_name'] ?? $session['title'] ?? 'Session') ?>" data-coach="<?= htmlspecialchars(trim(($session['coach_first_name'] ?? '') . ' ' . ($session['coach_last_name'] ?? '')) ?: '') ?>" data-location="<?= htmlspecialchars($session['location_name'] ?? '') ?>" data-datetime="<?= date('l, F j, Y \a\t g:i A', $startTs) ?>" data-end-time="<?= date('g:i A', $end) ?>" data-duration="<?= $session['duration_minutes'] ?? 60 ?>" data-description="<?= htmlspecialchars($session['description'] ?? '') ?>" data-practice-plan="<?= htmlspecialchars($session['practice_plan_name'] ?? '') ?>" data-practice-plan-id="<?= $session['practice_plan_id'] ?? '' ?>" data-is-mine="<?= $is_mine_cal ? '1' : '0' ?>" data-evaluation-id="<?= $session['evaluation_id'] ?? '' ?>" data-evaluation-name="<?= htmlspecialchars($session['evaluation_name'] ?? '') ?>" data-evaluation-status="<?= htmlspecialchars($session['evaluation_status'] ?? '') ?>"></div>
         <?php endforeach; ?>
     </div>
+    <div id="o365EventsData" style="display: none;">
+        <?php foreach ($o365Events as $o365Evt):
+            $o365Dt = strtotime($o365Evt['event_date']);
+            $o365TimeVal = !empty($o365Evt['event_time']) ? $o365Evt['event_time'] : null;
+            $o365TimeStr = $o365TimeVal ? date('g:i A', strtotime($o365TimeVal)) : '';
+            $o365StartTs = $o365TimeVal ? strtotime(date('Y-m-d', $o365Dt) . ' ' . $o365TimeVal) : $o365Dt;
+            $o365End = $o365StartTs + ($o365Evt['duration_minutes'] ?? 60) * 60;
+        ?>
+        <div class="o365-event-data" data-date="<?= date('Y-m-d', $o365Dt) ?>" data-time="<?= $o365TimeStr ?>" data-title="<?= htmlspecialchars($o365Evt['title'] ?? 'Outlook Event') ?>" data-location="<?= htmlspecialchars($o365Evt['location_name'] ?? '') ?>" data-datetime="<?= date('l, F j, Y \a\t g:i A', $o365StartTs) ?>" data-end-time="<?= date('g:i A', $o365End) ?>" data-duration="<?= $o365Evt['duration_minutes'] ?? 60 ?>" data-description="<?= htmlspecialchars($o365Evt['description'] ?? '') ?>"></div>
+        <?php endforeach; ?>
+    </div>
     <?php else: ?>
     <div class="sessions-list">
         <?php if (count($sessions) > 0): ?>
@@ -420,6 +449,35 @@ $is_demo_data = false;
         <?php else: ?>
             <div class="placeholder-container"><i class="fas fa-calendar placeholder-icon"></i><p class="placeholder-text">No sessions found.</p></div>
         <?php endif; ?>
+        <?php if (!empty($o365Events)): ?>
+            <h3 style="margin:24px 0 12px 0;color:var(--text-dim,#A8A8B8);font-size:14px;text-transform:uppercase;letter-spacing:1px;"><i class="fab fa-microsoft" style="color:#0078d4;"></i> Outlook Calendar Events</h3>
+            <?php foreach ($o365Events as $o365Evt):
+                $o365Dt = strtotime($o365Evt['event_date']);
+                $o365TimeVal = !empty($o365Evt['event_time']) ? $o365Evt['event_time'] : null;
+                $o365StartTs = $o365TimeVal ? strtotime(date('Y-m-d', $o365Dt) . ' ' . $o365TimeVal) : $o365Dt;
+                $o365End = $o365StartTs + ($o365Evt['duration_minutes'] ?? 60) * 60;
+            ?>
+            <div class="session-card o365-event-card" style="border-left:3px solid #0078d4;opacity:0.85;">
+                <div class="session-date">
+                    <div class="date-box" style="background:rgba(0,120,212,0.15);color:#0078d4;">
+                        <span class="date-day"><?= date('d', $o365Dt) ?></span>
+                        <span class="date-month"><?= strtoupper(date('M', $o365Dt)) ?></span>
+                    </div>
+                    <span style="font-size:10px;color:#0078d4;font-weight:600;">Outlook</span>
+                </div>
+                <div class="session-details">
+                    <h3 class="session-title"><?= htmlspecialchars($o365Evt['title'] ?? 'Outlook Event') ?></h3>
+                    <div class="session-meta">
+                        <span><i class="fas fa-clock"></i> <?= date('g:i A', $o365StartTs) ?> - <?= date('g:i A', $o365End) ?></span>
+                        <?php if (!empty($o365Evt['location_name'])): ?><span><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($o365Evt['location_name']) ?></span><?php endif; ?>
+                    </div>
+                    <div class="session-tags">
+                        <span class="tag" style="background:rgba(0,120,212,0.15);color:#0078d4;"><i class="fab fa-microsoft"></i> Outlook Event</span>
+                    </div>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
     </div>
     <?php endif; ?>
 </div>
@@ -441,6 +499,27 @@ $is_demo_data = false;
             <button class="btn btn-secondary" id="modalAssignPlanBtn" style="display: none;" onclick="closeSessionDetailModal()"><i class="fas fa-clipboard-list"></i> <span id="modalAssignPlanLabel">Add Plan</span></button>
             <a href="#" id="modalEvaluationLink" class="btn btn-secondary" style="display: none;"><i class="fas fa-clipboard-check"></i> Session Evaluation</a>
             <a href="#" id="modalRecordLink" class="btn btn-secondary"><i class="fas fa-video"></i> Record Drill</a>
+        </div>
+    </div>
+</div>
+
+<div class="session-modal-overlay" id="o365EventModal">
+    <div class="session-modal">
+        <div class="session-modal-header" style="border-bottom-color:#0078d4;">
+            <h2><i class="fab fa-microsoft" style="color:#0078d4;margin-right:8px;"></i><span id="o365ModalTitle">Outlook Event</span></h2>
+            <button class="session-modal-close" onclick="closeO365EventModal()">&times;</button>
+        </div>
+        <div class="session-modal-body">
+            <div class="session-modal-detail"><label>Date & Time</label><span id="o365ModalDateTime">-</span></div>
+            <div class="session-modal-detail"><label>Duration</label><span id="o365ModalDuration">-</span></div>
+            <div class="session-modal-detail"><label>Location</label><span id="o365ModalLocation">-</span></div>
+            <div class="session-modal-detail"><label>Description</label><span id="o365ModalDescription">-</span></div>
+            <div style="margin-top:12px;padding:8px 12px;background:rgba(0,120,212,0.1);border-radius:6px;font-size:12px;color:#0078d4;">
+                <i class="fab fa-microsoft"></i> This event is from your Outlook calendar (read-only)
+            </div>
+        </div>
+        <div class="session-modal-footer">
+            <button class="btn btn-secondary" onclick="closeO365EventModal()">Close</button>
         </div>
     </div>
 </div>
@@ -708,6 +787,21 @@ document.addEventListener('DOMContentLoaded', function() {
             evaluationStatus: el.dataset.evaluationStatus || ''
         });
     });
+
+    const o365EventsData = [];
+    document.querySelectorAll('#o365EventsData .o365-event-data').forEach(el => {
+        o365EventsData.push({
+            date: el.dataset.date,
+            time: el.dataset.time,
+            title: el.dataset.title,
+            location: el.dataset.location || '',
+            datetime: el.dataset.datetime || '',
+            endTime: el.dataset.endTime || '',
+            duration: el.dataset.duration || '60',
+            description: el.dataset.description || '',
+            isO365: true
+        });
+    });
     
     function renderCalendar(month, year) {
         const grid = document.getElementById('calendarGrid'), titleEl = document.getElementById('currentMonth');
@@ -719,6 +813,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const today = new Date(), todayStr = today.toISOString().split('T')[0];
         const sessionDates = {};
         sessionsData.forEach(s => { if (!sessionDates[s.date]) sessionDates[s.date] = []; sessionDates[s.date].push(s); });
+        o365EventsData.forEach(e => { if (!sessionDates[e.date]) sessionDates[e.date] = []; sessionDates[e.date].push(e); });
         const prevMonthDays = new Date(year, month, 0).getDate();
         for (let i = firstDay - 1; i >= 0; i--) grid.appendChild(createDayElement(prevMonthDays - i, true, false, []));
         for (let day = 1; day <= daysInMonth; day++) {
@@ -735,13 +830,24 @@ document.addEventListener('DOMContentLoaded', function() {
         dayEl.innerHTML = '<div class="day-number">' + dayNum + '</div>';
         sessions.slice(0, 3).forEach(s => {
             const indicator = document.createElement('div');
-            indicator.className = 'session-indicator';
-            indicator.textContent = s.time + ' ' + s.title;
-            indicator.style.cursor = 'pointer';
-            indicator.addEventListener('click', function(e) {
-                e.stopPropagation();
-                openCalendarSessionModal(s);
-            });
+            if (s.isO365) {
+                indicator.className = 'session-indicator o365-indicator';
+                indicator.style.cssText = 'background:rgba(0,120,212,0.15);color:#0078d4;border-left:2px solid #0078d4;';
+                indicator.textContent = s.time + ' ' + s.title;
+                indicator.style.cursor = 'pointer';
+                indicator.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    openO365EventModal(s);
+                });
+            } else {
+                indicator.className = 'session-indicator';
+                indicator.textContent = s.time + ' ' + s.title;
+                indicator.style.cursor = 'pointer';
+                indicator.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    openCalendarSessionModal(s);
+                });
+            }
             dayEl.appendChild(indicator);
         });
         if (sessions.length > 3) dayEl.innerHTML += '<div class="session-indicator" style="background:var(--bg-card);color:var(--text-dim)">+' + (sessions.length - 3) + ' more</div>';
@@ -830,6 +936,15 @@ function openCalendarSessionModal(s) {
     document.getElementById('sessionDetailModal').classList.add('active');
 }
 function closeSessionDetailModal() { document.getElementById('sessionDetailModal').classList.remove('active'); }
+function openO365EventModal(evt) {
+    document.getElementById('o365ModalTitle').textContent = evt.title || 'Outlook Event';
+    document.getElementById('o365ModalDateTime').textContent = (evt.datetime || '') + (evt.endTime ? ' - ' + evt.endTime : '');
+    document.getElementById('o365ModalDuration').textContent = (evt.duration || '60') + ' minutes';
+    document.getElementById('o365ModalLocation').textContent = evt.location || 'Not specified';
+    document.getElementById('o365ModalDescription').textContent = evt.description || 'No description';
+    document.getElementById('o365EventModal').classList.add('active');
+}
+function closeO365EventModal() { document.getElementById('o365EventModal').classList.remove('active'); }
 function openAssignPlanModal(sessionId, currentPlanId) {
     // Validate sessionId is numeric to prevent XSS
     if (!/^\d+$/.test(sessionId)) {

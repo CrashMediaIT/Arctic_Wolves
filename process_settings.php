@@ -332,6 +332,104 @@ try {
                 exit;
             }
 
+            // ── PULL: Fetch events FROM Office 365 (read-only, not sessions) ──
+            $pulled = 0;
+            $pullErrors = [];
+            try {
+                $startDate = date('Y-m-d\TH:i:s', strtotime('-1 day'));
+                $endDate   = date('Y-m-d\TH:i:s', strtotime('+90 days'));
+                $calViewUrl = 'https://graph.microsoft.com/v1.0/me/calendarView'
+                    . '?startDateTime=' . urlencode($startDate)
+                    . '&endDateTime=' . urlencode($endDate)
+                    . '&$top=200'
+                    . '&$select=id,subject,start,end,location,bodyPreview,categories,iCalUId';
+
+                $pullCtx = stream_context_create([
+                    'http' => [
+                        'method'        => 'GET',
+                        'header'        => "Authorization: Bearer {$accessToken}\r\nContent-Type: application/json\r\n",
+                        'ignore_errors' => true,
+                        'timeout'       => 30,
+                    ],
+                    'ssl' => ['verify_peer' => true, 'verify_peer_name' => true],
+                ]);
+
+                $pullResp = @file_get_contents($calViewUrl, false, $pullCtx);
+                $pullData = $pullResp ? json_decode($pullResp, true) : [];
+
+                if (!empty($pullData['value']) && is_array($pullData['value'])) {
+                    // Ensure o365_calendar_events table exists (auto-migration, idempotent)
+                    $hasTable = true;
+                    try {
+                        $pdo->exec("
+                            CREATE TABLE IF NOT EXISTS `o365_calendar_events` (
+                                `id` INT AUTO_INCREMENT PRIMARY KEY,
+                                `user_id` INT NOT NULL,
+                                `o365_event_id` VARCHAR(512) NOT NULL,
+                                `title` VARCHAR(255) NOT NULL DEFAULT 'Office 365 Event',
+                                `event_date` DATE NOT NULL,
+                                `event_time` TIME DEFAULT NULL,
+                                `duration_minutes` INT DEFAULT 60,
+                                `description` TEXT DEFAULT NULL,
+                                `location_name` VARCHAR(255) DEFAULT NULL,
+                                `synced_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                UNIQUE KEY `unique_user_event` (`user_id`, `o365_event_id`),
+                                INDEX `idx_user_date` (`user_id`, `event_date`),
+                                INDEX `idx_event_date` (`event_date`)
+                            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                        ");
+                    } catch (PDOException $ae) {
+                        if (strpos($ae->getMessage(), 'already exists') === false) {
+                            $pullErrors[] = 'Could not prepare o365_calendar_events table: ' . $ae->getMessage();
+                            $hasTable = false;
+                        }
+                    }
+
+                    if ($hasTable) {
+                        // Clear stale events for this user before reinserting fresh data
+                        $pdo->prepare("DELETE FROM o365_calendar_events WHERE user_id = ?")->execute([$user_id]);
+
+                        $upsertStmt = $pdo->prepare("
+                            INSERT INTO o365_calendar_events (user_id, o365_event_id, title, event_date, event_time, duration_minutes, description, location_name, synced_at)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                        ");
+
+                        foreach ($pullData['value'] as $o365Event) {
+                            $subject  = $o365Event['subject'] ?? 'Office 365 Event';
+                            $icalUid  = $o365Event['iCalUId'] ?? $o365Event['id'] ?? null;
+                            if (empty($icalUid)) continue;
+
+                            $startRaw = $o365Event['start']['dateTime'] ?? null;
+                            $endRaw   = $o365Event['end']['dateTime'] ?? null;
+                            if (!$startRaw) continue;
+
+                            $startTs  = strtotime($startRaw);
+                            $endTs    = $endRaw ? strtotime($endRaw) : ($startTs + 3600);
+                            $evtDate  = date('Y-m-d', $startTs);
+                            $evtTime  = date('H:i:s', $startTs);
+                            $duration = max(15, round(($endTs - $startTs) / 60));
+
+                            $desc = $o365Event['bodyPreview'] ?? '';
+                            $locName = $o365Event['location']['displayName'] ?? '';
+                            if ($locName) {
+                                $desc = ($desc ? $desc . "\n" : '') . 'Location: ' . $locName;
+                            }
+
+                            try {
+                                $upsertStmt->execute([$user_id, $icalUid, $subject, $evtDate, $evtTime, $duration, $desc, $locName]);
+                                $pulled++;
+                            } catch (PDOException $ie) {
+                                $pullErrors[] = "Event '{$subject}': " . $ie->getMessage();
+                            }
+                        }
+                    }
+                } elseif (!empty($pullData['error'])) {
+                    $pullErrors[] = $pullData['error']['message'] ?? 'Graph API error during pull';
+                }
+            } catch (Exception $pe) {
+                $pullErrors[] = 'Pull error: ' . $pe->getMessage();
+            }
+
             // ── PUSH: Send local sessions TO Office 365 ──────────────────────
             $sessStmt = $pdo->prepare("
                 SELECT s.id, s.title, s.session_date, s.session_time, s.duration_minutes,
@@ -388,17 +486,21 @@ try {
                 }
             }
 
+            $allErrors = array_merge($pullErrors, $pushErrors);
+
             Auditor::log($pdo, $user_id, 'create', 'user_oauth_tokens', null, [
                 'action'  => 'office365_calendar_sync',
                 'pushed'  => $pushed,
+                'pulled'  => $pulled,
                 'total'   => count($sessions),
             ]);
 
-            if (!empty($pushErrors) && $pushed === 0) {
-                echo json_encode(['success' => false, 'message' => 'Sync failed: ' . $pushErrors[0]]);
+            if (!empty($allErrors) && $pushed === 0 && $pulled === 0) {
+                echo json_encode(['success' => false, 'message' => 'Sync failed: ' . $allErrors[0]]);
             } else {
                 $parts = [];
                 if ($pushed > 0) $parts[] = "pushed {$pushed} session" . ($pushed !== 1 ? 's' : '');
+                if ($pulled > 0) $parts[] = "pulled {$pulled} event" . ($pulled !== 1 ? 's' : '');
                 if (empty($parts)) $parts[] = 'calendars are in sync';
                 echo json_encode(['success' => true, 'message' => 'Sync complete: ' . implode(', ', $parts)]);
             }

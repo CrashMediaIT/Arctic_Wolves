@@ -94,17 +94,20 @@ test.describe('Calendar sync - session_coaches column fix', () => {
     expect(settingsContent).toContain('s.coach_id = ?');
   });
 
-  test('calendar sync does not pull events from Office 365 into sessions', () => {
-    // Outlook calendar events should NOT create local sessions
-    expect(settingsContent).not.toContain('calendarView');
+  test('calendar sync pulls events into o365_calendar_events table not sessions', () => {
+    // Outlook events should be stored in o365_calendar_events, NOT in sessions table
+    expect(settingsContent).toContain('calendarView');
+    expect(settingsContent).toContain('o365_calendar_events');
     expect(settingsContent).not.toContain('INSERT INTO sessions');
-    expect(settingsContent).not.toContain('o365_event_id, created_at');
   });
 
-  test('calendar sync is push-only to Office 365', () => {
-    // Sync should only push local sessions to Office 365, not pull
+  test('calendar sync pushes local sessions to Office 365', () => {
     expect(settingsContent).toContain('graph.microsoft.com/v1.0/me/events');
-    expect(settingsContent).not.toContain('PULL');
-    expect(settingsContent).not.toContain('$pulled');
+  });
+
+  test('pulled events do not create sessions', () => {
+    // The INSERT should target o365_calendar_events, not sessions
+    expect(settingsContent).toContain('INSERT INTO o365_calendar_events');
+    expect(settingsContent).not.toContain('INSERT INTO sessions');
   });
 });
