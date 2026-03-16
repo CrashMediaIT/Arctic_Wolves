@@ -23,20 +23,21 @@
 function createPurchaseInvoice($pdo, $user_id, array $items, $subtotal, $tax_amount, $total, $payment_method = 'stripe', $transaction_id = '', $notes = '') {
     try {
         // Generate unique invoice number with larger range to reduce collision risk
-        $invoice_number = 'INV-' . date('Y') . '-' . str_pad(rand(1, 99999), 5, '0', STR_PAD_LEFT);
+        $invoice_number = 'INV-' . date('Y') . '-' . str_pad(random_int(1, 99999), 5, '0', STR_PAD_LEFT);
         
         // Ensure uniqueness
         $check_stmt = $pdo->prepare("SELECT id FROM invoices WHERE invoice_number = ?");
         $check_stmt->execute([$invoice_number]);
         $attempts = 0;
-        while ($check_stmt->rowCount() > 0 && $attempts < 20) {
-            $invoice_number = 'INV-' . date('Y') . '-' . str_pad(rand(1, 99999), 5, '0', STR_PAD_LEFT);
+        while ($check_stmt->fetch() && $attempts < 20) {
+            $invoice_number = 'INV-' . date('Y') . '-' . str_pad(random_int(1, 99999), 5, '0', STR_PAD_LEFT);
             $check_stmt->execute([$invoice_number]);
             $attempts++;
         }
         
         // If still not unique after max attempts, abort
-        if ($check_stmt->rowCount() > 0) {
+        $check_stmt->execute([$invoice_number]);
+        if ($check_stmt->fetch()) {
             if (class_exists('ErrorLogger')) {
                 ErrorLogger::error("Invoice creation error: Could not generate unique invoice number after $attempts attempts");
             } else {
