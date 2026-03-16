@@ -79,7 +79,7 @@ try {
                 }
                 
                 // Create invoice for the shop order
-                $shop_user_id = $order['user_id'] ?? ($_SESSION['user_id'] ?? 0);
+                $shop_user_id = !empty($order['user_id']) ? intval($order['user_id']) : (isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : 0);
                 if ($shop_user_id > 0) {
                     $invoice_line_items = [];
                     foreach ($orderItems as $item) {

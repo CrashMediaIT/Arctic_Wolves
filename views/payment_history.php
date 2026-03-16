@@ -371,7 +371,7 @@ $total_credits = array_sum(array_column($credits, 'credit_amount'));
                         <?= date('M d, Y', strtotime($inv['invoice_date'])) ?>
                     </td>
                     <td style="font-weight: 700; color: var(--primary);">
-                        $<?= number_format($inv['total_amount'], 2) ?>
+                        $<?= number_format((float)$inv['total_amount'], 2) ?>
                     </td>
                     <td>
                         <?php
