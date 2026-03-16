@@ -7,7 +7,7 @@
 $payments = [];
 try {
     $stmt = $pdo->prepare("
-        SELECT p.id, p.amount, p.payment_method, p.status, p.created_at, p.description
+        SELECT p.id, p.amount, p.payment_method, p.payment_status as status, p.created_at, p.notes as description, p.invoice_id
         FROM payments p
         WHERE p.user_id = ?
         ORDER BY p.created_at DESC
@@ -16,6 +16,20 @@ try {
     $stmt->execute([$user_id]);
     $payments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { $payments = []; }
+
+// Get user invoices
+$pwa_invoices = [];
+try {
+    $inv_stmt = $pdo->prepare("
+        SELECT id, invoice_number, invoice_date, total_amount, status
+        FROM invoices
+        WHERE user_id = ?
+        ORDER BY invoice_date DESC
+        LIMIT 30
+    ");
+    $inv_stmt->execute([$user_id]);
+    $pwa_invoices = $inv_stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) { $pwa_invoices = []; }
 
 $totalPaid = 0;
 foreach ($payments as $p) {
@@ -147,13 +161,47 @@ foreach ($payments as $p) {
             <div class="m-payment-detail-row"><span>Method</span><span><?= htmlspecialchars(ucwords(str_replace('_', ' ', $p['payment_method'] ?? 'N/A'))) ?></span></div>
             <div class="m-payment-detail-row"><span>Amount</span><span>$<?= number_format((float)$p['amount'], 2) ?></span></div>
             <div class="m-payment-detail-row"><span>Status</span><span><?= htmlspecialchars(ucfirst($status)) ?></span></div>
-            <?php if ($statusClass === 'completed'): ?>
+            <?php if ($statusClass === 'completed' && !empty($p['invoice_id'])): ?>
+            <a href="download_invoice.php?invoice_id=<?= (int)$p['invoice_id'] ?>" target="_blank" style="width:100%;margin-top:10px;background:#0A0A0F;border:1px solid #2D2D3F;border-radius:10px;color:#fff;padding:10px;font-size:13px;font-weight:600;min-height:44px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;" onclick="event.stopPropagation();">
+                <i class="fas fa-file-invoice" style="color:#8B5CF6;"></i> View Invoice
+            </a>
+            <?php elseif ($statusClass === 'completed'): ?>
             <button onclick="event.stopPropagation();mPayReceipt(<?= (int)$p['id'] ?>)" style="width:100%;margin-top:10px;background:#0A0A0F;border:1px solid #2D2D3F;border-radius:10px;color:#fff;padding:10px;font-size:13px;font-weight:600;min-height:44px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
                 <i class="fas fa-download" style="color:#8B5CF6;"></i> Download Receipt
             </button>
             <?php endif; ?>
         </div>
         <?php endforeach; ?>
+    <?php endif; ?>
+
+    <!-- Invoices Section -->
+    <?php if (!empty($pwa_invoices)): ?>
+    <div style="margin-top: 20px;">
+        <h3 style="font-size: 15px; font-weight: 700; color: #fff; margin-bottom: 12px;"><i class="fas fa-file-invoice" style="color: #8B5CF6; margin-right: 6px;"></i> Invoices</h3>
+        <?php foreach ($pwa_invoices as $inv):
+            $inv_status = strtolower($inv['status'] ?? 'draft');
+            $inv_status_style = match($inv_status) {
+                'paid' => 'background: rgba(16,185,129,0.15); color: #10B981;',
+                'sent' => 'background: rgba(59,130,246,0.15); color: #3B82F6;',
+                'overdue' => 'background: rgba(239,68,68,0.15); color: #EF4444;',
+                default => 'background: rgba(168,168,184,0.15); color: #A8A8B8;',
+            };
+        ?>
+        <a href="download_invoice.php?invoice_id=<?= (int)$inv['id'] ?>" target="_blank" style="display:flex;align-items:center;gap:12px;background:#16161F;border:1px solid #2D2D3F;border-radius:12px;padding:14px;margin-bottom:8px;min-height:44px;text-decoration:none;color:inherit;">
+            <div style="width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;background:rgba(107,70,193,0.15);color:#8B5CF6;">
+                <i class="fas fa-file-invoice"></i>
+            </div>
+            <div style="flex:1;min-width:0;">
+                <div style="font-size:13px;font-weight:600;color:#fff;font-family:monospace;"><?= htmlspecialchars($inv['invoice_number']) ?></div>
+                <div style="font-size:12px;color:#A8A8B8;margin-top:2px;"><?= date('M j, Y', strtotime($inv['invoice_date'])) ?></div>
+            </div>
+            <div style="text-align:right;flex-shrink:0;">
+                <div style="font-size:14px;font-weight:700;color:#fff;">$<?= number_format((float)$inv['total_amount'], 2) ?></div>
+                <span style="font-size:10px;padding:2px 6px;border-radius:4px;font-weight:600;<?= $inv_status_style ?>"><?= strtoupper($inv_status) ?></span>
+            </div>
+        </a>
+        <?php endforeach; ?>
+    </div>
     <?php endif; ?>
 </div>
 
