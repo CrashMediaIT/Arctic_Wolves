@@ -1979,6 +1979,153 @@ foreach ($url_keys as $uk) {
                 </div>
                 <!-- ===== End Cluster Management ===== -->
 
+                <!-- ===== Valkey Cache Settings ===== -->
+                <?php
+                    $valkey_enabled  = $settings['valkey_enabled'] ?? '0';
+                    $valkey_host     = $settings['valkey_host'] ?? '127.0.0.1';
+                    $valkey_port     = $settings['valkey_port'] ?? '6379';
+                    $valkey_password = $settings['valkey_password'] ?? '';
+                    $valkey_database = $settings['valkey_database'] ?? '0';
+                    $valkey_prefix   = $settings['valkey_prefix'] ?? 'aw:';
+                ?>
+                <div style="margin-top: 32px;">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+                        <h4 style="font-size: 16px; font-weight: 700; color: var(--text-white); margin: 0;">
+                            <i class="fas fa-bolt" style="color: #f59e0b; margin-right: 8px;"></i>Valkey Cache (Optional)
+                        </h4>
+                        <span id="valkey-status-badge" style="padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700;
+                              background: <?= $valkey_enabled === '1' ? 'rgba(0,255,136,0.15)' : 'rgba(148,163,184,0.15)' ?>;
+                              color: <?= $valkey_enabled === '1' ? '#00ff88' : '#94a3b8' ?>;
+                              border: 1px solid <?= $valkey_enabled === '1' ? '#00ff88' : '#94a3b8' ?>;">
+                            <?= $valkey_enabled === '1' ? 'ENABLED' : 'DISABLED' ?>
+                        </span>
+                    </div>
+
+                    <div class="info-box" style="margin-bottom: 20px;">
+                        <i class="fas fa-info-circle"></i>
+                        <div>
+                            <p><strong>What is Valkey?</strong></p>
+                            <p style="color: var(--text-dim); font-size: 13px; margin-top: 4px;">
+                                Valkey is a high-performance, Redis-compatible in-memory data store that can significantly speed up your application by caching frequently-accessed data.
+                                This is <strong>completely optional</strong> — the application works normally without it. Enable it only if you have a Valkey or Redis server available.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- What Will Use Valkey -->
+                    <div style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 20px;">
+                        <h5 style="color: var(--text-white); margin-bottom: 16px; font-size: 14px;">
+                            <i class="fas fa-list-check" style="color: var(--primary); margin-right: 8px;"></i>Features That Use Valkey Cache
+                        </h5>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px;">
+                            <div style="display: flex; align-items: flex-start; gap: 10px; padding: 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;">
+                                <i class="fas fa-sliders-h" style="color: #8b5cf6; margin-top: 2px;"></i>
+                                <div>
+                                    <strong style="color: var(--text-white); font-size: 13px;">System Settings</strong>
+                                    <p style="color: var(--text-dim); font-size: 12px; margin: 2px 0 0;">Caches all system settings to avoid repeated database reads on every page load. TTL: 5 minutes.</p>
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: flex-start; gap: 10px; padding: 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;">
+                                <i class="fas fa-user-shield" style="color: #3b82f6; margin-top: 2px;"></i>
+                                <div>
+                                    <strong style="color: var(--text-white); font-size: 13px;">User Roles &amp; Permissions</strong>
+                                    <p style="color: var(--text-dim); font-size: 12px; margin: 2px 0 0;">Caches user role lookups to speed up permission checks across the application. TTL: 10 minutes.</p>
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: flex-start; gap: 10px; padding: 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;">
+                                <i class="fas fa-shield-halved" style="color: #ef4444; margin-top: 2px;"></i>
+                                <div>
+                                    <strong style="color: var(--text-white); font-size: 13px;">Rate Limiting</strong>
+                                    <p style="color: var(--text-dim); font-size: 12px; margin: 2px 0 0;">Distributed rate limiting across multiple servers. Replaces in-memory counters for cluster deployments. TTL: 1 hour.</p>
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: flex-start; gap: 10px; padding: 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;">
+                                <i class="fas fa-chart-line" style="color: #10b981; margin-top: 2px;"></i>
+                                <div>
+                                    <strong style="color: var(--text-white); font-size: 13px;">Dashboard Statistics</strong>
+                                    <p style="color: var(--text-dim); font-size: 12px; margin: 2px 0 0;">Caches expensive aggregation queries for dashboard widgets (revenue, counts, reports). TTL: 2 minutes.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Valkey Connection Settings -->
+                    <div style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 20px;">
+                        <h5 style="color: var(--text-white); margin-bottom: 16px; font-size: 14px;">Connection Settings</h5>
+                        
+                        <!-- Enable/Disable Toggle -->
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding: 14px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;">
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 14px; color: var(--text-white); font-weight: 600;">
+                                <input type="checkbox" id="valkey-enabled" <?= $valkey_enabled === '1' ? 'checked' : '' ?>
+                                       onchange="toggleValkeyFields()"
+                                       style="width: 18px; height: 18px; accent-color: #8b5cf6;">
+                                Enable Valkey Cache
+                            </label>
+                            <span style="font-size: 12px; color: var(--text-dim);">When disabled, the application uses direct database queries for all operations.</span>
+                        </div>
+
+                        <div id="valkey-config-fields">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                                <div>
+                                    <label style="font-size: 13px; color: var(--text-dim); display: block; margin-bottom: 6px;">Host</label>
+                                    <input type="text" id="valkey-host" value="<?= htmlspecialchars($valkey_host) ?>" placeholder="127.0.0.1"
+                                           style="width: 100%; padding: 8px 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-white); font-size: 13px;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 13px; color: var(--text-dim); display: block; margin-bottom: 6px;">Port</label>
+                                    <input type="number" id="valkey-port" value="<?= htmlspecialchars($valkey_port) ?>" placeholder="6379" min="1" max="65535"
+                                           style="width: 100%; padding: 8px 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-white); font-size: 13px;">
+                                </div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                                <div>
+                                    <label style="font-size: 13px; color: var(--text-dim); display: block; margin-bottom: 6px;">Password <span style="font-size: 11px; color: #94a3b8;">(optional)</span></label>
+                                    <input type="password" id="valkey-password" value="<?= htmlspecialchars($valkey_password) ?>" placeholder="Leave empty if no authentication"
+                                           style="width: 100%; padding: 8px 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-white); font-size: 13px;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 13px; color: var(--text-dim); display: block; margin-bottom: 6px;">Database Index</label>
+                                    <input type="number" id="valkey-database" value="<?= htmlspecialchars($valkey_database) ?>" placeholder="0" min="0" max="15"
+                                           style="width: 100%; padding: 8px 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-white); font-size: 13px;">
+                                </div>
+                            </div>
+                            <div style="margin-bottom: 16px;">
+                                <label style="font-size: 13px; color: var(--text-dim); display: block; margin-bottom: 6px;">Key Prefix</label>
+                                <input type="text" id="valkey-prefix" value="<?= htmlspecialchars($valkey_prefix) ?>" placeholder="aw:"
+                                       style="width: 260px; padding: 8px 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-white); font-size: 13px;">
+                                <span style="font-size: 11px; color: #94a3b8; margin-left: 8px;">Prefix for all cache keys to avoid collisions with other apps.</span>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 10px; margin-top: 14px;">
+                            <button type="button" class="btn btn-primary" onclick="saveValkeySettings()" style="font-size: 13px;">
+                                <i class="fas fa-save"></i> Save Valkey Settings
+                            </button>
+                            <button type="button" class="btn btn-secondary" onclick="testValkeyConnection()" style="font-size: 13px;">
+                                <i class="fas fa-plug"></i> Test Connection
+                            </button>
+                            <button type="button" class="btn btn-secondary" onclick="flushValkeyCache()" style="font-size: 13px;" id="valkey-flush-btn">
+                                <i class="fas fa-broom"></i> Flush Cache
+                            </button>
+                        </div>
+                        <div id="valkey-result" style="margin-top: 12px; font-size: 13px;"></div>
+                    </div>
+
+                    <!-- Live Valkey Status -->
+                    <div style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 24px;" id="valkey-status-card">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                            <h5 style="color: var(--text-white); margin: 0; font-size: 14px;">Cache Status</h5>
+                            <button type="button" class="btn btn-secondary" onclick="testValkeyConnection()" style="font-size: 12px; padding: 6px 12px;">
+                                <i class="fas fa-refresh"></i> Refresh
+                            </button>
+                        </div>
+                        <div id="valkey-status-content" style="color: var(--text-dim); font-size: 13px;">
+                            <span style="color: #94a3b8;"><i class="fas fa-circle-info"></i> Click Refresh or Test Connection to view cache status.</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- ===== End Valkey Cache Settings ===== -->
+
             </div>
         </div>
     </div>
@@ -5531,4 +5678,115 @@ function escapeHtml(text) {
 }
 
 // ===== End Galera Cluster Management =====
+
+// ===== Valkey Cache Management =====
+
+function toggleValkeyFields() {
+    var enabled = document.getElementById('valkey-enabled').checked;
+    var fields = document.getElementById('valkey-config-fields');
+    if (fields) fields.style.opacity = enabled ? '1' : '0.5';
+}
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.getElementById('valkey-enabled')) toggleValkeyFields();
+});
+
+function valkeyPost(action, extraData) {
+    var body = new URLSearchParams({ action: action, csrf_token: getCsrfToken() });
+    if (extraData) {
+        for (var k in extraData) body.set(k, extraData[k]);
+    }
+    return fetch('process_settings.php', { method: 'POST', body: body, headers: { 'Accept': 'application/json' } })
+           .then(r => r.json());
+}
+
+function saveValkeySettings() {
+    var result = document.getElementById('valkey-result');
+    result.innerHTML = '<span style="color:#94a3b8;"><i class="fas fa-spinner fa-spin"></i> Saving…</span>';
+    valkeyPost('save_valkey_settings', {
+        valkey_enabled:  document.getElementById('valkey-enabled').checked ? '1' : '0',
+        valkey_host:     document.getElementById('valkey-host').value.trim(),
+        valkey_port:     document.getElementById('valkey-port').value.trim(),
+        valkey_password: document.getElementById('valkey-password').value,
+        valkey_database: document.getElementById('valkey-database').value.trim(),
+        valkey_prefix:   document.getElementById('valkey-prefix').value.trim()
+    })
+    .then(data => {
+        if (data.success) {
+            result.innerHTML = '<span style="color:#00ff88;"><i class="fas fa-check"></i> ' + escapeHtml(data.message || 'Settings saved') + '</span>';
+            // Update badge
+            var badge = document.getElementById('valkey-status-badge');
+            var isEnabled = document.getElementById('valkey-enabled').checked;
+            if (badge) {
+                badge.textContent = isEnabled ? 'ENABLED' : 'DISABLED';
+                badge.style.color = isEnabled ? '#00ff88' : '#94a3b8';
+                badge.style.background = isEnabled ? 'rgba(0,255,136,0.15)' : 'rgba(148,163,184,0.15)';
+                badge.style.borderColor = isEnabled ? '#00ff88' : '#94a3b8';
+            }
+        } else {
+            result.innerHTML = '<span style="color:#ef4444;"><i class="fas fa-times"></i> ' + escapeHtml(data.message || 'Error saving settings') + '</span>';
+        }
+    })
+    .catch(() => { result.innerHTML = '<span style="color:#ef4444;">Request failed</span>'; });
+}
+
+function testValkeyConnection() {
+    var result = document.getElementById('valkey-result');
+    var statusContent = document.getElementById('valkey-status-content');
+    result.innerHTML = '<span style="color:#94a3b8;"><i class="fas fa-spinner fa-spin"></i> Testing connection…</span>';
+    valkeyPost('test_valkey', {
+        valkey_host:     document.getElementById('valkey-host').value.trim(),
+        valkey_port:     document.getElementById('valkey-port').value.trim(),
+        valkey_password: document.getElementById('valkey-password').value,
+        valkey_database: document.getElementById('valkey-database').value.trim()
+    })
+    .then(data => {
+        if (data.success) {
+            result.innerHTML = '<span style="color:#00ff88;"><i class="fas fa-check"></i> ' + escapeHtml(data.message || 'Connected') + '</span>';
+            // Show server info in status area
+            if (data.info && statusContent) {
+                var rows = [
+                    ['Server Version', data.info.version || '—'],
+                    ['Uptime', data.info.uptime || '—'],
+                    ['Memory Used', data.info.memory_used || '—'],
+                    ['Memory Peak', data.info.memory_peak || '—'],
+                    ['Connected Clients', data.info.connected_clients || '—'],
+                    ['Total Keys', data.info.total_keys !== undefined ? data.info.total_keys : '—']
+                ];
+                var html = '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
+                rows.forEach(function(r) {
+                    html += '<tr style="border-bottom:1px solid var(--border);">'
+                          + '<td style="padding:7px 10px;color:#94a3b8;width:40%;">' + r[0] + '</td>'
+                          + '<td style="padding:7px 10px;color:#00ff88;font-weight:600;">' + escapeHtml(String(r[1])) + '</td>'
+                          + '</tr>';
+                });
+                html += '</table>';
+                statusContent.innerHTML = html;
+            }
+        } else {
+            result.innerHTML = '<span style="color:#ef4444;"><i class="fas fa-times"></i> ' + escapeHtml(data.message || 'Connection failed') + '</span>';
+            if (statusContent) {
+                statusContent.innerHTML = '<span style="color:#ef4444;"><i class="fas fa-times-circle"></i> ' + escapeHtml(data.message || 'Not connected') + '</span>';
+            }
+        }
+    })
+    .catch(() => {
+        result.innerHTML = '<span style="color:#ef4444;">Request failed</span>';
+    });
+}
+
+function flushValkeyCache() {
+    var result = document.getElementById('valkey-result');
+    result.innerHTML = '<span style="color:#94a3b8;"><i class="fas fa-spinner fa-spin"></i> Flushing cache…</span>';
+    valkeyPost('flush_valkey')
+    .then(data => {
+        if (data.success) {
+            result.innerHTML = '<span style="color:#00ff88;"><i class="fas fa-check"></i> ' + escapeHtml(data.message || 'Cache flushed') + '</span>';
+        } else {
+            result.innerHTML = '<span style="color:#ef4444;"><i class="fas fa-times"></i> ' + escapeHtml(data.message || 'Error') + '</span>';
+        }
+    })
+    .catch(() => { result.innerHTML = '<span style="color:#ef4444;">Request failed</span>'; });
+}
+
+// ===== End Valkey Cache Management =====
 </script>
