@@ -301,17 +301,15 @@ function cleanOldBackups($pdo, $job) {
 
 // decryptPassword() is now defined in security.php
 
-/**
- * Calculate next run time from a cron expression.
- * Supports all standard schedule intervals used by Arctic Wolves backups:
- *   */5 * * * *   – every 5 minutes
- *   0 * * * *    – every hour
- *   0 */6 * * *  – every 6 hours
- *   0 */12 * * * – every 12 hours
- *   0 0 * * *    – every 24 hours (daily)
- *   0 0 * * 0    – every week (Sunday midnight)
- *   0 0 1 * *    – every month (1st day)
- */
+// Calculate next run time from a cron expression.
+// Supports all standard schedule intervals used by Arctic Wolves backups:
+//   */5 * * * *   – every 5 minutes
+//   0 * * * *    – every hour
+//   0 */6 * * *  – every 6 hours
+//   0 */12 * * * – every 12 hours
+//   0 0 * * *    – every 24 hours (daily)
+//   0 0 * * 0    – every week (Sunday midnight)
+//   0 0 1 * *    – every month (1st day)
 function calculateNextRun($cron_expression) {
     $parts = explode(' ', trim($cron_expression));
     if (count($parts) !== 5) {

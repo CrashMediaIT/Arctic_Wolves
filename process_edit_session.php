@@ -144,7 +144,9 @@ if ($action == 'update') {
         header("Location: dashboard.php?page=session_history&status=updated");
         exit();
     } catch (PDOException $e) {
-        die("Error updating session: " . $e->getMessage());
+        ErrorLogger::error("Session update error: " . $e->getMessage(), ['session_id' => $id ?? '']);
+        header("Location: dashboard.php?page=session_history&status=update_error");
+        exit();
     }
 }
 ?>

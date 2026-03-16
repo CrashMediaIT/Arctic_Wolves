@@ -1209,7 +1209,10 @@ if ($action == 'update_smtp') {
         }
         Auditor::log($pdo, $user_id, 'update', 'system_settings', 0, ['action' => 'update_smtp', 'settings' => ['smtp_host' => $_POST['smtp_host'] ?? '', 'smtp_port' => $_POST['smtp_port'] ?? '', 'smtp_encryption' => $_POST['smtp_encryption'] ?? '', 'smtp_from_email' => $_POST['smtp_from_email'] ?? '']]);
         header("Location: dashboard.php?page=settings&status=settings_updated");
-    } catch (PDOException $e) { die("DB Error: " . $e->getMessage()); }
+    } catch (PDOException $e) {
+        ErrorLogger::error("SMTP settings update error: " . $e->getMessage());
+        header("Location: dashboard.php?page=settings&status=settings_error");
+    }
     exit();
 }
 
@@ -1233,7 +1236,10 @@ if ($action == 'update_billing') {
         }
         Auditor::log($pdo, $user_id, 'update', 'system_settings', 0, ['action' => 'update_billing', 'settings' => ['currency' => $_POST['currency'] ?? '', 'stripe_key_updated' => !empty($_POST['stripe_secret_key'])]]);
         header("Location: dashboard.php?page=settings&status=settings_updated");
-    } catch (PDOException $e) { die("DB Error: " . $e->getMessage()); }
+    } catch (PDOException $e) {
+        ErrorLogger::error("Billing settings update error: " . $e->getMessage());
+        header("Location: dashboard.php?page=settings&status=settings_error");
+    }
     exit();
 }
 
@@ -1723,7 +1729,10 @@ if ($action == 'add_discount') {
         $stmt->execute([$code, $type, $val, $lim, $exp]);
         Auditor::log($pdo, $user_id, 'create', 'discount_codes', $pdo->lastInsertId(), ['action' => 'add_discount']);
         header("Location: dashboard.php?page=admin_discounts&status=added");
-    } catch (PDOException $e) { die("Error: " . $e->getMessage()); }
+    } catch (PDOException $e) {
+        ErrorLogger::error("Discount code creation error: " . $e->getMessage());
+        header("Location: dashboard.php?page=admin_discounts&status=error");
+    }
     exit();
 }
 

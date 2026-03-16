@@ -333,6 +333,7 @@ function downloadOpenSignDocument($settings, $submissionId) {
  * @param array $prefillData Pre-filled form data
  * @return array Result with success status and signing URL
  */
+if (!function_exists('createEsignatureRequest')) {
 function createEsignatureRequest($pdo, $contractId, $opensignTemplateId, $recipientEmail, $recipientName, $prefillData = []) {
     $settings = getOpenSignSettings($pdo);
     
@@ -415,6 +416,7 @@ function createEsignatureRequest($pdo, $contractId, $opensignTemplateId, $recipi
         return ['success' => false, 'message' => 'Database error: ' . $e->getMessage()];
     }
 }
+} // end function_exists createEsignatureRequest
 
 /**
  * Process webhook callback from OpenSign when a document is signed
@@ -518,6 +520,7 @@ function processOpenSignWebhook($pdo, $webhookData) {
  * @param string $month Month for folder structure
  * @return array Result with success status and remote path
  */
+if (!function_exists('uploadSignedContract')) {
 function uploadSignedContract($pdo, $settings, $pdfContent, $employeeName, $dateSigned, $year, $month) {
     try {
         // Sanitize employee name for filename
@@ -560,6 +563,7 @@ function uploadSignedContract($pdo, $settings, $pdfContent, $employeeName, $date
         ];
     }
 }
+} // end function_exists uploadSignedContract
 
 /**
  * Get contract status by ID
@@ -568,6 +572,7 @@ function uploadSignedContract($pdo, $settings, $pdfContent, $employeeName, $date
  * @param int $contractId Contract ID
  * @return array|false Contract data or false if not found
  */
+if (!function_exists('getContractStatus')) {
 function getContractStatus($pdo, $contractId) {
     try {
         $stmt = $pdo->prepare("
@@ -586,6 +591,7 @@ function getContractStatus($pdo, $contractId) {
         return false;
     }
 }
+} // end function_exists getContractStatus
 
 /**
  * Check and update contract status from OpenSign
@@ -594,6 +600,7 @@ function getContractStatus($pdo, $contractId) {
  * @param int $contractId Contract ID
  * @return array Result with current status
  */
+if (!function_exists('refreshContractStatus')) {
 function refreshContractStatus($pdo, $contractId) {
     $contract = getContractStatus($pdo, $contractId);
     
@@ -629,6 +636,7 @@ function refreshContractStatus($pdo, $contractId) {
         'contract_status' => $contractStatus
     ];
 }
+} // end function_exists refreshContractStatus
 
 /**
  * List all contract templates from database
@@ -636,6 +644,7 @@ function refreshContractStatus($pdo, $contractId) {
  * @param PDO $pdo Database connection
  * @return array List of templates
  */
+if (!function_exists('listContractTemplates')) {
 function listContractTemplates($pdo) {
     try {
         $stmt = $pdo->query("
@@ -649,6 +658,7 @@ function listContractTemplates($pdo) {
         return [];
     }
 }
+} // end function_exists listContractTemplates
 
 /**
  * Send e-signature request email (for cases where OpenSign email is disabled)
@@ -659,6 +669,7 @@ function listContractTemplates($pdo) {
  * @param string $contractTitle Contract title
  * @return bool Success status
  */
+if (!function_exists('sendEsignatureRequestEmail')) {
 function sendEsignatureRequestEmail($toEmail, $recipientName, $signingUrl, $contractTitle) {
     require_once __DIR__ . '/../mailer.php';
     
@@ -668,6 +679,7 @@ function sendEsignatureRequestEmail($toEmail, $recipientName, $signingUrl, $cont
         'contract_title' => $contractTitle
     ]);
 }
+} // end function_exists sendEsignatureRequestEmail
 
 /**
  * Send contract signed confirmation email
@@ -677,6 +689,7 @@ function sendEsignatureRequestEmail($toEmail, $recipientName, $signingUrl, $cont
  * @param string $contractTitle Contract title
  * @return bool Success status
  */
+if (!function_exists('sendContractSignedEmail')) {
 function sendContractSignedEmail($toEmail, $recipientName, $contractTitle) {
     require_once __DIR__ . '/../mailer.php';
     
@@ -685,3 +698,4 @@ function sendContractSignedEmail($toEmail, $recipientName, $contractTitle) {
         'contract_title' => $contractTitle
     ]);
 }
+} // end function_exists sendContractSignedEmail

@@ -351,7 +351,9 @@ if ($action == 'force_password_reset') {
         header("Location: dashboard.php");
         exit();
     } catch (PDOException $e) {
-        die("Error processing reset: " . $e->getMessage());
+        ErrorLogger::error("Password reset error: " . $e->getMessage(), ['user_id' => $uid ?? '']);
+        header("Location: dashboard.php?page=profile&error=reset_failed");
+        exit();
     }
 }
 

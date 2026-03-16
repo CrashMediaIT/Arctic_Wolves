@@ -745,6 +745,11 @@
         var progressFill = document.getElementById('offlineUploadProgressFill');
         var progressStatus = document.getElementById('offlineUploadProgressStatus');
 
+        if (!startBtn || !dismissBtn || !progressSection || !progressTitle || !progressPercent || !progressFill || !progressStatus) {
+            console.error('OfflineUploadQueue: Missing required DOM elements');
+            return;
+        }
+
         startBtn.style.display = 'none';
         dismissBtn.style.display = 'none';
         progressSection.style.display = 'block';
@@ -753,13 +758,16 @@
         var csrfInput = document.querySelector('input[name="csrf_token"]');
         if (csrfInput) csrfToken = csrfInput.value;
 
-        document.getElementById('offlineUploadCancelBtn').addEventListener('click', function() {
-            cancelQueue();
-            progressTitle.textContent = 'Upload cancelled.';
-            startBtn.style.display = 'inline-flex';
-            startBtn.textContent = ' Resume';
-            dismissBtn.style.display = 'inline-flex';
-        });
+        var cancelBtn = document.getElementById('offlineUploadCancelBtn');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', function() {
+                cancelQueue();
+                progressTitle.textContent = 'Upload cancelled.';
+                startBtn.style.display = 'inline-flex';
+                startBtn.textContent = ' Resume';
+                dismissBtn.style.display = 'inline-flex';
+            });
+        }
 
         var uploadedCount = 0;
 

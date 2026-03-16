@@ -239,7 +239,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && empty($action)) {
         header("Location: dashboard.php?page=session_history&status=created");
         exit();
     } catch (PDOException $e) {
-        die("Error: " . $e->getMessage());
+        ErrorLogger::error("Session creation error: " . $e->getMessage());
+        header("Location: dashboard.php?page=session_history&status=creation_error");
+        exit();
     }
 }
 ?>
