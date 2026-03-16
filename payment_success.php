@@ -5,6 +5,7 @@ require 'db_config.php';
 require 'mailer.php';
 require_once __DIR__ . '/lib/auditor.php';
 require_once __DIR__ . '/error_logger.php';
+require_once __DIR__ . '/lib/invoice_helper.php';
 
 // 1. LOAD STRIPE
 if (file_exists('vendor/autoload.php')) { require 'vendor/autoload.php'; } 
@@ -92,6 +93,13 @@ try {
                         throw $txe;
                     }
 
+                    // Create invoice for the package purchase
+                    $purchaser_id = $_SESSION['user_id'] ?? ($athlete_ids[0] ?? 0);
+                    $pkg_subtotal = $purchase['subtotal'] ?? $total;
+                    $pkg_tax = $purchase['tax_amount'] ?? 0;
+                    $invoice_items = [['description' => 'Package: ' . ($package['name'] ?? 'Package Purchase'), 'quantity' => count($athlete_ids), 'unit_price' => $amount_per_athlete]];
+                    $pkg_invoice_id = createPurchaseInvoice($pdo, $purchaser_id, $invoice_items, $pkg_subtotal, $pkg_tax, $total, 'stripe', $stripe_sid, 'Package purchase: ' . ($package['name'] ?? ''));
+
                     // Send confirmation email to the purchaser
                     $user_id = $_SESSION['user_id'] ?? ($athlete_ids[0] ?? 0);
                     $email_stmt = $pdo->prepare("SELECT email, first_name FROM users WHERE id = ?");
@@ -103,7 +111,8 @@ try {
                             'session_title' => $package['name'],
                             'amount'        => number_format($total, 2),
                             'date'          => date('M j, Y'),
-                            'trans_id'      => $stripe_sid
+                            'trans_id'      => $stripe_sid,
+                            'invoice_id'    => $pkg_invoice_id
                         ]);
                     }
                 }
@@ -154,6 +163,12 @@ try {
                     Auditor::log($pdo, $athlete_id, 'create', 'development_program_enrollments', $enrollment_id, [
                         'action' => 'register_dev_program', 'program_type' => $program_type, 'amount' => ($checkout->amount_total / 100)
                     ]);
+
+                    // Create invoice for development program enrollment
+                    $dev_total = $checkout->amount_total / 100;
+                    $dev_program_label = $program_type === 'goalie_dev' ? 'Goalie Development Program' : 'Player Development Program';
+                    $dev_items = [['description' => $dev_program_label . ($program_name ? ': ' . $program_name : ''), 'quantity' => 1, 'unit_price' => $dev_total]];
+                    $dev_invoice_id = createPurchaseInvoice($pdo, $athlete_id, $dev_items, $dev_total, 0, $dev_total, 'stripe', $stripe_sid, 'Development program enrollment');
 
                     // Notify dev coaches
                     try {
@@ -213,7 +228,8 @@ try {
                             'session_title' => $program_label,
                             'amount'        => number_format($checkout->amount_total / 100, 2),
                             'date'          => date('M j, Y'),
-                            'trans_id'      => $stripe_sid
+                            'trans_id'      => $stripe_sid,
+                            'invoice_id'    => $dev_invoice_id
                         ]);
                         
                         // Send athlete welcome email using the template
@@ -252,6 +268,14 @@ try {
                         'action' => 'register_template_session', 'session_date_id' => $session_date_id, 'amount' => ($checkout->amount_total / 100)
                     ]);
 
+                    // Create invoice for template session registration
+                    $tpl_total = $checkout->amount_total / 100;
+                    $tpl_name_stmt = $pdo->prepare("SELECT t.name FROM training_session_dates td JOIN training_session_templates t ON td.template_id = t.id WHERE td.id = ?");
+                    $tpl_name_stmt->execute([$session_date_id]);
+                    $tpl_session_name = $tpl_name_stmt->fetchColumn() ?: 'Training Session';
+                    $tpl_items = [['description' => 'Session: ' . $tpl_session_name, 'quantity' => 1, 'unit_price' => $tpl_total]];
+                    $tpl_invoice_id = createPurchaseInvoice($pdo, $athlete_id, $tpl_items, $tpl_total, 0, $tpl_total, 'stripe', $stripe_sid, 'Session registration');
+
                     // Send confirmation email
                     $email_stmt = $pdo->prepare("SELECT email, first_name FROM users WHERE id = ?");
                     $email_stmt->execute([$athlete_id]);
@@ -272,7 +296,8 @@ try {
                             'session_title' => $tpl_info['name'],
                             'amount'        => number_format($checkout->amount_total / 100, 2),
                             'date'          => date('M j, Y', strtotime($tpl_info['session_date'])),
-                            'trans_id'      => $stripe_sid
+                            'trans_id'      => $stripe_sid,
+                            'invoice_id'    => $tpl_invoice_id
                         ]);
                     }
                 }
@@ -301,6 +326,11 @@ try {
                 
                 // Only send receipt if we actually updated the record (prevents duplicate emails)
                 if ($update_stmt->rowCount() > 0) {
+                    // Create invoice for the session booking
+                    $booking_amount = floatval($booking['amount_paid'] ?? 0);
+                    $booking_items = [['description' => 'Session: ' . ($booking['title'] ?? 'Training Session'), 'quantity' => 1, 'unit_price' => $booking_amount]];
+                    $booking_invoice_id = createPurchaseInvoice($pdo, $booking['user_id'], $booking_items, $booking_amount, 0, $booking_amount, 'stripe', $stripe_sid, 'Session booking');
+
                     // 6. SEND EMAIL RECEIPT
                     $session_date = date('M j, Y', strtotime($booking['session_date']));
                     
@@ -308,7 +338,8 @@ try {
                         'session_title' => $booking['title'],
                         'amount'        => number_format($booking['amount_paid'], 2),
                         'date'          => $session_date,
-                        'trans_id'      => $stripe_sid
+                        'trans_id'      => $stripe_sid,
+                        'invoice_id'    => $booking_invoice_id
                     ]);
                 }
             }
