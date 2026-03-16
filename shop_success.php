@@ -7,6 +7,8 @@ session_start();
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/lib/site_branding.php';
+require_once __DIR__ . '/lib/invoice_helper.php';
+require_once __DIR__ . '/error_logger.php';
 
 $site_logo_url = getSiteLogoUrl($pdo ?? null);
 $site_favicon_url = getSiteFaviconUrl($pdo ?? null);
@@ -74,6 +76,32 @@ try {
                         ");
                         $invStmt->execute([$item['quantity'], $item['product_id'], $item['size'], $item['quantity']]);
                     }
+                }
+                
+                // Create invoice for the shop order
+                $shop_user_id = !empty($order['user_id']) ? intval($order['user_id']) : (isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : 0);
+                if ($shop_user_id > 0) {
+                    $invoice_line_items = [];
+                    foreach ($orderItems as $item) {
+                        $item_desc = $item['product_name'] ?? 'Product';
+                        if (!empty($item['size'])) $item_desc .= ' (Size: ' . $item['size'] . ')';
+                        $invoice_line_items[] = [
+                            'description' => $item_desc,
+                            'quantity' => intval($item['quantity']),
+                            'unit_price' => floatval($item['unit_price'])
+                        ];
+                    }
+                    createPurchaseInvoice(
+                        $pdo,
+                        $shop_user_id,
+                        $invoice_line_items,
+                        floatval($order['subtotal']),
+                        floatval($order['tax_amount']),
+                        floatval($order['total']),
+                        'stripe',
+                        $stripeSessionId,
+                        'Shop order: ' . ($order['order_number'] ?? '')
+                    );
                 }
                 
                 // Clear cart

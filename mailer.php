@@ -494,6 +494,18 @@ function sendEmail($to, $type, $data) {
         $amount = $data['amount'] ?? '0.00';
         $date = $data['date'] ?? date('Y-m-d');
         $trans_id = $data['trans_id'] ?? 'N/A';
+        $invoice_id = intval($data['invoice_id'] ?? 0);
+        
+        // Build invoice download link if invoice was created
+        $invoiceLink = '';
+        if ($invoice_id > 0) {
+            $appUrl = getenv('APP_URL') ?: 'https://arcticwolves.ca';
+            $invoiceUrl = htmlspecialchars(rtrim($appUrl, '/') . '/download_invoice.php?invoice_id=' . $invoice_id, ENT_QUOTES, 'UTF-8');
+            $invoiceLink = "
+            <p style='margin-top: 20px; text-align: center;'>
+                <a href='$invoiceUrl' style='display: inline-block; background: $primary; color: #fff; padding: 14px 32px; border-radius: 6px; text-decoration: none; font-weight: bold;'>View Invoice</a>
+            </p>";
+        }
         
         $body = "
         <div style='font-family: Arial, sans-serif; background: $bg; color: #fff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto;'>
@@ -519,6 +531,7 @@ function sendEmail($to, $type, $data) {
             </div>
             
             <p style='font-size: 11px; color: $textMuted; text-align: center;'>Transaction ID: $trans_id</p>
+            $invoiceLink
             $footer
         </div>";
     }

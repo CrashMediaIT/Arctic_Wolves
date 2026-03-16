@@ -69,6 +69,19 @@ $credits_stmt = $pdo->prepare("
 $credits_stmt->execute([$viewing_user_id]);
 $credits = $credits_stmt->fetchAll();
 
+// Get user invoices for download links
+$user_invoices = [];
+try {
+    $inv_stmt = $pdo->prepare("
+        SELECT id, invoice_number, invoice_date, total_amount, status
+        FROM invoices
+        WHERE user_id = ?
+        ORDER BY invoice_date DESC
+    ");
+    $inv_stmt->execute([$viewing_user_id]);
+    $user_invoices = $inv_stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) { $user_invoices = []; }
+
 // Calculate totals
 $total_spent = array_sum(array_column($payments, 'amount_paid'));
 $total_credits = array_sum(array_column($credits, 'credit_amount'));
@@ -325,6 +338,61 @@ $total_credits = array_sum(array_column($credits, 'credit_amount'));
                     </td>
                     <td style="font-size: 13px; color: #94a3b8;">
                         <?= htmlspecialchars($credit['notes'] ?? '') ?>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+</div>
+<?php endif; ?>
+
+<!-- Invoices -->
+<?php if (!empty($user_invoices)): ?>
+<div class="section-card">
+    <h2 class="section-title"><i class="fas fa-file-invoice"></i> Invoices</h2>
+    
+    <table class="payment-table">
+        <thead>
+            <tr>
+                <th>Invoice #</th>
+                <th>Date</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ($user_invoices as $inv): ?>
+                <tr>
+                    <td style="font-weight: 600; font-family: monospace;">
+                        <?= htmlspecialchars($inv['invoice_number']) ?>
+                    </td>
+                    <td style="white-space: nowrap;">
+                        <?= date('M d, Y', strtotime($inv['invoice_date'])) ?>
+                    </td>
+                    <td style="font-weight: 700; color: var(--primary);">
+                        $<?= number_format((float)$inv['total_amount'], 2) ?>
+                    </td>
+                    <td>
+                        <?php
+                            $inv_status = $inv['status'] ?? 'draft';
+                            $status_colors = [
+                                'paid' => 'background: rgba(16,185,129,0.15); color: #10b981;',
+                                'sent' => 'background: rgba(59,130,246,0.15); color: #3b82f6;',
+                                'draft' => 'background: rgba(148,163,184,0.15); color: #94a3b8;',
+                                'overdue' => 'background: rgba(239,68,68,0.15); color: #ef4444;',
+                                'cancelled' => 'background: rgba(148,163,184,0.15); color: #94a3b8;',
+                            ];
+                        ?>
+                        <span style="display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; <?= $status_colors[$inv_status] ?? $status_colors['draft'] ?>">
+                            <?= strtoupper($inv_status) ?>
+                        </span>
+                    </td>
+                    <td>
+                        <a href="download_invoice.php?invoice_id=<?= $inv['id'] ?>" target="_blank" 
+                           style="color: var(--primary, #6B46C1); text-decoration: none; font-weight: 600; font-size: 13px;">
+                            <i class="fas fa-download"></i> View Invoice
+                        </a>
                     </td>
                 </tr>
             <?php endforeach; ?>
