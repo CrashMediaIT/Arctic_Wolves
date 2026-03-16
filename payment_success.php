@@ -4,6 +4,7 @@ session_start();
 require 'db_config.php';
 require 'mailer.php';
 require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // 1. LOAD STRIPE
 if (file_exists('vendor/autoload.php')) { require 'vendor/autoload.php'; } 
@@ -314,7 +315,9 @@ try {
         }
     }
 } catch (Exception $e) {
-    die("Payment Verification Failed: " . $e->getMessage());
+    ErrorLogger::error("Payment verification failed: " . $e->getMessage());
+    // Display a generic error instead of exposing internal details
+    $payment_error = "Payment verification encountered an error. Please contact support.";
 }
 ?>
 
@@ -329,9 +332,15 @@ try {
 <body style="display:flex; justify-content:center; align-items:center; height:100vh; background:#06080b; color:#fff;">
     
     <div style="text-align:center; padding: 40px; border: 1px solid #1e293b; background: #0d1116; border-radius: 12px; max-width: 400px; margin: 20px;">
+        <?php if (!empty($payment_error)): ?>
+        <i class="fa-solid fa-circle-exclamation" style="font-size: 60px; color: #ff4444; margin-bottom: 20px;"></i>
+        <h1 style="margin: 0 0 10px 0;">Payment Error</h1>
+        <p style="color: #94a3b8; margin-bottom: 30px;"><?= htmlspecialchars($payment_error) ?></p>
+        <?php else: ?>
         <i class="fa-solid fa-circle-check" style="font-size: 60px; color: #00ff88; margin-bottom: 20px;"></i>
         <h1 style="margin: 0 0 10px 0;">Booking Confirmed!</h1>
         <p style="color: #94a3b8; margin-bottom: 30px;">A receipt has been sent to your email.</p>
+        <?php endif; ?>
         
         <a href="dashboard.php?page=upcoming_sessions" class="btn-primary" style="text-decoration:none; padding:12px 30px; border-radius:6px; display:inline-block;">
             Return to Upcoming Sessions

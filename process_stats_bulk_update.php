@@ -44,5 +44,7 @@ try {
 
     header("Location: dashboard.php?page=stats&mode=view");
 } catch (Exception $e) {
-    die("Update failed: " . $e->getMessage());
+    ErrorLogger::error("Bulk stats update failed: " . $e->getMessage(), ['team_id' => $team_id ?? '']);
+    header("Location: dashboard.php?page=stats&mode=view&error=update_failed");
+    exit();
 }

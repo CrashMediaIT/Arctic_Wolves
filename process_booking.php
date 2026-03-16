@@ -263,7 +263,8 @@ if ($action === 'register_dev_program') {
         }
     } catch (Exception $e) {
         ErrorLogger::error("Dev program registration error: " . $e->getMessage(), ['program_type' => $program_type ?? '', 'user_id' => $user_id]);
-        die("Registration error: " . $e->getMessage());
+        header("Location: dashboard.php?page=personal_development_programs&error=registration_failed");
+        exit();
     }
 }
 
@@ -368,7 +369,8 @@ if ($action === 'register_template_session') {
         }
     } catch (Exception $e) {
         ErrorLogger::error("Template session registration error: " . $e->getMessage(), ['session_date_id' => $session_date_id ?? 0, 'user_id' => $user_id]);
-        die("Registration error: " . $e->getMessage());
+        header("Location: dashboard.php?page=sessions&error=registration_failed");
+        exit();
     }
 }
 
@@ -594,7 +596,8 @@ if ($action === 'book_private_session') {
         
     } catch (Exception $e) {
         ErrorLogger::error("Private session booking error: " . $e->getMessage(), ['user_id' => $user_id]);
-        die("Error creating private session: " . $e->getMessage());
+        header("Location: dashboard.php?page=sessions&error=booking_failed");
+        exit();
     }
 }
 
@@ -712,6 +715,8 @@ try {
     exit();
 
 } catch (Exception $e) {
-    die("Stripe Error: " . $e->getMessage());
+    ErrorLogger::error("Stripe booking error: " . $e->getMessage(), ['user_id' => $user_id, 'session_id' => $session_id ?? '']);
+    header("Location: dashboard.php?page=sessions&error=payment_failed");
+    exit();
 }
 ?>
