@@ -20,6 +20,7 @@ $stripe_sid = $_GET['session_id'] ?? '';
 if (!$stripe_sid) { header("Location: dashboard.php"); exit(); }
 
 $purchase_type = $_GET['type'] ?? 'booking';
+$purchase_confirmed = null;
 
 try {
     // 3. VERIFY PAYMENT WITH STRIPE API
@@ -29,6 +30,7 @@ try {
         
         if ($purchase_type === 'package' && isset($_SESSION['package_purchase'])) {
             // HANDLE CAMP / MULTI-WEEK PACKAGE PURCHASE
+            $purchase_confirmed = 'package';
             $purchase = $_SESSION['package_purchase'];
             $package_id = intval($purchase['package_id']);
             $athlete_ids = $purchase['athlete_ids'] ?? [];
@@ -101,19 +103,23 @@ try {
                     $pkg_invoice_id = createPurchaseInvoice($pdo, $purchaser_id, $invoice_items, $pkg_subtotal, $pkg_tax, $total, 'stripe', $stripe_sid, 'Package purchase: ' . ($package['name'] ?? ''));
 
                     // Send confirmation email to the purchaser
-                    $user_id = $_SESSION['user_id'] ?? ($athlete_ids[0] ?? 0);
-                    $email_stmt = $pdo->prepare("SELECT email, first_name FROM users WHERE id = ?");
-                    $email_stmt->execute([$user_id]);
-                    $user_info = $email_stmt->fetch(PDO::FETCH_ASSOC);
-                    $user_info = decryptUserRow($user_info);
-                    if ($user_info && !empty($user_info['email'])) {
-                        sendEmail($user_info['email'], 'payment_receipt', [
-                            'session_title' => $package['name'],
-                            'amount'        => number_format($total, 2),
-                            'date'          => date('M j, Y'),
-                            'trans_id'      => $stripe_sid,
-                            'invoice_id'    => $pkg_invoice_id
-                        ]);
+                    try {
+                        $user_id = $_SESSION['user_id'] ?? ($athlete_ids[0] ?? 0);
+                        $email_stmt = $pdo->prepare("SELECT email, first_name FROM users WHERE id = ?");
+                        $email_stmt->execute([$user_id]);
+                        $user_info = $email_stmt->fetch(PDO::FETCH_ASSOC);
+                        $user_info = decryptUserRow($user_info);
+                        if ($user_info && !empty($user_info['email'])) {
+                            sendEmail($user_info['email'], 'payment_receipt', [
+                                'session_title' => $package['name'],
+                                'amount'        => number_format($total, 2),
+                                'date'          => date('M j, Y'),
+                                'trans_id'      => $stripe_sid,
+                                'invoice_id'    => $pkg_invoice_id
+                            ]);
+                        }
+                    } catch (\Throwable $emailErr) {
+                        error_log("Package receipt email error (purchase recorded): " . $emailErr->getMessage());
                     }
                 }
             }
@@ -124,6 +130,7 @@ try {
             $program_type = $checkout->metadata->program_type ?? '';
             $athlete_id = intval($checkout->metadata->athlete_id ?? 0);
             $template_id = intval($checkout->metadata->template_id ?? 0);
+            $purchase_confirmed = 'dev_program';
 
             if (in_array($program_type, ['goalie_dev', 'player_dev']) && $athlete_id > 0) {
                 // Idempotency: check if already enrolled in active program of same type+template from this payment
@@ -156,6 +163,7 @@ try {
                     $duration_weeks = $duration_weeks !== null ? max(1, min(52, intval($duration_weeks))) : null;
                     $end_date = $duration_weeks ? date('Y-m-d', strtotime("+{$duration_weeks} weeks")) : null;
                     
+                    // CRITICAL: Create the enrollment record - this is the essential operation
                     $stmt = $pdo->prepare("INSERT INTO development_program_enrollments (athlete_id, program_type, program_name, template_id, start_date, end_date) VALUES (?, ?, ?, ?, ?, ?)");
                     $stmt->execute([$athlete_id, $program_type, $program_name, $template_id ?: null, $start_date, $end_date]);
                     $enrollment_id = $pdo->lastInsertId();
@@ -163,6 +171,10 @@ try {
                     Auditor::log($pdo, $athlete_id, 'create', 'development_program_enrollments', $enrollment_id, [
                         'action' => 'register_dev_program', 'program_type' => $program_type, 'amount' => ($checkout->amount_total / 100)
                     ]);
+
+                    // NON-CRITICAL: Invoice, notifications, and emails below.
+                    // Failures here should NOT prevent showing the success page since
+                    // the enrollment was already created and the payment was confirmed.
 
                     // Create invoice for development program enrollment
                     $dev_total = $checkout->amount_total / 100;
@@ -184,7 +196,7 @@ try {
                         $athlete_stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
                         $athlete_stmt->execute([$athlete_id]);
                         $athlete_info = $athlete_stmt->fetch(PDO::FETCH_ASSOC);
-                        if (function_exists('decryptUserRows')) {
+                        if ($athlete_info && function_exists('decryptUserRows')) {
                             $athlete_info = decryptUserRows([$athlete_info])[0];
                         }
                         $athlete_name = trim(($athlete_info['first_name'] ?? '') . ' ' . ($athlete_info['last_name'] ?? ''));
@@ -213,40 +225,49 @@ try {
                         } catch (\Throwable $e) {
                             error_log("Dev program notification email error: " . $e->getMessage());
                         }
-                    } catch (PDOException $ne) { /* notifications table may not exist */ }
+                    } catch (\Throwable $ne) {
+                        // Catch ALL exceptions (not just PDOException) — decryptUserRows, 
+                        // notification inserts, or email failures should not mask successful enrollment
+                        error_log("Dev program notification error (enrollment succeeded): " . $ne->getMessage());
+                    }
 
                     // Send payment receipt email to athlete
-                    $email_stmt = $pdo->prepare("SELECT email, first_name FROM users WHERE id = ?");
-                    $email_stmt->execute([$athlete_id]);
-                    $user_info = $email_stmt->fetch(PDO::FETCH_ASSOC);
-                    $user_info = decryptUserRow($user_info);
+                    try {
+                        $email_stmt = $pdo->prepare("SELECT email, first_name FROM users WHERE id = ?");
+                        $email_stmt->execute([$athlete_id]);
+                        $user_info = $email_stmt->fetch(PDO::FETCH_ASSOC);
+                        $user_info = decryptUserRow($user_info);
 
-                    $program_label = $program_type === 'goalie_dev' ? 'Goalie Development Program' : 'Player Development Program';
+                        $program_label = $program_type === 'goalie_dev' ? 'Goalie Development Program' : 'Player Development Program';
 
-                    if ($user_info && !empty($user_info['email'])) {
-                        sendEmail($user_info['email'], 'payment_receipt', [
-                            'session_title' => $program_label,
-                            'amount'        => number_format($checkout->amount_total / 100, 2),
-                            'date'          => date('M j, Y'),
-                            'trans_id'      => $stripe_sid,
-                            'invoice_id'    => $dev_invoice_id
-                        ]);
-                        
-                        // Send athlete welcome email using the template
-                        try {
-                            $tmpl_stmt2 = $pdo->prepare("SELECT subject, body FROM development_notification_templates WHERE program_type = ?");
-                            $tmpl_stmt2->execute([$program_type]);
-                            $athlete_tmpl = $tmpl_stmt2->fetch(PDO::FETCH_ASSOC);
-                            if ($athlete_tmpl) {
-                                sendEmail($user_info['email'], 'notification', [
-                                    'title' => $athlete_tmpl['subject'] ?? 'Welcome to Your Development Program!',
-                                    'message' => $athlete_tmpl['body'] ?? 'You have been enrolled. Your coach will be in touch shortly.',
-                                    'name' => $user_info['first_name'] ?? 'Athlete'
-                                ]);
+                        if ($user_info && !empty($user_info['email'])) {
+                            sendEmail($user_info['email'], 'payment_receipt', [
+                                'session_title' => $program_label,
+                                'amount'        => number_format($checkout->amount_total / 100, 2),
+                                'date'          => date('M j, Y'),
+                                'trans_id'      => $stripe_sid,
+                                'invoice_id'    => $dev_invoice_id
+                            ]);
+                            
+                            // Send athlete welcome email using the template
+                            try {
+                                $tmpl_stmt2 = $pdo->prepare("SELECT subject, body FROM development_notification_templates WHERE program_type = ?");
+                                $tmpl_stmt2->execute([$program_type]);
+                                $athlete_tmpl = $tmpl_stmt2->fetch(PDO::FETCH_ASSOC);
+                                if ($athlete_tmpl) {
+                                    sendEmail($user_info['email'], 'notification', [
+                                        'title' => $athlete_tmpl['subject'] ?? 'Welcome to Your Development Program!',
+                                        'message' => $athlete_tmpl['body'] ?? 'You have been enrolled. Your coach will be in touch shortly.',
+                                        'name' => $user_info['first_name'] ?? 'Athlete'
+                                    ]);
+                                }
+                            } catch (\Throwable $e) {
+                                error_log("Dev program athlete welcome email error: " . $e->getMessage());
                             }
-                        } catch (\Throwable $e) {
-                            error_log("Dev program athlete welcome email error: " . $e->getMessage());
                         }
+                    } catch (\Throwable $emailErr) {
+                        // Email/decryption failure should not mask successful enrollment
+                        error_log("Dev program receipt email error (enrollment succeeded): " . $emailErr->getMessage());
                     }
                 }
             }
@@ -254,6 +275,7 @@ try {
             // HANDLE TEMPLATE SESSION REGISTRATION (only after payment confirmed)
             $session_date_id = intval($checkout->metadata->session_date_id ?? 0);
             $athlete_id = intval($checkout->metadata->athlete_id ?? 0);
+            $purchase_confirmed = 'template_session';
 
             if ($session_date_id > 0 && $athlete_id > 0) {
                 // Idempotency: check if already registered
@@ -277,28 +299,32 @@ try {
                     $tpl_invoice_id = createPurchaseInvoice($pdo, $athlete_id, $tpl_items, $tpl_total, 0, $tpl_total, 'stripe', $stripe_sid, 'Session registration');
 
                     // Send confirmation email
-                    $email_stmt = $pdo->prepare("SELECT email, first_name FROM users WHERE id = ?");
-                    $email_stmt->execute([$athlete_id]);
-                    $user_info = $email_stmt->fetch(PDO::FETCH_ASSOC);
-                    $user_info = decryptUserRow($user_info);
+                    try {
+                        $email_stmt = $pdo->prepare("SELECT email, first_name FROM users WHERE id = ?");
+                        $email_stmt->execute([$athlete_id]);
+                        $user_info = $email_stmt->fetch(PDO::FETCH_ASSOC);
+                        $user_info = decryptUserRow($user_info);
 
-                    $tpl_stmt = $pdo->prepare("
-                        SELECT t.name, td.session_date
-                        FROM training_session_dates td
-                        JOIN training_session_templates t ON td.template_id = t.id
-                        WHERE td.id = ?
-                    ");
-                    $tpl_stmt->execute([$session_date_id]);
-                    $tpl_info = $tpl_stmt->fetch(PDO::FETCH_ASSOC);
+                        $tpl_stmt = $pdo->prepare("
+                            SELECT t.name, td.session_date
+                            FROM training_session_dates td
+                            JOIN training_session_templates t ON td.template_id = t.id
+                            WHERE td.id = ?
+                        ");
+                        $tpl_stmt->execute([$session_date_id]);
+                        $tpl_info = $tpl_stmt->fetch(PDO::FETCH_ASSOC);
 
-                    if ($user_info && !empty($user_info['email']) && $tpl_info) {
-                        sendEmail($user_info['email'], 'payment_receipt', [
-                            'session_title' => $tpl_info['name'],
-                            'amount'        => number_format($checkout->amount_total / 100, 2),
-                            'date'          => date('M j, Y', strtotime($tpl_info['session_date'])),
-                            'trans_id'      => $stripe_sid,
-                            'invoice_id'    => $tpl_invoice_id
-                        ]);
+                        if ($user_info && !empty($user_info['email']) && $tpl_info) {
+                            sendEmail($user_info['email'], 'payment_receipt', [
+                                'session_title' => $tpl_info['name'],
+                                'amount'        => number_format($checkout->amount_total / 100, 2),
+                                'date'          => date('M j, Y', strtotime($tpl_info['session_date'])),
+                                'trans_id'      => $stripe_sid,
+                                'invoice_id'    => $tpl_invoice_id
+                            ]);
+                        }
+                    } catch (\Throwable $emailErr) {
+                        error_log("Template session receipt email error (registration succeeded): " . $emailErr->getMessage());
                     }
                 }
             }
@@ -315,6 +341,7 @@ try {
             $stmt->execute([$stripe_sid]);
             $booking = $stmt->fetch();
             $booking = decryptUserRow($booking);
+            $purchase_confirmed = 'booking';
 
             // Only process if payment hasn't been recorded yet
             if ($booking && $booking['payment_status'] !== 'paid') {
@@ -332,15 +359,19 @@ try {
                     $booking_invoice_id = createPurchaseInvoice($pdo, $booking['user_id'], $booking_items, $booking_amount, 0, $booking_amount, 'stripe', $stripe_sid, 'Session booking');
 
                     // 6. SEND EMAIL RECEIPT
-                    $session_date = date('M j, Y', strtotime($booking['session_date']));
-                    
-                    sendEmail($booking['email'], 'payment_receipt', [
-                        'session_title' => $booking['title'],
-                        'amount'        => number_format($booking['amount_paid'], 2),
-                        'date'          => $session_date,
-                        'trans_id'      => $stripe_sid,
-                        'invoice_id'    => $booking_invoice_id
-                    ]);
+                    try {
+                        $session_date = date('M j, Y', strtotime($booking['session_date']));
+                        
+                        sendEmail($booking['email'], 'payment_receipt', [
+                            'session_title' => $booking['title'],
+                            'amount'        => number_format($booking['amount_paid'], 2),
+                            'date'          => $session_date,
+                            'trans_id'      => $stripe_sid,
+                            'invoice_id'    => $booking_invoice_id
+                        ]);
+                    } catch (\Throwable $emailErr) {
+                        error_log("Booking receipt email error (payment recorded): " . $emailErr->getMessage());
+                    }
                 }
             }
         }
@@ -369,13 +400,27 @@ try {
         <p style="color: #94a3b8; margin-bottom: 30px;"><?= htmlspecialchars($payment_error) ?></p>
         <?php else: ?>
         <i class="fa-solid fa-circle-check" style="font-size: 60px; color: #00ff88; margin-bottom: 20px;"></i>
+        <?php if ($purchase_confirmed === 'dev_program'): ?>
+        <h1 style="margin: 0 0 10px 0;">Enrollment Confirmed!</h1>
+        <p style="color: #94a3b8; margin-bottom: 30px;">You have been enrolled in the development program. A receipt has been sent to your email.</p>
+        <?php elseif ($purchase_confirmed === 'package'): ?>
+        <h1 style="margin: 0 0 10px 0;">Registration Confirmed!</h1>
+        <p style="color: #94a3b8; margin-bottom: 30px;">Your registration has been confirmed. A receipt has been sent to your email.</p>
+        <?php else: ?>
         <h1 style="margin: 0 0 10px 0;">Booking Confirmed!</h1>
         <p style="color: #94a3b8; margin-bottom: 30px;">A receipt has been sent to your email.</p>
         <?php endif; ?>
+        <?php endif; ?>
         
+        <?php if ($purchase_confirmed === 'dev_program'): ?>
+        <a href="dashboard.php?page=personal_development_my_program" class="btn-primary" style="text-decoration:none; padding:12px 30px; border-radius:6px; display:inline-block;">
+            View My Program
+        </a>
+        <?php else: ?>
         <a href="dashboard.php?page=upcoming_sessions" class="btn-primary" style="text-decoration:none; padding:12px 30px; border-radius:6px; display:inline-block;">
             Return to Upcoming Sessions
         </a>
+        <?php endif; ?>
     </div>
 
 </body>
