@@ -167,6 +167,65 @@ test.describe('stats.php - admin/coach access with $isAnyCoach', () => {
 });
 
 // =====================================================
+// 3b. stats.php - JavaScript functions properly defined at top-level scope
+// =====================================================
+
+test.describe('stats.php - JavaScript button handler functions are properly scoped', () => {
+  test('formatDate function has a closing brace before modal event listeners', () => {
+    const content = readFile('views/stats.php');
+    // The formatDate function must be properly closed before the modal click handlers
+    const formatDateMatch = content.match(/function formatDate\(dateString\)\s*\{[\s\S]*?\n\}/);
+    expect(formatDateMatch).not.toBeNull();
+    // Ensure the closing brace comes BEFORE the modal outside-click handler
+    const formatDateEnd = content.indexOf(formatDateMatch[0]) + formatDateMatch[0].length;
+    const modalClickHandler = content.indexOf('// Close modals on outside click');
+    expect(formatDateEnd).toBeLessThan(modalClickHandler);
+  });
+
+  test('openAddStatsModal is defined outside of any other function', () => {
+    const content = readFile('views/stats.php');
+    // Extract the script block
+    const scriptStart = content.lastIndexOf('<script>');
+    const scriptEnd = content.indexOf('</script>', scriptStart);
+    const scriptContent = content.substring(scriptStart, scriptEnd);
+    // openAddStatsModal should be at the top-level of the script, not nested inside formatDate
+    const openAddStatsIdx = scriptContent.indexOf('function openAddStatsModal()');
+    expect(openAddStatsIdx).toBeGreaterThan(-1);
+    // Count braces before openAddStatsModal to ensure it's at top-level scope
+    const beforeFunc = scriptContent.substring(0, openAddStatsIdx);
+    const openBraces = (beforeFunc.match(/\{/g) || []).length;
+    const closeBraces = (beforeFunc.match(/\}/g) || []).length;
+    expect(openBraces).toBe(closeBraces);
+  });
+
+  test('openAddMetricModal is defined outside of any other function', () => {
+    const content = readFile('views/stats.php');
+    const scriptStart = content.lastIndexOf('<script>');
+    const scriptEnd = content.indexOf('</script>', scriptStart);
+    const scriptContent = content.substring(scriptStart, scriptEnd);
+    const openAddMetricIdx = scriptContent.indexOf('function openAddMetricModal()');
+    expect(openAddMetricIdx).toBeGreaterThan(-1);
+    const beforeFunc = scriptContent.substring(0, openAddMetricIdx);
+    const openBraces = (beforeFunc.match(/\{/g) || []).length;
+    const closeBraces = (beforeFunc.match(/\}/g) || []).length;
+    expect(openBraces).toBe(closeBraces);
+  });
+
+  test('openCreateGoalModal is defined outside of any other function', () => {
+    const content = readFile('views/stats.php');
+    const scriptStart = content.lastIndexOf('<script>');
+    const scriptEnd = content.indexOf('</script>', scriptStart);
+    const scriptContent = content.substring(scriptStart, scriptEnd);
+    const openCreateIdx = scriptContent.indexOf('function openCreateGoalModal()');
+    expect(openCreateIdx).toBeGreaterThan(-1);
+    const beforeFunc = scriptContent.substring(0, openCreateIdx);
+    const openBraces = (beforeFunc.match(/\{/g) || []).length;
+    const closeBraces = (beforeFunc.match(/\}/g) || []).length;
+    expect(openBraces).toBe(closeBraces);
+  });
+});
+
+// =====================================================
 // 4. evaluations_skills.php - $isAnyCoach for coach actions
 // =====================================================
 

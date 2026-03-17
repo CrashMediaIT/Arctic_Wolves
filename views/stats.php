@@ -2633,6 +2633,8 @@ function formatDate(dateString) {
     if (!dateString) return '';
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { timeZone: window.APP_TIMEZONE, year: 'numeric', month: 'short', day: 'numeric' });
+}
+
 // Close modals on outside click
 document.querySelectorAll('.modal').forEach(modal => {
     modal.addEventListener('click', (e) => {
