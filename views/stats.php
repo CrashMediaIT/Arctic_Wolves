@@ -1011,7 +1011,26 @@ try {
                         </div>
                         <div class="form-group">
                             <label class="form-label">Team</label>
+                            <?php if (!empty($userTeams)): ?>
+                            <select id="teamSelect" class="form-input" onchange="toggleManualTeamEntry(this)">
+                                <?php
+                                $uniqueTeams = [];
+                                foreach ($userTeams as $ut) {
+                                    $tName = trim($ut['team_name'] ?? '');
+                                    if ($tName !== '' && !in_array($tName, $uniqueTeams)) {
+                                        $uniqueTeams[] = $tName;
+                                    }
+                                }
+                                foreach ($uniqueTeams as $tName): ?>
+                                <option value="<?php echo htmlspecialchars($tName); ?>"><?php echo htmlspecialchars($tName); ?></option>
+                                <?php endforeach; ?>
+                                <option value="__manual__">Enter manually...</option>
+                            </select>
+                            <input type="text" id="manualTeamInput" name="team_manual" class="form-input" placeholder="e.g. Arctic Wolves U18" style="display:none; margin-top:6px;">
+                            <input type="hidden" name="team" id="teamHiddenValue" value="<?php echo htmlspecialchars($uniqueTeams[0] ?? ''); ?>">
+                            <?php else: ?>
                             <input type="text" name="team" class="form-input" placeholder="e.g. Arctic Wolves U18">
+                            <?php endif; ?>
                         </div>
                     </div>
                     <div id="skaterStatsFields">
@@ -2684,6 +2703,22 @@ function openAddMetricModal() {
 function closeAddMetricModal() {
     document.getElementById('addMetricModal').style.display = 'none';
     document.body.style.overflow = '';
+}
+
+// Toggle manual team entry in Add Season Stats modal
+function toggleManualTeamEntry(select) {
+    var manualInput = document.getElementById('manualTeamInput');
+    var hiddenInput = document.getElementById('teamHiddenValue');
+    if (select.value === '__manual__') {
+        manualInput.style.display = '';
+        manualInput.focus();
+        hiddenInput.value = '';
+        manualInput.oninput = function() { hiddenInput.value = this.value; };
+    } else {
+        manualInput.style.display = 'none';
+        manualInput.value = '';
+        hiddenInput.value = select.value;
+    }
 }
 
 // Toggle goalie vs skater fields in Add Season Stats modal
