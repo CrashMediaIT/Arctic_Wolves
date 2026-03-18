@@ -14,7 +14,8 @@ if ($user_role === 'parent') {
         SELECT u.*, COALESCE(ma.relationship, 'parent') as relationship,
                ma.id as managed_id
         FROM users u
-        INNER JOIN managed_athletes ma ON ma.athlete_id = u.id AND ma.parent_id = ?
+        INNER JOIN managed_athletes ma ON ma.athlete_id = u.id
+        WHERE ma.parent_id = ?
         ORDER BY u.first_name, u.last_name
     ");
     $athletes_stmt->execute([$user_id]);

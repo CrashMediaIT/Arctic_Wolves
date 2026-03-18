@@ -100,9 +100,9 @@ try {
                 $coach_stmt = $pdo->prepare("
                     SELECT DISTINCT u.id, u.first_name, u.last_name, u.email 
                     FROM users u
-                    INNER JOIN managed_athletes ma ON u.id = ma.coach_id
-                    INNER JOIN managed_athletes mp ON ma.athlete_id = mp.athlete_id
-                    WHERE mp.parent_id = ? AND u.role IN ('coach', 'coach_plus', 'health_coach')
+                    INNER JOIN managed_athletes mac ON u.id = mac.coach_id
+                    WHERE mac.athlete_id IN (SELECT ma.athlete_id FROM managed_athletes ma WHERE ma.parent_id = ?)
+                      AND u.role IN ('coach', 'coach_plus', 'health_coach')
                 ");
                 $coach_stmt->execute([$user_id]);
                 $recipients = $coach_stmt->fetchAll(PDO::FETCH_ASSOC);

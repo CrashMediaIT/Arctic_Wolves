@@ -16,8 +16,8 @@ $athletes_stmt = $pdo->prepare("
             WHERE b.user_id = u.id AND b.status = 'paid' AND s.session_date >= CURDATE()) as upcoming_sessions,
            (SELECT COUNT(*) FROM notifications WHERE user_id = u.id AND read_status = 0) as unread_notifications
     FROM users u
-    LEFT JOIN managed_athletes ma ON ma.athlete_id = u.id AND ma.parent_id = ?
-    WHERE ma.parent_id IS NOT NULL
+    INNER JOIN managed_athletes ma ON ma.athlete_id = u.id
+    WHERE ma.parent_id = ?
     ORDER BY u.first_name, u.last_name
 ");
 $athletes_stmt->execute([$user_id]);
