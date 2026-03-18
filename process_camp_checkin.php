@@ -73,7 +73,14 @@ try {
             // Verify the parent manages this athlete
             $stmt = $pdo->prepare("SELECT id FROM managed_athletes WHERE parent_id = ? AND athlete_id = ?");
             $stmt->execute([$user_id, $athlete_id]);
-            if (!$stmt->fetch()) {
+            $manages_athlete = (bool)$stmt->fetch();
+            if (!$manages_athlete) {
+                // Also check parent_athlete_relationships as fallback
+                $stmt2 = $pdo->prepare("SELECT id FROM parent_athlete_relationships WHERE parent_id = ? AND athlete_id = ?");
+                $stmt2->execute([$user_id, $athlete_id]);
+                $manages_athlete = (bool)$stmt2->fetch();
+            }
+            if (!$manages_athlete) {
                 throw new Exception('You do not manage this athlete');
             }
 

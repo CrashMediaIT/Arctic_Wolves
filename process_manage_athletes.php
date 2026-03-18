@@ -114,6 +114,10 @@ try {
                 VALUES (?, ?, ?)
             ");
             $insert_stmt->execute([$user_id, $athlete['id'], $relationship ?: 'parent']);
+
+            // Also insert into managed_athletes for consistency
+            $ma_stmt = $pdo->prepare("INSERT IGNORE INTO managed_athletes (parent_id, athlete_id, relationship, can_book, can_view_stats, status) VALUES (?, ?, ?, 1, 1, 'active')");
+            $ma_stmt->execute([$user_id, $athlete['id'], $relationship ?: 'parent']);
             
             Auditor::log($pdo, $user_id, 'create', 'parent_athlete_relationships', $athlete['id'], ['action' => 'linked_athlete', 'athlete_email' => $athlete_email]);
             
@@ -203,6 +207,10 @@ try {
                     VALUES (?, ?, ?)
                 ");
                 $link_stmt->execute([$user_id, $athlete_id, $relationship ?: 'parent']);
+
+                // Also insert into managed_athletes for consistency
+                $ma_stmt = $pdo->prepare("INSERT IGNORE INTO managed_athletes (parent_id, athlete_id, relationship, can_book, can_view_stats, status) VALUES (?, ?, ?, 1, 1, 'active')");
+                $ma_stmt->execute([$user_id, $athlete_id, $relationship ?: 'parent']);
                 
                 $pdo->commit();
             } catch (Exception $e) {
@@ -266,6 +274,10 @@ try {
             // Remove from parent-athlete relationships
             $delete_stmt = $pdo->prepare("DELETE FROM parent_athlete_relationships WHERE id = ? AND parent_id = ?");
             $delete_stmt->execute([$managed_id, $user_id]);
+
+            // Also remove from managed_athletes for consistency
+            $delete_ma = $pdo->prepare("DELETE FROM managed_athletes WHERE parent_id = ? AND athlete_id = ?");
+            $delete_ma->execute([$user_id, $managed['athlete_id']]);
             
             Auditor::log($pdo, $user_id, 'delete', 'parent_athlete_relationships', $managed_id, ['action' => 'removed_athlete', 'athlete_id' => $managed['athlete_id']]);
             

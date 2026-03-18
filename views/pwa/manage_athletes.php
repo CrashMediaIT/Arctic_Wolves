@@ -16,13 +16,16 @@ $athletes = [];
 try {
     if ($user_role === 'parent') {
         $stmt = $pdo->prepare("
-            SELECT u.id, u.first_name, u.last_name, u.role, u.is_active, ma.relationship, ma.id as managed_id
-            FROM managed_athletes ma
-            INNER JOIN users u ON ma.athlete_id = u.id
-            WHERE ma.parent_id = ?
+            SELECT u.id, u.first_name, u.last_name, u.role, u.is_active,
+                   COALESCE(ma.relationship, par.relationship_type, 'parent') as relationship,
+                   COALESCE(ma.id, par.id) as managed_id
+            FROM users u
+            LEFT JOIN managed_athletes ma ON ma.athlete_id = u.id AND ma.parent_id = ?
+            LEFT JOIN parent_athlete_relationships par ON par.athlete_id = u.id AND par.parent_id = ?
+            WHERE (ma.parent_id IS NOT NULL OR par.parent_id IS NOT NULL)
             ORDER BY u.first_name, u.last_name
         ");
-        $stmt->execute([$user_id]);
+        $stmt->execute([$user_id, $user_id]);
     } else {
         $stmt = $pdo->prepare("
             SELECT u.id, u.first_name, u.last_name, u.role, u.is_active, 'coach' as relationship, ma.id as managed_id

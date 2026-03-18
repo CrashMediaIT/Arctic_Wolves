@@ -607,12 +607,13 @@ try {
                 <?php
                 try {
                     $stmt = $pdo->prepare("
-                        SELECT u.id, u.first_name, u.last_name
+                        SELECT DISTINCT u.id, u.first_name, u.last_name
                         FROM users u
-                        INNER JOIN parent_athlete_relationships par ON u.id = par.athlete_id
-                        WHERE par.parent_id = ?
+                        LEFT JOIN parent_athlete_relationships par ON u.id = par.athlete_id AND par.parent_id = ?
+                        LEFT JOIN managed_athletes ma ON u.id = ma.athlete_id AND ma.parent_id = ?
+                        WHERE (par.parent_id IS NOT NULL OR ma.parent_id IS NOT NULL)
                     ");
-                    $stmt->execute([$user_id]);
+                    $stmt->execute([$user_id, $user_id]);
                     while($athlete = $stmt->fetch(PDO::FETCH_ASSOC)):
                         $athlete = decryptUserRow($athlete);
                         $athlete['name'] = trim(($athlete['first_name'] ?? '') . ' ' . ($athlete['last_name'] ?? ''));

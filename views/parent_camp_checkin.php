@@ -19,7 +19,14 @@ $athlete_id = intval($_GET['athlete_id'] ?? 0);
 // Verify parent manages this athlete
 $stmt = $pdo->prepare("SELECT id FROM managed_athletes WHERE parent_id = ? AND athlete_id = ?");
 $stmt->execute([$user_id, $athlete_id]);
-if (!$stmt->fetch()) {
+$manages_athlete = (bool)$stmt->fetch();
+if (!$manages_athlete) {
+    // Also check parent_athlete_relationships as fallback
+    $stmt2 = $pdo->prepare("SELECT id FROM parent_athlete_relationships WHERE parent_id = ? AND athlete_id = ?");
+    $stmt2->execute([$user_id, $athlete_id]);
+    $manages_athlete = (bool)$stmt2->fetch();
+}
+if (!$manages_athlete) {
     echo '<div style="text-align: center; padding: 60px;"><h2>Access Denied</h2><p>You do not manage this athlete.</p></div>';
     return;
 }

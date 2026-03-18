@@ -316,6 +316,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             VALUES (?, ?, 'parent')";
                 $rel_stmt = $pdo->prepare($rel_sql);
                 $rel_stmt->execute([$parent_id, $athlete_id]);
+
+                // Also insert into managed_athletes for consistency
+                $ma_sql = "INSERT IGNORE INTO managed_athletes (parent_id, athlete_id, relationship, can_book, can_view_stats, status) 
+                           VALUES (?, ?, 'parent', 1, 1, 'active')";
+                $ma_stmt = $pdo->prepare($ma_sql);
+                $ma_stmt->execute([$parent_id, $athlete_id]);
             }
         }
         

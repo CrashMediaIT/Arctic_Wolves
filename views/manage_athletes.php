@@ -6,18 +6,20 @@
 
 require_once __DIR__ . '/../security.php';
 
-// Get all managed athletes - use managed_athletes table for both parents and coaches
+// Get all managed athletes - check both relationship tables for parents
 $athletes = [];
 if ($user_role === 'parent') {
-    // For parents, use managed_athletes table (parent_id column)
+    // For parents, check both managed_athletes and parent_athlete_relationships
     $athletes_stmt = $pdo->prepare("
-        SELECT u.*, ma.relationship, ma.id as managed_id
-        FROM managed_athletes ma
-        INNER JOIN users u ON ma.athlete_id = u.id
-        WHERE ma.parent_id = ?
+        SELECT u.*, COALESCE(ma.relationship, par.relationship_type, 'parent') as relationship,
+               COALESCE(ma.id, par.id) as managed_id
+        FROM users u
+        LEFT JOIN managed_athletes ma ON ma.athlete_id = u.id AND ma.parent_id = ?
+        LEFT JOIN parent_athlete_relationships par ON par.athlete_id = u.id AND par.parent_id = ?
+        WHERE (ma.parent_id IS NOT NULL OR par.parent_id IS NOT NULL)
         ORDER BY u.first_name, u.last_name
     ");
-    $athletes_stmt->execute([$user_id]);
+    $athletes_stmt->execute([$user_id, $user_id]);
     $athletes = $athletes_stmt->fetchAll();
     $athletes = decryptUserRows($athletes);
 } else {

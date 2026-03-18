@@ -286,6 +286,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'user_
             $parent_check = $pdo->prepare("SELECT 1 FROM managed_athletes WHERE parent_id = ? AND athlete_id = ?");
             $parent_check->execute([$cancel_user_id, $user_package['user_id']]);
             $is_parent = (bool)$parent_check->fetch();
+            if (!$is_parent) {
+                // Also check parent_athlete_relationships as fallback
+                $parent_check2 = $pdo->prepare("SELECT 1 FROM parent_athlete_relationships WHERE parent_id = ? AND athlete_id = ?");
+                $parent_check2->execute([$cancel_user_id, $user_package['user_id']]);
+                $is_parent = (bool)$parent_check2->fetch();
+            }
         }
         
         if (!$is_own && !$is_parent) {

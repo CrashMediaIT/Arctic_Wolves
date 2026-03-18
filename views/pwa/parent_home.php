@@ -19,12 +19,13 @@ $today = date('l, M j');
 $children = [];
 try {
     $stmt = $pdo->prepare("
-        SELECT u.id, u.first_name, u.last_name
+        SELECT DISTINCT u.id, u.first_name, u.last_name
         FROM users u
-        INNER JOIN parent_athlete_relationships par ON par.athlete_id = u.id
-        WHERE par.parent_id = ?
+        LEFT JOIN parent_athlete_relationships par ON par.athlete_id = u.id AND par.parent_id = ?
+        LEFT JOIN managed_athletes ma ON ma.athlete_id = u.id AND ma.parent_id = ?
+        WHERE (par.parent_id IS NOT NULL OR ma.parent_id IS NOT NULL)
     ");
-    $stmt->execute([$user_id]);
+    $stmt->execute([$user_id, $user_id]);
     $children = $stmt->fetchAll(PDO::FETCH_ASSOC);
     $children = decryptUserRows($children);
 } catch (PDOException $e) { $children = []; }
