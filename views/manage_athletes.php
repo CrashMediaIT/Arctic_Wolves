@@ -6,14 +6,15 @@
 
 require_once __DIR__ . '/../security.php';
 
-// Get all managed athletes - use managed_athletes table for both parents and coaches
+// Get all managed athletes for parents
 $athletes = [];
 if ($user_role === 'parent') {
-    // For parents, use managed_athletes table (parent_id column)
+    // For parents, check managed_athletes table
     $athletes_stmt = $pdo->prepare("
-        SELECT u.*, ma.relationship, ma.id as managed_id
-        FROM managed_athletes ma
-        INNER JOIN users u ON ma.athlete_id = u.id
+        SELECT u.*, COALESCE(ma.relationship, 'parent') as relationship,
+               ma.id as managed_id
+        FROM users u
+        INNER JOIN managed_athletes ma ON ma.athlete_id = u.id
         WHERE ma.parent_id = ?
         ORDER BY u.first_name, u.last_name
     ");

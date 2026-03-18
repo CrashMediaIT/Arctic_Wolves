@@ -342,7 +342,9 @@ if (!$show_history) {
     // Determine which user IDs to check for purchased packages
     $camp_check_ids = [intval($user_id)];
     if ($user_role === 'parent') {
-        $managed_stmt = $pdo->prepare("SELECT athlete_id FROM managed_athletes WHERE parent_id = ? AND can_book = 1");
+        $managed_stmt = $pdo->prepare("
+            SELECT DISTINCT athlete_id FROM managed_athletes WHERE parent_id = ?
+        ");
         $managed_stmt->execute([$user_id]);
         $managed_ids = array_map('intval', $managed_stmt->fetchAll(PDO::FETCH_COLUMN));
         if (!empty($managed_ids)) {

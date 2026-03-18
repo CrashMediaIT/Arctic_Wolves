@@ -311,9 +311,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 
                 $athlete_id = $pdo->lastInsertId();
                 
-                // Create parent-athlete relationship
-                $rel_sql = "INSERT INTO parent_athlete_relationships (parent_id, athlete_id, relationship_type) 
-                            VALUES (?, ?, 'parent')";
+                // Create parent-athlete relationship in managed_athletes
+                $rel_sql = "INSERT IGNORE INTO managed_athletes (parent_id, athlete_id, relationship, can_book, can_view_stats, status) 
+                            VALUES (?, ?, 'parent', 1, 1, 'active')";
                 $rel_stmt = $pdo->prepare($rel_sql);
                 $rel_stmt->execute([$parent_id, $athlete_id]);
             }
@@ -337,12 +337,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     $ma_stmt = $pdo->prepare("INSERT IGNORE INTO managed_athletes (parent_id, athlete_id, relationship, can_book, can_view_stats, status) VALUES (?, ?, ?, 1, 1, 'active')");
                     foreach ($inv_athlete_ids as $inv_ath_id) {
                         $ma_stmt->execute([$parent_id, $inv_ath_id, $invitation['relationship']]);
-                    }
-                    
-                    // Also add to parent_athlete_relationships
-                    $par_stmt = $pdo->prepare("INSERT IGNORE INTO parent_athlete_relationships (parent_id, athlete_id, relationship_type) VALUES (?, ?, ?)");
-                    foreach ($inv_athlete_ids as $inv_ath_id) {
-                        $par_stmt->execute([$parent_id, $inv_ath_id, $invitation['relationship']]);
                     }
                     
                     // Mark invitation as accepted

@@ -39,7 +39,6 @@ class RowLevelSecurity {
         'user_packages'             => 'user_id',
         'login_history'             => 'user_id',
         'messages'                  => null, // sender_id or receiver_id
-        'parent_athlete_relationships' => 'parent_id',
         'managed_athletes'          => 'parent_id',
         'user_agreements'           => 'user_id',
         'videos'                    => 'athlete_id',
@@ -233,11 +232,9 @@ class RowLevelSecurity {
 
         try {
             $stmt = $this->pdo->prepare(
-                "SELECT athlete_id FROM parent_athlete_relationships WHERE parent_id = ?
-                 UNION
-                 SELECT athlete_id FROM managed_athletes WHERE parent_id = ? AND status = 'active'"
+                "SELECT athlete_id FROM managed_athletes WHERE parent_id = ? AND status = 'active'"
             );
-            $stmt->execute([$this->user_id, $this->user_id]);
+            $stmt->execute([$this->user_id]);
             return $stmt->fetchAll(PDO::FETCH_COLUMN);
         } catch (PDOException $e) {
             error_log("RowLevelSecurity::getManagedAthleteIds Error: " . $e->getMessage());

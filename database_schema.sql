@@ -1524,6 +1524,7 @@ CREATE TABLE IF NOT EXISTS `managed_athletes` (
     FOREIGN KEY (`athlete_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`parent_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     UNIQUE KEY `unique_coach_athlete` (`coach_id`, `athlete_id`),
+    UNIQUE KEY `unique_parent_athlete` (`parent_id`, `athlete_id`),
     INDEX `idx_coach` (`coach_id`),
     INDEX `idx_athlete` (`athlete_id`),
     INDEX `idx_parent` (`parent_id`),

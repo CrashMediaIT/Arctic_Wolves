@@ -29,22 +29,12 @@ if ($athlete_id <= 0) {
 $has_access = false;
 try {
     $stmt = $pdo->prepare("
-        SELECT 1 FROM parent_athlete_relationships 
+        SELECT 1 FROM managed_athletes 
         WHERE parent_id = ? AND athlete_id = ?
         LIMIT 1
     ");
     $stmt->execute([$user_id, $athlete_id]);
     $has_access = $stmt->rowCount() > 0;
-
-    if (!$has_access) {
-        $stmt2 = $pdo->prepare("
-            SELECT 1 FROM managed_athletes 
-            WHERE parent_id = ? AND athlete_id = ?
-            LIMIT 1
-        ");
-        $stmt2->execute([$user_id, $athlete_id]);
-        $has_access = $stmt2->rowCount() > 0;
-    }
 } catch (PDOException $e) {
     error_log("Get athlete dashboard permission error: " . $e->getMessage());
 }

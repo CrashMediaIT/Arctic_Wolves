@@ -38,7 +38,7 @@ if (!$hasParentRole) {
 
 // Allow any user who is not already assigned as a child to a parent
 if (!$hasParentRole) {
-    $childCheck = $pdo->prepare("SELECT id FROM parent_athlete_relationships WHERE athlete_id = ? LIMIT 1");
+    $childCheck = $pdo->prepare("SELECT id FROM managed_athletes WHERE athlete_id = ? AND parent_id IS NOT NULL LIMIT 1");
     $childCheck->execute([$_SESSION['user_id']]);
     $isChild = (bool)$childCheck->fetch();
     if ($isChild) {
@@ -100,7 +100,7 @@ try {
             }
             
             // Check if already managed
-            $check_stmt = $pdo->prepare("SELECT id FROM parent_athlete_relationships WHERE parent_id = ? AND athlete_id = ?");
+            $check_stmt = $pdo->prepare("SELECT id FROM managed_athletes WHERE parent_id = ? AND athlete_id = ?");
             $check_stmt->execute([$user_id, $athlete['id']]);
             
             if ($check_stmt->fetch()) {
@@ -108,14 +108,14 @@ try {
                 exit();
             }
             
-            // Add to parent-athlete relationships
+            // Add to managed_athletes
             $insert_stmt = $pdo->prepare("
-                INSERT INTO parent_athlete_relationships (parent_id, athlete_id, relationship_type)
-                VALUES (?, ?, ?)
+                INSERT INTO managed_athletes (parent_id, athlete_id, relationship, can_book, can_view_stats, status)
+                VALUES (?, ?, ?, 1, 1, 'active')
             ");
             $insert_stmt->execute([$user_id, $athlete['id'], $relationship ?: 'parent']);
             
-            Auditor::log($pdo, $user_id, 'create', 'parent_athlete_relationships', $athlete['id'], ['action' => 'linked_athlete', 'athlete_email' => $athlete_email]);
+            Auditor::log($pdo, $user_id, 'create', 'managed_athletes', $athlete['id'], ['action' => 'linked_athlete', 'athlete_email' => $athlete_email]);
             
             // Log security event
             logSecurityEvent('athlete_linked', "Parent $user_id linked athlete {$athlete['id']}", $user_id);
@@ -197,10 +197,10 @@ try {
                 
                 $athlete_id = $pdo->lastInsertId();
                 
-                // Link to parent via parent_athlete_relationships
+                // Link to parent via managed_athletes
                 $link_stmt = $pdo->prepare("
-                    INSERT INTO parent_athlete_relationships (parent_id, athlete_id, relationship_type)
-                    VALUES (?, ?, ?)
+                    INSERT INTO managed_athletes (parent_id, athlete_id, relationship, can_book, can_view_stats, status)
+                    VALUES (?, ?, ?, 1, 1, 'active')
                 ");
                 $link_stmt->execute([$user_id, $athlete_id, $relationship ?: 'parent']);
                 
@@ -253,7 +253,7 @@ try {
             }
             
             // Verify ownership
-            $verify_stmt = $pdo->prepare("SELECT athlete_id FROM parent_athlete_relationships WHERE id = ? AND parent_id = ?");
+            $verify_stmt = $pdo->prepare("SELECT athlete_id FROM managed_athletes WHERE id = ? AND parent_id = ?");
             $verify_stmt->execute([$managed_id, $user_id]);
             $managed = $verify_stmt->fetch();
             
@@ -263,11 +263,11 @@ try {
                 exit();
             }
             
-            // Remove from parent-athlete relationships
-            $delete_stmt = $pdo->prepare("DELETE FROM parent_athlete_relationships WHERE id = ? AND parent_id = ?");
+            // Remove from managed_athletes
+            $delete_stmt = $pdo->prepare("DELETE FROM managed_athletes WHERE id = ? AND parent_id = ?");
             $delete_stmt->execute([$managed_id, $user_id]);
             
-            Auditor::log($pdo, $user_id, 'delete', 'parent_athlete_relationships', $managed_id, ['action' => 'removed_athlete', 'athlete_id' => $managed['athlete_id']]);
+            Auditor::log($pdo, $user_id, 'delete', 'managed_athletes', $managed_id, ['action' => 'removed_athlete', 'athlete_id' => $managed['athlete_id']]);
             
             // Log security event
             logSecurityEvent('athlete_removed', "Parent $user_id removed athlete {$managed['athlete_id']} from managed list", $user_id);

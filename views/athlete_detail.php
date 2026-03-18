@@ -33,15 +33,9 @@ if ($isAdmin || $isCoach) {
     $can_view = true;
 } elseif ($isParent) {
     try {
-        $check = $pdo->prepare("SELECT id FROM parent_athlete_relationships WHERE parent_id = ? AND athlete_id = ?");
+        $check = $pdo->prepare("SELECT id FROM managed_athletes WHERE parent_id = ? AND athlete_id = ?");
         $check->execute([$user_id, $athlete_id]);
-        if ($check->rowCount() > 0) {
-            $can_view = true;
-        } else {
-            $check2 = $pdo->prepare("SELECT id FROM managed_athletes WHERE parent_id = ? AND athlete_id = ?");
-            $check2->execute([$user_id, $athlete_id]);
-            $can_view = ($check2->rowCount() > 0);
-        }
+        $can_view = ($check->rowCount() > 0);
     } catch (PDOException $e) {
         error_log("Athlete detail permission check error: " . $e->getMessage());
         $can_view = false;

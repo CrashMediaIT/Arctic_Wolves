@@ -13,7 +13,8 @@ $is_parent = ($user_role === 'parent');
 if ($is_parent && isset($_GET['athlete_id'])) {
     $verify_stmt = $pdo->prepare("SELECT athlete_id FROM managed_athletes WHERE parent_id = ? AND athlete_id = ?");
     $verify_stmt->execute([$user_id, intval($_GET['athlete_id'])]);
-    if ($verify_stmt->fetch()) {
+    $verified = (bool)$verify_stmt->fetch();
+    if ($verified) {
         $viewing_user_id = intval($_GET['athlete_id']);
     }
 }

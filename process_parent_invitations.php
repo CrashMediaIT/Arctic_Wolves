@@ -204,12 +204,6 @@ try {
                 $stmt->execute([$user_id, $athlete_id, $invitation['relationship']]);
             }
 
-            // Also add to parent_athlete_relationships for consistency
-            $stmt = $pdo->prepare("INSERT IGNORE INTO parent_athlete_relationships (parent_id, athlete_id, relationship_type) VALUES (?, ?, ?)");
-            foreach ($athlete_ids as $athlete_id) {
-                $stmt->execute([$user_id, $athlete_id, $invitation['relationship']]);
-            }
-
             // Mark invitation as accepted
             $stmt = $pdo->prepare("UPDATE parent_invitations SET status = 'accepted', accepted_by = ?, accepted_at = NOW() WHERE id = ?");
             $stmt->execute([$user_id, $invitation['id']]);

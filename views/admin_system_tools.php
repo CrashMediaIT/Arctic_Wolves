@@ -606,6 +606,7 @@ foreach ($url_keys as $uk) {
                         <input type="hidden" name="smtp_host" value="smtp.office365.com">
                         <input type="hidden" name="smtp_port" value="587">
                         <input type="hidden" name="smtp_encryption" value="tls">
+                        <input type="hidden" name="smtp_user" value="<?php echo htmlspecialchars($settings['smtp_user'] ?? ''); ?>">
                         <?php else: ?>
                         <!-- Basic Authentication: full SMTP server + credential fields -->
                         <div class="setting-item">
@@ -658,7 +659,7 @@ foreach ($url_keys as $uk) {
                         <div class="setting-item">
                             <div class="setting-info">
                                 <h4>From Name</h4>
-                                <p>Sender name displayed in emails</p>
+                                <p>Sender name displayed in emails<?php echo $o365SmtpConnected ? ' (used as the display name for OAuth emails)' : ''; ?></p>
                             </div>
                             <input type="text" name="smtp_from_name" class="form-input" 
                                    value="<?php echo htmlspecialchars($settings['smtp_from_name'] ?? 'Arctic Wolves'); ?>"

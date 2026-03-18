@@ -1073,10 +1073,9 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
                 // Fetch parent's children/athletes from database
                 try {
                     $stmt = $pdo->prepare("
-                        SELECT u.id, u.first_name, u.last_name
+                        SELECT DISTINCT u.id, u.first_name, u.last_name
                         FROM users u
-                        INNER JOIN parent_athlete_relationships par ON u.id = par.athlete_id
-                        WHERE par.parent_id = ?
+                        INNER JOIN managed_athletes ma ON u.id = ma.athlete_id AND ma.parent_id = ?
                     ");
                     $stmt->execute([$user_id]);
                     while($athlete = $stmt->fetch(PDO::FETCH_ASSOC)):

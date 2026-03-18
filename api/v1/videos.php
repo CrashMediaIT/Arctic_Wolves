@@ -57,7 +57,7 @@ function handleListVideos($auth) {
         $where[] = 'v.athlete_id = ?';
         $params[] = $auth['user_id'];
     } elseif ($auth['user_role'] === 'parent') {
-        $where[] = 'v.athlete_id IN (SELECT athlete_id FROM parent_athlete_relationships WHERE parent_id = ?)';
+        $where[] = 'v.athlete_id IN (SELECT athlete_id FROM managed_athletes WHERE parent_id = ?)';
         $params[] = $auth['user_id'];
     } elseif (in_array($auth['user_role'], ['coach', 'coach_plus', 'health_coach', 'team_coach'])) {
         // Coaches see videos for their athletes or videos they've been assigned to
@@ -334,7 +334,7 @@ function canAccessVideo($auth, $video) {
 
     // Parent of the athlete
     if ($auth['user_role'] === 'parent') {
-        $stmt = $pdo->prepare("SELECT 1 FROM parent_athlete_relationships WHERE parent_id = ? AND athlete_id = ?");
+        $stmt = $pdo->prepare("SELECT 1 FROM managed_athletes WHERE parent_id = ? AND athlete_id = ?");
         $stmt->execute([$user_id, $video['athlete_id']]);
         if ($stmt->fetch()) {
             return true;

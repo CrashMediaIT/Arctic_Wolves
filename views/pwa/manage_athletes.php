@@ -16,9 +16,11 @@ $athletes = [];
 try {
     if ($user_role === 'parent') {
         $stmt = $pdo->prepare("
-            SELECT u.id, u.first_name, u.last_name, u.role, u.is_active, ma.relationship, ma.id as managed_id
-            FROM managed_athletes ma
-            INNER JOIN users u ON ma.athlete_id = u.id
+            SELECT u.id, u.first_name, u.last_name, u.role, u.is_active,
+                   COALESCE(ma.relationship, 'parent') as relationship,
+                   ma.id as managed_id
+            FROM users u
+            INNER JOIN managed_athletes ma ON ma.athlete_id = u.id
             WHERE ma.parent_id = ?
             ORDER BY u.first_name, u.last_name
         ");

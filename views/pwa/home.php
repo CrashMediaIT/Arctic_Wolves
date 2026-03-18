@@ -133,10 +133,9 @@ try {
         // Parent: get associated athletes
         try {
             $stmt = $pdo->prepare("
-                SELECT u.id, u.first_name, u.last_name, u.email
+                SELECT DISTINCT u.id, u.first_name, u.last_name, u.email
                 FROM users u
-                INNER JOIN parent_athlete_relationships par ON u.id = par.athlete_id
-                WHERE par.parent_id = ?
+                INNER JOIN managed_athletes ma ON u.id = ma.athlete_id AND ma.parent_id = ?
                 ORDER BY u.last_name ASC, u.first_name ASC
             ");
             $stmt->execute([$user_id]);

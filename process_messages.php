@@ -246,7 +246,7 @@ function getContacts($pdo, $user_id, $user_role) {
                     u.id IN (SELECT coach_id FROM managed_athletes WHERE athlete_id = ?)
                     OR u.id IN (SELECT coach_id FROM athlete_coaches WHERE athlete_id = ? AND status = 'active')
                     OR u.id = (SELECT assigned_coach_id FROM users WHERE id = ?)
-                    OR u.id IN (SELECT parent_id FROM parent_athlete_relationships WHERE athlete_id = ?)
+                    OR u.id IN (SELECT parent_id FROM managed_athletes WHERE athlete_id = ? AND parent_id IS NOT NULL)
                 )
                 ORDER BY u.last_name, u.first_name
             ");
@@ -259,22 +259,22 @@ function getContacts($pdo, $user_id, $user_role) {
                 SELECT DISTINCT u.id, u.first_name, u.last_name, u.role, u.email
                 FROM users u
                 WHERE u.id != ? AND u.is_active = 1 AND (
-                    u.id IN (SELECT athlete_id FROM parent_athlete_relationships WHERE parent_id = ?)
+                    u.id IN (SELECT athlete_id FROM managed_athletes WHERE parent_id = ?)
                     OR (u.role IN ('coach', 'health_coach', 'team_coach', 'admin') AND (
                         u.id IN (
-                            SELECT DISTINCT ma.coach_id FROM managed_athletes ma
-                            JOIN parent_athlete_relationships par ON ma.athlete_id = par.athlete_id
-                            WHERE par.parent_id = ?
+                            SELECT DISTINCT ma2.coach_id FROM managed_athletes ma2
+                            JOIN managed_athletes mp ON ma2.athlete_id = mp.athlete_id
+                            WHERE mp.parent_id = ? AND ma2.coach_id IS NOT NULL
                         )
                         OR u.id IN (
                             SELECT DISTINCT ac.coach_id FROM athlete_coaches ac
-                            JOIN parent_athlete_relationships par ON ac.athlete_id = par.athlete_id
-                            WHERE par.parent_id = ? AND ac.status = 'active'
+                            JOIN managed_athletes mp ON ac.athlete_id = mp.athlete_id
+                            WHERE mp.parent_id = ? AND ac.status = 'active'
                         )
                         OR u.id IN (
                             SELECT DISTINCT child.assigned_coach_id FROM users child
-                            JOIN parent_athlete_relationships par ON child.id = par.athlete_id
-                            WHERE par.parent_id = ? AND child.assigned_coach_id IS NOT NULL
+                            JOIN managed_athletes mp ON child.id = mp.athlete_id
+                            WHERE mp.parent_id = ? AND child.assigned_coach_id IS NOT NULL
                         )
                     ))
                 )
