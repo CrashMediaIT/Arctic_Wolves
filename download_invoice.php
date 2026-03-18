@@ -50,12 +50,6 @@ try {
             $parent_check = $pdo->prepare("SELECT 1 FROM managed_athletes WHERE parent_id = ? AND athlete_id = ?");
             $parent_check->execute([$current_user_id, $invoice['user_id']]);
             $is_parent_of = (bool)$parent_check->fetch();
-            if (!$is_parent_of) {
-                // Also check parent_athlete_relationships as fallback
-                $parent_check2 = $pdo->prepare("SELECT 1 FROM parent_athlete_relationships WHERE parent_id = ? AND athlete_id = ?");
-                $parent_check2->execute([$current_user_id, $invoice['user_id']]);
-                $is_parent_of = (bool)$parent_check2->fetch();
-            }
         }
         if (!$is_parent_of) {
             header("Location: dashboard.php?page=payment_history&error=access_denied");

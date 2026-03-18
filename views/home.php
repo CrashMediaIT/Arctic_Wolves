@@ -887,12 +887,10 @@ document.addEventListener('DOMContentLoaded', function() {
             $stmt = $pdo->prepare("
                 SELECT DISTINCT u.id, u.first_name, u.last_name, u.email
                 FROM users u
-                LEFT JOIN parent_athlete_relationships par ON u.id = par.athlete_id AND par.parent_id = ?
-                LEFT JOIN managed_athletes ma ON u.id = ma.athlete_id AND ma.parent_id = ?
-                WHERE (par.parent_id IS NOT NULL OR ma.parent_id IS NOT NULL)
+                INNER JOIN managed_athletes ma ON u.id = ma.athlete_id AND ma.parent_id = ?
                 ORDER BY u.last_name ASC, u.first_name ASC
             ");
-            $stmt->execute([$user_id, $user_id]);
+            $stmt->execute([$user_id]);
             $athletes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             $athletes = decryptUserRows($athletes);
         } catch (PDOException $e) {

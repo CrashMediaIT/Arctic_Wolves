@@ -101,10 +101,6 @@ if ($user_role === 'athlete') {
                 SELECT bk.session_id FROM bookings bk
                 INNER JOIN managed_athletes ma ON bk.user_id = ma.athlete_id
                 WHERE ma.parent_id = ? AND bk.status != 'cancelled'
-            ) OR s.id IN (
-                SELECT bk2.session_id FROM bookings bk2
-                INNER JOIN parent_athlete_relationships par ON bk2.user_id = par.athlete_id
-                WHERE par.parent_id = ? AND bk2.status != 'cancelled'
             ))
               AND s.session_date < CURDATE()
               AND s.status IN ('scheduled', 'completed')
@@ -132,17 +128,13 @@ if ($user_role === 'athlete') {
                 SELECT bk.session_id FROM bookings bk
                 INNER JOIN managed_athletes ma ON bk.user_id = ma.athlete_id
                 WHERE ma.parent_id = ? AND bk.status != 'cancelled'
-            ) OR s.id IN (
-                SELECT bk2.session_id FROM bookings bk2
-                INNER JOIN parent_athlete_relationships par ON bk2.user_id = par.athlete_id
-                WHERE par.parent_id = ? AND bk2.status != 'cancelled'
             ))
               AND s.session_date >= CURDATE()
               AND s.status = 'scheduled'
               AND (b.id IS NULL OR b.status != 'cancelled')
         ";
     }
-    $params = [$user_id, $user_id, $user_id];
+    $params = [$user_id, $user_id];
 } else {
     if ($show_history) {
         $sessions_query = "
@@ -287,15 +279,10 @@ if (!$show_history) {
             INNER JOIN managed_athletes ma ON sda2.athlete_id = ma.athlete_id
             WHERE sda2.session_date_id = tsd.id AND ma.parent_id = ?
         ) OR EXISTS (
-            SELECT 1 FROM session_date_athletes sda3
-            INNER JOIN parent_athlete_relationships par ON sda3.athlete_id = par.athlete_id
-            WHERE sda3.session_date_id = tsd.id AND par.parent_id = ?
-        ) OR EXISTS (
             SELECT 1 FROM package_sessions ps
             INNER JOIN user_packages up ON up.package_id = ps.package_id
             WHERE ps.template_id = tst.id AND up.user_id = ? AND up.payment_status = 'paid'
         ))";
-        $template_params[] = $user_id;
         $template_params[] = $user_id;
         $template_params[] = $user_id;
     } else {
@@ -356,13 +343,9 @@ if (!$show_history) {
     $camp_check_ids = [intval($user_id)];
     if ($user_role === 'parent') {
         $managed_stmt = $pdo->prepare("
-            SELECT DISTINCT athlete_id FROM (
-                SELECT athlete_id FROM managed_athletes WHERE parent_id = ? AND can_book = 1
-                UNION
-                SELECT athlete_id FROM parent_athlete_relationships WHERE parent_id = ?
-            ) combined
+            SELECT DISTINCT athlete_id FROM managed_athletes WHERE parent_id = ?
         ");
-        $managed_stmt->execute([$user_id, $user_id]);
+        $managed_stmt->execute([$user_id]);
         $managed_ids = array_map('intval', $managed_stmt->fetchAll(PDO::FETCH_COLUMN));
         if (!empty($managed_ids)) {
             $camp_check_ids = array_merge($camp_check_ids, $managed_ids);

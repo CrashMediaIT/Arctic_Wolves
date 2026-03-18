@@ -66,7 +66,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $athlete_id = $pdo->lastInsertId();
         
         // 4. ASSIGN ATHLETE TO COACH/ADMIN ROSTER
-        // Note: managed_athletes is for coach rosters, parent_athlete_relationships is for parents
+        // Note: managed_athletes is used for both coach rosters (coach_id) and parent relationships (parent_id)
         // Auto-assign for all coach types AND admins so athletes appear in their roster
         if (in_array($user_role, ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'])) {
             $assign_stmt = $pdo->prepare("

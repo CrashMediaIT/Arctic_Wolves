@@ -14,12 +14,6 @@ if ($is_parent && isset($_GET['athlete_id'])) {
     $verify_stmt = $pdo->prepare("SELECT athlete_id FROM managed_athletes WHERE parent_id = ? AND athlete_id = ?");
     $verify_stmt->execute([$user_id, intval($_GET['athlete_id'])]);
     $verified = (bool)$verify_stmt->fetch();
-    if (!$verified) {
-        // Also check parent_athlete_relationships as fallback
-        $verify_stmt2 = $pdo->prepare("SELECT athlete_id FROM parent_athlete_relationships WHERE parent_id = ? AND athlete_id = ?");
-        $verify_stmt2->execute([$user_id, intval($_GET['athlete_id'])]);
-        $verified = (bool)$verify_stmt2->fetch();
-    }
     if ($verified) {
         $viewing_user_id = intval($_GET['athlete_id']);
     }

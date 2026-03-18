@@ -17,11 +17,10 @@ $athletes_stmt = $pdo->prepare("
            (SELECT COUNT(*) FROM notifications WHERE user_id = u.id AND read_status = 0) as unread_notifications
     FROM users u
     LEFT JOIN managed_athletes ma ON ma.athlete_id = u.id AND ma.parent_id = ?
-    LEFT JOIN parent_athlete_relationships par ON par.athlete_id = u.id AND par.parent_id = ?
-    WHERE (ma.parent_id IS NOT NULL OR par.parent_id IS NOT NULL)
+    WHERE ma.parent_id IS NOT NULL
     ORDER BY u.first_name, u.last_name
 ");
-$athletes_stmt->execute([$user_id, $user_id]);
+$athletes_stmt->execute([$user_id]);
 $athletes = $athletes_stmt->fetchAll();
 $athletes = decryptUserRows($athletes);
 

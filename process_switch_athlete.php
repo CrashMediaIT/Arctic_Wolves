@@ -37,25 +37,13 @@ if ($athlete_id === 0 || $athlete_id === $user_id) {
 
 // Verify the parent has a relationship with this athlete
 try {
-    // Check parent_athlete_relationships first
     $stmt = $pdo->prepare("
-        SELECT 1 FROM parent_athlete_relationships 
+        SELECT 1 FROM managed_athletes 
         WHERE parent_id = ? AND athlete_id = ?
         LIMIT 1
     ");
     $stmt->execute([$user_id, $athlete_id]);
     $has_access = $stmt->rowCount() > 0;
-
-    if (!$has_access) {
-        // Also check managed_athletes as fallback
-        $stmt2 = $pdo->prepare("
-            SELECT 1 FROM managed_athletes 
-            WHERE parent_id = ? AND athlete_id = ?
-            LIMIT 1
-        ");
-        $stmt2->execute([$user_id, $athlete_id]);
-        $has_access = $stmt2->rowCount() > 0;
-    }
 } catch (PDOException $e) {
     error_log("Switch athlete permission check error: " . $e->getMessage());
     http_response_code(500);

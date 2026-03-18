@@ -134,11 +134,8 @@ if (!in_array($current_user_role, ['admin', 'coach', 'coach_plus', 'health_coach
         $private_sessions_query .= "
           AND (
               s.coach_id IN (SELECT u2.assigned_coach_id FROM managed_athletes ma2 JOIN users u2 ON u2.id = ma2.athlete_id WHERE ma2.parent_id = ? AND u2.assigned_coach_id IS NOT NULL)
-              OR s.coach_id IN (SELECT u2b.assigned_coach_id FROM parent_athlete_relationships par2 JOIN users u2b ON u2b.id = par2.athlete_id WHERE par2.parent_id = ? AND u2b.assigned_coach_id IS NOT NULL)
               OR s.coach_id IN (SELECT u3.created_by_coach_id FROM managed_athletes ma3 JOIN users u3 ON u3.id = ma3.athlete_id WHERE ma3.parent_id = ? AND u3.created_by_coach_id IS NOT NULL)
-              OR s.coach_id IN (SELECT u3b.created_by_coach_id FROM parent_athlete_relationships par3 JOIN users u3b ON u3b.id = par3.athlete_id WHERE par3.parent_id = ? AND u3b.created_by_coach_id IS NOT NULL)
               OR s.id IN (SELECT bk.session_id FROM bookings bk JOIN managed_athletes ma4 ON bk.user_id = ma4.athlete_id WHERE ma4.parent_id = ? AND bk.status IN ('confirmed', 'waitlisted'))
-              OR s.id IN (SELECT bk2b.session_id FROM bookings bk2b JOIN parent_athlete_relationships par4 ON bk2b.user_id = par4.athlete_id WHERE par4.parent_id = ? AND bk2b.status IN ('confirmed', 'waitlisted'))
               OR s.id IN (SELECT bk2.session_id FROM bookings bk2 WHERE bk2.user_id = ? AND bk2.status IN ('confirmed', 'waitlisted'))
           )
         ";
@@ -163,7 +160,7 @@ $private_sessions_query .= "
 if (!in_array($current_user_role, ['admin', 'coach', 'coach_plus', 'health_coach', 'team_coach'])) {
     $ps_stmt = $pdo->prepare($private_sessions_query);
     if ($current_user_role === 'parent') {
-        $ps_stmt->execute([$current_user_id, $current_user_id, $current_user_id, $current_user_id, $current_user_id, $current_user_id, $current_user_id]);
+        $ps_stmt->execute([$current_user_id, $current_user_id, $current_user_id, $current_user_id]);
     } else {
         $ps_stmt->execute([$current_user_id, $current_user_id, $current_user_id]);
     }
@@ -188,11 +185,10 @@ $user_booked_sessions = $booked_stmt->fetchAll(PDO::FETCH_COLUMN);
 if (($user_role ?? '') === 'parent') {
     $child_booked_stmt = $pdo->prepare("
         SELECT DISTINCT bk.session_id FROM bookings bk
-        LEFT JOIN managed_athletes ma ON bk.user_id = ma.athlete_id AND ma.parent_id = ?
-        LEFT JOIN parent_athlete_relationships par ON bk.user_id = par.athlete_id AND par.parent_id = ?
-        WHERE (ma.parent_id IS NOT NULL OR par.parent_id IS NOT NULL) AND bk.status IN ('confirmed', 'waitlisted') AND bk.payment_status = 'paid'
+        INNER JOIN managed_athletes ma ON bk.user_id = ma.athlete_id AND ma.parent_id = ?
+        WHERE bk.status IN ('confirmed', 'waitlisted') AND bk.payment_status = 'paid'
     ");
-    $child_booked_stmt->execute([$_SESSION['user_id'], $_SESSION['user_id']]);
+    $child_booked_stmt->execute([$_SESSION['user_id']]);
     $user_booked_sessions = array_unique(array_merge($user_booked_sessions, $child_booked_stmt->fetchAll(PDO::FETCH_COLUMN)));
 }
 
@@ -201,13 +197,9 @@ $booking_purchased_ids = [];
 $booking_check_ids = [intval($_SESSION['user_id'])];
 if (($user_role ?? '') === 'parent') {
     $bp_athletes_stmt = $pdo->prepare("
-        SELECT DISTINCT athlete_id FROM (
-            SELECT athlete_id FROM managed_athletes WHERE parent_id = ? AND can_book = 1
-            UNION
-            SELECT athlete_id FROM parent_athlete_relationships WHERE parent_id = ?
-        ) combined
+        SELECT DISTINCT athlete_id FROM managed_athletes WHERE parent_id = ?
     ");
-    $bp_athletes_stmt->execute([$_SESSION['user_id'], $_SESSION['user_id']]);
+    $bp_athletes_stmt->execute([$_SESSION['user_id']]);
     $booking_check_ids = array_merge($booking_check_ids, array_map('intval', $bp_athletes_stmt->fetchAll(PDO::FETCH_COLUMN)));
 }
 $bp_placeholders = implode(',', array_fill(0, count($booking_check_ids), '?'));
@@ -288,13 +280,9 @@ $user_booked_template_dates = [];
 $tpl_booked_ids = [intval($_SESSION['user_id'])];
 if (($user_role ?? '') === 'parent') {
     $tpl_parent_stmt = $pdo->prepare("
-        SELECT DISTINCT athlete_id FROM (
-            SELECT athlete_id FROM managed_athletes WHERE parent_id = ? AND can_book = 1
-            UNION
-            SELECT athlete_id FROM parent_athlete_relationships WHERE parent_id = ?
-        ) combined
+        SELECT DISTINCT athlete_id FROM managed_athletes WHERE parent_id = ?
     ");
-    $tpl_parent_stmt->execute([$_SESSION['user_id'], $_SESSION['user_id']]);
+    $tpl_parent_stmt->execute([$_SESSION['user_id']]);
     $tpl_booked_ids = array_merge($tpl_booked_ids, array_map('intval', $tpl_parent_stmt->fetchAll(PDO::FETCH_COLUMN)));
 }
 $tpl_placeholders = implode(',', array_fill(0, count($tpl_booked_ids), '?'));
