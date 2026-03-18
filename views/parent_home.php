@@ -6,11 +6,11 @@
 
 require_once __DIR__ . '/../security.php';
 
-// Get all managed athletes for this parent (check both relationship tables)
+// Get all managed athletes for this parent
 $athletes_stmt = $pdo->prepare("
-    SELECT u.*, COALESCE(ma.relationship, par.relationship_type, 'parent') as relationship,
+    SELECT u.*, COALESCE(ma.relationship, 'parent') as relationship,
            COALESCE(ma.can_book, 1) as can_book, COALESCE(ma.can_view_stats, 1) as can_view_stats,
-           COALESCE(ma.id, par.id) as managed_id,
+           ma.id as managed_id,
            (SELECT COUNT(*) FROM bookings b 
             INNER JOIN sessions s ON b.session_id = s.id 
             WHERE b.user_id = u.id AND b.status = 'paid' AND s.session_date >= CURDATE()) as upcoming_sessions,

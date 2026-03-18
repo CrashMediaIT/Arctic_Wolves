@@ -6,7 +6,7 @@
 
 require_once __DIR__ . '/../security.php';
 
-// Get all managed athletes - check both relationship tables for parents
+// Get all managed athletes for parents
 $athletes = [];
 if ($user_role === 'parent') {
     // For parents, check managed_athletes table
