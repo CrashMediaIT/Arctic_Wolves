@@ -96,11 +96,16 @@ try {
                     }
 
                     // Create invoice for the package purchase
-                    $purchaser_id = $_SESSION['user_id'] ?? ($athlete_ids[0] ?? 0);
-                    $pkg_subtotal = $purchase['subtotal'] ?? $total;
-                    $pkg_tax = $purchase['tax_amount'] ?? 0;
-                    $invoice_items = [['description' => 'Package: ' . ($package['name'] ?? 'Package Purchase'), 'quantity' => count($athlete_ids), 'unit_price' => $amount_per_athlete]];
-                    $pkg_invoice_id = createPurchaseInvoice($pdo, $purchaser_id, $invoice_items, $pkg_subtotal, $pkg_tax, $total, 'stripe', $stripe_sid, 'Package purchase: ' . ($package['name'] ?? ''));
+                    $pkg_invoice_id = null;
+                    try {
+                        $purchaser_id = $_SESSION['user_id'] ?? ($athlete_ids[0] ?? 0);
+                        $pkg_subtotal = $purchase['subtotal'] ?? $total;
+                        $pkg_tax = $purchase['tax_amount'] ?? 0;
+                        $invoice_items = [['description' => 'Package: ' . ($package['name'] ?? 'Package Purchase'), 'quantity' => count($athlete_ids), 'unit_price' => $amount_per_athlete]];
+                        $pkg_invoice_id = createPurchaseInvoice($pdo, $purchaser_id, $invoice_items, $pkg_subtotal, $pkg_tax, $total, 'stripe', $stripe_sid, 'Package purchase: ' . ($package['name'] ?? ''));
+                    } catch (\Throwable $invoiceErr) {
+                        ErrorLogger::error("Package invoice creation failed: " . $invoiceErr->getMessage(), ['stripe_session_id' => $stripe_sid, 'package_id' => $package_id]);
+                    }
 
                     // Send confirmation email to the purchaser
                     try {
@@ -119,7 +124,7 @@ try {
                             ]);
                         }
                     } catch (\Throwable $emailErr) {
-                        error_log("Package receipt email error (purchase recorded): " . $emailErr->getMessage());
+                        ErrorLogger::error("Package receipt email failed: " . $emailErr->getMessage(), ['stripe_session_id' => $stripe_sid, 'package_id' => $package_id]);
                     }
                 }
             }
@@ -173,7 +178,7 @@ try {
                             'action' => 'register_dev_program', 'program_type' => $program_type, 'amount' => ($checkout->amount_total / 100)
                         ]);
                     } catch (\Throwable $auditErr) {
-                        error_log("Dev program auditor error (enrollment succeeded): " . $auditErr->getMessage());
+                        ErrorLogger::error("Dev program audit log failed: " . $auditErr->getMessage(), ['stripe_session_id' => $stripe_sid, 'enrollment_id' => $enrollment_id]);
                     }
 
                     // NON-CRITICAL: Invoice, notifications, and emails below.
@@ -188,7 +193,7 @@ try {
                         $dev_items = [['description' => $dev_program_label . ($program_name ? ': ' . $program_name : ''), 'quantity' => 1, 'unit_price' => $dev_total]];
                         $dev_invoice_id = createPurchaseInvoice($pdo, $athlete_id, $dev_items, $dev_total, 0, $dev_total, 'stripe', $stripe_sid, 'Development program enrollment');
                     } catch (\Throwable $invoiceErr) {
-                        error_log("Dev program invoice error (enrollment succeeded): " . $invoiceErr->getMessage());
+                        ErrorLogger::error("Dev program invoice creation failed: " . $invoiceErr->getMessage(), ['stripe_session_id' => $stripe_sid, 'enrollment_id' => $enrollment_id]);
                     }
 
                     // Notify dev coaches
@@ -232,12 +237,10 @@ try {
                                 }
                             }
                         } catch (\Throwable $e) {
-                            error_log("Dev program notification email error: " . $e->getMessage());
+                            ErrorLogger::error("Dev program notification email failed: " . $e->getMessage(), ['stripe_session_id' => $stripe_sid, 'program_type' => $program_type]);
                         }
                     } catch (\Throwable $ne) {
-                        // Catch ALL exceptions (not just PDOException) — decryptUserRows, 
-                        // notification inserts, or email failures should not mask successful enrollment
-                        error_log("Dev program notification error (enrollment succeeded): " . $ne->getMessage());
+                        ErrorLogger::error("Dev program notification failed: " . $ne->getMessage(), ['stripe_session_id' => $stripe_sid, 'program_type' => $program_type, 'athlete_id' => $athlete_id]);
                     }
 
                     // Send payment receipt email to athlete
@@ -271,12 +274,11 @@ try {
                                     ]);
                                 }
                             } catch (\Throwable $e) {
-                                error_log("Dev program athlete welcome email error: " . $e->getMessage());
+                                ErrorLogger::error("Dev program welcome email failed: " . $e->getMessage(), ['stripe_session_id' => $stripe_sid, 'athlete_id' => $athlete_id]);
                             }
                         }
                     } catch (\Throwable $emailErr) {
-                        // Email/decryption failure should not mask successful enrollment
-                        error_log("Dev program receipt email error (enrollment succeeded): " . $emailErr->getMessage());
+                        ErrorLogger::error("Dev program receipt email failed: " . $emailErr->getMessage(), ['stripe_session_id' => $stripe_sid, 'athlete_id' => $athlete_id]);
                     }
                 }
             }
@@ -295,17 +297,26 @@ try {
                     $stmt = $pdo->prepare("INSERT INTO session_date_athletes (session_date_id, athlete_id) VALUES (?, ?)");
                     $stmt->execute([$session_date_id, $athlete_id]);
 
-                    Auditor::log($pdo, $athlete_id, 'create', 'session_date_athletes', $pdo->lastInsertId(), [
-                        'action' => 'register_template_session', 'session_date_id' => $session_date_id, 'amount' => ($checkout->amount_total / 100)
-                    ]);
+                    try {
+                        Auditor::log($pdo, $athlete_id, 'create', 'session_date_athletes', $pdo->lastInsertId(), [
+                            'action' => 'register_template_session', 'session_date_id' => $session_date_id, 'amount' => ($checkout->amount_total / 100)
+                        ]);
+                    } catch (\Throwable $auditErr) {
+                        ErrorLogger::error("Template session audit log failed: " . $auditErr->getMessage(), ['stripe_session_id' => $stripe_sid, 'session_date_id' => $session_date_id]);
+                    }
 
                     // Create invoice for template session registration
-                    $tpl_total = $checkout->amount_total / 100;
-                    $tpl_name_stmt = $pdo->prepare("SELECT t.name FROM training_session_dates td JOIN training_session_templates t ON td.template_id = t.id WHERE td.id = ?");
-                    $tpl_name_stmt->execute([$session_date_id]);
-                    $tpl_session_name = $tpl_name_stmt->fetchColumn() ?: 'Training Session';
-                    $tpl_items = [['description' => 'Session: ' . $tpl_session_name, 'quantity' => 1, 'unit_price' => $tpl_total]];
-                    $tpl_invoice_id = createPurchaseInvoice($pdo, $athlete_id, $tpl_items, $tpl_total, 0, $tpl_total, 'stripe', $stripe_sid, 'Session registration');
+                    $tpl_invoice_id = null;
+                    try {
+                        $tpl_total = $checkout->amount_total / 100;
+                        $tpl_name_stmt = $pdo->prepare("SELECT t.name FROM training_session_dates td JOIN training_session_templates t ON td.template_id = t.id WHERE td.id = ?");
+                        $tpl_name_stmt->execute([$session_date_id]);
+                        $tpl_session_name = $tpl_name_stmt->fetchColumn() ?: 'Training Session';
+                        $tpl_items = [['description' => 'Session: ' . $tpl_session_name, 'quantity' => 1, 'unit_price' => $tpl_total]];
+                        $tpl_invoice_id = createPurchaseInvoice($pdo, $athlete_id, $tpl_items, $tpl_total, 0, $tpl_total, 'stripe', $stripe_sid, 'Session registration');
+                    } catch (\Throwable $invoiceErr) {
+                        ErrorLogger::error("Template session invoice creation failed: " . $invoiceErr->getMessage(), ['stripe_session_id' => $stripe_sid, 'session_date_id' => $session_date_id]);
+                    }
 
                     // Send confirmation email
                     try {
@@ -333,7 +344,7 @@ try {
                             ]);
                         }
                     } catch (\Throwable $emailErr) {
-                        error_log("Template session receipt email error (registration succeeded): " . $emailErr->getMessage());
+                        ErrorLogger::error("Template session receipt email failed: " . $emailErr->getMessage(), ['stripe_session_id' => $stripe_sid, 'session_date_id' => $session_date_id]);
                     }
                 }
             }
@@ -363,9 +374,14 @@ try {
                 // Only send receipt if we actually updated the record (prevents duplicate emails)
                 if ($update_stmt->rowCount() > 0) {
                     // Create invoice for the session booking
-                    $booking_amount = floatval($booking['amount_paid'] ?? 0);
-                    $booking_items = [['description' => 'Session: ' . ($booking['title'] ?? 'Training Session'), 'quantity' => 1, 'unit_price' => $booking_amount]];
-                    $booking_invoice_id = createPurchaseInvoice($pdo, $booking['user_id'], $booking_items, $booking_amount, 0, $booking_amount, 'stripe', $stripe_sid, 'Session booking');
+                    $booking_invoice_id = null;
+                    try {
+                        $booking_amount = floatval($booking['amount_paid'] ?? 0);
+                        $booking_items = [['description' => 'Session: ' . ($booking['title'] ?? 'Training Session'), 'quantity' => 1, 'unit_price' => $booking_amount]];
+                        $booking_invoice_id = createPurchaseInvoice($pdo, $booking['user_id'], $booking_items, $booking_amount, 0, $booking_amount, 'stripe', $stripe_sid, 'Session booking');
+                    } catch (\Throwable $invoiceErr) {
+                        ErrorLogger::error("Booking invoice creation failed: " . $invoiceErr->getMessage(), ['stripe_session_id' => $stripe_sid, 'booking_id' => $booking['id']]);
+                    }
 
                     // 6. SEND EMAIL RECEIPT
                     try {
@@ -379,15 +395,19 @@ try {
                             'invoice_id'    => $booking_invoice_id
                         ]);
                     } catch (\Throwable $emailErr) {
-                        error_log("Booking receipt email error (payment recorded): " . $emailErr->getMessage());
+                        ErrorLogger::error("Booking receipt email failed: " . $emailErr->getMessage(), ['stripe_session_id' => $stripe_sid, 'booking_id' => $booking['id']]);
                     }
                 }
             }
         }
     }
-} catch (Exception $e) {
-    ErrorLogger::error("Payment verification failed: " . $e->getMessage());
-    // Display a generic error instead of exposing internal details
+} catch (\Throwable $e) {
+    ErrorLogger::error("Payment verification failed: " . $e->getMessage(), [
+        'stripe_session_id' => $stripe_sid ?? '',
+        'purchase_type' => $purchase_type ?? 'unknown',
+        'file' => $e->getFile(),
+        'line' => $e->getLine(),
+    ]);
     $payment_error = "Payment verification encountered an error. Please contact support.";
 }
 ?>

@@ -114,9 +114,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['pay_now']) && $bookin
         header('Location: ' . $checkout_session->url);
         exit();
         
-    } catch (Exception $e) {
+    } catch (\Throwable $e) {
         $stripe_error = $e->getMessage();
-        error_log("Session payment error: " . $e->getMessage());
+        if (class_exists('ErrorLogger')) {
+            ErrorLogger::error("Session payment Stripe error: " . $e->getMessage(), [
+                'booking_id' => $booking_id ?? '',
+                'user_id' => $user_id ?? '',
+            ]);
+        }
     }
 }
 
