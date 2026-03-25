@@ -290,23 +290,23 @@ if (!function_exists('mMsgTimeAgo')) {
 
 .m-chat-input-area {
     display: flex; gap: 8px; align-items: flex-end;
-    padding: 8px 12px; background: #16161F;
+    padding: 10px 12px; background: #16161F;
     border-top: 1px solid #2D2D3F; flex-shrink: 0;
-    padding-bottom: max(8px, env(safe-area-inset-bottom));
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
     width: 100%; box-sizing: border-box;
 }
 .m-chat-input {
-    flex: 1; padding: 10px 14px;
+    flex: 1; padding: 12px 16px;
     background: #0A0A0F; border: 1px solid #2D2D3F; border-radius: 20px;
-    color: #fff; font-size: 14px; resize: none; outline: none;
-    max-height: 100px; line-height: 1.4; font-family: Inter, sans-serif;
+    color: #fff; font-size: 15px; resize: none; outline: none;
+    max-height: 120px; min-height: 44px; line-height: 1.4; font-family: Inter, sans-serif;
 }
-.m-chat-input:focus { border-color: #6B46C1; }
+.m-chat-input:focus { border-color: #6B46C1; box-shadow: 0 0 0 2px rgba(107,70,193,0.2); }
 .m-chat-input::placeholder { color: #6B6B7B; }
 .m-chat-send-btn {
-    width: 40px; height: 40px; min-width: 40px; border-radius: 50%;
+    width: 44px; height: 44px; min-width: 44px; border-radius: 50%;
     background: linear-gradient(135deg, #6B46C1, #8B5CF6);
-    border: none; color: #fff; font-size: 15px; cursor: pointer;
+    border: none; color: #fff; font-size: 16px; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
 }
 .m-chat-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -718,6 +718,13 @@ if (!function_exists('mMsgTimeAgo')) {
         lastMessageCount = 0;
 
         document.querySelector('.m-messages').classList.add('m-chat-active');
+        /* Hide FAB + tab bar — FAB may have been moved out by the elevator script */
+        var fabEl = document.getElementById('mNewMsgFab');
+        if (fabEl) fabEl.style.display = 'none';
+        var tabBar = document.querySelector('.pwa-tab-bar');
+        if (tabBar) tabBar.style.display = 'none';
+        var pwaHeader = document.querySelector('.pwa-header');
+        if (pwaHeader) pwaHeader.style.display = 'none';
         loadChatMessages(convId, false);
         startChatPoll();
         startTypingPoll();
@@ -730,6 +737,13 @@ if (!function_exists('mMsgTimeAgo')) {
         pendingFiles = [];
         renderPendingAttachments();
         document.querySelector('.m-messages').classList.remove('m-chat-active');
+        /* Restore FAB + tab bar */
+        var fabEl = document.getElementById('mNewMsgFab');
+        if (fabEl) fabEl.style.display = '';
+        var tabBar = document.querySelector('.pwa-tab-bar');
+        if (tabBar) tabBar.style.display = '';
+        var pwaHeader = document.querySelector('.pwa-header');
+        if (pwaHeader) pwaHeader.style.display = '';
         stopChatPoll();
         stopTypingPoll();
         pollConversations();
