@@ -131,6 +131,7 @@ try {
                 <input type="hidden" name="action" value="register_dev_program">
                 <input type="hidden" name="program_type" value="<?= htmlspecialchars($dp_type) ?>">
                 <input type="hidden" name="template_id" value="<?= (int)$dp['id'] ?>">
+                <input type="hidden" name="pwa_context" value="1">
                 <button type="submit" class="m-devprog-btn m-devprog-btn-enroll">
                     <i class="fas fa-shopping-cart"></i> Enroll<?= $dp['price'] > 0 ? ' & Pay' : '' ?>
                 </button>

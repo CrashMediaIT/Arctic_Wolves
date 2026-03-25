@@ -676,9 +676,7 @@ try {
                     <?php else: ?>
                         <span class="m-badge m-badge-upcoming">Open</span>
                         <?php
-                            // Determine if this is a template session (has no booking_id key from sessions table)
-                            $isTemplateSession = isset($sess['booking_status']) && $sess['booking_status'] === 'confirmed' && !isset($sess['waitlist_id']);
-                            // Better detection: template sessions came from the training_session_templates query which has no 'waitlist_count' field
+                            // Template sessions have no waitlist_count field (they came from training_session_templates query)
                             $isTemplateSession = !array_key_exists('waitlist_count', $sess);
                         ?>
                         <?php if ($isTemplateSession): ?>
@@ -763,6 +761,7 @@ try {
             <form method="POST" action="process_booking.php" id="m-private-form">
                 <?= csrfTokenInput() ?>
                 <input type="hidden" name="action" value="book_private_session">
+                <input type="hidden" name="pwa_context" value="1">
                 <div class="m-form-group">
                     <label class="m-form-label">Session Type <span class="m-required">*</span></label>
                     <select name="session_type_id" class="m-form-input" required>
@@ -850,6 +849,7 @@ try {
     <?= csrfTokenInput() ?>
     <input type="hidden" name="action" value="book_session">
     <input type="hidden" name="session_id" id="m-book-session-id" value="">
+    <input type="hidden" name="pwa_context" value="1">
 </form>
 
 <!-- Hidden form for template session registration (uses form submission for Stripe redirect) -->
@@ -857,6 +857,7 @@ try {
     <?= csrfTokenInput() ?>
     <input type="hidden" name="action" value="register_template_session">
     <input type="hidden" name="session_date_id" id="m-book-template-date-id" value="">
+    <input type="hidden" name="pwa_context" value="1">
 </form>
 
 <script>

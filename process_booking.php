@@ -39,9 +39,8 @@ $user_id = $_SESSION['user_id'];
 $domain  = "http://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']); 
 $action  = $_POST['action'] ?? '';
 
-// Detect PWA context from the referrer to redirect back to pwa.php instead of dashboard.php
-$referer = $_SERVER['HTTP_REFERER'] ?? '';
-$isPwaContext = (strpos($referer, 'pwa.php') !== false);
+// Detect PWA context from hidden form field to redirect back to pwa.php instead of dashboard.php
+$isPwaContext = (($_POST['pwa_context'] ?? '') === '1');
 $sessionsPage = $isPwaContext ? 'pwa.php?page=sessions' : 'dashboard.php?page=sessions';
 $bookingPage = $isPwaContext ? 'pwa.php?page=sessions' : 'dashboard.php?page=booking';
 
@@ -183,7 +182,8 @@ if ($action === 'register_dev_program') {
         $dup_check = $pdo->prepare("SELECT id FROM development_program_enrollments WHERE athlete_id = ? AND program_type = ? AND template_id = ? AND status = 'active'");
         $dup_check->execute([$user_id, $program_type, $template_id]);
         if ($dup_check->fetch()) {
-            header("Location: dashboard.php?page=personal_development_programs&error=already_enrolled");
+            $devPage = $isPwaContext ? 'pwa.php?page=personal_development_programs' : 'dashboard.php?page=personal_development_programs';
+            header("Location: $devPage&error=already_enrolled");
             exit();
         }
 
@@ -264,12 +264,14 @@ if ($action === 'register_dev_program') {
                 'action' => 'register_dev_program', 'program_type' => $program_type, 'amount' => 0
             ]);
 
-            header("Location: dashboard.php?page=personal_development_programs&status=enrolled");
+            $devPage = $isPwaContext ? 'pwa.php?page=personal_development_programs' : 'dashboard.php?page=personal_development_programs';
+            header("Location: $devPage&status=enrolled");
             exit();
         }
     } catch (Exception $e) {
         ErrorLogger::error("Dev program registration error: " . $e->getMessage(), ['program_type' => $program_type ?? '', 'user_id' => $user_id]);
-        header("Location: dashboard.php?page=personal_development_programs&error=registration_failed");
+        $devPage = $isPwaContext ? 'pwa.php?page=personal_development_programs' : 'dashboard.php?page=personal_development_programs';
+        header("Location: $devPage&error=registration_failed");
         exit();
     }
 }
