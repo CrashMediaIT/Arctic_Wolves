@@ -218,7 +218,7 @@ if ($action === 'register_dev_program') {
                     'quantity' => 1,
                 ]],
                 'mode' => 'payment',
-                'success_url' => $domain . '/payment_success.php?session_id={CHECKOUT_SESSION_ID}',
+                'success_url' => $domain . '/payment_success.php?session_id={CHECKOUT_SESSION_ID}&type=dev_program' . ($isPwaContext ? '&pwa=1' : ''),
                 'cancel_url'  => $domain . '/' . $bookingPage . '&error=cancelled',
                 'client_reference_id' => $user_id,
                 'metadata' => [
@@ -341,7 +341,7 @@ if ($action === 'register_template_session') {
                     'quantity' => 1,
                 ]],
                 'mode' => 'payment',
-                'success_url' => $domain . '/payment_success.php?session_id={CHECKOUT_SESSION_ID}',
+                'success_url' => $domain . '/payment_success.php?session_id={CHECKOUT_SESSION_ID}&type=template_session' . ($isPwaContext ? '&pwa=1' : ''),
                 'cancel_url'  => $domain . '/' . $bookingPage . '&error=cancelled',
                 'client_reference_id' => $user_id,
                 'metadata' => [
@@ -577,7 +577,7 @@ if ($action === 'book_private_session') {
                 'quantity' => 1,
             ]],
             'mode' => 'payment',
-            'success_url' => $domain . '/payment_success.php?session_id={CHECKOUT_SESSION_ID}',
+            'success_url' => $domain . '/payment_success.php?session_id={CHECKOUT_SESSION_ID}&type=booking' . ($isPwaContext ? '&pwa=1' : ''),
             'cancel_url'  => $domain . '/' . $bookingPage . '&error=cancelled',
             'client_reference_id' => $user_id,
         ];
@@ -693,7 +693,7 @@ try {
             'quantity' => 1,
         ]],
         'mode' => 'payment',
-        'success_url' => $domain . '/payment_success.php?session_id={CHECKOUT_SESSION_ID}',
+        'success_url' => $domain . '/payment_success.php?session_id={CHECKOUT_SESSION_ID}&type=booking' . ($isPwaContext ? '&pwa=1' : ''),
         'cancel_url'  => $domain . '/' . $bookingPage . '&error=cancelled',
         'client_reference_id' => $user_id,
     ];

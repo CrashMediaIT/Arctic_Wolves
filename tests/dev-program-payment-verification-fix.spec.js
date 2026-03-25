@@ -49,7 +49,7 @@ test.describe('Dev Program - Notification catch block catches all exceptions', (
 
   test('notification catch logs helpful error message with enrollment success context', () => {
     const content = readFile('payment_success.php');
-    expect(content).toContain('enrollment succeeded');
+    expect(content).toContain('Dev program notification failed');
   });
 
   test('decryptUserRows call is guarded with null check', () => {
@@ -75,7 +75,7 @@ test.describe('Dev Program - Receipt email wrapped in try/catch', () => {
     
     // Should have try/catch around receipt email
     expect(devSection).toContain("catch (\\Throwable $emailErr)");
-    expect(devSection).toContain("Dev program receipt email error");
+    expect(devSection).toContain("Dev program receipt email failed");
   });
 
   test('dev program enrollment INSERT is NOT inside the email try/catch', () => {
@@ -83,7 +83,7 @@ test.describe('Dev Program - Receipt email wrapped in try/catch', () => {
     
     // The enrollment INSERT should be BEFORE the email try/catch
     const enrollmentInsert = content.indexOf("INSERT INTO development_program_enrollments");
-    const emailTryCatch = content.indexOf("Dev program receipt email error");
+    const emailTryCatch = content.indexOf("Dev program receipt email failed");
     
     expect(enrollmentInsert).toBeGreaterThan(-1);
     expect(emailTryCatch).toBeGreaterThan(-1);
@@ -105,7 +105,7 @@ test.describe('Template Session - Receipt email wrapped in try/catch', () => {
     );
     
     expect(tplSection).toContain("catch (\\Throwable $emailErr)");
-    expect(tplSection).toContain("registration succeeded");
+    expect(tplSection).toContain("Template session receipt email failed");
   });
 });
 
@@ -122,7 +122,7 @@ test.describe('Regular Booking - Receipt email wrapped in try/catch', () => {
     );
     
     expect(bookingSection).toContain("catch (\\Throwable $emailErr)");
-    expect(bookingSection).toContain("payment recorded");
+    expect(bookingSection).toContain("Booking receipt email failed");
   });
 });
 
@@ -140,7 +140,7 @@ test.describe('Package Purchase - Receipt email wrapped in try/catch', () => {
     );
     
     expect(pkgSection).toContain("catch (\\Throwable $emailErr)");
-    expect(pkgSection).toContain("purchase recorded");
+    expect(pkgSection).toContain("Package receipt email failed");
   });
 });
 

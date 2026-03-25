@@ -1047,8 +1047,12 @@
      * Initialize file upload with drag and drop zones.
      * Drop zones are always visible and highlight when a file
      * is dragged into the browser window.
+     * Skipped entirely on PWA pages where drag-and-drop is not usable.
      */
     function initializeFileUploads() {
+        // Skip drag-and-drop zones on PWA (mobile/tablet) — not usable on touch devices
+        if (document.querySelector('.pwa-tab-bar')) return;
+
         const fileInputs = document.querySelectorAll('input[type="file"]');
         var dragZones = [];
         var dragCounter = 0;

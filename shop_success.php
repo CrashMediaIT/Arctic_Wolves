@@ -123,8 +123,12 @@ try {
             }
         }
     }
-} catch (Exception $e) {
-    error_log("Shop success page error: " . $e->getMessage());
+} catch (\Throwable $e) {
+    ErrorLogger::error("Shop payment verification failed: " . $e->getMessage(), [
+        'stripe_session_id' => $stripeSessionId ?? '',
+        'file' => $e->getFile(),
+        'line' => $e->getLine(),
+    ]);
 }
 ?>
 <!DOCTYPE html>
