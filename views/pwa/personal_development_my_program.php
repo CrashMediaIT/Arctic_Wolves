@@ -146,7 +146,7 @@ try {
     background: #16161F; border: 1px solid #2D2D3F; border-radius: 12px;
     padding: 16px; margin-bottom: 12px; cursor: pointer;
     transition: border-color 0.2s, transform 0.15s;
-    display: flex; align-items: center; gap: 12px; min-height: 44px;
+    display: flex !important; align-items: center; gap: 12px; min-height: 44px;
 }
 .m-myprog-card:active { border-color: rgba(107,70,193,0.5); transform: scale(0.98); }
 .m-myprog-card-icon {
@@ -270,9 +270,10 @@ try {
 
 /* --- DRILLS TAB --- */
 .m-myprog-drill {
+    display: block !important; /* Override global pwa.css [role="button"] inline-flex rule */
     background: #1E1E2E; border: 1px solid #2D2D3F; border-radius: 12px;
     padding: 14px; margin-bottom: 10px; cursor: pointer;
-    transition: border-color 0.2s;
+    transition: border-color 0.2s; width: 100%;
 }
 .m-myprog-drill:active { border-color: rgba(107,70,193,0.4); }
 .m-myprog-drill-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
@@ -323,6 +324,7 @@ try {
 .m-myprog-upload p { font-size: 12px; color: #A8A8B8; margin: 0 0 12px; line-height: 1.4; }
 .m-myprog-upload-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
 .m-myprog-upload-opt {
+    display: block !important; /* Override global pwa.css [role="button"] inline-flex rule */
     background: #16161F; border: 1px solid #2D2D3F; border-radius: 12px;
     padding: 16px 12px; text-align: center; cursor: pointer;
     min-height: 44px; transition: border-color 0.2s;
