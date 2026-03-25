@@ -39,11 +39,14 @@ if ($planId > 0) {
     if ($plan) {
         try {
             $stmt = $pdo->prepare("
-                SELECT pd.*, d.title as drill_title, d.duration_minutes, d.difficulty
+                SELECT pd.*, d.title as drill_title, d.description as drill_description,
+                       d.setup as drill_setup, d.coaching_points as drill_coaching_points,
+                       d.video_url as drill_video_url, dc.name as category_name
                 FROM practice_plan_drills pd
                 LEFT JOIN drills d ON d.id = pd.drill_id
+                LEFT JOIN drill_categories dc ON d.category_id = dc.id
                 WHERE pd.practice_plan_id = ?
-                ORDER BY pd.order_num ASC
+                ORDER BY pd.drill_order ASC
             ");
             $stmt->execute([$planId]);
             $planDrills = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -161,16 +164,27 @@ $creatorName = trim(($plan['first_name'] ?? '') . ' ' . ($plan['last_name'] ?? '
                     default => 'default',
                 };
                 $drillTitle = $pd['drill_title'] ?? 'Untitled Drill';
+                $drillDesc = $pd['drill_description'] ?? '';
+                $categoryName = $pd['category_name'] ?? '';
             ?>
             <a href="?page=view_drill&id=<?= (int)($pd['drill_id'] ?? 0) ?>" class="m-plan-drill-item">
                 <div class="m-plan-drill-num"><?= $i + 1 ?></div>
                 <div class="m-plan-drill-body">
                     <div class="m-plan-drill-title"><?= htmlspecialchars($drillTitle) ?></div>
                     <div class="m-plan-drill-meta">
-                        <?php if ($pd['duration_minutes']): ?>
+                        <?php if ($pd['duration_minutes'] ?? null): ?>
                         <span><i class="fas fa-clock"></i> <?= (int)$pd['duration_minutes'] ?>min</span>
                         <?php endif; ?>
+                        <?php if (!empty($categoryName)): ?>
+                        <span style="font-size:10px;padding:2px 8px;border-radius:6px;background:rgba(107,70,193,0.12);color:#8B5CF6;"><?= htmlspecialchars($categoryName) ?></span>
+                        <?php endif; ?>
                     </div>
+                    <?php if (!empty($drillDesc)): ?>
+                    <div style="font-size:11px;color:#6B6B7B;margin-top:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;"><?= htmlspecialchars($drillDesc) ?></div>
+                    <?php endif; ?>
+                    <?php if (!empty($pd['notes'])): ?>
+                    <div style="font-size:11px;color:#A8A8B8;margin-top:4px;font-style:italic;"><i class="fas fa-comment" style="font-size:9px;"></i> <?= htmlspecialchars($pd['notes']) ?></div>
+                    <?php endif; ?>
                 </div>
                 <?php if ($diff): ?>
                 <span class="m-plan-drill-badge m-plan-drill-badge-<?= $badgeClass ?>"><?= htmlspecialchars(ucfirst($diff)) ?></span>

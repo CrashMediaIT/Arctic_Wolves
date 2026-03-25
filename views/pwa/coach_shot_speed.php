@@ -259,6 +259,9 @@ try {
         unit = u;
         document.getElementById('mUnitMph').className = 'm-unit-btn' + (u === 'mph' ? ' m-unit-active' : '');
         document.getElementById('mUnitKmh').className = 'm-unit-btn' + (u === 'km/h' ? ' m-unit-active' : '');
+        // Update max value based on unit (matches desktop behavior)
+        var speedInput = document.getElementById('mSpeedVal');
+        speedInput.max = (u === 'mph') ? 150 : 240;
     };
 
     window.mRecordSpeed = function() {

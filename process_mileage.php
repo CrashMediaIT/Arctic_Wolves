@@ -19,6 +19,10 @@ header('Content-Type: application/json');
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 $user_id = $_SESSION['user_id'];
 
+// Detect PWA context from hidden form field to redirect back to pwa.php instead of dashboard.php
+$isPwaContext = (($_POST['pwa_context'] ?? '') === '1');
+$mileagePage = $isPwaContext ? 'pwa.php?page=travel' : 'dashboard.php?page=mileage';
+
 try {
     switch ($action) {
         case 'get_distance':
@@ -136,7 +140,7 @@ try {
                 echo json_encode(['success' => true, 'message' => 'Mileage log created successfully', 'id' => $mileage_log_id]);
             } else {
                 // Regular form submission - redirect back with success message
-                header("Location: dashboard.php?page=mileage&status=success&message=Mileage+entry+added+successfully");
+                header("Location: " . $mileagePage . "&status=success&message=Mileage+entry+added+successfully");
                 exit();
             }
             break;

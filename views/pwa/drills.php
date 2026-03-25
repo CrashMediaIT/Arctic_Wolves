@@ -27,54 +27,49 @@ try {
 
 // Read filter GET params
 $filterCategory = trim($_GET['filter_category'] ?? '');
-$filterDifficulty = trim($_GET['filter_difficulty'] ?? '');
 
 // Build My Drills query with optional filters
 $myDrills = [];
 try {
-    $myWhere = "WHERE created_by = ?";
+    $myWhere = "WHERE d.created_by = ?";
     $myParams = [$user_id];
     if ($filterCategory !== '') {
-        $myWhere .= " AND category = ?";
+        $myWhere .= " AND dc.name = ?";
         $myParams[] = $filterCategory;
     }
-    if ($filterDifficulty !== '') {
-        $myWhere .= " AND LOWER(difficulty) = ?";
-        $myParams[] = strtolower($filterDifficulty);
-    }
     $stmt = $pdo->prepare("
-        SELECT id, title, description, difficulty, duration_minutes, category, coaching_points, video_url, created_by, created_at
-        FROM drills
+        SELECT d.*, dc.name as category_name
+        FROM drills d
+        LEFT JOIN drill_categories dc ON d.category_id = dc.id
         $myWhere
-        ORDER BY created_at DESC
+        ORDER BY d.created_at DESC
         LIMIT 30
     ");
     $stmt->execute($myParams);
     $myDrills = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { $myDrills = []; }
 
-// Build Library query with optional filters
+// Build Library query - show ALL drills (matches desktop drills_library.php)
 $libraryDrills = [];
 try {
-    $libWhere = "WHERE is_public = 1";
+    $libWhere = "WHERE 1=1";
     $libParams = [];
     if ($filterCategory !== '') {
-        $libWhere .= " AND category = ?";
+        $libWhere .= " AND dc.name = ?";
         $libParams[] = $filterCategory;
     }
-    if ($filterDifficulty !== '') {
-        $libWhere .= " AND LOWER(difficulty) = ?";
-        $libParams[] = strtolower($filterDifficulty);
-    }
     $stmt = $pdo->prepare("
-        SELECT id, title, description, difficulty, duration_minutes, category, coaching_points, video_url, created_by
-        FROM drills
+        SELECT d.*, dc.name as category_name, u.first_name, u.last_name
+        FROM drills d
+        LEFT JOIN drill_categories dc ON d.category_id = dc.id
+        LEFT JOIN users u ON d.created_by = u.id
         $libWhere
-        ORDER BY title ASC
-        LIMIT 30
+        ORDER BY d.created_at DESC
+        LIMIT 50
     ");
     $stmt->execute($libParams);
     $libraryDrills = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $libraryDrills = decryptUserRows($libraryDrills);
 } catch (PDOException $e) { $libraryDrills = []; }
 ?>
 <style>
@@ -340,12 +335,6 @@ try {
                 <option value="<?= htmlspecialchars($cat['name']) ?>" <?= $filterCategory === $cat['name'] ? 'selected' : '' ?>><?= htmlspecialchars($cat['name']) ?></option>
                 <?php endforeach; ?>
             </select>
-            <select onchange="mApplyFilters()" id="m-filter-difficulty">
-                <option value="">All Levels</option>
-                <option value="easy" <?= $filterDifficulty === 'easy' ? 'selected' : '' ?>>Easy</option>
-                <option value="medium" <?= $filterDifficulty === 'medium' ? 'selected' : '' ?>>Medium</option>
-                <option value="hard" <?= $filterDifficulty === 'hard' ? 'selected' : '' ?>>Hard</option>
-            </select>
         </div>
         <?php if (empty($myDrills)): ?>
             <div class="m-empty-state">
@@ -362,6 +351,7 @@ try {
                     default => 'default',
                 };
                 $canEdit = ($isAdmin || (int)$d['created_by'] === (int)$user_id);
+                $categoryDisplay = $d['category_name'] ?? '';
             ?>
             <div class="m-drill-card" data-drill-title="<?= htmlspecialchars(strtolower($d['title'])) ?>" data-drill-id="<?= (int)$d['id'] ?>">
                 <div class="m-drill-top">
@@ -383,11 +373,11 @@ try {
                 <p class="m-drill-desc"><?= htmlspecialchars($d['description']) ?></p>
                 <?php endif; ?>
                 <div class="m-drill-footer">
-                    <?php if ($d['duration_minutes']): ?>
+                    <?php if ($d['duration_minutes'] ?? null): ?>
                     <span class="m-drill-meta"><i class="fas fa-clock"></i> <?= (int)$d['duration_minutes'] ?>min</span>
                     <?php endif; ?>
-                    <?php if (!empty($d['category'])): ?>
-                    <span class="m-drill-tag"><?= htmlspecialchars($d['category']) ?></span>
+                    <?php if (!empty($categoryDisplay)): ?>
+                    <span class="m-drill-tag"><?= htmlspecialchars($categoryDisplay) ?></span>
                     <?php endif; ?>
                 </div>
             </div>
@@ -404,7 +394,7 @@ try {
         <?php if (empty($libraryDrills)): ?>
             <div class="m-empty-state">
                 <i class="fas fa-book-open"></i>
-                <p>No public drills available</p>
+                <p>No drills in the library yet</p>
             </div>
         <?php else: ?>
             <?php foreach ($libraryDrills as $d):
@@ -416,6 +406,8 @@ try {
                     default => 'default',
                 };
                 $canEdit = ($isAdmin || (int)$d['created_by'] === (int)$user_id);
+                $categoryDisplay = $d['category_name'] ?? '';
+                $creatorName = trim(($d['first_name'] ?? '') . ' ' . ($d['last_name'] ?? ''));
             ?>
             <div class="m-drill-card" data-drill-title="<?= htmlspecialchars(strtolower($d['title'])) ?>" data-drill-id="<?= (int)$d['id'] ?>">
                 <div class="m-drill-top">
@@ -437,11 +429,14 @@ try {
                 <p class="m-drill-desc"><?= htmlspecialchars($d['description']) ?></p>
                 <?php endif; ?>
                 <div class="m-drill-footer">
-                    <?php if ($d['duration_minutes']): ?>
+                    <?php if ($d['duration_minutes'] ?? null): ?>
                     <span class="m-drill-meta"><i class="fas fa-clock"></i> <?= (int)$d['duration_minutes'] ?>min</span>
                     <?php endif; ?>
-                    <?php if (!empty($d['category'])): ?>
-                    <span class="m-drill-tag"><?= htmlspecialchars($d['category']) ?></span>
+                    <?php if (!empty($creatorName)): ?>
+                    <span class="m-drill-meta"><i class="fas fa-user"></i> <?= htmlspecialchars($creatorName) ?></span>
+                    <?php endif; ?>
+                    <?php if (!empty($categoryDisplay)): ?>
+                    <span class="m-drill-tag"><?= htmlspecialchars($categoryDisplay) ?></span>
                     <?php endif; ?>
                 </div>
             </div>
@@ -537,14 +532,12 @@ function mFilterDrills(panelKey, query) {
     });
 }
 
-/* Category / difficulty filter (server-side via GET) */
+/* Category filter (server-side via GET) */
 function mApplyFilters() {
     var cat = document.getElementById('m-filter-category').value;
-    var diff = document.getElementById('m-filter-difficulty').value;
     var params = new URLSearchParams(window.location.search);
     params.set('page', 'drills');
     if (cat) { params.set('filter_category', cat); } else { params.delete('filter_category'); }
-    if (diff) { params.set('filter_difficulty', diff); } else { params.delete('filter_difficulty'); }
     window.location.search = params.toString();
 }
 
@@ -579,7 +572,7 @@ function mOpenEditModal(drill) {
     document.getElementById('m-edit-action').value = 'save_drill';
     document.getElementById('m-edit-id').value = drill.id || '';
     document.getElementById('m-edit-title').value = drill.title || '';
-    document.getElementById('m-edit-category').value = drill.category || '';
+    document.getElementById('m-edit-category').value = drill.category_name || drill.category || '';
     var diffMap = {easy:'beginner', medium:'intermediate', hard:'advanced'};
     var rawDiff = (drill.difficulty || '').toLowerCase();
     document.getElementById('m-edit-difficulty').value = diffMap[rawDiff] || rawDiff;

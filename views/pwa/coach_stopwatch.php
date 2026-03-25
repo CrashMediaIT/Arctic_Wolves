@@ -147,12 +147,196 @@ try {
 .m-sw-hist-name { font-size: 14px; font-weight: 600; color: #fff; }
 .m-sw-hist-meta { font-size: 12px; color: #6B6B7B; margin-top: 2px; }
 .m-sw-hist-laps { font-size: 12px; color: #8B5CF6; font-weight: 600; }
+
+/* Mode Toggle */
+.m-sw-mode-toggle {
+    display: flex; background: #16161F; border: 1px solid #2D2D3F;
+    border-radius: 12px; padding: 3px; margin-bottom: 20px; gap: 2px;
+}
+.m-sw-mode-btn {
+    flex: 1; min-height: 44px; border: none; border-radius: 10px;
+    background: transparent; color: #6B6B7B; font-size: 14px; font-weight: 600;
+    font-family: Inter, sans-serif; cursor: pointer; transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.m-sw-mode-btn.active { background: #8B5CF6; color: #fff; }
+.m-sw-mode-btn:active { transform: scale(0.97); }
+
+/* Countdown inputs */
+.m-sw-countdown-setup { display: none; margin-bottom: 20px; }
+.m-sw-countdown-setup.active { display: block; }
+.m-sw-cd-inputs {
+    display: flex; gap: 8px; justify-content: center; align-items: center;
+    margin-bottom: 12px;
+}
+.m-sw-cd-field { text-align: center; }
+.m-sw-cd-field label {
+    display: block; font-size: 11px; color: #6B6B7B; text-transform: uppercase;
+    letter-spacing: 0.5px; margin-bottom: 4px;
+}
+.m-sw-cd-input {
+    width: 72px; min-height: 52px; padding: 8px; text-align: center;
+    background: #0A0A0F; border: 1px solid #2D2D3F; border-radius: 12px;
+    color: #fff; font-size: 24px; font-weight: 700; font-family: Inter, monospace;
+    box-sizing: border-box;
+}
+.m-sw-cd-input:focus { border-color: #8B5CF6; outline: none; }
+.m-sw-cd-sep { font-size: 28px; color: #6B6B7B; padding-top: 18px; font-weight: 700; }
+.m-sw-cd-set {
+    min-height: 44px; padding: 0 20px; border-radius: 10px; border: none;
+    background: #8B5CF6; color: #fff; font-size: 14px; font-weight: 600;
+    font-family: Inter, sans-serif; cursor: pointer; margin-top: 18px;
+}
+.m-sw-cd-set:active { transform: scale(0.97); }
+.m-sw-cd-presets {
+    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+    margin-top: 10px;
+}
+.m-sw-cd-preset {
+    min-height: 36px; padding: 0 14px; border-radius: 8px;
+    background: rgba(139,92,246,0.15); color: #8B5CF6; font-size: 13px;
+    font-weight: 600; border: 1px solid rgba(139,92,246,0.25);
+    font-family: Inter, sans-serif; cursor: pointer;
+}
+.m-sw-cd-preset:active { transform: scale(0.95); }
+
+/* Countdown flash animation */
+@keyframes m-sw-flash {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+.m-time-display.m-sw-flashing {
+    animation: m-sw-flash 0.4s ease-in-out 6;
+    border-color: #EF4444;
+}
+
+/* Multi-Athlete Watches */
+.m-sw-multi-section {
+    text-align: left; margin-top: 28px;
+    border-top: 1px solid #2D2D3F; padding-top: 24px;
+}
+.m-sw-multi-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 12px;
+}
+.m-sw-add-watch-btn {
+    min-height: 44px; padding: 0 16px; border-radius: 10px; border: none;
+    background: rgba(139,92,246,0.15); color: #8B5CF6; font-size: 13px;
+    font-weight: 600; font-family: Inter, sans-serif; cursor: pointer;
+    display: flex; align-items: center; gap: 6px;
+    border: 1px solid rgba(139,92,246,0.25);
+}
+.m-sw-add-watch-btn:active { transform: scale(0.97); }
+.m-sw-add-watch-btn:disabled { opacity: 0.4; }
+.m-sw-watch-card {
+    background: #16161F; border: 1px solid #2D2D3F; border-radius: 14px;
+    margin-bottom: 10px; overflow: hidden; transition: border-color 0.2s;
+}
+.m-sw-watch-card.m-sw-watch-running { border-color: #10B981; box-shadow: 0 0 12px rgba(16,185,129,0.12); }
+.m-sw-watch-head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 14px; cursor: pointer; min-height: 44px;
+}
+.m-sw-watch-head-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+.m-sw-watch-head-label {
+    font-size: 14px; font-weight: 600; color: #fff;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.m-sw-watch-head-time { font-size: 14px; font-weight: 700; color: #8B5CF6; font-variant-numeric: tabular-nums; margin-right: 8px; }
+.m-sw-watch-chevron { color: #6B6B7B; font-size: 12px; transition: transform 0.2s; }
+.m-sw-watch-card.m-sw-watch-expanded .m-sw-watch-chevron { transform: rotate(180deg); }
+.m-sw-watch-body { display: none; padding: 0 14px 14px; }
+.m-sw-watch-card.m-sw-watch-expanded .m-sw-watch-body { display: block; }
+.m-sw-watch-display {
+    font-size: 36px; font-weight: 700; color: #fff; text-align: center;
+    font-variant-numeric: tabular-nums; letter-spacing: 1px;
+    font-family: 'Inter', monospace; padding: 12px 0;
+}
+.m-sw-watch-display .m-sw-watch-ms { font-size: 20px; color: #8B5CF6; }
+.m-sw-watch-ctrls { display: flex; gap: 10px; justify-content: center; margin-bottom: 10px; flex-wrap: wrap; }
+.m-sw-watch-ctrls .m-sw-btn { width: 52px; height: 52px; min-width: 52px; min-height: 52px; font-size: 16px; }
+.m-sw-watch-select {
+    width: 100%; min-height: 40px; padding: 10px;
+    background: #0A0A0F; border: 1px solid #2D2D3F; border-radius: 8px;
+    color: #fff; font-size: 13px; font-family: Inter, sans-serif;
+    margin-bottom: 10px; box-sizing: border-box;
+    -webkit-appearance: none; appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236B6B7B' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center;
+}
+.m-sw-watch-select:focus { border-color: #8B5CF6; outline: none; }
+.m-sw-watch-actions { display: flex; gap: 8px; margin-top: 8px; }
+.m-sw-watch-action-btn {
+    flex: 1; min-height: 38px; border-radius: 8px; border: none;
+    font-size: 12px; font-weight: 600; font-family: Inter, sans-serif;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;
+}
+.m-sw-watch-save-btn { background: rgba(107,70,193,0.2); color: #8B5CF6; border: 1px solid rgba(107,70,193,0.3); }
+.m-sw-watch-remove-btn { background: rgba(239,68,68,0.12); color: #EF4444; border: 1px solid rgba(239,68,68,0.2); }
+.m-sw-watch-laps-list { list-style: none; margin: 8px 0 0; padding: 0; max-height: 150px; overflow-y: auto; }
+.m-sw-watch-laps-list .m-lap-item { padding: 8px 10px; margin-bottom: 4px; min-height: 36px; }
+.m-sw-watch-laps-list .m-lap-num { font-size: 12px; }
+.m-sw-watch-laps-list .m-lap-time { font-size: 13px; }
+.m-sw-watch-laps-list .m-lap-diff { font-size: 11px; }
+.m-sw-watch-empty { text-align: center; padding: 20px; color: #6B6B7B; font-size: 13px; }
+
+/* Session detail expansion */
+.m-sw-hist-item { cursor: pointer; transition: border-color 0.2s; }
+.m-sw-hist-item:active { border-color: #8B5CF6; }
+.m-sw-hist-item.m-sw-hist-expanded { border-color: #8B5CF6; }
+.m-sw-hist-detail { display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid #2D2D3F; }
+.m-sw-hist-item.m-sw-hist-expanded .m-sw-hist-detail { display: block; }
+.m-sw-hist-detail-loading { text-align: center; padding: 12px; color: #6B6B7B; font-size: 13px; }
+.m-sw-hist-lap-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 0; border-bottom: 1px solid rgba(45,45,63,0.5);
+    font-size: 13px;
+}
+.m-sw-hist-lap-row:last-child { border-bottom: none; }
+.m-sw-hist-lap-num { color: #8B5CF6; font-weight: 600; font-size: 12px; min-width: 50px; }
+.m-sw-hist-lap-split { color: #A8A8B8; font-variant-numeric: tabular-nums; }
+.m-sw-hist-lap-total { color: #fff; font-weight: 600; font-variant-numeric: tabular-nums; }
+.m-sw-hist-toggle { float: right; color: #6B6B7B; font-size: 11px; transition: transform 0.2s; }
+.m-sw-hist-item.m-sw-hist-expanded .m-sw-hist-toggle { transform: rotate(180deg); }
 </style>
 
 <div class="m-stopwatch">
     <div class="m-stopwatch-header">
         <h2 class="m-stopwatch-title">Stopwatch</h2>
-        <p class="m-stopwatch-sub">Tap to start timing</p>
+        <p class="m-stopwatch-sub" id="mSwSubtitle">Tap to start timing</p>
+    </div>
+
+    <!-- Mode Toggle: Stopwatch / Countdown -->
+    <div class="m-sw-mode-toggle">
+        <button class="m-sw-mode-btn active" id="mSwModeStopwatch" type="button" onclick="mSwSetMode('stopwatch')">
+            <i class="fas fa-stopwatch"></i> Stopwatch
+        </button>
+        <button class="m-sw-mode-btn" id="mSwModeCountdown" type="button" onclick="mSwSetMode('countdown')">
+            <i class="fas fa-hourglass-half"></i> Countdown
+        </button>
+    </div>
+
+    <!-- Countdown Setup (hidden by default) -->
+    <div class="m-sw-countdown-setup" id="mSwCountdownSetup">
+        <div class="m-sw-cd-inputs">
+            <div class="m-sw-cd-field">
+                <label>Min</label>
+                <input type="number" class="m-sw-cd-input" id="mSwCdMin" min="0" max="99" value="0" inputmode="numeric">
+            </div>
+            <span class="m-sw-cd-sep">:</span>
+            <div class="m-sw-cd-field">
+                <label>Sec</label>
+                <input type="number" class="m-sw-cd-input" id="mSwCdSec" min="0" max="59" value="30" inputmode="numeric">
+            </div>
+            <button class="m-sw-cd-set" type="button" onclick="mSwCdSet()"><i class="fas fa-check"></i> Set</button>
+        </div>
+        <div class="m-sw-cd-presets">
+            <button class="m-sw-cd-preset" type="button" onclick="mSwCdQuick(30)">30s</button>
+            <button class="m-sw-cd-preset" type="button" onclick="mSwCdQuick(60)">1m</button>
+            <button class="m-sw-cd-preset" type="button" onclick="mSwCdQuick(120)">2m</button>
+            <button class="m-sw-cd-preset" type="button" onclick="mSwCdQuick(300)">5m</button>
+            <button class="m-sw-cd-preset" type="button" onclick="mSwCdQuick(600)">10m</button>
+        </div>
     </div>
 
     <div class="m-sw-selectors">
@@ -228,23 +412,60 @@ try {
     <div class="m-sw-history-section">
         <h3 class="m-lap-title">Saved Sessions</h3>
         <?php foreach ($recent_sessions as $sess): ?>
-        <div class="m-sw-hist-item">
-            <div class="m-sw-hist-name"><?= htmlspecialchars($sess['session_name']) ?></div>
-            <div class="m-sw-hist-meta">
-                <?= date('M j, Y g:ia', strtotime($sess['created_at'])) ?>
-                &middot; <span class="m-sw-hist-laps"><?= (int)$sess['lap_count'] ?> laps</span>
+        <div class="m-sw-hist-item" onclick="mSwToggleSession(this, <?= (int)$sess['id'] ?>)" data-session-id="<?= (int)$sess['id'] ?>">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div>
+                    <div class="m-sw-hist-name"><?= htmlspecialchars($sess['session_name']) ?></div>
+                    <div class="m-sw-hist-meta">
+                        <?= date('M j, Y g:ia', strtotime($sess['created_at'])) ?>
+                        &middot; <span class="m-sw-hist-laps"><?= (int)$sess['lap_count'] ?> laps</span>
+                    </div>
+                </div>
+                <i class="fas fa-chevron-down m-sw-hist-toggle"></i>
             </div>
+            <div class="m-sw-hist-detail" id="mSwHistDetail-<?= (int)$sess['id'] ?>"></div>
         </div>
         <?php endforeach; ?>
     </div>
     <?php endif; ?>
+
+    <!-- Multi-Athlete Watches -->
+    <div class="m-sw-multi-section">
+        <div class="m-sw-multi-header">
+            <h3 class="m-lap-title" style="margin:0;">Multi-Athlete Watches</h3>
+            <button class="m-sw-add-watch-btn" id="mSwAddWatchBtn" type="button" onclick="mSwAddWatch()">
+                <i class="fas fa-plus"></i> Add Watch
+            </button>
+        </div>
+        <div id="mSwWatchesContainer">
+            <div class="m-sw-watch-empty" id="mSwWatchesEmpty">
+                <i class="fas fa-users" style="font-size:24px;display:block;margin-bottom:8px;"></i>
+                Tap <strong>Add Watch</strong> to create athlete-specific timers
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
 (function() {
+    /* ========================================
+       Main Stopwatch State
+       ======================================== */
     var running = false, startTime = 0, elapsed = 0, timer = null;
     var laps = [], lastLap = 0;
     var csrfToken = '<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>';
+
+    /* Mode: 'stopwatch' or 'countdown' */
+    var currentMode = 'stopwatch';
+    var cdTargetMs = 0;  // countdown target in ms
+    var cdRunning = false;
+    var cdStartTime = 0;
+    var cdElapsed = 0;   // elapsed ms in countdown
+    var cdTimer = null;
+
+    var athleteJson = <?= json_encode(array_map(function($a) {
+        return ['id' => (int)$a['id'], 'label' => ($a['last_name'] ?? '') . ', ' . ($a['first_name'] ?? '')];
+    }, $athletes), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 
     function pad(n, d) { return String(n).padStart(d || 2, '0'); }
 
@@ -261,6 +482,15 @@ try {
         return t.main + t.ms;
     }
 
+    function escHtml(str) {
+        var d = document.createElement('div');
+        d.textContent = str;
+        return d.innerHTML;
+    }
+
+    /* ========================================
+       Stopwatch Mode (existing)
+       ======================================== */
     function update() {
         var now = Date.now();
         var total = elapsed + (now - startTime);
@@ -282,6 +512,7 @@ try {
     }
 
     window.mSwToggle = function() {
+        if (currentMode === 'countdown') { mSwCdToggle(); return; }
         var btn = document.getElementById('mSwToggle');
         var icon = document.getElementById('mSwToggleIcon');
         if (running) {
@@ -301,6 +532,7 @@ try {
     };
 
     window.mSwReset = function() {
+        if (currentMode === 'countdown') { mSwCdReset(); return; }
         clearInterval(timer);
         running = false;
         elapsed = 0;
@@ -314,11 +546,12 @@ try {
         btn.className = 'm-sw-btn m-sw-btn-start';
         icon.className = 'fas fa-play';
         document.getElementById('mSwLaps').innerHTML = '<li class="m-empty-state"><i class="fas fa-flag"></i>No laps recorded</li>';
+        document.getElementById('mSwTime').parentElement.parentElement.classList.remove('m-sw-flashing');
         showSaveSection();
     };
 
     window.mSwLap = function() {
-        if (!running) return;
+        if (currentMode === 'countdown' || !running) return;
         var total = elapsed + (Date.now() - startTime);
         var diff = total - lastLap;
         lastLap = total;
@@ -365,6 +598,432 @@ try {
             })
             .catch(function() { showAlert('error', 'Failed to save session'); })
             .finally(function() { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> Save Session'; });
+    };
+
+    /* ========================================
+       Mode Toggle: Stopwatch / Countdown
+       ======================================== */
+    window.mSwSetMode = function(mode) {
+        // Stop everything first
+        if (running) { clearInterval(timer); elapsed += Date.now() - startTime; running = false; }
+        if (cdRunning) { clearInterval(cdTimer); cdElapsed += Date.now() - cdStartTime; cdRunning = false; }
+
+        currentMode = mode;
+        var swBtn = document.getElementById('mSwModeStopwatch');
+        var cdBtn = document.getElementById('mSwModeCountdown');
+        var cdSetup = document.getElementById('mSwCountdownSetup');
+        var lapBtn = document.getElementById('mSwLap');
+        var subtitle = document.getElementById('mSwSubtitle');
+
+        if (mode === 'countdown') {
+            swBtn.classList.remove('active');
+            cdBtn.classList.add('active');
+            cdSetup.classList.add('active');
+            lapBtn.style.display = 'none';
+            subtitle.textContent = 'Set time and start countdown';
+            mSwCdReset();
+        } else {
+            cdBtn.classList.remove('active');
+            swBtn.classList.add('active');
+            cdSetup.classList.remove('active');
+            lapBtn.style.display = '';
+            subtitle.textContent = 'Tap to start timing';
+            mSwReset();
+        }
+
+        var btn = document.getElementById('mSwToggle');
+        var icon = document.getElementById('mSwToggleIcon');
+        btn.className = 'm-sw-btn m-sw-btn-start';
+        icon.className = 'fas fa-play';
+        showSaveSection();
+    };
+
+    /* ========================================
+       Countdown Mode
+       ======================================== */
+    function mSwCdUpdateDisplay() {
+        var remaining = cdTargetMs - cdElapsed - (cdRunning ? (Date.now() - cdStartTime) : 0);
+        if (remaining < 0) remaining = 0;
+        var t = formatTime(remaining);
+        document.getElementById('mSwTime').textContent = t.main;
+        document.getElementById('mSwMs').textContent = t.ms;
+        if (remaining <= 0 && cdRunning) {
+            mSwCdComplete();
+        }
+    }
+
+    function mSwCdToggle() {
+        var btn = document.getElementById('mSwToggle');
+        var icon = document.getElementById('mSwToggleIcon');
+        if (cdRunning) {
+            clearInterval(cdTimer);
+            cdElapsed += Date.now() - cdStartTime;
+            cdRunning = false;
+            btn.className = 'm-sw-btn m-sw-btn-start';
+            icon.className = 'fas fa-play';
+        } else {
+            if (cdTargetMs <= 0) return;
+            var remaining = cdTargetMs - cdElapsed;
+            if (remaining <= 0) return;
+            cdStartTime = Date.now();
+            cdRunning = true;
+            cdTimer = setInterval(mSwCdUpdateDisplay, 33);
+            btn.className = 'm-sw-btn m-sw-btn-stop';
+            icon.className = 'fas fa-pause';
+        }
+    }
+
+    function mSwCdReset() {
+        clearInterval(cdTimer);
+        cdRunning = false;
+        cdElapsed = 0;
+        cdStartTime = 0;
+        var btn = document.getElementById('mSwToggle');
+        var icon = document.getElementById('mSwToggleIcon');
+        btn.className = 'm-sw-btn m-sw-btn-start';
+        icon.className = 'fas fa-play';
+        document.getElementById('mSwTime').parentElement.parentElement.classList.remove('m-sw-flashing');
+        // Show the set time or zero
+        if (cdTargetMs > 0) {
+            var t = formatTime(cdTargetMs);
+            document.getElementById('mSwTime').textContent = t.main;
+            document.getElementById('mSwMs').textContent = t.ms;
+        } else {
+            document.getElementById('mSwTime').textContent = '00:00:00';
+            document.getElementById('mSwMs').textContent = '.00';
+        }
+    }
+
+    function mSwCdComplete() {
+        clearInterval(cdTimer);
+        cdRunning = false;
+        cdElapsed = cdTargetMs;
+        document.getElementById('mSwTime').textContent = '00:00:00';
+        document.getElementById('mSwMs').textContent = '.00';
+        var btn = document.getElementById('mSwToggle');
+        var icon = document.getElementById('mSwToggleIcon');
+        btn.className = 'm-sw-btn m-sw-btn-start';
+        icon.className = 'fas fa-play';
+
+        // Flash display
+        var display = document.getElementById('mSwTime').parentElement.parentElement;
+        display.classList.add('m-sw-flashing');
+
+        // Vibrate if available
+        if (navigator.vibrate) {
+            navigator.vibrate([200, 100, 200, 100, 400]);
+        }
+
+        // Audio beep
+        try {
+            var ac = new (window.AudioContext || window.webkitAudioContext)();
+            function beep(freq, delay, dur) {
+                setTimeout(function() {
+                    var osc = ac.createOscillator();
+                    var gain = ac.createGain();
+                    osc.connect(gain);
+                    gain.connect(ac.destination);
+                    osc.frequency.value = freq;
+                    osc.type = 'sine';
+                    gain.gain.value = 0.3;
+                    osc.start(ac.currentTime);
+                    osc.stop(ac.currentTime + dur);
+                }, delay);
+            }
+            beep(800, 0, 0.2);
+            beep(800, 250, 0.2);
+            beep(1000, 500, 0.5);
+        } catch (e) { /* audio not available */ }
+    }
+
+    window.mSwCdSet = function() {
+        var m = parseInt(document.getElementById('mSwCdMin').value) || 0;
+        var s = parseInt(document.getElementById('mSwCdSec').value) || 0;
+        var totalMs = (m * 60 + s) * 1000;
+        if (totalMs <= 0) return;
+        cdTargetMs = totalMs;
+        mSwCdReset();
+    };
+
+    window.mSwCdQuick = function(seconds) {
+        var m = Math.floor(seconds / 60);
+        var s = seconds % 60;
+        document.getElementById('mSwCdMin').value = m;
+        document.getElementById('mSwCdSec').value = s;
+        cdTargetMs = seconds * 1000;
+        mSwCdReset();
+    };
+
+    /* ========================================
+       Session Detail Viewing
+       ======================================== */
+    var loadedSessions = {};
+
+    window.mSwToggleSession = function(el, sessionId) {
+        var wasExpanded = el.classList.contains('m-sw-hist-expanded');
+        // Collapse all others
+        var items = document.querySelectorAll('.m-sw-hist-item');
+        for (var i = 0; i < items.length; i++) {
+            items[i].classList.remove('m-sw-hist-expanded');
+        }
+        if (wasExpanded) return;
+
+        el.classList.add('m-sw-hist-expanded');
+        var detailEl = document.getElementById('mSwHistDetail-' + sessionId);
+
+        if (loadedSessions[sessionId]) {
+            detailEl.innerHTML = loadedSessions[sessionId];
+            return;
+        }
+
+        detailEl.innerHTML = '<div class="m-sw-hist-detail-loading"><i class="fas fa-spinner fa-spin"></i> Loading laps...</div>';
+
+        var fd = new FormData();
+        fd.append('action', 'get_session');
+        fd.append('csrf_token', csrfToken);
+        fd.append('session_id', sessionId);
+        fetch('process_stopwatch.php', { method: 'POST', body: fd })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success && data.times) {
+                    var html = '';
+                    if (data.times.length === 0) {
+                        html = '<div class="m-sw-hist-detail-loading">No lap data</div>';
+                    } else {
+                        for (var i = 0; i < data.times.length; i++) {
+                            var t = data.times[i];
+                            html += '<div class="m-sw-hist-lap-row">' +
+                                '<span class="m-sw-hist-lap-num">Lap ' + escHtml(String(t.lap_number)) + '</span>' +
+                                '<span class="m-sw-hist-lap-split">+' + formatTimeMs(parseInt(t.lap_time_ms) || 0) + '</span>' +
+                                '<span class="m-sw-hist-lap-total">' + formatTimeMs(parseInt(t.total_time_ms) || 0) + '</span>' +
+                                '</div>';
+                        }
+                    }
+                    loadedSessions[sessionId] = html;
+                    detailEl.innerHTML = html;
+                } else {
+                    detailEl.innerHTML = '<div class="m-sw-hist-detail-loading" style="color:#EF4444;">Failed to load</div>';
+                }
+            })
+            .catch(function() {
+                detailEl.innerHTML = '<div class="m-sw-hist-detail-loading" style="color:#EF4444;">Failed to load</div>';
+            });
+    };
+
+    /* ========================================
+       Multi-Athlete Watches
+       ======================================== */
+    var mwWatches = [];
+    var mwNextId = 1;
+    var MW_MAX = 8;
+
+    function mwUpdateAddBtn() {
+        var btn = document.getElementById('mSwAddWatchBtn');
+        btn.disabled = mwWatches.length >= MW_MAX;
+        document.getElementById('mSwWatchesEmpty').style.display = mwWatches.length === 0 ? 'block' : 'none';
+    }
+
+    window.mSwAddWatch = function() {
+        if (mwWatches.length >= MW_MAX) return;
+        var id = mwNextId++;
+        var watch = {
+            id: id,
+            running: false,
+            startTime: 0,
+            elapsed: 0,
+            timer: null,
+            laps: [],
+            lastLap: 0,
+            expanded: true,
+            athleteId: ''
+        };
+        mwWatches.push(watch);
+        mwRenderWatch(watch);
+        mwUpdateAddBtn();
+    };
+
+    function mwGetWatch(id) {
+        for (var i = 0; i < mwWatches.length; i++) {
+            if (mwWatches[i].id === id) return mwWatches[i];
+        }
+        return null;
+    }
+
+    function mwBuildAthleteOptions(selectedId) {
+        var html = '<option value="">— No athlete —</option>';
+        for (var i = 0; i < athleteJson.length; i++) {
+            var a = athleteJson[i];
+            var sel = (String(a.id) === String(selectedId)) ? ' selected' : '';
+            html += '<option value="' + a.id + '"' + sel + '>' + escHtml(a.label) + '</option>';
+        }
+        return html;
+    }
+
+    function mwRenderWatch(watch) {
+        var container = document.getElementById('mSwWatchesContainer');
+        var div = document.createElement('div');
+        div.className = 'm-sw-watch-card m-sw-watch-expanded';
+        div.id = 'mSwWatch-' + watch.id;
+        div.innerHTML =
+            '<div class="m-sw-watch-head" onclick="mSwWatchToggleCollapse(' + watch.id + ')">' +
+                '<div class="m-sw-watch-head-left">' +
+                    '<span class="m-sw-watch-head-label" id="mSwWatchLabel-' + watch.id + '">Watch ' + watch.id + '</span>' +
+                '</div>' +
+                '<span class="m-sw-watch-head-time" id="mSwWatchHeadTime-' + watch.id + '">00:00:00.00</span>' +
+                '<i class="fas fa-chevron-down m-sw-watch-chevron"></i>' +
+            '</div>' +
+            '<div class="m-sw-watch-body">' +
+                '<select class="m-sw-watch-select" id="mSwWatchAthlete-' + watch.id + '" onchange="mSwWatchAthleteChange(' + watch.id + ', this.value)">' +
+                    mwBuildAthleteOptions('') +
+                '</select>' +
+                '<div class="m-sw-watch-display" id="mSwWatchTime-' + watch.id + '">' +
+                    '<span id="mSwWatchTimeMain-' + watch.id + '">00:00:00</span>' +
+                    '<span class="m-sw-watch-ms" id="mSwWatchTimeMs-' + watch.id + '">.00</span>' +
+                '</div>' +
+                '<div class="m-sw-watch-ctrls">' +
+                    '<button class="m-sw-btn m-sw-btn-reset" type="button" onclick="mSwWatchReset(' + watch.id + ')" title="Reset"><i class="fas fa-redo"></i></button>' +
+                    '<button class="m-sw-btn m-sw-btn-start" id="mSwWatchToggle-' + watch.id + '" type="button" onclick="mSwWatchToggle(' + watch.id + ')" title="Start"><i class="fas fa-play" id="mSwWatchToggleIcon-' + watch.id + '"></i></button>' +
+                    '<button class="m-sw-btn m-sw-btn-lap" type="button" onclick="mSwWatchLap(' + watch.id + ')" title="Lap"><i class="fas fa-flag"></i></button>' +
+                '</div>' +
+                '<ul class="m-sw-watch-laps-list" id="mSwWatchLaps-' + watch.id + '"></ul>' +
+                '<div class="m-sw-watch-actions">' +
+                    '<button class="m-sw-watch-action-btn m-sw-watch-save-btn" type="button" onclick="mSwWatchSave(' + watch.id + ')"><i class="fas fa-save"></i> Save</button>' +
+                    '<button class="m-sw-watch-action-btn m-sw-watch-remove-btn" type="button" onclick="mSwWatchRemove(' + watch.id + ')"><i class="fas fa-trash"></i> Remove</button>' +
+                '</div>' +
+            '</div>';
+        container.appendChild(div);
+    }
+
+    window.mSwWatchToggleCollapse = function(id) {
+        var card = document.getElementById('mSwWatch-' + id);
+        if (card) card.classList.toggle('m-sw-watch-expanded');
+    };
+
+    window.mSwWatchAthleteChange = function(id, value) {
+        var watch = mwGetWatch(id);
+        if (!watch) return;
+        watch.athleteId = value;
+        var label = document.getElementById('mSwWatchLabel-' + id);
+        if (value) {
+            var sel = document.getElementById('mSwWatchAthlete-' + id);
+            label.textContent = sel.options[sel.selectedIndex].text;
+        } else {
+            label.textContent = 'Watch ' + id;
+        }
+    };
+
+    function mwUpdateDisplay(watch) {
+        var total = watch.elapsed + (watch.running ? (Date.now() - watch.startTime) : 0);
+        var t = formatTime(total);
+        document.getElementById('mSwWatchTimeMain-' + watch.id).textContent = t.main;
+        document.getElementById('mSwWatchTimeMs-' + watch.id).textContent = t.ms;
+        document.getElementById('mSwWatchHeadTime-' + watch.id).textContent = t.main + t.ms;
+    }
+
+    window.mSwWatchToggle = function(id) {
+        var watch = mwGetWatch(id);
+        if (!watch) return;
+        var btn = document.getElementById('mSwWatchToggle-' + id);
+        var icon = document.getElementById('mSwWatchToggleIcon-' + id);
+        var card = document.getElementById('mSwWatch-' + id);
+        if (watch.running) {
+            clearInterval(watch.timer);
+            watch.elapsed += Date.now() - watch.startTime;
+            watch.running = false;
+            btn.className = 'm-sw-btn m-sw-btn-start';
+            icon.className = 'fas fa-play';
+            card.classList.remove('m-sw-watch-running');
+            mwUpdateDisplay(watch);
+        } else {
+            watch.startTime = Date.now();
+            watch.running = true;
+            watch.timer = setInterval(function() { mwUpdateDisplay(watch); }, 33);
+            btn.className = 'm-sw-btn m-sw-btn-stop';
+            icon.className = 'fas fa-pause';
+            card.classList.add('m-sw-watch-running');
+        }
+    };
+
+    window.mSwWatchReset = function(id) {
+        var watch = mwGetWatch(id);
+        if (!watch) return;
+        clearInterval(watch.timer);
+        watch.running = false;
+        watch.elapsed = 0;
+        watch.startTime = 0;
+        watch.laps = [];
+        watch.lastLap = 0;
+        var btn = document.getElementById('mSwWatchToggle-' + id);
+        var icon = document.getElementById('mSwWatchToggleIcon-' + id);
+        btn.className = 'm-sw-btn m-sw-btn-start';
+        icon.className = 'fas fa-play';
+        document.getElementById('mSwWatch-' + id).classList.remove('m-sw-watch-running');
+        document.getElementById('mSwWatchTimeMain-' + id).textContent = '00:00:00';
+        document.getElementById('mSwWatchTimeMs-' + id).textContent = '.00';
+        document.getElementById('mSwWatchHeadTime-' + id).textContent = '00:00:00.00';
+        document.getElementById('mSwWatchLaps-' + id).innerHTML = '';
+    };
+
+    window.mSwWatchLap = function(id) {
+        var watch = mwGetWatch(id);
+        if (!watch || !watch.running) return;
+        var total = watch.elapsed + (Date.now() - watch.startTime);
+        var diff = total - watch.lastLap;
+        watch.lastLap = total;
+        watch.laps.push({ number: watch.laps.length + 1, lapTimeMs: diff, totalTimeMs: total });
+        var list = document.getElementById('mSwWatchLaps-' + id);
+        var t = formatTime(total);
+        var d = formatTime(diff);
+        var li = document.createElement('li');
+        li.className = 'm-lap-item';
+        li.innerHTML = '<span class="m-lap-num">Lap ' + watch.laps.length + '</span>' +
+            '<span class="m-lap-diff">+' + d.main + d.ms + '</span>' +
+            '<span class="m-lap-time">' + t.main + t.ms + '</span>';
+        list.insertBefore(li, list.firstChild);
+    };
+
+    window.mSwWatchSave = function(id) {
+        var watch = mwGetWatch(id);
+        if (!watch) return;
+        if (watch.laps.length === 0) {
+            showAlert('error', 'No laps to save for this watch');
+            return;
+        }
+        var sel = document.getElementById('mSwWatchAthlete-' + id);
+        var athleteName = sel.options[sel.selectedIndex].text;
+        var sessionName = athleteName !== '— No athlete —' ? athleteName + ' - Stopwatch' : 'Watch ' + id + ' - Stopwatch';
+
+        var fd = new FormData();
+        fd.append('action', 'save_session');
+        fd.append('csrf_token', csrfToken);
+        fd.append('session_name', sessionName);
+        fd.append('athlete_id', watch.athleteId || '');
+        fd.append('skill_id', '');
+        fd.append('notes', '');
+        fd.append('laps', JSON.stringify(watch.laps));
+        fetch('process_stopwatch.php', { method: 'POST', body: fd })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    showAlert('success', 'Watch ' + id + ' saved!');
+                } else {
+                    showAlert('error', data.message || 'Failed to save');
+                }
+            })
+            .catch(function() { showAlert('error', 'Failed to save watch'); });
+    };
+
+    window.mSwWatchRemove = function(id) {
+        var watch = mwGetWatch(id);
+        if (!watch) return;
+        if (watch.running) {
+            clearInterval(watch.timer);
+            watch.running = false;
+        }
+        mwWatches = mwWatches.filter(function(w) { return w.id !== id; });
+        var el = document.getElementById('mSwWatch-' + id);
+        if (el) el.parentNode.removeChild(el);
+        mwUpdateAddBtn();
     };
 })();
 </script>

@@ -1,10 +1,11 @@
 <?php
 /**
- * PWA Travel - Mobile-native travel & mileage tracker for coaches
- * Purpose-built for mobile phones, not a desktop adaptation.
+ * PWA Travel - Mobile-native mileage tracker for coaches
+ * Single unified view matching desktop travel_mileage.php functionality.
+ * Queries mileage_logs + mileage_stops tables.
  */
 
-if (!$isAnyCoach):
+if (!$isAnyCoach && !$isAdmin):
 ?>
 <style>
 .m-denied { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; color: #6B6B7B; font-family: Inter, sans-serif; text-align: center; }
@@ -19,97 +20,153 @@ if (!$isAnyCoach):
     return;
 endif;
 
-$trips = [];
+// Fetch athletes for the assignment dropdown
+$athletes = [];
 try {
-    $stmt = $pdo->prepare("
-        SELECT id, destination, purpose, departure_date, return_date, status
-        FROM travel_requests
-        WHERE user_id = ?
-        ORDER BY departure_date DESC
-        LIMIT 20
-    ");
-    $stmt->execute([$user_id]);
-    $trips = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) { $trips = []; }
+    $stmt = $pdo->query("SELECT u.id, u.first_name, u.last_name FROM users u WHERE u.is_active = 1 ORDER BY u.last_name, u.first_name");
+    $athletes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $athletes = decryptUserRows($athletes);
+} catch (Exception $e) { $athletes = []; }
 
-$mileage = [];
+// Summary stats for the current month
+$monthTotalKm = 0;
+$monthReimbursement = 0;
+$monthTripCount = 0;
 try {
     $stmt = $pdo->prepare("
-        SELECT id, trip_date, start_location, end_location, distance_km, purpose
-        FROM mileage_entries
-        WHERE user_id = ?
-        ORDER BY trip_date DESC
-        LIMIT 20
+        SELECT COUNT(*) as trip_count,
+               COALESCE(SUM(total_distance_km), 0) as total_km,
+               COALESCE(SUM(reimbursement_amount), 0) as total_reimbursement
+        FROM mileage_logs
+        WHERE user_id = ? AND MONTH(trip_date) = MONTH(CURDATE()) AND YEAR(trip_date) = YEAR(CURDATE())
     ");
     $stmt->execute([$user_id]);
-    $mileage = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) { $mileage = []; }
+    $summary = $stmt->fetch(PDO::FETCH_ASSOC);
+    $monthTotalKm = floatval($summary['total_km']);
+    $monthReimbursement = floatval($summary['total_reimbursement']);
+    $monthTripCount = intval($summary['trip_count']);
+} catch (Exception $e) { /* defaults remain 0 */ }
+
+// Fetch mileage log entries with from/to locations from mileage_stops
+$entries = [];
+try {
+    $stmt = $pdo->prepare("
+        SELECT m.id, m.trip_date, m.title, m.purpose, m.description,
+               m.total_distance_km, m.reimbursement_amount, m.is_reimbursed,
+               m.athlete_id,
+               start_stop.address AS from_location,
+               end_stop.address AS to_location,
+               a.first_name AS athlete_first_name, a.last_name AS athlete_last_name
+        FROM mileage_logs m
+        LEFT JOIN mileage_stops start_stop ON m.id = start_stop.mileage_log_id AND start_stop.stop_order = 0
+        LEFT JOIN (
+            SELECT ms.mileage_log_id, ms.address
+            FROM mileage_stops ms
+            INNER JOIN (
+                SELECT mileage_log_id, MAX(stop_order) AS max_order
+                FROM mileage_stops GROUP BY mileage_log_id
+            ) mx ON ms.mileage_log_id = mx.mileage_log_id AND ms.stop_order = mx.max_order
+        ) end_stop ON m.id = end_stop.mileage_log_id
+        LEFT JOIN users a ON m.athlete_id = a.id
+        WHERE m.user_id = ?
+        ORDER BY m.trip_date DESC, m.created_at DESC
+        LIMIT 50
+    ");
+    $stmt->execute([$user_id]);
+    $entries = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    // Decrypt athlete names
+    foreach ($entries as &$entry) {
+        if (!empty($entry['athlete_first_name']) || !empty($entry['athlete_last_name'])) {
+            $decrypted = decryptUserRows([['first_name' => $entry['athlete_first_name'], 'last_name' => $entry['athlete_last_name']]]);
+            $entry['athlete_first_name'] = $decrypted[0]['first_name'] ?? '';
+            $entry['athlete_last_name'] = $decrypted[0]['last_name'] ?? '';
+        }
+    }
+    unset($entry);
+} catch (Exception $e) { $entries = []; }
+
+$csrfField = csrfTokenInput();
+$csrfToken = $_SESSION['csrf_token'] ?? '';
 ?>
 <style>
-.m-travel { padding: 0; font-family: Inter, sans-serif; }
-.m-segment-control {
-    display: flex; background: #1E1E2E; border-radius: 12px; padding: 4px;
-    margin: 0 16px 16px; position: relative; border: 1px solid #2D2D3F;
+.m-travel { padding: 0 0 80px; font-family: Inter, sans-serif; }
+
+/* Summary cards */
+.m-stats-row {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+    padding: 0 16px 16px;
 }
-.m-segment {
-    flex: 1; padding: 10px 12px; border: none; background: transparent;
-    color: #A8A8B8; font-size: 13px; font-weight: 600; font-family: inherit;
-    cursor: pointer; border-radius: 10px; display: flex; align-items: center;
-    justify-content: center; gap: 6px; z-index: 1; transition: color 0.2s;
-    min-height: 44px; -webkit-tap-highlight-color: transparent;
-}
-.m-segment i { font-size: 14px; }
-.m-segment-active {
-    color: #fff; background: #6B46C1;
-    box-shadow: 0 2px 8px rgba(107,70,193,0.3);
-}
-.m-tab-panel { display: none; padding: 16px; }
-.m-tab-panel.m-tab-visible { display: block; }
-.m-trip-card {
+.m-stat-card {
     background: #16161F; border: 1px solid #2D2D3F; border-radius: 12px;
-    padding: 14px; margin-bottom: 10px; min-height: 44px;
+    padding: 14px 12px; text-align: center;
 }
-.m-trip-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
-.m-trip-dest { font-size: 14px; font-weight: 600; color: #fff; flex: 1; margin-right: 8px; }
-.m-trip-badge {
+.m-stat-value {
+    font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 4px;
+    line-height: 1.2;
+}
+.m-stat-value-purple { color: #8B5CF6; }
+.m-stat-value-green { color: #10B981; }
+.m-stat-label {
+    font-size: 10px; font-weight: 600; color: #6B6B7B;
+    text-transform: uppercase; letter-spacing: 0.5px;
+}
+
+/* Add trip button */
+.m-add-trip-btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: calc(100% - 32px); margin: 0 16px 16px; background: #6B46C1;
+    color: #fff; border: none; border-radius: 12px; min-height: 48px;
+    font-size: 15px; font-weight: 600; cursor: pointer;
+    font-family: Inter, sans-serif; -webkit-tap-highlight-color: transparent;
+}
+.m-add-trip-btn:active { background: #5B38B0; }
+
+/* Section header */
+.m-section-header {
+    font-size: 14px; font-weight: 700; color: #A8A8B8; padding: 0 16px 10px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+}
+
+/* Entry cards */
+.m-entry-card {
+    background: #16161F; border: 1px solid #2D2D3F; border-radius: 12px;
+    padding: 14px; margin: 0 16px 10px;
+}
+.m-entry-header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 8px;
+}
+.m-entry-title { font-size: 15px; font-weight: 600; color: #fff; flex: 1; margin-right: 8px; }
+.m-entry-badge {
     font-size: 10px; padding: 3px 8px; border-radius: 6px; font-weight: 600;
     white-space: nowrap; flex-shrink: 0;
 }
-.m-trip-badge-approved { background: rgba(16,185,129,0.15); color: #10B981; }
-.m-trip-badge-pending { background: rgba(245,158,11,0.15); color: #F59E0B; }
-.m-trip-badge-rejected { background: rgba(239,68,68,0.15); color: #EF4444; }
-.m-trip-badge-completed { background: rgba(59,130,246,0.15); color: #3B82F6; }
-.m-trip-badge-default { background: rgba(168,168,184,0.15); color: #A8A8B8; }
-.m-trip-purpose { font-size: 12px; color: #A8A8B8; margin: 0 0 8px; }
-.m-trip-dates { font-size: 11px; color: #6B6B7B; display: flex; align-items: center; gap: 4px; }
-.m-mile-card {
-    display: flex; align-items: center; gap: 12px;
-    background: #16161F; border: 1px solid #2D2D3F; border-radius: 12px;
-    padding: 14px; margin-bottom: 10px; min-height: 44px;
+.m-badge-reimbursed { background: rgba(16,185,129,0.15); color: #10B981; }
+.m-badge-pending { background: rgba(245,158,11,0.15); color: #F59E0B; }
+.m-entry-meta {
+    display: flex; flex-wrap: wrap; gap: 6px 14px;
+    font-size: 12px; color: #A8A8B8; margin-bottom: 8px;
 }
-.m-mile-icon {
-    width: 44px; height: 44px; border-radius: 10px;
-    background: rgba(16,185,129,0.12);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px; color: #10B981; flex-shrink: 0;
+.m-entry-meta i { font-size: 11px; margin-right: 3px; color: #6B6B7B; }
+.m-entry-route {
+    display: flex; align-items: center; gap: 6px; font-size: 13px;
+    color: #8B5CF6; margin-bottom: 8px;
 }
-.m-mile-body { flex: 1; min-width: 0; }
-.m-mile-route { font-size: 13px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.m-mile-meta { font-size: 12px; color: #A8A8B8; margin-top: 3px; }
-.m-mile-dist {
-    font-size: 14px; font-weight: 700; color: #10B981; white-space: nowrap; flex-shrink: 0;
+.m-entry-route i { font-size: 11px; color: #6B6B7B; }
+.m-entry-footer {
+    display: flex; justify-content: space-between; align-items: center;
+    border-top: 1px solid #2D2D3F; padding-top: 10px; margin-top: 4px;
 }
+.m-entry-amount { font-size: 16px; font-weight: 700; color: #10B981; }
+.m-entry-distance { font-size: 13px; font-weight: 600; color: #A8A8B8; }
+.m-entry-actions { display: flex; gap: 4px; }
+
+/* Empty state */
 .m-empty-state { text-align: center; padding: 40px 20px; color: #6B6B7B; }
-.m-empty-state i { font-size: 32px; display: block; margin-bottom: 12px; }
+.m-empty-state i { font-size: 36px; display: block; margin-bottom: 12px; }
 .m-empty-state p { font-size: 14px; margin: 0; }
-.m-fab {
-    position: fixed; bottom: 60px; right: 16px; z-index: 50;
-    width: 56px; height: 56px; border-radius: 50%;
-    background: #6B46C1; color: #fff; border: none; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 22px; box-shadow: 0 4px 12px rgba(107,70,193,0.4);
-    min-height: 44px; font-family: Inter, sans-serif;
-}
+
+/* Bottom sheet overlay */
 .m-overlay {
     display: none; position: fixed; inset: 0; z-index: 100;
     background: rgba(0,0,0,0.6);
@@ -128,6 +185,8 @@ try {
     font-size: 16px; font-weight: 700; color: #fff; margin: 0 0 16px;
     font-family: Inter, sans-serif;
 }
+
+/* Form elements */
 .m-form-group { margin-bottom: 14px; }
 .m-form-label {
     display: block; font-size: 12px; font-weight: 600; color: #A8A8B8;
@@ -140,20 +199,29 @@ try {
     font-size: 14px; font-family: Inter, sans-serif;
     -webkit-appearance: none;
 }
-.m-form-input:focus { outline: none; border-color: #6B46C1; }
+.m-form-input:focus { outline: none; border-color: #8B5CF6; }
 .m-form-submit {
     width: 100%; background: #6B46C1; color: #fff; border: none;
-    border-radius: 10px; min-height: 44px; font-size: 14px;
+    border-radius: 10px; min-height: 48px; font-size: 15px;
     font-weight: 600; cursor: pointer; margin-top: 8px;
     font-family: Inter, sans-serif;
 }
+.m-form-submit:active { background: #5B38B0; }
+.m-form-row {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+}
+
+/* Delete button */
 .m-delete-btn {
     background: none; border: none; color: #6B6B7B; cursor: pointer;
     padding: 6px; min-height: 44px; min-width: 44px;
     display: flex; align-items: center; justify-content: center;
     font-size: 14px; flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
 }
-.m-delete-btn:hover { color: #EF4444; }
+.m-delete-btn:active { color: #EF4444; }
+
+/* Confirm dialog buttons */
 .m-confirm-actions { display: flex; gap: 10px; margin-top: 16px; }
 .m-confirm-actions button {
     flex: 1; min-height: 44px; border-radius: 10px; border: none;
@@ -161,176 +229,172 @@ try {
     font-family: Inter, sans-serif;
 }
 .m-btn-cancel { background: #2D2D3F; color: #A8A8B8; }
+.m-btn-cancel:active { background: #3D3D4F; }
 .m-btn-danger { background: #EF4444; color: #fff; }
-.m-add-mileage-btn {
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-    width: 100%; background: #6B46C1; color: #fff; border: none;
-    border-radius: 10px; min-height: 44px; font-size: 14px;
-    font-weight: 600; cursor: pointer; margin-bottom: 12px;
-    font-family: Inter, sans-serif;
+.m-btn-danger:active { background: #DC2626; }
+
+/* Success banner */
+.m-success-banner {
+    display: flex; align-items: center; gap: 8px; margin: 0 16px 12px;
+    background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.25);
+    border-radius: 10px; padding: 10px 14px; font-size: 13px; color: #10B981;
 }
+.m-success-banner i { flex-shrink: 0; }
 </style>
 
 <div class="m-travel">
-    <div class="m-segment-control">
-        <button class="m-segment m-segment-active" data-panel="trips" aria-pressed="true">
-            <i class="fas fa-plane"></i> Trips
-        </button>
-        <button class="m-segment" data-panel="mileage" aria-pressed="false">
-            <i class="fas fa-road"></i> Mileage
-        </button>
-        <div class="m-segment-slider"></div>
+    <?php if (isset($_GET['status']) && $_GET['status'] === 'success'): ?>
+    <div class="m-success-banner" id="m-success-msg">
+        <i class="fas fa-check-circle"></i>
+        <span><?= htmlspecialchars($_GET['message'] ?? 'Success') ?></span>
     </div>
+    <?php endif; ?>
 
-    <!-- Trips Tab -->
-    <div class="m-tab-panel m-tab-visible" id="m-panel-trips">
-        <?php if (empty($trips)): ?>
-            <div class="m-empty-state">
-                <i class="fas fa-plane"></i>
-                <p>No travel requests</p>
-            </div>
-        <?php else: ?>
-            <?php foreach ($trips as $t):
-                $status = strtolower($t['status'] ?? 'pending');
-                $badgeClass = match($status) {
-                    'approved' => 'approved',
-                    'pending' => 'pending',
-                    'rejected', 'denied' => 'rejected',
-                    'completed' => 'completed',
-                    default => 'default',
-                };
-            ?>
-            <div class="m-trip-card">
-                <div class="m-trip-top">
-                    <span class="m-trip-dest"><?= htmlspecialchars($t['destination'] ?? 'Unknown') ?></span>
-                    <span class="m-trip-badge m-trip-badge-<?= $badgeClass ?>"><?= htmlspecialchars(ucfirst($status)) ?></span>
-                    <button type="button" class="m-delete-btn" onclick="mOpenDelete('trip', <?= (int)$t['id'] ?>)" aria-label="Delete trip"><i class="fas fa-trash"></i></button>
-                </div>
-                <?php if (!empty($t['purpose'])): ?>
-                <p class="m-trip-purpose"><?= htmlspecialchars($t['purpose']) ?></p>
-                <?php endif; ?>
-                <div class="m-trip-dates">
-                    <i class="fas fa-calendar"></i>
-                    <?= date('M j', strtotime($t['departure_date'])) ?>
-                    <?php if (!empty($t['return_date'])): ?>
-                    → <?= date('M j, Y', strtotime($t['return_date'])) ?>
-                    <?php endif; ?>
-                </div>
-            </div>
-            <?php endforeach; ?>
-        <?php endif; ?>
-    </div>
-
-    <!-- Mileage Tab -->
-    <div class="m-tab-panel" id="m-panel-mileage">
-        <button type="button" class="m-add-mileage-btn" onclick="mOpenSheet('mileage')"><i class="fas fa-plus"></i> Add Mileage Entry</button>
-        <?php if (empty($mileage)): ?>
-            <div class="m-empty-state">
-                <i class="fas fa-road"></i>
-                <p>No mileage entries</p>
-            </div>
-        <?php else: ?>
-            <?php foreach ($mileage as $m): ?>
-            <div class="m-mile-card">
-                <div class="m-mile-icon"><i class="fas fa-car"></i></div>
-                <div class="m-mile-body">
-                    <div class="m-mile-route">
-                        <?= htmlspecialchars($m['start_location'] ?? '') ?> → <?= htmlspecialchars($m['end_location'] ?? '') ?>
-                    </div>
-                    <div class="m-mile-meta">
-                        <i class="fas fa-calendar" style="font-size:10px;"></i>
-                        <?= date('M j, Y', strtotime($m['trip_date'])) ?>
-                        <?php if (!empty($m['purpose'])): ?> · <?= htmlspecialchars($m['purpose']) ?><?php endif; ?>
-                    </div>
-                </div>
-                <span class="m-mile-dist"><?= number_format((float)$m['distance_km'], 1) ?> km</span>
-                <button type="button" class="m-delete-btn" onclick="mOpenDelete('mileage', <?= (int)$m['id'] ?>)" aria-label="Delete mileage entry"><i class="fas fa-trash"></i></button>
-            </div>
-            <?php endforeach; ?>
-        <?php endif; ?>
-    </div>
-    <!-- FAB: Add Trip -->
-    <button type="button" class="m-fab" onclick="mOpenSheet('trip')" aria-label="Add trip"><i class="fas fa-plus"></i></button>
-
-    <!-- Trip Bottom Sheet -->
-    <div class="m-overlay" id="m-sheet-trip">
-        <div class="m-sheet">
-            <div class="m-sheet-handle"></div>
-            <h2 class="m-sheet-title">Add Trip</h2>
-            <form method="POST" action="process_mileage.php">
-                <?= csrfTokenInput() ?>
-                <input type="hidden" name="action" value="create">
-                <div class="m-form-group">
-                    <label class="m-form-label">Destination *</label>
-                    <input type="text" name="destination" class="m-form-input" required placeholder="e.g., Toronto Arena">
-                </div>
-                <div class="m-form-group">
-                    <label class="m-form-label">Purpose *</label>
-                    <select name="purpose" class="m-form-input" required>
-                        <option value="">Select purpose</option>
-                        <option>Training Session</option>
-                        <option>Team Practice</option>
-                        <option>Game/Tournament</option>
-                        <option>Meeting</option>
-                        <option>Other</option>
-                    </select>
-                </div>
-                <div class="m-form-group">
-                    <label class="m-form-label">Departure Date *</label>
-                    <input type="date" name="departure_date" class="m-form-input" required value="<?= date('Y-m-d') ?>" id="m-departure-date">
-                </div>
-                <div class="m-form-group">
-                    <label class="m-form-label">Return Date</label>
-                    <input type="date" name="return_date" class="m-form-input" id="m-return-date">
-                </div>
-                <div class="m-form-group">
-                    <label class="m-form-label">Description</label>
-                    <textarea name="description" class="m-form-input" rows="3" placeholder="Trip details (optional)" style="min-height:66px;resize:vertical;"></textarea>
-                </div>
-                <button type="submit" class="m-form-submit"><i class="fas fa-paper-plane"></i> Submit Trip</button>
-            </form>
-            <button type="button" class="m-form-submit m-btn-cancel" style="margin-top:8px;" onclick="mCloseSheet('trip')">Cancel</button>
+    <!-- Summary Stats -->
+    <div class="m-stats-row">
+        <div class="m-stat-card">
+            <div class="m-stat-value"><?= number_format($monthTotalKm, 1) ?></div>
+            <div class="m-stat-label">KM This Month</div>
+        </div>
+        <div class="m-stat-card">
+            <div class="m-stat-value m-stat-value-green">$<?= number_format($monthReimbursement, 2) ?></div>
+            <div class="m-stat-label">Est. Amount</div>
+        </div>
+        <div class="m-stat-card">
+            <div class="m-stat-value m-stat-value-purple"><?= $monthTripCount ?></div>
+            <div class="m-stat-label">Trips</div>
         </div>
     </div>
 
-    <!-- Mileage Bottom Sheet -->
-    <div class="m-overlay" id="m-sheet-mileage">
+    <!-- Add Trip Button -->
+    <button type="button" class="m-add-trip-btn" onclick="mOpenSheet('add')">
+        <i class="fas fa-plus"></i> Add Trip
+    </button>
+
+    <!-- Mileage Log Section -->
+    <div class="m-section-header">Mileage Log</div>
+
+    <?php if (empty($entries)): ?>
+        <div class="m-empty-state">
+            <i class="fas fa-car"></i>
+            <p>No mileage entries yet.<br>Tap "Add Trip" to log your first trip.</p>
+        </div>
+    <?php else: ?>
+        <?php foreach ($entries as $entry):
+            $isReimbursed = !empty($entry['is_reimbursed']);
+            $hasAthlete = !empty($entry['athlete_first_name']) || !empty($entry['athlete_last_name']);
+            $athleteName = trim(($entry['athlete_first_name'] ?? '') . ' ' . ($entry['athlete_last_name'] ?? ''));
+            $fromLoc = $entry['from_location'] ?? '';
+            $toLoc = $entry['to_location'] ?? '';
+        ?>
+        <div class="m-entry-card" id="m-entry-<?= (int)$entry['id'] ?>">
+            <div class="m-entry-header">
+                <span class="m-entry-title"><?= htmlspecialchars($entry['title'] ?: $entry['purpose'] ?: 'Trip') ?></span>
+                <span class="m-entry-badge <?= $isReimbursed ? 'm-badge-reimbursed' : 'm-badge-pending' ?>">
+                    <?= $isReimbursed ? 'Reimbursed' : 'Pending' ?>
+                </span>
+            </div>
+
+            <div class="m-entry-meta">
+                <span><i class="fas fa-calendar"></i><?= date('M j, Y', strtotime($entry['trip_date'])) ?></span>
+                <?php if (!empty($entry['purpose'])): ?>
+                <span><i class="fas fa-tag"></i><?= htmlspecialchars($entry['purpose']) ?></span>
+                <?php endif; ?>
+                <?php if ($hasAthlete): ?>
+                <span><i class="fas fa-user"></i><?= htmlspecialchars($athleteName) ?></span>
+                <?php endif; ?>
+            </div>
+
+            <?php if ($fromLoc || $toLoc): ?>
+            <div class="m-entry-route">
+                <span><?= htmlspecialchars($fromLoc ?: '—') ?></span>
+                <i class="fas fa-arrow-right"></i>
+                <span><?= htmlspecialchars($toLoc ?: '—') ?></span>
+            </div>
+            <?php endif; ?>
+
+            <div class="m-entry-footer">
+                <div>
+                    <div class="m-entry-amount">$<?= number_format(floatval($entry['reimbursement_amount'] ?? 0), 2) ?></div>
+                    <div class="m-entry-distance"><?= number_format(floatval($entry['total_distance_km'] ?? 0), 1) ?> km</div>
+                </div>
+                <div class="m-entry-actions">
+                    <button type="button" class="m-delete-btn" onclick="mOpenDelete(<?= (int)$entry['id'] ?>)" aria-label="Delete entry">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <?php endforeach; ?>
+    <?php endif; ?>
+
+    <!-- Add Trip Bottom Sheet -->
+    <div class="m-overlay" id="m-sheet-add">
         <div class="m-sheet">
             <div class="m-sheet-handle"></div>
-            <h2 class="m-sheet-title">Add Mileage Entry</h2>
-            <form method="POST" action="process_mileage.php">
-                <?= csrfTokenInput() ?>
+            <h2 class="m-sheet-title">Add Trip</h2>
+            <form method="POST" action="process_mileage.php" id="m-add-form">
+                <?= $csrfField ?>
                 <input type="hidden" name="action" value="create">
+                <input type="hidden" name="pwa_context" value="1">
+
                 <div class="m-form-group">
-                    <label class="m-form-label">Date *</label>
-                    <input type="date" name="trip_date" class="m-form-input" required value="<?= date('Y-m-d') ?>" max="<?= date('Y-m-d') ?>">
+                    <label class="m-form-label">Title *</label>
+                    <input type="text" name="title" class="m-form-input" required placeholder="e.g., Arena Practice Run">
                 </div>
-                <div class="m-form-group">
-                    <label class="m-form-label">Start Location *</label>
-                    <input type="text" name="from_location" class="m-form-input" required placeholder="e.g., Home">
+
+                <div class="m-form-row">
+                    <div class="m-form-group">
+                        <label class="m-form-label">Trip Date *</label>
+                        <input type="date" name="trip_date" class="m-form-input" required value="<?= date('Y-m-d') ?>">
+                    </div>
+                    <div class="m-form-group">
+                        <label class="m-form-label">Purpose *</label>
+                        <select name="purpose" class="m-form-input" required>
+                            <option value="">Select</option>
+                            <option value="Training Session">Training Session</option>
+                            <option value="Team Practice">Team Practice</option>
+                            <option value="Game/Tournament">Game/Tournament</option>
+                            <option value="Meeting">Meeting</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
                 </div>
+
                 <div class="m-form-group">
-                    <label class="m-form-label">End Location *</label>
-                    <input type="text" name="to_location" class="m-form-input" required placeholder="e.g., Arena">
+                    <label class="m-form-label">Description</label>
+                    <textarea name="description" class="m-form-input" rows="2" placeholder="Optional notes" style="min-height:60px;resize:vertical;"></textarea>
                 </div>
+
                 <div class="m-form-group">
-                    <label class="m-form-label">Distance (km) *</label>
-                    <input type="number" name="distance_km" class="m-form-input" required step="0.1" min="0" placeholder="0.0">
-                </div>
-                <div class="m-form-group">
-                    <label class="m-form-label">Purpose *</label>
-                    <select name="purpose" class="m-form-input" required>
-                        <option value="">Select purpose</option>
-                        <option>Training Session</option>
-                        <option>Team Practice</option>
-                        <option>Game/Tournament</option>
-                        <option>Meeting</option>
-                        <option>Other</option>
+                    <label class="m-form-label">Assign to Athlete</label>
+                    <select name="athlete_id" class="m-form-input">
+                        <option value="0">— None —</option>
+                        <?php foreach ($athletes as $ath): ?>
+                        <option value="<?= (int)$ath['id'] ?>"><?= htmlspecialchars(($ath['first_name'] ?? '') . ' ' . ($ath['last_name'] ?? '')) ?></option>
+                        <?php endforeach; ?>
                     </select>
                 </div>
-                <button type="submit" class="m-form-submit"><i class="fas fa-plus"></i> Add Entry</button>
+
+                <div class="m-form-row">
+                    <div class="m-form-group">
+                        <label class="m-form-label">Start Location *</label>
+                        <input type="text" name="from_location" class="m-form-input" required placeholder="e.g., Home">
+                    </div>
+                    <div class="m-form-group">
+                        <label class="m-form-label">End Location *</label>
+                        <input type="text" name="to_location" class="m-form-input" required placeholder="e.g., Arena">
+                    </div>
+                </div>
+
+                <div class="m-form-group">
+                    <label class="m-form-label">Distance (km) *</label>
+                    <input type="number" name="distance_km" class="m-form-input" required step="0.1" min="0.1" placeholder="0.0">
+                </div>
+
+                <button type="submit" class="m-form-submit"><i class="fas fa-check"></i> Save Trip</button>
             </form>
-            <button type="button" class="m-form-submit m-btn-cancel" style="margin-top:8px;" onclick="mCloseSheet('mileage')">Cancel</button>
+            <button type="button" class="m-form-submit m-btn-cancel" style="margin-top:8px;" onclick="mCloseSheet('add')">Cancel</button>
         </div>
     </div>
 
@@ -339,62 +403,78 @@ try {
         <div class="m-sheet" style="padding-bottom:24px;">
             <div class="m-sheet-handle"></div>
             <h2 class="m-sheet-title">Delete Entry</h2>
-            <p style="color:#A8A8B8;font-size:14px;margin:0 0 8px;">Are you sure you want to delete this entry? This cannot be undone.</p>
-            <form method="POST" action="process_mileage.php" id="m-delete-form">
-                <?= csrfTokenInput() ?>
-                <input type="hidden" name="action" value="delete">
-                <input type="hidden" name="log_id" id="m-delete-id" value="">
-                <div class="m-confirm-actions">
-                    <button type="button" class="m-btn-cancel" onclick="mCloseSheet('delete')">Cancel</button>
-                    <button type="submit" class="m-btn-danger">Delete</button>
-                </div>
-            </form>
+            <p style="color:#A8A8B8;font-size:14px;margin:0 0 8px;">Are you sure you want to delete this mileage entry? This cannot be undone.</p>
+            <div class="m-confirm-actions">
+                <button type="button" class="m-btn-cancel" onclick="mCloseSheet('delete')">Cancel</button>
+                <button type="button" class="m-btn-danger" id="m-confirm-delete-btn">Delete</button>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-document.querySelectorAll('.m-segment-control .m-segment').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-        var control = this.closest('.m-segment-control');
-        control.querySelectorAll('.m-segment').forEach(function(s) {
-            s.classList.remove('m-segment-active');
-            s.setAttribute('aria-pressed', 'false');
+(function() {
+    var deleteId = null;
+
+    window.mOpenSheet = function(name) {
+        var el = document.getElementById('m-sheet-' + name);
+        if (el) el.classList.add('m-overlay-open');
+    };
+
+    window.mCloseSheet = function(name) {
+        var el = document.getElementById('m-sheet-' + name);
+        if (el) el.classList.remove('m-overlay-open');
+    };
+
+    window.mOpenDelete = function(id) {
+        deleteId = id;
+        mOpenSheet('delete');
+    };
+
+    // Close overlay on backdrop click
+    document.querySelectorAll('.m-overlay').forEach(function(overlay) {
+        overlay.addEventListener('click', function(e) {
+            if (e.target === overlay) overlay.classList.remove('m-overlay-open');
         });
-        this.classList.add('m-segment-active');
-        this.setAttribute('aria-pressed', 'true');
-        var panelId = this.getAttribute('data-panel');
-        document.querySelectorAll('.m-tab-panel').forEach(function(p) { p.classList.remove('m-tab-visible'); });
-        var target = document.getElementById('m-panel-' + panelId);
-        if (target) target.classList.add('m-tab-visible');
     });
-});
-function mOpenSheet(name) {
-    var el = document.getElementById('m-sheet-' + name);
-    if (el) el.classList.add('m-overlay-open');
-}
-function mCloseSheet(name) {
-    var el = document.getElementById('m-sheet-' + name);
-    if (el) el.classList.remove('m-overlay-open');
-}
-function mOpenDelete(type, id) {
-    document.getElementById('m-delete-id').value = id;
-    mOpenSheet('delete');
-}
-document.querySelectorAll('.m-overlay').forEach(function(overlay) {
-    overlay.addEventListener('click', function(e) {
-        if (e.target === overlay) {
-            overlay.classList.remove('m-overlay-open');
-        }
+
+    // Delete via AJAX (process_mileage.php delete returns JSON)
+    document.getElementById('m-confirm-delete-btn').addEventListener('click', function() {
+        if (!deleteId) return;
+        var btn = this;
+        btn.disabled = true;
+        btn.textContent = 'Deleting…';
+
+        var formData = new FormData();
+        formData.append('action', 'delete');
+        formData.append('log_id', deleteId);
+        formData.append('csrf_token', <?= json_encode($csrfToken, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>);
+
+        fetch('process_mileage.php', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: formData
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                var card = document.getElementById('m-entry-' + deleteId);
+                if (card) card.remove();
+                mCloseSheet('delete');
+            } else {
+                alert(data.message || 'Failed to delete');
+            }
+        })
+        .catch(function() { alert('Network error. Please try again.'); })
+        .finally(function() {
+            btn.disabled = false;
+            btn.textContent = 'Delete';
+            deleteId = null;
+        });
     });
-});
-var depDate = document.getElementById('m-departure-date');
-var retDate = document.getElementById('m-return-date');
-if (depDate && retDate) {
-    retDate.min = depDate.value;
-    depDate.addEventListener('change', function() {
-        retDate.min = depDate.value;
-        if (retDate.value && retDate.value < depDate.value) retDate.value = depDate.value;
-    });
-}
+
+    // Auto-dismiss success banner
+    var banner = document.getElementById('m-success-msg');
+    if (banner) setTimeout(function() { banner.style.display = 'none'; }, 4000);
+})();
 </script>
