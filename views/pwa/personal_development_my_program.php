@@ -269,46 +269,86 @@ try {
 .m-myprog-overview-empty i { display: block; font-size: 20px; margin-bottom: 6px; }
 
 /* --- DRILLS TAB --- */
+/* Global pwa.css rules that interfere with drill cards:
+   1) body.pwa-body [role="button"]                  → overflow:hidden, text-overflow:ellipsis
+   2) body.pwa-body .pwa-content [role="button"]     → display:inline-flex, min-height:44px
+   3) body.pwa-body .pwa-content *                   → max-width:100vw
+   4) body.pwa-body .pwa-content a:not(...)          → display:inline-flex, min-height:44px
+   We use !important on layout-critical properties to override these. */
 .m-myprog-drill {
-    display: block !important; /* Override global pwa.css [role="button"] inline-flex rule */
+    display: block !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
     background: #1E1E2E; border: 1px solid #2D2D3F; border-radius: 12px;
     padding: 14px; margin-bottom: 10px; cursor: pointer;
     transition: border-color 0.2s; width: 100%;
 }
 .m-myprog-drill:active { border-color: rgba(107,70,193,0.4); }
-.m-myprog-drill-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.m-myprog-drill-title { font-size: 14px; font-weight: 600; color: #fff; flex: 1; min-width: 0; }
-.m-myprog-drill-desc { font-size: 12px; color: #A8A8B8; line-height: 1.4; margin-top: 6px; }
+.m-myprog-drill-header {
+    display: flex !important; flex-direction: row !important;
+    justify-content: space-between; align-items: center; gap: 8px;
+    overflow: visible !important; width: 100%;
+}
+.m-myprog-drill-title {
+    font-size: 14px; font-weight: 600; color: #fff;
+    flex: 1; min-width: 0;
+    overflow: visible !important; white-space: normal !important;
+    text-overflow: clip !important;
+}
+.m-myprog-drill-desc {
+    font-size: 12px; color: #A8A8B8; line-height: 1.4; margin-top: 6px;
+    overflow: visible !important; white-space: normal !important;
+    text-overflow: clip !important; width: 100%;
+}
 .m-myprog-drill-status {
-    display: inline-flex; align-items: center; gap: 4px;
+    display: inline-flex !important; align-items: center; gap: 4px;
     font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 20px;
-    flex-shrink: 0;
+    flex-shrink: 0; white-space: nowrap;
 }
 .m-myprog-drill-status.assigned { background: rgba(59,130,246,0.15); color: #3B82F6; }
 .m-myprog-drill-status.pending { background: rgba(245,158,11,0.15); color: #F59E0B; }
 .m-myprog-drill-status.completed { background: rgba(16,185,129,0.15); color: #10B981; }
 .m-myprog-drill-status.in_progress { background: rgba(59,130,246,0.15); color: #3B82F6; }
 .m-myprog-drill-expand {
-    font-size: 12px; color: #6B6B7B; display: flex; align-items: center; gap: 4px; margin-top: 8px;
+    font-size: 12px; color: #6B6B7B;
+    display: flex !important; flex-direction: row !important;
+    align-items: center; gap: 4px; margin-top: 8px;
     min-height: 44px; padding: 8px 0;
+    overflow: visible !important;
 }
 .m-myprog-drill-expand i { transition: transform 0.2s; }
 .m-myprog-drill.expanded .m-myprog-drill-expand i { transform: rotate(180deg); }
 .m-myprog-drill-detail {
-    display: none; margin-top: 10px; padding-top: 10px;
+    display: none !important; margin-top: 10px; padding-top: 10px;
     border-top: 1px solid #2D2D3F; font-size: 12px; color: #A8A8B8;
+    overflow: visible !important; width: 100%;
 }
-.m-myprog-drill.expanded .m-myprog-drill-detail { display: block; }
-.m-myprog-drill-detail-section { margin-bottom: 10px; }
-.m-myprog-drill-detail-label { font-size: 11px; font-weight: 600; color: #8B5CF6; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
-.m-myprog-drill-detail p { margin: 0; line-height: 1.5; color: #A8A8B8; }
+.m-myprog-drill.expanded .m-myprog-drill-detail { display: block !important; }
+.m-myprog-drill-detail-section {
+    margin-bottom: 10px;
+    overflow: visible !important; width: 100%;
+}
+.m-myprog-drill-detail-label {
+    font-size: 11px; font-weight: 600; color: #8B5CF6;
+    text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;
+    overflow: visible !important; white-space: normal !important;
+}
+.m-myprog-drill-detail p {
+    margin: 0; line-height: 1.5; color: #A8A8B8;
+    overflow: visible !important; white-space: normal !important;
+    text-overflow: clip !important; word-wrap: break-word;
+}
 .m-myprog-drill-detail .coach-note { color: #F59E0B; }
-.m-myprog-drill-detail .coach-name { font-size: 11px; color: #6B6B7B; margin-top: 4px; }
+.m-myprog-drill-detail .coach-name {
+    font-size: 11px; color: #6B6B7B; margin-top: 4px;
+    overflow: visible !important; white-space: normal !important;
+}
 .m-myprog-drill-video-link {
-    display: inline-flex; align-items: center; gap: 4px;
+    display: inline-flex !important; align-items: center; gap: 4px;
     padding: 10px 14px; background: rgba(59,130,246,0.15); color: #3B82F6;
     border-radius: 8px; font-size: 12px; font-weight: 600; text-decoration: none;
     margin-top: 4px; min-height: 44px;
+    overflow: visible !important;
 }
 .m-myprog-drill-video-link i { font-size: 14px; }
 .m-myprog-drills-empty { text-align: center; padding: 30px 16px; color: #6B6B7B; font-size: 12px; }
