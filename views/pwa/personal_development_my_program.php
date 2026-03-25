@@ -214,7 +214,7 @@ try {
     border-bottom: 2px solid transparent;
     transition: color 0.2s, border-color 0.2s;
     white-space: nowrap; min-height: 44px;
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 4px;
 }
 .m-myprog-tab i { font-size: 14px; }
 .m-myprog-tab.active { color: #8B5CF6; border-bottom-color: #8B5CF6; }
