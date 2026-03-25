@@ -20,10 +20,11 @@ $products = [];
 try {
     $stmt = $pdo->prepare("
         SELECT p.id, p.name, p.description, p.price, p.image_url,
-               COALESCE((SELECT SUM(ps.quantity) FROM merchandise_product_sizes ps WHERE ps.product_id = p.id), 0) AS stock_quantity,
+               COALESCE(ps_totals.total_stock, 0) AS stock_quantity,
                p.category_id, c.name as category_name
         FROM merchandise_products p
         LEFT JOIN merchandise_categories c ON c.id = p.category_id
+        LEFT JOIN (SELECT product_id, SUM(quantity) AS total_stock FROM merchandise_product_sizes GROUP BY product_id) ps_totals ON ps_totals.product_id = p.id
         WHERE p.is_active = 1
         ORDER BY p.id DESC
     ");

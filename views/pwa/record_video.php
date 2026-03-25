@@ -120,7 +120,7 @@
         <form id="mUploadForm" method="POST" action="process_video.php" enctype="multipart/form-data">
             <label class="m-upload-label" for="mVideoTitle">Video Title</label>
             <input type="text" class="m-upload-input" id="mVideoTitle" name="title" placeholder="Enter video title" required>
-            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(CSRFProtection::generateToken()) ?>">
             <button type="submit" class="m-upload-btn" id="mBtnUpload" disabled>
                 <i class="fas fa-cloud-arrow-up"></i> Upload Video
             </button>
@@ -194,6 +194,11 @@
 
         var csrfInput = this.querySelector('input[name="csrf_token"]');
         var csrfToken = csrfInput ? csrfInput.value : '';
+        if (!csrfToken) {
+            document.getElementById('mUploadStatus').textContent = 'Security token missing. Please reload the page.';
+            document.getElementById('mUploadStatus').style.color = '#EF4444';
+            return;
+        }
         var btn = document.getElementById('mBtnUpload');
         var statusEl = document.getElementById('mUploadStatus');
         btn.disabled = true;

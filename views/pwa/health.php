@@ -9,7 +9,7 @@ $canManageHealth = $isAnyCoach || $isAdmin || ($user_role === 'health_coach');
 // Workouts
 $workouts = [];
 try {
-    $stmt = $pdo->prepare("SELECT id, COALESCE(title, workout_name) AS title, description, workout_type AS difficulty_level, duration_minutes, user_id AS created_by FROM workouts ORDER BY created_at DESC LIMIT 30");
+    $stmt = $pdo->prepare("SELECT id, COALESCE(title, workout_name) AS title, description, workout_type, duration_minutes, user_id AS created_by FROM workouts ORDER BY created_at DESC LIMIT 30");
     $stmt->execute();
     $workouts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { $workouts = []; }
@@ -141,7 +141,7 @@ try {
             </div>
         <?php else: ?>
             <?php foreach ($workouts as $w):
-                $diff = strtolower($w['difficulty_level'] ?? 'default');
+                $diff = strtolower($w['workout_type'] ?? 'default');
                 $badgeClass = match($diff) {
                     'beginner', 'easy' => 'beginner',
                     'intermediate', 'medium' => 'intermediate',
@@ -155,7 +155,7 @@ try {
                     <span class="m-workout-title"><?= htmlspecialchars($w['title'] ?? 'Untitled') ?></span>
                     <?php if ($canEdit): ?>
                     <div class="m-workout-actions">
-                        <button onclick="mEditWorkout(<?= (int)$w['id'] ?>, <?= htmlspecialchars(json_encode($w['title'] ?? ''), ENT_QUOTES) ?>, <?= htmlspecialchars(json_encode($w['description'] ?? ''), ENT_QUOTES) ?>, <?= htmlspecialchars(json_encode($w['difficulty_level'] ?? ''), ENT_QUOTES) ?>, <?= (int)($w['duration_minutes'] ?? 0) ?>)" title="Edit"><i class="fas fa-pen"></i></button>
+                        <button onclick="mEditWorkout(<?= (int)$w['id'] ?>, <?= htmlspecialchars(json_encode($w['title'] ?? ''), ENT_QUOTES) ?>, <?= htmlspecialchars(json_encode($w['description'] ?? ''), ENT_QUOTES) ?>, <?= htmlspecialchars(json_encode($w['workout_type'] ?? ''), ENT_QUOTES) ?>, <?= (int)($w['duration_minutes'] ?? 0) ?>)" title="Edit"><i class="fas fa-pen"></i></button>
                         <button class="m-del-btn" onclick="mDeleteWorkout(<?= (int)$w['id'] ?>)" title="Delete"><i class="fas fa-trash"></i></button>
                     </div>
                     <?php endif; ?>
@@ -164,8 +164,8 @@ try {
                 <p class="m-workout-desc"><?= htmlspecialchars($w['description']) ?></p>
                 <?php endif; ?>
                 <div class="m-workout-footer">
-                    <?php if (!empty($w['difficulty_level'])): ?>
-                    <span class="m-workout-badge m-workout-badge-<?= $badgeClass ?>"><?= htmlspecialchars(ucfirst($w['difficulty_level'])) ?></span>
+                    <?php if (!empty($w['workout_type'])): ?>
+                    <span class="m-workout-badge m-workout-badge-<?= $badgeClass ?>"><?= htmlspecialchars(ucfirst($w['workout_type'])) ?></span>
                     <?php endif; ?>
                     <?php if (!empty($w['duration_minutes'])): ?>
                     <span class="m-workout-dur"><i class="fas fa-clock" style="font-size:10px;"></i> <?= (int)$w['duration_minutes'] ?> min</span>
