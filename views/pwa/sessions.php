@@ -675,7 +675,17 @@ try {
                         <button type="button" class="m-book-btn m-book-btn-warning m-card-action" onclick="event.stopPropagation();mJoinWaitlist(<?= (int)$sess['id'] ?>)"><i class="fas fa-clock"></i> Waitlist</button>
                     <?php else: ?>
                         <span class="m-badge m-badge-upcoming">Open</span>
+                        <?php
+                            // Determine if this is a template session (has no booking_id key from sessions table)
+                            $isTemplateSession = isset($sess['booking_status']) && $sess['booking_status'] === 'confirmed' && !isset($sess['waitlist_id']);
+                            // Better detection: template sessions came from the training_session_templates query which has no 'waitlist_count' field
+                            $isTemplateSession = !array_key_exists('waitlist_count', $sess);
+                        ?>
+                        <?php if ($isTemplateSession): ?>
+                        <button type="button" class="m-book-btn m-book-btn-primary m-card-action" onclick="event.stopPropagation();mBookTemplateSession(<?= (int)$sess['id'] ?>)"><i class="fas fa-plus"></i> Register</button>
+                        <?php else: ?>
                         <button type="button" class="m-book-btn m-book-btn-primary m-card-action" onclick="event.stopPropagation();mBookSession(<?= (int)$sess['id'] ?>)"><i class="fas fa-plus"></i> Register</button>
+                        <?php endif; ?>
                     <?php endif; ?>
                 </div>
             </div>
@@ -728,9 +738,17 @@ try {
                         <?php if ($avIsBooked): ?>
                             <span class="m-badge m-badge-booked"><i class="fas fa-check"></i> Registered</span>
                         <?php elseif ($avIsFull): ?>
+                            <?php if (!empty($avSess['date_id'])): ?>
+                            <span class="m-badge m-badge-full"><i class="fas fa-ban"></i> Full</span>
+                            <?php else: ?>
                             <button type="button" class="m-book-btn m-book-btn-warning m-card-action" onclick="mJoinWaitlist(<?= (int)$avSess['id'] ?>)"><i class="fas fa-clock"></i> Waitlist</button>
+                            <?php endif; ?>
                         <?php else: ?>
+                            <?php if (!empty($avSess['date_id'])): ?>
+                            <button type="button" class="m-book-btn m-book-btn-primary m-card-action" onclick="mBookTemplateSession(<?= (int)$avSess['date_id'] ?>)"><i class="fas fa-plus"></i> Register</button>
+                            <?php else: ?>
                             <button type="button" class="m-book-btn m-book-btn-primary m-card-action" onclick="mBookSession(<?= (int)$avSess['id'] ?>)"><i class="fas fa-plus"></i> Register</button>
+                            <?php endif; ?>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -827,11 +845,18 @@ try {
     <div class="m-sheet-body" id="m-detail-body"></div>
 </div>
 
-<!-- Hidden form for quick booking -->
+<!-- Hidden form for quick booking (uses form submission for Stripe redirect) -->
 <form id="m-book-form" method="POST" action="process_booking.php" style="display:none;">
     <?= csrfTokenInput() ?>
     <input type="hidden" name="action" value="book_session">
     <input type="hidden" name="session_id" id="m-book-session-id" value="">
+</form>
+
+<!-- Hidden form for template session registration (uses form submission for Stripe redirect) -->
+<form id="m-book-template-form" method="POST" action="process_booking.php" style="display:none;">
+    <?= csrfTokenInput() ?>
+    <input type="hidden" name="action" value="register_template_session">
+    <input type="hidden" name="session_date_id" id="m-book-template-date-id" value="">
 </form>
 
 <script>
@@ -839,6 +864,7 @@ var mSessions = <?= json_encode(array_map(function($s) use ($isAnyCoach) {
     $coachName = trim(($s['coach_first_name'] ?? '') . ' ' . ($s['coach_last_name'] ?? ''));
     $attendeeCount = (int)($s['attendee_count'] ?? 0);
     $maxParticipants = (int)($s['max_participants'] ?? 0);
+    $isTemplate = !array_key_exists('waitlist_count', $s);
     return [
         'id' => (int)$s['id'],
         'title' => $s['title'] ?? '',
@@ -863,6 +889,7 @@ var mSessions = <?= json_encode(array_map(function($s) use ($isAnyCoach) {
         'isOnWaitlist' => !empty($s['waitlist_id']),
         'waitlistPosition' => (int)($s['waitlist_position'] ?? 0),
         'waitlistCount' => (int)($s['waitlist_count'] ?? 0),
+        'isTemplate' => $isTemplate,
     ];
 }, $upcomingSessions), JSON_HEX_TAG | JSON_HEX_AMP) ?>;
 
@@ -1018,9 +1045,15 @@ function mShowDetail(idx) {
         } else if (!s.isBooked && s.isFuture) {
             if (s.isFull) {
                 html += '<span style="display:block;text-align:center;color:#EF4444;font-size:13px;font-weight:600;margin-bottom:8px;"><i class="fas fa-ban"></i> This session is full</span>';
-                html += '<button type="button" class="m-book-btn m-book-btn-warning" onclick="mJoinWaitlist(' + s.id + ')"><i class="fas fa-clock"></i> Join Waitlist</button>';
+                if (!s.isTemplate) {
+                    html += '<button type="button" class="m-book-btn m-book-btn-warning" onclick="mJoinWaitlist(' + s.id + ')"><i class="fas fa-clock"></i> Join Waitlist</button>';
+                }
             } else {
-                html += '<button type="button" class="m-book-btn m-book-btn-primary" onclick="mBookSession(' + s.id + ')"><i class="fas fa-plus"></i> Book Session</button>';
+                if (s.isTemplate) {
+                    html += '<button type="button" class="m-book-btn m-book-btn-primary" onclick="mBookTemplateSession(' + s.id + ')"><i class="fas fa-plus"></i> Register</button>';
+                } else {
+                    html += '<button type="button" class="m-book-btn m-book-btn-primary" onclick="mBookSession(' + s.id + ')"><i class="fas fa-plus"></i> Book Session</button>';
+                }
             }
         }
     }
@@ -1073,17 +1106,16 @@ async function mCancelSession(sessionId) {
 }
 
 function mBookSession(sessionId) {
-    var form = new FormData();
-    form.append('action', 'book_session');
-    form.append('session_id', sessionId);
-    form.append('csrf_token', document.querySelector('#m-book-form input[name="csrf_token"]').value);
-    fetch('process_booking.php', { method: 'POST', body: form })
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-            if (data.success) { persistToast(data.message || 'Session booked!', 'success'); location.reload(); }
-            else { showToast(data.message || 'Failed to book session', 'error'); }
-        })
-        .catch(function() { showToast('Network error. Please try again.', 'error'); });
+    // Use form submission (not fetch) so the browser follows the Stripe checkout redirect
+    document.getElementById('m-book-session-id').value = sessionId;
+    document.getElementById('m-book-form').submit();
+}
+
+function mBookTemplateSession(sessionDateId) {
+    // Use form submission for template sessions — handles Stripe redirect for paid,
+    // or server-side redirect for free sessions
+    document.getElementById('m-book-template-date-id').value = sessionDateId;
+    document.getElementById('m-book-template-form').submit();
 }
 
 function mJoinWaitlist(sessionId) {

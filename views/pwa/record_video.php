@@ -116,6 +116,16 @@
         </button>
     </div>
 
+    <!-- File Upload Option (alternative to recording) -->
+    <div style="text-align:center;margin-bottom:16px;">
+        <div style="font-size:12px;color:#6B6B7B;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">Or upload an existing video</div>
+        <label style="display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:10px;background:rgba(59,130,246,0.15);color:#3B82F6;font-size:13px;font-weight:600;cursor:pointer;min-height:44px;border:1px solid rgba(59,130,246,0.3);">
+            <i class="fas fa-file-video"></i> Choose File
+            <input type="file" accept="video/*" id="mFileInput" style="display:none;" onchange="mFileSelected(this)">
+        </label>
+        <p id="mFileInfo" style="font-size:12px;color:#A8A8B8;margin-top:6px;"></p>
+    </div>
+
     <div class="m-upload-section" id="mUploadSection">
         <form id="mUploadForm" method="POST" action="process_video.php" enctype="multipart/form-data">
             <label class="m-upload-label" for="mVideoTitle">Video Title</label>
@@ -160,6 +170,23 @@
     window.mSwitchCamera = function() {
         facingMode = (facingMode === 'environment') ? 'user' : 'environment';
         mStartCamera();
+    };
+
+    // Handle file upload selection (alternative to recording)
+    window.mFileSelected = function(input) {
+        if (!input.files || !input.files.length) return;
+        var file = input.files[0];
+        if (!file.type.startsWith('video/')) {
+            document.getElementById('mFileInfo').textContent = 'Please select a video file.';
+            document.getElementById('mFileInfo').style.color = '#EF4444';
+            return;
+        }
+        blob = file;
+        document.getElementById('mFileInfo').textContent = file.name + ' (' + (file.size / 1048576).toFixed(1) + ' MB)';
+        document.getElementById('mFileInfo').style.color = '#A8A8B8';
+        document.getElementById('mUploadSection').classList.add('m-upload-visible');
+        document.getElementById('mBtnUpload').disabled = false;
+        document.getElementById('mUploadStatus').textContent = 'Video ready for upload';
     };
 
     window.mToggleRecord = function() {
@@ -219,9 +246,10 @@
         formMeta.append('csrf_token', csrfToken);
         formMeta.append('title', document.getElementById('mVideoTitle').value);
         formMeta.append('video_category', 'general');
-        formMeta.append('file_name', 'recorded_video.webm');
+        var isRecordedBlob = (blob instanceof Blob && !(blob instanceof File));
+        formMeta.append('file_name', isRecordedBlob ? 'recorded_video.webm' : (blob.name || 'uploaded_video.mp4'));
         formMeta.append('file_size', blob.size);
-        formMeta.append('file_type', blob.type || 'video/webm');
+        formMeta.append('file_type', blob.type || (isRecordedBlob ? 'video/webm' : 'video/mp4'));
 
         statusEl.textContent = 'Requesting upload URL...';
 
