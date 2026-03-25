@@ -1040,6 +1040,13 @@ if (!function_exists('mMsgTimeAgo')) {
                                 pendingFiles = [];
                                 renderPendingAttachments();
                                 document.querySelector('.m-messages').classList.add('m-chat-active');
+                                /* Hide FAB + tab bar + header for full-screen chat */
+                                var _fab = document.getElementById('mNewMsgFab');
+                                if (_fab) _fab.style.display = 'none';
+                                var _tab = document.querySelector('.pwa-tab-bar');
+                                if (_tab) _tab.style.display = 'none';
+                                var _hdr = document.querySelector('.pwa-header');
+                                if (_hdr) _hdr.style.display = 'none';
                                 loadChatMessages(data.conversation_id, false);
                                 startChatPoll();
                                 startTypingPoll();
