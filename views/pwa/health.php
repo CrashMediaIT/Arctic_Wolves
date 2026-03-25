@@ -4,7 +4,7 @@
  * Purpose-built for mobile phones with full CRUD functionality.
  */
 
-$canManageHealth = $isAnyCoach || $isAdmin || ($user_role === 'health_coach');
+$canManageHealth = $canAccessHealthManagement;
 
 if ($canManageHealth):
 // --- Coach View Data ---
