@@ -200,7 +200,7 @@ foreach ($payments as $p) {
                 default => 'fa-receipt',
             };
         ?>
-        <div class="m-payment-card" onclick="mPayToggle(this)" data-date="<?= date('Y-m-d', strtotime($p['created_at'] ?? 'now')) ?>">
+        <div class="m-payment-card" onclick="mPayToggle(this)" tabindex="0" role="button" aria-expanded="false" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();mPayToggle(this);}" data-date="<?= date('Y-m-d', strtotime($p['created_at'] ?? 'now')) ?>">
             <div class="m-payment-icon m-payment-icon-<?= $statusClass ?>">
                 <i class="fas <?= $methodIcon ?>"></i>
             </div>
@@ -223,7 +223,7 @@ foreach ($payments as $p) {
             <div class="m-payment-detail-row"><span>Amount</span><span>$<?= number_format((float)($p['amount'] ?? 0), 2) ?></span></div>
             <div class="m-payment-detail-row"><span>Status</span><span><?= htmlspecialchars(ucfirst($status === 'paid' ? 'completed' : $status)) ?></span></div>
             <?php if ($statusClass === 'completed' && !empty($p['invoice_id'])): ?>
-            <a href="download_invoice.php?invoice_id=<?= (int)$p['invoice_id'] ?>" target="_blank" style="width:100%;margin-top:10px;background:#0A0A0F;border:1px solid #2D2D3F;border-radius:10px;color:#fff;padding:10px;font-size:13px;font-weight:600;min-height:44px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;" onclick="event.stopPropagation();">
+            <a href="download_invoice.php?invoice_id=<?= (int)$p['invoice_id'] ?>" target="_blank" rel="noopener noreferrer" style="width:100%;margin-top:10px;background:#0A0A0F;border:1px solid #2D2D3F;border-radius:10px;color:#fff;padding:10px;font-size:13px;font-weight:600;min-height:44px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;" onclick="event.stopPropagation();">
                 <i class="fas fa-file-invoice" style="color:#8B5CF6;"></i> View Invoice
             </a>
             <?php elseif ($statusClass === 'completed'): ?>
@@ -248,7 +248,7 @@ foreach ($payments as $p) {
                 default => 'background: rgba(168,168,184,0.15); color: #A8A8B8;',
             };
         ?>
-        <a href="download_invoice.php?invoice_id=<?= (int)$inv['id'] ?>" target="_blank" style="display:flex;align-items:center;gap:12px;background:#16161F;border:1px solid #2D2D3F;border-radius:12px;padding:14px;margin-bottom:8px;min-height:44px;text-decoration:none;color:inherit;">
+        <a href="download_invoice.php?invoice_id=<?= (int)$inv['id'] ?>" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;gap:12px;background:#16161F;border:1px solid #2D2D3F;border-radius:12px;padding:14px;margin-bottom:8px;min-height:44px;text-decoration:none;color:inherit;">
             <div style="width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;background:rgba(107,70,193,0.15);color:#8B5CF6;">
                 <i class="fas fa-file-invoice"></i>
             </div>
@@ -270,7 +270,9 @@ foreach ($payments as $p) {
 function mPayToggle(card) {
     var detail = card.nextElementSibling;
     if (detail && detail.classList.contains('m-payment-detail')) {
-        detail.style.display = detail.style.display === 'block' ? 'none' : 'block';
+        var isVisible = detail.style.display === 'block';
+        detail.style.display = isVisible ? 'none' : 'block';
+        card.setAttribute('aria-expanded', isVisible ? 'false' : 'true');
     }
 }
 function mPayFilter() {

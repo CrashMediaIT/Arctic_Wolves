@@ -74,10 +74,9 @@ foreach ($enrollments as &$enrollment) {
         $enrollment['messages'] = decryptUserRows($enrollment['messages']);
     }
     if (class_exists('FieldEncryption')) {
-        $enrollment['messages'] = FieldEncryption::decryptRows($enrollment['messages'], array_merge(
-            defined('FieldEncryption::MESSAGE_ENCRYPTED_FIELDS') ? FieldEncryption::MESSAGE_ENCRYPTED_FIELDS : [],
-            ['sender_first', 'sender_last']
-        ));
+        $msg_fields = ['sender_first', 'sender_last'];
+        try { $msg_fields = array_merge(FieldEncryption::MESSAGE_ENCRYPTED_FIELDS, $msg_fields); } catch (\Throwable $e) { /* constant may not exist */ }
+        $enrollment['messages'] = FieldEncryption::decryptRows($enrollment['messages'], $msg_fields);
     }
 
     // Get athlete-uploaded videos
@@ -396,7 +395,7 @@ try {
         <?php foreach ($enrollment['drills'] as $drill):
             $drill_status = $drill['status'] ?? 'assigned';
         ?>
-        <div class="m-myprog-drill" onclick="mToggleDrill(this)">
+        <div class="m-myprog-drill" onclick="mToggleDrill(this)" tabindex="0" role="button" aria-expanded="false" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();mToggleDrill(this);}">
             <div class="m-myprog-drill-header">
                 <div class="m-myprog-drill-title"><?= htmlspecialchars($drill['drill_title'] ?? 'Untitled Drill') ?></div>
                 <span class="m-myprog-drill-status <?= htmlspecialchars($drill_status) ?>">
@@ -441,7 +440,7 @@ try {
 
                 <?php if (!empty($drill['drill_video_url'])): ?>
                 <div class="m-myprog-drill-detail-section">
-                    <a href="<?= htmlspecialchars($drill['drill_video_url']) ?>" target="_blank" class="m-myprog-drill-video-link" onclick="event.stopPropagation();">
+                    <a href="<?= htmlspecialchars($drill['drill_video_url']) ?>" target="_blank" rel="noopener noreferrer" class="m-myprog-drill-video-link" onclick="event.stopPropagation();">
                         <i class="fas fa-play-circle"></i> Watch Drill Video
                     </a>
                 </div>
@@ -582,6 +581,7 @@ var mDevCsrf = document.querySelector('meta[name="csrf-token"]')?.content
 
 function mToggleDrill(el) {
     el.classList.toggle('expanded');
+    el.setAttribute('aria-expanded', el.classList.contains('expanded') ? 'true' : 'false');
 }
 
 function mDevFetch(data) {
