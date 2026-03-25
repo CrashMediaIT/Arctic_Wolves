@@ -39,6 +39,11 @@ $user_id = $_SESSION['user_id'];
 $domain  = "http://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']); 
 $action  = $_POST['action'] ?? '';
 
+// Detect PWA context from hidden form field to redirect back to pwa.php instead of dashboard.php
+$isPwaContext = (($_POST['pwa_context'] ?? '') === '1');
+$sessionsPage = $isPwaContext ? 'pwa.php?page=sessions' : 'dashboard.php?page=sessions';
+$bookingPage = $isPwaContext ? 'pwa.php?page=sessions' : 'dashboard.php?page=booking';
+
 // 4. HANDLE DIFFERENT BOOKING ACTIONS
 
 // CANCEL BOOKING
@@ -177,7 +182,8 @@ if ($action === 'register_dev_program') {
         $dup_check = $pdo->prepare("SELECT id FROM development_program_enrollments WHERE athlete_id = ? AND program_type = ? AND template_id = ? AND status = 'active'");
         $dup_check->execute([$user_id, $program_type, $template_id]);
         if ($dup_check->fetch()) {
-            header("Location: dashboard.php?page=personal_development_programs&error=already_enrolled");
+            $devPage = $isPwaContext ? 'pwa.php?page=personal_development_programs' : 'dashboard.php?page=personal_development_programs';
+            header("Location: $devPage&error=already_enrolled");
             exit();
         }
 
@@ -213,7 +219,7 @@ if ($action === 'register_dev_program') {
                 ]],
                 'mode' => 'payment',
                 'success_url' => $domain . '/payment_success.php?session_id={CHECKOUT_SESSION_ID}',
-                'cancel_url'  => $domain . '/dashboard.php?page=booking&error=cancelled',
+                'cancel_url'  => $domain . '/' . $bookingPage . '&error=cancelled',
                 'client_reference_id' => $user_id,
                 'metadata' => [
                     'type' => 'dev_program',
@@ -258,12 +264,14 @@ if ($action === 'register_dev_program') {
                 'action' => 'register_dev_program', 'program_type' => $program_type, 'amount' => 0
             ]);
 
-            header("Location: dashboard.php?page=personal_development_programs&status=enrolled");
+            $devPage = $isPwaContext ? 'pwa.php?page=personal_development_programs' : 'dashboard.php?page=personal_development_programs';
+            header("Location: $devPage&status=enrolled");
             exit();
         }
     } catch (Exception $e) {
         ErrorLogger::error("Dev program registration error: " . $e->getMessage(), ['program_type' => $program_type ?? '', 'user_id' => $user_id]);
-        header("Location: dashboard.php?page=personal_development_programs&error=registration_failed");
+        $devPage = $isPwaContext ? 'pwa.php?page=personal_development_programs' : 'dashboard.php?page=personal_development_programs';
+        header("Location: $devPage&error=registration_failed");
         exit();
     }
 }
@@ -296,8 +304,7 @@ if ($action === 'register_template_session') {
         $dup_check = $pdo->prepare("SELECT id FROM session_date_athletes WHERE session_date_id = ? AND athlete_id = ?");
         $dup_check->execute([$session_date_id, $user_id]);
         if ($dup_check->fetch()) {
-            header("Location: dashboard.php?page=sessions&error=already_booked");
-            exit();
+            header("Location: $sessionsPage&error=already_booked");            exit();
         }
         
         // Check capacity
@@ -307,8 +314,7 @@ if ($action === 'register_template_session') {
             $count_stmt->execute([$session_date_id]);
             $registered_count = (int)$count_stmt->fetchColumn();
             if ($registered_count >= (int)$max_participants) {
-                header("Location: dashboard.php?page=sessions&error=session_full");
-                exit();
+                header("Location: $sessionsPage&error=session_full");                exit();
             }
         }
         
@@ -336,7 +342,7 @@ if ($action === 'register_template_session') {
                 ]],
                 'mode' => 'payment',
                 'success_url' => $domain . '/payment_success.php?session_id={CHECKOUT_SESSION_ID}',
-                'cancel_url'  => $domain . '/dashboard.php?page=booking&error=cancelled',
+                'cancel_url'  => $domain . '/' . $bookingPage . '&error=cancelled',
                 'client_reference_id' => $user_id,
                 'metadata' => [
                     'type' => 'template_session',
@@ -364,12 +370,12 @@ if ($action === 'register_template_session') {
                 'action' => 'register_template_session', 'session_date_id' => $session_date_id, 'amount' => 0
             ]);
             
-            header("Location: dashboard.php?page=sessions&status=booked");
+            header("Location: $sessionsPage&status=booked");
             exit();
         }
     } catch (Exception $e) {
         ErrorLogger::error("Template session registration error: " . $e->getMessage(), ['session_date_id' => $session_date_id ?? 0, 'user_id' => $user_id]);
-        header("Location: dashboard.php?page=sessions&error=registration_failed");
+        header("Location: $sessionsPage&error=registration_failed");
         exit();
     }
 }
@@ -572,7 +578,7 @@ if ($action === 'book_private_session') {
             ]],
             'mode' => 'payment',
             'success_url' => $domain . '/payment_success.php?session_id={CHECKOUT_SESSION_ID}',
-            'cancel_url'  => $domain . '/dashboard.php?page=booking&error=cancelled',
+            'cancel_url'  => $domain . '/' . $bookingPage . '&error=cancelled',
             'client_reference_id' => $user_id,
         ];
         if (!empty($customer_email)) {
@@ -596,7 +602,7 @@ if ($action === 'book_private_session') {
         
     } catch (Exception $e) {
         ErrorLogger::error("Private session booking error: " . $e->getMessage(), ['user_id' => $user_id]);
-        header("Location: dashboard.php?page=sessions&error=booking_failed");
+        header("Location: $sessionsPage&error=booking_failed");
         exit();
     }
 }
@@ -620,7 +626,7 @@ $dup_check = $pdo->prepare("SELECT id, payment_status FROM bookings WHERE sessio
 $dup_check->execute([$session_id, $user_id]);
 $existing_booking = $dup_check->fetch(PDO::FETCH_ASSOC);
 if ($existing_booking && $existing_booking['payment_status'] === 'paid') {
-    header("Location: dashboard.php?page=sessions&error=already_booked&session_id=" . urlencode($session_id));
+    header("Location: $sessionsPage&error=already_booked&session_id=" . urlencode($session_id));
     exit();
 }
 
@@ -631,7 +637,7 @@ if (!empty($session['max_participants'])) {
     $confirmed_count = (int)$stmt->fetchColumn();
     if ($confirmed_count >= (int)$session['max_participants']) {
         // Session is full — redirect back with message
-        header("Location: dashboard.php?page=sessions&error=session_full&session_id=" . urlencode($session_id));
+        header("Location: $sessionsPage&error=session_full&session_id=" . urlencode($session_id));
         exit();
     }
 }
@@ -688,7 +694,7 @@ try {
         ]],
         'mode' => 'payment',
         'success_url' => $domain . '/payment_success.php?session_id={CHECKOUT_SESSION_ID}',
-        'cancel_url'  => $domain . '/dashboard.php?page=booking&error=cancelled',
+        'cancel_url'  => $domain . '/' . $bookingPage . '&error=cancelled',
         'client_reference_id' => $user_id,
     ];
     if (!empty($customer_email)) {
@@ -716,7 +722,7 @@ try {
 
 } catch (Exception $e) {
     ErrorLogger::error("Stripe booking error: " . $e->getMessage(), ['user_id' => $user_id, 'session_id' => $session_id ?? '']);
-    header("Location: dashboard.php?page=sessions&error=payment_failed");
+    header("Location: $sessionsPage&error=payment_failed");
     exit();
 }
 ?>

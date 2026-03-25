@@ -1,21 +1,81 @@
 <?php
 /**
  * PWA Payment History - Mobile-native payment list
- * Purpose-built for mobile phones.
+ * Queries bookings, packages, and invoices (matching desktop payment_history.php).
  */
 
-$payments = [];
+$viewing_user_id = $user_id;
+$is_parent = ($user_role === 'parent');
+
+// Allow parents to view athlete payments
+if ($is_parent && isset($_GET['athlete_id'])) {
+    try {
+        $verify_stmt = $pdo->prepare("SELECT athlete_id FROM managed_athletes WHERE parent_id = ? AND athlete_id = ?");
+        $verify_stmt->execute([$user_id, intval($_GET['athlete_id'])]);
+        if ($verify_stmt->fetch()) {
+            $viewing_user_id = intval($_GET['athlete_id']);
+        }
+    } catch (PDOException $e) { /* ignore */ }
+}
+
+// Get session booking history (from bookings table)
+$session_payments = [];
+try {
+    $bookings_stmt = $pdo->prepare("
+        SELECT b.id, b.booking_date as created_at, b.payment_status as status,
+               b.amount_paid as amount, b.original_price, b.discount_code,
+               s.title as description, b.invoice_id,
+               'session' as payment_type, 'stripe' as payment_method
+        FROM bookings b
+        LEFT JOIN sessions s ON b.session_id = s.id
+        WHERE b.user_id = ? AND b.payment_status = 'paid'
+        ORDER BY b.booking_date DESC
+        LIMIT 50
+    ");
+    $bookings_stmt->execute([$viewing_user_id]);
+    $session_payments = $bookings_stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) { $session_payments = []; }
+
+// Get package purchase history (from user_packages table)
+$package_payments = [];
+try {
+    $packages_stmt = $pdo->prepare("
+        SELECT up.id, up.purchase_date as created_at, up.payment_status as status,
+               up.amount_paid as amount, up.amount_paid as original_price, NULL as discount_code,
+               p.name as description, NULL as invoice_id,
+               'package' as payment_type, 'stripe' as payment_method
+        FROM user_packages up
+        LEFT JOIN packages p ON up.package_id = p.id
+        WHERE up.user_id = ? AND up.payment_status = 'paid'
+        ORDER BY up.purchase_date DESC
+        LIMIT 50
+    ");
+    $packages_stmt->execute([$viewing_user_id]);
+    $package_payments = $packages_stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) { $package_payments = []; }
+
+// Also get direct payments table records (for dev programs, manual payments, etc.)
+$direct_payments = [];
 try {
     $stmt = $pdo->prepare("
-        SELECT p.id, p.amount, p.payment_method, p.payment_status as status, p.created_at, p.notes as description, p.invoice_id
+        SELECT p.id, p.amount, p.payment_method, p.payment_status as status,
+               p.created_at, p.notes as description, p.invoice_id,
+               'payment' as payment_type
         FROM payments p
         WHERE p.user_id = ?
         ORDER BY p.created_at DESC
-        LIMIT 30
+        LIMIT 50
     ");
-    $stmt->execute([$user_id]);
-    $payments = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) { $payments = []; }
+    $stmt->execute([$viewing_user_id]);
+    $direct_payments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) { $direct_payments = []; }
+
+// Combine all payments and sort by date
+$payments = array_merge($session_payments, $package_payments, $direct_payments);
+usort($payments, function($a, $b) {
+    return strtotime($b['created_at'] ?? '1970-01-01') - strtotime($a['created_at'] ?? '1970-01-01');
+});
+$payments = array_slice($payments, 0, 100);
 
 // Get user invoices
 $pwa_invoices = [];
@@ -27,13 +87,14 @@ try {
         ORDER BY invoice_date DESC
         LIMIT 30
     ");
-    $inv_stmt->execute([$user_id]);
+    $inv_stmt->execute([$viewing_user_id]);
     $pwa_invoices = $inv_stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { $pwa_invoices = []; }
 
 $totalPaid = 0;
 foreach ($payments as $p) {
-    if (($p['status'] ?? '') === 'completed') {
+    $s = strtolower($p['status'] ?? '');
+    if ($s === 'completed' || $s === 'paid' || $s === 'succeeded') {
         $totalPaid += (float)($p['amount'] ?? 0);
     }
 }
@@ -139,30 +200,30 @@ foreach ($payments as $p) {
                 default => 'fa-receipt',
             };
         ?>
-        <div class="m-payment-card" onclick="mPayToggle(this)" data-date="<?= date('Y-m-d', strtotime($p['created_at'])) ?>">
+        <div class="m-payment-card" onclick="mPayToggle(this)" tabindex="0" role="button" aria-expanded="false" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();mPayToggle(this);}" data-date="<?= date('Y-m-d', strtotime($p['created_at'] ?? 'now')) ?>">
             <div class="m-payment-icon m-payment-icon-<?= $statusClass ?>">
                 <i class="fas <?= $methodIcon ?>"></i>
             </div>
             <div class="m-payment-body">
                 <div class="m-payment-desc"><?= htmlspecialchars($p['description'] ?: 'Payment') ?></div>
                 <div class="m-payment-meta">
-                    <?= htmlspecialchars(ucwords(str_replace('_', ' ', $p['payment_method'] ?? 'N/A'))) ?>
-                    · <?= date('M j, Y', strtotime($p['created_at'])) ?>
+                    <?php $ptype = $p['payment_type'] ?? 'payment'; ?>
+                    <span style="font-size:10px;padding:1px 5px;border-radius:4px;font-weight:600;<?= $ptype === 'session' ? 'background:rgba(107,70,193,0.15);color:#8B5CF6;' : ($ptype === 'package' ? 'background:rgba(16,185,129,0.15);color:#10B981;' : 'background:rgba(168,168,184,0.15);color:#A8A8B8;') ?>"><?= strtoupper($ptype) ?></span>
+                    · <?= date('M j, Y', strtotime($p['created_at'] ?? 'now')) ?>
                 </div>
             </div>
             <div class="m-payment-right">
-                <div class="m-payment-amount">$<?= number_format((float)$p['amount'], 2) ?></div>
-                <span class="m-payment-status m-payment-status-<?= $statusClass ?>"><?= htmlspecialchars(ucfirst($status)) ?></span>
+                <div class="m-payment-amount">$<?= number_format((float)($p['amount'] ?? 0), 2) ?></div>
+                <span class="m-payment-status m-payment-status-<?= $statusClass ?>"><?= htmlspecialchars(ucfirst($status === 'paid' ? 'completed' : $status)) ?></span>
             </div>
         </div>
         <div class="m-payment-detail" id="mPayDetail<?= $p['id'] ?>">
-            <div class="m-payment-detail-row"><span>Transaction ID</span><span>#<?= htmlspecialchars($p['id']) ?></span></div>
-            <div class="m-payment-detail-row"><span>Date</span><span><?= date('M j, Y g:i A', strtotime($p['created_at'])) ?></span></div>
-            <div class="m-payment-detail-row"><span>Method</span><span><?= htmlspecialchars(ucwords(str_replace('_', ' ', $p['payment_method'] ?? 'N/A'))) ?></span></div>
-            <div class="m-payment-detail-row"><span>Amount</span><span>$<?= number_format((float)$p['amount'], 2) ?></span></div>
-            <div class="m-payment-detail-row"><span>Status</span><span><?= htmlspecialchars(ucfirst($status)) ?></span></div>
+            <div class="m-payment-detail-row"><span>Type</span><span><?= htmlspecialchars(ucfirst($ptype)) ?></span></div>
+            <div class="m-payment-detail-row"><span>Date</span><span><?= date('M j, Y g:i A', strtotime($p['created_at'] ?? 'now')) ?></span></div>
+            <div class="m-payment-detail-row"><span>Amount</span><span>$<?= number_format((float)($p['amount'] ?? 0), 2) ?></span></div>
+            <div class="m-payment-detail-row"><span>Status</span><span><?= htmlspecialchars(ucfirst($status === 'paid' ? 'completed' : $status)) ?></span></div>
             <?php if ($statusClass === 'completed' && !empty($p['invoice_id'])): ?>
-            <a href="download_invoice.php?invoice_id=<?= (int)$p['invoice_id'] ?>" target="_blank" style="width:100%;margin-top:10px;background:#0A0A0F;border:1px solid #2D2D3F;border-radius:10px;color:#fff;padding:10px;font-size:13px;font-weight:600;min-height:44px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;" onclick="event.stopPropagation();">
+            <a href="download_invoice.php?invoice_id=<?= (int)$p['invoice_id'] ?>" target="_blank" rel="noopener noreferrer" style="width:100%;margin-top:10px;background:#0A0A0F;border:1px solid #2D2D3F;border-radius:10px;color:#fff;padding:10px;font-size:13px;font-weight:600;min-height:44px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;" onclick="event.stopPropagation();">
                 <i class="fas fa-file-invoice" style="color:#8B5CF6;"></i> View Invoice
             </a>
             <?php elseif ($statusClass === 'completed'): ?>
@@ -187,7 +248,7 @@ foreach ($payments as $p) {
                 default => 'background: rgba(168,168,184,0.15); color: #A8A8B8;',
             };
         ?>
-        <a href="download_invoice.php?invoice_id=<?= (int)$inv['id'] ?>" target="_blank" style="display:flex;align-items:center;gap:12px;background:#16161F;border:1px solid #2D2D3F;border-radius:12px;padding:14px;margin-bottom:8px;min-height:44px;text-decoration:none;color:inherit;">
+        <a href="download_invoice.php?invoice_id=<?= (int)$inv['id'] ?>" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;gap:12px;background:#16161F;border:1px solid #2D2D3F;border-radius:12px;padding:14px;margin-bottom:8px;min-height:44px;text-decoration:none;color:inherit;">
             <div style="width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;background:rgba(107,70,193,0.15);color:#8B5CF6;">
                 <i class="fas fa-file-invoice"></i>
             </div>
@@ -209,7 +270,9 @@ foreach ($payments as $p) {
 function mPayToggle(card) {
     var detail = card.nextElementSibling;
     if (detail && detail.classList.contains('m-payment-detail')) {
-        detail.style.display = detail.style.display === 'block' ? 'none' : 'block';
+        var isVisible = detail.style.display === 'block';
+        detail.style.display = isVisible ? 'none' : 'block';
+        card.setAttribute('aria-expanded', isVisible ? 'false' : 'true');
     }
 }
 function mPayFilter() {
