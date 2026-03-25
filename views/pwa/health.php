@@ -9,7 +9,7 @@ $canManageHealth = $isAnyCoach || $isAdmin || ($user_role === 'health_coach');
 // Workouts
 $workouts = [];
 try {
-    $stmt = $pdo->prepare("SELECT id, title, description, difficulty_level, duration_minutes, created_by FROM workouts WHERE is_active = 1 ORDER BY created_at DESC LIMIT 30");
+    $stmt = $pdo->prepare("SELECT id, COALESCE(title, workout_name) AS title, description, workout_type AS difficulty_level, duration_minutes, user_id AS created_by FROM workouts ORDER BY created_at DESC LIMIT 30");
     $stmt->execute();
     $workouts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { $workouts = []; }
@@ -17,7 +17,7 @@ try {
 // Meal Plans
 $mealPlans = [];
 try {
-    $stmt = $pdo->prepare("SELECT id, name, description, calories, created_by FROM meal_plans WHERE is_active = 1 ORDER BY created_at DESC LIMIT 30");
+    $stmt = $pdo->prepare("SELECT id, name, description, target_calories AS calories, created_by FROM nutrition_plans ORDER BY created_at DESC LIMIT 30");
     $stmt->execute();
     $mealPlans = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { $mealPlans = []; }

@@ -17,9 +17,8 @@ if (!$canAccessHealthManagement) {
 $mealPlans = [];
 try {
     $stmt = $pdo->prepare("
-        SELECT id, name, description, calories
-        FROM meal_plans
-        WHERE is_active = 1
+        SELECT id, name, description, target_calories AS calories
+        FROM nutrition_plans
         ORDER BY name
         LIMIT 30
     ");

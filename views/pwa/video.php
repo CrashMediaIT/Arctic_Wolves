@@ -8,11 +8,11 @@
 $drillVideos = [];
 try {
     $stmt = $pdo->prepare("
-        SELECT v.id, v.title, v.filename, v.status, v.created_at, v.athlete_id,
+        SELECT v.id, v.title, v.video_url AS filename, v.status, v.created_at, v.athlete_id,
                u.first_name, u.last_name
         FROM videos v
         LEFT JOIN users u ON u.id = v.athlete_id
-        WHERE v.athlete_id = ? OR v.assigned_coach_id = ?
+        WHERE v.athlete_id = ? OR v.coach_id = ?
         ORDER BY v.created_at DESC
         LIMIT 20
     ");
@@ -25,11 +25,11 @@ try {
 $coachReviewVideos = [];
 try {
     $stmt = $pdo->prepare("
-        SELECT v.id, v.title, v.filename, v.status, v.review_status, v.created_at,
+        SELECT v.id, v.title, v.video_url AS filename, v.status, v.created_at,
                u.first_name, u.last_name
         FROM videos v
         LEFT JOIN users u ON u.id = v.athlete_id
-        WHERE v.assigned_coach_id = ? AND v.review_status = 'pending'
+        WHERE v.coach_id = ? AND v.status = 'pending_review'
         ORDER BY v.created_at DESC
         LIMIT 20
     ");
@@ -222,12 +222,18 @@ try {
             </div>
         <?php else: ?>
             <?php foreach ($drillVideos as $v):
-                $status = $v['status'] ?? 'uploaded';
+                $status = $v['status'] ?? 'pending_review';
                 $badgeClass = match($status) {
                     'reviewed' => 'reviewed',
-                    'pending' => 'pending',
-                    'processing' => 'processing',
+                    'pending_review' => 'pending',
+                    'archived' => 'processing',
                     default => 'uploaded',
+                };
+                $statusLabel = match($status) {
+                    'pending_review' => 'Pending Review',
+                    'reviewed' => 'Reviewed',
+                    'archived' => 'Archived',
+                    default => ucfirst($status),
                 };
                 $athleteName = trim(($v['first_name'] ?? '') . ' ' . ($v['last_name'] ?? ''));
                 $canDelete = $isAdmin || ((int)($v['athlete_id'] ?? 0) === (int)$user_id) || $isAnyCoach;
@@ -244,7 +250,7 @@ try {
                     </div>
                 </a>
                 <div class="m-video-actions">
-                    <span class="m-video-badge m-video-badge-<?= $badgeClass ?>"><?= htmlspecialchars(ucfirst($status)) ?></span>
+                    <span class="m-video-badge m-video-badge-<?= $badgeClass ?>"><?= htmlspecialchars($statusLabel) ?></span>
                     <?php if ($canDelete): ?>
                     <button type="button" class="m-btn-icon m-btn-delete" onclick="mVidDelete(<?= (int)$v['id'] ?>)" title="Delete video" aria-label="Delete video"><i class="fas fa-trash-alt"></i></button>
                     <?php endif; ?>

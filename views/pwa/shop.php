@@ -11,7 +11,7 @@ $shopCartCount = array_sum(array_column($_SESSION['shop_cart'], 'quantity'));
 // Fetch categories for filter pills
 $shopCategories = [];
 try {
-    $catStmt = $pdo->prepare("SELECT id, name FROM product_categories ORDER BY name ASC");
+    $catStmt = $pdo->prepare("SELECT id, name FROM merchandise_categories ORDER BY name ASC");
     $catStmt->execute();
     $shopCategories = $catStmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { $shopCategories = []; }
@@ -19,10 +19,11 @@ try {
 $products = [];
 try {
     $stmt = $pdo->prepare("
-        SELECT p.id, p.name, p.description, p.price, p.image_url, p.stock_quantity,
+        SELECT p.id, p.name, p.description, p.price, p.image_url,
+               COALESCE((SELECT SUM(ps.quantity) FROM merchandise_product_sizes ps WHERE ps.product_id = p.id), 0) AS stock_quantity,
                p.category_id, c.name as category_name
-        FROM products p
-        LEFT JOIN product_categories c ON c.id = p.category_id
+        FROM merchandise_products p
+        LEFT JOIN merchandise_categories c ON c.id = p.category_id
         WHERE p.is_active = 1
         ORDER BY p.id DESC
     ");
