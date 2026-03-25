@@ -95,22 +95,23 @@ try {
 
         // Pending video reviews
         try {
-            $stmt = $pdo->prepare("SELECT COUNT(*) FROM videos WHERE assigned_coach_id = ? AND review_status = 'pending'");
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM videos WHERE coach_id = ? AND status = 'pending_review'");
             $stmt->execute([$user_id]);
             $pendingVideos = (int)$stmt->fetchColumn();
         } catch (PDOException $e) { $pendingVideos = 0; }
 
-        // Pending video drill reviews with athlete names
+        // Pending video reviews with athlete names
         try {
             $stmt = $pdo->prepare("
-                SELECT vr.*, u.first_name as athlete_first_name, u.last_name as athlete_last_name
-                FROM video_drill_reviews vr
-                LEFT JOIN users u ON vr.athlete_id = u.id
-                WHERE vr.status = 'pending'
-                ORDER BY vr.created_at ASC
+                SELECT v.id, v.title, v.status, v.created_at, v.athlete_id,
+                       u.first_name as athlete_first_name, u.last_name as athlete_last_name
+                FROM videos v
+                LEFT JOIN users u ON v.athlete_id = u.id
+                WHERE v.coach_id = ? AND v.status = 'pending_review'
+                ORDER BY v.created_at ASC
                 LIMIT 5
             ");
-            $stmt->execute();
+            $stmt->execute([$user_id]);
             $pendingReviews = $stmt->fetchAll(PDO::FETCH_ASSOC);
             $pendingReviews = decryptUserRows($pendingReviews);
         } catch (PDOException $e) { $pendingReviews = []; }
