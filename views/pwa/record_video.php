@@ -245,7 +245,7 @@
         formMeta.append('upload_type', 'athlete_video');
         formMeta.append('csrf_token', csrfToken);
         formMeta.append('title', document.getElementById('mVideoTitle').value);
-        formMeta.append('video_category', 'general');
+        formMeta.append('video_category', 'drill');
         var isRecordedBlob = (blob instanceof Blob && !(blob instanceof File));
         formMeta.append('file_name', isRecordedBlob ? 'recorded_video.webm' : (blob.name || 'uploaded_video.mp4'));
         formMeta.append('file_size', blob.size);

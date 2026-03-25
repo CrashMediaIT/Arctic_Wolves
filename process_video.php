@@ -232,7 +232,7 @@ function handleGetVideoUploadUrl() {
 
     ErrorLogger::info("Video upload URL request: user=$user_id type=$upload_type file=$file_name size=$file_size role=$user_role");
 
-    $allowed_types = ['athlete_video', 'coach_video', 'drill_video', 'video_source'];
+    $allowed_types = ['athlete_video', 'coach_video', 'drill_video', 'video_source', 'dev_video'];
     if (!in_array($upload_type, $allowed_types)) {
         throw new Exception('Invalid upload type');
     }
@@ -309,6 +309,9 @@ function handleGetVideoUploadUrl() {
     } elseif ($upload_type === 'coach_video') {
         $filename = 'video_' . $unique_suffix;
         $object_key = 'Images/videos/coach/' . $filename;
+    } elseif ($upload_type === 'dev_video') {
+        $filename = 'dev_video_' . $unique_suffix;
+        $object_key = 'Images/development/videos/' . $filename;
     } else {
         // athlete_video
         $presign_athlete_id = filter_input(INPUT_POST, 'athlete_id', FILTER_VALIDATE_INT) ?: $user_id;
@@ -366,7 +369,7 @@ function handleGetVideoUploadUrl() {
         'athlete_id'     => filter_input(INPUT_POST, 'athlete_id', FILTER_VALIDATE_INT) ?: $user_id,
         'title'          => trim($_POST['title'] ?? ''),
         'description'    => $_POST['description'] ?? '',
-        'video_category' => $_POST['video_category'] ?? 'drill',
+        'video_category' => in_array($_POST['video_category'] ?? '', ['drill', 'game']) ? $_POST['video_category'] : 'drill',
         'game_date'      => $_POST['game_date'] ?? null,
         'team_played_on' => trim($_POST['team_played_on'] ?? ''),
         'opponent_team'  => trim($_POST['opponent_team'] ?? ''),
@@ -927,7 +930,7 @@ function handleMultipartInitiate() {
     }
 
     // Role checks
-    $allowed_types = ['athlete_video', 'coach_video', 'drill_video', 'video_source'];
+    $allowed_types = ['athlete_video', 'coach_video', 'drill_video', 'video_source', 'dev_video'];
     if (!in_array($upload_type, $allowed_types)) {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'Invalid upload type']);
@@ -1016,7 +1019,7 @@ function handleMultipartInitiate() {
         'athlete_id'     => filter_input(INPUT_POST, 'athlete_id', FILTER_VALIDATE_INT) ?: $user_id,
         'title'          => trim($_POST['title'] ?? ''),
         'description'    => $_POST['description'] ?? '',
-        'video_category' => $_POST['video_category'] ?? 'drill',
+        'video_category' => in_array($_POST['video_category'] ?? '', ['drill', 'game']) ? $_POST['video_category'] : 'drill',
         'session_id'     => filter_input(INPUT_POST, 'session_id', FILTER_VALIDATE_INT),
         'drill_id'       => filter_input(INPUT_POST, 'drill_id', FILTER_VALIDATE_INT),
         'rep_number'     => filter_input(INPUT_POST, 'rep_number', FILTER_VALIDATE_INT) ?: 1,
@@ -1270,7 +1273,7 @@ function handleRegisterOfflineQueue() {
         exit;
     }
 
-    $allowed_types = ['athlete_video', 'coach_video', 'drill_video', 'video_source'];
+    $allowed_types = ['athlete_video', 'coach_video', 'drill_video', 'video_source', 'dev_video'];
     if (!in_array($upload_type, $allowed_types)) {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'Invalid upload type']);
@@ -1310,8 +1313,7 @@ function handleRegisterOfflineQueue() {
         $upload_type,
         trim($_POST['title'] ?? ''),
         $_POST['description'] ?? '',
-        $_POST['video_category'] ?? 'drill',
-        $_POST['original_filename'] ?? '',
+        in_array($_POST['video_category'] ?? '', ['drill', 'game']) ? $_POST['video_category'] : 'drill',        $_POST['original_filename'] ?? '',
         filter_input(INPUT_POST, 'file_size', FILTER_VALIDATE_INT) ?: 0,
         $_POST['content_type'] ?? 'video/mp4',
         filter_input(INPUT_POST, 'athlete_id', FILTER_VALIDATE_INT),

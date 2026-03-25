@@ -718,8 +718,8 @@ function handleConfirmDevVideoUpload($pdo, $user_id, $input) {
         return;
     }
     
-    // Validate nonce from session
-    $pending = $_SESSION['pending_video_upload'] ?? null;
+    // Validate nonce from session — process_video.php stores under 'pending_video_upload_general'
+    $pending = $_SESSION['pending_video_upload_general'] ?? $_SESSION['pending_video_upload'] ?? null;
     if (!$pending || !hash_equals($pending['nonce'] ?? '', $upload_nonce)) {
         echo json_encode(['success' => false, 'error' => 'Invalid or expired upload session']);
         return;
@@ -735,8 +735,9 @@ function handleConfirmDevVideoUpload($pdo, $user_id, $input) {
     }
     
     // Build video URL from pending upload metadata
-    $video_url = $pending['rustfs_url'] ?? $pending['public_url'] ?? null;
-    $video_upload_path = $pending['object_key'] ?? null;
+    $object_key = $pending['object_key'] ?? null;
+    $video_url = $object_key ? ('api/media.php?key=' . rawurlencode($object_key)) : ($pending['rustfs_url'] ?? $pending['public_url'] ?? null);
+    $video_upload_path = $object_key;
     $thumbnail_path = null;
     
     // Accept client-side generated thumbnail (base64 JPEG)
@@ -756,7 +757,7 @@ function handleConfirmDevVideoUpload($pdo, $user_id, $input) {
     }
     
     // Clean up session
-    unset($_SESSION['pending_video_upload']);
+    unset($_SESSION['pending_video_upload_general'], $_SESSION['pending_video_upload']);
     
     $stmt = $pdo->prepare("INSERT INTO development_program_videos (enrollment_id, athlete_id, drill_assignment_id, title, description, video_url, video_upload_path, thumbnail_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
     $stmt->execute([$enrollment_id, $user_id, $drill_assignment_id, $title, $description ?: null, $video_url, $video_upload_path, $thumbnail_path]);
