@@ -70,6 +70,16 @@ $badgeClass = match($diff) {
     default => 'default',
 };
 $creatorName = trim(($drill['first_name'] ?? '') . ' ' . ($drill['last_name'] ?? ''));
+
+// Get category name
+$categoryName = '';
+if (!empty($drill['category_id'])) {
+    try {
+        $catStmt = $pdo->prepare("SELECT name FROM drill_categories WHERE id = ?");
+        $catStmt->execute([$drill['category_id']]);
+        $categoryName = $catStmt->fetchColumn() ?: '';
+    } catch (PDOException $e) { /* ignore */ }
+}
 ?>
 <style>
 .m-drill-detail { padding: 16px; font-family: Inter, sans-serif; }
@@ -140,17 +150,69 @@ $creatorName = trim(($drill['first_name'] ?? '') . ' ' . ($drill['last_name'] ??
         <p class="m-drill-hero-desc"><?= htmlspecialchars($drill['description']) ?></p>
         <?php endif; ?>
         <div class="m-drill-hero-meta">
-            <?php if ($drill['duration_minutes']): ?>
+            <?php if ($drill['duration_minutes'] ?? null): ?>
             <span class="m-drill-hero-tag"><i class="fas fa-clock"></i> <?= (int)$drill['duration_minutes'] ?> min</span>
             <?php endif; ?>
             <?php if ($creatorName): ?>
             <span class="m-drill-hero-tag"><i class="fas fa-user"></i> <?= htmlspecialchars($creatorName) ?></span>
             <?php endif; ?>
-            <?php if (!empty($drill['category'])): ?>
-            <span class="m-drill-category-tag"><?= htmlspecialchars($drill['category']) ?></span>
+            <?php if (!empty($categoryName)): ?>
+            <span class="m-drill-category-tag"><?= htmlspecialchars($categoryName) ?></span>
             <?php endif; ?>
         </div>
     </div>
+
+    <?php if (!empty($drill['video_url'])): ?>
+    <div class="m-section">
+        <h3 class="m-section-title">Video</h3>
+        <div style="background:#16161F;border:1px solid #2D2D3F;border-radius:12px;padding:14px;">
+            <?php
+            $videoUrl = $drill['video_url'];
+            $embedUrl = '';
+            if (preg_match('/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/', $videoUrl, $ytMatch)) {
+                $embedUrl = 'https://www.youtube.com/embed/' . $ytMatch[1];
+            } elseif (preg_match('/vimeo\.com\/(\d+)/', $videoUrl, $vmMatch)) {
+                $embedUrl = 'https://player.vimeo.com/video/' . $vmMatch[1];
+            }
+            if ($embedUrl): ?>
+            <div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:8px;">
+                <iframe src="<?= htmlspecialchars($embedUrl) ?>" style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;" allowfullscreen loading="lazy"></iframe>
+            </div>
+            <?php else: ?>
+            <a href="<?= htmlspecialchars($videoUrl) ?>" target="_blank" rel="noopener" style="color:#8B5CF6;text-decoration:none;font-size:13px;display:flex;align-items:center;gap:6px;">
+                <i class="fas fa-external-link-alt"></i> Watch Video
+            </a>
+            <?php endif; ?>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <?php if (!empty($drill['setup'])): ?>
+    <div class="m-section">
+        <h3 class="m-section-title">Setup</h3>
+        <div style="background:#16161F;border:1px solid #2D2D3F;border-radius:12px;padding:14px;">
+            <p style="font-size:13px;color:#A8A8B8;line-height:1.5;margin:0;"><?= nl2br(htmlspecialchars($drill['setup'])) ?></p>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <?php if (!empty($drill['coaching_points'])): ?>
+    <div class="m-section">
+        <h3 class="m-section-title">Coaching Points</h3>
+        <div style="background:#16161F;border:1px solid #2D2D3F;border-radius:12px;padding:14px;">
+            <p style="font-size:13px;color:#A8A8B8;line-height:1.5;margin:0;"><?= nl2br(htmlspecialchars($drill['coaching_points'])) ?></p>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <?php if (!empty($drill['progression'])): ?>
+    <div class="m-section">
+        <h3 class="m-section-title">Progression</h3>
+        <div style="background:#16161F;border:1px solid #2D2D3F;border-radius:12px;padding:14px;">
+            <p style="font-size:13px;color:#A8A8B8;line-height:1.5;margin:0;"><?= nl2br(htmlspecialchars($drill['progression'])) ?></p>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <div class="m-section">
         <h3 class="m-section-title">Steps</h3>
