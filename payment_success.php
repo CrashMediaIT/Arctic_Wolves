@@ -410,6 +410,9 @@ try {
     ]);
     $payment_error = "Payment verification encountered an error. Please contact support.";
 }
+
+$isPwa = !empty($_GET['pwa']);
+$dashBase = $isPwa ? 'pwa.php' : 'dashboard.php';
 ?>
 
 <!DOCTYPE html>
@@ -442,11 +445,11 @@ try {
         <?php endif; ?>
         
         <?php if ($purchase_confirmed === 'dev_program'): ?>
-        <a href="dashboard.php?page=personal_development_my_program" class="btn-primary" style="text-decoration:none; padding:12px 30px; border-radius:6px; display:inline-block;">
+        <a href="<?= $dashBase ?>?page=personal_development_my_program" class="btn-primary" style="text-decoration:none; padding:12px 30px; border-radius:6px; display:inline-block;">
             View My Program
         </a>
         <?php else: ?>
-        <a href="dashboard.php?page=upcoming_sessions" class="btn-primary" style="text-decoration:none; padding:12px 30px; border-radius:6px; display:inline-block;">
+        <a href="<?= $dashBase ?>?page=upcoming_sessions" class="btn-primary" style="text-decoration:none; padding:12px 30px; border-radius:6px; display:inline-block;">
             Return to Upcoming Sessions
         </a>
         <?php endif; ?>
