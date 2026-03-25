@@ -22,7 +22,7 @@
 
 <!-- Main Features -->
 <div class="pwa-menu-group">
-    <div class="pwa-section-label">Features</div>
+    <div class="pwa-section-label">Main Menu</div>
     <ul class="pwa-menu-list">
         <a href="?page=stats" class="pwa-menu-item">
             <i class="fas fa-chart-line"></i> Performance Stats
