@@ -575,6 +575,13 @@ window.pwaRequestCamera = function(videoElement) {
     var elevated = [];
     
     elements.forEach(function(el) {
+        // Skip child elements whose parent is already being elevated.
+        // e.g. .m-modal-sheet inside .m-modal-overlay — only the overlay
+        // should be moved; extracting the sheet breaks visibility toggling.
+        if (el.parentElement && el.parentElement.closest('[data-pwa-elevate-candidate]')) {
+            return;
+        }
+        
         // Only elevate elements that are position:fixed (or meant to be)
         var computed = window.getComputedStyle(el);
         var isFixed = computed.position === 'fixed';
@@ -589,13 +596,24 @@ window.pwaRequestCamera = function(videoElement) {
         });
         
         if (isFixed || hasFixedInCSS || looksLikeFixedElement) {
-            el.setAttribute('data-pwa-elevated', '1');
+            el.setAttribute('data-pwa-elevate-candidate', '1');
             elevated.push(el);
         }
     });
     
-    // Move elements to body, just before the tab bar
-    elevated.forEach(function(el) {
+    // Second pass: remove any element whose ancestor is also in the list
+    var topLevel = elevated.filter(function(el) {
+        var parent = el.parentElement;
+        while (parent && parent !== content) {
+            if (parent.hasAttribute('data-pwa-elevate-candidate')) return false;
+            parent = parent.parentElement;
+        }
+        return true;
+    });
+    
+    // Move only top-level elements to body, just before the tab bar
+    topLevel.forEach(function(el) {
+        el.setAttribute('data-pwa-elevated', '1');
         document.body.insertBefore(el, tabBar);
     });
 })();

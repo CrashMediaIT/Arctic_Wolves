@@ -46,7 +46,12 @@ if (!function_exists('mMsgTimeAgo')) {
 ?>
 <style>
 .m-messages { padding: 0; font-family: Inter, sans-serif; display: flex; flex-direction: column; }
-.m-messages.m-chat-active { flex: 1; min-height: 0; margin: -16px; margin-bottom: -80px; /* negate pwa-content padding so chat fills full viewport */ }
+.m-messages.m-chat-active {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 99; margin: 0; padding: 0; width: 100%;
+    background: var(--bg-main, #0A0A0F);
+    display: flex; flex-direction: column;
+}
 .m-messages-header {
     display: flex; justify-content: space-between; align-items: center;
     padding: 16px 16px 12px;
@@ -224,7 +229,7 @@ if (!function_exists('mMsgTimeAgo')) {
 
 .m-chat-view {
     display: none; flex-direction: column;
-    flex: 1; min-height: 0;
+    flex: 1; min-height: 0; width: 100%;
 }
 .m-chat-header {
     display: flex; align-items: center; gap: 12px;
@@ -247,6 +252,7 @@ if (!function_exists('mMsgTimeAgo')) {
     flex: 1; overflow-y: auto; padding: 12px 16px;
     display: flex; flex-direction: column; gap: 4px;
     -webkit-overflow-scrolling: touch;
+    min-height: 0; width: 100%; box-sizing: border-box;
 }
 .m-chat-bubble-row { display: flex; max-width: 82%; margin-bottom: 2px; }
 .m-chat-bubble-row.m-sent { align-self: flex-end; }
@@ -283,10 +289,11 @@ if (!function_exists('mMsgTimeAgo')) {
 }
 
 .m-chat-input-area {
-    display: flex; gap: 10px; align-items: flex-end;
-    padding: 10px 16px; background: #16161F;
+    display: flex; gap: 8px; align-items: flex-end;
+    padding: 8px 12px; background: #16161F;
     border-top: 1px solid #2D2D3F; flex-shrink: 0;
-    padding-bottom: max(10px, env(safe-area-inset-bottom));
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+    width: 100%; box-sizing: border-box;
 }
 .m-chat-input {
     flex: 1; padding: 10px 14px;
@@ -360,6 +367,7 @@ if (!function_exists('mMsgTimeAgo')) {
 /* Toolbar buttons */
 .m-chat-toolbar {
     display: flex; align-items: center; gap: 2px; flex-shrink: 0;
+    flex-wrap: nowrap !important;
 }
 .m-toolbar-btn {
     width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
@@ -407,6 +415,7 @@ if (!function_exists('mMsgTimeAgo')) {
     display: flex; flex-wrap: wrap; gap: 6px;
     padding: 6px 16px; border-top: 1px solid #2D2D3F;
     background: #16161F; flex-shrink: 0;
+    width: 100%; box-sizing: border-box;
 }
 .m-pending-attachments:empty { display: none; }
 .m-pending-file {

@@ -168,19 +168,28 @@ try {
                     $stmt->execute([$athlete_id, $program_type, $program_name, $template_id ?: null, $start_date, $end_date]);
                     $enrollment_id = $pdo->lastInsertId();
 
-                    Auditor::log($pdo, $athlete_id, 'create', 'development_program_enrollments', $enrollment_id, [
-                        'action' => 'register_dev_program', 'program_type' => $program_type, 'amount' => ($checkout->amount_total / 100)
-                    ]);
+                    try {
+                        Auditor::log($pdo, $athlete_id, 'create', 'development_program_enrollments', $enrollment_id, [
+                            'action' => 'register_dev_program', 'program_type' => $program_type, 'amount' => ($checkout->amount_total / 100)
+                        ]);
+                    } catch (\Throwable $auditErr) {
+                        error_log("Dev program auditor error (enrollment succeeded): " . $auditErr->getMessage());
+                    }
 
                     // NON-CRITICAL: Invoice, notifications, and emails below.
                     // Failures here should NOT prevent showing the success page since
                     // the enrollment was already created and the payment was confirmed.
 
                     // Create invoice for development program enrollment
-                    $dev_total = $checkout->amount_total / 100;
-                    $dev_program_label = $program_type === 'goalie_dev' ? 'Goalie Development Program' : 'Player Development Program';
-                    $dev_items = [['description' => $dev_program_label . ($program_name ? ': ' . $program_name : ''), 'quantity' => 1, 'unit_price' => $dev_total]];
-                    $dev_invoice_id = createPurchaseInvoice($pdo, $athlete_id, $dev_items, $dev_total, 0, $dev_total, 'stripe', $stripe_sid, 'Development program enrollment');
+                    $dev_invoice_id = null;
+                    try {
+                        $dev_total = $checkout->amount_total / 100;
+                        $dev_program_label = $program_type === 'goalie_dev' ? 'Goalie Development Program' : 'Player Development Program';
+                        $dev_items = [['description' => $dev_program_label . ($program_name ? ': ' . $program_name : ''), 'quantity' => 1, 'unit_price' => $dev_total]];
+                        $dev_invoice_id = createPurchaseInvoice($pdo, $athlete_id, $dev_items, $dev_total, 0, $dev_total, 'stripe', $stripe_sid, 'Development program enrollment');
+                    } catch (\Throwable $invoiceErr) {
+                        error_log("Dev program invoice error (enrollment succeeded): " . $invoiceErr->getMessage());
+                    }
 
                     // Notify dev coaches
                     try {
