@@ -122,11 +122,19 @@ try {
                 <strong>Drills:</strong> <?= (int)$matching_enrollment['drill_count'] ?> assigned &bull;
                 <strong>Since:</strong> <?= date('M j, Y', strtotime($matching_enrollment['enrolled_at'])) ?>
             </div>
-        <?php else: ?>
+        <?php else:
+            $dp_type = stripos($dp['name'], 'goalie') !== false ? 'goalie_dev' : 'player_dev';
+        ?>
             <div class="m-devprog-price"><?= $dp['price'] > 0 ? '$' . number_format($dp['price'], 2) : 'Free' ?></div>
-            <a href="?page=booking" class="m-devprog-btn m-devprog-btn-enroll">
-                <i class="fas fa-shopping-cart"></i> Enroll<?= $dp['price'] > 0 ? ' & Pay' : '' ?>
-            </a>
+            <form method="POST" action="process_booking.php" style="display:inline;">
+                <?= csrfTokenInput() ?>
+                <input type="hidden" name="action" value="register_dev_program">
+                <input type="hidden" name="program_type" value="<?= htmlspecialchars($dp_type) ?>">
+                <input type="hidden" name="template_id" value="<?= (int)$dp['id'] ?>">
+                <button type="submit" class="m-devprog-btn m-devprog-btn-enroll">
+                    <i class="fas fa-shopping-cart"></i> Enroll<?= $dp['price'] > 0 ? ' & Pay' : '' ?>
+                </button>
+            </form>
         <?php endif; ?>
     </div>
     <?php endforeach; ?>

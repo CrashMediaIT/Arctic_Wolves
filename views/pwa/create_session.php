@@ -165,7 +165,6 @@ try {
     cancelBtn.addEventListener('click', closeSheet);
     overlay.addEventListener('click', closeSheet);
 
-    // Auto-open the sheet when this page loads
-    setTimeout(openSheet, 50);
+    // Users can open the sheet via button click
 })();
 </script>
