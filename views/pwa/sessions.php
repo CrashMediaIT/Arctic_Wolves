@@ -296,6 +296,127 @@ try {
     });
     $availableSessions = array_slice($availableSessions, 0, 50);
 } catch (PDOException $e) { /* Template tables may not exist */ }
+
+// Fetch active packages for the Packages section
+$bookingPackages = [];
+try {
+    $pkgStmt = $pdo->query("
+        SELECT p.id, p.name, p.description, p.price, p.credits, p.valid_days, p.package_type,
+               p.camp_start_date, p.camp_end_date, p.daily_start_time, p.daily_end_time,
+               p.waitlist_only
+        FROM packages p
+        WHERE p.is_active = 1
+        ORDER BY p.price ASC
+    ");
+    $bookingPackages = $pkgStmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) { $bookingPackages = []; }
+
+// Separate camps (packages with camp dates) from regular packages
+$regularPackages = [];
+$campPackages = [];
+foreach ($bookingPackages as $bp) {
+    if (!empty($bp['camp_start_date']) && !empty($bp['camp_end_date'])) {
+        $campPackages[] = $bp;
+    } else {
+        $regularPackages[] = $bp;
+    }
+}
+
+// Fetch long-term development programs (training_session_templates with is_dev_program = 1)
+$devPrograms = [];
+try {
+    $devStmt = $pdo->query("
+        SELECT tst.id, tst.name, tst.description, tst.price, tst.duration_weeks,
+               tst.session_type, tst.max_participants, tst.waitlist_only,
+               c.first_name as coach_first_name, c.last_name as coach_last_name
+        FROM training_session_templates tst
+        LEFT JOIN users c ON tst.coach_id = c.id
+        WHERE tst.is_active = 1 AND tst.is_dev_program = 1
+        ORDER BY tst.name ASC
+    ");
+    $devPrograms = $devStmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($devPrograms as &$_dp) {
+        foreach (['coach_first_name', 'coach_last_name'] as $_f) {
+            if (!empty($_dp[$_f])) $_dp[$_f] = FieldEncryption::decrypt($_dp[$_f]);
+        }
+    }
+    unset($_dp);
+} catch (PDOException $e) { $devPrograms = []; }
+
+// Fetch non-dev training programs (training_session_templates that are NOT dev programs and NOT regular sessions)
+$trainingPrograms = [];
+try {
+    $tpStmt = $pdo->query("
+        SELECT tst.id, tst.name, tst.description, tst.price, tst.duration_weeks,
+               tst.session_type, tst.max_participants, tst.duration_minutes, tst.waitlist_only,
+               c.first_name as coach_first_name, c.last_name as coach_last_name
+        FROM training_session_templates tst
+        LEFT JOIN users c ON tst.coach_id = c.id
+        WHERE tst.is_active = 1 AND (tst.is_dev_program = 0 OR tst.is_dev_program IS NULL)
+              AND tst.duration_weeks IS NOT NULL AND tst.duration_weeks > 0
+        ORDER BY tst.name ASC
+    ");
+    $trainingPrograms = $tpStmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($trainingPrograms as &$_tp) {
+        foreach (['coach_first_name', 'coach_last_name'] as $_f) {
+            if (!empty($_tp[$_f])) $_tp[$_f] = FieldEncryption::decrypt($_tp[$_f]);
+        }
+    }
+    unset($_tp);
+} catch (PDOException $e) { $trainingPrograms = []; }
+
+// Check waitlist_only status for available sessions (fetch session-level waitlist_only flag)
+$waitlistOnlySessionIds = [];
+try {
+    $wloStmt = $pdo->query("SELECT id FROM sessions WHERE waitlist_only = 1");
+    $waitlistOnlySessionIds = $wloStmt->fetchAll(PDO::FETCH_COLUMN);
+} catch (PDOException $e) { /* waitlist_only column may not exist yet */ }
+
+// Check user's existing waitlist entries for packages and programs
+$userWaitlistPackageIds = [];
+$userWaitlistTemplateIds = [];
+if (!$isAnyCoach) {
+    try {
+        $wpStmt = $pdo->prepare("SELECT package_id FROM waitlists WHERE user_id = ? AND package_id IS NOT NULL AND status IN ('waiting','offered')");
+        $wpStmt->execute([$user_id]);
+        $userWaitlistPackageIds = $wpStmt->fetchAll(PDO::FETCH_COLUMN);
+    } catch (PDOException $e) {}
+    try {
+        $wtStmt = $pdo->prepare("SELECT template_id FROM waitlists WHERE user_id = ? AND template_id IS NOT NULL AND status IN ('waiting','offered')");
+        $wtStmt->execute([$user_id]);
+        $userWaitlistTemplateIds = $wtStmt->fetchAll(PDO::FETCH_COLUMN);
+    } catch (PDOException $e) {}
+}
+
+// Waitlist management data for coaches
+$waitlistManagement = [];
+if ($isAnyCoach) {
+    try {
+        $wmStmt = $pdo->query("
+            SELECT w.id as waitlist_id, w.session_id, w.package_id, w.template_id,
+                   w.position, w.status, w.added_at, w.notified_at, w.token_expires_at,
+                   u.first_name, u.last_name, u.email,
+                   s.title as session_title,
+                   p.name as package_name,
+                   tst.name as template_name
+            FROM waitlists w
+            JOIN users u ON w.user_id = u.id
+            LEFT JOIN sessions s ON w.session_id = s.id
+            LEFT JOIN packages p ON w.package_id = p.id
+            LEFT JOIN training_session_templates tst ON w.template_id = tst.id
+            WHERE w.status IN ('waiting', 'offered')
+            ORDER BY w.added_at ASC
+            LIMIT 100
+        ");
+        $waitlistManagement = $wmStmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($waitlistManagement as &$_wm) {
+            foreach (['first_name', 'last_name', 'email'] as $_f) {
+                if (!empty($_wm[$_f])) $_wm[$_f] = FieldEncryption::decrypt($_wm[$_f]);
+            }
+        }
+        unset($_wm);
+    } catch (PDOException $e) { $waitlistManagement = []; }
+}
 ?>
 <style>
 .m-sessions { padding: 0; font-family: Inter, sans-serif; }
@@ -540,6 +661,50 @@ try {
 .m-avail-actions { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; flex-shrink: 0; }
 .m-avail-price { font-size: 14px; font-weight: 700; color: #10B981; }
 .m-avail-spots { font-size: 10px; color: #A8A8B8; }
+.m-section-divider { border-top: 1px solid #2D2D3F; padding-top: 16px; margin-top: 16px; margin-bottom: 20px; }
+.m-section-icon { color: #8B5CF6; }
+.m-pkg-card {
+    background: #16161F; border: 1px solid #2D2D3F; border-radius: 12px;
+    padding: 16px; margin-bottom: 10px;
+}
+.m-pkg-name { font-size: 14px; font-weight: 600; color: #fff; margin: 0 0 4px; }
+.m-pkg-desc { font-size: 12px; color: #A8A8B8; margin: 0 0 10px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.m-pkg-footer {
+    display: flex; justify-content: space-between; align-items: center;
+    padding-top: 10px; border-top: 1px solid #2D2D3F;
+}
+.m-pkg-meta { font-size: 11px; color: #6B6B7B; display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.m-pkg-meta i { font-size: 10px; color: #6B6B7B; }
+.m-camp-dates { font-size: 11px; color: #F59E0B; margin-bottom: 6px; }
+.m-camp-dates i { font-size: 10px; }
+.m-dev-card {
+    background: #16161F; border: 1px solid #2D2D3F; border-radius: 12px;
+    padding: 16px; margin-bottom: 10px;
+}
+.m-dev-name { font-size: 14px; font-weight: 600; color: #fff; margin: 0 0 4px; }
+.m-dev-desc { font-size: 12px; color: #A8A8B8; margin: 0 0 8px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.m-dev-meta { font-size: 11px; color: #6B6B7B; display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.m-dev-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid #2D2D3F; }
+.m-waitlist-badge { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: rgba(245,158,11,0.15); color: #F59E0B; font-weight: 600; }
+.m-wl-section { margin-top: 24px; padding-top: 16px; border-top: 2px solid #2D2D3F; }
+.m-wl-header { font-size: 15px; font-weight: 700; color: #fff; margin: 0 0 4px; }
+.m-wl-sub { font-size: 12px; color: #6B6B7B; margin: 0 0 14px; }
+.m-wl-card {
+    background: #16161F; border: 1px solid #2D2D3F; border-radius: 12px;
+    padding: 14px; margin-bottom: 10px; display: flex; align-items: center; gap: 12px;
+}
+.m-wl-avatar {
+    width: 40px; height: 40px; border-radius: 50%; background: rgba(107,70,193,0.15);
+    color: #8B5CF6; display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700; flex-shrink: 0;
+}
+.m-wl-info { flex: 1; min-width: 0; }
+.m-wl-name { font-size: 13px; font-weight: 600; color: #fff; }
+.m-wl-detail { font-size: 11px; color: #A8A8B8; margin-top: 2px; }
+.m-wl-product { font-size: 11px; color: #6B6B7B; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m-wl-actions-col { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; flex-shrink: 0; }
+.m-wl-pos { font-size: 11px; font-weight: 600; color: #F59E0B; }
+.m-wl-status-offered { color: #10B981; }
 </style>
 
 <div class="m-sessions">
@@ -551,6 +716,11 @@ try {
         <button class="m-segment" data-panel="booking" aria-pressed="false">
             <i class="fas fa-plus-circle"></i> Book
         </button>
+        <?php if ($isAnyCoach && !empty($waitlistManagement)): ?>
+        <button class="m-segment" data-panel="waitlist" aria-pressed="false">
+            <i class="fas fa-clock"></i> Waitlist
+        </button>
+        <?php endif; ?>
         <div class="m-segment-slider"></div>
     </div>
 
@@ -741,6 +911,9 @@ try {
                             <?php else: ?>
                             <button type="button" class="m-book-btn m-book-btn-warning m-card-action" onclick="mJoinWaitlist(<?= (int)$avSess['id'] ?>)"><i class="fas fa-clock"></i> Waitlist</button>
                             <?php endif; ?>
+                        <?php elseif (!empty($avSess['date_id']) ? false : in_array($avSess['id'], $waitlistOnlySessionIds)): ?>
+                            <span class="m-waitlist-badge">Waitlist Only</span>
+                            <button type="button" class="m-book-btn m-book-btn-warning m-card-action" onclick="mJoinWaitlist(<?= (int)$avSess['id'] ?>)"><i class="fas fa-clock"></i> Join Waitlist</button>
                         <?php else: ?>
                             <?php if (!empty($avSess['date_id'])): ?>
                             <button type="button" class="m-book-btn m-book-btn-primary m-card-action" onclick="mBookTemplateSession(<?= (int)$avSess['date_id'] ?>)"><i class="fas fa-plus"></i> Register</button>
@@ -826,7 +999,227 @@ try {
                 <?php endforeach; ?>
             <?php endif; ?>
         </div>
+
+        <!-- Training Packages Section -->
+        <div class="m-section-divider">
+            <h4 style="color:#fff;font-size:15px;font-weight:700;margin:0 0 4px;"><i class="fas fa-box m-section-icon"></i> Training Packages</h4>
+            <p style="font-size:12px;color:#6B6B7B;margin:0 0 14px;">Purchase session packages and save</p>
+            <?php if (empty($regularPackages)): ?>
+                <div class="m-empty-state"><i class="fas fa-box-open"></i><p>No packages available</p></div>
+            <?php else: ?>
+                <?php foreach ($regularPackages as $pkg):
+                    $pkgPrice = (float)($pkg['price'] ?? 0);
+                    $pkgCredits = (int)($pkg['credits'] ?? 0);
+                    $pkgDays = (int)($pkg['valid_days'] ?? 0);
+                    $isWaitlistOnly = !empty($pkg['waitlist_only']);
+                    $isOnPkgWaitlist = in_array($pkg['id'], $userWaitlistPackageIds);
+                ?>
+                <div class="m-pkg-card">
+                    <div class="m-pkg-name"><?= htmlspecialchars($pkg['name']) ?>
+                        <?php if ($isWaitlistOnly): ?> <span class="m-waitlist-badge">Waitlist Only</span><?php endif; ?>
+                    </div>
+                    <?php if (!empty($pkg['description'])): ?>
+                    <p class="m-pkg-desc"><?= htmlspecialchars($pkg['description']) ?></p>
+                    <?php endif; ?>
+                    <div class="m-pkg-meta">
+                        <?php if ($pkgCredits > 0): ?><span><i class="fas fa-ticket"></i> <?= $pkgCredits ?> credit<?= $pkgCredits !== 1 ? 's' : '' ?></span><?php endif; ?>
+                        <?php if ($pkgDays > 0): ?><span><i class="fas fa-clock"></i> <?= $pkgDays ?> day<?= $pkgDays !== 1 ? 's' : '' ?> valid</span><?php endif; ?>
+                        <?php if (!empty($pkg['package_type']) && $pkg['package_type'] !== 'credits'): ?>
+                        <span><i class="fas fa-tag"></i> <?= htmlspecialchars(ucfirst(str_replace('_', ' ', $pkg['package_type']))) ?></span>
+                        <?php endif; ?>
+                    </div>
+                    <div class="m-pkg-footer">
+                        <span class="m-avail-price">$<?= number_format($pkgPrice, 2) ?></span>
+                        <?php if ($isOnPkgWaitlist): ?>
+                            <span class="m-badge m-badge-waitlist"><i class="fas fa-clock"></i> On Waitlist</span>
+                        <?php elseif ($isWaitlistOnly): ?>
+                            <button type="button" class="m-book-btn m-book-btn-warning" onclick="mJoinPackageWaitlist(<?= (int)$pkg['id'] ?>)"><i class="fas fa-clock"></i> Join Waitlist</button>
+                        <?php else: ?>
+                            <form action="process_purchase_package.php" method="POST" style="display:inline;">
+                                <?= csrfTokenInput() ?>
+                                <input type="hidden" name="package_id" value="<?= (int)$pkg['id'] ?>">
+                                <input type="hidden" name="pwa_context" value="1">
+                                <button type="submit" class="m-book-btn m-book-btn-primary"><i class="fas fa-cart-plus"></i> Purchase</button>
+                            </form>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+
+        <!-- Programs & Camps Section -->
+        <div class="m-section-divider">
+            <h4 style="color:#fff;font-size:15px;font-weight:700;margin:0 0 4px;"><i class="fas fa-campground m-section-icon"></i> Programs &amp; Camps</h4>
+            <p style="font-size:12px;color:#6B6B7B;margin:0 0 14px;">Multi-week training programs and camp sessions</p>
+            <?php if (empty($campPackages) && empty($trainingPrograms)): ?>
+                <div class="m-empty-state"><i class="fas fa-campground"></i><p>No programs or camps available</p></div>
+            <?php else: ?>
+                <?php foreach ($campPackages as $camp):
+                    $campPrice = (float)($camp['price'] ?? 0);
+                    $campStart = !empty($camp['camp_start_date']) ? date('M j', strtotime($camp['camp_start_date'])) : '';
+                    $campEnd = !empty($camp['camp_end_date']) ? date('M j, Y', strtotime($camp['camp_end_date'])) : '';
+                    $isWaitlistOnly = !empty($camp['waitlist_only']);
+                    $isOnCampWaitlist = in_array($camp['id'], $userWaitlistPackageIds);
+                ?>
+                <div class="m-pkg-card">
+                    <div class="m-pkg-name"><?= htmlspecialchars($camp['name']) ?>
+                        <?php if ($isWaitlistOnly): ?> <span class="m-waitlist-badge">Waitlist Only</span><?php endif; ?>
+                    </div>
+                    <?php if (!empty($camp['description'])): ?>
+                    <p class="m-pkg-desc"><?= htmlspecialchars($camp['description']) ?></p>
+                    <?php endif; ?>
+                    <?php if ($campStart && $campEnd): ?>
+                    <div class="m-camp-dates"><i class="fas fa-calendar-range"></i> <?= $campStart ?> &ndash; <?= $campEnd ?></div>
+                    <?php endif; ?>
+                    <?php if (!empty($camp['daily_start_time']) && !empty($camp['daily_end_time'])): ?>
+                    <div class="m-pkg-meta"><span><i class="fas fa-clock"></i> <?= date('g:i A', strtotime($camp['daily_start_time'])) ?> &ndash; <?= date('g:i A', strtotime($camp['daily_end_time'])) ?></span></div>
+                    <?php endif; ?>
+                    <div class="m-pkg-footer">
+                        <span class="m-avail-price">$<?= number_format($campPrice, 2) ?></span>
+                        <?php if ($isOnCampWaitlist): ?>
+                            <span class="m-badge m-badge-waitlist"><i class="fas fa-clock"></i> On Waitlist</span>
+                        <?php elseif ($isWaitlistOnly): ?>
+                            <button type="button" class="m-book-btn m-book-btn-warning" onclick="mJoinPackageWaitlist(<?= (int)$camp['id'] ?>)"><i class="fas fa-clock"></i> Join Waitlist</button>
+                        <?php else: ?>
+                            <form action="process_purchase_package.php" method="POST" style="display:inline;">
+                                <?= csrfTokenInput() ?>
+                                <input type="hidden" name="package_id" value="<?= (int)$camp['id'] ?>">
+                                <input type="hidden" name="pwa_context" value="1">
+                                <button type="submit" class="m-book-btn m-book-btn-primary"><i class="fas fa-cart-plus"></i> Enroll</button>
+                            </form>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+                <?php foreach ($trainingPrograms as $tp):
+                    $tpPrice = (float)($tp['price'] ?? 0);
+                    $tpWeeks = (int)($tp['duration_weeks'] ?? 0);
+                    $tpCoach = trim(($tp['coach_first_name'] ?? '') . ' ' . ($tp['coach_last_name'] ?? ''));
+                    $isWaitlistOnly = !empty($tp['waitlist_only']);
+                    $isOnTpWaitlist = in_array($tp['id'], $userWaitlistTemplateIds);
+                ?>
+                <div class="m-dev-card">
+                    <div class="m-dev-name"><?= htmlspecialchars($tp['name']) ?>
+                        <?php if ($isWaitlistOnly): ?> <span class="m-waitlist-badge">Waitlist Only</span><?php endif; ?>
+                    </div>
+                    <?php if (!empty($tp['description'])): ?>
+                    <p class="m-dev-desc"><?= htmlspecialchars($tp['description']) ?></p>
+                    <?php endif; ?>
+                    <div class="m-dev-meta">
+                        <?php if ($tpWeeks > 0): ?><span><i class="fas fa-calendar-week"></i> <?= $tpWeeks ?> week<?= $tpWeeks !== 1 ? 's' : '' ?></span><?php endif; ?>
+                        <?php if (!empty($tp['duration_minutes'])): ?><span><i class="fas fa-clock"></i> <?= (int)$tp['duration_minutes'] ?>min/session</span><?php endif; ?>
+                        <?php if ($tpCoach): ?><span><i class="fas fa-user-tie"></i> <?= htmlspecialchars($tpCoach) ?></span><?php endif; ?>
+                    </div>
+                    <div class="m-dev-footer">
+                        <span class="m-avail-price"><?= $tpPrice > 0 ? '$' . number_format($tpPrice, 2) : 'Free' ?></span>
+                        <?php if ($isOnTpWaitlist): ?>
+                            <span class="m-badge m-badge-waitlist"><i class="fas fa-clock"></i> On Waitlist</span>
+                        <?php elseif ($isWaitlistOnly): ?>
+                            <button type="button" class="m-book-btn m-book-btn-warning" onclick="mJoinTemplateWaitlist(<?= (int)$tp['id'] ?>)"><i class="fas fa-clock"></i> Join Waitlist</button>
+                        <?php else: ?>
+                            <form method="POST" action="process_booking.php" style="display:inline;">
+                                <?= csrfTokenInput() ?>
+                                <input type="hidden" name="action" value="register_dev_program">
+                                <input type="hidden" name="template_id" value="<?= (int)$tp['id'] ?>">
+                                <input type="hidden" name="program_type" value="player_dev">
+                                <input type="hidden" name="pwa_context" value="1">
+                                <button type="submit" class="m-book-btn m-book-btn-primary"><i class="fas fa-plus"></i> Enroll</button>
+                            </form>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+
+        <!-- Long-Term Development Section -->
+        <div class="m-section-divider">
+            <h4 style="color:#fff;font-size:15px;font-weight:700;margin:0 0 4px;"><i class="fas fa-chart-line m-section-icon"></i> Long-Term Development</h4>
+            <p style="font-size:12px;color:#6B6B7B;margin:0 0 14px;">Extended development programs for skill progression</p>
+            <?php if (empty($devPrograms)): ?>
+                <div class="m-empty-state"><i class="fas fa-chart-line"></i><p>No development programs available</p></div>
+            <?php else: ?>
+                <?php foreach ($devPrograms as $dp):
+                    $dpPrice = (float)($dp['price'] ?? 0);
+                    $dpWeeks = (int)($dp['duration_weeks'] ?? 0);
+                    $dpCoach = trim(($dp['coach_first_name'] ?? '') . ' ' . ($dp['coach_last_name'] ?? ''));
+                    $isWaitlistOnly = !empty($dp['waitlist_only']);
+                    $isOnDpWaitlist = in_array($dp['id'], $userWaitlistTemplateIds);
+                    $dpType = ($dp['session_type'] === 'on_ice') ? 'goalie_dev' : 'player_dev';
+                ?>
+                <div class="m-dev-card">
+                    <div class="m-dev-name"><?= htmlspecialchars($dp['name']) ?>
+                        <?php if ($isWaitlistOnly): ?> <span class="m-waitlist-badge">Waitlist Only</span><?php endif; ?>
+                    </div>
+                    <?php if (!empty($dp['description'])): ?>
+                    <p class="m-dev-desc"><?= htmlspecialchars($dp['description']) ?></p>
+                    <?php endif; ?>
+                    <div class="m-dev-meta">
+                        <?php if ($dpWeeks > 0): ?><span><i class="fas fa-calendar-week"></i> <?= $dpWeeks ?> week<?= $dpWeeks !== 1 ? 's' : '' ?></span><?php endif; ?>
+                        <?php if ($dpCoach): ?><span><i class="fas fa-user-tie"></i> <?= htmlspecialchars($dpCoach) ?></span><?php endif; ?>
+                        <?php if (!empty($dp['max_participants'])): ?><span><i class="fas fa-users"></i> Max <?= (int)$dp['max_participants'] ?></span><?php endif; ?>
+                    </div>
+                    <div class="m-dev-footer">
+                        <span class="m-avail-price"><?= $dpPrice > 0 ? '$' . number_format($dpPrice, 2) : 'Free' ?></span>
+                        <?php if ($isOnDpWaitlist): ?>
+                            <span class="m-badge m-badge-waitlist"><i class="fas fa-clock"></i> On Waitlist</span>
+                        <?php elseif ($isWaitlistOnly): ?>
+                            <button type="button" class="m-book-btn m-book-btn-warning" onclick="mJoinTemplateWaitlist(<?= (int)$dp['id'] ?>)"><i class="fas fa-clock"></i> Join Waitlist</button>
+                        <?php else: ?>
+                            <form method="POST" action="process_booking.php" style="display:inline;">
+                                <?= csrfTokenInput() ?>
+                                <input type="hidden" name="action" value="register_dev_program">
+                                <input type="hidden" name="template_id" value="<?= (int)$dp['id'] ?>">
+                                <input type="hidden" name="program_type" value="<?= htmlspecialchars($dpType) ?>">
+                                <input type="hidden" name="pwa_context" value="1">
+                                <button type="submit" class="m-book-btn m-book-btn-primary"><i class="fas fa-plus"></i> Enroll</button>
+                            </form>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
     </div>
+
+    <!-- Waitlist Management Tab (Coaches Only) -->
+    <?php if ($isAnyCoach && !empty($waitlistManagement)): ?>
+    <div class="m-tab-panel" id="m-panel-waitlist">
+        <div class="m-wl-section" style="margin-top:0;padding-top:0;border-top:none;">
+            <h4 class="m-wl-header"><i class="fas fa-clipboard-list" style="color:#F59E0B;"></i> Waitlist Management</h4>
+            <p class="m-wl-sub"><?= count($waitlistManagement) ?> athlete<?= count($waitlistManagement) !== 1 ? 's' : '' ?> on waitlists</p>
+
+            <?php foreach ($waitlistManagement as $wm):
+                $wmName = trim(($wm['first_name'] ?? '') . ' ' . ($wm['last_name'] ?? ''));
+                $wmInitials = strtoupper(substr($wm['first_name'] ?? '', 0, 1) . substr($wm['last_name'] ?? '', 0, 1));
+                $wmProduct = $wm['session_title'] ?? $wm['package_name'] ?? $wm['template_name'] ?? 'Unknown';
+                $wmType = $wm['session_id'] ? 'Session' : ($wm['package_id'] ? 'Package' : 'Program');
+                $wmIsOffered = ($wm['status'] === 'offered');
+                $wmExpires = !empty($wm['token_expires_at']) ? date('M j, g:i A', strtotime($wm['token_expires_at'])) : '';
+            ?>
+            <div class="m-wl-card">
+                <div class="m-wl-avatar"><?= htmlspecialchars($wmInitials) ?></div>
+                <div class="m-wl-info">
+                    <div class="m-wl-name"><?= htmlspecialchars($wmName) ?></div>
+                    <div class="m-wl-detail"><?= htmlspecialchars($wm['email'] ?? '') ?></div>
+                    <div class="m-wl-product"><i class="fas fa-tag"></i> <?= htmlspecialchars($wmProduct) ?> (<?= $wmType ?>)</div>
+                    <?php if ($wmIsOffered && $wmExpires): ?>
+                    <div style="font-size:10px;color:#10B981;margin-top:2px;"><i class="fas fa-envelope"></i> Offered &mdash; Expires <?= $wmExpires ?></div>
+                    <?php endif; ?>
+                </div>
+                <div class="m-wl-actions-col">
+                    <span class="m-wl-pos <?= $wmIsOffered ? 'm-wl-status-offered' : '' ?>"><?= $wmIsOffered ? 'Offered' : '#' . (int)$wm['position'] ?></span>
+                    <?php if (!$wmIsOffered): ?>
+                    <button type="button" class="m-book-btn m-book-btn-primary m-card-action" onclick="mOfferSpot(<?= (int)$wm['waitlist_id'] ?>)" title="Send enrollment email"><i class="fas fa-envelope"></i> Offer</button>
+                    <?php endif; ?>
+                    <button type="button" class="m-book-btn m-book-btn-warning m-card-action" onclick="mEnrollFromWaitlist(<?= (int)$wm['waitlist_id'] ?>)" title="Enroll directly"><i class="fas fa-user-plus"></i> Enroll</button>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <?php if ($isAnyCoach): ?>
     <a href="?page=create_session" class="m-fab" title="Create Session"><i class="fas fa-plus"></i></a>
@@ -1148,6 +1541,64 @@ async function mLeaveWaitlist(sessionId) {
         .then(function(data) {
             if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
             else { showToast(data.message || 'Failed to leave waitlist', 'error'); }
+        })
+        .catch(function() { showToast('Network error. Please try again.', 'error'); });
+}
+
+function mJoinPackageWaitlist(packageId) {
+    var form = new FormData();
+    form.append('action', 'join_waitlist');
+    form.append('package_id', packageId);
+    form.append('csrf_token', document.querySelector('#m-book-form input[name="csrf_token"]').value);
+    fetch('process_booking.php', { method: 'POST', body: form })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) { persistToast(data.message || 'Added to waitlist!', 'success'); location.reload(); }
+            else { showToast(data.message || 'Failed to join waitlist', 'error'); }
+        })
+        .catch(function() { showToast('Network error. Please try again.', 'error'); });
+}
+
+function mJoinTemplateWaitlist(templateId) {
+    var form = new FormData();
+    form.append('action', 'join_waitlist');
+    form.append('template_id', templateId);
+    form.append('csrf_token', document.querySelector('#m-book-form input[name="csrf_token"]').value);
+    fetch('process_booking.php', { method: 'POST', body: form })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) { persistToast(data.message || 'Added to waitlist!', 'success'); location.reload(); }
+            else { showToast(data.message || 'Failed to join waitlist', 'error'); }
+        })
+        .catch(function() { showToast('Network error. Please try again.', 'error'); });
+}
+
+async function mOfferSpot(waitlistId) {
+    if (!await showConfirmModal('Send enrollment email to this athlete? They will have 48 hours to purchase.')) return;
+    var form = new FormData();
+    form.append('action', 'offer_waitlist_spot');
+    form.append('waitlist_id', waitlistId);
+    form.append('csrf_token', document.querySelector('#m-book-form input[name="csrf_token"]').value);
+    fetch('process_booking.php', { method: 'POST', body: form })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) { persistToast(data.message || 'Enrollment email sent!', 'success'); location.reload(); }
+            else { showToast(data.message || 'Failed to offer spot', 'error'); }
+        })
+        .catch(function() { showToast('Network error. Please try again.', 'error'); });
+}
+
+async function mEnrollFromWaitlist(waitlistId) {
+    if (!await showConfirmModal('Directly enroll this athlete? This bypasses the payment requirement.')) return;
+    var form = new FormData();
+    form.append('action', 'enroll_from_waitlist');
+    form.append('waitlist_id', waitlistId);
+    form.append('csrf_token', document.querySelector('#m-book-form input[name="csrf_token"]').value);
+    fetch('process_booking.php', { method: 'POST', body: form })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) { persistToast(data.message || 'Athlete enrolled!', 'success'); location.reload(); }
+            else { showToast(data.message || 'Failed to enroll athlete', 'error'); }
         })
         .catch(function() { showToast('Network error. Please try again.', 'error'); });
 }
