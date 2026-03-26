@@ -117,6 +117,11 @@ try {
     font-size: 10px; padding: 2px 8px; border-radius: 6px;
     background: rgba(107,70,193,0.12); color: #8B5CF6; font-weight: 500;
 }
+.m-drill-thumb {
+    width: 100%; height: 140px; border-radius: 10px 10px 0 0;
+    object-fit: cover; display: block; margin-bottom: 8px;
+    background: #0A0A0F;
+}
 .m-fab {
     position: fixed; bottom: 80px; right: 20px; z-index: 50;
     width: 56px; height: 56px; border-radius: 50%;
@@ -354,6 +359,16 @@ try {
                 $categoryDisplay = $d['category_name'] ?? '';
             ?>
             <div class="m-drill-card" data-drill-title="<?= htmlspecialchars(strtolower($d['title'])) ?>" data-drill-id="<?= (int)$d['id'] ?>">
+                <?php
+                $drillImgUrl = '';
+                if (!empty($d['custom_image'])) {
+                    $drillImgUrl = resolveRustfsUrl($pdo, $d['custom_image']);
+                } elseif (!empty($d['thumbnail_path'])) {
+                    $drillImgUrl = resolveRustfsUrl($pdo, $d['thumbnail_path']);
+                }
+                if ($drillImgUrl): ?>
+                <img class="m-drill-thumb" src="<?= htmlspecialchars($drillImgUrl) ?>" alt="<?= htmlspecialchars($d['title']) ?>" loading="lazy" onerror="this.style.display='none'">
+                <?php endif; ?>
                 <div class="m-drill-top">
                     <input type="checkbox" class="m-drill-select" value="<?= (int)$d['id'] ?>" onchange="mUpdateBulkSelection()" style="display:none;">
                     <a href="?page=view_drill&id=<?= (int)$d['id'] ?>" style="flex:1;text-decoration:none;display:flex;align-items:flex-start;gap:8px;">
@@ -410,6 +425,16 @@ try {
                 $creatorName = trim(($d['first_name'] ?? '') . ' ' . ($d['last_name'] ?? ''));
             ?>
             <div class="m-drill-card" data-drill-title="<?= htmlspecialchars(strtolower($d['title'])) ?>" data-drill-id="<?= (int)$d['id'] ?>">
+                <?php
+                $drillImgUrl = '';
+                if (!empty($d['custom_image'])) {
+                    $drillImgUrl = resolveRustfsUrl($pdo, $d['custom_image']);
+                } elseif (!empty($d['thumbnail_path'])) {
+                    $drillImgUrl = resolveRustfsUrl($pdo, $d['thumbnail_path']);
+                }
+                if ($drillImgUrl): ?>
+                <img class="m-drill-thumb" src="<?= htmlspecialchars($drillImgUrl) ?>" alt="<?= htmlspecialchars($d['title']) ?>" loading="lazy" onerror="this.style.display='none'">
+                <?php endif; ?>
                 <div class="m-drill-top">
                     <input type="checkbox" class="m-drill-select" value="<?= (int)$d['id'] ?>" onchange="mUpdateBulkSelection()" style="display:none;">
                     <a href="?page=view_drill&id=<?= (int)$d['id'] ?>" style="flex:1;text-decoration:none;display:flex;align-items:flex-start;gap:8px;">

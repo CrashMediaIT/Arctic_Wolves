@@ -162,6 +162,22 @@ if (!empty($drill['category_id'])) {
         </div>
     </div>
 
+    <?php
+    $drillImageUrl = '';
+    if (!empty($drill['custom_image'])) {
+        $drillImageUrl = resolveRustfsUrl($pdo, $drill['custom_image']);
+    } elseif (!empty($drill['thumbnail_path'])) {
+        $drillImageUrl = resolveRustfsUrl($pdo, $drill['thumbnail_path']);
+    }
+    if ($drillImageUrl): ?>
+    <div class="m-section">
+        <h3 class="m-section-title">Diagram</h3>
+        <div style="background:#16161F;border:1px solid #2D2D3F;border-radius:12px;overflow:hidden;">
+            <img src="<?= htmlspecialchars($drillImageUrl) ?>" alt="<?= htmlspecialchars($drill['title']) ?> diagram" style="width:100%;display:block;border-radius:12px;" loading="lazy" onerror="this.parentElement.parentElement.style.display='none'">
+        </div>
+    </div>
+    <?php endif; ?>
+
     <?php if (!empty($drill['video_url'])): ?>
     <div class="m-section">
         <h3 class="m-section-title">Video</h3>
