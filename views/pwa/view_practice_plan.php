@@ -101,7 +101,7 @@ $creatorName = trim(($plan['first_name'] ?? '') . ' ' . ($plan['last_name'] ?? '
 }
 .m-plan-drill-item {
     background: #16161F; border: 1px solid #2D2D3F; border-radius: 12px;
-    margin-bottom: 10px; text-decoration: none; display: block;
+    margin-bottom: 10px; text-decoration: none; display: block !important;
     min-height: 44px; overflow: hidden;
 }
 .m-plan-drill-thumb {
