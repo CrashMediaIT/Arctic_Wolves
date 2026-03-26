@@ -3570,8 +3570,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Convert forms to AJAX submissions
+    // Convert forms to AJAX submissions (skip dev program forms which have their own handler)
     document.querySelectorAll('.modal form').forEach(function(form) {
+        if (form.id === 'add-dev-program-form' || form.id === 'edit-dev-program-form') return;
         form.addEventListener('submit', function(e) {
             e.preventDefault();
             
@@ -4305,6 +4306,7 @@ function closeDevProgramModal(type) {
 
 function saveDevProgram(event, mode) {
     event.preventDefault();
+    event.stopImmediatePropagation();
     var prefix = mode === 'create' ? '' : 'edit-';
     var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '';
     

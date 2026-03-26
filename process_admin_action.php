@@ -897,7 +897,9 @@ if ($action == 'update_training_session') {
 if ($action == 'create_dev_program') {
     header('Content-Type: application/json');
     try {
-        $jsonInput = json_decode(file_get_contents('php://input'), true);
+        if (!isset($jsonInput) || !is_array($jsonInput)) {
+            $jsonInput = json_decode(file_get_contents('php://input'), true);
+        }
         $name = trim($jsonInput['name'] ?? '');
         $description = trim($jsonInput['description'] ?? '');
         $price = floatval($jsonInput['price'] ?? 0);
@@ -938,7 +940,9 @@ if ($action == 'create_dev_program') {
 if ($action == 'update_dev_program') {
     header('Content-Type: application/json');
     try {
-        $jsonInput = json_decode(file_get_contents('php://input'), true);
+        if (!isset($jsonInput) || !is_array($jsonInput)) {
+            $jsonInput = json_decode(file_get_contents('php://input'), true);
+        }
         $id = intval($jsonInput['id'] ?? 0);
         $name = trim($jsonInput['name'] ?? '');
         $description = trim($jsonInput['description'] ?? '');

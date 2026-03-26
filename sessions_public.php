@@ -211,7 +211,19 @@ if ($db_connected) {
             ORDER BY tst.name ASC
         ");
         $devPrograms = $dpStmt->fetchAll(PDO::FETCH_ASSOC);
-        $devPrograms = decryptUserRows($devPrograms);
+        // Decrypt coach names individually to avoid decryptUserRows failing on non-user rows
+        foreach ($devPrograms as &$_dp) {
+            foreach (['coach_first_name', 'coach_last_name'] as $_f) {
+                if (!empty($_dp[$_f])) {
+                    try {
+                        $_dp[$_f] = FieldEncryption::decrypt($_dp[$_f]);
+                    } catch (Exception $decErr) {
+                        // If decryption fails, keep the raw value
+                    }
+                }
+            }
+        }
+        unset($_dp);
     } catch (PDOException $e) {
         // Column may not exist on older installations — try adding it once, then retry
         try {
@@ -227,11 +239,25 @@ if ($db_connected) {
                 ORDER BY tst.name ASC
             ");
             $devPrograms = $dpStmt->fetchAll(PDO::FETCH_ASSOC);
-            $devPrograms = decryptUserRows($devPrograms);
-        } catch (PDOException $e2) {
+            foreach ($devPrograms as &$_dp) {
+                foreach (['coach_first_name', 'coach_last_name'] as $_f) {
+                    if (!empty($_dp[$_f])) {
+                        try {
+                            $_dp[$_f] = FieldEncryption::decrypt($_dp[$_f]);
+                        } catch (Exception $decErr) {
+                            // If decryption fails, keep the raw value
+                        }
+                    }
+                }
+            }
+            unset($_dp);
+        } catch (Exception $e2) {
             error_log("Public dev programs fetch error: " . $e2->getMessage());
             $devPrograms = [];
         }
+    } catch (Exception $e) {
+        error_log("Public dev programs general error: " . $e->getMessage());
+        $devPrograms = [];
     }
 }
 
