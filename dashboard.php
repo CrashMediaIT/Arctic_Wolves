@@ -380,14 +380,14 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
     <link rel="apple-touch-icon" href="<?= htmlspecialchars($site_favicon_url) ?>">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#6B46C1">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     <!-- Unified Style Guide - Authoritative stylesheet based on Upcoming Sessions and Bookings -->
     <link rel="stylesheet" href="css/style-guide.css">
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="views/shared_styles.css">
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dashjs@5.0.0/dist/dash.all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dashjs@5.0.0/dist/dash.all.min.js" crossorigin="anonymous"></script>
     <script src="js/hls-player.js"></script>
     <script src="js/typeahead.js"></script>
     <script>window.APP_TIMEZONE = <?= json_encode(date_default_timezone_get()) ?>;</script>

@@ -1553,7 +1553,7 @@ function scanFromCamera() {
 </script>
 
 <!-- jsQR library for camera-based QR code scanning -->
-<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js" crossorigin="anonymous"></script>
 
 <!-- Child Check-In/Check-Out Scanner Modal -->
 <div id="checkin-scanner-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 10000; align-items: center; justify-content: center;">

@@ -23,17 +23,22 @@ if (!$webhookData) {
 // Get OpenSign settings
 $settings = getOpenSignSettings($pdo);
 
-// Verify webhook signature if secret is configured
-if (!empty($settings['opensign_webhook_secret'])) {
-    $signature = $_SERVER['HTTP_X_OPENSIGN_SIGNATURE'] ?? '';
-    $expectedSignature = hash_hmac('sha256', $rawInput, $settings['opensign_webhook_secret']);
-    
-    if (!hash_equals($expectedSignature, $signature)) {
-        error_log("OpenSign webhook signature verification failed");
-        http_response_code(401);
-        echo json_encode(['success' => false, 'message' => 'Invalid signature']);
-        exit;
-    }
+// Verify webhook signature — require a configured secret
+if (empty($settings['opensign_webhook_secret'])) {
+    error_log("OpenSign webhook rejected: no webhook secret configured");
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'Webhook secret not configured']);
+    exit;
+}
+
+$signature = $_SERVER['HTTP_X_OPENSIGN_SIGNATURE'] ?? '';
+$expectedSignature = hash_hmac('sha256', $rawInput, $settings['opensign_webhook_secret']);
+
+if (!hash_equals($expectedSignature, $signature)) {
+    error_log("OpenSign webhook signature verification failed");
+    http_response_code(401);
+    echo json_encode(['success' => false, 'message' => 'Invalid signature']);
+    exit;
 }
 
 // Log the webhook event

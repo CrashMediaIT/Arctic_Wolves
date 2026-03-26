@@ -5,6 +5,18 @@ require 'security.php';
 require_once __DIR__ . '/lib/auditor.php';
 require_once __DIR__ . '/error_logger.php';
 
+// Require login
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role'])) {
+    header("Location: login.php");
+    exit;
+}
+
+// Only coaches and admins can assign modules
+if (!in_array($_SESSION['user_role'] ?? '', ['admin', 'coach'])) {
+    header("Location: dashboard.php");
+    exit;
+}
+
 // Validate CSRF token for POST requests
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrfToken();

@@ -41,6 +41,39 @@ $table_map = [
 ];
 
 $table = $table_map[$category_type];
+
+// Pre-build queries keyed by table name to avoid dynamic SQL interpolation
+$queries = [
+    'workout_plan_categories' => [
+        'select_by_name'   => 'SELECT id FROM workout_plan_categories WHERE name = ?',
+        'insert'           => 'INSERT INTO workout_plan_categories (name, description, display_order) VALUES (?, ?, ?)',
+        'select_by_id'     => 'SELECT name FROM workout_plan_categories WHERE id = ?',
+        'delete'           => 'DELETE FROM workout_plan_categories WHERE id = ?',
+        'select_dup'       => 'SELECT id FROM workout_plan_categories WHERE name = ? AND id != ?',
+        'update'           => 'UPDATE workout_plan_categories SET name = ?, description = ?, display_order = ? WHERE id = ?',
+    ],
+    'nutrition_plan_categories' => [
+        'select_by_name'   => 'SELECT id FROM nutrition_plan_categories WHERE name = ?',
+        'insert'           => 'INSERT INTO nutrition_plan_categories (name, description, display_order) VALUES (?, ?, ?)',
+        'select_by_id'     => 'SELECT name FROM nutrition_plan_categories WHERE id = ?',
+        'delete'           => 'DELETE FROM nutrition_plan_categories WHERE id = ?',
+        'select_dup'       => 'SELECT id FROM nutrition_plan_categories WHERE name = ? AND id != ?',
+        'update'           => 'UPDATE nutrition_plan_categories SET name = ?, description = ?, display_order = ? WHERE id = ?',
+    ],
+    'practice_plan_categories' => [
+        'select_by_name'   => 'SELECT id FROM practice_plan_categories WHERE name = ?',
+        'insert'           => 'INSERT INTO practice_plan_categories (name, description, display_order) VALUES (?, ?, ?)',
+        'select_by_id'     => 'SELECT name FROM practice_plan_categories WHERE id = ?',
+        'delete'           => 'DELETE FROM practice_plan_categories WHERE id = ?',
+        'select_dup'       => 'SELECT id FROM practice_plan_categories WHERE name = ? AND id != ?',
+        'update'           => 'UPDATE practice_plan_categories SET name = ?, description = ?, display_order = ? WHERE id = ?',
+    ],
+];
+$sql = $queries[$table] ?? null;
+if ($sql === null) {
+    header("Location: dashboard.php?page=admin_plan_categories&error=" . urlencode("Invalid category configuration"));
+    exit;
+}
 $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
 
 try {
@@ -55,17 +88,14 @@ try {
         }
 
         // Check if category already exists
-        $stmt = $pdo->prepare("SELECT id FROM $table WHERE name = ?");
+        $stmt = $pdo->prepare($sql['select_by_name']);
         $stmt->execute([$name]);
         if ($stmt->fetch()) {
             throw new Exception("A category with this name already exists");
         }
 
         // Insert new category
-        $stmt = $pdo->prepare("
-            INSERT INTO $table (name, description, display_order)
-            VALUES (?, ?, ?)
-        ");
+        $stmt = $pdo->prepare($sql['insert']);
         $stmt->execute([$name, $description, $display_order]);
         $new_category_id = $pdo->lastInsertId();
 
@@ -93,7 +123,7 @@ try {
         }
 
         // Get category name for logging
-        $stmt = $pdo->prepare("SELECT name FROM $table WHERE id = ?");
+        $stmt = $pdo->prepare($sql['select_by_id']);
         $stmt->execute([$category_id]);
         $category = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -102,7 +132,7 @@ try {
         }
 
         // Delete the category (plans using it will have category_id set to NULL due to ON DELETE SET NULL)
-        $stmt = $pdo->prepare("DELETE FROM $table WHERE id = ?");
+        $stmt = $pdo->prepare($sql['delete']);
         $stmt->execute([$category_id]);
 
         Auditor::log($pdo, $user_id, 'delete', $table, $category_id, ['action' => "Deleted {$category_type} plan category: {$category['name']}"]);
@@ -136,18 +166,14 @@ try {
         }
 
         // Check if another category with this name already exists
-        $stmt = $pdo->prepare("SELECT id FROM $table WHERE name = ? AND id != ?");
+        $stmt = $pdo->prepare($sql['select_dup']);
         $stmt->execute([$name, $category_id]);
         if ($stmt->fetch()) {
             throw new Exception("Another category with this name already exists");
         }
 
         // Update the category
-        $stmt = $pdo->prepare("
-            UPDATE $table 
-            SET name = ?, description = ?, display_order = ?
-            WHERE id = ?
-        ");
+        $stmt = $pdo->prepare($sql['update']);
         $stmt->execute([$name, $description, $display_order, $category_id]);
 
         Auditor::log($pdo, $user_id, 'update', $table, $category_id, ['action' => "Updated {$category_type} plan category: {$name}"]);

@@ -37,8 +37,8 @@ $allowed = [
 
 if (in_array($col, $allowed)) {
     try {
-        // A. Increment the specific stat
-        $sql = "UPDATE athlete_stats SET $col = $col + 1 WHERE user_id = ? AND team_id = ?";
+        // A. Increment the specific stat (column from validated whitelist)
+        $sql = "UPDATE athlete_stats SET `$col` = `$col` + 1 WHERE user_id = ? AND team_id = ?";
         $pdo->prepare($sql)->execute([$target_user_id, $team_id]);
         Auditor::log($pdo, $user_id, 'update', 'athlete_stats', null, ['action' => 'Stat incremented', 'column' => $col, 'target_user' => $target_user_id]);
 

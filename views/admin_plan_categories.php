@@ -8,9 +8,14 @@ $workout_categories = $pdo->query("SELECT * FROM workout_plan_categories ORDER B
 $nutrition_categories = $pdo->query("SELECT * FROM nutrition_plan_categories ORDER BY display_order, name")->fetchAll(PDO::FETCH_ASSOC);
 $practice_categories = $pdo->query("SELECT * FROM practice_plan_categories ORDER BY display_order, name")->fetchAll(PDO::FETCH_ASSOC);
 
-// Count plans using each category
+// Count plans using each category (table/column names are hardcoded at call sites)
 function getCategoryCount($pdo, $table, $column, $category_id) {
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM $table WHERE $column = ?");
+    // Validate identifiers to prevent SQL injection
+    if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $table) ||
+        !preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $column)) {
+        return 0;
+    }
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM `" . $table . "` WHERE `" . $column . "` = ?");
     $stmt->execute([$category_id]);
     return $stmt->fetchColumn();
 }

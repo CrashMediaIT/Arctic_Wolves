@@ -234,6 +234,13 @@ function handleCompanionCallback(): void {
         return;
     }
 
+    // Defense-in-depth: ensure $table is one of the two expected values
+    if (!in_array($table, ['videos', 'vr_video_sources'], true)) {
+        ErrorLogger::error("Companion callback: unexpected table value — rejecting");
+        apiResponse(500, ['success' => false, 'error' => 'Internal error']);
+        return;
+    }
+
     try {
         if ($status === 'completed') {
             $hls_manifest     = $body['hls_manifest'] ?? '';

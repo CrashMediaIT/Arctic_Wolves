@@ -49,8 +49,18 @@ if ($action == 'assign_nutrition') {
 
 // Redirect back to that specific athlete's page (or custom redirect)
 $redirect_page = 'athlete_detail&id=' . $user_id;
-if (isset($_POST['redirect']) && preg_match('/^[a-zA-Z0-9_&=]+$/', $_POST['redirect'])) {
-    $redirect_page = $_POST['redirect'];
+if (isset($_POST['redirect'])) {
+    // Only allow known page values to prevent open redirect
+    $allowed_redirects = [
+        'athlete_detail', 'coaches_reviews', 'manage_athletes',
+        'coach_roster', 'athlete_workouts', 'athlete_nutrition',
+    ];
+    $requested = $_POST['redirect'];
+    // Extract the page name (before any & parameters)
+    $page_name = explode('&', $requested)[0];
+    if (in_array($page_name, $allowed_redirects, true) && preg_match('/^[a-zA-Z0-9_&=]+$/', $requested)) {
+        $redirect_page = $requested;
+    }
 }
 header("Location: dashboard.php?page=" . $redirect_page . "&success=note_added&msg=success");
 ?>

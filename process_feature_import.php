@@ -55,6 +55,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new Exception('Invalid file type. Only ZIP files are allowed');
                 }
                 
+                // Validate MIME type as additional check
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mime = finfo_file($finfo, $file['tmp_name']);
+                finfo_close($finfo);
+                if (!in_array($mime, ['application/zip', 'application/x-zip-compressed', 'application/octet-stream'])) {
+                    throw new Exception('Invalid file MIME type. Only ZIP files are allowed');
+                }
+                
                 // Validate file size (max 50MB)
                 $max_size = 50 * 1024 * 1024; // 50MB
                 if ($file['size'] > $max_size) {

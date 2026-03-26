@@ -113,10 +113,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     $_SESSION['2fa_pending_user_role'] = $user['role'];
                     $_SESSION['2fa_pending_user_email'] = $email;
                     
-                    // Temporarily set user_id for CSRF to work on verify page
-                    $_SESSION['user_id'] = $user['id'];
+                    // Do NOT set user_id or logged_in until 2FA is verified.
+                    // CSRF on the verify page uses the session token which is
+                    // already present regardless of user_id.
                     
-                    recordLoginHistory($pdo, $user['id'], 'success');
+                    recordLoginHistory($pdo, $user['id'], 'pending_2fa');
                     header("Location: verify_2fa.php");
                     exit();
                 }

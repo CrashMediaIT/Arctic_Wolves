@@ -186,7 +186,8 @@ class SystemHealthValidator {
             $sample_tables = ['users', 'sessions', 'drills'];
             foreach ($sample_tables as $table) {
                 if (in_array($table, $tables)) {
-                    $stmt = $this->pdo->prepare("SHOW COLUMNS FROM `$table` LIKE ?");
+                    if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $table)) continue;
+                    $stmt = $this->pdo->prepare("SHOW COLUMNS FROM `" . $table . "` LIKE ?");
                     $stmt->execute(['is_demo']);
                     $columns = $stmt->fetchAll();
                     if (count($columns) > 0) {
@@ -218,7 +219,8 @@ class SystemHealthValidator {
             
             foreach ($tables as $table) {
                 try {
-                    $count_stmt = $this->pdo->query("SELECT COUNT(*) FROM `$table` WHERE is_demo = 1");
+                    if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $table)) continue;
+                    $count_stmt = $this->pdo->query("SELECT COUNT(*) FROM `" . $table . "` WHERE is_demo = 1");
                     $count = $count_stmt->fetchColumn();
                     $total_demo += $count;
                 } catch (PDOException $e) {
@@ -352,7 +354,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['run_validation'])) {
 <head>
     <meta charset="UTF-8">
     <title>System Health Validator | Arctic Wolves</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <style>

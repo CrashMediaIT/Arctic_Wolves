@@ -128,10 +128,13 @@ function extractApiKey() {
         return trim($x_api_key);
     }
 
-    // 3. Query parameter (deprecated — keys in URLs are logged by proxies/browsers)
-    if (isset($_GET['api_key']) && !empty($_GET['api_key'])) {
-        error_log('[API AUTH WARNING] API key passed via query parameter is deprecated. Use Authorization or X-API-Key header instead.');
-        return trim($_GET['api_key']);
+    // 3. Query parameter — REJECTED. API keys in URLs leak via browser history,
+    //    Referer headers, and proxy/server logs.
+    if (isset($_GET['api_key'])) {
+        error_log('[API AUTH REJECTED] API key via query parameter blocked. Use Authorization or X-API-Key header.');
+        // Return a clear error that will result in a 401 with an informative message
+        // (callers check for null and respond with 401 via requireApiAuth)
+        return null;
     }
 
     return null;

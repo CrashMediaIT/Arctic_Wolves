@@ -199,7 +199,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 
     $hash_pass = password_hash($pass, PASSWORD_BCRYPT);
-    $verify_code = rand(100000, 999999);
+    $verify_code = random_int(100000, 999999);
 
     try {
         // Start transaction

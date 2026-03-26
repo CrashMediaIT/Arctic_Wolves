@@ -1290,13 +1290,13 @@ if ($action == 'save_business_card_defaults') {
 // =========================================================
 if ($action == 'create_invoice') {
     // Generate unique invoice number
-    $invoice_number = 'INV-' . date('Y') . '-' . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
+    $invoice_number = 'INV-' . date('Y') . '-' . str_pad(random_int(1, 9999), 4, '0', STR_PAD_LEFT);
     
     // Check if invoice number already exists, regenerate if needed
     $check_stmt = $pdo->prepare("SELECT id FROM invoices WHERE invoice_number = ?");
     $check_stmt->execute([$invoice_number]);
     while ($check_stmt->rowCount() > 0) {
-        $invoice_number = 'INV-' . date('Y') . '-' . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
+        $invoice_number = 'INV-' . date('Y') . '-' . str_pad(random_int(1, 9999), 4, '0', STR_PAD_LEFT);
         $check_stmt->execute([$invoice_number]);
     }
     

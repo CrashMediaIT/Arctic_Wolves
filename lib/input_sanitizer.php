@@ -84,14 +84,26 @@ class InputSanitizer {
     }
     
     /**
-     * Sanitize HTML (allows specific tags)
+     * Sanitize HTML (allows specific tags).
+     * Strips disallowed tags via strip_tags(), then removes dangerous
+     * attributes (event handlers, javascript: URIs) from the remaining
+     * tags to prevent XSS through allowed elements like <a> or <p>.
      */
     public static function sanitizeHTML($html, $allowed_tags = '<p><br><strong><em><ul><ol><li><a>') {
         if ($html === null) {
             return null;
         }
         
-        return strip_tags($html, $allowed_tags);
+        $html = strip_tags($html, $allowed_tags);
+        
+        // Remove event handler attributes (on*) and javascript: URIs from allowed tags
+        // This prevents attacks like <p onclick="alert(1)"> or <a href="javascript:alert(1)">
+        $html = preg_replace('/\s+on[a-z]+\s*=\s*["\'][^"\']*["\']/i', '', $html);
+        $html = preg_replace('/\s+on[a-z]+\s*=\s*\S+/i', '', $html);
+        $html = preg_replace('/href\s*=\s*["\']?\s*javascript\s*:/i', 'href="', $html);
+        $html = preg_replace('/src\s*=\s*["\']?\s*javascript\s*:/i', 'src="', $html);
+        
+        return $html;
     }
     
     /**
