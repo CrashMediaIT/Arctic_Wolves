@@ -690,7 +690,9 @@ if ($action == 'create_training_session') {
         $locationId = !empty($_POST['location_id']) ? intval($_POST['location_id']) : null;
         $practicePlanId = !empty($_POST['practice_plan_id']) ? intval($_POST['practice_plan_id']) : null;
         $sessionTypeId = !empty($_POST['session_type_id']) ? intval($_POST['session_type_id']) : null;
-        $isActive = isset($_POST['is_active']) ? intval($_POST['is_active']) : 1;
+        $statusVal = isset($_POST['is_active']) ? intval($_POST['is_active']) : 1;
+        $isActive = ($statusVal == 2) ? 1 : $statusVal; // Waitlist Only (2) is still active
+        $waitlistOnly = ($statusVal == 2) ? 1 : 0;
         $showOnLanding = isset($_POST['show_on_landing']) ? 1 : 0;
         $isTemplate = isset($_POST['is_template']) ? 1 : 0;
         $skillIds = $_POST['skill_ids'] ?? [];
@@ -712,12 +714,12 @@ if ($action == 'create_training_session') {
         $stmt = $pdo->prepare("
             INSERT INTO training_session_templates 
             (name, description, session_type_id, duration_minutes, price, max_participants, 
-             coach_id, location_id, practice_plan_id, session_type, is_active, show_on_landing, created_by) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             coach_id, location_id, practice_plan_id, session_type, is_active, waitlist_only, show_on_landing, created_by) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
             $name, $description, $sessionTypeId, $duration, $price, $maxParticipants,
-            $coachId, $locationId, $practicePlanId, $sessionType, $isActive, $showOnLanding, $_SESSION['user_id']
+            $coachId, $locationId, $practicePlanId, $sessionType, $isActive, $waitlistOnly, $showOnLanding, $_SESSION['user_id']
         ]);
         
         $templateId = $pdo->lastInsertId();
@@ -835,7 +837,9 @@ if ($action == 'update_training_session') {
         $price = floatval($_POST['price'] ?? 0);
         $duration = intval($_POST['duration'] ?? 60);
         $maxParticipants = !empty($_POST['max_participants']) ? intval($_POST['max_participants']) : null;
-        $isActive = isset($_POST['is_active']) ? intval($_POST['is_active']) : 1;
+        $statusVal = isset($_POST['is_active']) ? intval($_POST['is_active']) : 1;
+        $isActive = ($statusVal == 2) ? 1 : $statusVal; // Waitlist Only (2) is still active
+        $waitlistOnly = ($statusVal == 2) ? 1 : 0;
         $sessionTypeId = !empty($_POST['session_type_id']) ? intval($_POST['session_type_id']) : null;
         $locationId = !empty($_POST['location_id']) ? intval($_POST['location_id']) : null;
         $practicePlanId = !empty($_POST['practice_plan_id']) ? intval($_POST['practice_plan_id']) : null;
@@ -855,11 +859,11 @@ if ($action == 'update_training_session') {
         
         $stmt = $pdo->prepare("
             UPDATE training_session_templates 
-            SET name = ?, description = ?, price = ?, duration_minutes = ?, max_participants = ?, is_active = ?,
+            SET name = ?, description = ?, price = ?, duration_minutes = ?, max_participants = ?, is_active = ?, waitlist_only = ?,
                 session_type_id = ?, location_id = ?, practice_plan_id = ?, coach_id = ?
             WHERE id = ?
         ");
-        $stmt->execute([$name, $description, $price, $duration, $maxParticipants, $isActive,
+        $stmt->execute([$name, $description, $price, $duration, $maxParticipants, $isActive, $waitlistOnly,
                         $sessionTypeId, $locationId, $practicePlanId, $primaryCoachId, $sessionId]);
         
         $pdo->commit();
@@ -898,7 +902,9 @@ if ($action == 'create_dev_program') {
         $description = trim($jsonInput['description'] ?? '');
         $price = floatval($jsonInput['price'] ?? 0);
         $durationWeeks = intval($jsonInput['duration_weeks'] ?? 4);
-        $isActive = intval($jsonInput['is_active'] ?? 1);
+        $statusVal = intval($jsonInput['is_active'] ?? 1);
+        $isActive = ($statusVal == 2) ? 1 : $statusVal;
+        $waitlistOnly = ($statusVal == 2) ? 1 : 0;
         $showOnLanding = intval($jsonInput['show_on_landing'] ?? 1);
         
         if (empty($name)) {
@@ -912,10 +918,10 @@ if ($action == 'create_dev_program') {
         
         $stmt = $pdo->prepare("
             INSERT INTO training_session_templates 
-            (name, description, price, duration_minutes, max_participants, session_type, is_active, show_on_landing, is_dev_program, duration_weeks, created_by) 
-            VALUES (?, ?, ?, 60, 1, 'on_ice', ?, ?, 1, ?, ?)
+            (name, description, price, duration_minutes, max_participants, session_type, is_active, waitlist_only, show_on_landing, is_dev_program, duration_weeks, created_by) 
+            VALUES (?, ?, ?, 60, 1, 'on_ice', ?, ?, ?, 1, ?, ?)
         ");
-        $stmt->execute([$name, $description, $price, $isActive, $showOnLanding, $durationWeeks, $user_id]);
+        $stmt->execute([$name, $description, $price, $isActive, $waitlistOnly, $showOnLanding, $durationWeeks, $user_id]);
         $newId = $pdo->lastInsertId();
         
         Auditor::log($pdo, $user_id, 'create', 'training_session_templates', $newId, 
@@ -938,7 +944,9 @@ if ($action == 'update_dev_program') {
         $description = trim($jsonInput['description'] ?? '');
         $price = floatval($jsonInput['price'] ?? 0);
         $durationWeeks = intval($jsonInput['duration_weeks'] ?? 4);
-        $isActive = intval($jsonInput['is_active'] ?? 1);
+        $statusVal = intval($jsonInput['is_active'] ?? 1);
+        $isActive = ($statusVal == 2) ? 1 : $statusVal;
+        $waitlistOnly = ($statusVal == 2) ? 1 : 0;
         $showOnLanding = intval($jsonInput['show_on_landing'] ?? 1);
         
         if (!$id) {
@@ -956,10 +964,10 @@ if ($action == 'update_dev_program') {
         
         $stmt = $pdo->prepare("
             UPDATE training_session_templates 
-            SET name = ?, description = ?, price = ?, duration_weeks = ?, is_active = ?, show_on_landing = ?
+            SET name = ?, description = ?, price = ?, duration_weeks = ?, is_active = ?, waitlist_only = ?, show_on_landing = ?
             WHERE id = ? AND is_dev_program = 1
         ");
-        $stmt->execute([$name, $description, $price, $durationWeeks, $isActive, $showOnLanding, $id]);
+        $stmt->execute([$name, $description, $price, $durationWeeks, $isActive, $waitlistOnly, $showOnLanding, $id]);
         
         Auditor::log($pdo, $user_id, 'update', 'training_session_templates', $id, 
             ['action' => 'update_dev_program', 'name' => $name, 'duration_weeks' => $durationWeeks]);
@@ -1071,7 +1079,9 @@ if ($action == 'update_package') {
         $price = floatval($_POST['price'] ?? 0);
         $credits = intval($_POST['credits'] ?? 0);
         $validDays = !empty($_POST['valid_days']) ? intval($_POST['valid_days']) : null;
-        $isActive = isset($_POST['is_active']) ? intval($_POST['is_active']) : 1;
+        $statusVal = isset($_POST['is_active']) ? intval($_POST['is_active']) : 1;
+        $isActive = ($statusVal == 2) ? 1 : $statusVal;
+        $waitlistOnly = ($statusVal == 2) ? 1 : 0;
         $ageGroup = trim($_POST['age_group'] ?? '');
         $skillLevel = trim($_POST['skill_level'] ?? '');
         $packageType = trim($_POST['package_type'] ?? 'credits');
@@ -1088,11 +1098,11 @@ if ($action == 'update_package') {
         
         $stmt = $pdo->prepare("
             UPDATE packages 
-            SET name = ?, description = ?, price = ?, credits = ?, valid_days = ?, is_active = ?,
+            SET name = ?, description = ?, price = ?, credits = ?, valid_days = ?, is_active = ?, waitlist_only = ?,
                 age_group = ?, skill_level = ?, package_type = ?, store_credit = ?, show_on_landing = ?, enable_child_checkin = ?
             WHERE id = ?
         ");
-        $stmt->execute([$name, $description, $price, $credits, $validDays, $isActive,
+        $stmt->execute([$name, $description, $price, $credits, $validDays, $isActive, $waitlistOnly,
                         $ageGroup ?: null, $skillLevel ?: null, $packageType, $storeCredit, $showOnLanding, $enableChildCheckin, $packageId]);
         
         // Update package coaches

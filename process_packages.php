@@ -490,7 +490,9 @@ try {
             $valid_days = !empty($_POST['valid_days']) ? intval($_POST['valid_days']) : (!empty($_POST['validity_days']) ? intval($_POST['validity_days']) : null);
             $age_group = trim($_POST['age_group'] ?? '');
             $skill_level = trim($_POST['skill_level'] ?? '');
-            $is_active = isset($_POST['is_active']) ? intval($_POST['is_active']) : 1;
+            $statusVal = isset($_POST['is_active']) ? intval($_POST['is_active']) : 1;
+            $is_active = ($statusVal == 2) ? 1 : $statusVal;
+            $waitlist_only = ($statusVal == 2) ? 1 : 0;
             $package_type = trim($_POST['package_type'] ?? 'credits');
             $store_credit = floatval($_POST['store_credit'] ?? 0);
             $enable_child_checkin = isset($_POST['enable_child_checkin']) ? 1 : 0;
@@ -518,14 +520,14 @@ try {
             // Insert package with all fields
             $stmt = $pdo->prepare("
                 INSERT INTO packages (name, description, price, credits, valid_days, 
-                                     age_group, skill_level, is_active, package_type, store_credit, enable_child_checkin,
+                                     age_group, skill_level, is_active, waitlist_only, package_type, store_credit, enable_child_checkin,
                                      camp_start_date, camp_end_date, daily_start_time, daily_end_time,
                                      age_group_id, skill_level_id, allow_individual_sessions)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
                 $name, $description, $price, $credits, $valid_days,
-                $age_group ?: null, $skill_level ?: null, $is_active, $package_type, $store_credit, $enable_child_checkin,
+                $age_group ?: null, $skill_level ?: null, $is_active, $waitlist_only, $package_type, $store_credit, $enable_child_checkin,
                 $camp_start_date, $camp_end_date, $daily_start_time, $daily_end_time,
                 $age_group_id, $skill_level_id, $allow_individual_sessions
             ]);
@@ -685,7 +687,9 @@ try {
             $valid_days = !empty($_POST['valid_days']) ? intval($_POST['valid_days']) : (!empty($_POST['validity_days']) ? intval($_POST['validity_days']) : null);
             $age_group = trim($_POST['age_group'] ?? '');
             $skill_level = trim($_POST['skill_level'] ?? '');
-            $is_active = isset($_POST['is_active']) ? intval($_POST['is_active']) : 1;
+            $statusVal = isset($_POST['is_active']) ? intval($_POST['is_active']) : 1;
+            $is_active = ($statusVal == 2) ? 1 : $statusVal;
+            $waitlist_only = ($statusVal == 2) ? 1 : 0;
             $package_type = trim($_POST['package_type'] ?? 'credits');
             $store_credit = floatval($_POST['store_credit'] ?? 0);
             $enable_child_checkin = isset($_POST['enable_child_checkin']) ? 1 : 0;
@@ -708,14 +712,14 @@ try {
             $stmt = $pdo->prepare("
                 UPDATE packages 
                 SET name = ?, description = ?, price = ?, credits = ?, 
-                    valid_days = ?, age_group = ?, skill_level = ?, is_active = ?, package_type = ?, store_credit = ?, enable_child_checkin = ?,
+                    valid_days = ?, age_group = ?, skill_level = ?, is_active = ?, waitlist_only = ?, package_type = ?, store_credit = ?, enable_child_checkin = ?,
                     camp_start_date = ?, camp_end_date = ?, daily_start_time = ?, daily_end_time = ?,
                     age_group_id = ?, skill_level_id = ?, allow_individual_sessions = ?
                 WHERE id = ?
             ");
             $stmt->execute([
                 $name, $description, $price, $credits, $valid_days,
-                $age_group ?: null, $skill_level ?: null, $is_active, $package_type, $store_credit, $enable_child_checkin,
+                $age_group ?: null, $skill_level ?: null, $is_active, $waitlist_only, $package_type, $store_credit, $enable_child_checkin,
                 $camp_start_date, $camp_end_date, $daily_start_time, $daily_end_time,
                 $age_group_id, $skill_level_id, $allow_individual_sessions, $package_id
             ]);

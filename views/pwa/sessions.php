@@ -292,7 +292,7 @@ try {
                c.first_name as coach_first_name, c.last_name as coach_last_name,
                l.name as location_name, st.name as session_type_name,
                (SELECT COUNT(*) FROM session_date_athletes sda WHERE sda.session_date_id = td.id) as registered_count,
-               td.id as date_id
+               td.id as date_id, t.waitlist_only, t.id as template_id
         FROM training_session_templates t
         INNER JOIN training_session_dates td ON td.template_id = t.id
         LEFT JOIN users c ON t.coach_id = c.id
@@ -969,9 +969,13 @@ if ($isAnyCoach) {
                             <?php else: ?>
                             <button type="button" class="m-book-btn m-book-btn-warning m-card-action" onclick="mJoinWaitlist(<?= (int)$avSess['id'] ?>)"><i class="fas fa-clock"></i> Waitlist</button>
                             <?php endif; ?>
-                        <?php elseif (!empty($avSess['date_id']) ? false : in_array($avSess['id'], $waitlistOnlySessionIds)): ?>
+                        <?php elseif (!empty($avSess['waitlist_only']) || (!empty($avSess['date_id']) ? false : in_array($avSess['id'], $waitlistOnlySessionIds))): ?>
                             <span class="m-waitlist-badge">Waitlist Only</span>
+                            <?php if (!empty($avSess['date_id'])): ?>
+                            <button type="button" class="m-book-btn m-book-btn-warning m-card-action" onclick="mJoinTemplateWaitlist(<?= (int)($avSess['template_id'] ?? 0) ?>)"><i class="fas fa-clock"></i> Join Waitlist</button>
+                            <?php else: ?>
                             <button type="button" class="m-book-btn m-book-btn-warning m-card-action" onclick="mJoinWaitlist(<?= (int)$avSess['id'] ?>)"><i class="fas fa-clock"></i> Join Waitlist</button>
+                            <?php endif; ?>
                         <?php else: ?>
                             <?php if (!empty($avSess['date_id'])): ?>
                             <button type="button" class="m-book-btn m-book-btn-primary m-card-action" onclick="mBookTemplateSession(<?= (int)$avSess['date_id'] ?>)"><i class="fas fa-plus"></i> Register</button>

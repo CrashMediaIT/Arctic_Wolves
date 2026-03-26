@@ -457,7 +457,13 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                             <?php endif; ?>
                             <div class="product-header">
                                 <h4><?= htmlspecialchars($session['name']) ?></h4>
-                                <span class="product-status <?= $isActive ? 'active' : 'inactive' ?>"><?= $isActive ? 'Active' : 'Inactive' ?></span>
+                                <?php
+                                    $statusClass = 'inactive';
+                                    $statusLabel = 'Inactive';
+                                    if ($isActive && !empty($session['waitlist_only'])) { $statusClass = 'waitlist'; $statusLabel = 'Waitlist Only'; }
+                                    elseif ($isActive) { $statusClass = 'active'; $statusLabel = 'Active'; }
+                                ?>
+                                <span class="product-status <?= $statusClass ?>"><?= $statusLabel ?></span>
                             </div>
                             <div class="product-price">$<?= number_format($price, 2) ?><small>/hour</small></div>
                             <div class="product-details">
@@ -521,7 +527,13 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                             <?php if ($showOnLanding): ?><div class="product-badge landing">Public</div><?php endif; ?>
                             <div class="product-header">
                                 <h4><?= htmlspecialchars($package['name']) ?></h4>
-                                <span class="product-status <?= $isActive ? 'active' : 'inactive' ?>"><?= $isActive ? 'Active' : 'Inactive' ?></span>
+                                <?php
+                                    $pkgStatusClass = 'inactive';
+                                    $pkgStatusLabel = 'Inactive';
+                                    if ($isActive && !empty($package['waitlist_only'])) { $pkgStatusClass = 'waitlist'; $pkgStatusLabel = 'Waitlist Only'; }
+                                    elseif ($isActive) { $pkgStatusClass = 'active'; $pkgStatusLabel = 'Active'; }
+                                ?>
+                                <span class="product-status <?= $pkgStatusClass ?>"><?= $pkgStatusLabel ?></span>
                             </div>
                             <div class="product-price">$<?= number_format($package['price'] ?? 0, 2) ?></div>
                             <div class="product-details">
@@ -785,7 +797,12 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                                         <span style="color: var(--text-dim);">0</span>
                                     <?php endif; ?>
                                 </td>
-                                <td><span class="status-badge <?= !empty($prog['is_active']) ? 'active' : 'inactive' ?>"><?= !empty($prog['is_active']) ? 'Active' : 'Inactive' ?></span></td>
+                                <td><?php
+                                    $progStatusClass = 'inactive';
+                                    $progStatusLabel = 'Inactive';
+                                    if (!empty($prog['is_active']) && !empty($prog['waitlist_only'])) { $progStatusClass = 'waitlist'; $progStatusLabel = 'Waitlist Only'; }
+                                    elseif (!empty($prog['is_active'])) { $progStatusClass = 'active'; $progStatusLabel = 'Active'; }
+                                ?><span class="status-badge <?= $progStatusClass ?>"><?= $progStatusLabel ?></span></td>
                                 <td>
                                     <div class="table-actions">
                                         <button class="btn-action" data-action="edit" data-id="<?= $prog['id'] ?>" data-type="package" data-modal="edit-package-modal" title="Edit"><i class="fas fa-edit"></i></button>
@@ -865,7 +882,12 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                                     <?php $enrollCount = (int)($dp['enrolled_count'] ?? 0); ?>
                                     <?= $enrollCount > 0 ? '<span style="color:var(--primary);font-weight:600;">' . $enrollCount . '</span>' : '<span style="color:var(--text-dim);">0</span>' ?>
                                 </td>
-                                <td><span class="status-badge <?= !empty($dp['is_active']) ? 'active' : 'inactive' ?>"><?= !empty($dp['is_active']) ? 'Active' : 'Inactive' ?></span></td>
+                                <td><?php
+                                    $dpStatusClass = 'inactive';
+                                    $dpStatusLabel = 'Inactive';
+                                    if (!empty($dp['is_active']) && !empty($dp['waitlist_only'])) { $dpStatusClass = 'waitlist'; $dpStatusLabel = 'Waitlist Only'; }
+                                    elseif (!empty($dp['is_active'])) { $dpStatusClass = 'active'; $dpStatusLabel = 'Active'; }
+                                ?><span class="status-badge <?= $dpStatusClass ?>"><?= $dpStatusLabel ?></span></td>
                                 <td>
                                     <div class="table-actions">
                                         <button class="btn-action" onclick="openEditDevProgramModal(<?= (int)$dp['id'] ?>, <?= htmlspecialchars(json_encode($dp, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT), ENT_QUOTES, 'UTF-8') ?>)" title="Edit"><i class="fas fa-edit"></i></button>
@@ -917,6 +939,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                         <select name="dev_is_active" id="dev-is-active" class="form-input">
                             <option value="1">Active</option>
                             <option value="0">Inactive</option>
+                            <option value="2">Waitlist Only</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -972,6 +995,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                         <select name="dev_is_active" id="edit-dev-is-active" class="form-input">
                             <option value="1">Active</option>
                             <option value="0">Inactive</option>
+                            <option value="2">Waitlist Only</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -1156,6 +1180,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                             <select name="is_active" class="form-input">
                                 <option value="1">Active</option>
                                 <option value="0">Inactive</option>
+                                <option value="2">Waitlist Only</option>
                             </select>
                         </div>
                     </div>
@@ -1480,6 +1505,30 @@ $activeTab = $_GET['tab'] ?? 'sessions';
 .product-status.inactive {
     background: rgba(239, 68, 68, 0.15);
     color: #ef4444;
+}
+
+.product-status.waitlist {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+}
+
+.status-badge.waitlist {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+}
+
+.toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text-white, #fff);
+    margin-top: 30px;
+}
+
+.toggle-label .toggle-switch {
+    flex-shrink: 0;
 }
 
 .product-price {
@@ -1948,17 +1997,24 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                             <select name="is_active" class="form-input">
                                 <option value="1">Active</option>
                                 <option value="0">Inactive</option>
+                                <option value="2">Waitlist Only</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label class="checkbox-label" style="display: flex; align-items: center; gap: 10px; margin-top: 30px;">
-                                <input type="checkbox" name="show_on_landing" value="1">
+                            <label class="toggle-label">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" name="show_on_landing" value="1">
+                                    <span class="toggle-slider"></span>
+                                </label>
                                 <span>Show on Landing Page (Public Sessions Tab)</span>
                             </label>
                         </div>
                         <div class="form-group">
-                            <label class="checkbox-label" style="display: flex; align-items: center; gap: 10px; margin-top: 30px;">
-                                <input type="checkbox" name="is_template" value="1">
+                            <label class="toggle-label">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" name="is_template" value="1">
+                                    <span class="toggle-slider"></span>
+                                </label>
                                 <span>Save as Template (Reusable)</span>
                             </label>
                         </div>
@@ -2069,8 +2125,12 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                         </div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label class="form-label" style="display: flex; align-items: center; gap: 8px;">
-                                    <input type="checkbox" name="enable_child_checkin" value="1"> Enable Child Check-in/Pickup
+                                <label class="toggle-label" style="margin-top: 0;">
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" name="enable_child_checkin" value="1">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                    <span>Enable Child Check-in/Pickup</span>
                                 </label>
                                 <small class="form-help-text" style="color: var(--text-dim);">Generate daily check-in codes for parent pickup.</small>
                             </div>
@@ -2080,8 +2140,12 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                     <div id="multi-week-fields-row" style="display: none;">
                         <div class="form-row">
                             <div class="form-group">
-                                <label class="form-label" style="display: flex; align-items: center; gap: 8px;">
-                                    <input type="checkbox" name="allow_individual_sessions" value="1"> Allow Individual Session Purchase
+                                <label class="toggle-label" style="margin-top: 0;">
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" name="allow_individual_sessions" value="1">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                    <span>Allow Individual Session Purchase</span>
                                 </label>
                                 <small class="form-help-text" style="color: var(--text-dim);">Allow athletes to buy individual sessions from this program.</small>
                             </div>
@@ -2135,6 +2199,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                             <select name="is_active" class="form-input">
                                 <option value="1">Active</option>
                                 <option value="0">Inactive</option>
+                                <option value="2">Waitlist Only</option>
                             </select>
                         </div>
                     </div>
@@ -2623,6 +2688,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('[data-action="toggle-status"]').forEach(function(btn) {
         btn.addEventListener('click', async function(e) {
             e.preventDefault();
+            e.stopImmediatePropagation();
             var itemId = this.getAttribute('data-id');
             var itemType = this.getAttribute('data-type');
             var button = this;
@@ -3160,19 +3226,26 @@ document.addEventListener('DOMContentLoaded', function() {
                     '<div class="form-group">' +
                         '<label class="form-label">Status</label>' +
                         '<select name="is_active" class="form-input">' +
-                            '<option value="1"' + (data.is_active == 1 ? ' selected' : '') + '>Active</option>' +
+                            '<option value="1"' + (data.is_active == 1 && !data.waitlist_only ? ' selected' : '') + '>Active</option>' +
                             '<option value="0"' + (data.is_active == 0 ? ' selected' : '') + '>Inactive</option>' +
+                            '<option value="2"' + (data.waitlist_only == 1 ? ' selected' : '') + '>Waitlist Only</option>' +
                         '</select>' +
                     '</div>' +
                     '<div class="form-group">' +
-                        '<label class="checkbox-label" style="display: flex; align-items: center; gap: 10px; margin-top: 30px;">' +
-                            '<input type="checkbox" name="show_on_landing" value="1"' + (data.show_on_landing == 1 ? ' checked' : '') + '>' +
+                        '<label class="toggle-label">' +
+                            '<label class="toggle-switch">' +
+                                '<input type="checkbox" name="show_on_landing" value="1"' + (data.show_on_landing == 1 ? ' checked' : '') + '>' +
+                                '<span class="toggle-slider"></span>' +
+                            '</label>' +
                             '<span>Show on Landing Page</span>' +
                         '</label>' +
                     '</div>' +
                     '<div class="form-group">' +
-                        '<label class="checkbox-label" style="display: flex; align-items: center; gap: 10px; margin-top: 30px;">' +
-                            '<input type="checkbox" name="is_template" value="1"' + (data.is_template == 1 ? ' checked' : '') + '>' +
+                        '<label class="toggle-label">' +
+                            '<label class="toggle-switch">' +
+                                '<input type="checkbox" name="is_template" value="1"' + (data.is_template == 1 ? ' checked' : '') + '>' +
+                                '<span class="toggle-slider"></span>' +
+                            '</label>' +
                             '<span>Save as Template</span>' +
                         '</label>' +
                     '</div>' +
@@ -3256,20 +3329,27 @@ document.addEventListener('DOMContentLoaded', function() {
                     '<div class="form-group">' +
                         '<label class="form-label">Status</label>' +
                         '<select name="is_active" class="form-input">' +
-                            '<option value="1"' + (data.is_active == 1 ? ' selected' : '') + '>Active</option>' +
+                            '<option value="1"' + (data.is_active == 1 && !data.waitlist_only ? ' selected' : '') + '>Active</option>' +
                             '<option value="0"' + (data.is_active == 0 ? ' selected' : '') + '>Inactive</option>' +
+                            '<option value="2"' + (data.waitlist_only == 1 ? ' selected' : '') + '>Waitlist Only</option>' +
                         '</select>' +
                     '</div>' +
                 '</div>' +
                 coachSection +
                 '<div class="form-group">' +
-                    '<div class="checklist-grid">' +
-                        '<label class="checkbox-option">' +
-                            '<input type="checkbox" name="show_on_landing" value="1"' + (data.show_on_landing == 1 ? ' checked' : '') + '>' +
+                    '<div style="display: flex; flex-direction: column; gap: 12px;">' +
+                        '<label class="toggle-label" style="margin-top: 0;">' +
+                            '<label class="toggle-switch">' +
+                                '<input type="checkbox" name="show_on_landing" value="1"' + (data.show_on_landing == 1 ? ' checked' : '') + '>' +
+                                '<span class="toggle-slider"></span>' +
+                            '</label>' +
                             '<span>Show on Landing Page</span>' +
                         '</label>' +
-                        '<label class="checkbox-option">' +
-                            '<input type="checkbox" name="enable_child_checkin" value="1"' + (data.enable_child_checkin == 1 ? ' checked' : '') + '>' +
+                        '<label class="toggle-label" style="margin-top: 0;">' +
+                            '<label class="toggle-switch">' +
+                                '<input type="checkbox" name="enable_child_checkin" value="1"' + (data.enable_child_checkin == 1 ? ' checked' : '') + '>' +
+                                '<span class="toggle-slider"></span>' +
+                            '</label>' +
                             '<span>Enable Child Check-in</span>' +
                         '</label>' +
                     '</div>' +
