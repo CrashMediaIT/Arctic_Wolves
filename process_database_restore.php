@@ -49,6 +49,15 @@ try {
                 throw new Exception('Invalid file type. Only .sql or .sql.gz files are allowed.');
             }
             
+            // Validate MIME type as additional check
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $mime = finfo_file($finfo, $tmp_path);
+            finfo_close($finfo);
+            $allowed_mimes = ['text/plain', 'text/x-sql', 'application/sql', 'application/x-sql', 'application/gzip', 'application/x-gzip', 'application/octet-stream'];
+            if (!in_array($mime, $allowed_mimes)) {
+                throw new Exception('Invalid file MIME type detected.');
+            }
+            
             // Create uploads directory if not exists
             $upload_dir = __DIR__ . '/tmp/restore/';
             if (!is_dir($upload_dir)) {

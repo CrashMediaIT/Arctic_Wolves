@@ -128,6 +128,7 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
         if (
             isset($parsed['host']) && isset($parsed['scheme'])
             && in_array($parsed['scheme'], ['https', 'http'], true)
+            && !isset($parsed['user']) && !isset($parsed['pass'])
             && (
                 $parsed['host'] === $parentDomain
                 || str_ends_with($parsed['host'], '.' . $parentDomain)
