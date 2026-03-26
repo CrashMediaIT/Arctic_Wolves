@@ -69,7 +69,11 @@ $queries = [
         'update'           => 'UPDATE practice_plan_categories SET name = ?, description = ?, display_order = ? WHERE id = ?',
     ],
 ];
-$sql = $queries[$table];
+$sql = $queries[$table] ?? null;
+if ($sql === null) {
+    header("Location: dashboard.php?page=admin_plan_categories&error=" . urlencode("Invalid category configuration"));
+    exit;
+}
 $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
 
 try {
