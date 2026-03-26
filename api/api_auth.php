@@ -132,6 +132,8 @@ function extractApiKey() {
     //    Referer headers, and proxy/server logs.
     if (isset($_GET['api_key'])) {
         error_log('[API AUTH REJECTED] API key via query parameter blocked. Use Authorization or X-API-Key header.');
+        // Return a clear error that will result in a 401 with an informative message
+        // (callers check for null and respond with 401 via requireApiAuth)
         return null;
     }
 

@@ -13,7 +13,7 @@ if (php_sapi_name() !== 'cli') {
     $secret_key = $_GET['key'] ?? '';
     $expected_key = getenv('CRON_SECRET_KEY');
 
-    if (empty($expected_key) || !hash_equals($expected_key, $secret_key)) {
+    if (empty($expected_key) || empty($secret_key) || !hash_equals($expected_key, $secret_key)) {
         http_response_code(403);
         die('Unauthorized');
     }

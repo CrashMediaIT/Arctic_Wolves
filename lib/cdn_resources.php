@@ -25,11 +25,10 @@
  * Values contain:
  *   - url:       full CDN URL
  *   - type:      'css' or 'js'
- *   - integrity: SRI hash string (sha256/sha384/sha512). Empty string means
- *                the hash has not yet been generated — the helper will still
- *                emit the tag with crossorigin="anonymous" so browsers enforce
- *                anonymous CORS, and a TODO comment reminds developers to add
- *                the hash.
+ *   - integrity: SRI hash string (sha256/sha384/sha512). When empty, the
+ *                helper will still emit the tag with crossorigin="anonymous"
+ *                so browsers enforce anonymous CORS. Developers should
+ *                generate and fill in missing hashes before deploying.
  */
 function getCdnResources() {
     return [
