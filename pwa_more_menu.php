@@ -154,18 +154,10 @@
 <!-- Finance (Admin) -->
 <?php if ($canAccessAccounting): ?>
 <div class="pwa-menu-group">
-    <div class="pwa-section-label">Accounting & Reports</div>
+    <div class="pwa-section-label">Accounting</div>
     <ul class="pwa-menu-list">
         <a href="?page=finance_dashboard" class="pwa-menu-item">
             <i class="fas fa-chart-pie"></i> Finance Dashboard
-            <i class="fas fa-chevron-right menu-chevron"></i>
-        </a>
-        <a href="?page=financial_reports" class="pwa-menu-item">
-            <i class="fas fa-chart-pie"></i> Financial Reports Hub
-            <i class="fas fa-chevron-right menu-chevron"></i>
-        </a>
-        <a href="?page=reports_user" class="pwa-menu-item">
-            <i class="fas fa-users-gear"></i> User Reports
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
         <a href="?page=credits_refunds" class="pwa-menu-item">
@@ -217,42 +209,7 @@
 </div>
 <?php endif; ?>
 
-<!-- HR (Admin + HR) -->
-<?php if ($canAccessHR): ?>
-<div class="pwa-menu-group">
-    <div class="pwa-section-label">HR</div>
-    <ul class="pwa-menu-list">
-        <a href="?page=admin_staff_scheduling" class="pwa-menu-item">
-            <i class="fas fa-calendar-check"></i> Staff Scheduling
-            <i class="fas fa-chevron-right menu-chevron"></i>
-        </a>
-        <a href="?page=hr_time_tracking" class="pwa-menu-item">
-            <i class="fas fa-clock"></i> Time Tracking
-            <i class="fas fa-chevron-right menu-chevron"></i>
-        </a>
-        <a href="?page=payroll" class="pwa-menu-item">
-            <i class="fas fa-money-check-dollar"></i> Payroll
-            <i class="fas fa-chevron-right menu-chevron"></i>
-        </a>
-        <a href="?page=onboarding" class="pwa-menu-item">
-            <i class="fas fa-user-plus"></i> Onboarding
-            <i class="fas fa-chevron-right menu-chevron"></i>
-        </a>
-        <a href="?page=employee_contracts" class="pwa-menu-item">
-            <i class="fas fa-file-signature"></i> Contracts
-            <i class="fas fa-chevron-right menu-chevron"></i>
-        </a>
-        <a href="?page=complaints" class="pwa-menu-item">
-            <i class="fas fa-exclamation-triangle"></i> Complaints
-            <i class="fas fa-chevron-right menu-chevron"></i>
-        </a>
-        <a href="?page=termination" class="pwa-menu-item">
-            <i class="fas fa-user-slash"></i> Termination
-            <i class="fas fa-chevron-right menu-chevron"></i>
-        </a>
-    </ul>
-</div>
-<?php endif; ?>
+
 
 <!-- Admin Section -->
 <?php if ($isAdmin): ?>
@@ -267,20 +224,12 @@
             <i class="fas fa-layer-group"></i> Resource Management
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
-        <a href="?page=eval_framework" class="pwa-menu-item">
-            <i class="fas fa-clipboard-check"></i> Eval Framework
-            <i class="fas fa-chevron-right menu-chevron"></i>
-        </a>
         <a href="?page=system_notification" class="pwa-menu-item">
             <i class="fas fa-bell"></i> System Notification
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
         <a href="?page=admin_security" class="pwa-menu-item">
             <i class="fas fa-shield-halved"></i> Security
-            <i class="fas fa-chevron-right menu-chevron"></i>
-        </a>
-        <a href="?page=system_tools" class="pwa-menu-item">
-            <i class="fas fa-screwdriver-wrench"></i> System Tools
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
         <!-- Audit Log removed - available in Security Center -->

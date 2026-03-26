@@ -794,6 +794,7 @@ $canDelete = $isAnyCoach || $isAdmin;
         if (!dateStr) return '';
         var d = new Date(dateStr);
         return d.toLocaleDateString('en-US', { timeZone: window.APP_TIMEZONE, year: 'numeric', month: 'short', day: 'numeric' });
+    }
 
     function mGoalToast(msg, type) {
         var el = document.getElementById('mGoalToast');
