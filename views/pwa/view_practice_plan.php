@@ -100,10 +100,16 @@ $creatorName = trim(($plan['first_name'] ?? '') . ' ' . ($plan['last_name'] ?? '
     margin: 0 0 10px; padding: 0 4px;
 }
 .m-plan-drill-item {
-    display: flex; gap: 12px; align-items: center;
     background: #16161F; border: 1px solid #2D2D3F; border-radius: 12px;
-    padding: 14px; margin-bottom: 8px;
-    text-decoration: none; min-height: 44px;
+    margin-bottom: 10px; text-decoration: none; display: block;
+    min-height: 44px; overflow: hidden;
+}
+.m-plan-drill-thumb {
+    width: 100%; height: 140px; object-fit: cover; display: block;
+    background: #0A0A0F;
+}
+.m-plan-drill-content {
+    display: flex; gap: 12px; align-items: flex-start; padding: 14px;
 }
 .m-plan-drill-num {
     width: 32px; height: 32px; border-radius: 50%;
@@ -169,7 +175,6 @@ $creatorName = trim(($plan['first_name'] ?? '') . ' ' . ($plan['last_name'] ?? '
                 $categoryName = $pd['category_name'] ?? '';
             ?>
             <a href="?page=view_drill&id=<?= (int)($pd['drill_id'] ?? 0) ?>" class="m-plan-drill-item">
-                <div class="m-plan-drill-num"><?= $i + 1 ?></div>
                 <?php
                 $pdImgUrl = '';
                 if (!empty($pd['drill_image'])) {
@@ -178,28 +183,31 @@ $creatorName = trim(($plan['first_name'] ?? '') . ' ' . ($plan['last_name'] ?? '
                     $pdImgUrl = resolveRustfsUrl($pdo, $pd['drill_thumbnail']);
                 }
                 if ($pdImgUrl): ?>
-                <img src="<?= htmlspecialchars($pdImgUrl) ?>" alt="<?= htmlspecialchars($drillTitle) ?>" style="width:48px;height:48px;border-radius:8px;object-fit:cover;flex-shrink:0;" loading="lazy" onerror="this.style.display='none'">
+                <img class="m-plan-drill-thumb" src="<?= htmlspecialchars($pdImgUrl) ?>" alt="<?= htmlspecialchars($drillTitle) ?>" loading="lazy" onerror="this.style.display='none'">
                 <?php endif; ?>
-                <div class="m-plan-drill-body">
-                    <div class="m-plan-drill-title"><?= htmlspecialchars($drillTitle) ?></div>
-                    <div class="m-plan-drill-meta">
-                        <?php if ($pd['duration_minutes'] ?? null): ?>
-                        <span><i class="fas fa-clock"></i> <?= (int)$pd['duration_minutes'] ?>min</span>
+                <div class="m-plan-drill-content">
+                    <div class="m-plan-drill-num"><?= $i + 1 ?></div>
+                    <div class="m-plan-drill-body">
+                        <div class="m-plan-drill-title"><?= htmlspecialchars($drillTitle) ?></div>
+                        <div class="m-plan-drill-meta">
+                            <?php if ($pd['duration_minutes'] ?? null): ?>
+                            <span><i class="fas fa-clock"></i> <?= (int)$pd['duration_minutes'] ?>min</span>
+                            <?php endif; ?>
+                            <?php if (!empty($categoryName)): ?>
+                            <span style="font-size:10px;padding:2px 8px;border-radius:6px;background:rgba(107,70,193,0.12);color:#8B5CF6;"><?= htmlspecialchars($categoryName) ?></span>
+                            <?php endif; ?>
+                        </div>
+                        <?php if (!empty($drillDesc)): ?>
+                        <div style="font-size:11px;color:#6B6B7B;margin-top:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;"><?= htmlspecialchars($drillDesc) ?></div>
                         <?php endif; ?>
-                        <?php if (!empty($categoryName)): ?>
-                        <span style="font-size:10px;padding:2px 8px;border-radius:6px;background:rgba(107,70,193,0.12);color:#8B5CF6;"><?= htmlspecialchars($categoryName) ?></span>
+                        <?php if (!empty($pd['notes'])): ?>
+                        <div style="font-size:11px;color:#A8A8B8;margin-top:4px;font-style:italic;"><i class="fas fa-comment" style="font-size:9px;"></i> <?= htmlspecialchars($pd['notes']) ?></div>
                         <?php endif; ?>
                     </div>
-                    <?php if (!empty($drillDesc)): ?>
-                    <div style="font-size:11px;color:#6B6B7B;margin-top:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;"><?= htmlspecialchars($drillDesc) ?></div>
-                    <?php endif; ?>
-                    <?php if (!empty($pd['notes'])): ?>
-                    <div style="font-size:11px;color:#A8A8B8;margin-top:4px;font-style:italic;"><i class="fas fa-comment" style="font-size:9px;"></i> <?= htmlspecialchars($pd['notes']) ?></div>
+                    <?php if ($diff): ?>
+                    <span class="m-plan-drill-badge m-plan-drill-badge-<?= $badgeClass ?>"><?= htmlspecialchars(ucfirst($diff)) ?></span>
                     <?php endif; ?>
                 </div>
-                <?php if ($diff): ?>
-                <span class="m-plan-drill-badge m-plan-drill-badge-<?= $badgeClass ?>"><?= htmlspecialchars(ucfirst($diff)) ?></span>
-                <?php endif; ?>
             </a>
             <?php endforeach; ?>
         <?php endif; ?>

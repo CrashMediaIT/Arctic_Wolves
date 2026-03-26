@@ -969,8 +969,17 @@ class DrillDesigner {
             }
             ctx.closePath();
             ctx.stroke();
+        } else if (iceView === 'center') {
+            // Center ice: straight boards (no rounded corners in the neutral zone)
+            ctx.beginPath();
+            ctx.moveTo(2, 2);
+            ctx.lineTo(w - 2, 2);
+            ctx.lineTo(w - 2, h - 2);
+            ctx.lineTo(2, h - 2);
+            ctx.closePath();
+            ctx.stroke();
         } else {
-            // Full ice and center - all corners rounded
+            // Full ice - all corners rounded
             this.roundRect(ctx, 2, 2, w - 4, h - 4, cornerRadius);
             ctx.stroke();
         }
@@ -1481,8 +1490,23 @@ class DrillDesigner {
     }
     
     drawCenterIce(ctx, w, h) {
-        // Center ice view shows the neutral zone area around center ice
-        // The center circle radius is 15 ft on an 85 ft wide rink
+        // Center ice view shows blue line to blue line (neutral zone)
+        // In a 200ft rink, blue lines are at 64ft from each end
+        // So neutral zone is 200 - 64*2 = 72ft wide
+        const faceoffFromBoards = NHL_RINK.FACEOFF_FROM_BOARDS;
+        
+        // Blue lines at edges
+        ctx.strokeStyle = '#0033a0';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(2, 0);
+        ctx.lineTo(2, h);
+        ctx.stroke();
+        
+        ctx.beginPath();
+        ctx.moveTo(w - 2, 0);
+        ctx.lineTo(w - 2, h);
+        ctx.stroke();
         
         // Center line (red)
         ctx.strokeStyle = '#c41e3a';
@@ -1504,6 +1528,28 @@ class DrillDesigner {
         ctx.fillStyle = '#0033a0';
         ctx.beginPath();
         ctx.arc(w/2, h/2, 6, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Neutral zone faceoff dots
+        // In full rink: dots are 5ft inside blue line, neutral zone is 72ft wide
+        // So dots are at 5/72 from each edge
+        const dotOffset = w * (5 / 72);
+        
+        ctx.fillStyle = '#c41e3a';
+        // Left side dots
+        ctx.beginPath();
+        ctx.arc(dotOffset, h * faceoffFromBoards, 4, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(dotOffset, h * (1 - faceoffFromBoards), 4, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Right side dots
+        ctx.beginPath();
+        ctx.arc(w - dotOffset, h * faceoffFromBoards, 4, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(w - dotOffset, h * (1 - faceoffFromBoards), 4, 0, 2 * Math.PI);
         ctx.fill();
     }
     

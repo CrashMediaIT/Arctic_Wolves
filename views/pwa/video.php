@@ -161,6 +161,7 @@ try {
 .m-modal-overlay.m-modal-open { display: flex; }
 .m-modal-sheet {
     background: #16161F; border-radius: 16px 16px 0 0; width: 100%; max-width: 480px;
+    max-height: 90vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
     padding: 20px 16px calc(20px + env(safe-area-inset-bottom)); border: 1px solid #2D2D3F;
     border-bottom: none; animation: mSlideUp 0.25s ease-out;
 }
