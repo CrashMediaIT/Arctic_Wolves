@@ -1,8 +1,23 @@
 <?php
-// cron_notifications.php
-require 'db_config.php';
-require 'mailer.php';
-require 'notifications.php';
+/**
+ * Automated Notification Cron Job
+ * Sends session reminder emails to users with upcoming bookings
+ */
+
+require_once __DIR__ . '/db_config.php';
+require_once __DIR__ . '/mailer.php';
+require_once __DIR__ . '/notifications.php';
+
+// Only run via CLI or with secret key
+if (php_sapi_name() !== 'cli') {
+    $secret_key = $_GET['key'] ?? '';
+    $expected_key = getenv('CRON_SECRET_KEY');
+
+    if (empty($expected_key) || !hash_equals($expected_key, $secret_key)) {
+        http_response_code(403);
+        die('Unauthorized');
+    }
+}
 
 // 1. Find sessions happening tomorrow
 $tomorrow = date('Y-m-d', strtotime('+1 day'));

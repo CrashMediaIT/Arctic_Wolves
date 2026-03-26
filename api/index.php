@@ -14,9 +14,25 @@
 // Prevent session-based output (API is stateless)
 ini_set('session.use_cookies', '0');
 
-// Set JSON response headers and CORS for external apps
+// Set JSON response headers and CORS for known applications
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
+
+// Restrict CORS to trusted origins instead of wildcard
+$allowed_origins = [
+    'https://arcticwolves.ca',
+    'https://www.arcticwolves.ca',
+    'https://app.arcticwolves.ca',
+    'https://api.arcticwolves.ca',
+    'https://tv.arcticwolves.ca',
+];
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if (in_array($origin, $allowed_origins, true)) {
+    header('Access-Control-Allow-Origin: ' . $origin);
+    header('Vary: Origin');
+} elseif (empty($origin)) {
+    // Allow same-origin / non-browser requests (curl, server-to-server)
+    header('Access-Control-Allow-Origin: https://arcticwolves.ca');
+}
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-API-Key, Accept');
 header('Access-Control-Max-Age: 86400');
