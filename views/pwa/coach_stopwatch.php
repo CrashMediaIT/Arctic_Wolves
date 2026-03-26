@@ -298,6 +298,55 @@ try {
 .m-sw-hist-lap-total { color: #fff; font-weight: 600; font-variant-numeric: tabular-nums; }
 .m-sw-hist-toggle { float: right; color: #6B6B7B; font-size: 11px; transition: transform 0.2s; }
 .m-sw-hist-item.m-sw-hist-expanded .m-sw-hist-toggle { transform: rotate(180deg); }
+
+/* Camera Trigger */
+.m-sw-camera-section {
+    background: #16161F; border: 1px solid #2D2D3F; border-radius: 14px;
+    padding: 14px; margin-bottom: 24px; text-align: left;
+}
+.m-sw-camera-toggle {
+    width: 100%; min-height: 44px; border: 1px solid rgba(139,92,246,0.25);
+    border-radius: 10px; background: rgba(139,92,246,0.12); color: #8B5CF6;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    font-family: Inter, sans-serif;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.m-sw-camera-toggle.active { background: #8B5CF6; color: #fff; border-color: #8B5CF6; }
+.m-sw-camera-toggle:active { transform: scale(0.98); }
+.m-sw-camera-panel { display: none; margin-top: 14px; }
+.m-sw-camera-panel.active { display: block; }
+.m-sw-camera-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.m-sw-camera-feed {
+    position: relative; border-radius: 10px; overflow: hidden;
+    background: #0A0A0F; border: 1px solid #2D2D3F;
+}
+.m-sw-camera-feed video {
+    width: 100%; display: block; border-radius: 10px;
+}
+.m-sw-camera-feed canvas { display: none; }
+.m-sw-camera-label {
+    position: absolute; top: 6px; left: 6px;
+    background: rgba(0,0,0,0.7); color: #fff;
+    font-size: 10px; font-weight: 600; padding: 3px 8px;
+    border-radius: 6px;
+}
+.m-sw-camera-label.armed { background: #10B981; }
+.m-sw-camera-status {
+    text-align: center; font-size: 12px; color: #A8A8B8;
+    margin-bottom: 10px;
+}
+.m-sw-camera-select {
+    width: 100%; min-height: 38px; padding: 8px 10px;
+    background: #0A0A0F; border: 1px solid #2D2D3F; border-radius: 8px;
+    color: #fff; font-size: 12px; font-family: Inter, sans-serif;
+    margin-bottom: 8px; box-sizing: border-box;
+}
+.m-sw-camera-select:focus { border-color: #8B5CF6; outline: none; }
+.m-sw-motion-bar {
+    height: 4px; border-radius: 2px; background: #2D2D3F; overflow: hidden;
+    margin-top: 4px;
+}
+.m-sw-motion-fill { height: 100%; background: #10B981; transition: width 0.1s; width: 0; }
 </style>
 
 <div class="m-stopwatch">
@@ -375,6 +424,41 @@ try {
         <button class="m-sw-btn m-sw-btn-lap" id="mSwLap" type="button" onclick="mSwLap()" title="Lap">
             <i class="fas fa-flag"></i>
         </button>
+    </div>
+
+    <!-- Camera Trigger Section -->
+    <div class="m-sw-camera-section">
+        <button type="button" class="m-sw-camera-toggle" id="mSwCameraToggle">
+            <i class="fas fa-video"></i> Camera Trigger Mode
+        </button>
+        <div class="m-sw-camera-panel" id="mSwCameraPanel">
+            <div class="m-sw-camera-status" id="mSwCameraStatus">Select cameras and press Activate to enable motion detection.</div>
+            <div style="margin-bottom:10px;">
+                <label style="font-size:11px;color:#6B6B7B;display:block;margin-bottom:4px;">Start Line Camera</label>
+                <select class="m-sw-camera-select" id="mSwStartCamSelect"><option value="">Loading cameras...</option></select>
+            </div>
+            <div style="margin-bottom:10px;">
+                <label style="font-size:11px;color:#6B6B7B;display:block;margin-bottom:4px;">Finish Line Camera</label>
+                <select class="m-sw-camera-select" id="mSwFinishCamSelect"><option value="">Loading cameras...</option></select>
+            </div>
+            <div class="m-sw-camera-grid">
+                <div class="m-sw-camera-feed" id="mSwStartFeed">
+                    <video id="mSwStartVideo" autoplay muted playsinline></video>
+                    <canvas id="mSwStartCanvas"></canvas>
+                    <div class="m-sw-camera-label" id="mSwStartLabel">Start Line</div>
+                    <div class="m-sw-motion-bar"><div class="m-sw-motion-fill" id="mSwStartMotion"></div></div>
+                </div>
+                <div class="m-sw-camera-feed" id="mSwFinishFeed">
+                    <video id="mSwFinishVideo" autoplay muted playsinline></video>
+                    <canvas id="mSwFinishCanvas"></canvas>
+                    <div class="m-sw-camera-label" id="mSwFinishLabel">Finish Line</div>
+                    <div class="m-sw-motion-bar"><div class="m-sw-motion-fill" id="mSwFinishMotion"></div></div>
+                </div>
+            </div>
+            <button type="button" class="m-sw-camera-toggle" id="mSwCameraActivate" style="margin-top:4px;">
+                <i class="fas fa-play"></i> Activate Cameras
+            </button>
+        </div>
     </div>
 
     <div class="m-sw-save-section" id="mSwSaveSection" style="display:none;">
@@ -1025,5 +1109,132 @@ try {
         if (el) el.parentNode.removeChild(el);
         mwUpdateAddBtn();
     };
+
+    /* ── Camera Trigger ─────────────────────────────────────────────── */
+    var camTrigger = null;
+    var camActive = false;
+
+    var camToggleBtn = document.getElementById('mSwCameraToggle');
+    var camPanel = document.getElementById('mSwCameraPanel');
+    var camActivateBtn = document.getElementById('mSwCameraActivate');
+    var camStatus = document.getElementById('mSwCameraStatus');
+
+    if (camToggleBtn) {
+        camToggleBtn.addEventListener('click', function() {
+            camPanel.classList.toggle('active');
+            camToggleBtn.classList.toggle('active');
+            if (camPanel.classList.contains('active')) {
+                loadCameraList();
+            }
+        });
+    }
+
+    function loadCameraList() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+            camStatus.textContent = 'Camera not supported on this device.';
+            return;
+        }
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(function(stream) {
+                stream.getTracks().forEach(function(t) { t.stop(); });
+                return navigator.mediaDevices.enumerateDevices();
+            })
+            .then(function(devices) {
+                var cameras = devices.filter(function(d) { return d.kind === 'videoinput'; });
+                var startSel = document.getElementById('mSwStartCamSelect');
+                var finishSel = document.getElementById('mSwFinishCamSelect');
+                startSel.innerHTML = '<option value="">Select camera...</option>';
+                finishSel.innerHTML = '<option value="">Select camera...</option>';
+                cameras.forEach(function(cam, i) {
+                    var label = cam.label || ('Camera ' + (i + 1));
+                    startSel.innerHTML += '<option value="' + cam.deviceId + '">' + label + '</option>';
+                    finishSel.innerHTML += '<option value="' + cam.deviceId + '">' + label + '</option>';
+                });
+                if (cameras.length >= 2) {
+                    startSel.selectedIndex = 1;
+                    finishSel.selectedIndex = 2;
+                } else if (cameras.length === 1) {
+                    startSel.selectedIndex = 1;
+                    finishSel.selectedIndex = 1;
+                }
+                camStatus.textContent = cameras.length + ' camera(s) found. Select cameras and activate.';
+            })
+            .catch(function(err) {
+                camStatus.textContent = 'Camera access denied. Please allow camera permission.';
+            });
+    }
+
+    if (camActivateBtn) {
+        camActivateBtn.addEventListener('click', function() {
+            if (camActive) {
+                deactivateCamera();
+                return;
+            }
+            var startDeviceId = document.getElementById('mSwStartCamSelect').value;
+            var finishDeviceId = document.getElementById('mSwFinishCamSelect').value;
+            if (!startDeviceId && !finishDeviceId) {
+                camStatus.textContent = 'Please select at least one camera.';
+                return;
+            }
+            activateCamera(startDeviceId, finishDeviceId);
+        });
+    }
+
+    function activateCamera(startDeviceId, finishDeviceId) {
+        camTrigger = new CameraTrigger({ sensitivity: 30, motionThreshold: 8 });
+        camStatus.textContent = 'Activating cameras...';
+        camActivateBtn.disabled = true;
+
+        camTrigger.startMonitoring({
+            startVideoEl: document.getElementById('mSwStartVideo'),
+            finishVideoEl: document.getElementById('mSwFinishVideo'),
+            startCanvasEl: document.getElementById('mSwStartCanvas'),
+            finishCanvasEl: document.getElementById('mSwFinishCanvas'),
+            startDeviceId: startDeviceId || undefined,
+            finishDeviceId: finishDeviceId || startDeviceId || undefined,
+            onStartTrigger: function() {
+                if (!running) mSwToggle(); // Start the timer
+                document.getElementById('mSwStartLabel').classList.remove('armed');
+                document.getElementById('mSwFinishLabel').classList.add('armed');
+            },
+            onFinishTrigger: function() {
+                if (running) mSwLap(); // Record finish/lap
+                document.getElementById('mSwFinishLabel').classList.remove('armed');
+                document.getElementById('mSwStartLabel').classList.add('armed');
+                camTrigger.armStart();
+            },
+            onMotionLevel: function(which, level) {
+                var el = document.getElementById(which === 'start' ? 'mSwStartMotion' : 'mSwFinishMotion');
+                if (el) el.style.width = Math.min(level, 100) + '%';
+            }
+        }).then(function() {
+            camActive = true;
+            camStatus.textContent = 'Cameras active. Start line armed — motion will start timer.';
+            camActivateBtn.innerHTML = '<i class="fas fa-stop"></i> Deactivate Cameras';
+            camActivateBtn.classList.add('active');
+            camActivateBtn.disabled = false;
+            document.getElementById('mSwStartLabel').classList.add('armed');
+        }).catch(function(err) {
+            camStatus.textContent = 'Failed to start cameras: ' + (err.message || 'Unknown error');
+            camActivateBtn.disabled = false;
+        });
+    }
+
+    function deactivateCamera() {
+        if (camTrigger) {
+            camTrigger.stopMonitoring();
+            camTrigger = null;
+        }
+        camActive = false;
+        camStatus.textContent = 'Cameras deactivated.';
+        camActivateBtn.innerHTML = '<i class="fas fa-play"></i> Activate Cameras';
+        camActivateBtn.classList.remove('active');
+        document.getElementById('mSwStartLabel').classList.remove('armed');
+        document.getElementById('mSwFinishLabel').classList.remove('armed');
+        document.getElementById('mSwStartMotion').style.width = '0';
+        document.getElementById('mSwFinishMotion').style.width = '0';
+    }
+
 })();
 </script>
+<script src="js/camera_trigger.js"></script>

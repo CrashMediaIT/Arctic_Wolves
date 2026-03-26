@@ -28,6 +28,13 @@ try {
     $athletes = decryptUserRows($athletes);
 } catch (Exception $e) { $athletes = []; }
 
+// Get Google Maps API key for distance calculation
+$google_maps_api_key = '';
+try {
+    $apiStmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'google_maps_api_key'");
+    $google_maps_api_key = $apiStmt->fetchColumn() ?: '';
+} catch (Exception $e) { /* no key */ }
+
 // Summary stats for the current month
 $monthTotalKm = 0;
 $monthReimbursement = 0;
@@ -240,6 +247,55 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
     border-radius: 10px; padding: 10px 14px; font-size: 13px; color: #10B981;
 }
 .m-success-banner i { flex-shrink: 0; }
+
+/* Stop rows */
+.m-stops-section {
+    background: #0A0A0F; border: 1px solid #2D2D3F; border-radius: 10px;
+    padding: 12px; margin-bottom: 14px;
+}
+.m-stops-title {
+    font-size: 12px; font-weight: 600; color: #A8A8B8;
+    margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
+}
+.m-stop-row {
+    display: flex; gap: 8px; align-items: flex-start; margin-bottom: 10px;
+    position: relative;
+}
+.m-stop-row .m-stop-num {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: rgba(107,70,193,0.2); color: #8B5CF6;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; flex-shrink: 0; margin-top: 8px;
+}
+.m-stop-row .m-stop-fields { flex: 1; min-width: 0; }
+.m-stop-row .m-stop-remove {
+    width: 28px; height: 28px; border-radius: 50%; border: none;
+    background: rgba(239,68,68,0.15); color: #EF4444;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; cursor: pointer; flex-shrink: 0; margin-top: 8px;
+}
+.m-stop-row .m-stop-remove:active { background: rgba(239,68,68,0.3); }
+.m-add-stop-btn {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    width: 100%; padding: 10px; border: 1px dashed #2D2D3F;
+    border-radius: 8px; background: transparent; color: #8B5CF6;
+    font-size: 12px; font-weight: 600; cursor: pointer; margin-top: 4px;
+    font-family: Inter, sans-serif;
+}
+.m-add-stop-btn:active { background: rgba(107,70,193,0.08); }
+.m-calc-btn {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    width: 100%; padding: 10px; border: none; border-radius: 8px;
+    background: rgba(59,130,246,0.15); color: #3B82F6;
+    font-size: 13px; font-weight: 600; cursor: pointer; margin-bottom: 8px;
+    font-family: Inter, sans-serif; min-height: 44px;
+}
+.m-calc-btn:active { background: rgba(59,130,246,0.25); }
+.m-calc-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.m-calc-status {
+    font-size: 11px; text-align: center; margin-bottom: 8px;
+    min-height: 16px;
+}
 </style>
 
 <div class="m-travel">
@@ -337,6 +393,7 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
                 <?= $csrfField ?>
                 <input type="hidden" name="action" value="create">
                 <input type="hidden" name="pwa_context" value="1">
+                <input type="hidden" name="waypoints" id="m-waypoints-data" value="">
 
                 <div class="m-form-group">
                     <label class="m-form-label">Title *</label>
@@ -376,20 +433,37 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
                     </select>
                 </div>
 
-                <div class="m-form-row">
-                    <div class="m-form-group">
-                        <label class="m-form-label">Start Location *</label>
-                        <input type="text" name="from_location" class="m-form-input" required placeholder="e.g., Home">
+                <!-- Multi-stop locations -->
+                <div class="m-stops-section">
+                    <div class="m-stops-title"><i class="fas fa-map-marker-alt"></i> Trip Stops</div>
+                    <div id="m-stops-container">
+                        <div class="m-stop-row" data-stop-index="0">
+                            <div class="m-stop-num">1</div>
+                            <div class="m-stop-fields">
+                                <input type="text" class="m-form-input m-stop-address" data-index="0" required placeholder="Start location" style="margin-bottom:4px;">
+                                <input type="text" class="m-form-input m-stop-name" data-index="0" placeholder="Name (e.g., Home)" value="Start" style="font-size:12px;min-height:36px;padding:8px 12px;">
+                            </div>
+                        </div>
+                        <div class="m-stop-row" data-stop-index="1">
+                            <div class="m-stop-num">2</div>
+                            <div class="m-stop-fields">
+                                <input type="text" class="m-form-input m-stop-address" data-index="1" required placeholder="End location" style="margin-bottom:4px;">
+                                <input type="text" class="m-form-input m-stop-name" data-index="1" placeholder="Name (e.g., Arena)" value="End" style="font-size:12px;min-height:36px;padding:8px 12px;">
+                            </div>
+                        </div>
                     </div>
-                    <div class="m-form-group">
-                        <label class="m-form-label">End Location *</label>
-                        <input type="text" name="to_location" class="m-form-input" required placeholder="e.g., Arena">
-                    </div>
+                    <button type="button" class="m-add-stop-btn" id="m-add-stop-btn"><i class="fas fa-plus"></i> Add Stop</button>
                 </div>
+
+                <!-- Distance calculation -->
+                <?php if (!empty($google_maps_api_key)): ?>
+                <button type="button" class="m-calc-btn" id="m-calc-distance-btn"><i class="fas fa-route"></i> Calculate Distance</button>
+                <div class="m-calc-status" id="m-calc-status"></div>
+                <?php endif; ?>
 
                 <div class="m-form-group">
                     <label class="m-form-label">Distance (km) *</label>
-                    <input type="number" name="distance_km" class="m-form-input" required step="0.1" min="0.1" placeholder="0.0">
+                    <input type="number" name="distance_km" id="m-distance-field" class="m-form-input" required step="0.1" min="0.1" placeholder="0.0">
                 </div>
 
                 <button type="submit" class="m-form-submit"><i class="fas fa-check"></i> Save Trip</button>
@@ -415,6 +489,7 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
 <script>
 (function() {
     var deleteId = null;
+    var stopIndex = 2; // Start and End are 0, 1
 
     window.mOpenSheet = function(name) {
         var el = document.getElementById('m-sheet-' + name);
@@ -437,6 +512,117 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
             if (e.target === overlay) overlay.classList.remove('m-overlay-open');
         });
     });
+
+    // Add Stop button
+    var addStopBtn = document.getElementById('m-add-stop-btn');
+    if (addStopBtn) {
+        addStopBtn.addEventListener('click', function() {
+            var container = document.getElementById('m-stops-container');
+            var endRow = container.lastElementChild;
+            var newRow = document.createElement('div');
+            newRow.className = 'm-stop-row';
+            newRow.dataset.stopIndex = stopIndex;
+            newRow.innerHTML = '<div class="m-stop-num">' + (stopIndex + 1) + '</div>'
+                + '<div class="m-stop-fields">'
+                + '<input type="text" class="m-form-input m-stop-address" data-index="' + stopIndex + '" required placeholder="Stop location" style="margin-bottom:4px;">'
+                + '<input type="text" class="m-form-input m-stop-name" data-index="' + stopIndex + '" placeholder="Stop name" value="Stop ' + (stopIndex) + '" style="font-size:12px;min-height:36px;padding:8px 12px;">'
+                + '</div>'
+                + '<button type="button" class="m-stop-remove" onclick="mRemoveStop(this)" aria-label="Remove stop"><i class="fas fa-times"></i></button>';
+            // Insert before the last (End) row
+            container.insertBefore(newRow, endRow);
+            stopIndex++;
+            renumberStops();
+        });
+    }
+
+    window.mRemoveStop = function(btn) {
+        var row = btn.closest('.m-stop-row');
+        if (row) {
+            row.remove();
+            renumberStops();
+        }
+    };
+
+    function renumberStops() {
+        var rows = document.querySelectorAll('#m-stops-container .m-stop-row');
+        rows.forEach(function(row, i) {
+            var num = row.querySelector('.m-stop-num');
+            if (num) num.textContent = (i + 1);
+        });
+    }
+
+    function getWaypoints() {
+        var waypoints = [];
+        var rows = document.querySelectorAll('#m-stops-container .m-stop-row');
+        rows.forEach(function(row) {
+            var addr = row.querySelector('.m-stop-address');
+            var name = row.querySelector('.m-stop-name');
+            if (addr && addr.value.trim()) {
+                waypoints.push({
+                    name: (name ? name.value.trim() : '') || 'Stop',
+                    address: addr.value.trim()
+                });
+            }
+        });
+        return waypoints;
+    }
+
+    // Calculate Distance via Google Maps API
+    var calcBtn = document.getElementById('m-calc-distance-btn');
+    if (calcBtn) {
+        calcBtn.addEventListener('click', function() {
+            var waypoints = getWaypoints();
+            if (waypoints.length < 2) {
+                document.getElementById('m-calc-status').textContent = 'Enter at least 2 locations.';
+                document.getElementById('m-calc-status').style.color = '#F59E0B';
+                return;
+            }
+
+            calcBtn.disabled = true;
+            calcBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Calculating...';
+            document.getElementById('m-calc-status').textContent = '';
+
+            var formData = new FormData();
+            formData.append('action', 'get_distance');
+            formData.append('waypoints', JSON.stringify(waypoints));
+            formData.append('csrf_token', <?= json_encode($csrfToken, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>);
+
+            fetch('process_mileage.php', {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: formData
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                calcBtn.disabled = false;
+                calcBtn.innerHTML = '<i class="fas fa-route"></i> Calculate Distance';
+                if (data.success && data.data) {
+                    var distField = document.getElementById('m-distance-field');
+                    distField.value = data.data.distance_km;
+                    document.getElementById('m-calc-status').textContent = 'Distance calculated via Google Maps.';
+                    document.getElementById('m-calc-status').style.color = '#10B981';
+                } else {
+                    document.getElementById('m-calc-status').textContent = data.message || 'Could not calculate distance. Enter manually.';
+                    document.getElementById('m-calc-status').style.color = '#F59E0B';
+                }
+            })
+            .catch(function() {
+                calcBtn.disabled = false;
+                calcBtn.innerHTML = '<i class="fas fa-route"></i> Calculate Distance';
+                document.getElementById('m-calc-status').textContent = 'Network error. Enter distance manually.';
+                document.getElementById('m-calc-status').style.color = '#EF4444';
+            });
+        });
+    }
+
+    // Populate waypoints JSON on form submit
+    var addForm = document.getElementById('m-add-form');
+    if (addForm) {
+        addForm.addEventListener('submit', function() {
+            var waypoints = getWaypoints();
+            document.getElementById('m-waypoints-data').value = JSON.stringify(waypoints);
+        });
+    }
 
     // Delete via AJAX (process_mileage.php delete returns JSON)
     document.getElementById('m-confirm-delete-btn').addEventListener('click', function() {
