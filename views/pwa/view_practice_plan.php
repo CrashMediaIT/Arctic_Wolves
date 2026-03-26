@@ -41,7 +41,8 @@ if ($planId > 0) {
             $stmt = $pdo->prepare("
                 SELECT pd.*, d.title as drill_title, d.description as drill_description,
                        d.setup as drill_setup, d.coaching_points as drill_coaching_points,
-                       d.video_url as drill_video_url, dc.name as category_name
+                       d.video_url as drill_video_url, d.custom_image as drill_image,
+                       d.thumbnail_path as drill_thumbnail, dc.name as category_name
                 FROM practice_plan_drills pd
                 LEFT JOIN drills d ON d.id = pd.drill_id
                 LEFT JOIN drill_categories dc ON d.category_id = dc.id
@@ -169,6 +170,16 @@ $creatorName = trim(($plan['first_name'] ?? '') . ' ' . ($plan['last_name'] ?? '
             ?>
             <a href="?page=view_drill&id=<?= (int)($pd['drill_id'] ?? 0) ?>" class="m-plan-drill-item">
                 <div class="m-plan-drill-num"><?= $i + 1 ?></div>
+                <?php
+                $pdImgUrl = '';
+                if (!empty($pd['drill_image'])) {
+                    $pdImgUrl = resolveRustfsUrl($pdo, $pd['drill_image']);
+                } elseif (!empty($pd['drill_thumbnail'])) {
+                    $pdImgUrl = resolveRustfsUrl($pdo, $pd['drill_thumbnail']);
+                }
+                if ($pdImgUrl): ?>
+                <img src="<?= htmlspecialchars($pdImgUrl) ?>" alt="<?= htmlspecialchars($drillTitle) ?>" style="width:48px;height:48px;border-radius:8px;object-fit:cover;flex-shrink:0;" loading="lazy" onerror="this.style.display='none'">
+                <?php endif; ?>
                 <div class="m-plan-drill-body">
                     <div class="m-plan-drill-title"><?= htmlspecialchars($drillTitle) ?></div>
                     <div class="m-plan-drill-meta">

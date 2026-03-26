@@ -579,8 +579,12 @@ $periodLabel = $periodLabels[$period] ?? 'This Month';
                 <textarea name="description" id="mExpenseDesc" placeholder="Details about this expense" rows="2"></textarea>
             </div>
             <div class="m-modal-field">
-                <label for="mExpenseReceipt">Receipt / Invoice</label>
-                <input type="file" name="receipt_file" id="mExpenseReceipt" accept="image/*,application/pdf" capture="environment">
+                <label>Receipt / Invoice</label>
+                <input type="file" name="receipt_file" id="mExpenseReceipt" accept="image/*,application/pdf" style="display:none;">
+                <button type="button" class="m-scan-btn" style="background:rgba(59,130,246,0.15);border-color:#3B82F6;color:#3B82F6;" onclick="document.getElementById('mExpenseReceipt').click()">
+                    <i class="fas fa-paperclip"></i> Upload Receipt or Invoice
+                </button>
+                <div id="mReceiptFileName" style="font-size:12px;color:#10B981;margin-top:6px;display:none;"><i class="fas fa-check-circle"></i> <span></span></div>
             </div>
             <div class="m-modal-actions">
                 <button type="button" class="m-modal-btn-cancel" onclick="mCloseExpenseModal()">Cancel</button>
@@ -761,6 +765,20 @@ $periodLabel = $periodLabels[$period] ?? 'This Month';
     window.mScanReceipt = function() {
         ocrInput.click();
     };
+
+    // Receipt file name display
+    var receiptInput = document.getElementById('mExpenseReceipt');
+    if (receiptInput) {
+        receiptInput.addEventListener('change', function() {
+            var nameEl = document.getElementById('mReceiptFileName');
+            if (this.files && this.files[0]) {
+                nameEl.querySelector('span').textContent = this.files[0].name;
+                nameEl.style.display = 'block';
+            } else {
+                nameEl.style.display = 'none';
+            }
+        });
+    }
 
     ocrInput.addEventListener('change', function() {
         if (!this.files || !this.files[0]) return;

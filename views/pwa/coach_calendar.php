@@ -183,6 +183,37 @@ try {
     // development_appointments table may not exist yet
 }
 
+// Fetch Office 365 synced calendar events
+$o365CalConnected = false;
+$o365CalEmail = '';
+try {
+    $o365CalTokRow = $pdo->prepare("SELECT connected_email FROM user_oauth_tokens WHERE user_id = ? AND provider = 'office365_calendar' LIMIT 1");
+    $o365CalTokRow->execute([$user_id]);
+    $o365CalTok = $o365CalTokRow->fetch(PDO::FETCH_ASSOC);
+    if ($o365CalTok) {
+        $o365CalConnected = true;
+        $o365CalEmail = htmlspecialchars($o365CalTok['connected_email'] ?? '');
+
+        $o365Stmt = $pdo->prepare("
+            SELECT id, title, event_date as session_date, event_time as session_time,
+                   duration_minutes, description, location_name as arena,
+                   'o365' as status, 0 as athlete_count, 1 as is_o365_event
+            FROM o365_calendar_events
+            WHERE user_id = ? AND event_date >= CURDATE()
+            ORDER BY event_date, event_time
+            LIMIT 50
+        ");
+        $o365Stmt->execute([$user_id]);
+        $o365Events = $o365Stmt->fetchAll(PDO::FETCH_ASSOC);
+        $sessions = array_merge($sessions, $o365Events);
+        usort($sessions, function ($a, $b) {
+            return strtotime($a['session_date']) - strtotime($b['session_date']);
+        });
+    }
+} catch (PDOException $e) {
+    // o365 tables may not exist yet
+}
+
 // Group sessions by date
 $grouped = [];
 foreach ($sessions as $s) {
@@ -372,6 +403,12 @@ foreach ($sessions as $s) {
         </div>
     </form>
 
+    <?php if ($o365CalConnected): ?>
+    <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#0078d4;padding:8px 0;">
+        <i class="fab fa-microsoft"></i> Office 365 synced (<?= $o365CalEmail ?>)
+    </div>
+    <?php endif; ?>
+
     <?php if (empty($sessions)): ?>
         <div class="m-empty-state">
             <i class="fas fa-calendar-xmark"></i>
@@ -400,7 +437,26 @@ foreach ($sessions as $s) {
                 };
             ?>
             <div class="m-cal-card" id="m-cal-card-<?= (int)$sess['id'] ?>">
-                <?php if (!empty($sess['is_dev_appointment'])): ?>
+                <?php if (!empty($sess['is_o365_event'])): ?>
+                <div class="m-cal-card-top" style="border-left:3px solid #0078d4;">
+                    <div class="m-cal-time">
+                        <span class="m-cal-time-value"><?= $sTime ?></span>
+                        <span class="m-cal-time-period"><?= $sPeriod ?></span>
+                    </div>
+                    <div class="m-cal-info">
+                        <div class="m-cal-title">
+                            <?= htmlspecialchars($sess['title']) ?>
+                            <span class="m-cal-tpl-badge" style="background:rgba(0,120,212,0.2);color:#0078d4;"><i class="fab fa-microsoft"></i> O365</span>
+                        </div>
+                        <div class="m-cal-meta">
+                            <?php if (!empty($sess['arena'])): ?><span><i class="fas fa-location-dot"></i> <?= htmlspecialchars($sess['arena']) ?></span><?php endif; ?>
+                            <?php if (!empty($sess['duration_minutes'])): ?><span><?= (int)$sess['duration_minutes'] ?>min</span><?php endif; ?>
+                            <?php if (!empty($sess['description'])): ?><span style="color:#6B6B7B;"><?= htmlspecialchars(mb_strimwidth($sess['description'], 0, 60, '…')) ?></span><?php endif; ?>
+                        </div>
+                    </div>
+                    <span class="m-cal-badge m-cal-badge-scheduled" style="background:rgba(0,120,212,0.12);color:#0078d4;">Outlook</span>
+                </div>
+                <?php elseif (!empty($sess['is_dev_appointment'])): ?>
                 <div class="m-cal-card-top" style="border-left:3px solid <?= ($sess['appointment_type'] ?? '') === 'call' ? '#10b981' : (($sess['appointment_type'] ?? '') === 'video_call' ? '#3b82f6' : '#f59e0b') ?>;">
                     <div class="m-cal-time">
                         <span class="m-cal-time-value"><?= $sTime ?></span>
@@ -440,8 +496,7 @@ foreach ($sessions as $s) {
                     <span class="m-cal-badge m-cal-badge-<?= $badgeClass ?>"><?= htmlspecialchars(ucfirst($status)) ?></span>
                 </a>
                 <?php endif; ?>
-                <?php if (empty($sess['is_template_session']) && empty($sess['is_dev_appointment'])): ?>
-                <!-- Plan & Evaluation tags -->
+                <?php if (empty($sess['is_template_session']) && empty($sess['is_dev_appointment']) && empty($sess['is_o365_event'])): ?>
                 <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;padding:0 2px;">
                     <?php if (!empty($sess['practice_plan_name'])): ?>
                     <span class="m-cal-plan-tag has-plan"><i class="fas fa-clipboard-list"></i> <?= htmlspecialchars($sess['practice_plan_name']) ?></span>
@@ -471,7 +526,7 @@ foreach ($sessions as $s) {
                     </a>
                 </div>
                 <?php endif; ?>
-                <?php if ($status === 'scheduled' && empty($sess['is_template_session']) && empty($sess['is_dev_appointment'])): ?>
+                <?php if ($status === 'scheduled' && empty($sess['is_template_session']) && empty($sess['is_dev_appointment']) && empty($sess['is_o365_event'])): ?>
                 <div class="m-cal-actions">
                     <a href="?page=create_session&edit_id=<?= (int)$sess['id'] ?>" class="m-cal-act-btn m-cal-act-edit" style="text-decoration:none;">
                         <i class="fas fa-pen"></i> Edit
