@@ -178,7 +178,7 @@ $creatorName = trim(($plan['first_name'] ?? '') . ' ' . ($plan['last_name'] ?? '
                     $pdImgUrl = resolveRustfsUrl($pdo, $pd['drill_thumbnail']);
                 }
                 if ($pdImgUrl): ?>
-                <img src="<?= htmlspecialchars($pdImgUrl) ?>" alt="" style="width:48px;height:48px;border-radius:8px;object-fit:cover;flex-shrink:0;" loading="lazy" onerror="this.style.display='none'">
+                <img src="<?= htmlspecialchars($pdImgUrl) ?>" alt="<?= htmlspecialchars($drillTitle) ?>" style="width:48px;height:48px;border-radius:8px;object-fit:cover;flex-shrink:0;" loading="lazy" onerror="this.style.display='none'">
                 <?php endif; ?>
                 <div class="m-plan-drill-body">
                     <div class="m-plan-drill-title"><?= htmlspecialchars($drillTitle) ?></div>
