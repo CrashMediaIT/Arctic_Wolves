@@ -112,7 +112,8 @@ try {
 .m-modal-overlay.active { display: flex; }
 .m-modal {
     background: #16161F; border-top: 1px solid #2D2D3F; border-radius: 16px 16px 0 0;
-    width: 100%; max-width: 480px; padding: 20px 16px 24px; animation: m-slide-up .25s ease;
+    width: 100%; max-width: 480px; padding: 20px 16px env(safe-area-inset-bottom, 24px);
+    animation: m-slide-up .25s ease; max-height: 90vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
 }
 @keyframes m-slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
 .m-modal-handle { width: 36px; height: 4px; background: #2D2D3F; border-radius: 2px; margin: 0 auto 16px; }

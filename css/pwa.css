@@ -651,6 +651,8 @@ body.pwa-body .modal-header h3 {
 }
 body.pwa-body .modal-body {
   padding: 14px 16px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 body.pwa-body .modal-footer {
   padding: 12px 16px;

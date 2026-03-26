@@ -166,6 +166,15 @@ const IceCanvasRenderer = {
             }
             ctx.closePath();
             ctx.stroke();
+        } else if (iceView === 'center') {
+            // Center ice: straight boards (no rounded corners in the neutral zone)
+            ctx.beginPath();
+            ctx.moveTo(2, 2);
+            ctx.lineTo(w - 2, 2);
+            ctx.lineTo(w - 2, h - 2);
+            ctx.lineTo(2, h - 2);
+            ctx.closePath();
+            ctx.stroke();
         } else {
             this.roundRect(ctx, 2, 2, w - 4, h - 4, cornerRadius);
             ctx.stroke();
@@ -610,10 +619,29 @@ const IceCanvasRenderer = {
     },
     
     /**
-     * Draw center ice view - EXACT copy from drill_designer.js
+     * Draw center ice view - shows blue line to blue line (neutral zone)
+     * EXACT copy from drill_designer.js
      */
     drawCenterIce: function(ctx, w, h, NHL_RINK) {
-        // Center line
+        // Center ice = blue line to blue line (neutral zone)
+        // In a 200ft rink, blue lines are at 64ft from each end
+        // So neutral zone is 200 - 64*2 = 72ft wide
+        var faceoffFromBoards = NHL_RINK.FACEOFF_FROM_BOARDS;
+        
+        // Blue lines at edges
+        ctx.strokeStyle = '#0033a0';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(2, 0);
+        ctx.lineTo(2, h);
+        ctx.stroke();
+        
+        ctx.beginPath();
+        ctx.moveTo(w - 2, 0);
+        ctx.lineTo(w - 2, h);
+        ctx.stroke();
+        
+        // Center line (red)
         ctx.strokeStyle = '#c41e3a';
         ctx.lineWidth = 4;
         ctx.beginPath();
@@ -624,7 +652,7 @@ const IceCanvasRenderer = {
         // Center circle
         ctx.strokeStyle = '#0033a0';
         ctx.lineWidth = 2;
-        const circleRadius = h * NHL_RINK.CENTER_CIRCLE_RADIUS;
+        var circleRadius = h * NHL_RINK.CENTER_CIRCLE_RADIUS;
         ctx.beginPath();
         ctx.arc(w/2, h/2, circleRadius, 0, 2 * Math.PI);
         ctx.stroke();
@@ -633,6 +661,28 @@ const IceCanvasRenderer = {
         ctx.fillStyle = '#0033a0';
         ctx.beginPath();
         ctx.arc(w/2, h/2, 6, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Neutral zone faceoff dots
+        // In full rink: dots are 5ft inside blue line, neutral zone is 72ft wide
+        // So dots are at 5/72 from each edge
+        var dotOffset = w * (5 / 72);
+        
+        ctx.fillStyle = '#c41e3a';
+        // Left side dots
+        ctx.beginPath();
+        ctx.arc(dotOffset, h * faceoffFromBoards, 4, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(dotOffset, h * (1 - faceoffFromBoards), 4, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Right side dots
+        ctx.beginPath();
+        ctx.arc(w - dotOffset, h * faceoffFromBoards, 4, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(w - dotOffset, h * (1 - faceoffFromBoards), 4, 0, 2 * Math.PI);
         ctx.fill();
     },
     

@@ -152,10 +152,10 @@ if (!function_exists('mMsgTimeAgo')) {
 }
 .m-new-msg-overlay.m-modal-open { display: flex; }
 .m-new-msg-panel {
-    width: 100%; max-width: 480px; max-height: 85vh;
+    width: 100%; max-width: 480px; max-height: 90vh;
     background: #16161F; border-top-left-radius: 20px; border-top-right-radius: 20px;
     padding: 20px 16px 24px; animation: mSlideUp 0.25s ease-out;
-    display: flex; flex-direction: column;
+    display: flex; flex-direction: column; overflow-y: auto; -webkit-overflow-scrolling: touch;
 }
 @keyframes mSlideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 .m-new-msg-handle {

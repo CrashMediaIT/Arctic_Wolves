@@ -172,8 +172,9 @@ if (!empty($drill['category_id'])) {
     if ($drillImageUrl): ?>
     <div class="m-section">
         <h3 class="m-section-title">Diagram</h3>
-        <div style="background:#16161F;border:1px solid #2D2D3F;border-radius:12px;overflow:hidden;">
-            <img src="<?= htmlspecialchars($drillImageUrl) ?>" alt="<?= htmlspecialchars($drill['title']) ?> diagram" style="width:100%;display:block;border-radius:12px;" loading="lazy" onerror="this.parentElement.parentElement.style.display='none'">
+        <div style="background:#16161F;border:1px solid #2D2D3F;border-radius:12px;overflow:hidden;cursor:pointer;" role="button" tabindex="0" aria-label="View diagram full screen" onclick="mOpenDiagramFullscreen()" onkeydown="if(event.key==='Enter')mOpenDiagramFullscreen()">
+            <img id="m-drill-diagram" src="<?= htmlspecialchars($drillImageUrl) ?>" alt="<?= htmlspecialchars($drill['title']) ?> diagram" style="width:100%;display:block;border-radius:12px;" loading="lazy" onerror="this.parentElement.parentElement.style.display='none'">
+            <div style="text-align:center;padding:8px;font-size:11px;color:#6B6B7B;" aria-hidden="true"><i class="fas fa-expand"></i> Tap to view full screen</div>
         </div>
     </div>
     <?php endif; ?>
@@ -254,3 +255,44 @@ if (!empty($drill['category_id'])) {
         <?php endif; ?>
     </div>
 </div>
+
+<?php if (!empty($drillImageUrl)): ?>
+<!-- Fullscreen Diagram Overlay -->
+<style>
+.m-diagram-fullscreen {
+    display: none; position: fixed; inset: 0; z-index: 9999;
+    background: #000; align-items: center; justify-content: center;
+    flex-direction: column;
+}
+.m-diagram-fullscreen.active { display: flex; }
+.m-diagram-fullscreen-close {
+    position: absolute; top: 12px; right: 12px; z-index: 10001;
+    width: 44px; height: 44px; border-radius: 50%;
+    background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2);
+    color: #fff; font-size: 18px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.m-diagram-fullscreen img {
+    max-width: 100%; max-height: 100%; object-fit: contain;
+}
+</style>
+<div class="m-diagram-fullscreen" id="m-diagram-fullscreen" onclick="mCloseDiagramFullscreen(event)">
+    <button type="button" class="m-diagram-fullscreen-close" onclick="mCloseDiagramFullscreen(event)"><i class="fas fa-times"></i></button>
+    <img src="<?= htmlspecialchars($drillImageUrl) ?>" alt="<?= htmlspecialchars($drill['title']) ?> diagram">
+</div>
+<script>
+function mOpenDiagramFullscreen() {
+    document.getElementById('m-diagram-fullscreen').classList.add('active');
+    // Allow device rotation by not locking orientation
+    if (screen.orientation && screen.orientation.unlock) {
+        try { screen.orientation.unlock(); } catch(e) {}
+    }
+}
+function mCloseDiagramFullscreen(e) {
+    if (e) e.stopPropagation();
+    if (e && e.target && e.target.tagName === 'IMG') return; // don't close when tapping image
+    document.getElementById('m-diagram-fullscreen').classList.remove('active');
+}
+</script>
+<?php endif; ?>

@@ -199,7 +199,8 @@ try {
 .m-modal-overlay.m-modal-open { display: flex; }
 .m-modal {
     background: #16161F; border-radius: 16px 16px 0 0; width: 100%; max-width: 480px;
-    max-height: 85vh; overflow-y: auto; padding: 20px 16px 32px;
+    max-height: 90vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    padding: 20px 16px max(32px, env(safe-area-inset-bottom, 32px));
     animation: mSlideUp 0.25s ease-out;
 }
 @keyframes mSlideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
