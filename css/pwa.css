@@ -149,29 +149,59 @@ body.pwa-body {
   padding-left: 2px;
 }
 
-/* ── Menu List (More page) ─────────────────────────────── */
-.pwa-menu-list { list-style: none; }
+/* ── Menu List (More page) — Icon Grid ─────────────────── */
+.pwa-menu-list {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
 .pwa-menu-item {
-  display: flex; align-items: center; gap: 14px;
-  padding: 14px 16px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px;
+  padding: 16px 8px;
   background: var(--bg-card, #16161F);
   border: 1px solid var(--border, #2D2D3F);
-  border-radius: 12px;
-  margin-bottom: 8px;
+  border-radius: 14px;
   text-decoration: none; color: #fff;
-  font-size: 14px; font-weight: 600;
+  font-size: 11px; font-weight: 600;
+  text-align: center;
+  line-height: 1.3;
+  min-height: 82px;
   transition: background .2s, border-color .2s, transform .15s;
 }
 .pwa-menu-item:active {
   background: rgba(107,70,193,0.15);
   border-color: rgba(107,70,193,0.3);
-  transform: scale(0.98);
+  transform: scale(0.95);
 }
-.pwa-menu-item i { width: 22px; text-align: center; color: var(--primary-light, #8B5CF6); font-size: 16px; }
-.pwa-menu-item .menu-chevron { margin-left: auto; color: var(--text-muted, #6B6B7B); font-size: 12px; }
+.pwa-menu-item i:first-child {
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(139,92,246,0.12);
+  border-radius: 10px;
+  color: var(--primary-light, #8B5CF6);
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+/* Danger variant (Sign Out) */
+.pwa-menu-item-danger { color: #ef4444; }
+.pwa-menu-item-danger i:first-child { color: #ef4444; background: rgba(239,68,68,0.12); }
+.pwa-menu-item-danger:active { background: rgba(239,68,68,0.12); border-color: rgba(239,68,68,0.3); }
+
+/* Badge on menu tiles */
+.pwa-menu-item-badged { position: relative; }
+.pwa-menu-badge {
+  display: none; position: absolute; top: 6px; right: 6px;
+  background: var(--primary, #6B46C1); color: #fff;
+  font-size: 9px; font-weight: 700; min-width: 16px; height: 16px;
+  padding: 0 4px; border-radius: 8px;
+  line-height: 16px; text-align: center;
+}
 
 /* ── Menu Group ────────────────────────────────────────── */
-.pwa-menu-group { margin-bottom: 24px; }
+.pwa-menu-group { margin-bottom: 20px; }
 
 /* ── Stat Grid ─────────────────────────────────────────── */
 .pwa-stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
