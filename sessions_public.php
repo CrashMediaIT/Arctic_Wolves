@@ -117,6 +117,7 @@ if ($db_connected) {
     }
     
     // Fetch upcoming sessions from training_session_templates + training_session_dates
+    // Exclude dev programs (is_dev_program = 1) since they display in their own section
     try {
         $templateStmt = $pdo->query("
             SELECT t.id as template_id,
@@ -144,6 +145,7 @@ if ($db_connected) {
             LEFT JOIN locations l ON t.location_id = l.id
             WHERE t.is_active = 1
               AND td.is_active = 1
+              AND (t.is_dev_program = 0 OR t.is_dev_program IS NULL)
               AND (DATE(td.session_date) > CURDATE() OR (DATE(td.session_date) = CURDATE() AND TIME(td.session_date) > CURTIME()))
             ORDER BY td.session_date ASC
         ");
@@ -197,8 +199,14 @@ if ($db_connected) {
     }
     
     // Fetch long-term development programs
+    // Ensure is_dev_program column exists (may not on older installations)
     $devPrograms = [];
     try {
+        try {
+            $pdo->exec("ALTER TABLE `training_session_templates` ADD COLUMN IF NOT EXISTS `is_dev_program` TINYINT(1) DEFAULT 0 AFTER `show_on_landing`");
+            $pdo->exec("ALTER TABLE `training_session_templates` ADD COLUMN IF NOT EXISTS `duration_weeks` INT DEFAULT NULL AFTER `is_dev_program`");
+        } catch (PDOException $e) { /* columns may already exist */ }
+
         $dpStmt = $pdo->query("
             SELECT tst.id, tst.name, tst.description, tst.price, tst.duration_weeks,
                    tst.session_type, tst.max_participants, tst.waitlist_only,
