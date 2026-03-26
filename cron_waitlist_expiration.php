@@ -4,7 +4,8 @@
  * Expires waitlist offers that have not been accepted within 48 hours
  * and automatically offers the spot to the next person in line.
  * 
- * Example: */15 * * * * /usr/bin/php /path/to/cron_waitlist_expiration.php
+ * Example crontab entry (every 15 minutes):
+ * 0,15,30,45 * * * * /usr/bin/php /path/to/cron_waitlist_expiration.php
  * (Run every 15 minutes to check for expired offers)
  */
 
