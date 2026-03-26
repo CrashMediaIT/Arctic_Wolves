@@ -16,10 +16,27 @@ if (!isset($_SESSION['user_id'])) {
 
 $packages = [];
 try {
-    $stmt = $pdo->prepare("SELECT id, name, description, price, sessions_included, validity_days, is_active FROM packages WHERE is_active = 1 ORDER BY price ASC");
+    $stmt = $pdo->prepare("SELECT id, name, description, price, credits, valid_days, is_active, waitlist_only FROM packages WHERE is_active = 1 ORDER BY price ASC");
     $stmt->execute();
     $packages = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) { $packages = []; }
+} catch (PDOException $e) {
+    // Fallback without waitlist_only column if migration hasn't run yet
+    try {
+        $stmt = $pdo->prepare("SELECT id, name, description, price, credits, valid_days, is_active FROM packages WHERE is_active = 1 ORDER BY price ASC");
+        $stmt->execute();
+        $packages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e2) { $packages = []; }
+}
+
+// Check user waitlist status for packages
+$userWaitlistPkgIds = [];
+if (isset($_SESSION['user_id'])) {
+    try {
+        $wlStmt = $pdo->prepare("SELECT package_id FROM waitlists WHERE user_id = ? AND package_id IS NOT NULL AND status IN ('waiting','offered')");
+        $wlStmt->execute([$_SESSION['user_id']]);
+        $userWaitlistPkgIds = $wlStmt->fetchAll(PDO::FETCH_COLUMN);
+    } catch (PDOException $e) {}
+}
 ?>
 <style>
 .m-packages { padding: 16px; font-family: Inter, sans-serif; }
@@ -75,26 +92,37 @@ try {
             <p class="m-package-desc"><?= htmlspecialchars($pkg['description']) ?></p>
             <?php endif; ?>
             <div class="m-package-details">
-                <?php if (!empty($pkg['sessions_included'])): ?>
+                <?php if (!empty($pkg['credits'])): ?>
                 <span class="m-package-detail">
-                    <i class="fas fa-calendar-check"></i>
-                    <?= (int)$pkg['sessions_included'] ?> session<?= (int)$pkg['sessions_included'] !== 1 ? 's' : '' ?>
+                    <i class="fas fa-ticket"></i>
+                    <?= (int)$pkg['credits'] ?> credit<?= (int)$pkg['credits'] !== 1 ? 's' : '' ?>
                 </span>
                 <?php endif; ?>
-                <?php if (!empty($pkg['validity_days'])): ?>
+                <?php if (!empty($pkg['valid_days'])): ?>
                 <span class="m-package-detail">
                     <i class="fas fa-clock"></i>
-                    <?= (int)$pkg['validity_days'] ?> day<?= (int)$pkg['validity_days'] !== 1 ? 's' : '' ?> validity
+                    <?= (int)$pkg['valid_days'] ?> day<?= (int)$pkg['valid_days'] !== 1 ? 's' : '' ?> validity
                 </span>
                 <?php endif; ?>
             </div>
             <div class="m-package-footer">
                 <div>
                     <span class="m-package-price">$<?= number_format((float)$pkg['price'], 2) ?></span>
-                    <?php if (!empty($pkg['sessions_included']) && (float)$pkg['price'] > 0): ?>
-                    <div class="m-package-price-sub">$<?= number_format((float)$pkg['price'] / (int)$pkg['sessions_included'], 2) ?>/session</div>
+                    <?php if (!empty($pkg['credits']) && (float)$pkg['price'] > 0): ?>
+                    <div class="m-package-price-sub">$<?= number_format((float)$pkg['price'] / (int)$pkg['credits'], 2) ?>/credit</div>
                     <?php endif; ?>
                 </div>
+                <?php
+                    $isWaitlistOnly = !empty($pkg['waitlist_only']);
+                    $isOnWaitlist = in_array($pkg['id'], $userWaitlistPkgIds);
+                ?>
+                <?php if ($isOnWaitlist): ?>
+                    <span style="font-size:12px;font-weight:600;color:#F59E0B;"><i class="fas fa-clock"></i> On Waitlist</span>
+                <?php elseif ($isWaitlistOnly): ?>
+                    <button type="button" class="m-package-buy" style="background:#F59E0B;" onclick="mJoinPackageWaitlist(<?= (int)$pkg['id'] ?>)">
+                        <i class="fas fa-clock"></i> Join Waitlist
+                    </button>
+                <?php else: ?>
                 <form action="process_purchase_package.php" method="POST" style="display:inline;">
                     <?= csrfTokenInput() ?>
                     <input type="hidden" name="package_id" value="<?= (int)$pkg['id'] ?>">
@@ -102,8 +130,25 @@ try {
                         <i class="fas fa-cart-plus"></i> Purchase
                     </button>
                 </form>
+                <?php endif; ?>
             </div>
         </div>
         <?php endforeach; ?>
     <?php endif; ?>
 </div>
+<script>
+function mJoinPackageWaitlist(packageId) {
+    var csrfToken = document.querySelector('input[name="csrf_token"]');
+    var form = new FormData();
+    form.append('action', 'join_waitlist');
+    form.append('package_id', packageId);
+    if (csrfToken) form.append('csrf_token', csrfToken.value);
+    fetch('process_booking.php', { method: 'POST', body: form })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) { if (typeof persistToast === 'function') persistToast(data.message, 'success'); location.reload(); }
+            else { if (typeof showToast === 'function') showToast(data.message || 'Failed to join waitlist', 'error'); else alert(data.message); }
+        })
+        .catch(function() { if (typeof showToast === 'function') showToast('Network error', 'error'); else alert('Network error'); });
+}
+</script>
