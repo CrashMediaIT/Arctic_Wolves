@@ -218,7 +218,7 @@ if ($db_connected) {
                     try {
                         $_dp[$_f] = FieldEncryption::decrypt($_dp[$_f]);
                     } catch (Exception $decErr) {
-                        // If decryption fails, keep the raw value
+                        error_log("Dev program decrypt error (id=" . ($_dp['id'] ?? '?') . ", field=$_f): " . $decErr->getMessage());
                     }
                 }
             }
@@ -245,7 +245,7 @@ if ($db_connected) {
                         try {
                             $_dp[$_f] = FieldEncryption::decrypt($_dp[$_f]);
                         } catch (Exception $decErr) {
-                            // If decryption fails, keep the raw value
+                            error_log("Dev program decrypt error after ALTER (id=" . ($_dp['id'] ?? '?') . ", field=$_f): " . $decErr->getMessage());
                         }
                     }
                 }
@@ -256,7 +256,7 @@ if ($db_connected) {
             $devPrograms = [];
         }
     } catch (Exception $e) {
-        error_log("Public dev programs general error: " . $e->getMessage());
+        error_log("Failed to fetch public dev programs: " . $e->getMessage());
         $devPrograms = [];
     }
 }
