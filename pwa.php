@@ -297,7 +297,7 @@ if (!$skipPwaOverride && file_exists(__DIR__ . '/' . $pwa_view_file)) {
 
 // Determine active tab
 $tab_home     = in_array($page, ['home', 'front_desk_home', 'parent_home']);
-$tab_sessions = in_array($page, ['sessions', 'upcoming_sessions', 'booking', 'session_detail', 'create_session', 'session_history', 'session_payment', 'coach_calendar']);
+$tab_sessions = in_array($page, ['sessions', 'upcoming_sessions', 'booking', 'session_detail', 'create_session', 'session_history', 'session_payment', 'coach_calendar', 'packages', 'development_programs', 'personal_development_programs']);
 $tab_athletes = in_array($page, ['roster', 'athletes', 'athlete_detail', 'manage_athletes', 'team_roster', 'coach_roster', 'health_coach_roster']);
 $tab_more     = (!$tab_home && !$tab_sessions && !$tab_athletes);
 

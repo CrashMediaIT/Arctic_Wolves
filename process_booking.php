@@ -380,58 +380,97 @@ if ($action === 'register_template_session') {
     }
 }
 
-// JOIN WAITLIST
+// JOIN WAITLIST (supports sessions, packages, and templates/programs)
 if ($action === 'join_waitlist') {
     header('Content-Type: application/json');
     
     try {
         $session_id = intval($_POST['session_id'] ?? 0);
+        $package_id = intval($_POST['package_id'] ?? 0);
+        $template_id = intval($_POST['template_id'] ?? 0);
         
-        if ($session_id <= 0) {
-            echo json_encode(['success' => false, 'message' => 'Invalid session ID']);
-            exit();
-        }
+        // Determine which product type
+        $product_name = '';
+        $wl_session_id = null;
+        $wl_package_id = null;
+        $wl_template_id = null;
         
-        // Verify session exists
-        $stmt = $pdo->prepare("SELECT id, title FROM sessions WHERE id = ?");
-        $stmt->execute([$session_id]);
-        $session = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if (!$session) {
-            echo json_encode(['success' => false, 'message' => 'Session not found']);
-            exit();
-        }
-        
-        // Check if user is already on waitlist
-        $stmt = $pdo->prepare("SELECT id FROM waitlists WHERE session_id = ? AND user_id = ? AND status IN ('waiting', 'offered')");
-        $stmt->execute([$session_id, $user_id]);
-        if ($stmt->fetch()) {
-            echo json_encode(['success' => false, 'message' => 'You are already on the waitlist for this session']);
-            exit();
-        }
-        
-        // Check if user already has a confirmed booking
-        $stmt = $pdo->prepare("SELECT id FROM bookings WHERE session_id = ? AND user_id = ? AND status = 'confirmed'");
-        $stmt->execute([$session_id, $user_id]);
-        if ($stmt->fetch()) {
-            echo json_encode(['success' => false, 'message' => 'You already have a confirmed booking for this session']);
+        if ($session_id > 0) {
+            $stmt = $pdo->prepare("SELECT id, title FROM sessions WHERE id = ?");
+            $stmt->execute([$session_id]);
+            $product = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$product) { echo json_encode(['success' => false, 'message' => 'Session not found']); exit(); }
+            $product_name = $product['title'];
+            $wl_session_id = $session_id;
+            
+            // Check if user already on waitlist for this session
+            $stmt = $pdo->prepare("SELECT id FROM waitlists WHERE session_id = ? AND user_id = ? AND status IN ('waiting', 'offered')");
+            $stmt->execute([$session_id, $user_id]);
+            if ($stmt->fetch()) { echo json_encode(['success' => false, 'message' => 'You are already on the waitlist']); exit(); }
+            
+            // Check if user already has a confirmed booking
+            $stmt = $pdo->prepare("SELECT id FROM bookings WHERE session_id = ? AND user_id = ? AND status = 'confirmed'");
+            $stmt->execute([$session_id, $user_id]);
+            if ($stmt->fetch()) { echo json_encode(['success' => false, 'message' => 'You already have a confirmed booking']); exit(); }
+            
+        } elseif ($package_id > 0) {
+            $stmt = $pdo->prepare("SELECT id, name FROM packages WHERE id = ? AND is_active = 1");
+            $stmt->execute([$package_id]);
+            $product = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$product) { echo json_encode(['success' => false, 'message' => 'Package not found']); exit(); }
+            $product_name = $product['name'];
+            $wl_package_id = $package_id;
+            
+            // Check if user already on waitlist for this package
+            $stmt = $pdo->prepare("SELECT id FROM waitlists WHERE package_id = ? AND user_id = ? AND status IN ('waiting', 'offered')");
+            $stmt->execute([$package_id, $user_id]);
+            if ($stmt->fetch()) { echo json_encode(['success' => false, 'message' => 'You are already on the waitlist']); exit(); }
+            
+        } elseif ($template_id > 0) {
+            $stmt = $pdo->prepare("SELECT id, name FROM training_session_templates WHERE id = ? AND is_active = 1");
+            $stmt->execute([$template_id]);
+            $product = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$product) { echo json_encode(['success' => false, 'message' => 'Program not found']); exit(); }
+            $product_name = $product['name'];
+            $wl_template_id = $template_id;
+            
+            // Check if user already on waitlist for this template
+            $stmt = $pdo->prepare("SELECT id FROM waitlists WHERE template_id = ? AND user_id = ? AND status IN ('waiting', 'offered')");
+            $stmt->execute([$template_id, $user_id]);
+            if ($stmt->fetch()) { echo json_encode(['success' => false, 'message' => 'You are already on the waitlist']); exit(); }
+            
+        } else {
+            echo json_encode(['success' => false, 'message' => 'No product specified']);
             exit();
         }
         
         // Get next position on the waitlist (use transaction to prevent race condition)
         $pdo->beginTransaction();
         try {
-            $stmt = $pdo->prepare("SELECT COALESCE(MAX(position), 0) + 1 as next_pos FROM waitlists WHERE session_id = ? FOR UPDATE");
-            $stmt->execute([$session_id]);
-            $next_position = (int)$stmt->fetchColumn();
+            // Build position query based on product type
+            if ($wl_session_id) {
+                $posStmt = $pdo->prepare("SELECT COALESCE(MAX(position), 0) + 1 FROM waitlists WHERE session_id = ? FOR UPDATE");
+                $posStmt->execute([$wl_session_id]);
+            } elseif ($wl_package_id) {
+                $posStmt = $pdo->prepare("SELECT COALESCE(MAX(position), 0) + 1 FROM waitlists WHERE package_id = ? FOR UPDATE");
+                $posStmt->execute([$wl_package_id]);
+            } else {
+                $posStmt = $pdo->prepare("SELECT COALESCE(MAX(position), 0) + 1 FROM waitlists WHERE template_id = ? FOR UPDATE");
+                $posStmt->execute([$wl_template_id]);
+            }
+            $next_position = (int)$posStmt->fetchColumn();
             
             // Add to waitlist
-            $stmt = $pdo->prepare("INSERT INTO waitlists (session_id, user_id, position, status) VALUES (?, ?, ?, 'waiting')");
-            $stmt->execute([$session_id, $user_id, $next_position]);
+            $stmt = $pdo->prepare("INSERT INTO waitlists (session_id, package_id, template_id, user_id, position, status) VALUES (?, ?, ?, ?, ?, 'waiting')");
+            $stmt->execute([$wl_session_id, $wl_package_id, $wl_template_id, $user_id, $next_position]);
             $waitlist_id = $pdo->lastInsertId();
             $pdo->commit();
             
-            Auditor::log($pdo, $user_id, 'create', 'waitlists', $waitlist_id, ['action' => 'join_waitlist', 'session_id' => $session_id, 'position' => $next_position]);
+            Auditor::log($pdo, $user_id, 'create', 'waitlists', $waitlist_id, [
+                'action' => 'join_waitlist', 'session_id' => $wl_session_id,
+                'package_id' => $wl_package_id, 'template_id' => $wl_template_id,
+                'position' => $next_position
+            ]);
         } catch (Exception $txe) {
             $pdo->rollBack();
             throw $txe;
@@ -439,7 +478,7 @@ if ($action === 'join_waitlist') {
         
         if (function_exists('logSecurityEvent')) {
             logSecurityEvent('waitlist_joined', 
-                "User joined waitlist for session: {$session['title']} (position: $next_position)", 
+                "User joined waitlist for: {$product_name} (position: $next_position)", 
                 $user_id
             );
         }
@@ -452,7 +491,7 @@ if ($action === 'join_waitlist') {
         exit();
         
     } catch (Exception $e) {
-        ErrorLogger::error("Waitlist join error: " . $e->getMessage(), ['session_id' => $session_id ?? 0, 'user_id' => $user_id]);
+        ErrorLogger::error("Waitlist join error: " . $e->getMessage(), ['user_id' => $user_id]);
         echo json_encode(['success' => false, 'message' => 'Failed to join waitlist']);
         exit();
     }
@@ -493,6 +532,201 @@ if ($action === 'leave_waitlist') {
     } catch (Exception $e) {
         ErrorLogger::error("Waitlist leave error: " . $e->getMessage(), ['session_id' => $session_id ?? 0, 'user_id' => $user_id]);
         echo json_encode(['success' => false, 'message' => 'Failed to leave waitlist']);
+        exit();
+    }
+}
+
+// OFFER WAITLIST SPOT (Coach/Admin: send enrollment email with purchase link)
+if ($action === 'offer_waitlist_spot') {
+    header('Content-Type: application/json');
+    
+    try {
+        // Verify coach/admin role
+        $roleStmt = $pdo->prepare("SELECT role FROM users WHERE id = ?");
+        $roleStmt->execute([$user_id]);
+        $userRole = $roleStmt->fetchColumn();
+        $allowedRoles = ['admin', 'coach', 'team_coach', 'goalie_dev', 'player_dev'];
+        if (!in_array($userRole, $allowedRoles)) {
+            echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+            exit();
+        }
+        
+        $waitlist_id = intval($_POST['waitlist_id'] ?? 0);
+        if ($waitlist_id <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Invalid waitlist entry']);
+            exit();
+        }
+        
+        // Get waitlist entry with user info
+        $stmt = $pdo->prepare("
+            SELECT w.*, u.first_name, u.last_name, u.email,
+                   s.title as session_title, s.price as session_price,
+                   p.name as package_name, p.price as package_price,
+                   tst.name as template_name, tst.price as template_price
+            FROM waitlists w
+            JOIN users u ON w.user_id = u.id
+            LEFT JOIN sessions s ON w.session_id = s.id
+            LEFT JOIN packages p ON w.package_id = p.id
+            LEFT JOIN training_session_templates tst ON w.template_id = tst.id
+            WHERE w.id = ? AND w.status = 'waiting'
+        ");
+        $stmt->execute([$waitlist_id]);
+        $entry = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$entry) {
+            echo json_encode(['success' => false, 'message' => 'Waitlist entry not found or already offered']);
+            exit();
+        }
+        
+        // Generate secure token for purchase link
+        $token = bin2hex(random_bytes(32));
+        $expiresAt = date('Y-m-d H:i:s', strtotime('+48 hours'));
+        
+        // Update waitlist entry with token and offered status
+        $pdo->prepare("UPDATE waitlists SET status = 'offered', notified_at = NOW(), waitlist_token = ?, token_expires_at = ? WHERE id = ?")
+            ->execute([$token, $expiresAt, $waitlist_id]);
+        
+        // Determine product name and build purchase link
+        $productName = $entry['session_title'] ?? $entry['package_name'] ?? $entry['template_name'] ?? 'Training Product';
+        $purchaseLink = "http://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']) . "/pwa.php?page=sessions&waitlist_token=" . urlencode($token);
+        
+        // Decrypt user PII for email
+        $firstName = !empty($entry['first_name']) ? FieldEncryption::decrypt($entry['first_name']) : 'Athlete';
+        $lastName = !empty($entry['last_name']) ? FieldEncryption::decrypt($entry['last_name']) : '';
+        $email = !empty($entry['email']) ? FieldEncryption::decrypt($entry['email']) : '';
+        
+        if (empty($email)) {
+            echo json_encode(['success' => false, 'message' => 'No email address found for this athlete']);
+            exit();
+        }
+        
+        // Send enrollment email using the notification type
+        if (function_exists('sendEmail')) {
+            sendEmail($email, 'notification', [
+                'title' => 'A Spot Is Available!',
+                'name' => trim($firstName . ' ' . $lastName),
+                'message' => "Great news! A spot has opened up for: $productName. You have 48 hours to complete your enrollment. Click the button below to secure your spot.",
+                'link' => $purchaseLink,
+            ]);
+        }
+        
+        // Create in-app notification
+        try {
+            $pdo->prepare("
+                INSERT INTO notifications (user_id, type, title, message, link_url, created_at) 
+                VALUES (?, 'session', 'Spot Available!', ?, ?, NOW())
+            ")->execute([
+                $entry['user_id'],
+                "A spot opened up for: $productName. You have 48 hours to enroll!",
+                $purchaseLink,
+            ]);
+        } catch (PDOException $ne) { /* notifications table may not exist */ }
+        
+        Auditor::log($pdo, $user_id, 'update', 'waitlists', $waitlist_id, [
+            'action' => 'offer_waitlist_spot', 'athlete_id' => $entry['user_id'], 'product' => $productName
+        ]);
+        
+        echo json_encode(['success' => true, 'message' => "Enrollment email sent to " . trim($firstName . ' ' . $lastName)]);
+        exit();
+        
+    } catch (Exception $e) {
+        ErrorLogger::error("Offer waitlist spot error: " . $e->getMessage(), ['waitlist_id' => $waitlist_id ?? 0, 'user_id' => $user_id]);
+        echo json_encode(['success' => false, 'message' => 'Failed to offer spot']);
+        exit();
+    }
+}
+
+// ENROLL FROM WAITLIST (Coach/Admin: directly enroll athlete, bypassing payment)
+if ($action === 'enroll_from_waitlist') {
+    header('Content-Type: application/json');
+    
+    try {
+        // Verify coach/admin role
+        $roleStmt = $pdo->prepare("SELECT role FROM users WHERE id = ?");
+        $roleStmt->execute([$user_id]);
+        $userRole = $roleStmt->fetchColumn();
+        $allowedRoles = ['admin', 'coach', 'team_coach', 'goalie_dev', 'player_dev'];
+        if (!in_array($userRole, $allowedRoles)) {
+            echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+            exit();
+        }
+        
+        $waitlist_id = intval($_POST['waitlist_id'] ?? 0);
+        if ($waitlist_id <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Invalid waitlist entry']);
+            exit();
+        }
+        
+        // Get waitlist entry
+        $stmt = $pdo->prepare("SELECT * FROM waitlists WHERE id = ? AND status IN ('waiting', 'offered')");
+        $stmt->execute([$waitlist_id]);
+        $entry = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$entry) {
+            echo json_encode(['success' => false, 'message' => 'Waitlist entry not found']);
+            exit();
+        }
+        
+        $pdo->beginTransaction();
+        try {
+            if (!empty($entry['session_id'])) {
+                // Enroll in session - create booking with paid status (coach override)
+                $pdo->prepare("
+                    INSERT INTO bookings (session_id, user_id, payment_status, status, notes) 
+                    VALUES (?, ?, 'paid', 'confirmed', 'Enrolled from waitlist by coach')
+                ")->execute([$entry['session_id'], $entry['user_id']]);
+                
+            } elseif (!empty($entry['package_id'])) {
+                // Enroll in package - create user_package with paid status
+                $pkgStmt = $pdo->prepare("SELECT * FROM packages WHERE id = ?");
+                $pkgStmt->execute([$entry['package_id']]);
+                $pkg = $pkgStmt->fetch(PDO::FETCH_ASSOC);
+                if ($pkg) {
+                    $pdo->prepare("
+                        INSERT INTO user_packages (user_id, package_id, credits_remaining, payment_status, amount_paid, expiry_date) 
+                        VALUES (?, ?, ?, 'paid', 0, ?)
+                    ")->execute([
+                        $entry['user_id'], $entry['package_id'],
+                        $pkg['credits'] ?? 0,
+                        $pkg['valid_days'] ? date('Y-m-d', strtotime('+' . (int)$pkg['valid_days'] . ' days')) : null,
+                    ]);
+                }
+                
+            } elseif (!empty($entry['template_id'])) {
+                // Enroll in program - create development program enrollment
+                $tplStmt = $pdo->prepare("SELECT * FROM training_session_templates WHERE id = ?");
+                $tplStmt->execute([$entry['template_id']]);
+                $tpl = $tplStmt->fetch(PDO::FETCH_ASSOC);
+                if ($tpl) {
+                    $programType = ($tpl['session_type'] === 'on_ice') ? 'goalie_dev' : 'player_dev';
+                    $startDate = date('Y-m-d');
+                    $endDate = !empty($tpl['duration_weeks']) ? date('Y-m-d', strtotime("+{$tpl['duration_weeks']} weeks")) : null;
+                    $pdo->prepare("
+                        INSERT INTO development_program_enrollments (athlete_id, program_type, program_name, template_id, start_date, end_date) 
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    ")->execute([$entry['user_id'], $programType, $tpl['name'] ?? '', $entry['template_id'], $startDate, $endDate]);
+                }
+            }
+            
+            // Mark waitlist entry as accepted
+            $pdo->prepare("UPDATE waitlists SET status = 'accepted' WHERE id = ?")->execute([$waitlist_id]);
+            
+            $pdo->commit();
+        } catch (Exception $txe) {
+            $pdo->rollBack();
+            throw $txe;
+        }
+        
+        Auditor::log($pdo, $user_id, 'update', 'waitlists', $waitlist_id, [
+            'action' => 'enroll_from_waitlist', 'athlete_id' => $entry['user_id']
+        ]);
+        
+        echo json_encode(['success' => true, 'message' => 'Athlete enrolled successfully']);
+        exit();
+        
+    } catch (Exception $e) {
+        ErrorLogger::error("Enroll from waitlist error: " . $e->getMessage(), ['waitlist_id' => $waitlist_id ?? 0, 'user_id' => $user_id]);
+        echo json_encode(['success' => false, 'message' => 'Failed to enroll athlete']);
         exit();
     }
 }
@@ -620,6 +854,22 @@ $stmt = $pdo->prepare("SELECT * FROM sessions WHERE id = ?");
 $stmt->execute([$session_id]);
 $session = $stmt->fetch();
 if (!$session) { die("Session not found."); }
+
+// Block direct booking if session is waitlist-only (must use waitlist enrollment flow)
+if (!empty($session['waitlist_only'])) {
+    // Check if user has a valid waitlist token (offered status)
+    $tokenParam = $_POST['waitlist_token'] ?? $_GET['waitlist_token'] ?? '';
+    $hasValidOffer = false;
+    if (!empty($tokenParam)) {
+        $offerStmt = $pdo->prepare("SELECT id FROM waitlists WHERE session_id = ? AND user_id = ? AND status = 'offered' AND waitlist_token = ? AND token_expires_at > NOW()");
+        $offerStmt->execute([$session_id, $user_id, $tokenParam]);
+        $hasValidOffer = (bool)$offerStmt->fetch();
+    }
+    if (!$hasValidOffer) {
+        header("Location: $sessionsPage&error=waitlist_only");
+        exit();
+    }
+}
 
 // Check for duplicate booking — prevent re-ordering an already paid session
 $dup_check = $pdo->prepare("SELECT id, payment_status FROM bookings WHERE session_id = ? AND user_id = ? AND status IN ('confirmed', 'waitlisted')");

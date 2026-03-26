@@ -3,7 +3,7 @@
  * Provides offline caching, push notifications, and background sync.
  */
 
-const CACHE_VERSION = 'aw-pwa-v4';
+const CACHE_VERSION = 'aw-pwa-v5';
 const STATIC_ASSETS = [
   '/index.php',
   '/pwa.php',
