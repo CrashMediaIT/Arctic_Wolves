@@ -4,8 +4,8 @@
  * Expires waitlist offers that have not been accepted within 48 hours
  * and automatically offers the spot to the next person in line.
  * 
- * Example: 0 * * * * /usr/bin/php /path/to/cron_waitlist_expiration.php
- * (Run every hour to check for expired offers)
+ * Example: */15 * * * * /usr/bin/php /path/to/cron_waitlist_expiration.php
+ * (Run every 15 minutes to check for expired offers)
  */
 
 require_once __DIR__ . '/db_config.php';
@@ -97,7 +97,17 @@ try {
                 
                 // Send enrollment email
                 if (!empty($nextEmail) && function_exists('sendEmail')) {
-                    $purchaseLink = (isset($_SERVER['HTTP_HOST']) ? "http://" . $_SERVER['HTTP_HOST'] : '') . "/pwa.php?page=sessions&waitlist_token=" . urlencode($token);
+                    // Build base URL from system settings or environment
+                    $baseUrl = '';
+                    try {
+                        $urlStmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'site_url'");
+                        $urlStmt->execute();
+                        $baseUrl = $urlStmt->fetchColumn() ?: '';
+                    } catch (PDOException $ue) {}
+                    if (empty($baseUrl)) {
+                        $baseUrl = getenv('APP_URL') ?: (isset($_SERVER['HTTP_HOST']) ? "https://" . $_SERVER['HTTP_HOST'] : '');
+                    }
+                    $purchaseLink = rtrim($baseUrl, '/') . "/pwa.php?page=sessions&waitlist_token=" . urlencode($token);
                     sendEmail($nextEmail, 'notification', [
                         'title' => 'A Spot Is Available!',
                         'name' => trim($nextFirstName . ' ' . $nextLastName),

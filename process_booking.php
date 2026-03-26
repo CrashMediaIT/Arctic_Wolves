@@ -698,7 +698,7 @@ if ($action === 'enroll_from_waitlist') {
                 $tplStmt->execute([$entry['template_id']]);
                 $tpl = $tplStmt->fetch(PDO::FETCH_ASSOC);
                 if ($tpl) {
-                    $programType = !empty($tpl['is_dev_program']) ? 'player_dev' : 'player_dev';
+                    $programType = ($tpl['session_type'] === 'on_ice') ? 'goalie_dev' : 'player_dev';
                     $startDate = date('Y-m-d');
                     $endDate = !empty($tpl['duration_weeks']) ? date('Y-m-d', strtotime("+{$tpl['duration_weeks']} weeks")) : null;
                     $pdo->prepare("

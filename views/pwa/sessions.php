@@ -1204,6 +1204,7 @@ if ($isAnyCoach) {
                     $dpCoach = trim(($dp['coach_first_name'] ?? '') . ' ' . ($dp['coach_last_name'] ?? ''));
                     $isWaitlistOnly = !empty($dp['waitlist_only']);
                     $isOnDpWaitlist = in_array($dp['id'], $userWaitlistTemplateIds);
+                    // Map session_type to program_type: on_ice → goalie_dev, all others → player_dev
                     $dpType = ($dp['session_type'] === 'on_ice') ? 'goalie_dev' : 'player_dev';
                 ?>
                 <div class="m-dev-card">
