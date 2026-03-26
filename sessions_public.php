@@ -117,6 +117,7 @@ if ($db_connected) {
     }
     
     // Fetch upcoming sessions from training_session_templates + training_session_dates
+    // Exclude dev programs (is_dev_program = 1) since they display in their own section
     try {
         $templateStmt = $pdo->query("
             SELECT t.id as template_id,
@@ -144,6 +145,7 @@ if ($db_connected) {
             LEFT JOIN locations l ON t.location_id = l.id
             WHERE t.is_active = 1
               AND td.is_active = 1
+              AND (t.is_dev_program = 0 OR t.is_dev_program IS NULL)
               AND (DATE(td.session_date) > CURDATE() OR (DATE(td.session_date) = CURDATE() AND TIME(td.session_date) > CURTIME()))
             ORDER BY td.session_date ASC
         ");
@@ -211,8 +213,25 @@ if ($db_connected) {
         $devPrograms = $dpStmt->fetchAll(PDO::FETCH_ASSOC);
         $devPrograms = decryptUserRows($devPrograms);
     } catch (PDOException $e) {
-        error_log("Public dev programs fetch error: " . $e->getMessage());
-        $devPrograms = [];
+        // Column may not exist on older installations — try adding it once, then retry
+        try {
+            $pdo->exec("ALTER TABLE `training_session_templates` ADD COLUMN IF NOT EXISTS `is_dev_program` TINYINT(1) DEFAULT 0");
+            $pdo->exec("ALTER TABLE `training_session_templates` ADD COLUMN IF NOT EXISTS `duration_weeks` INT DEFAULT NULL");
+            $dpStmt = $pdo->query("
+                SELECT tst.id, tst.name, tst.description, tst.price, tst.duration_weeks,
+                       tst.session_type, tst.max_participants, tst.waitlist_only,
+                       u.first_name as coach_first_name, u.last_name as coach_last_name
+                FROM training_session_templates tst
+                LEFT JOIN users u ON tst.coach_id = u.id
+                WHERE tst.is_active = 1 AND tst.is_dev_program = 1
+                ORDER BY tst.name ASC
+            ");
+            $devPrograms = $dpStmt->fetchAll(PDO::FETCH_ASSOC);
+            $devPrograms = decryptUserRows($devPrograms);
+        } catch (PDOException $e2) {
+            error_log("Public dev programs fetch error: " . $e2->getMessage());
+            $devPrograms = [];
+        }
     }
 }
 

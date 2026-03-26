@@ -299,6 +299,7 @@ try {
         LEFT JOIN session_types st ON t.session_type_id = st.id
         LEFT JOIN locations l ON t.location_id = l.id
         WHERE t.is_active = 1 AND td.is_active = 1
+          AND (t.is_dev_program = 0 OR t.is_dev_program IS NULL)
           AND (DATE(td.session_date) > CURDATE() OR (DATE(td.session_date) = CURDATE() AND TIME(td.session_date) > CURTIME()))
         ORDER BY td.session_date ASC
         LIMIT 50
@@ -364,7 +365,7 @@ try {
     unset($_dp);
 } catch (PDOException $e) { $devPrograms = []; }
 
-// Fetch non-dev training programs (training_session_templates that are NOT dev programs and NOT regular sessions)
+// Fetch non-dev training programs (all active training_session_templates that are NOT dev programs)
 $trainingPrograms = [];
 try {
     $tpStmt = $pdo->query("
@@ -374,7 +375,6 @@ try {
         FROM training_session_templates tst
         LEFT JOIN users c ON tst.coach_id = c.id
         WHERE tst.is_active = 1 AND (tst.is_dev_program = 0 OR tst.is_dev_program IS NULL)
-              AND tst.duration_weeks IS NOT NULL AND tst.duration_weeks > 0
         ORDER BY tst.name ASC
     ");
     $trainingPrograms = $tpStmt->fetchAll(PDO::FETCH_ASSOC);
@@ -1112,10 +1112,10 @@ if ($isAnyCoach) {
 
         <!-- Programs & Camps Section -->
         <div class="m-section-divider">
-            <h4 style="color:#fff;font-size:15px;font-weight:700;margin:0 0 4px;"><i class="fas fa-campground m-section-icon"></i> Programs &amp; Camps</h4>
-            <p style="font-size:12px;color:#6B6B7B;margin:0 0 14px;">Multi-week training programs and camp sessions</p>
+            <h4 style="color:#fff;font-size:15px;font-weight:700;margin:0 0 4px;"><i class="fas fa-campground m-section-icon"></i> Training Products</h4>
+            <p style="font-size:12px;color:#6B6B7B;margin:0 0 14px;">Training programs, camps, and session products</p>
             <?php if (empty($campPackages) && empty($trainingPrograms)): ?>
-                <div class="m-empty-state"><i class="fas fa-campground"></i><p>No programs or camps available</p></div>
+                <div class="m-empty-state"><i class="fas fa-campground"></i><p>No training products available</p></div>
             <?php else: ?>
                 <?php foreach ($campPackages as $camp):
                     $campPrice = (float)($camp['price'] ?? 0);
@@ -1367,6 +1367,14 @@ document.querySelectorAll('.m-segment-control .m-segment').forEach(function(btn)
         document.querySelectorAll('.m-tab-panel').forEach(function(p) { p.classList.remove('m-tab-visible'); });
         var target = document.getElementById('m-panel-' + panelId);
         if (target) target.classList.add('m-tab-visible');
+        // Show view toggle and filters only on the upcoming tab
+        var isUpcoming = (panelId === 'upcoming');
+        var viewToggle = document.getElementById('m-view-toggle');
+        var filterToggle = document.getElementById('m-filter-toggle');
+        var filterForm = document.getElementById('m-filter-form');
+        if (viewToggle) viewToggle.style.display = isUpcoming ? '' : 'none';
+        if (filterToggle) filterToggle.style.display = isUpcoming ? '' : 'none';
+        if (filterForm && !isUpcoming) filterForm.classList.remove('m-filter-visible');
     });
 });
 
