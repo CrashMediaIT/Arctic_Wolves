@@ -1091,3 +1091,20 @@ function ensureUserDataEncrypted($pdo) {
 function generateShareToken() {
     return bin2hex(random_bytes(32));
 }
+
+/**
+ * Validate and sanitize a SQL identifier (table name, column name).
+ * Only allows alphanumeric characters and underscores.
+ * Throws if the identifier contains disallowed characters so that
+ * callers cannot accidentally use tainted values in SQL statements.
+ *
+ * @param string $name  The identifier to validate
+ * @return string The validated identifier (unchanged if valid)
+ * @throws InvalidArgumentException if the identifier is invalid
+ */
+function sanitizeSqlIdentifier($name) {
+    if (!is_string($name) || $name === '' || !preg_match('/^[a-zA-Z_][a-zA-Z0-9_]{0,63}$/', $name)) {
+        throw new InvalidArgumentException("Invalid SQL identifier: " . substr((string)$name, 0, 64));
+    }
+    return $name;
+}

@@ -148,8 +148,9 @@ try {
                 echo json_encode(['success' => false, 'message' => 'Invalid team or game']);
                 exit();
             }
-            $col = ($team === 'home') ? 'home_score' : 'away_score';
-            $pdo->prepare("UPDATE scoreboard_games SET $col = $col + 1 WHERE id = ?")->execute([$game_id]);
+            $scoreMap = ['home' => 'home_score', 'away' => 'away_score'];
+            $col = $scoreMap[$team];
+            $pdo->prepare("UPDATE scoreboard_games SET `$col` = `$col` + 1 WHERE id = ?")->execute([$game_id]);
             // Fetch updated scores
             $stmt = $pdo->prepare("SELECT home_score, away_score FROM scoreboard_games WHERE id = ?");
             $stmt->execute([$game_id]);
@@ -165,8 +166,9 @@ try {
                 echo json_encode(['success' => false, 'message' => 'Invalid team or game']);
                 exit();
             }
-            $col = ($team === 'home') ? 'home_score' : 'away_score';
-            $pdo->prepare("UPDATE scoreboard_games SET $col = GREATEST($col - 1, 0) WHERE id = ?")->execute([$game_id]);
+            $scoreMap = ['home' => 'home_score', 'away' => 'away_score'];
+            $col = $scoreMap[$team];
+            $pdo->prepare("UPDATE scoreboard_games SET `$col` = GREATEST(`$col` - 1, 0) WHERE id = ?")->execute([$game_id]);
             $stmt = $pdo->prepare("SELECT home_score, away_score FROM scoreboard_games WHERE id = ?");
             $stmt->execute([$game_id]);
             $scores = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -181,8 +183,9 @@ try {
                 echo json_encode(['success' => false, 'message' => 'Invalid team or game']);
                 exit();
             }
-            $col = ($team === 'home') ? 'home_shots' : 'away_shots';
-            $pdo->prepare("UPDATE scoreboard_games SET $col = $col + 1 WHERE id = ?")->execute([$game_id]);
+            $shotMap = ['home' => 'home_shots', 'away' => 'away_shots'];
+            $col = $shotMap[$team];
+            $pdo->prepare("UPDATE scoreboard_games SET `$col` = `$col` + 1 WHERE id = ?")->execute([$game_id]);
             $stmt = $pdo->prepare("SELECT home_shots, away_shots FROM scoreboard_games WHERE id = ?");
             $stmt->execute([$game_id]);
             $shots = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -408,7 +411,7 @@ try {
             $score = max(0, $score);
             $colMap = ['home' => 'home_score', 'away' => 'away_score'];
             $col = $colMap[$team];
-            $pdo->prepare("UPDATE scoreboard_games SET {$col} = ? WHERE id = ?")->execute([$score, $game_id]);
+            $pdo->prepare("UPDATE scoreboard_games SET `{$col}` = ? WHERE id = ?")->execute([$score, $game_id]);
             $stmt = $pdo->prepare("SELECT home_score, away_score FROM scoreboard_games WHERE id = ?");
             $stmt->execute([$game_id]);
             $scores = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -427,7 +430,7 @@ try {
             $shots = max(0, $shots);
             $colMap = ['home' => 'home_shots', 'away' => 'away_shots'];
             $col = $colMap[$team];
-            $pdo->prepare("UPDATE scoreboard_games SET {$col} = ? WHERE id = ?")->execute([$shots, $game_id]);
+            $pdo->prepare("UPDATE scoreboard_games SET `{$col}` = ? WHERE id = ?")->execute([$shots, $game_id]);
             $stmt = $pdo->prepare("SELECT home_shots, away_shots FROM scoreboard_games WHERE id = ?");
             $stmt->execute([$game_id]);
             $shotsData = $stmt->fetch(PDO::FETCH_ASSOC);

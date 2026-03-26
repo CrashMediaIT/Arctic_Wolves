@@ -75,6 +75,12 @@ try {
             if ($log['action_type'] === 'DELETE') {
                 // For DELETE, we need to re-insert the record
                 $columns = array_keys($old_values);
+                // Validate all column names from audit log data
+                foreach ($columns as $col) {
+                    if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $col)) {
+                        throw new Exception('Invalid column name in audit data');
+                    }
+                }
                 $placeholders = array_fill(0, count($columns), '?');
                 $values = array_values($old_values);
                 
@@ -97,6 +103,10 @@ try {
                 
                 foreach ($old_values as $column => $value) {
                     if ($column !== 'id') { // Don't update the ID
+                        // Validate column name from audit log data
+                        if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $column)) {
+                            throw new Exception('Invalid column name in audit data');
+                        }
                         $set_clauses[] = "`$column` = ?";
                         $values[] = $value;
                     }

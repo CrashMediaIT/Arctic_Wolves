@@ -180,7 +180,11 @@ class SystemValidator {
      */
     private function validateTableColumns($table, &$checks) {
         try {
-            $columns_result = $this->pdo->query("DESCRIBE $table");
+            // Validate table name to prevent SQL injection
+            if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $table)) {
+                return;
+            }
+            $columns_result = $this->pdo->query("DESCRIBE `" . $table . "`");
             $columns = $columns_result->fetchAll(PDO::FETCH_COLUMN);
             
             // Common expected columns based on table
@@ -245,8 +249,13 @@ class SystemValidator {
      */
     private function checkForeignKeyValidity($table, $column) {
         try {
+            // Validate table and column names to prevent SQL injection
+            if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $table) ||
+                !preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $column)) {
+                return false;
+            }
             // Check for orphaned records
-            $query = "SELECT COUNT(*) as count FROM $table WHERE $column IS NOT NULL AND $column != 0";
+            $query = "SELECT COUNT(*) as count FROM `" . $table . "` WHERE `" . $column . "` IS NOT NULL AND `" . $column . "` != 0";
             $result = $this->pdo->query($query);
             $count = $result->fetch()['count'];
             return true; // Simplified check

@@ -186,7 +186,8 @@ class SystemHealthValidator {
             $sample_tables = ['users', 'sessions', 'drills'];
             foreach ($sample_tables as $table) {
                 if (in_array($table, $tables)) {
-                    $stmt = $this->pdo->prepare("SHOW COLUMNS FROM `$table` LIKE ?");
+                    if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $table)) continue;
+                    $stmt = $this->pdo->prepare("SHOW COLUMNS FROM `" . $table . "` LIKE ?");
                     $stmt->execute(['is_demo']);
                     $columns = $stmt->fetchAll();
                     if (count($columns) > 0) {
@@ -218,7 +219,8 @@ class SystemHealthValidator {
             
             foreach ($tables as $table) {
                 try {
-                    $count_stmt = $this->pdo->query("SELECT COUNT(*) FROM `$table` WHERE is_demo = 1");
+                    if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $table)) continue;
+                    $count_stmt = $this->pdo->query("SELECT COUNT(*) FROM `" . $table . "` WHERE is_demo = 1");
                     $count = $count_stmt->fetchColumn();
                     $total_demo += $count;
                 } catch (PDOException $e) {
