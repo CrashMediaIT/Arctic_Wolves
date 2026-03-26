@@ -172,9 +172,9 @@ if (!empty($drill['category_id'])) {
     if ($drillImageUrl): ?>
     <div class="m-section">
         <h3 class="m-section-title">Diagram</h3>
-        <div style="background:#16161F;border:1px solid #2D2D3F;border-radius:12px;overflow:hidden;cursor:pointer;" onclick="mOpenDiagramFullscreen()">
+        <div style="background:#16161F;border:1px solid #2D2D3F;border-radius:12px;overflow:hidden;cursor:pointer;" role="button" tabindex="0" aria-label="View diagram full screen" onclick="mOpenDiagramFullscreen()" onkeydown="if(event.key==='Enter')mOpenDiagramFullscreen()">
             <img id="m-drill-diagram" src="<?= htmlspecialchars($drillImageUrl) ?>" alt="<?= htmlspecialchars($drill['title']) ?> diagram" style="width:100%;display:block;border-radius:12px;" loading="lazy" onerror="this.parentElement.parentElement.style.display='none'">
-            <div style="text-align:center;padding:8px;font-size:11px;color:#6B6B7B;"><i class="fas fa-expand"></i> Tap to view full screen</div>
+            <div style="text-align:center;padding:8px;font-size:11px;color:#6B6B7B;" aria-hidden="true"><i class="fas fa-expand"></i> Tap to view full screen</div>
         </div>
     </div>
     <?php endif; ?>
