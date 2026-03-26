@@ -40,6 +40,8 @@ if (isset($_GET['register'])) {
                 $sessionId = $intentId;
             } elseif ($intentType === 'package') {
                 $packageId = $intentId;
+            } elseif ($intentType === 'dev_program') {
+                $templateId = $intentId;
             } elseif ($intentType === 'template_date') {
                 $sessionDateId = $intentId;
                 // Look up the template_id from the session date
@@ -134,7 +136,8 @@ if ($db_connected) {
                    l.name as location_name,
                    1 as total_dates,
                    'session' as source_type,
-                   NULL as id
+                   NULL as id,
+                   t.waitlist_only
             FROM training_session_templates t
             INNER JOIN training_session_dates td ON td.template_id = t.id
             LEFT JOIN users u ON t.coach_id = u.id
@@ -191,6 +194,25 @@ if ($db_connected) {
     } catch (PDOException $e) {
         error_log("Public camps/programs fetch error: " . $e->getMessage());
         $camps_programs = [];
+    }
+    
+    // Fetch long-term development programs
+    $devPrograms = [];
+    try {
+        $dpStmt = $pdo->query("
+            SELECT tst.id, tst.name, tst.description, tst.price, tst.duration_weeks,
+                   tst.session_type, tst.max_participants, tst.waitlist_only,
+                   u.first_name as coach_first_name, u.last_name as coach_last_name
+            FROM training_session_templates tst
+            LEFT JOIN users u ON tst.coach_id = u.id
+            WHERE tst.is_active = 1 AND tst.is_dev_program = 1
+            ORDER BY tst.name ASC
+        ");
+        $devPrograms = $dpStmt->fetchAll(PDO::FETCH_ASSOC);
+        $devPrograms = decryptUserRows($devPrograms);
+    } catch (PDOException $e) {
+        error_log("Public dev programs fetch error: " . $e->getMessage());
+        $devPrograms = [];
     }
 }
 
@@ -622,6 +644,94 @@ $viewMode = $_GET['view'] ?? 'list';
             box-shadow: 0 8px 16px rgba(107, 70, 193, 0.3);
         }
         
+        /* Waitlist button */
+        .waitlist-btn {
+            background: #f59e0b;
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 700;
+            transition: all 0.3s;
+            display: inline-block;
+            margin-top: 12px;
+        }
+        
+        .waitlist-btn:hover {
+            background: #d97706;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(245, 158, 11, 0.3);
+        }
+        
+        .waitlist-badge {
+            display: inline-block;
+            background: rgba(245, 158, 11, 0.15);
+            color: #f59e0b;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 12px;
+            margin-left: 8px;
+            text-transform: uppercase;
+        }
+        
+        /* Dev Programs Section */
+        .dev-programs-section {
+            margin-bottom: 48px;
+        }
+        
+        .dev-programs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+        }
+        
+        .dev-card {
+            background: var(--bg-card);
+            border: 2px solid rgba(59, 130, 246, 0.4);
+            border-radius: 16px;
+            padding: 28px;
+            position: relative;
+            transition: all 0.3s;
+        }
+        
+        .dev-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(59, 130, 246, 0.2);
+        }
+        
+        .dev-badge {
+            position: absolute;
+            top: -12px;
+            left: 24px;
+            background: #3b82f6;
+            color: #fff;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .dev-card .camp-name {
+            color: #fff;
+        }
+        
+        .dev-card .camp-price {
+            color: #3b82f6;
+        }
+        
+        .dev-card .camp-register-btn {
+            background: #3b82f6 !important;
+        }
+        
+        .dev-card .camp-register-btn:hover {
+            background: #2563eb !important;
+        }
+        
         /* Calendar View */
         .calendar-container {
             background: var(--bg-card);
@@ -791,6 +901,7 @@ $viewMode = $_GET['view'] ?? 'list';
                             <div class="scroll-container" data-scroll-container>
                                 <?php foreach ($packages as $package): 
                                     $storeCredit = $package['store_credit'] ?? 0;
+                                    $pkgWaitlistOnly = !empty($package['waitlist_only']);
                                 ?>
                                 <div class="package-card">
                                     <div class="package-badge"><i class="fas fa-star"></i> Package</div>
@@ -809,10 +920,19 @@ $viewMode = $_GET['view'] ?? 'list';
                                         <?php if (!empty($package['description'])): ?>
                                         <p><i class="fas fa-info-circle"></i> <?= htmlspecialchars($package['description']) ?></p>
                                         <?php endif; ?>
+                                        <?php if ($pkgWaitlistOnly): ?>
+                                        <p><span class="waitlist-badge"><i class="fas fa-clock"></i> Waitlist Only</span></p>
+                                        <?php endif; ?>
                                     </div>
+                                    <?php if ($pkgWaitlistOnly): ?>
+                                    <a href="?register=1&type=package&id=<?= $package['id'] ?>" class="waitlist-btn">
+                                        <i class="fas fa-clock"></i> Join Waitlist
+                                    </a>
+                                    <?php else: ?>
                                     <a href="?register=1&type=package&id=<?= $package['id'] ?>" class="register-btn">
                                         <i class="fas fa-user-plus"></i> Register Now
                                     </a>
+                                    <?php endif; ?>
                                 </div>
                                 <?php endforeach; ?>
                             </div>
@@ -832,7 +952,9 @@ $viewMode = $_GET['view'] ?? 'list';
                         <div class="scroll-wrapper">
                             <button class="scroll-btn scroll-left hidden" onclick="scrollSection(this, -1)" aria-label="Scroll left"><i class="fas fa-chevron-left"></i></button>
                             <div class="scroll-container" data-scroll-container>
-                                <?php foreach ($camps_programs as $cp): ?>
+                                <?php foreach ($camps_programs as $cp):
+                                    $cpWaitlistOnly = !empty($cp['waitlist_only']);
+                                ?>
                                 <div class="camp-card <?= $cp['package_type'] === 'camp' ? 'camp-type' : 'program-type' ?>">
                                     <div class="camp-badge" style="background: <?= $cp['package_type'] === 'camp' ? '#10b981' : '#f59e0b' ?>;">
                                         <i class="fas fa-<?= $cp['package_type'] === 'camp' ? 'campground' : 'calendar-alt' ?>"></i>
@@ -868,10 +990,19 @@ $viewMode = $_GET['view'] ?? 'list';
                                         <?php if ($cp['enable_child_checkin']): ?>
                                         <p style="color: #8B5CF6;"><i class="fas fa-child"></i> Child pickup enabled</p>
                                         <?php endif; ?>
+                                        <?php if ($cpWaitlistOnly): ?>
+                                        <p><span class="waitlist-badge"><i class="fas fa-clock"></i> Waitlist Only</span></p>
+                                        <?php endif; ?>
                                     </div>
+                                    <?php if ($cpWaitlistOnly): ?>
+                                    <a href="?register=1&type=package&id=<?= $cp['id'] ?>" class="waitlist-btn">
+                                        <i class="fas fa-clock"></i> Join Waitlist
+                                    </a>
+                                    <?php else: ?>
                                     <a href="?register=1&type=package&id=<?= $cp['id'] ?>" class="register-btn camp-register-btn">
                                         <i class="fas fa-user-plus"></i> <?= $cp['package_type'] === 'camp' ? 'Register for Camp' : 'Enroll Now' ?>
                                     </a>
+                                    <?php endif; ?>
                                 </div>
                                 <?php endforeach; ?>
                             </div>
@@ -883,6 +1014,54 @@ $viewMode = $_GET['view'] ?? 'list';
                     </div>
                 </div>
             </div>
+            
+            <!-- Long-Term Development Programs (above Training Sessions) -->
+            <?php if (!empty($devPrograms)): ?>
+            <div class="dev-programs-section">
+                <h2 class="section-title"><i class="fas fa-chart-line"></i> Long-Term Development Programs</h2>
+                <div class="dev-programs-grid">
+                    <?php foreach ($devPrograms as $dp):
+                        $dpCoach = trim(($dp['coach_first_name'] ?? '') . ' ' . ($dp['coach_last_name'] ?? ''));
+                        $dpWaitlistOnly = !empty($dp['waitlist_only']);
+                    ?>
+                    <div class="dev-card">
+                        <div class="dev-badge">
+                            <i class="fas fa-<?= stripos($dp['name'], 'goalie') !== false ? 'shield-alt' : 'hockey-puck' ?>"></i>
+                            Development Program
+                        </div>
+                        <h3 class="camp-name"><?= htmlspecialchars($dp['name']) ?></h3>
+                        <div class="camp-price">$<?= number_format($dp['price'] ?? 0, 2) ?></div>
+                        <div class="camp-details">
+                            <?php if (!empty($dp['duration_weeks'])): ?>
+                            <p><i class="fas fa-clock"></i> <?= (int)$dp['duration_weeks'] ?> week program</p>
+                            <?php endif; ?>
+                            <?php if (!empty($dpCoach)): ?>
+                            <p><i class="fas fa-user-tie"></i> Coach: <?= htmlspecialchars($dpCoach) ?></p>
+                            <?php endif; ?>
+                            <?php if (!empty($dp['max_participants'])): ?>
+                            <p><i class="fas fa-users"></i> Max <?= $dp['max_participants'] ?> participants</p>
+                            <?php endif; ?>
+                            <?php if (!empty($dp['description'])): ?>
+                            <p><i class="fas fa-info-circle"></i> <?= htmlspecialchars($dp['description']) ?></p>
+                            <?php endif; ?>
+                            <?php if ($dpWaitlistOnly): ?>
+                            <p><span class="waitlist-badge"><i class="fas fa-clock"></i> Waitlist Only</span></p>
+                            <?php endif; ?>
+                        </div>
+                        <?php if ($dpWaitlistOnly): ?>
+                        <a href="?register=1&type=dev_program&id=<?= $dp['id'] ?>" class="waitlist-btn">
+                            <i class="fas fa-clock"></i> Join Waitlist
+                        </a>
+                        <?php else: ?>
+                        <a href="?register=1&type=dev_program&id=<?= $dp['id'] ?>" class="register-btn camp-register-btn" style="background: #3b82f6 !important;">
+                            <i class="fas fa-user-plus"></i> Enroll Now
+                        </a>
+                        <?php endif; ?>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endif; ?>
             
             <!-- Training Sessions Header + View Toggle (below products) -->
             <div class="page-header-section">
@@ -911,6 +1090,7 @@ $viewMode = $_GET['view'] ?? 'list';
                         <?php 
                         foreach ($sessions as $session): 
                             $sessionDate = strtotime($session['next_date']);
+                            $sessWaitlistOnly = !empty($session['waitlist_only']);
                         ?>
                         <div class="session-card">
                             <div class="session-date-box">
@@ -919,7 +1099,7 @@ $viewMode = $_GET['view'] ?? 'list';
                                 <span class="weekday"><?= date('D', $sessionDate) ?></span>
                             </div>
                             <div class="session-info">
-                                <h3><?= htmlspecialchars($session['name']) ?></h3>
+                                <h3><?= htmlspecialchars($session['name']) ?><?php if ($sessWaitlistOnly): ?><span class="waitlist-badge"><i class="fas fa-clock"></i> Waitlist Only</span><?php endif; ?></h3>
                                 <div class="session-meta">
                                     <span><i class="fas fa-clock"></i> <?= date('g:i A', $sessionDate) ?></span>
                                     <span><i class="fas fa-hourglass-half"></i> <?= $session['duration_minutes'] ?> min</span>
@@ -936,9 +1116,15 @@ $viewMode = $_GET['view'] ?? 'list';
                             </div>
                             <div class="session-actions" style="text-align: right;">
                                 <div class="session-price">$<?= number_format($session['price'], 2) ?></div>
+                                <?php if ($sessWaitlistOnly): ?>
+                                <a href="?register=1&type=<?= !empty($session['session_date_id']) ? 'template_date' : 'session' ?>&id=<?= !empty($session['session_date_id']) ? $session['session_date_id'] : $session['id'] ?>" class="waitlist-btn">
+                                    <i class="fas fa-clock"></i> Join Waitlist
+                                </a>
+                                <?php else: ?>
                                 <a href="?register=1&type=<?= !empty($session['session_date_id']) ? 'template_date' : 'session' ?>&id=<?= !empty($session['session_date_id']) ? $session['session_date_id'] : $session['id'] ?>" class="register-btn">
                                     <i class="fas fa-user-plus"></i> Register
                                 </a>
+                                <?php endif; ?>
                             </div>
                         </div>
                         <?php endforeach; ?>
