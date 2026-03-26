@@ -237,7 +237,7 @@ foreach ($existing_codes as $ec) {
 </div>
 
 <!-- QR Code Generation Script (using qrcode.js via CDN) -->
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js" crossorigin="anonymous"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     <?php if ($checkin_code): ?>
