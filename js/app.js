@@ -575,7 +575,7 @@
             const action = btn.getAttribute('data-action');
             
             // Skip if already handled by specific handlers above or by page-level handlers
-            if (['add', 'edit', 'delete', 'export', 'upload', 'save', 'cancel', 'switch-tab', 'register-session', 'join-waitlist', 'purchase-package', 'play-video', 'view-video', 'delete-video'].includes(action)) {
+            if (['add', 'edit', 'delete', 'export', 'upload', 'save', 'cancel', 'switch-tab', 'register-session', 'join-waitlist', 'purchase-package', 'play-video', 'view-video', 'delete-video', 'toggle-status', 'manage-dates', 'manage-sessions', 'view-session-registrations', 'view-program-registrations'].includes(action)) {
                 return;
             }
             
