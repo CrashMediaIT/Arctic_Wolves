@@ -77,7 +77,7 @@ $sessions = [];
 $packages = [];
 
 if ($db_connected) {
-    // Fetch upcoming sessions from the sessions table
+    // Fetch upcoming sessions from the sessions table (public data only — no user PII)
     try {
         $sessionsStmt = $pdo->query("
             SELECT s.id, 
@@ -90,27 +90,19 @@ if ($db_connected) {
                    s.max_participants,
                    s.session_type_id,
                    s.location_id,
-                   s.coach_id,
                    CONCAT(s.session_date, ' ', COALESCE(s.session_time, '00:00:00')) as next_date,
-                   u.first_name as coach_first_name, u.last_name as coach_last_name,
                    l.name as location_name,
                    1 as total_dates,
                    'session' as source_type,
                    NULL as template_id,
                    NULL as session_date_id
             FROM sessions s
-            LEFT JOIN users u ON s.coach_id = u.id
             LEFT JOIN locations l ON s.location_id = l.id
             WHERE s.status = 'scheduled'
               AND (s.session_date > CURDATE() OR (s.session_date = CURDATE() AND COALESCE(s.session_time, '00:00:00') > CURTIME()))
             ORDER BY s.session_date ASC, s.session_time ASC
         ");
         $sessions = $sessionsStmt->fetchAll(PDO::FETCH_ASSOC);
-        $sessions = decryptUserRows($sessions);
-        foreach ($sessions as &$s) {
-            $s['coach_name'] = trim(($s['coach_first_name'] ?? '') . ' ' . ($s['coach_last_name'] ?? ''));
-        }
-        unset($s);
     } catch (PDOException $e) {
         error_log("Public sessions fetch error: " . $e->getMessage());
         $sessions = [];
@@ -118,6 +110,7 @@ if ($db_connected) {
     
     // Fetch upcoming sessions from training_session_templates + training_session_dates
     // Exclude dev programs (is_dev_program = 1) since they display in their own section
+    // Public data only — no user PII
     try {
         $templateStmt = $pdo->query("
             SELECT t.id as template_id,
@@ -131,9 +124,7 @@ if ($db_connected) {
                    COALESCE(td.max_participants, t.max_participants) as max_participants,
                    t.session_type_id,
                    t.location_id,
-                   t.coach_id,
                    td.session_date as next_date,
-                   u.first_name as coach_first_name, u.last_name as coach_last_name,
                    l.name as location_name,
                    1 as total_dates,
                    'session' as source_type,
@@ -141,7 +132,6 @@ if ($db_connected) {
                    t.waitlist_only
             FROM training_session_templates t
             INNER JOIN training_session_dates td ON td.template_id = t.id
-            LEFT JOIN users u ON t.coach_id = u.id
             LEFT JOIN locations l ON t.location_id = l.id
             WHERE t.is_active = 1
               AND td.is_active = 1
@@ -150,11 +140,6 @@ if ($db_connected) {
             ORDER BY td.session_date ASC
         ");
         $templateSessions = $templateStmt->fetchAll(PDO::FETCH_ASSOC);
-        $templateSessions = decryptUserRows($templateSessions);
-        foreach ($templateSessions as &$ts) {
-            $ts['coach_name'] = trim(($ts['coach_first_name'] ?? '') . ' ' . ($ts['coach_last_name'] ?? ''));
-        }
-        unset($ts);
         
         // Merge and sort all sessions by date
         $sessions = array_merge($sessions, $templateSessions);
@@ -198,32 +183,17 @@ if ($db_connected) {
         $camps_programs = [];
     }
     
-    // Fetch long-term development programs
+    // Fetch long-term development programs (public product data only — no user PII)
     $devPrograms = [];
     try {
         $dpStmt = $pdo->query("
             SELECT tst.id, tst.name, tst.description, tst.price, tst.duration_weeks,
-                   tst.session_type, tst.max_participants, tst.waitlist_only,
-                   u.first_name as coach_first_name, u.last_name as coach_last_name
+                   tst.session_type, tst.max_participants, tst.waitlist_only
             FROM training_session_templates tst
-            LEFT JOIN users u ON tst.coach_id = u.id
             WHERE tst.is_active = 1 AND tst.is_dev_program = 1
             ORDER BY tst.name ASC
         ");
         $devPrograms = $dpStmt->fetchAll(PDO::FETCH_ASSOC);
-        // Decrypt coach names individually to avoid decryptUserRows failing on non-user rows
-        foreach ($devPrograms as &$_dp) {
-            foreach (['coach_first_name', 'coach_last_name'] as $_f) {
-                if (!empty($_dp[$_f])) {
-                    try {
-                        $_dp[$_f] = FieldEncryption::decrypt($_dp[$_f]);
-                    } catch (Exception $decErr) {
-                        error_log("Dev program decrypt error (id=" . ($_dp['id'] ?? '?') . ", field=$_f): " . $decErr->getMessage());
-                    }
-                }
-            }
-        }
-        unset($_dp);
     } catch (PDOException $e) {
         // Column may not exist on older installations — try adding it once, then retry
         try {
@@ -231,33 +201,16 @@ if ($db_connected) {
             $pdo->exec("ALTER TABLE `training_session_templates` ADD COLUMN IF NOT EXISTS `duration_weeks` INT DEFAULT NULL");
             $dpStmt = $pdo->query("
                 SELECT tst.id, tst.name, tst.description, tst.price, tst.duration_weeks,
-                       tst.session_type, tst.max_participants, tst.waitlist_only,
-                       u.first_name as coach_first_name, u.last_name as coach_last_name
+                       tst.session_type, tst.max_participants, tst.waitlist_only
                 FROM training_session_templates tst
-                LEFT JOIN users u ON tst.coach_id = u.id
                 WHERE tst.is_active = 1 AND tst.is_dev_program = 1
                 ORDER BY tst.name ASC
             ");
             $devPrograms = $dpStmt->fetchAll(PDO::FETCH_ASSOC);
-            foreach ($devPrograms as &$_dp) {
-                foreach (['coach_first_name', 'coach_last_name'] as $_f) {
-                    if (!empty($_dp[$_f])) {
-                        try {
-                            $_dp[$_f] = FieldEncryption::decrypt($_dp[$_f]);
-                        } catch (Exception $decErr) {
-                            error_log("Dev program decrypt error after ALTER (id=" . ($_dp['id'] ?? '?') . ", field=$_f): " . $decErr->getMessage());
-                        }
-                    }
-                }
-            }
-            unset($_dp);
-        } catch (Exception $e2) {
+        } catch (PDOException $e2) {
             error_log("Public dev programs fetch error: " . $e2->getMessage());
             $devPrograms = [];
         }
-    } catch (Exception $e) {
-        error_log("Failed to fetch public dev programs: " . $e->getMessage());
-        $devPrograms = [];
     }
 }
 
@@ -1066,7 +1019,6 @@ $viewMode = $_GET['view'] ?? 'list';
                 <h2 class="section-title"><i class="fas fa-chart-line"></i> Long-Term Development Programs</h2>
                 <div class="dev-programs-grid">
                     <?php foreach ($devPrograms as $dp):
-                        $dpCoach = trim(($dp['coach_first_name'] ?? '') . ' ' . ($dp['coach_last_name'] ?? ''));
                         $dpWaitlistOnly = !empty($dp['waitlist_only']);
                     ?>
                     <div class="dev-card">
@@ -1079,9 +1031,6 @@ $viewMode = $_GET['view'] ?? 'list';
                         <div class="camp-details">
                             <?php if (!empty($dp['duration_weeks'])): ?>
                             <p><i class="fas fa-clock"></i> <?= (int)$dp['duration_weeks'] ?> week program</p>
-                            <?php endif; ?>
-                            <?php if (!empty($dpCoach)): ?>
-                            <p><i class="fas fa-user-tie"></i> Coach: <?= htmlspecialchars($dpCoach) ?></p>
                             <?php endif; ?>
                             <?php if (!empty($dp['max_participants'])): ?>
                             <p><i class="fas fa-users"></i> Max <?= $dp['max_participants'] ?> participants</p>
@@ -1148,9 +1097,6 @@ $viewMode = $_GET['view'] ?? 'list';
                                 <div class="session-meta">
                                     <span><i class="fas fa-clock"></i> <?= date('g:i A', $sessionDate) ?></span>
                                     <span><i class="fas fa-hourglass-half"></i> <?= $session['duration_minutes'] ?> min</span>
-                                    <?php if (!empty($session['coach_name'])): ?>
-                                    <span><i class="fas fa-user-tie"></i> <?= htmlspecialchars($session['coach_name']) ?></span>
-                                    <?php endif; ?>
                                     <?php if (!empty($session['location_name'])): ?>
                                     <span><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($session['location_name']) ?></span>
                                     <?php endif; ?>
@@ -1309,7 +1255,6 @@ $viewMode = $_GET['view'] ?? 'list';
                             html += '<p style="color: var(--text-dim); font-size: 13px;">';
                             html += '<i class="fas fa-clock" style="color: var(--primary);"></i> ' + sessionDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
                             html += ' &bull; ' + session.duration_minutes + ' min';
-                            if (session.coach_name) html += ' &bull; ' + session.coach_name;
                             html += '</p>';
                             html += '</div>';
                             html += '<div style="text-align: right;">';
