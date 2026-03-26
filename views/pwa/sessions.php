@@ -5,6 +5,27 @@
  * Purpose-built for mobile phones.
  */
 
+// Waitlist token handling - when user arrives from enrollment email purchase link
+$waitlistToken = $_GET['waitlist_token'] ?? '';
+$waitlistOffer = null;
+if (!empty($waitlistToken)) {
+    try {
+        $wlTokenStmt = $pdo->prepare("
+            SELECT w.id, w.session_id, w.package_id, w.template_id, w.status, w.token_expires_at,
+                   s.title as session_title, s.price as session_price,
+                   p.name as package_name, p.price as package_price,
+                   tst.name as template_name, tst.price as template_price
+            FROM waitlists w
+            LEFT JOIN sessions s ON w.session_id = s.id
+            LEFT JOIN packages p ON w.package_id = p.id
+            LEFT JOIN training_session_templates tst ON w.template_id = tst.id
+            WHERE w.waitlist_token = ? AND w.user_id = ? AND w.status = 'offered' AND w.token_expires_at > NOW()
+        ");
+        $wlTokenStmt->execute([$waitlistToken, $user_id]);
+        $waitlistOffer = $wlTokenStmt->fetch(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) { /* Token lookup failed - continue normally */ }
+}
+
 // Filter params
 $filterType = $_GET['filter_type'] ?? '';
 $filterLocation = $_GET['filter_location'] ?? '';
@@ -723,6 +744,43 @@ if ($isAnyCoach) {
         <?php endif; ?>
         <div class="m-segment-slider"></div>
     </div>
+
+    <?php if ($waitlistOffer): ?>
+    <!-- Waitlist Offer Banner -->
+    <div style="margin:0 16px 16px;padding:16px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:12px;">
+        <div style="font-size:14px;font-weight:700;color:#10B981;margin-bottom:6px;"><i class="fas fa-check-circle"></i> Spot Available!</div>
+        <p style="font-size:13px;color:#A8A8B8;margin:0 0 12px;">You have been offered a spot for: <strong style="color:#fff;"><?= htmlspecialchars($waitlistOffer['session_title'] ?? $waitlistOffer['package_name'] ?? $waitlistOffer['template_name'] ?? '') ?></strong></p>
+        <p style="font-size:11px;color:#F59E0B;margin:0 0 12px;"><i class="fas fa-clock"></i> Offer expires: <?= date('M j, Y g:i A', strtotime($waitlistOffer['token_expires_at'])) ?></p>
+        <?php if (!empty($waitlistOffer['session_id'])): ?>
+        <form method="POST" action="process_booking.php" style="display:inline;">
+            <?= csrfTokenInput() ?>
+            <input type="hidden" name="action" value="book_session">
+            <input type="hidden" name="session_id" value="<?= (int)$waitlistOffer['session_id'] ?>">
+            <input type="hidden" name="waitlist_token" value="<?= htmlspecialchars($waitlistToken) ?>">
+            <input type="hidden" name="pwa_context" value="1">
+            <button type="submit" class="m-book-btn m-book-btn-primary" style="padding:12px 24px;font-size:14px;"><i class="fas fa-cart-plus"></i> Purchase Now</button>
+        </form>
+        <?php elseif (!empty($waitlistOffer['package_id'])): ?>
+        <form action="process_purchase_package.php" method="POST" style="display:inline;">
+            <?= csrfTokenInput() ?>
+            <input type="hidden" name="package_id" value="<?= (int)$waitlistOffer['package_id'] ?>">
+            <input type="hidden" name="waitlist_token" value="<?= htmlspecialchars($waitlistToken) ?>">
+            <input type="hidden" name="pwa_context" value="1">
+            <button type="submit" class="m-book-btn m-book-btn-primary" style="padding:12px 24px;font-size:14px;"><i class="fas fa-cart-plus"></i> Purchase Now</button>
+        </form>
+        <?php elseif (!empty($waitlistOffer['template_id'])): ?>
+        <form method="POST" action="process_booking.php" style="display:inline;">
+            <?= csrfTokenInput() ?>
+            <input type="hidden" name="action" value="register_dev_program">
+            <input type="hidden" name="template_id" value="<?= (int)$waitlistOffer['template_id'] ?>">
+            <input type="hidden" name="program_type" value="player_dev">
+            <input type="hidden" name="waitlist_token" value="<?= htmlspecialchars($waitlistToken) ?>">
+            <input type="hidden" name="pwa_context" value="1">
+            <button type="submit" class="m-book-btn m-book-btn-primary" style="padding:12px 24px;font-size:14px;"><i class="fas fa-plus"></i> Enroll Now</button>
+        </form>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
 
     <!-- Filter Bar -->
     <div class="m-filter-toggle" onclick="mToggleFilters(this)" id="m-filter-toggle">
