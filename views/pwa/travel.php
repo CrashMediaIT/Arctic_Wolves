@@ -490,6 +490,7 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
 (function() {
     var deleteId = null;
     var stopIndex = 2; // Start and End are 0, 1
+    var csrfToken = <?= json_encode($csrfToken, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 
     window.mOpenSheet = function(name) {
         var el = document.getElementById('m-sheet-' + name);
@@ -585,7 +586,7 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
             var formData = new FormData();
             formData.append('action', 'get_distance');
             formData.append('waypoints', JSON.stringify(waypoints));
-            formData.append('csrf_token', <?= json_encode($csrfToken, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>);
+            formData.append('csrf_token', csrfToken);
 
             fetch('process_mileage.php', {
                 method: 'POST',
@@ -634,7 +635,7 @@ $csrfToken = $_SESSION['csrf_token'] ?? '';
         var formData = new FormData();
         formData.append('action', 'delete');
         formData.append('log_id', deleteId);
-        formData.append('csrf_token', <?= json_encode($csrfToken, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>);
+        formData.append('csrf_token', csrfToken);
 
         fetch('process_mileage.php', {
             method: 'POST',

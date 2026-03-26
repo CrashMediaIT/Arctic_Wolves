@@ -530,6 +530,7 @@ try {
     </div>
 </div>
 
+<script src="js/camera_trigger.js"></script>
 <script>
 (function() {
     /* ========================================
@@ -1237,4 +1238,3 @@ try {
 
 })();
 </script>
-<script src="js/camera_trigger.js"></script>
