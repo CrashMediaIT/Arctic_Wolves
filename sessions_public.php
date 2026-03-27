@@ -75,6 +75,7 @@ if (isset($_GET['register'])) {
 // Fetch public sessions (all upcoming scheduled sessions)
 $sessions = [];
 $packages = [];
+$devPrograms = [];
 
 if ($db_connected) {
     // Fetch upcoming sessions from the sessions table (public data only — no user PII)
@@ -184,7 +185,6 @@ if ($db_connected) {
     }
     
     // Fetch long-term development programs (public product data only — no user PII)
-    $devPrograms = [];
     try {
         $dpStmt = $pdo->query("
             SELECT tst.id, tst.name, tst.description, tst.price, tst.duration_weeks,
@@ -199,6 +199,7 @@ if ($db_connected) {
         try {
             $pdo->exec("ALTER TABLE `training_session_templates` ADD COLUMN IF NOT EXISTS `is_dev_program` TINYINT(1) DEFAULT 0");
             $pdo->exec("ALTER TABLE `training_session_templates` ADD COLUMN IF NOT EXISTS `duration_weeks` INT DEFAULT NULL");
+            $pdo->exec("ALTER TABLE `training_session_templates` ADD COLUMN IF NOT EXISTS `waitlist_only` TINYINT(1) DEFAULT 0");
             $dpStmt = $pdo->query("
                 SELECT tst.id, tst.name, tst.description, tst.price, tst.duration_weeks,
                        tst.session_type, tst.max_participants, tst.waitlist_only
