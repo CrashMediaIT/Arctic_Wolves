@@ -3021,6 +3021,7 @@ CREATE TABLE IF NOT EXISTS `training_session_templates` (
     `show_on_landing` TINYINT(1) DEFAULT 0,
     `is_dev_program` TINYINT(1) DEFAULT 0 COMMENT '1 if this is a long-term development program product',
     `duration_weeks` INT DEFAULT NULL COMMENT 'Duration in weeks for dev programs (e.g. 4 for a 4-week program)',
+    `waitlist_only` TINYINT(1) DEFAULT 0 COMMENT 'When enabled, users must join waitlist instead of registering directly',
     `created_by` INT NOT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
